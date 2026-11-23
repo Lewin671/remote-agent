@@ -1,7 +1,7 @@
 import * as i18n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { routeForTask, routeForUsage, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
+import { getCoreHost, routeForTask, routeForUsage, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
 import { renderText } from "../core/text";
 import { newRequestID } from "../crypto";
 import {
@@ -44,7 +44,7 @@ import {
 import { Markdown } from "../markdown";
 import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
 import { type Remote } from "../remote";
-import { saveBlobAsDownload, sharedFilesOf } from "../shared-files";
+import { saveBlobAsDownload } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
@@ -700,16 +700,16 @@ export function SessionScreenView({
 
   useEffect(() => {
     if (!remote) return;
-    const files = sharedFilesOf(remote);
-    files.setCurrentSession(sid);
-    files.setAutoOpenHandler((targetSid, file, blob) => {
+    const host = getCoreHost(remote);
+    host.sharedFileSetVisibleSession(sid);
+    host.sharedFiles.setAutoOpenHandler((targetSid, fileId, blob) => {
       if (targetSid !== sid) return;
-      const item = sharedItemsRef.current.get(file.fileId);
+      const item = sharedItemsRef.current.get(fileId);
       if (item) openSharedFile(item, blob);
     });
     return () => {
-      files.setCurrentSession(undefined);
-      files.setAutoOpenHandler(undefined);
+      host.sharedFileSetVisibleSession("");
+      host.sharedFiles.setAutoOpenHandler(undefined);
     };
   }, [remote, sid, openSharedFile]);
 

@@ -100,7 +100,7 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { machineName } from "./model";
 import { DEFAULT_AGENT } from "./agents";
-import type { SharedFileChunkResult } from "./shared-files";
+import type { SharedFileStore } from "./shared-file-store";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
 export const MAX_CLOCK_SKEW = 5 * 60 * 1000;
@@ -175,7 +175,6 @@ import {
 import {
   Agent,
   ImageFormat,
-  SessionStatus,
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
@@ -367,6 +366,7 @@ export class Remote implements CoreExecutor {
   authorityError = "";
 
   directExec: DirectExecutor;
+  readonly sharedFileStore?: SharedFileStore;
   private readonly secStore: SecurityStoreV4;
   private readonly secExec: WebSecurityExecutor;
   readonly deviceLink: DeviceLink;
@@ -1849,26 +1849,7 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  // --- Shared Files / Schedules / Drafts / Outbox / Answers / Images / Terminal / Models / Settings / Devices ---
-
-  sharedFilesHost() {
-    return {
-      getChunk: (sid: string, fileId: string, offset: bigint) => this.getSharedFileChunk(sid, fileId, offset),
-      isConnected: (sid: string) => this.peer(this.syncSession(sid)?.machineId).ready,
-      isMachineOnline: (sid: string) => {
-        const s = this.syncSession(sid);
-        return !!(s && this.peer(s.machineId).reachable);
-      },
-      isSessionEnded: (sid: string) => {
-        const s = this.syncSession(sid);
-        return s?.info?.status === SessionStatus.EXITED || (s?.listedEndedMs ?? 0n) > 0n;
-      },
-      sharedFileChunkBytes: (sid: string) => {
-        const s = this.syncSession(sid);
-        return (s && this.peer(s.machineId).capabilities?.sharedFileChunkBytes) || 0;
-      },
-    };
-  }
+  // --- Schedules / Drafts / Outbox / Answers / Images / Terminal / Models / Settings / Devices ---
 
   async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {
     if (!machineId || this.closed || !this.isMachineAuthorized(machineId)) {
@@ -2229,12 +2210,6 @@ export class Remote implements CoreExecutor {
       while (this.imageCache.size > IMAGE_CACHE) this.imageCache.delete(this.imageCache.keys().next().value!);
     }
     return out;
-  }
-
-  async getSharedFileChunk(sid: string, fileId: string, offset: bigint): Promise<SharedFileChunkResult> {
-    const res = await this.command(sid, { case: "getSharedFileChunk", value: { sessionId: sid, fileId, offset } });
-    if (res.kind.case !== "getSharedFileChunk") throw new Error(l10n.t("new_session.unexpected_reply"));
-    return { data: res.kind.value.data, totalBytes: res.kind.value.totalBytes };
   }
 
   cachedImage(sid: string, imageId: string): ImageResult | undefined { return this.imageCache.get(sid + "/" + imageId); }

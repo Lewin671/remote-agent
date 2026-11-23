@@ -131,6 +131,7 @@ import {
   SecurityErrorCode,
   SecurityForegroundEventSchema,
   SecurityOpRequestEventSchema,
+  SecurityStorageOp,
   type SecurityOpRequestEvent,
   type SecurityOpResultEffect,
   type SecurityStatusChangedEffect,
@@ -232,13 +233,25 @@ import {
   SessionTrayItemActionSchema,
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
-  SharedFileLocalStateEventSchema,
+  SharedFileFailureKind,
   type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
-  type SharedFileLocalStateUpdate,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import { bindSharedFiles } from "../shared-files";
+import {
+  SharedFileCancelDownloadActionSchema,
+  SharedFileClearAllActionSchema,
+  SharedFileConfigEventSchema,
+  SharedFileDeleteLocalActionSchema,
+  SharedFileDurationProbedEventSchema,
+  SharedFileForgetSessionActionSchema,
+  SharedFileLocalMissingEventSchema,
+  SharedFilePauseDownloadActionSchema,
+  SharedFileSetVisibleSessionActionSchema,
+  SharedFileStartDownloadActionSchema,
+} from "../gen/remoteagent/core/v1/shared_files_pb";
+import { SharedFileExecutor, WEB_LOCAL_CACHE_MAX_BYTES } from "../shared-files";
+import { sharedFileStore, type SharedFileStore } from "../shared-file-store";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -405,6 +418,10 @@ export interface CoreHostOptions {
   go?: Go;
   /** Optional explicit HMAC key for scope tokens (tests without IDB). */
   scopeHmacKey?: Uint8Array;
+  /** Optional shared-file store override (defaults to remote.sharedFileStore or OPFS singleton). */
+  sharedFileStore?: SharedFileStore;
+  /** Optional large-file (> 50 MiB) delivery hook (defaults to browser download save). */
+  onDeliverLargeSharedFile?: (blob: Blob, displayName: string) => void;
 }
 
 /** Current browser IANA timezone ID (falls back to UTC when unavailable). */
@@ -817,7 +834,7 @@ export class CoreHost {
   private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
   private unsubscribeLocale?: () => void;
-  private unbindSharedFiles?: () => void;
+  readonly sharedFiles: SharedFileExecutor;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
   private pendingEvents: Array<{ ev: Event; onProcessed?: () => void }> = [];
@@ -853,6 +870,13 @@ export class CoreHost {
       setForeground: (active) => this.setForeground(active),
       isClosed: () => this.closed,
     });
+    this.sharedFiles = new SharedFileExecutor({
+      store: opts.sharedFileStore ?? remote?.sharedFileStore ?? sharedFileStore,
+      onEvent: (event) => {
+        if (!this.closed) this.emit(event);
+      },
+      onDeliverOnly: opts.onDeliverLargeSharedFile,
+    });
 
     if (this.remote) {
       this.remote.attachHost({
@@ -884,9 +908,6 @@ export class CoreHost {
           this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
       });
-      this.unbindSharedFiles = bindSharedFiles(this.remote, (updates, opts) =>
-        this.reportSharedFileState(updates, opts),
-      );
     }
 
     this.dispatch(
@@ -1078,6 +1099,14 @@ export class CoreHost {
         }),
       });
       this.emit({
+        case: "sharedFileConfig",
+        value: create(SharedFileConfigEventSchema, {
+          localCacheMaxBytes: WEB_LOCAL_CACHE_MAX_BYTES,
+          storageFullKind: SharedFileFailureKind.BROWSER_STORAGE_FULL,
+          scanLocal: true,
+        }),
+      });
+      this.emit({
         case: "syncLifecycle",
         value: create(SyncLifecycleActionSchema, {
           kind: SyncLifecycleKind.START,
@@ -1182,20 +1211,34 @@ export class CoreHost {
     this.retrySession(sessionId);
   }
 
-  reportSharedFileState(
-    updates: SharedFileLocalStateUpdate[],
-    opts?: { replaceAll?: boolean; clearSessionId?: string },
-  ) {
-    if (this.closed) return;
-    if (!updates.length && !opts?.replaceAll && !opts?.clearSessionId) return;
-    this.emit({
-      case: "sharedFileLocalState",
-      value: create(SharedFileLocalStateEventSchema, {
-        updates,
-        replaceAll: !!opts?.replaceAll,
-        clearSessionId: opts?.clearSessionId ?? "",
-      }),
-    });
+  sharedFileStartDownload(sessionId: string, fileId: string, autoOpenIfStaying: boolean) {
+    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFileStartDownload", value: create(SharedFileStartDownloadActionSchema, { sessionId, fileId, autoOpenIfStaying }) });
+  }
+  sharedFilePauseDownload(sessionId: string, fileId: string) {
+    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFilePauseDownload", value: create(SharedFilePauseDownloadActionSchema, { sessionId, fileId }) });
+  }
+  sharedFileCancelDownload(sessionId: string, fileId: string) {
+    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFileCancelDownload", value: create(SharedFileCancelDownloadActionSchema, { sessionId, fileId }) });
+  }
+  sharedFileDeleteLocal(sessionId: string, fileId: string) {
+    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFileDeleteLocal", value: create(SharedFileDeleteLocalActionSchema, { sessionId, fileId }) });
+  }
+  sharedFileSetVisibleSession(sessionId: string) {
+    if (!this.closed) this.emit({ case: "sharedFileSetVisibleSession", value: create(SharedFileSetVisibleSessionActionSchema, { sessionId }) });
+  }
+  sharedFileForgetSession(sessionId: string) {
+    if (!this.closed && sessionId) this.emit({ case: "sharedFileForgetSession", value: create(SharedFileForgetSessionActionSchema, { sessionId }) });
+  }
+  sharedFileClearAll() {
+    if (!this.closed) this.emit({ case: "sharedFileClearAll", value: create(SharedFileClearAllActionSchema) });
+  }
+  sharedFileDurationProbed(sessionId: string, fileId: string, durationMs: number) {
+    if (!this.closed && sessionId && fileId && Number.isFinite(durationMs) && durationMs > 0) {
+      this.emit({ case: "sharedFileDurationProbed", value: create(SharedFileDurationProbedEventSchema, { sessionId, fileId, durationMs: BigInt(Math.round(durationMs)) }) });
+    }
+  }
+  sharedFileLocalMissing(sessionId: string, fileId: string) {
+    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFileLocalMissing", value: create(SharedFileLocalMissingEventSchema, { sessionId, fileId }) });
   }
 
   sessionImageViewerOpen = (
@@ -2456,6 +2499,9 @@ export class CoreHost {
       case "cacheDelete": {
         const delEff = val.value;
         this.cacheWriteQueue = this.cacheWriteQueue.then(() => this.executor?.deleteCache(delEff)).catch(() => undefined);
+        if (delEff.kind.case === "removeSessionId" && delEff.kind.value) {
+          this.sharedFileForgetSession(delEff.kind.value);
+        }
         break;
       }
 
@@ -2882,10 +2928,49 @@ export class CoreHost {
         break;
       }
 
+      case "sharedFileScanLocal":
+        this.sharedFiles.handleScanLocal(val.value);
+        break;
+
+      case "sharedFileInspectDisk":
+        this.sharedFiles.handleInspectDisk(val.value);
+        break;
+
+      case "sharedFileWriteChunk":
+        this.sharedFiles.handleWriteChunk(val.value);
+        break;
+
+      case "sharedFileVerifyAndCommit":
+        this.sharedFiles.handleVerifyAndCommit(val.value);
+        break;
+
+      case "sharedFileDeletePartial":
+        this.sharedFiles.handleDeletePartial(val.value);
+        break;
+
+      case "sharedFileDeleteLocal":
+        this.sharedFiles.handleDeleteLocal(val.value);
+        break;
+
+      case "sharedFileDeleteSession":
+        this.sharedFiles.handleDeleteSession(val.value);
+        break;
+
+      case "sharedFileClearAll":
+        this.sharedFiles.handleClearAll();
+        break;
+
+      case "sharedFileCompleted":
+        this.sharedFiles.handleCompleted(val.value);
+        break;
+
       case undefined:
         break;
 
       default:
+        if (val.case === "securityStorage" && val.value.op === SecurityStorageOp.CLEAR_ALL) {
+          this.sharedFileClearAll();
+        }
         this.executor?.securityEffect?.(val);
         break;
     }
@@ -3017,8 +3102,7 @@ export class CoreHost {
     if (this.closed) return;
     this.unsubscribeLocale?.();
     this.unsubscribeLocale = undefined;
-    this.unbindSharedFiles?.();
-    this.unbindSharedFiles = undefined;
+    this.sharedFiles.setAutoOpenHandler(undefined);
     this.stop();
     this.closed = true;
     this.pendingEvents = [];

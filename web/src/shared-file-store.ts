@@ -1,28 +1,60 @@
-/** Storage backend for locally cached shared files (<= 50 MB) and partial chunks.
- * Prefers Origin Private File System (OPFS) and falls back to an in-memory map
+/** Storage backend for locally cached shared files (<= 50 MiB) and partial chunks.
+ * Prefers Origin Private File System (OPFS) and falls back cleanly to in-memory storage
  * when OPFS or writable file streams are unavailable. */
 
-export interface PartialMeta {
-  nextOffset: number;
-  sizeBytes: string;
+export const SHARED_FILE_META_VERSION = 2;
+
+export interface SharedFilePartialMeta {
+  v: 2;
+  sessionId: string;
+  fileId: string;
+  displayName: string;
+  totalSizeBytes: string;
   chunkBytes: number;
-  sha256Hex: string;
+  committedOffset: string;
+  expectedSha256: string;
+}
+
+export interface ScannedSharedFileEntry {
+  sessionId: string;
+  fileId: string;
+  completed: boolean;
+  bytesOnDisk: bigint;
+  expectedSizeBytes: bigint;
+  chunkBytes: number;
+  committedOffset: bigint;
+  sha256: Uint8Array;
+  hasDuration?: boolean;
+  durationMs?: bigint;
+}
+
+export interface DiskInspectResult {
+  known: boolean;
+  availableBytes: bigint;
+}
+
+export interface WriteChunkParams {
+  sessionId: string;
+  fileId: string;
+  displayName: string;
+  offset: bigint;
+  data: Uint8Array;
+  totalSizeBytes: bigint;
+  chunkBytes: number;
+  committedOffset: bigint;
+  expectedSha256: Uint8Array;
+  resetPartial: boolean;
 }
 
 export interface SharedFileStore {
-  getPartialMeta(sessionId: string, fileId: string): Promise<PartialMeta | undefined>;
-  writePartialChunk(
-    sessionId: string,
-    fileId: string,
-    offset: number,
-    bytes: Uint8Array,
-    meta: PartialMeta,
-  ): Promise<void>;
+  scanLocal(): Promise<ScannedSharedFileEntry[]>;
+  inspectDisk(): Promise<DiskInspectResult>;
+  writeChunk(params: WriteChunkParams): Promise<void>;
   readPartialBlob(sessionId: string, fileId: string): Promise<Blob | undefined>;
-  commitCompleted(sessionId: string, fileId: string, totalBytes: number): Promise<Blob>;
+  commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob>;
   getCompletedBlob(sessionId: string, fileId: string): Promise<Blob | undefined>;
   deletePartial(sessionId: string, fileId: string): Promise<void>;
-  deleteCompleted(sessionId: string, fileId: string): Promise<void>;
+  deleteLocal(sessionId: string, fileId: string): Promise<void>;
   dropSession(sessionId: string): Promise<void>;
   clearAll(): Promise<void>;
 }
@@ -34,24 +66,103 @@ export class StorageQuotaError extends Error {
   }
 }
 
-export function hasQuotaExceeded(err: unknown): boolean {
-  if (err instanceof StorageQuotaError) return true;
-  if (!err || typeof err !== "object") return false;
-  const e = err as { name?: string; code?: number };
-  return (
-    e.name === "QuotaExceededError" ||
-    e.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
-    e.code === 22 ||
-    e.code === 1014
-  );
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
-/** Encodes arbitrary session/file IDs into path-safe single directory/file names. */
-function safeSegment(id: string): string {
-  const bytes = new TextEncoder().encode(id);
+export function hasQuotaExceeded(err: unknown): boolean {
+  if (err instanceof StorageQuotaError) return true;
+  if (!isRecord(err)) return false;
+  const e = err as { name?: string; code?: number };
+  return e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22 || e.code === 1014;
+}
+
+export function bytesToHex(bytes: Uint8Array): string {
   let out = "";
   for (const b of bytes) out += b.toString(16).padStart(2, "0");
-  return out || "00";
+  return out;
+}
+
+export function hexToBytes(hex: string): Uint8Array {
+  if (hex.length % 2 !== 0) return new Uint8Array();
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+export function safeSegment(id: string): string {
+  return bytesToHex(new TextEncoder().encode(id)) || "00";
+}
+
+export function decodeSegment(seg: string): string | undefined {
+  if (!seg || seg.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(seg)) return undefined;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(hexToBytes(seg)) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Strictly parses v2 partial metadata; legacy or malformed JSON returns undefined. */
+export function parsePartialMeta(raw: string): SharedFilePartialMeta | undefined {
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { return undefined; }
+  if (!isRecord(parsed)) return undefined;
+  if (
+    parsed.v !== SHARED_FILE_META_VERSION ||
+    typeof parsed.sessionId !== "string" || !parsed.sessionId ||
+    typeof parsed.fileId !== "string" || !parsed.fileId ||
+    typeof parsed.displayName !== "string" ||
+    typeof parsed.totalSizeBytes !== "string" || !/^\d+$/.test(parsed.totalSizeBytes) ||
+    typeof parsed.chunkBytes !== "number" || !Number.isInteger(parsed.chunkBytes) || parsed.chunkBytes <= 0 ||
+    typeof parsed.committedOffset !== "string" || !/^\d+$/.test(parsed.committedOffset) ||
+    typeof parsed.expectedSha256 !== "string" || !/^[0-9a-f]{64}$/.test(parsed.expectedSha256)
+  ) return undefined;
+  return {
+    v: 2,
+    sessionId: parsed.sessionId,
+    fileId: parsed.fileId,
+    displayName: parsed.displayName,
+    totalSizeBytes: parsed.totalSizeBytes,
+    chunkBytes: parsed.chunkBytes,
+    committedOffset: parsed.committedOffset,
+    expectedSha256: parsed.expectedSha256,
+  };
+}
+
+function makeCompletedEntry(sessionId: string, fileId: string, bytesOnDisk: bigint): ScannedSharedFileEntry {
+  return { sessionId, fileId, completed: true, bytesOnDisk, expectedSizeBytes: 0n, chunkBytes: 0, committedOffset: 0n, sha256: new Uint8Array() };
+}
+
+function makePartialEntry(sessionId: string, fileId: string, bytesOnDisk: bigint, rawMeta?: string): ScannedSharedFileEntry {
+  const meta = rawMeta !== undefined ? parsePartialMeta(rawMeta) : undefined;
+  if (!meta || meta.sessionId !== sessionId || meta.fileId !== fileId) {
+    return { sessionId, fileId, completed: false, bytesOnDisk, expectedSizeBytes: 0n, chunkBytes: 0, committedOffset: 0n, sha256: new Uint8Array() };
+  }
+  return {
+    sessionId,
+    fileId,
+    completed: false,
+    bytesOnDisk,
+    expectedSizeBytes: BigInt(meta.totalSizeBytes),
+    chunkBytes: meta.chunkBytes,
+    committedOffset: BigInt(meta.committedOffset),
+    sha256: hexToBytes(meta.expectedSha256),
+  };
+}
+
+function serializePartialMeta(p: WriteChunkParams): string {
+  const meta: SharedFilePartialMeta = {
+    v: SHARED_FILE_META_VERSION,
+    sessionId: p.sessionId,
+    fileId: p.fileId,
+    displayName: p.displayName,
+    totalSizeBytes: p.totalSizeBytes.toString(),
+    chunkBytes: p.chunkBytes,
+    committedOffset: p.committedOffset.toString(),
+    expectedSha256: bytesToHex(p.expectedSha256),
+  };
+  return JSON.stringify(meta);
 }
 
 function rethrowQuota(err: unknown): never {
@@ -59,22 +170,23 @@ function rethrowQuota(err: unknown): never {
   throw err;
 }
 
+function isNotFound(err: unknown): boolean {
+  return isRecord(err) && err.name === "NotFoundError";
+}
+
 function concatChunks(chunks: Map<number, Uint8Array>, totalBytes: number): Uint8Array<ArrayBuffer> {
-  const buf = new ArrayBuffer(totalBytes);
-  const out = new Uint8Array(buf);
-  const entries = [...chunks.entries()].sort((a, b) => a[0] - b[0]);
-  for (const [offset, data] of entries) {
+  const out = new Uint8Array(new ArrayBuffer(totalBytes));
+  for (const [offset, data] of [...chunks.entries()].sort((a, b) => a[0] - b[0])) {
     if (offset >= totalBytes) continue;
-    const slice = data.subarray(0, Math.min(data.length, totalBytes - offset));
-    out.set(slice, offset);
+    out.set(data.subarray(0, Math.min(data.length, totalBytes - offset)), offset);
   }
   return out;
 }
 
-/** Pure in-memory store used as fallback (and directly in unit tests). */
+/** Pure in-memory store used as OPFS fallback (and directly in demo/tests). */
 export class MemorySharedFileStore implements SharedFileStore {
-  private readonly partials = new Map<string, { meta: PartialMeta; chunks: Map<number, Uint8Array> }>();
-  private readonly completed = new Map<string, Blob>();
+  private readonly partials = new Map<string, { sessionId: string; fileId: string; rawMeta: string; chunks: Map<number, Uint8Array>; length: number }>();
+  private readonly completed = new Map<string, { sessionId: string; fileId: string; blob: Blob }>();
   private readonly maxBytes?: number;
   private usedBytes = 0;
 
@@ -87,89 +199,111 @@ export class MemorySharedFileStore implements SharedFileStore {
   }
 
   private ensureSpace(delta: number) {
-    if (this.maxBytes !== undefined && this.usedBytes + delta > this.maxBytes) {
+    if (this.maxBytes !== undefined && delta > 0 && this.usedBytes + delta > this.maxBytes) {
       throw new StorageQuotaError();
     }
   }
 
-  async getPartialMeta(sessionId: string, fileId: string): Promise<PartialMeta | undefined> {
-    return this.partials.get(this.key(sessionId, fileId))?.meta;
+  async scanLocal(): Promise<ScannedSharedFileEntry[]> {
+    const out: ScannedSharedFileEntry[] = [];
+    const seen = new Set<string>();
+    for (const [k, rec] of this.completed.entries()) {
+      seen.add(k);
+      out.push(makeCompletedEntry(rec.sessionId, rec.fileId, BigInt(rec.blob.size)));
+    }
+    for (const [k, rec] of this.partials.entries()) {
+      if (!seen.has(k)) out.push(makePartialEntry(rec.sessionId, rec.fileId, BigInt(rec.length), rec.rawMeta));
+    }
+    return out;
   }
 
-  async writePartialChunk(
-    sessionId: string,
-    fileId: string,
-    offset: number,
-    bytes: Uint8Array,
-    meta: PartialMeta,
-  ): Promise<void> {
-    const k = this.key(sessionId, fileId);
-    let entry = this.partials.get(k);
-    if (!entry) {
-      entry = { meta, chunks: new Map() };
-      this.partials.set(k, entry);
+  async inspectDisk(): Promise<DiskInspectResult> {
+    if (this.maxBytes === undefined) return { known: false, availableBytes: 0n };
+    return { known: true, availableBytes: BigInt(Math.max(0, this.maxBytes - this.usedBytes)) };
+  }
+
+  async writeChunk(params: WriteChunkParams): Promise<void> {
+    const k = this.key(params.sessionId, params.fileId);
+    const off = Number(params.offset);
+    const newLen = off + params.data.byteLength;
+    const prev = this.partials.get(k);
+    const nextChunks = new Map<number, Uint8Array>();
+    if (!params.resetPartial && prev) {
+      for (const [cOff, cData] of prev.chunks.entries()) {
+        if (cOff >= newLen || cOff === off) continue;
+        const end = Math.min(cOff + cData.byteLength, newLen);
+        if (end > cOff) nextChunks.set(cOff, end < cOff + cData.byteLength ? cData.slice(0, end - cOff) : cData);
+      }
     }
-    const prev = entry.chunks.get(offset)?.byteLength ?? 0;
-    const delta = bytes.byteLength - prev;
-    if (delta > 0) this.ensureSpace(delta);
-    entry.chunks.set(offset, bytes.slice());
-    entry.meta = meta;
-    this.usedBytes += delta;
+    if (params.data.byteLength > 0) nextChunks.set(off, params.data.slice());
+    const delta = newLen - (prev?.length ?? 0);
+    this.ensureSpace(delta);
+    this.partials.set(k, {
+      sessionId: params.sessionId,
+      fileId: params.fileId,
+      rawMeta: serializePartialMeta(params),
+      chunks: nextChunks,
+      length: newLen,
+    });
+    this.usedBytes = Math.max(0, this.usedBytes + delta);
   }
 
   async readPartialBlob(sessionId: string, fileId: string): Promise<Blob | undefined> {
-    const entry = this.partials.get(this.key(sessionId, fileId));
-    if (!entry) return undefined;
-    const total = Number(entry.meta.sizeBytes);
-    const len = Math.min(entry.meta.nextOffset, total);
-    const bytes = concatChunks(entry.chunks, len);
-    return new Blob([bytes], { type: "application/octet-stream" });
+    const rec = this.partials.get(this.key(sessionId, fileId));
+    if (!rec) return undefined;
+    return new Blob([concatChunks(rec.chunks, rec.length)], { type: "application/octet-stream" });
   }
 
-  async commitCompleted(sessionId: string, fileId: string, totalBytes: number): Promise<Blob> {
+  async commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob> {
     const k = this.key(sessionId, fileId);
-    const entry = this.partials.get(k);
-    if (!entry) return new Blob([], { type: "application/octet-stream" });
-    const bytes = concatChunks(entry.chunks, totalBytes);
+    this.ensureSpace(bytes.byteLength);
     const blob = new Blob([bytes], { type: "application/octet-stream" });
-    this.partials.delete(k);
-    this.completed.set(k, blob);
+    const prevPartial = this.partials.get(k);
+    if (prevPartial) {
+      this.usedBytes = Math.max(0, this.usedBytes - prevPartial.length);
+      this.partials.delete(k);
+    }
+    const prevDone = this.completed.get(k);
+    if (prevDone) this.usedBytes = Math.max(0, this.usedBytes - prevDone.blob.size);
+    this.completed.set(k, { sessionId, fileId, blob });
+    this.usedBytes += blob.size;
     return blob;
   }
 
   async getCompletedBlob(sessionId: string, fileId: string): Promise<Blob | undefined> {
-    return this.completed.get(this.key(sessionId, fileId));
+    return this.completed.get(this.key(sessionId, fileId))?.blob;
   }
 
   async deletePartial(sessionId: string, fileId: string): Promise<void> {
     const k = this.key(sessionId, fileId);
-    const entry = this.partials.get(k);
-    if (entry) {
-      for (const c of entry.chunks.values()) this.usedBytes -= c.byteLength;
+    const rec = this.partials.get(k);
+    if (rec) {
+      this.usedBytes = Math.max(0, this.usedBytes - rec.length);
       this.partials.delete(k);
     }
   }
 
-  async deleteCompleted(sessionId: string, fileId: string): Promise<void> {
+  async deleteLocal(sessionId: string, fileId: string): Promise<void> {
+    await this.deletePartial(sessionId, fileId);
     const k = this.key(sessionId, fileId);
-    const b = this.completed.get(k);
-    if (b) {
-      this.usedBytes -= b.size;
+    const rec = this.completed.get(k);
+    if (rec) {
+      this.usedBytes = Math.max(0, this.usedBytes - rec.blob.size);
       this.completed.delete(k);
     }
   }
 
   async dropSession(sessionId: string): Promise<void> {
     const prefix = safeSegment(sessionId) + ":";
-    for (const [k, entry] of [...this.partials.entries()]) {
+    for (const [k, rec] of [...this.partials.entries()]) {
       if (k.startsWith(prefix)) {
-        for (const c of entry.chunks.values()) this.usedBytes -= c.byteLength;
+        this.usedBytes = Math.max(0, this.usedBytes - rec.length);
         this.partials.delete(k);
       }
     }
-    for (const [k, b] of [...this.completed.entries()]) {
+    for (const [k, rec] of [...this.completed.entries()]) {
       if (k.startsWith(prefix)) {
-        this.usedBytes -= b.size;
+        this.usedBytes = Math.max(0, this.usedBytes - rec.blob.size);
         this.completed.delete(k);
       }
     }
@@ -181,30 +315,47 @@ export class MemorySharedFileStore implements SharedFileStore {
     this.usedBytes = 0;
   }
 
-  /** Test helper to pre-populate a completed blob. */
   seedCompleted(sessionId: string, fileId: string, blob: Blob) {
-    this.completed.set(this.key(sessionId, fileId), blob);
+    const k = this.key(sessionId, fileId);
+    const prev = this.completed.get(k);
+    if (prev) this.usedBytes = Math.max(0, this.usedBytes - prev.blob.size);
+    this.completed.set(k, { sessionId, fileId, blob });
     this.usedBytes += blob.size;
+  }
+
+  seedPartialRaw(sessionId: string, fileId: string, rawMeta: string, bytes: Uint8Array) {
+    const k = this.key(sessionId, fileId);
+    const prev = this.partials.get(k);
+    if (prev) this.usedBytes = Math.max(0, this.usedBytes - prev.length);
+    const chunks = new Map<number, Uint8Array>();
+    if (bytes.byteLength > 0) chunks.set(0, bytes.slice());
+    this.partials.set(k, { sessionId, fileId, rawMeta, chunks, length: bytes.byteLength });
+    this.usedBytes += bytes.byteLength;
   }
 }
 
 const ROOT_DIR = "remote-agent-shared-files";
 
-async function opfsRoot(): Promise<FileSystemDirectoryHandle | undefined> {
-  if (typeof navigator === "undefined" || !navigator.storage?.getDirectory) return undefined;
-  try {
-    const root = await navigator.storage.getDirectory();
-    return await root.getDirectoryHandle(ROOT_DIR, { create: true });
-  } catch {
-    return undefined;
-  }
-}
+type IterableDirectoryHandle = FileSystemDirectoryHandle & {
+  entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
+};
 
 async function removeEntryQuiet(dir: FileSystemDirectoryHandle, name: string, recursive = false) {
+  try { await dir.removeEntry(name, { recursive }); } catch { /* absent */ }
+}
+
+async function writeOpfs(
+  fh: FileSystemFileHandle,
+  keepExistingData: boolean,
+  fn: (w: FileSystemWritableFileStream) => Promise<void>,
+): Promise<void> {
+  const w = await fh.createWritable({ keepExistingData });
   try {
-    await dir.removeEntry(name, { recursive });
-  } catch {
-    // Entry already absent or directory inaccessible.
+    await fn(w);
+    await w.close();
+  } catch (e) {
+    try { await w.abort(); } catch { /* ignore */ }
+    throw e;
   }
 }
 
@@ -213,80 +364,117 @@ export class OpfsSharedFileStore implements SharedFileStore {
   private readonly fallback = new MemorySharedFileStore();
   private opfsDisabled = false;
 
-  private async sessionDir(sessionId: string, create: boolean): Promise<FileSystemDirectoryHandle | undefined> {
+  private async opfsRoot(create: boolean): Promise<FileSystemDirectoryHandle | undefined> {
     if (this.opfsDisabled) return undefined;
-    const root = await opfsRoot();
-    if (!root) {
+    if (typeof navigator === "undefined" || typeof navigator.storage?.getDirectory !== "function") {
       this.opfsDisabled = true;
       return undefined;
     }
     try {
-      return await root.getDirectoryHandle(safeSegment(sessionId), { create });
-    } catch {
+      const root = await navigator.storage.getDirectory();
+      return await root.getDirectoryHandle(ROOT_DIR, { create });
+    } catch (e) {
+      if (!create && isNotFound(e)) return undefined;
+      if (hasQuotaExceeded(e)) throw new StorageQuotaError();
+      this.opfsDisabled = true;
       return undefined;
     }
   }
 
-  private partNames(fileId: string) {
+  private async sessionDir(sessionId: string, create: boolean): Promise<FileSystemDirectoryHandle | undefined> {
+    const root = await this.opfsRoot(create);
+    if (!root) return undefined;
+    try {
+      return await root.getDirectoryHandle(safeSegment(sessionId), { create });
+    } catch (e) {
+      if (!create && isNotFound(e)) return undefined;
+      if (hasQuotaExceeded(e)) throw new StorageQuotaError();
+      return undefined;
+    }
+  }
+
+  private names(fileId: string) {
     const seg = safeSegment(fileId);
     return { part: `${seg}.part`, meta: `${seg}.meta.json`, bin: `${seg}.bin` };
   }
 
-  async getPartialMeta(sessionId: string, fileId: string): Promise<PartialMeta | undefined> {
-    const dir = await this.sessionDir(sessionId, false);
-    if (!dir) return this.fallback.getPartialMeta(sessionId, fileId);
-    try {
-      const fh = await dir.getFileHandle(this.partNames(fileId).meta);
-      const file = await fh.getFile();
-      return JSON.parse(await file.text()) as PartialMeta;
-    } catch {
-      return this.fallback.getPartialMeta(sessionId, fileId);
+  async scanLocal(): Promise<ScannedSharedFileEntry[]> {
+    const entries: ScannedSharedFileEntry[] = [];
+    const seen = new Set<string>();
+    const root = await this.opfsRoot(false);
+    if (root && typeof (root as IterableDirectoryHandle).entries === "function") {
+      for await (const [dirName, handle] of (root as IterableDirectoryHandle).entries()) {
+        if (handle.kind !== "directory") continue;
+        const sessionId = decodeSegment(dirName);
+        if (!sessionId) continue;
+        const bySeg = new Map<string, { bin?: FileSystemFileHandle; part?: FileSystemFileHandle; meta?: FileSystemFileHandle }>();
+        try {
+          for await (const [name, fHandle] of (handle as IterableDirectoryHandle).entries()) {
+            if (fHandle.kind !== "file") continue;
+            const fh = fHandle as FileSystemFileHandle;
+            const slot = (seg: string) => {
+              let s = bySeg.get(seg);
+              if (!s) { s = {}; bySeg.set(seg, s); }
+              return s;
+            };
+            if (name.endsWith(".bin")) slot(name.slice(0, -4)).bin = fh;
+            else if (name.endsWith(".part")) slot(name.slice(0, -5)).part = fh;
+            else if (name.endsWith(".meta.json")) slot(name.slice(0, -10)).meta = fh;
+          }
+        } catch { continue; }
+
+        for (const [fileSeg, files] of bySeg.entries()) {
+          const fileId = decodeSegment(fileSeg);
+          if (!fileId) continue;
+          seen.add(`${sessionId}\0${fileId}`);
+          if (files.bin) {
+            try {
+              entries.push(makeCompletedEntry(sessionId, fileId, BigInt((await files.bin.getFile()).size)));
+              continue;
+            } catch { /* fall through */ }
+          }
+          const bytesOnDisk = files.part ? BigInt(await files.part.getFile().then((f) => f.size, () => 0)) : 0n;
+          const rawMeta = files.meta ? await files.meta.getFile().then((f) => f.text(), () => undefined) : undefined;
+          entries.push(makePartialEntry(sessionId, fileId, bytesOnDisk, rawMeta));
+        }
+      }
     }
+    for (const fb of await this.fallback.scanLocal()) {
+      if (!seen.has(`${fb.sessionId}\0${fb.fileId}`)) entries.push(fb);
+    }
+    return entries;
   }
 
-  async writePartialChunk(
-    sessionId: string,
-    fileId: string,
-    offset: number,
-    bytes: Uint8Array,
-    meta: PartialMeta,
-  ): Promise<void> {
-    const dir = await this.sessionDir(sessionId, true);
-    if (!dir) return this.fallback.writePartialChunk(sessionId, fileId, offset, bytes, meta);
-    const { part, meta: metaName } = this.partNames(fileId);
+  async inspectDisk(): Promise<DiskInspectResult> {
+    if (this.opfsDisabled) return this.fallback.inspectDisk();
+    if (typeof navigator !== "undefined" && typeof navigator.storage?.estimate === "function") {
+      try {
+        const { quota, usage } = await navigator.storage.estimate();
+        if (typeof quota === "number" && Number.isFinite(quota) && typeof usage === "number" && Number.isFinite(usage)) {
+          return { known: true, availableBytes: BigInt(Math.max(0, Math.floor(quota - usage))) };
+        }
+      } catch { /* fall through to unknown */ }
+    }
+    return { known: false, availableBytes: 0n };
+  }
+
+  async writeChunk(params: WriteChunkParams): Promise<void> {
+    const dir = await this.sessionDir(params.sessionId, true);
+    if (!dir) return this.fallback.writeChunk(params);
+    const { part, meta } = this.names(params.fileId);
+    const off = Number(params.offset);
     try {
       const partHandle = await dir.getFileHandle(part, { create: true });
       if (typeof partHandle.createWritable !== "function") {
         this.opfsDisabled = true;
-        return this.fallback.writePartialChunk(sessionId, fileId, offset, bytes, meta);
+        return this.fallback.writeChunk(params);
       }
-      const writable = await partHandle.createWritable({ keepExistingData: offset > 0 });
-      try {
-        if (bytes.byteLength > 0) {
-          await writable.write({ type: "write", position: offset, data: bytes.slice() });
-        }
-        await writable.close();
-      } catch (e) {
-        try {
-          await writable.abort();
-        } catch {
-          // ignore
-        }
-        throw e;
-      }
-      const metaHandle = await dir.getFileHandle(metaName, { create: true });
-      const metaWritable = await metaHandle.createWritable();
-      try {
-        await metaWritable.write(JSON.stringify(meta));
-        await metaWritable.close();
-      } catch (e) {
-        try {
-          await metaWritable.abort();
-        } catch {
-          // ignore
-        }
-        throw e;
-      }
+      await writeOpfs(partHandle, !params.resetPartial, async (w) => {
+        if (params.data.byteLength > 0) await w.write({ type: "write", position: off, data: params.data.slice() });
+        await w.truncate(off + params.data.byteLength);
+      });
+      const metaHandle = await dir.getFileHandle(meta, { create: true });
+      await writeOpfs(metaHandle, false, (w) => w.write(serializePartialMeta(params)));
     } catch (e) {
       rethrowQuota(e);
     }
@@ -295,38 +483,23 @@ export class OpfsSharedFileStore implements SharedFileStore {
   async readPartialBlob(sessionId: string, fileId: string): Promise<Blob | undefined> {
     const dir = await this.sessionDir(sessionId, false);
     if (!dir) return this.fallback.readPartialBlob(sessionId, fileId);
-    try {
-      const fh = await dir.getFileHandle(this.partNames(fileId).part);
-      return await fh.getFile();
-    } catch {
-      return this.fallback.readPartialBlob(sessionId, fileId);
-    }
+    try { return await (await dir.getFileHandle(this.names(fileId).part)).getFile(); }
+    catch { return this.fallback.readPartialBlob(sessionId, fileId); }
   }
 
-  async commitCompleted(sessionId: string, fileId: string, totalBytes: number): Promise<Blob> {
+  async commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob> {
     const dir = await this.sessionDir(sessionId, true);
-    if (!dir) return this.fallback.commitCompleted(sessionId, fileId, totalBytes);
-    const { part, meta, bin } = this.partNames(fileId);
+    if (!dir) return this.fallback.commitCompleted(sessionId, fileId, bytes);
+    const { part, meta, bin } = this.names(fileId);
     try {
-      const partHandle = await dir.getFileHandle(part);
-      const partFile = await partHandle.getFile();
-      const buf = await partFile.arrayBuffer();
-      const exact = new Uint8Array(buf, 0, Math.min(totalBytes, buf.byteLength));
       const binHandle = await dir.getFileHandle(bin, { create: true });
-      const writable = await binHandle.createWritable();
-      try {
-        if (exact.byteLength > 0) {
-          await writable.write(exact.slice());
-        }
-        await writable.close();
-      } catch (e) {
-        try {
-          await writable.abort();
-        } catch {
-          // ignore
-        }
-        throw e;
+      if (typeof binHandle.createWritable !== "function") {
+        this.opfsDisabled = true;
+        return this.fallback.commitCompleted(sessionId, fileId, bytes);
       }
+      await writeOpfs(binHandle, false, async (w) => {
+        if (bytes.byteLength > 0) await w.write(new Uint8Array(bytes).slice());
+      });
       await removeEntryQuiet(dir, part);
       await removeEntryQuiet(dir, meta);
       return await binHandle.getFile();
@@ -338,45 +511,39 @@ export class OpfsSharedFileStore implements SharedFileStore {
   async getCompletedBlob(sessionId: string, fileId: string): Promise<Blob | undefined> {
     const dir = await this.sessionDir(sessionId, false);
     if (!dir) return this.fallback.getCompletedBlob(sessionId, fileId);
-    try {
-      const fh = await dir.getFileHandle(this.partNames(fileId).bin);
-      return await fh.getFile();
-    } catch {
-      return this.fallback.getCompletedBlob(sessionId, fileId);
-    }
+    try { return await (await dir.getFileHandle(this.names(fileId).bin)).getFile(); }
+    catch { return this.fallback.getCompletedBlob(sessionId, fileId); }
   }
 
   async deletePartial(sessionId: string, fileId: string): Promise<void> {
     await this.fallback.deletePartial(sessionId, fileId);
     const dir = await this.sessionDir(sessionId, false);
     if (!dir) return;
-    const { part, meta } = this.partNames(fileId);
+    const { part, meta } = this.names(fileId);
     await removeEntryQuiet(dir, part);
     await removeEntryQuiet(dir, meta);
   }
 
-  async deleteCompleted(sessionId: string, fileId: string): Promise<void> {
-    await this.fallback.deleteCompleted(sessionId, fileId);
+  async deleteLocal(sessionId: string, fileId: string): Promise<void> {
+    await this.fallback.deleteLocal(sessionId, fileId);
     const dir = await this.sessionDir(sessionId, false);
     if (!dir) return;
-    await removeEntryQuiet(dir, this.partNames(fileId).bin);
+    const { bin, part, meta } = this.names(fileId);
+    await removeEntryQuiet(dir, bin);
+    await removeEntryQuiet(dir, part);
+    await removeEntryQuiet(dir, meta);
   }
 
   async dropSession(sessionId: string): Promise<void> {
     await this.fallback.dropSession(sessionId);
-    const root = await opfsRoot();
+    const root = await this.opfsRoot(false);
     if (root) await removeEntryQuiet(root, safeSegment(sessionId), true);
   }
 
   async clearAll(): Promise<void> {
     await this.fallback.clearAll();
-    if (typeof navigator === "undefined" || !navigator.storage?.getDirectory) return;
-    try {
-      const root = await navigator.storage.getDirectory();
-      await removeEntryQuiet(root, ROOT_DIR, true);
-    } catch {
-      // ignore
-    }
+    if (typeof navigator === "undefined" || typeof navigator.storage?.getDirectory !== "function") return;
+    try { await removeEntryQuiet(await navigator.storage.getDirectory(), ROOT_DIR, true); } catch { /* ignore */ }
   }
 }
 

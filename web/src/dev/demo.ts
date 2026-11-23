@@ -32,7 +32,7 @@
 //   ?demo&notify=1#/s/s-notify              scheduled pushes' receipts: the computer's copy, the agent's own, a stopped run's
 
 import { localeStore, t, type Locale } from "../i18n";
-import { sharedFilesOf } from "../shared-files";
+import { bytesToHex, MemorySharedFileStore, SHARED_FILE_META_VERSION } from "../shared-file-store";
 import { seedDirect } from "./direct-demo";
 import { buildDemoUsageResponse } from "./usage-demo";
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
@@ -1552,7 +1552,7 @@ const longCommand = [
 
 export class DemoRemote extends Remote {
   // Locally authored samples, with no relay or account data.
-  get sharedFiles() { return sharedFilesOf(this); }
+  override readonly sharedFileStore = new MemorySharedFileStore();
   override demoFlag(name: string): boolean { return this.opts.has(name); }
   private demoMachines = new Map<string, MachineView>();
   private demoSessions = new Map<string, SessionView>();
@@ -1858,7 +1858,9 @@ export class DemoRemote extends Remote {
           ? create(CommandResultSchema, { kind: { case: "getSettings", value: { settings: await this.settings(eff.machineId, true) } } })
           : eff.sessionId && cmd.case === "getLiveSnapshot"
             ? this.liveSnapshotResult(eff.sessionId)
-            : eff.sessionId ? await this.command(eff.sessionId, cmd, slot) : await this.machineCommand(eff.machineId, cmd, slot);
+            : eff.sessionId && cmd.case === "getSharedFileChunk"
+              ? create(CommandResultSchema, { kind: { case: "getSharedFileChunk", value: await this.getSharedFileChunk(eff.sessionId, cmd.value.fileId, cmd.value.offset) } })
+              : eff.sessionId ? await this.command(eff.sessionId, cmd, slot) : await this.machineCommand(eff.machineId, cmd, slot);
       const outcome = result.outcome || "executed";
       const reason = result.reason || "completed";
       const norm = create(CommandResultSchema, {
@@ -2083,8 +2085,16 @@ export class DemoRemote extends Remote {
       : new Uint8Array([0]);
     const mp4Blob = new Blob([mp4Raw], { type: "video/mp4" });
 
-    const sf = (fileId: string, name: string, sizeBytes: bigint, path: string) =>
-      create(SharedFileSchema, { fileId, name, sizeBytes, path });
+    const demoSha = new Uint8Array(32).fill(0x5a);
+    const demoPngB64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const pngRaw = typeof atob === "function"
+      ? Uint8Array.from(atob(demoPngB64), (c) => c.charCodeAt(0))
+      : new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    const pngBlob = new Blob([pngRaw], { type: "image/png" });
+
+    const sf = (fileId: string, name: string, sizeBytes: bigint, path: string, sha256: Uint8Array = demoSha) =>
+      create(SharedFileSchema, { fileId, name, sizeBytes, path, sha256 });
 
     const addSession = (
       id: string,
@@ -2154,8 +2164,8 @@ export class DemoRemote extends Remote {
     const sAvail = sf("sf-avail", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
     const sDl = sf("sf-dl", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
     const sPaused = sf("sf-paused", "assets-backup.zip", 18_874_368n, "/Users/me/Movies/daocheng/assets-backup.zip");
-    const sDoneVid = sf("sf-done-vid", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
-    const sDoneImg = sf("sf-done-img", "cover.png", 1_887_437n, "/Users/me/Movies/daocheng/cover.png");
+    const sDoneVid = sf("sf-done-vid", "daocheng-final.mp4", BigInt(mp4Raw.length), "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
+    const sDoneImg = sf("sf-done-img", "cover.png", BigInt(pngRaw.length), "/Users/me/Movies/daocheng/cover.png");
     const sFail = sf("sf-fail", "daocheng-final.mp4", 25_480_397n, "/Users/me/Movies/daocheng/out/daocheng-final.mp4");
     const sPdf = sf("sf-pdf", "2026-Q3-roadmap-final-v2.pdf", 4_404_019n, "/Users/me/Documents/2026-Q3-roadmap-final-v2.pdf");
     addSession("s-sf-states", "mac", "shared-file-states", SessionStatus.IDLE, [
@@ -2164,7 +2174,7 @@ export class DemoRemote extends Remote {
       { case: "turnEnded", value: { durationMs: 1200n, outcome: TurnOutcome.COMPLETED } },
     ]);
 
-    const m1 = sf("sf-m-1", "cover.png", 1_887_437n, "/Users/me/Movies/daocheng/cover.png");
+    const m1 = sf("sf-m-1", "cover.png", BigInt(pngRaw.length), "/Users/me/Movies/daocheng/cover.png");
     const m2 = sf("sf-m-2", "daocheng-final-vertical-1080-v3.mp4", 64_697_139n, "/Users/me/Movies/daocheng/daocheng-final-vertical-1080-v3.mp4");
     const m3 = sf("sf-m-3", "project.zip", 92_694_118n, "/Users/me/Movies/daocheng/project.zip");
     addSession("s-sf-multi", "mac", "multi-files", SessionStatus.IDLE, [
@@ -2193,34 +2203,27 @@ export class DemoRemote extends Remote {
       { case: "turnEnded", value: { durationMs: 900n, outcome: TurnOutcome.COMPLETED } },
     ]);
 
-    this.sharedFiles.seedState("s-sf-states", "sf-dl", {
-      status: "downloading",
-      downloadedBytes: 8_493_465,
-      etaSeconds: 12,
-    });
-    this.sharedFiles.seedState("s-sf-states", "sf-paused", {
-      status: "paused",
-      downloadedBytes: 6_291_456,
-    });
-    this.sharedFiles.seedDownloaded("s-sf-states", "sf-done-vid", mp4Blob);
-    this.sharedFiles.seedState("s-sf-states", "sf-fail", {
-      status: "failed",
-      failKind: "disconnected",
-    });
-    this.sharedFiles.seedState("s-sf-multi", "sf-m-2", {
-      status: "downloading",
-      downloadedBytes: 12_582_912,
-    });
-
-    void draw("gen", 240, 160).then((png) => {
-      if (!png) return;
-      const imgBlob = new Blob([png as Uint8Array<ArrayBuffer>], { type: "image/png" });
-      this.sharedFiles.seedDownloaded("s-sf-states", "sf-done-img", imgBlob);
-      this.sharedFiles.seedDownloaded("s-sf-multi", "sf-m-1", imgBlob);
-    });
+    this.sharedFileStore.seedPartialRaw(
+      "s-sf-states",
+      "sf-paused",
+      JSON.stringify({
+        v: SHARED_FILE_META_VERSION,
+        sessionId: "s-sf-states",
+        fileId: "sf-paused",
+        displayName: "assets-backup.zip",
+        totalSizeBytes: "18874368",
+        chunkBytes: 786432,
+        committedOffset: "6291456",
+        expectedSha256: bytesToHex(demoSha),
+      }),
+      new Uint8Array(6_291_456),
+    );
+    this.sharedFileStore.seedCompleted("s-sf-states", "sf-done-vid", mp4Blob);
+    this.sharedFileStore.seedCompleted("s-sf-states", "sf-done-img", pngBlob);
+    this.sharedFileStore.seedCompleted("s-sf-multi", "sf-m-1", pngBlob);
   }
 
-  override async getSharedFileChunk(sid: string, fileId: string, offset: bigint) {
+  async getSharedFileChunk(sid: string, fileId: string, offset: bigint) {
     await this.pause(240);
     if (this.conn !== "online") {
       const OfflineErr = CommandError;

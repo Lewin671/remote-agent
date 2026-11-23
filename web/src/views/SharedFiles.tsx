@@ -10,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from "react";
+import { getCoreHost } from "../core/host";
 import { renderText } from "../core/text";
 import {
   SharedFileCardStatus,
@@ -36,7 +37,7 @@ import {
   X,
 } from "../icons";
 import { errorText, type Remote } from "../remote";
-import { saveBlobAsDownload, sharedFilesOf } from "../shared-files";
+import { saveBlobAsDownload } from "../shared-files";
 import { GlassButton, Sheet, useDialogFocus, useEscape, wideQuery } from "../ui";
 import { ImageViewer } from "./Images";
 
@@ -73,14 +74,17 @@ function useLocalBlob(
   sessionId: string,
   file: SessionSharedFileItem,
 ): Blob | undefined {
-  const manager = remote ? sharedFilesOf(remote) : undefined;
+  const executor = remote ? getCoreHost(remote).sharedFiles : undefined;
+  const isDownloaded = file.status === SharedFileCardStatus.DOWNLOADED;
   useEffect(() => {
-    if (manager) void manager.hydrate(sessionId, file);
-  }, [manager, sessionId, file.fileId, file.sizeBytes]);
+    if (executor && isDownloaded) {
+      void executor.ensureBlob(sessionId, file.fileId, { reportMissing: true });
+    }
+  }, [executor, isDownloaded, sessionId, file.fileId]);
 
   return useSyncExternalStore(
-    (cb) => (manager ? manager.subscribe(cb) : () => undefined),
-    () => manager?.blobOf(sessionId, file.fileId),
+    (cb) => (executor ? executor.subscribeBlobs(cb) : () => undefined),
+    () => (isDownloaded ? executor?.cachedBlob(sessionId, file.fileId) : undefined),
   );
 }
 
@@ -107,7 +111,7 @@ function useLocalMediaThumb(
     const urlsToRevoke: string[] = [];
     const reportDuration = (durationSec: number | undefined) => {
       if (remote && file.hasMediaDuration && durationSec !== undefined && Number.isFinite(durationSec) && durationSec > 0) {
-        sharedFilesOf(remote).reportDuration(sessionId, file.fileId, durationSec * 1000);
+        getCoreHost(remote).sharedFileDurationProbed(sessionId, file.fileId, durationSec * 1000);
       }
     };
 
@@ -467,27 +471,30 @@ export function SharedFileCard({
 
   const runMenuAction = (action: SharedFileMenuAction) => {
     if (!remote) return;
-    const manager = sharedFilesOf(remote);
+    const host = getCoreHost(remote);
     switch (action) {
       case SharedFileMenuAction.DOWNLOAD:
       case SharedFileMenuAction.RESUME:
       case SharedFileMenuAction.RETRY:
-        void manager.startDownload(sessionId, file, { autoOpenIfStaying: false });
+        host.sharedFileStartDownload(sessionId, file.fileId, false);
         break;
       case SharedFileMenuAction.PAUSE:
-        manager.pause(sessionId, file.fileId);
+        host.sharedFilePauseDownload(sessionId, file.fileId);
         break;
       case SharedFileMenuAction.CANCEL_DOWNLOAD:
-        void manager.cancel(sessionId, file.fileId);
+        host.sharedFileCancelDownload(sessionId, file.fileId);
         break;
       case SharedFileMenuAction.SAVE:
         if (blob) saveBlobAsDownload(blob, displayName);
+        else void host.sharedFiles.ensureBlob(sessionId, file.fileId, { reportMissing: true }).then((b) => {
+          if (b) saveBlobAsDownload(b, displayName);
+        });
         break;
       case SharedFileMenuAction.SHARE:
         if (blob) void systemShareBlob(blob, displayName, file.webPreviewMime, onToast);
         break;
       case SharedFileMenuAction.DELETE_LOCAL:
-        void manager.deleteLocal(sessionId, file.fileId);
+        host.sharedFileDeleteLocal(sessionId, file.fileId);
         break;
       default:
         break;
@@ -527,18 +534,21 @@ export function SharedFileCard({
       return;
     }
     if (!interactive || !remote) return;
-    const manager = sharedFilesOf(remote);
+    const host = getCoreHost(remote);
     switch (file.primaryAction) {
       case SharedFilePrimaryAction.DOWNLOAD:
       case SharedFilePrimaryAction.RESUME:
       case SharedFilePrimaryAction.RETRY:
-        void manager.startDownload(sessionId, file, { autoOpenIfStaying: true });
+        host.sharedFileStartDownload(sessionId, file.fileId, true);
         break;
       case SharedFilePrimaryAction.PAUSE:
-        manager.pause(sessionId, file.fileId);
+        host.sharedFilePauseDownload(sessionId, file.fileId);
         break;
       case SharedFilePrimaryAction.OPEN:
         if (blob) openFile(file, blob);
+        else void host.sharedFiles.ensureBlob(sessionId, file.fileId, { reportMissing: true }).then((b) => {
+          if (b) openFile(file, b);
+        });
         break;
       default:
         break;
