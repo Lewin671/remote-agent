@@ -1087,10 +1087,10 @@ internal fun Composer(
             (images.images.isEmpty() || images.ready(machineId)),
         onSend = { send() },
         onPlus = pick,
-        onPlusBlocked = if (composer.canAttachImages && !images.restoring) ({ showAttachmentBlockedNotice(images, remote, machineId, sid, copy = copy) }) else null,
+        onPlusBlocked = if (!images.restoring) ({ showAttachmentBlockedNotice(images, remote, machineId, sid, copy = copy) }) else null,
         onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
         fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
-        plusEnabled = composer.canAttachImages && !images.restoring && pickState.canPickAny,
+        plusEnabled = !images.restoring && pickState.canPickAny,
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
             remote.submitSessionCommand(
