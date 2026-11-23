@@ -342,7 +342,6 @@ class Remote(
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
     val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> get() = coreHost.resendAttachmentsEvents
-    val sharedFileCompletedEvents: SharedFlow<SharedFileCompletedEffect> get() = coreHost.sharedFileCompletedEvents
     val securityClient: SecurityClient get() = coreHost.securityClient
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 

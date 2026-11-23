@@ -388,9 +388,6 @@ class CoreHost(
     private val _resendAttachmentsEvents = MutableSharedFlow<SessionResendAttachmentsEffect>(extraBufferCapacity = 16)
     val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> = _resendAttachmentsEvents.asSharedFlow()
 
-    private val _sharedFileCompletedEvents = MutableSharedFlow<SharedFileCompletedEffect>(extraBufferCapacity = 32)
-    val sharedFileCompletedEvents: SharedFlow<SharedFileCompletedEffect> = _sharedFileCompletedEvents.asSharedFlow()
-
     init {
         if (!closed.get()) {
             // Queue initial calendar, entropy pool, and default view models onto the serial mailbox
@@ -651,10 +648,7 @@ class CoreHost(
             Effect.EffectCase.SHARED_FILE_DELETE_LOCAL -> onSharedFileDeleteLocal(effect.sharedFileDeleteLocal)
             Effect.EffectCase.SHARED_FILE_DELETE_SESSION -> onSharedFileDeleteSession(effect.sharedFileDeleteSession)
             Effect.EffectCase.SHARED_FILE_CLEAR_ALL -> onSharedFileClearAll(effect.sharedFileClearAll)
-            Effect.EffectCase.SHARED_FILE_COMPLETED -> {
-                _sharedFileCompletedEvents.tryEmit(effect.sharedFileCompleted)
-                onSharedFileCompleted(effect.sharedFileCompleted)
-            }
+            Effect.EffectCase.SHARED_FILE_COMPLETED -> onSharedFileCompleted(effect.sharedFileCompleted)
             else -> {}
         }
     }

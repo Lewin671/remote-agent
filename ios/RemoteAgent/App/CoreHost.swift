@@ -1375,9 +1375,6 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         let stillWatched = sessionWatches.values.contains { $0.sessionID == entry.sessionID }
         if !stillWatched {
-            if !visibleSessions.contains(where: { $0.sessionID == entry.sessionID }), currentVisibleSessionID == entry.sessionID {
-                currentVisibleSessionID = ""
-            }
             await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
