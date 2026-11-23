@@ -425,8 +425,8 @@ class UsageAndCliSwitchesTest {
                                 .setVisible(true)
                                 .setSupported(true)
                                 .setHasData(true)
-                                .setFormattedSubtitle(coreLit("最近 7 天"))
-                                .setTotalTokensText(coreLit("12.5万 · 82% · 68 tok/s"))
+                                .setSubtitle(coreLit("最近 7 天"))
+                                .setValueText(coreLit("12.5万 · 82% · 68 tok/s"))
                                 .setFootnote(coreLit("统计所有本地对话")),
                         ),
                 )

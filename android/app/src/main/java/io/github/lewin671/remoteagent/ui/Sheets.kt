@@ -398,8 +398,8 @@ fun ModelSheet(sid: String, vm: SessionViewModel, onOpenUsage: (() -> Unit)? = n
         if (actions.hasUsageEntry() && actions.usageEntry.visible) {
             val ue = actions.usageEntry
             val titleText = copy(UiMessages.sessionUsageEntryTitle())
-            val valText = if (ue.hasData) uiText(ue.totalTokensText) else uiText(ue.valueText)
-            val sub = if (ue.hasData) uiText(ue.formattedSubtitle) else uiText(ue.subtitle)
+            val valText = uiText(ue.valueText)
+            val sub = uiText(ue.subtitle)
             val foot = uiText(ue.footnote)
             val canNav = ue.supported && onOpenUsage != null
             val a11yLabel = listOf(titleText, sub, valText).filter { it.isNotEmpty() }.joinToString(" · ")

@@ -460,8 +460,8 @@ describe("Usage & Output Speed screen", () => {
             hasCacheHit: true,
             cacheHitRate: 0.7,
             hasSpeed: false,
-            totalTokensText: create(TextSchema, { literal: "11万" }),
-            formattedSubtitle: create(TextSchema, {
+            valueText: create(TextSchema, { literal: "11万" }),
+            subtitle: create(TextSchema, {
               key: "usage.entry_no_speed",
               args: [
                 {

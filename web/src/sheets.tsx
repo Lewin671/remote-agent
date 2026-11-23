@@ -277,8 +277,8 @@ function SessionUsageEntryRow({
   onOpenUsage?: () => void;
 }) {
   const titleText = i18n.t("session.usage_entry_title");
-  const val = ue.hasData ? renderText(ue.totalTokensText) || renderText(ue.valueText) : renderText(ue.valueText);
-  const sub = ue.hasData ? renderText(ue.formattedSubtitle) || renderText(ue.subtitle) : renderText(ue.subtitle);
+  const val = renderText(ue.valueText);
+  const sub = renderText(ue.subtitle);
   const foot = renderText(ue.footnote);
   const canNav = ue.supported && !!onOpenUsage;
   const a11yLabel = [titleText, sub, val].filter(Boolean).join(" · ");

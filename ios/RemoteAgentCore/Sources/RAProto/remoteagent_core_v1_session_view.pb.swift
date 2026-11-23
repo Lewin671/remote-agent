@@ -1478,42 +1478,6 @@ public struct PBSessionUsageEntryView: @unchecked Sendable {
   /// Clears the value of `footnote`. Subsequent reads from it will return its default value.
   public mutating func clearFootnote() {_uniqueStorage()._footnote = nil}
 
-  public var totalTokensText: PBCoreText {
-    get {return _storage._totalTokensText ?? PBCoreText()}
-    set {_uniqueStorage()._totalTokensText = newValue}
-  }
-  /// Returns true if `totalTokensText` has been explicitly set.
-  public var hasTotalTokensText: Bool {return _storage._totalTokensText != nil}
-  /// Clears the value of `totalTokensText`. Subsequent reads from it will return its default value.
-  public mutating func clearTotalTokensText() {_uniqueStorage()._totalTokensText = nil}
-
-  public var cacheHitText: PBCoreText {
-    get {return _storage._cacheHitText ?? PBCoreText()}
-    set {_uniqueStorage()._cacheHitText = newValue}
-  }
-  /// Returns true if `cacheHitText` has been explicitly set.
-  public var hasCacheHitText: Bool {return _storage._cacheHitText != nil}
-  /// Clears the value of `cacheHitText`. Subsequent reads from it will return its default value.
-  public mutating func clearCacheHitText() {_uniqueStorage()._cacheHitText = nil}
-
-  public var speedText: PBCoreText {
-    get {return _storage._speedText ?? PBCoreText()}
-    set {_uniqueStorage()._speedText = newValue}
-  }
-  /// Returns true if `speedText` has been explicitly set.
-  public var hasSpeedText: Bool {return _storage._speedText != nil}
-  /// Clears the value of `speedText`. Subsequent reads from it will return its default value.
-  public mutating func clearSpeedText() {_uniqueStorage()._speedText = nil}
-
-  public var formattedSubtitle: PBCoreText {
-    get {return _storage._formattedSubtitle ?? PBCoreText()}
-    set {_uniqueStorage()._formattedSubtitle = newValue}
-  }
-  /// Returns true if `formattedSubtitle` has been explicitly set.
-  public var hasFormattedSubtitle: Bool {return _storage._formattedSubtitle != nil}
-  /// Clears the value of `formattedSubtitle`. Subsequent reads from it will return its default value.
-  public mutating func clearFormattedSubtitle() {_uniqueStorage()._formattedSubtitle = nil}
-
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5124,7 +5088,7 @@ extension PBSessionModeChoiceView: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionUsageEntryView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}supported\0\u{1}loading\0\u{3}source_unavailable\0\u{3}has_data\0\u{3}fallback_thirty_days\0\u{3}few_speed_samples\0\u{1}backfilling\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}recent10_speed_p50\0\u{3}recent10_speed_count\0\u{1}subtitle\0\u{3}value_text\0\u{1}footnote\0\u{3}total_tokens_text\0\u{3}cache_hit_text\0\u{3}speed_text\0\u{3}formatted_subtitle\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}supported\0\u{1}loading\0\u{3}source_unavailable\0\u{3}has_data\0\u{3}fallback_thirty_days\0\u{3}few_speed_samples\0\u{1}backfilling\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}recent10_speed_p50\0\u{3}recent10_speed_count\0\u{1}subtitle\0\u{3}value_text\0\u{1}footnote\0\u{b}total_tokens_text\0\u{b}cache_hit_text\0\u{b}speed_text\0\u{b}formatted_subtitle\0\u{c}\u{12}\u{1}\u{c}\u{13}\u{1}\u{c}\u{14}\u{1}\u{c}\u{15}\u{1}")
 
   fileprivate class _StorageClass {
     var _visible: Bool = false
@@ -5144,10 +5108,6 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _subtitle: PBCoreText? = nil
     var _valueText: PBCoreText? = nil
     var _footnote: PBCoreText? = nil
-    var _totalTokensText: PBCoreText? = nil
-    var _cacheHitText: PBCoreText? = nil
-    var _speedText: PBCoreText? = nil
-    var _formattedSubtitle: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5175,10 +5135,6 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _subtitle = source._subtitle
       _valueText = source._valueText
       _footnote = source._footnote
-      _totalTokensText = source._totalTokensText
-      _cacheHitText = source._cacheHitText
-      _speedText = source._speedText
-      _formattedSubtitle = source._formattedSubtitle
     }
   }
 
@@ -5214,10 +5170,6 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._subtitle) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._footnote) }()
-        case 18: try { try decoder.decodeSingularMessageField(value: &_storage._totalTokensText) }()
-        case 19: try { try decoder.decodeSingularMessageField(value: &_storage._cacheHitText) }()
-        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._speedText) }()
-        case 21: try { try decoder.decodeSingularMessageField(value: &_storage._formattedSubtitle) }()
         default: break
         }
       }
@@ -5281,18 +5233,6 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
       try { if let v = _storage._footnote {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       } }()
-      try { if let v = _storage._totalTokensText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 18)
-      } }()
-      try { if let v = _storage._cacheHitText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
-      } }()
-      try { if let v = _storage._speedText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
-      } }()
-      try { if let v = _storage._formattedSubtitle {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
-      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5319,10 +5259,6 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._subtitle != rhs_storage._subtitle {return false}
         if _storage._valueText != rhs_storage._valueText {return false}
         if _storage._footnote != rhs_storage._footnote {return false}
-        if _storage._totalTokensText != rhs_storage._totalTokensText {return false}
-        if _storage._cacheHitText != rhs_storage._cacheHitText {return false}
-        if _storage._speedText != rhs_storage._speedText {return false}
-        if _storage._formattedSubtitle != rhs_storage._formattedSubtitle {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -694,8 +694,8 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	if ue == nil || ue.GetSourceUnavailable() || !ue.GetHasData() || ue.GetTotalTokens() != 110_000 || !ue.GetHasCacheHit() || ue.GetHasSpeed() {
 		t.Fatalf("unexpected Antigravity Session UsageEntry: %+v", ue)
 	}
-	if ue.GetTotalTokensText().GetLiteral() != "11万" || ue.GetFormattedSubtitle().GetKey() != "usage.entry_no_speed" {
-		t.Fatalf("unexpected formatted Session UsageEntry: tok=%+v sub=%+v", ue.GetTotalTokensText(), ue.GetFormattedSubtitle())
+	if ue.GetValueText().GetLiteral() != "11万" || ue.GetSubtitle().GetKey() != "usage.entry_no_speed" {
+		t.Fatalf("unexpected formatted Session UsageEntry: val=%+v sub=%+v", ue.GetValueText(), ue.GetSubtitle())
 	}
 
 	// Sending the default locale "zh-CN" on startup is a no-op (no redundant RenderEffect).
@@ -770,7 +770,7 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 			t.Fatalf("step %d (locale=%q): MachineSettings usage tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
 		}
 		sess2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-1"}}})
-		if got := sess2.GetSession().GetActions().GetUsageEntry().GetTotalTokensText().GetLiteral(); got != tc.wantTokens {
+		if got := sess2.GetSession().GetActions().GetUsageEntry().GetValueText().GetLiteral(); got != tc.wantTokens {
 			t.Fatalf("step %d (locale=%q): Session usage entry tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
 		}
 	}

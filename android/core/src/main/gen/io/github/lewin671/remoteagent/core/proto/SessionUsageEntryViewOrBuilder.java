@@ -126,48 +126,4 @@ public interface SessionUsageEntryViewOrBuilder extends
    * @return The footnote.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFootnote();
-
-  /**
-   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
-   * @return Whether the totalTokensText field is set.
-   */
-  boolean hasTotalTokensText();
-  /**
-   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
-   * @return The totalTokensText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText();
-
-  /**
-   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
-   * @return Whether the cacheHitText field is set.
-   */
-  boolean hasCacheHitText();
-  /**
-   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
-   * @return The cacheHitText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getCacheHitText();
-
-  /**
-   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
-   * @return Whether the speedText field is set.
-   */
-  boolean hasSpeedText();
-  /**
-   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
-   * @return The speedText.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getSpeedText();
-
-  /**
-   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
-   * @return Whether the formattedSubtitle field is set.
-   */
-  boolean hasFormattedSubtitle();
-  /**
-   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
-   * @return The formattedSubtitle.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getFormattedSubtitle();
 }

@@ -288,20 +288,8 @@ struct SessionModelSheet: View {
         if entry.loading {
             LoadingRow(inset: 0)
         } else {
-            let valueStr: String = {
-                if entry.hasData_p && entry.hasTotalTokensText {
-                    let s = entry.totalTokensText.rendered()
-                    if !s.isEmpty { return s }
-                }
-                return entry.hasValueText ? entry.valueText.rendered() : ""
-            }()
-            let descStr: String = {
-                if entry.hasFormattedSubtitle {
-                    let s = entry.formattedSubtitle.rendered()
-                    if !s.isEmpty { return s }
-                }
-                return entry.hasSubtitle ? entry.subtitle.rendered() : ""
-            }()
+            let valueStr = entry.hasValueText ? entry.valueText.rendered() : ""
+            let descStr = entry.hasSubtitle ? entry.subtitle.rendered() : ""
             ListItem(
                 L10n.usageTitle(),
                 desc: descStr,

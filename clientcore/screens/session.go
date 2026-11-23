@@ -961,12 +961,9 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 	entry.HasData = true
 	entry.Backfilling = snap != nil && snap.Backfilling
 	entry.TotalTokens = usage.TotalTokens(matched.Current)
-	entry.TotalTokensText = usage.FormatTokensText(entry.TotalTokens, st.UILocale)
+	entry.ValueText = usage.FormatTokensText(entry.TotalTokens, st.UILocale)
 	entry.HasCacheHit = matched.Current.HasCacheHitRate
 	entry.CacheHitRate = matched.Current.CacheHitRate
-	if entry.HasCacheHit {
-		entry.CacheHitText = text.Plain(usage.FormatCacheHit(entry.CacheHitRate))
-	}
 
 	if matched.Current.Recent10SpeedCount > 0 {
 		entry.HasSpeed = true
@@ -979,13 +976,9 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 		entry.Recent10SpeedCount = matched.Current.SpeedRequestCount
 		entry.FewSpeedSamples = matched.Current.SpeedRequestCount < usage.MinTrendRequests
 	}
-	if entry.HasSpeed {
-		entry.SpeedText = text.Plain(usage.FormatSpeedValue(entry.Recent10SpeedP50))
-	}
 
 	if cachedOffline && cachedAt > 0 {
 		entry.Subtitle = text.Msg(text.KeySessionUsageEntryOfflineCached, text.ArgTimestamp("time", cachedAt, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME))
-		entry.FormattedSubtitle = entry.Subtitle
 	} else {
 		var winLabel *corev1.Text
 		if entry.FallbackThirtyDays {
@@ -1003,13 +996,13 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 			detailParts = append(detailParts, speedPart)
 			joined := text.JoinLiteral(" · ", detailParts...)
 			if entry.FewSpeedSamples {
-				entry.FormattedSubtitle = text.Msg(text.KeyUsageEntryFewSamples, text.ArgText("detail", joined), text.Int("count", int64(entry.Recent10SpeedCount)))
+				entry.Subtitle = text.Msg(text.KeyUsageEntryFewSamples, text.ArgText("detail", joined), text.Int("count", int64(entry.Recent10SpeedCount)))
 			} else {
-				entry.FormattedSubtitle = joined
+				entry.Subtitle = joined
 			}
 		} else {
 			joined := text.JoinLiteral(" · ", detailParts...)
-			entry.FormattedSubtitle = text.Msg(text.KeyUsageEntryNoSpeed, text.ArgText("detail", joined))
+			entry.Subtitle = text.Msg(text.KeyUsageEntryNoSpeed, text.ArgText("detail", joined))
 		}
 	}
 	return entry

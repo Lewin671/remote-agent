@@ -1388,10 +1388,6 @@ object ScreenGoldenLoader {
                                     ue.obj("subtitle")?.let { setSubtitle(parseText(it)) }
                                     ue.obj("valueText")?.let { setValueText(parseText(it)) }
                                     ue.obj("footnote")?.let { setFootnote(parseText(it)) }
-                                    ue.obj("totalTokensText")?.let { setTotalTokensText(parseText(it)) }
-                                    ue.obj("cacheHitText")?.let { setCacheHitText(parseText(it)) }
-                                    ue.obj("speedText")?.let { setSpeedText(parseText(it)) }
-                                    ue.obj("formattedSubtitle")?.let { setFormattedSubtitle(parseText(it)) }
                                 },
                         )
                     }

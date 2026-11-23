@@ -206,6 +206,8 @@ message SessionModeChoiceView {
 }
 
 message SessionUsageEntryView {
+  reserved 18, 19, 20, 21;
+  reserved "total_tokens_text", "cache_hit_text", "speed_text", "formatted_subtitle";
   bool visible = 1;
   bool supported = 2;
   bool loading = 3;
@@ -223,10 +225,6 @@ message SessionUsageEntryView {
   Text subtitle = 15;
   Text value_text = 16;
   Text footnote = 17;
-  Text total_tokens_text = 18;
-  Text cache_hit_text = 19;
-  Text speed_text = 20;
-  Text formatted_subtitle = 21;
 }
 
 message SessionForkActionView {

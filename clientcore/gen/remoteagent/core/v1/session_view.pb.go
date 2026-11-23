@@ -1348,10 +1348,6 @@ type SessionUsageEntryView struct {
 	Subtitle           *Text
 	ValueText          *Text
 	Footnote           *Text
-	TotalTokensText    *Text
-	CacheHitText       *Text
-	SpeedText          *Text
-	FormattedSubtitle  *Text
 }
 
 func (m *SessionUsageEntryView) GetVisible() bool {
@@ -1456,30 +1452,6 @@ func (m *SessionUsageEntryView) GetFootnote() *Text {
 	}
 	return nil
 }
-func (m *SessionUsageEntryView) GetTotalTokensText() *Text {
-	if m != nil {
-		return m.TotalTokensText
-	}
-	return nil
-}
-func (m *SessionUsageEntryView) GetCacheHitText() *Text {
-	if m != nil {
-		return m.CacheHitText
-	}
-	return nil
-}
-func (m *SessionUsageEntryView) GetSpeedText() *Text {
-	if m != nil {
-		return m.SpeedText
-	}
-	return nil
-}
-func (m *SessionUsageEntryView) GetFormattedSubtitle() *Text {
-	if m != nil {
-		return m.FormattedSubtitle
-	}
-	return nil
-}
 
 var LitewireDesc_SessionUsageEntryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1500,10 +1472,6 @@ var LitewireDesc_SessionUsageEntryView = litewire.MessageDesc{
 		{Num: 15, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(SessionUsageEntryView{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 17, Offset: unsafe.Offsetof(SessionUsageEntryView{}.Footnote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 18, Offset: unsafe.Offsetof(SessionUsageEntryView{}.TotalTokensText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 19, Offset: unsafe.Offsetof(SessionUsageEntryView{}.CacheHitText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 20, Offset: unsafe.Offsetof(SessionUsageEntryView{}.SpeedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 21, Offset: unsafe.Offsetof(SessionUsageEntryView{}.FormattedSubtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
