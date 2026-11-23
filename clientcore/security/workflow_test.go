@@ -60,7 +60,9 @@ type fakeClientHarness struct {
 	nextActionID    uint64
 }
 
-const testRelayVersion uint32 = 17
+// testRelayVersion deliberately differs from sync.RelayVersion: the fake relay
+// rejects entry requests that do not carry it, so hardcoded versions fail.
+const testRelayVersion uint32 = 9017
 
 func newFakeClientHarness(t *testing.T, relay *fakeRelay, tag byte) *fakeClientHarness {
 	t.Helper()

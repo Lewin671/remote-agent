@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -198,6 +199,12 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 			code = connectCodeUnavailable
 		}
 		return nil, &rpcError{code: code, msg: "injected", network: code == connectCodeUnavailable}
+	}
+
+	if field, ok := relayVersionField[method]; ok {
+		if got := readVarintField(reqBytes, field); got != uint64(testRelayVersion) {
+			return nil, &rpcError{code: connectCodeInvalidArgument, msg: fmt.Sprintf("relay version %d, want %d", got, testRelayVersion)}
+		}
 	}
 
 	switch method {
@@ -1113,4 +1120,31 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 	}
 
 	return nil, &rpcError{code: connectCodeInvalidArgument, msg: "unhandled rpc"}
+}
+
+// relayVersionField is the protocol_version field number of each relay entry
+// request (proto/remoteagent/v1/relay.proto); the fake rejects any other value
+// so a test proves the engine sends the injected RelayVersion.
+var relayVersionField = map[corev1.SecurityRpcMethod]int32{
+	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_REGISTER_DEVICE: 7,
+	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN:           4,
+	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING:    2,
+	corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING:    6,
+}
+
+func readVarintField(b []byte, field int32) uint64 {
+	for len(b) > 0 {
+		num, wtyp, err := litewire.ReadTag(&b)
+		if err != nil {
+			return 0
+		}
+		if int32(num) == field && wtyp == litewire.VarintType {
+			v, _ := litewire.ReadVarint(&b)
+			return v
+		}
+		if litewire.Skip(&b, num, wtyp) != nil {
+			return 0
+		}
+	}
+	return 0
 }
