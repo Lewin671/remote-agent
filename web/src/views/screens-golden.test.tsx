@@ -16,6 +16,7 @@ import sessionLongWindowGolden from "../../../testdata/screens/session_long_wind
 import sessionQuestionPlanGolden from "../../../testdata/screens/session_question_plan.golden.json";
 import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
 import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
+import sessionSharedFilesImagesGolden from "../../../testdata/screens/session_shared_files_images.golden.json";
 import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
 import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
 import settingsOverviewGolden from "../../../testdata/screens/settings_overview.golden.json";
@@ -947,5 +948,61 @@ describe("golden SessionScreenView layout and interaction", () => {
     const codexView = codexVm.view.value;
     act(() => root!.render(<QuotaScreenView vm={codexView} onBack={vi.fn()} />));
     expect([...host.querySelectorAll(".label")].map((e) => e.textContent)).not.toContain("Claude Code");
+  });
+
+  it("renders session_shared_files_images.golden.json shared files, image chips, and viewer navigation", () => {
+    const initialVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_initial");
+    expect(initialVm.view.case).toBe("session");
+    if (initialVm.view.case !== "session") return;
+
+    const onOpenImageViewer = vi.fn();
+    const onNavigateImageViewer = vi.fn();
+    const onCloseImageViewer = vi.fn();
+    const renderSession = (vm: SessionViewModel) => (
+      <SessionScreenView
+        vm={vm}
+        wide={false}
+        onBack={vi.fn()}
+        draft=""
+        onDraft={vi.fn()}
+        onSend={vi.fn()}
+        onSubmitCommand={vi.fn()}
+        onAbandonCommand={vi.fn()}
+        onLoadEarlier={vi.fn()}
+        onExpandGroup={vi.fn()}
+        onOpenImageViewer={onOpenImageViewer}
+        onNavigateImageViewer={onNavigateImageViewer}
+        onCloseImageViewer={onCloseImageViewer}
+      />
+    );
+
+    mount(renderSession(initialVm.view.value));
+    expect(host.querySelectorAll(".sf-fc").length).toBeGreaterThan(0);
+    expect(host.querySelectorAll(".ichip").length).toBeGreaterThan(0);
+    const pic = host.querySelector<HTMLButtonElement>(".pic")!;
+    expect(pic).toBeTruthy();
+    act(() => pic.click());
+    expect(onOpenImageViewer).toHaveBeenCalledTimes(1);
+
+    const openVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_en_viewer_open");
+    expect(openVm.view.case).toBe("session");
+    if (openVm.view.case !== "session") return;
+    act(() => root!.render(renderSession(openVm.view.value)));
+    const viewer = host.querySelector<HTMLElement>(".viewer")!;
+    expect(viewer).toBeTruthy();
+    expect(viewer.textContent).toContain("3 / 4");
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
+    expect(onNavigateImageViewer).toHaveBeenCalledWith(1);
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" })));
+    expect(onNavigateImageViewer).toHaveBeenCalledWith(-1);
+    const closeBtn = viewer.querySelector<HTMLButtonElement>(`button[aria-label="${t("common.close")}"]`)!;
+    act(() => closeBtn.click());
+    expect(onCloseImageViewer).toHaveBeenCalledTimes(1);
+
+    const closedVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_viewer_closed");
+    expect(closedVm.view.case).toBe("session");
+    if (closedVm.view.case !== "session") return;
+    act(() => root!.render(renderSession(closedVm.view.value)));
+    expect(host.querySelector(".viewer")).toBeNull();
   });
 });

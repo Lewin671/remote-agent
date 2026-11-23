@@ -695,14 +695,12 @@ export function SharedFileCards({
 export function SharedFilePreviewOverlay({
   remote,
   sessionId,
-  agentName,
   wide,
   target,
   onClose,
 }: {
   remote: Remote;
   sessionId: string;
-  agentName: string;
   wide: boolean;
   target: SharedFilePreviewTarget;
   onClose: () => void;
@@ -731,10 +729,6 @@ export function SharedFilePreviewOverlay({
       <ImageViewer
         remote={remote}
         sid={sessionId}
-        images={[]}
-        start={0}
-        agent={agentName}
-        title=""
         wide={wide}
         onClose={onClose}
         sharedFile={{

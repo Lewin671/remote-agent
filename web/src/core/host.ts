@@ -215,6 +215,9 @@ import {
   type SchedulesViewModel,
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import {
+  SessionImageViewerCloseActionSchema,
+  SessionImageViewerNavigateActionSchema,
+  SessionImageViewerOpenActionSchema,
   SessionOpenActionSchema,
   SessionQuestionStepActionSchema,
   SessionRefreshHistoryActionSchema,
@@ -1190,6 +1193,46 @@ export class CoreHost {
       }),
     });
   }
+
+  sessionImageViewerOpen = (
+    sessionId: string,
+    opts: { seq?: bigint; imageIndex?: number; viewerIndex?: number },
+  ) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerOpen",
+      value: create(SessionImageViewerOpenActionSchema, {
+        sessionId,
+        seq: opts.seq ?? 0n,
+        imageIndex: opts.imageIndex ?? 0,
+        viewerIndex: opts.viewerIndex ?? 0,
+      }),
+    });
+  };
+
+  sessionImageViewerNavigate = (
+    sessionId: string,
+    opts: { delta?: number; setIndex?: boolean; index?: number },
+  ) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerNavigate",
+      value: create(SessionImageViewerNavigateActionSchema, {
+        sessionId,
+        delta: opts.delta ?? 0,
+        setIndex: !!opts.setIndex,
+        index: opts.index ?? 0,
+      }),
+    });
+  };
+
+  sessionImageViewerClose = (sessionId: string) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerClose",
+      value: create(SessionImageViewerCloseActionSchema, { sessionId }),
+    });
+  };
 
   // --- Screen Intents ---
 

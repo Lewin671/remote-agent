@@ -2541,7 +2541,7 @@ describe("pictures in a session (v2)", () => {
     await mountAsync(<SessionPage remote={r} sessionId="s-img-claude" onBack={() => undefined} wide={false} />);
     const first = host.querySelector(".me")!;
     expect([...first.querySelectorAll(".pic .n")].map((n) => n.textContent)).toEqual(["1", "2"]);
-    expect(first.textContent).toContain("电脑上，图 2手机上");
+    expect(first.textContent).toContain("图 1电脑上，图 2手机上");
     expect(first.textContent).not.toContain("[Image #");
     // Seven pictures: four in a row, the rest folded.
     expect(host.textContent).toContain("+3");

@@ -261,7 +261,6 @@ it("handles click download/pause/open via Core ViewModel and renders video previ
       <SharedFilePreviewOverlay
         remote={r}
         sessionId="s-sf-chat"
-        agentName="Claude"
         wide={false}
         target={{
           file: vidItem,
@@ -444,7 +443,6 @@ it("web security: saves always as application/octet-stream, previews only Core-a
     <SharedFilePreviewOverlay
       remote={r}
       sessionId="s-sf-chat"
-      agentName="Claude"
       wide={false}
       target={{
         file: png,
@@ -483,7 +481,6 @@ it("web security: saves always as application/octet-stream, previews only Core-a
       <SharedFilePreviewOverlay
         remote={r}
         sessionId="s-sf-chat"
-        agentName="Claude"
         wide={false}
         target={{
           file: vid,
