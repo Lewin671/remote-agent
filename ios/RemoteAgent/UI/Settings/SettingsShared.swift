@@ -375,8 +375,8 @@ extension View {
                     $0.cacheReadTokens = UInt64(Double(readSum) * 0.82)
                     $0.cacheWriteTokens = UInt64(Double(writeSum) * 0.88)
                     $0.outputTokens = UInt64(Double(outSum) * 0.84)
-                    $0.usageRequestCount = max(3, reqSum - 2)
-                    $0.speedRequestCount = max(3, speedReqSum - 2)
+                    $0.usageRequestCount = max(3, reqSum > 2 ? reqSum - 2 : 0)
+                    $0.speedRequestCount = max(3, speedReqSum > 2 ? speedReqSum - 2 : 0)
                     if inDenom > 0 {
                         $0.hasCacheHitRate_p = true
                         $0.cacheHitRate = max(0, (Double(readSum) / inDenom) - 0.04)

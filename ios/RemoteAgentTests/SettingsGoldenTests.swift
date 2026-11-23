@@ -94,6 +94,12 @@ import UIKit
         }
     }
 
+    @Test func demoUsageStatsSurvivesEmptyBuckets() {
+        // 空 bounds 时各桶合计为 0，上一周期的请求数不能因无符号减法下溢而崩溃
+        let stats = SettingsDemo.usageStats(request: PBGetUsageStatsRequest(), machineID: "m", now: 1_760_000_000_000)
+        #expect(stats.series.allSatisfy { $0.previous.usageRequestCount == 3 })
+    }
+
     @Test func usageOpenParamsWorkAcrossPresets() {
         let nowMs: Int64 = 1_760_000_000_000
         let today = CoreHost.buildUsageOpenParams(preset: .today, nowMs: nowMs)
