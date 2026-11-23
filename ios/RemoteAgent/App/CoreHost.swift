@@ -112,7 +112,6 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func executeCacheDelete(_ effect: PBCoreCacheDeleteEffect, onSessionRemoved: (@Sendable (String) async -> Void)?) async
     func executeRpc(_ effect: PBCoreRpcEffect) async -> PBCoreEvent
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent
-    func applyTransitionalPrefsOp(_ op: PrefsOp) async throws
     func setWatchedSessions(_ sessionIds: [String]) async
     func describeSelf(platform: String, description: String) async throws
     func cachedScheduleResultJson(_ machineId: String) async -> Data?
@@ -165,7 +164,6 @@ extension CoreHostExecutor {
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
     func discardToken(_ rejected: String) async {}
     func setWatchedSessions(_ sessionIds: [String]) async {}
-    func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {}
     func renameDevice(_ id: String, name: String) async throws {}
 }
 
@@ -433,10 +431,6 @@ actor CoreHost: SyncEngine {
             },
             onRefreshDevices: { [weak self] in
                 _ = try? await self?.executor.syncSecurity(touch: false)
-            },
-            onSavePrefs: { [weak self] op in
-                guard let self else { return }
-                try await self.executor.applyTransitionalPrefsOp(op)
             },
             onLoadMoreSessions: { [weak self] in
                 await self?.dispatch {

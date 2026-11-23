@@ -267,7 +267,6 @@ public final actor Remote {
         public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
-        public var onSavePrefs: @Sendable (PrefsOp) async throws -> Void
         public var onLoadMoreSessions: @Sendable () async -> Void
         public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
@@ -278,7 +277,6 @@ public final actor Remote {
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
-            onSavePrefs: @escaping @Sendable (PrefsOp) async throws -> Void,
             onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
             onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
@@ -289,7 +287,6 @@ public final actor Remote {
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
-            self.onSavePrefs = onSavePrefs
             self.onLoadMoreSessions = onLoadMoreSessions
             self.onQuerySyncState = onQuerySyncState
             self.onSecurityOp = onSecurityOp
@@ -871,13 +868,6 @@ public final actor Remote {
     public func loadMoreSessions() async throws -> Bool {
         await hostHooks?.onLoadMoreSessions()
         return state.value.sessionsNext == nil
-    }
-
-    public func changePrefs(_ op: PrefsOp) async throws {
-        guard let hooks = hostHooks else {
-            throw CommandError("unavailable", L10nMessage.connectionNoResponse())
-        }
-        try await hooks.onSavePrefs(op)
     }
 
     // MARK: - Demo / Layout Fixtures

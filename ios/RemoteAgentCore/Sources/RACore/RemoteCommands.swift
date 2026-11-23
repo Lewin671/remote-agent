@@ -545,56 +545,6 @@ extension Remote {
 
     // --- images ---
 
-    /// Transitional Step 3-4 helper used by `SessionScreen` -> `ProjectSettingsSheet` until Session migrates into Core.
-    public func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {
-        let operation = newRequestId()
-        let apiClient = api.client
-        var askReq = PBGetAccountPrefsRequest()
-        askReq.objectID = projectPrefsID
-        let ask = askReq
-        for _ in 0..<5 {
-            let current = try await withAuthRetry { headers in
-                try await apiClient.getAccountPrefs(request: ask, headers: headers).value()
-            }.object
-            var base = PBProjectPrefs()
-            var rev = current.revision
-            if current.hasEnvelope && !current.envelope.securityHeader.isEmpty && current.revision > 0 {
-                do {
-                    let opened = try await openEnvelopeOp(
-                        envelope: current.envelope,
-                        expectedPurpose: .prefs,
-                        requestId: projectPrefsID,
-                        history: true
-                    )
-                    base = try PBProjectPrefs(serializedBytes: opened.plaintext)
-                    rev = max(current.revision, opened.seq)
-                } catch {
-                    throw CommandError("failed_precondition", L10nMessage.errorsProjectPreferencesFormatIsNotSupported())
-                }
-            }
-            if base.recentOps.contains(operation) { return }
-            let next = applyPrefsOp(base: base, op: op, opId: operation, now: clock())
-            let env = try await sealEnvelopeOp(
-                purpose: .prefs,
-                requestId: projectPrefsID,
-                seq: rev + 1,
-                plaintext: try next.serializedData()
-            ).envelope
-            var putReq = PBPutAccountPrefsRequest()
-            putReq.objectID = projectPrefsID
-            putReq.expectedRevision = current.revision
-            putReq.envelope = env
-            let put = putReq
-            let reply = try await withAuthRetry { headers in
-                try await apiClient.putAccountPrefs(request: put, headers: headers).value()
-            }
-            if reply.applied {
-                return
-            }
-        }
-        throw CommandError("aborted", L10nMessage.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
-    }
-
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
         guard let machineId = machineIdForSessionIfKnown(sid), await hasSessionSeed(sid) else {
             throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())

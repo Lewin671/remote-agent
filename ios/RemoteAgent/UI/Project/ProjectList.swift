@@ -1,85 +1,8 @@
 // Core-driven project lists (`CoreProjectRow`, `CoreProjectList`) shared across
-// Home scope menu, PickProject, and ManageProjects. `PrefsChanges` remains here
-// for the un-migrated `SessionScreen` (`ProjectSettingsSheet`).
-import Observation
+// Home scope menu, PickProject, and ManageProjects.
 import RACore
 import RAProto
 import SwiftUI
-
-/// Changes to the project preferences in flight, per project path, kept for `SessionScreen`.
-@MainActor
-@Observable
-final class PrefsChanges {
-    enum State: Equatable {
-        case saving(PrefsOp)
-        case failed(PrefsOp, String)
-
-        var saving: Bool {
-            if case .saving = self { return true }
-            return false
-        }
-    }
-
-    private(set) var states: [JvmKey: State] = [:]
-
-    private struct Change {
-        var op: PrefsOp
-        var write: (PrefsOp) async throws -> Void
-        var onDone: @MainActor () -> Void
-    }
-
-    private var queues: [JvmKey: [Change]] = [:]
-    private var closed = false
-
-    func run(_ remote: Remote, _ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}) {
-        run(op, onDone: onDone) { try await remote.changePrefs($0) }
-    }
-
-    func run(_ op: PrefsOp, onDone: @escaping @MainActor () -> Void = {}, write: @escaping (PrefsOp) async throws -> Void) {
-        guard !closed else { return }
-        let path = JvmKey(op.path)
-        let failed = states[path]?.saving == false
-        var queue = queues[path] ?? []
-        if failed, queue.first?.op == op {
-        } else if queue.last?.op != op {
-            queue.append(Change(op: op, write: write, onDone: onDone))
-        }
-        queues[path] = queue
-        if states[path]?.saving != true { next(path) }
-    }
-
-    private func next(_ path: JvmKey) {
-        guard let change = queues[path]?.first else {
-            queues[path] = nil
-            states[path] = nil
-            return
-        }
-        states[path] = .saving(change.op)
-        Task {
-            do {
-                try await change.write(change.op)
-            } catch {
-                guard !closed else { return }
-                states[path] = .failed(change.op, errorText(error))
-                return
-            }
-            guard !closed else { return }
-            queues[path]?.removeFirst()
-            change.onDone()
-            next(path)
-        }
-    }
-
-    func close() {
-        closed = true
-        queues.removeAll()
-        states.removeAll()
-    }
-}
-
-extension AccountContext {
-    var prefsChanges: PrefsChanges { memory.value { PrefsChanges() } }
-}
 
 /// One project row rendered directly from `PBCoreProjectRowView`.
 struct CoreProjectRow<Trailing: View, Accessory: View>: View {

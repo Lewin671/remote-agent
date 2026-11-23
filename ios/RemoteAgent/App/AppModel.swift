@@ -633,7 +633,7 @@ final class AppModel {
             follower?.cancel(); follower = nil
             closeTerminals(); engine?.close(); engine = nil
             if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
-            context?.prefsChanges.close(); context = nil
+            context = nil
             let oldCache = cache; cache = nil
             try? oldCache?.close()
             stage = .loading
@@ -704,7 +704,6 @@ final class AppModel {
         // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
         if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
         LibraryVideos.discardAll()
-        context?.prefsChanges.close()
         if let host = context?.coreHost {
             Task { await host.closeAsync() }
         }
@@ -831,7 +830,6 @@ final class AppModel {
             engine?.close()
             engine = nil
             if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
-            context?.prefsChanges.close()
             context?.coreHost.close()
             context = nil
             try? cache?.close()

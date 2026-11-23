@@ -1,8 +1,18 @@
 // 项目设置 backed directly by `PBCoreNewSessionViewModel` and `PBCoreNewSessionModelPanelView`
-// for ProjectScreen and NewTaskScreen.
+// for ProjectScreen, NewTaskScreen, and SessionScreen.
 import RACore
 import RAProto
 import SwiftUI
+
+enum ProjectSettingsPage: String, Sendable {
+    case main, machine, model
+}
+
+/// The sheet as it was asked for: a page to open on, and a new one each time so that nothing of the last is left.
+struct ProjectSettingsRequest: Identifiable {
+    let id = UUID()
+    var page = ProjectSettingsPage.main
+}
 
 struct CoreProjectSettingsSheet: View {
     let open: ProjectSettingsPage

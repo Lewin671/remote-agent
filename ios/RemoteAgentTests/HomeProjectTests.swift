@@ -271,7 +271,6 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         return outcome
     }
 
-    func applyTransitionalPrefsOp(_ op: PrefsOp) async throws {}
     func setWatchedSessions(_ sessionIds: [String]) async {}
     func describeSelf(platform: String, description: String) async throws {}
     func renameDevice(_ id: String, name: String) async throws {}

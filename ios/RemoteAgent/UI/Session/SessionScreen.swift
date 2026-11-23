@@ -345,17 +345,13 @@ struct SessionScreen: View {
             case .model: SessionModelSheet(sessionID: id) { sheet = nil }
             }
         }
-        .kitSheet(item: $projectSettings) { _ in
+        .kitSheet(item: $projectSettings) { request in
             let key = header.projectKey
-            if let initial = projectConfig(state, key: key) {
-                ProjectSettingsSheet(
-                    cwd: key, machine: initial.machineId, agent: header.agent,
-                    onDone: { op in
-                        if let op { context.prefsChanges.run(context.remote, .setSettings(op)) }
-                        projectSettings = nil
-                    },
-                    onClose: { projectSettings = nil }
-                )
+            if !key.isEmpty {
+                CoreProjectSettingsSheet(open: request.page) { projectSettings = nil }
+                    .task(id: key) {
+                        await context.coreHost.showNewSession(projectKey: key)
+                    }
             }
         }
         .sheet(isPresented: $scheduleSending) {
@@ -487,7 +483,7 @@ struct SessionScreen: View {
                 })
             }
         }
-        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && projectConfig(model.state, key: header.projectKey) != nil) {
+        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && !header.projectKey.isEmpty) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
         })
         let supportsSchedule = header.computerOnline && !header.computerUnlinked && header.capabilities.supportsSchedule

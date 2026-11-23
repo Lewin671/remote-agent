@@ -419,25 +419,6 @@ final class Harness {
         #expect(next.memory.value(String.self) { "" } == "")
     }
 
-    @Test func loggingOutReleasesAnAccountRetainedByAFailedPreferenceCallback() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        weak var oldContext = h.model.context
-        func failRemoval(_ context: AccountContext) async {
-            context.prefsChanges.run(.hide(path: "/work/app"), onDone: { _ = context.account }) {
-                _ in
-                throw URLError(.timedOut)
-            }
-            await eventually("preference write failed") {
-                context.prefsChanges.states.values.contains { !$0.saving }
-            }
-        }
-        try await failRemoval(#require(h.model.context))
-        #expect(oldContext != nil)
-        await h.model.logout()
-        #expect(oldContext == nil)
-    }
-
     @Test func nothingIsReadWhileALogoutIsErasing() async throws {
         defer { h.cleanUp() }
         let started = OSAllocatedUnfairLock(initialState: false)
