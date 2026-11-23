@@ -146,8 +146,6 @@ export interface MessageArgs {
   "composer.plan_placeholder": { [name: string]: never };
   "composer.ready_timeout": { [name: string]: never };
   "composer.restore": { [name: string]: never };
-  "composer.restore_files_full": { count: number };
-  "composer.restore_images_full": { count: number; existing: number };
   "composer.running_placeholder": { [name: string]: never };
   "composer.send": { [name: string]: never };
   "composer.send_after": { [name: string]: never };
@@ -1914,20 +1912,6 @@ export const messages = {
     "composer.plan_placeholder": "Add requirements for the plan…",
     "composer.ready_timeout": "Timed out waiting for the terminal",
     "composer.restore": "Restore to input",
-    "composer.restore_files_full": {
-      "forms": {
-        "one": "The input cannot fit this message’s {count} file. Remove some attachments first.",
-        "other": "The input cannot fit this message’s {count} files. Remove some attachments first."
-      },
-      "plural": "count"
-    },
-    "composer.restore_images_full": {
-      "forms": {
-        "one": "The input already has {existing} image(s) and cannot fit this message’s {count} image. Remove some first.",
-        "other": "The input already has {existing} image(s) and cannot fit this message’s {count} images. Remove some first."
-      },
-      "plural": "count"
-    },
     "composer.running_placeholder": "Add a note…",
     "composer.send": "Send",
     "composer.send_after": "Send after",
@@ -4258,18 +4242,6 @@ export const messages = {
     "composer.plan_placeholder": "补充你对计划的要求…",
     "composer.ready_timeout": "等终端就绪超时",
     "composer.restore": "放回输入框",
-    "composer.restore_files_full": {
-      "forms": {
-        "other": "输入框放不下这条消息的 {count} 个文件；先移除一些再放回"
-      },
-      "plural": "count"
-    },
-    "composer.restore_images_full": {
-      "forms": {
-        "other": "输入框里已有 {existing} 张图，放不下这条消息的 {count} 张；先移除一些再放回"
-      },
-      "plural": "count"
-    },
     "composer.running_placeholder": "补充一句…",
     "composer.send": "发送",
     "composer.send_after": "做完再发",

@@ -35,9 +35,6 @@
     <string name="attachment_android_permission_temporary" formatted="false">"这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件"</string>
     <string name="attachment_android_preparing_meta" formatted="false">" · 准备中"</string>
     <string name="attachment_android_reading_files" formatted="false">"正在读取所选文件…"</string>
-    <plurals name="attachment_android_restore_limit">
-        <item quantity="other">"放回后会超过 %1$d 个文件，先移除一些再放回"</item>
-    </plurals>
     <string name="attachment_android_source_unreadable" formatted="false">"读不到源文件，请重新选择"</string>
     <string name="attachment_android_upload_meta">" · 上传 %1$s%%"</string>
     <string name="attachment_android_upload_required" formatted="false">"附件需要重新传到电脑，请上传完成后再发送"</string>
@@ -131,12 +128,6 @@
     <string name="composer_plan_placeholder" formatted="false">"补充你对计划的要求…"</string>
     <string name="composer_ready_timeout" formatted="false">"等终端就绪超时"</string>
     <string name="composer_restore" formatted="false">"放回输入框"</string>
-    <plurals name="composer_restore_files_full">
-        <item quantity="other">"输入框放不下这条消息的 %1$d 个文件；先移除一些再放回"</item>
-    </plurals>
-    <plurals name="composer_restore_images_full">
-        <item quantity="other">"输入框里已有 %2$d 张图，放不下这条消息的 %1$d 张；先移除一些再放回"</item>
-    </plurals>
     <string name="composer_running_placeholder" formatted="false">"补充一句…"</string>
     <string name="composer_send" formatted="false">"发送"</string>
     <string name="composer_send_after" formatted="false">"做完再发"</string>
@@ -425,9 +416,6 @@
     <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"；像素超过手机能处理的上限，缩小到 1/%1$s"</string>
     <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"需要重新处理或重新选择图片"</string>
     <string name="image_android_reprocess_using_the_current_mode" formatted="false">"需要按当前模式重新处理"</string>
-    <plurals name="image_android_restore_limit">
-        <item quantity="other">"输入框里已有 %2$d 张图，放回这 %1$d 张会超过 %3$d 张。先移除一些再放回"</item>
-    </plurals>
     <string name="image_android_restore_retry" formatted="false">"待发图片没能恢复，仍可输入，下次编辑或放回时重试"</string>
     <string name="image_android_restore_wait" formatted="false">"正在恢复待发图片，请稍后再放回"</string>
     <string name="image_android_restoring" formatted="false">"正在恢复待发图片…"</string>

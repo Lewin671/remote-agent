@@ -84,36 +84,6 @@
     }
   },
   {
-    "key": "attachment.android_restore_limit",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "放回后会超过 {count} 个文件，先移除一些再放回"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "Returning these file would exceed the {count}-file limit. Remove some file first",
-        "other": "Returning these files would exceed the {count}-file limit. Remove some files first"
-      }
-    },
-    "notes": "Android 批次 B：ImageDrafts.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.android_source_unreadable",
     "zh-CN": "读不到源文件，请重新选择",
     "en": "Could not read the source file. Select it again",

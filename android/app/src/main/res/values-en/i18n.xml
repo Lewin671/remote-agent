@@ -36,10 +36,6 @@
     <string name="attachment_android_permission_temporary" formatted="false">"Read permission for this file cannot be kept. You may need to select it again after the app restarts"</string>
     <string name="attachment_android_preparing_meta" formatted="false">" · Preparing"</string>
     <string name="attachment_android_reading_files" formatted="false">"Reading selected files…"</string>
-    <plurals name="attachment_android_restore_limit">
-        <item quantity="one">"Returning these file would exceed the %1$d-file limit. Remove some file first"</item>
-        <item quantity="other">"Returning these files would exceed the %1$d-file limit. Remove some files first"</item>
-    </plurals>
     <string name="attachment_android_source_unreadable" formatted="false">"Could not read the source file. Select it again"</string>
     <string name="attachment_android_upload_meta">" · Uploading %1$s%%"</string>
     <string name="attachment_android_upload_required" formatted="false">"Attachments need to be uploaded to the computer again. Wait for upload to finish before sending"</string>
@@ -136,14 +132,6 @@
     <string name="composer_plan_placeholder" formatted="false">"Add requirements for the plan…"</string>
     <string name="composer_ready_timeout" formatted="false">"Timed out waiting for the terminal"</string>
     <string name="composer_restore" formatted="false">"Restore to input"</string>
-    <plurals name="composer_restore_files_full">
-        <item quantity="one">"The input cannot fit this message’s %1$d file. Remove some attachments first."</item>
-        <item quantity="other">"The input cannot fit this message’s %1$d files. Remove some attachments first."</item>
-    </plurals>
-    <plurals name="composer_restore_images_full">
-        <item quantity="one">"The input already has %2$d image(s) and cannot fit this message’s %1$d image. Remove some first."</item>
-        <item quantity="other">"The input already has %2$d image(s) and cannot fit this message’s %1$d images. Remove some first."</item>
-    </plurals>
     <string name="composer_running_placeholder" formatted="false">"Add a note…"</string>
     <string name="composer_send" formatted="false">"Send"</string>
     <string name="composer_send_after" formatted="false">"Send after"</string>
@@ -452,10 +440,6 @@
     <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"; pixel count exceeds this phone\'s limit; scaled down to 1/%1$s"</string>
     <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"Reprocess or select the image again"</string>
     <string name="image_android_reprocess_using_the_current_mode" formatted="false">"Reprocess using the current mode"</string>
-    <plurals name="image_android_restore_limit">
-        <item quantity="one">"Images in composer: %2$d. Returning %1$d image would exceed the limit of %3$d. Remove some images first."</item>
-        <item quantity="other">"Images in composer: %2$d. Returning %1$d images would exceed the limit of %3$d. Remove some images first."</item>
-    </plurals>
     <string name="image_android_restore_retry" formatted="false">"Pending images could not be restored. You can still type; retry on the next edit or return to the composer"</string>
     <string name="image_android_restore_wait" formatted="false">"Restoring pending images; wait before returning them to the composer"</string>
     <string name="image_android_restoring" formatted="false">"Restoring pending images…"</string>

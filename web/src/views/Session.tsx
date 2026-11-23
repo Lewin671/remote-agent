@@ -1450,12 +1450,12 @@ export function SessionPage({
       if (eff.text) {
         remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n" + eff.text : eff.text);
       }
-      const savedImages = saved?.items?.filter((it) => it.kind !== "file") ?? [];
+      const savedImages = saved?.items?.filter((it) => !it.kind) ?? [];
       const imageCandidates = eff.imageIds.map((_, i) => {
         const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
         return {
           name: src instanceof File ? src.name : "",
-          mimeType: src?.type || "image/png",
+          mimeType: src?.type,
           sizeBytes: src?.size ?? 0,
         };
       });
@@ -1650,20 +1650,20 @@ export function SessionPage({
   const handleRestoreTrayItem = async (reqId: string) => {
     const it = (vm.composer?.pendingTray?.orderedItems ?? []).find((x) => x.requestId === reqId);
     const saved = stash?.get(reqId);
-    const files: NonNullable<LocalSendAttachments["files"]> =
-      saved?.files ?? (it?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
+    const files =
+      saved?.files ?? (it?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n, file: undefined as File | undefined }));
     try {
       await remote.restoreDraft(sessionId, tray);
     } catch {
       return;
     }
     if (!mountedSession.current) return;
-    const savedImages = saved?.items?.filter((x) => x.kind !== "file") ?? [];
+    const savedImages = saved?.items?.filter((x) => !x.kind) ?? [];
     const imageCandidates = (it?.imageIds ?? []).map((_, i) => {
       const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
       return {
         name: src instanceof File ? src.name : "",
-        mimeType: src?.type || "image/png",
+        mimeType: src?.type,
         sizeBytes: src?.size ?? 0,
       };
     });

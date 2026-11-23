@@ -386,8 +386,6 @@ class I18nBatchBTest(private val locale: String) {
             if (locale == "en") Assert.assertEquals("Ran $count ${if (count == 1) "command" else "commands"}", rendered)
             Assert.assertTrue(text(UiMessages.queueMoreItems(count)).contains(count.toString()))
             Assert.assertTrue(text(UiMessages.imagePosition(count, 1)).contains(count.toString()))
-            val restore = text(UiMessages.imageAndroidRestoreLimit(count, 1, 9))
-            if (locale == "en") Assert.assertTrue(restore.contains("Returning $count ${if (count == 1) "image would" else "images would"}"))
         }
         val closed = RemoteTerminal.State.Closed(UiMessages.terminalAndroidClosed().messageText())
         Assert.assertEquals(text(UiMessages.terminalAndroidClosed()), closed.reason.resolve(::text))

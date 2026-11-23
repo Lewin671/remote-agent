@@ -72,34 +72,6 @@
 			<string>一条消息最多 %1$lld 张</string>
 		</dict>
 	</dict>
-	<key>composer_restore_files_full</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>输入框放不下这条消息的 %1$lld 个文件；先移除一些再放回</string>
-		</dict>
-	</dict>
-	<key>composer_restore_images_full</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>输入框里已有 %2$lld 张图，放不下这条消息的 %1$lld 张；先移除一些再放回</string>
-		</dict>
-	</dict>
 	<key>connection_sec_elapsed</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

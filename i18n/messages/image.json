@@ -349,44 +349,6 @@
     }
   },
   {
-    "key": "image.android_restore_limit",
-    "zh-CN": {
-      "plural": "added",
-      "forms": {
-        "other": "输入框里已有 {current} 张图，放回这 {added} 张会超过 {limit} 张。先移除一些再放回"
-      }
-    },
-    "en": {
-      "plural": "added",
-      "forms": {
-        "one": "Images in composer: {current}. Returning {added} image would exceed the limit of {limit}. Remove some images first.",
-        "other": "Images in composer: {current}. Returning {added} images would exceed the limit of {limit}. Remove some images first."
-      }
-    },
-    "notes": "Android 把原消息的图片放回输入框时的超限完整数量句。current 是现有张数，added 是本次放回张数并控制复数，limit 是上限；均为非负整数，不分组。保留中文原句，英文初稿待审。",
-    "params": {
-      "current": {
-        "type": "integer",
-        "example": 2
-      },
-      "added": {
-        "type": "integer",
-        "example": 2
-      },
-      "limit": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "image.android_restore_retry",
     "zh-CN": "待发图片没能恢复，仍可输入，下次编辑或放回时重试",
     "en": "Pending images could not be restored. You can still type; retry on the next edit or return to the composer",
