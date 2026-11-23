@@ -131,20 +131,21 @@ enum SessionImages {
         return true
     }
 
-    /// Applies Core's `SessionRestoreComposerEffect` after `restoreOutgoing` (or recovery), restoring
-    /// local images held for `requestID` and appending `text` to the session draft.
+    /// Applies Core's `SessionRestoreComposerEffect` after `restoreOutgoing` (or recovery): Core has
+    /// already removed the item from the tray, so `text` is always appended to the session draft first,
+    /// followed by putting back any local attachments held for `requestID`.
     @discardableResult
     static func applyRestore(
         _ effect: PBSessionRestoreComposerEffect, session: String, remote: Remote, store: SessionStore
     ) async -> Bool {
-        let center = ImageCenter.of(remote)
-        if let o = center.heldOutgoing(session, requestId: effect.requestID) {
-            guard await center.putBack(
-                sid: session, o, releaseFailure: true
-            ) else { return false }
-        }
         if !effect.text.isEmpty {
             store.appendToDraft(session, effect.text)
+        }
+        let center = ImageCenter.of(remote)
+        if let o = center.heldOutgoing(session, requestId: effect.requestID) {
+            return await center.putBack(
+                sid: session, o, releaseFailure: true
+            )
         }
         return true
     }

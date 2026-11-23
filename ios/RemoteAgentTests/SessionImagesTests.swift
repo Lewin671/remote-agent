@@ -400,6 +400,25 @@ import UIKit
         #expect(store.draft(sid) == "只有文字")
     }
 
+    @Test func applyRestoreAlwaysRestoresTextEvenWhenAttachmentsCannotBePutBack() async throws {
+        let (c, host) = try await centerWithCore(); defer { host.close() }
+        let draft = c.draft(ImageCenter.sessionKey(sid))
+        draft.append((1...4).map { ready("m\($0)") })
+        _ = await send(c, "带图文本")
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let o = try #require(spy.sent.first)
+        o.state = .failed
+        draft.append((1...3).map { ready("n\($0)") })
+
+        let effect = PBSessionRestoreComposerEffect.with {
+            $0.sessionID = sid
+            $0.requestID = o.requestId
+            $0.text = "带图文本"
+        }
+        #expect(await !SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
+        #expect(store.draft(sid) == "带图文本")
+    }
+
     @Test func aRunThatEndedLeavesItsMessagesToTheNext() async throws {
         let first = center()
         first.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
