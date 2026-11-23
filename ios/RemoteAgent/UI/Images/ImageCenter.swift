@@ -181,8 +181,9 @@ final class ImageCenter {
         viewed.use(remote)
         uploads = ImageUploads(
             prepare: { [weak self] uri, original in
-                guard let self, let data = try await self.read(uri) else { throw AttachmentFailure(kind: .sourceMissing) }
-                var limit = self.originalMaxBytes
+                guard let self else { throw AttachmentFailure(kind: .sourceMissing) }
+                let data = try await self.read(uri)
+                var limit = await self.originalMaxBytes
                 if limit <= 0 {
                     limit = await self.evaluateAttachments(PBAttachmentEvalScreenRequest()).originalImageMaxBytes
                 }
@@ -887,7 +888,7 @@ final class ImageCenter {
             }
         }
         // Not held when it is more than is ever read of one: preparing refuses it in words.
-        if Int64(data.count) <= pickedReadLimit(original: false), sources[uri] != nil {
+        if Int64(data.count) <= pickedReadLimit(original: false, originalMaxBytes: 0), sources[uri] != nil {
             sources[uri] = .data(data)
         }
         return data
