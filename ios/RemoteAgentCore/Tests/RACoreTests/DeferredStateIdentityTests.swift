@@ -30,23 +30,13 @@ import Testing
         }
     }
 
-    @Test func retainedAgentCatalogDefaultsAndNotesResolveAtReadTime() {
-        let codex = agentInfo(.codex), claude = agentInfo(.claude), agy = agentInfo(.antigravity), unknown = agentInfo(.UNRECOGNIZED(999))
+    @Test func retainedAgentCatalogNamesResolveAtReadTime() {
         for locale in ["zh-CN", "en", "zh-CN"] {
             MessageLocale.$overrideForTesting.withValue(locale) {
-                #expect(codex.planKeepLabel == L10n.dockIosKeepPlanning())
-                #expect(codex.planApproveLabel == L10n.approvalApproveExecute())
-                #expect(claude.planNote == L10n.dockClaudePlanNote())
-                #expect(claude.trustFolderHint == L10n.dockTrustFolder())
-                #expect(claude.usageHint == L10n.quotaIosViewUsageInLocalClaudeCode())
-                #expect(claude.planKeepLabel == L10n.modesPlanEdit() && agy.planNote == L10n.dockAgyPlanNote())
-                #expect(unknown.name == L10n.modelsUnknownCli())
-                #expect(codex.name == "Codex" && claude.name == "Claude Code")
-                #expect(agy.quotaWindow("3p-5h").group == .thirdParty)
-                #expect(agy.quotaWindow("3p-5h").group?.title == L10n.quotaThirdPartyModelsClaudeGptOss())
+                #expect(agentName(.UNRECOGNIZED(999)) == L10n.modelsUnknownCli())
+                #expect(agentName(.codex) == "Codex" && agentName(.claude) == "Claude Code")
             }
         }
-        #expect(QuotaWindowGroup.thirdParty != .reported("第三方模型（Claude、GPT-OSS）"))
     }
 
     @Test func defaultNameCollisionIdentityDoesNotReadTranslatedFallbacks() {

@@ -59,16 +59,10 @@ import Testing
 
 /// Words the screens share; Android has no tests of these.
 @Suite(.timeLimit(.minutes(2))) struct CommonTests {
-    @Test func theLinkAndThePreferencesAreSaidInAWord() {
+    @Test func preferencesAndImageHelpers() {
         var st = RemoteState()
-        #expect(connWord(st) == L10n.connectionConnectingConnCheck())
         #expect(prefsBlocked(st) == L10n.projectsConnectToEdit())
-        st.link = .noServer
-        #expect(connWord(st) == L10n.connectionUnreachable())
-        st.synced = true
-        #expect(connWord(st) == L10n.connectionReconnectingConnCheck())
         st.conn = .online
-        #expect(connWord(st) == L10n.connectionConnected())
         #expect(prefsBlocked(st) == L10n.projectsLoading())
         st.prefs = .empty
         #expect(prefsBlocked(st) == nil)
@@ -77,14 +71,5 @@ import Testing
         #expect(aspect(.with { $0.width = 400; $0.height = 100 }) == 2.5)
         #expect(aspect(.with { $0.previewWidth = 30; $0.previewHeight = 40; $0.width = 400; $0.height = 100 }) == 0.75)
         #expect(aspect(PBImageRef()) == 4.0 / 3.0)
-        #expect(modeHelp(.full) == L10n.modesSkipAll())
-    }
-}
-
-@Test(.timeLimit(.minutes(2))) func popupDiagnosticsNeverBecomeUserCopy() {
-    for detail in ["trust folder", "hooks need review", "update available", "approval", "permission", "model menu", "model picker", "question", "plan", "permissions menu", "bypass warning", "menu", "artifacts", "unknown panel", "Native unrecognized panel"] {
-        var session = SessionView(id: "popup-test", machineId: "machine")
-        session.info = .with { $0.status = .blocked; $0.statusDetail = detail }
-        #expect(previewOf(session, status: .popup) == L10n.listStatePopup())
     }
 }

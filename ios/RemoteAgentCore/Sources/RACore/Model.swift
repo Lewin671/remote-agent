@@ -1,104 +1,15 @@
-// View models derived from the decrypted state, as in web/src/model.ts and
-// Android's core/Model.kt: statuses, titles, times, modes and devices. The
-// projects are in Projects.swift, the orders in Order.swift, and what a
-// session's events say is pending in ChatState.swift.
+// Remaining shell helpers derived from decrypted state: running clock,
+// title input clamping, one-line preview stripping, relative time, model list
+// folding, client display names, and machine capabilities/protocol check.
 import Foundation
 import RAProto
 
-// --- CLIs ---
-
-/// The CLI a session runs; sessions from before Claude Code support are Codex.
-public func effectiveAgent(_ a: PBAgent) -> PBAgent {
-    agentInfo(a).agent
-}
-
-extension SessionView {
-    public var agent: PBAgent { effectiveAgent(info?.agent ?? .unspecified) }
-}
-
-/// The CLIs a machine can start; Codex while it lists none.
-public func machineAgents(_ m: MachineView?) -> [PBAgent] {
-    let listed = (m?.meta?.agents ?? []).map { effectiveAgent($0.agent) }.distinct()
-    return listed.isEmpty ? [defaultAgent] : listed
-}
-
 // --- sessions ---
-
-public enum Tone: Sendable { case run, wait, idle, off }
-
-/// One state per session, the highest in the priority list of the design
-/// (client-v1, 状态优先级). The raw value is the place in that list, which
-/// 需要处理 sorts by.
-public enum Status: Int, CaseIterable, Sendable {
-    case loading, exited, offline
-    /// Only shown (`shownStatus`): the server is out of reach, so what the session is doing is not known.
-    case unlinked
-    case approval, question, plan, popup, running, starting, idle
-
-    public var text: String {
-        switch self {
-        case .loading: return L10n.commonIosLoading()
-        case .exited: return L10n.listStateEnded()
-        case .offline: return L10n.listStateOffline()
-        case .unlinked: return L10n.listStateUnlinked()
-        case .approval: return L10n.listStateApproval()
-        case .question: return L10n.listStateQuestion()
-        case .plan: return L10n.listStatePlan()
-        case .popup: return L10n.listStatePopup()
-        case .running: return L10n.listStateRunning()
-        case .starting: return L10n.listStateStarting()
-        case .idle: return L10n.listStateIdle()
-        }
-    }
-
-    public var tone: Tone {
-        switch self {
-        case .loading, .exited, .offline, .unlinked: return .off
-        case .approval, .question, .plan, .popup: return .wait
-        case .running, .starting: return .run
-        case .idle: return .idle
-        }
-    }
-}
-
-public func exited(_ s: SessionView) -> Bool { s.info?.status == .exited }
-
-/// The state to show for a session. Out of reach of the server, the last
-/// one heard is not shown as if it still held (client-v30 「断线」); that a
-/// session ended stays true.
-public func shownStatus(_ state: RemoteState, _ s: SessionView) -> Status {
-    let st = statusOf(s, machine: state.machines[s.machineId])
-    return state.peer(s.machineId).unlinked && st != .exited && st != .loading ? .unlinked : st
-}
-
-public func statusOf(_ s: SessionView, machine: MachineView?) -> Status {
-    guard let i = s.info else { return .loading }
-    if i.status == .exited { return .exited }
-    if let machine, !machine.pathState.reachable { return .offline }
-    if i.pendingApprovals > 0 { return .approval }
-    if i.pendingQuestions > 0 { return .question }
-    if i.planOpen { return .plan }
-    if i.status == .blocked { return .popup }
-    if i.status == .running { return .running }
-    if i.status == .starting { return .starting }
-    return .idle
-}
-
-public func needsAttention(_ s: SessionView, machine: MachineView?) -> Bool { statusOf(s, machine: machine).tone == .wait }
 
 /// 2:12, 1:02:03: a running timer.
 public func clock(_ ms: Int64) -> String {
     let s = ms / 1000
     return s >= 3600 ? "\(s / 3600):\(pad2(Int(s % 3600 / 60))):\(pad2(Int(s % 60)))" : "\(s / 60):\(pad2(Int(s % 60)))"
-}
-
-/// The session's title; without one, "<folder> · <start time>".
-public func titleOf(_ s: SessionView, zone: TimeZone = .current) -> String {
-    let t = plain(s.info?.title ?? "").jvmTrim()
-    if !t.isEmpty { return t }
-    guard let i = s.info else { return L10n.listStateIosNewSession() }
-    let created: Int64 = i.hasCreatedAt ? i.createdAt.seconds * 1000 : 0
-    return created > 0 ? "\(projectName(i.cwd)) · \(hhmm(created, zone: zone))" : projectName(i.cwd)
 }
 
 /// The most a session's title holds, counted in code points as the daemon counts them.
@@ -141,16 +52,6 @@ public func plain(_ text: String) -> String {
     return t.jvmTrim()
 }
 
-/// The one-line preview for a list, following the session's status.
-public func previewOf(_ s: SessionView, status: Status) -> String {
-    guard let i = s.info else { return "" }
-    switch status {
-    case .plan: return L10n.listStatePlan()
-    case .popup: return L10n.listStatePopup()
-    default: return plain(i.preview).ifEmpty(i.title.isEmpty ? L10n.listStateNoMessage() : "")
-    }
-}
-
 /// Short relative time, like the mockup: 刚刚, 3 分钟前, 9:12, 昨天, 9月27日.
 public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
     if ms <= 0 { return "" }
@@ -164,140 +65,6 @@ public func whenText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .curren
     return L10n.timeMonthDay(day: then.day, month: then.month)
 }
 
-/// Elapsed hours today, as a machine's last-seen time is shown on the web.
-public func ago(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
-    let elapsed = now - ms
-    if ms > 0 && elapsed >= 3_600_000 && elapsed < 86_400_000
-        && LocalDay(ms: ms, zone: zone).sameDay(LocalDay(ms: now, zone: zone)) {
-        return L10n.timeHoursAgo(count: Int(elapsed / 3_600_000))
-    }
-    return whenText(ms, now: now, zone: zone)
-}
-
-public func hhmm(_ ms: Int64, zone: TimeZone = .current) -> String { LocalDay(ms: ms, zone: zone).hhmm }
-
-/// 9月27日 9:12, or the time alone for a moment of today.
-public func dateTime(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
-    let t = LocalDay(ms: ms, zone: zone)
-    return t.sameDay(LocalDay(ms: now, zone: zone)) ? t.hhmm : L10n.timeIosDateTime(day: t.day, month: t.month, time: t.hhmm)
-}
-
-// --- approval modes ---
-
-public enum Mode: CaseIterable, Sendable {
-    case ask, auto, plan, full
-
-    public var text: String {
-        switch self {
-        case .ask: return L10n.modesAsk()
-        case .auto: return L10n.modesAuto()
-        case .plan: return L10n.modesPlan()
-        case .full: return L10n.modesFullAccess()
-        }
-    }
-
-    public var proto: PBApprovalMode {
-        switch self {
-        case .ask: return .ask
-        case .auto: return .auto
-        case .plan: return .plan
-        case .full: return .fullAccess
-        }
-    }
-}
-
-public func modeOf(_ m: PBApprovalMode) -> Mode? { Mode.allCases.first { $0.proto == m } }
-
-/// Claude Code's permission mode as a client mode, or nil for its own ones such as acceptEdits.
-public func permissionMode(_ pm: String) -> Mode? {
-    switch pm {
-    case "default": return .ask
-    case "auto": return .auto
-    case "plan": return .plan
-    case "bypassPermissions": return .full
-    default: return nil
-    }
-}
-
-/// Claude Code's permission mode as the chat names it: one of the four, or its own name for a mode outside them.
-public func permissionModeName(_ pm: String) -> String {
-    permissionMode(pm)?.text ?? (pm == "acceptEdits" ? "accept edits" : pm)
-}
-
-/// A mode as shown: one of the four, or a CLI's own mode by its name.
-public struct ModeLabel: Equatable, Sendable {
-    public var text: String
-    public var mode: Mode?
-
-    public init(text: String, mode: Mode?) {
-        self.text = text
-        self.mode = mode
-    }
-}
-
-/// The approval mode named from turn-context fields: Claude Code's permission mode, or Codex's approval fields.
-public func contextMode(reviewer: String, policy: String, sandbox: String, collaboration: String, permission: String = "") -> Mode? {
-    if !permission.isEmpty { return permissionMode(permission) }
-    if reviewer.isEmpty && policy.isEmpty && collaboration.isEmpty { return nil }
-    if collaboration == "plan" { return .plan }
-    if sandbox == "danger-full-access" && policy == "never" { return .full }
-    if reviewer == "auto_review" { return .auto }
-    return .ask
-}
-
-public func modeOf(_ s: SessionView) -> Mode? { modeLabel(s)?.mode }
-
-/// The session's mode. Session.mode is either CLI's mode as a client mode;
-/// unspecified with a permission mode is one of Claude Code's own, shown by
-/// its name. With neither (a Codex context outside the four modes), it is
-/// named from the approval fields.
-public func modeLabel(_ s: SessionView) -> ModeLabel? {
-    guard let i = s.info, i.status != .starting else { return nil }
-    if let m = modeOf(i.mode) { return ModeLabel(text: m.text, mode: m) }
-    if !i.permissionMode.isEmpty {
-        let m = permissionMode(i.permissionMode)
-        return ModeLabel(text: m?.text ?? permissionModeName(i.permissionMode), mode: m)
-    }
-    return contextMode(reviewer: i.approvalsReviewer, policy: i.approvalPolicy, sandbox: i.sandbox, collaboration: i.collaborationMode)
-        .map { ModeLabel(text: $0.text, mode: $0) }
-}
-
-/// Whether the daemon marks every reported model as lacking auto approval mode.
-public func allAutoUnavailable(_ models: [PBModelInfo]?) -> Bool {
-    guard let models, !models.isEmpty else { return false }
-    return models.allSatisfy { $0.autoUnavailable }
-}
-
-/// Whether the daemon reports auto approval as unavailable for a model.
-/// An unknown model or a list not read yet gives no answer.
-public func autoUnavailable(_ models: [PBModelInfo]?, model: String) -> Bool {
-    if allAutoUnavailable(models) { return true }
-    guard let models, !model.isEmpty else { return false }
-    return findModel(models, id: model) { $0.slug }?.autoUnavailable == true
-}
-
-private let modelWordBreak = Rx("[-_.\(Jre.s)]")
-
-/// The entry of a model list that a session's model is. Codex reports the slug
-/// it was started with; Claude Code offers aliases (sonnet, opus) but records
-/// the full ID (claude-sonnet-5-5), so an alias matches a full ID that has it
-/// as one of its words.
-/// A chosen model as a row's value says it: 「默认」 when none is, its name
-/// once the computer's list has it, its ID until then.
-public func modelValue(_ id: String, models: PBListModelsResponse?) -> String {
-    if id.isEmpty { return L10n.modelsDefault() }
-    return models.flatMap { findModel($0.models, id: id) { $0.slug } }.map { $0.displayName.ifEmpty(id) } ?? id
-}
-
-public func findModel<M>(_ models: [M], id: String, slug: (M) -> String) -> M? {
-    if id.isEmpty { return nil }
-    // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.
-    let id = id.removingSuffix("[1m]")
-    if let exact = models.first(where: { slug($0) == id }) { return exact }
-    let words = modelWordBreak.split(id.lowercased())
-    return models.first { words.contains(slug($0).lowercased()) }
-}
-
 /// The models a picker lists before 全部模型: a short list whole, so none is out
 /// of reach; a long one its first three and the picked one, so 推理强度 below
 /// the list stays in sight.
@@ -307,27 +74,6 @@ public func shownModels<M: Equatable>(_ models: [M], picked: M?, all: Bool) -> [
     guard let picked, !top.contains(picked) else { return top }
     return top + [picked]
 }
-
-/// Whether the model a CLI reports (`id`) is the one chosen by slug or alias.
-public func modelIs(_ id: String, _ slug: String) -> Bool {
-    !id.isEmpty && !slug.isEmpty && (id.jvmEquals(slug) || modelWordBreak.split(id.lowercased()).contains(slug.lowercased()))
-}
-
-/// The approval mode a new session gets when none is chosen: the daemon's
-/// default for that CLI (architecture §13), or nil when the daemon has none
-/// and the CLI's own configuration decides.
-public func defaultMode(_ settings: PBDaemonSettings, agent: PBAgent) -> Mode? {
-    modeOf(defaultsFor(settings, agent: agent).mode)
-}
-
-/// Context window use in percent, or nil when unknown.
-public func contextPercent(_ s: SessionView) -> Int? {
-    guard let i = s.info, i.contextWindow > 0 else { return nil }
-    return min(100, Int(Int32(truncatingIfNeeded: (i.contextTokens &* 100) / i.contextWindow)))
-}
-
-/// Minutes left until a deadline, for "剩 N 分钟".
-public func minutesLeft(deadlineMs: Int64, now: Int64 = nowMs()) -> Int64 { max(0, (deadlineMs - now + 59_999) / 60_000) }
 
 // --- devices and where actions came from ---
 
@@ -361,8 +107,6 @@ private enum ClientDefaultIdentity: Equatable {
         switch self { case .raw(let value): value; case .browser: L10n.securityBrowser(); case .client: L10n.securityClient() }
     }
 }
-
-public func plainClientName(_ meta: PBDeviceMeta?) -> String { clientDefaultIdentity(meta).text }
 
 private func clientDefaultIdentity(_ meta: PBDeviceMeta?) -> ClientDefaultIdentity {
     let description = (meta?.description_p ?? "").jvmTrim()
@@ -399,15 +143,3 @@ public func protocolMismatch(_ m: MachineView?) -> String? {
     if theirs > peerProtocolVersion { return L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd() }
     return nil
 }
-
-/// A model's context window as the pickers write it: 1M 上下文, 200k 上下文; nil when unknown.
-public func contextText(tokens: Int64) -> String? {
-    if tokens <= 0 { return nil }
-    if tokens >= 1_000_000 {
-        return L10n.errorsIosMContext(value: String(describing: "\(Double(tokens / 100_000) / 10.0)".removingSuffix(".0")))
-    }
-    return L10n.errorsIosKContext(value: String(describing: (tokens + 500) / 1000))
-}
-
-/// The standard context window, which a Claude Code session can be held to.
-public let standardWindow: Int64 = 200_000

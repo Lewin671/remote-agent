@@ -1,17 +1,8 @@
-// Words several screens share, from Android's ui/Common.kt, ConnCheck.kt,
-// Manage.kt, ChatImages.kt and Sheets.kt.
+// Words several screens share, from Android's ui/Common.kt, Manage.kt and ChatImages.kt.
 import Foundation
 import RAProto
 
 public func machineLabel(_ state: RemoteState, id: String) -> String { machineName(state.machines[id], id: id) }
-
-/// The link to the server in a word: what 设置 says before anything is measured.
-public func connWord(_ state: RemoteState) -> String {
-    if state.conn == .online { return L10n.connectionConnected() }
-    if state.synced { return L10n.connectionReconnectingConnCheck() }
-    if state.link == .noServer { return L10n.connectionUnreachable() }
-    return L10n.connectionConnectingConnCheck()
-}
 
 /// Why the preferences cannot be changed now, or nil when they can.
 public func prefsBlocked(_ state: RemoteState) -> String? {
@@ -37,13 +28,3 @@ public func aspect(_ ref: PBImageRef) -> Double {
 
 /// A file's name from its path, for an image shown by name only.
 public func fileName(_ path: String) -> String { (path.split(ascii: UInt8(ascii: "/")).last ?? "").ifEmpty(L10n.imageTitle()) }
-
-/// What each approval mode means, under its name in the mode sheet.
-public func modeHelp(_ m: Mode, agent: String = "CLI") -> String {
-    switch m {
-    case .ask: return L10n.modesAskDesc()
-    case .auto: return L10n.modesAutoDesc(agent: agent)
-    case .plan: return L10n.modesPlanDesc()
-    case .full: return L10n.modesSkipAll()
-    }
-}

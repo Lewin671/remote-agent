@@ -23,18 +23,6 @@ enum StatusKind: Sendable, Equatable {
     /// 在线: a green dot.
     case online
 
-    /// A session's status as its row draws it; an ended one has no graphic.
-    init?(_ status: Status) {
-        switch status.tone {
-        case .run: self = .running
-        case .idle: self = .idle
-        case .wait: self = .waiting
-        case .off:
-            if status == .exited { return nil }
-            self = .off
-        }
-    }
-
     init?(_ row: PBCoreSessionRowView) {
         self.init(status: row.status, tone: row.tone)
     }

@@ -15,8 +15,7 @@ import Testing
     @Test func agentLabelsAndTerminalKeysResolveOnEveryRead() {
         for locale in ["zh-CN", "en", "zh-CN"] {
             MessageLocale.$overrideForTesting.withValue(locale) {
-                #expect(agentInfo(.claude).planApproveLabel == L10n.approvalApprove())
-                #expect(agentInfo(.claude).planNote == L10n.dockClaudePlanNote())
+                #expect(agentName(.UNRECOGNIZED(99)) == L10n.modelsUnknownCli())
                 let enter = terminalKeyRows.joined().first { $0.kind == .text("\r") }!
                 #expect(enter.label == (locale == "en" ? "Enter" : "回车"))
                 #expect(terminalKeySequence(enter, appCursor: false) == "\r")

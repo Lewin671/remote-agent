@@ -137,18 +137,6 @@ struct Ticking<Content: View>: View {
     }
 }
 
-extension StatusTone {
-    /// A status's tone as the kit colours it.
-    init(_ tone: Tone) {
-        switch tone {
-        case .run: self = .run
-        case .wait: self = .wait
-        case .idle: self = .idle
-        case .off: self = .off
-        }
-    }
-}
-
 /// One command with its progress: running, and the error of the last try.
 /// Keep one in `@State` per button; `run` does nothing while one is running.
 /// The command goes on when its page is left, and `onDone` is called all the

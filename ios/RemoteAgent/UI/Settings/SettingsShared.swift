@@ -231,19 +231,22 @@ extension View {
         }()
 
         static var daemonSettings: PBDaemonSettings {
-            var s = PBDaemonSettings.with {
+            PBDaemonSettings.with {
                 $0.approvalTimeoutSeconds = 600
                 $0.idleCloseMinutes = 360
                 $0.imageUploadQuotaBytes = 1 << 30
+                $0.defaultModel = "gpt-6-astra"
+                $0.defaultEffort = "medium"
+                $0.defaultMode = .ask
+                $0.claude = .with {
+                    $0.model = "claude-opus-5-5-preview-20261001-extended"
+                }
+                $0.antigravity = .with {
+                    $0.model = "gemini-3.1-pro"
+                    $0.effort = "high"
+                    $0.mode = .ask
+                }
             }
-            if let first = AGENTS.first {
-                s = withDefaults(s, agent: first.agent, model: "gpt-6-astra", effort: "medium", mode: Mode.ask)
-            }
-            if AGENTS.count > 1 {
-                s = withDefaults(s, agent: AGENTS[1].agent, model: "claude-opus-5-5-preview-20261001-extended")
-            }
-            s = withDefaults(s, agent: .antigravity, model: "gemini-3.1-pro", effort: "high", mode: Mode.ask)
-            return s
         }
 
         static var imageStorage: PBImageStorageUsage {

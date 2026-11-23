@@ -13,7 +13,6 @@ import Testing
     @Test func onlySignedClientsAreNamedAndOnlyFromTheDeviceList() {
         let zone = Mk.utc
         func at(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Int64 { Mk.at(y, m, d, h, min, zone: zone) }
-        let now = at(2026, 10, 3, 12, 0)
         func device(_ id: String = "dddd8a5f", created: Int64, seen: Int64 = 0, _ m: PBDeviceMeta) -> DeviceView {
             DeviceView(id: id, kind: .client, createdMs: created, meta: m, lastSeenMs: seen)
         }
@@ -57,11 +56,5 @@ import Testing
         // Computers do not count.
         all[b.id] = client(b.id, "", "ios", "iOS 26.4 · iPhone", kind: .machine)
         #expect(clientName(a, id: a.id, among: all) == "iPhone")
-        // What the Android app writes: the system and the phone's name.
-        #expect(plainClientName(meta("", "android", "Android 16 · 小米 14")) == "Android · 小米 14")
-        #expect(plainClientName(meta("", "web", "Firefox")) == "Firefox")
-        #expect(plainClientName(meta("", "web", "")) == L10n.securityBrowser())
-        #expect(plainClientName(meta("", "ios", "")) == "iOS")
-        #expect(plainClientName(nil) == L10n.securityClient())
     }
 }

@@ -4,38 +4,8 @@ import Testing
 
 @testable import RACore
 
-/// Android's core ModelTest.
+/// Tests for the remaining shell helpers in `Model.swift`, `Projects.swift`, and `JvmText.swift`.
 @Suite(.timeLimit(.minutes(2))) struct ModelTests {
-    @Test func unconfirmedStartupModeIsHidden() {
-        for permission in ["", "未知审批模式", "default"] {
-            #expect(modeLabel(s { $0.status = .starting; $0.permissionMode = permission }) == nil)
-        }
-        #expect(modeLabel(s { $0.permissionMode = "未知审批模式" })?.text == "未知审批模式")
-    }
-
-    private func s(_ fill: (inout PBSession) -> Void = { _ in }) -> SessionView { Mk.session("s", fill) }
-
-    @Test func statusFollowsThePriorityList() {
-        let online = MachineView(id: "m", online: true, lastSeenMs: 0)
-        var offline = online
-        offline.online = false
-        #expect(statusOf(s { $0.status = .exited; $0.pendingApprovals = 1 }, machine: offline) == .exited)
-        #expect(statusOf(s { $0.status = .running; $0.pendingApprovals = 1 }, machine: offline) == .offline)
-        #expect(statusOf(s { $0.pendingApprovals = 1; $0.pendingQuestions = 1; $0.planOpen = true }, machine: online) == .approval)
-        #expect(statusOf(s { $0.pendingQuestions = 1; $0.planOpen = true }, machine: online) == .question)
-        #expect(statusOf(s { $0.planOpen = true; $0.status = .blocked }, machine: online) == .plan)
-        #expect(statusOf(s { $0.status = .blocked }, machine: online) == .popup)
-        #expect(statusOf(s { $0.status = .running }, machine: online) == .running)
-        #expect(statusOf(s { $0.status = .idle }, machine: online) == .idle)
-        #expect(statusOf(SessionView(id: "s", machineId: "m"), machine: online) == .loading)
-    }
-
-    @Test func theStatusesKeepTheirPlacesInThePriorityList() {
-        // 需要处理 sorts by these: the order of Android's enum.
-        #expect(Status.allCases == [.loading, .exited, .offline, .unlinked, .approval, .question, .plan, .popup, .running, .starting, .idle])
-        #expect(Status.allCases.map(\.rawValue) == Array(0...10))
-    }
-
     @Test func titleInputEnforcesSingleLineAndCodePointLimit() {
         // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
         #expect(titleInput(String(repeating: "字", count: 61)) == String(repeating: "字", count: 60))
@@ -54,14 +24,6 @@ import Testing
         #expect(titleInput("a\n\r\n\rb\nc") == "a b c")
     }
 
-    @Test func aModelIsTheOneChosenBySlugOrAlias() {
-        #expect(modelIs("gpt-6-sol", "gpt-6-sol"))
-        #expect(modelIs("claude-Sonnet-5-5", "sonnet"))
-        #expect(!modelIs("claude-opus-5-5", "sonnet"))
-        #expect(!modelIs("", "sonnet"))
-        #expect(!modelIs("sonnet", ""))
-    }
-
     @Test func saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
         func m(_ v: UInt32) -> MachineView {
             MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local"; $0.protocolVersion = v })
@@ -77,14 +39,8 @@ import Testing
     @Test func namesAgentsAndTimes() {
         #expect(agentName(.unspecified) == "Codex")
         #expect(agentName(.claude) == "Claude Code")
-        #expect(machineAgents(MachineView(id: "m", online: true, lastSeenMs: 0, meta: PBMachineMeta())) == [.codex])
-        let both = PBMachineMeta.with { $0.agents = [.with { $0.agent = .codex }, .with { $0.agent = .claude }] }
-        #expect(machineAgents(MachineView(id: "m", online: true, lastSeenMs: 0, meta: both)) == [.codex, .claude])
         let zone = Mk.shanghai
         let now = Mk.at(2026, 9, 29, 14, 0)
-        #expect(ago(now - 2 * 3600_000, now: now, zone: zone) == L10n.timeHoursAgo(count: 2))
-        #expect(ago(now - 24 * 3600_000, now: now, zone: zone) == L10n.timeYesterday())
-        #expect(ago(0, now: now, zone: zone).isEmpty)
         #expect(whenText(now - 10_000, now: now, zone: zone) == L10n.timeJustNow())
         #expect(whenText(now - 180_000, now: now, zone: zone) == L10n.timeMinutesAgo(count: 3))
         #expect(whenText(now - (4 * 3600 + 55 * 60) * 1000, now: now, zone: zone) == "9:05")
@@ -94,40 +50,6 @@ import Testing
         #expect(plain("修 `bug`") == "修 bug")
     }
 
-    @Test func followsClaudeCodeModes() {
-        #expect(modeLabel(s { $0.mode = .auto })?.mode == .auto)
-        let own = modeLabel(s { $0.permissionMode = "acceptEdits" })!
-        #expect(own.text == "accept edits")
-        #expect(own.mode == nil)
-        #expect(modeLabel(s { $0.collaborationMode = "plan"; $0.approvalPolicy = "on-request" })?.mode == .plan)
-        // The list says which models come without the auto mode; a model it
-        // does not know gives no answer.
-        let list = [
-            PBModelInfo.with { $0.slug = "claude-haiku-4-5-20251001"; $0.autoUnavailable = true },
-            PBModelInfo.with { $0.slug = "claude-sonnet-5-5" },
-        ]
-        #expect(autoUnavailable(list, model: "claude-haiku-4-5-20251001"))
-        #expect(!autoUnavailable(list, model: "claude-sonnet-5-5"))
-        #expect(!autoUnavailable(list, model: "haiku"))
-        #expect(!autoUnavailable(nil, model: "claude-haiku-4-5-20251001"))
-        let agyModels = [
-            PBModelInfo.with { $0.slug = "gemini-3.1-pro-high"; $0.autoUnavailable = true },
-            PBModelInfo.with { $0.slug = "gemini-3-flash"; $0.autoUnavailable = true },
-        ]
-        #expect(allAutoUnavailable(agyModels))
-        #expect(!allAutoUnavailable(list))
-        #expect(!allAutoUnavailable([]))
-        #expect(!allAutoUnavailable(nil))
-        #expect(autoUnavailable(agyModels, model: "gemini-3-flash"))
-        #expect(autoUnavailable(agyModels, model: "unknown-model"))
-        let models = ["opus", "sonnet", "haiku"]
-        #expect(findModel(models, id: "claude-haiku-4-5-20251001") { $0 } == "haiku")
-        #expect(findModel(models, id: "sonnet") { $0 } == "sonnet")
-        #expect(findModel(models, id: "gpt-6-luna") { $0 } == nil)
-        // Started as opus[1m] to name the 1M window: the model is opus.
-        #expect(findModel(models, id: "opus[1m]") { $0 } == "opus")
-    }
-
     @Test func aLongModelListShowsThreeAndThePickedOne() {
         let few = ["a", "b", "c", "d", "e"]
         #expect(shownModels(few, picked: nil, all: false) == few)
@@ -135,14 +57,6 @@ import Testing
         #expect(shownModels(many, picked: "b", all: false) == ["a", "b", "c"])
         #expect(shownModels(many, picked: "g", all: false) == ["a", "b", "c", "g"])
         #expect(shownModels(many, picked: "g", all: true) == many)
-    }
-
-    @Test func readsTheDaemonsDefaultModePerCli() {
-        let s = PBDaemonSettings.with { $0.defaultMode = .fullAccess; $0.claude = .with { $0.mode = .auto } }
-        #expect(defaultMode(s, agent: .codex) == .full)
-        #expect(defaultMode(s, agent: .unspecified) == .full)
-        #expect(defaultMode(s, agent: .claude) == .auto)
-        #expect(defaultMode(PBDaemonSettings(), agent: .codex) == nil)
     }
 
     // --- not in Android's tests: what the JVM does to text, kept the same here ---
@@ -203,39 +117,5 @@ import Testing
         #expect("a\r\nb\nc\rd".jvmLines() == ["a", "b", "c", "d"])
         #expect("".jvmLines() == [""] && "a\n".jvmLines() == ["a", ""])
         #expect("a\u{2028}b\u{85}c".jvmLines() == ["a\u{2028}b\u{85}c"])
-    }
-
-    @Test func contextWindowsAreWrittenShort() {
-        #expect(contextText(tokens: 0) == nil)
-        #expect(contextText(tokens: 200_000) == "200k 上下文")
-        #expect(contextText(tokens: 1_000_000) == "1M 上下文")
-        #expect(contextText(tokens: 1_050_000) == "1M 上下文")
-        #expect(contextText(tokens: 1_500_000) == "1.5M 上下文")
-        #expect(contextPercent(s { $0.contextTokens = 50; $0.contextWindow = 200 }) == 25)
-        #expect(contextPercent(s { $0.contextTokens = 500; $0.contextWindow = 200 }) == 100)
-        #expect(contextPercent(s { $0.contextTokens = 50 }) == nil)
-        #expect(minutesLeft(deadlineMs: 61_000, now: 0) == 2)
-        #expect(minutesLeft(deadlineMs: 0, now: 5) == 0)
-    }
-
-}
-
-/// Android's TitleTest (in ImagesTest.kt).
-@Suite(.timeLimit(.minutes(2))) struct TitleTests {
-    @Test func titlesAndPreviewsLeaveOutImagePlaceholders() {
-        let s = Mk.session { $0.title = "[Image #1]Which half is red?"; $0.preview = "[Image #1] [Image #2] look" }
-        #expect(titleOf(s) == "Which half is red?")
-        #expect(previewOf(s, status: .idle) == "look")
-    }
-
-    @Test func aSessionWithoutATitleIsNamedByItsFolderAndStart() {
-        let s = Mk.session { $0.cwd = "/Users/me/Code/foo"; $0.createdAt = Mk.ts(Mk.at(2026, 10, 4, 9, 5)) }
-        #expect(titleOf(s, zone: Mk.shanghai) == "foo · 9:05")
-        #expect(titleOf(Mk.session { $0.cwd = "/Users/me/Code/foo" }) == "foo")
-        #expect(titleOf(SessionView(id: "s", machineId: "m")) == L10n.listStateIosNewSession())
-        #expect(previewOf(s, status: .idle) == L10n.listStateNoMessage())
-        #expect(previewOf(s, status: .popup) == L10n.listStatePopup())
-        #expect(dateTime(Mk.at(2026, 10, 3, 18, 44), now: Mk.at(2026, 10, 4, 9, 41), zone: Mk.shanghai) == L10n.timeIosDateTime(day: 3, month: 10, time: "18:44"))
-        #expect(dateTime(Mk.at(2026, 10, 4, 7, 10), now: Mk.at(2026, 10, 4, 9, 41), zone: Mk.shanghai) == "7:10")
     }
 }
