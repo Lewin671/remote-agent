@@ -392,6 +392,8 @@ type AttachmentEvalViewModel struct {
 	Notice                   *Text
 	Problems                 []*ImageProblemView
 	FailureSummary           *Text
+	ImagesPickBlockedReason  *Text
+	FilesPickBlockedReason   *Text
 }
 
 func (m *AttachmentEvalViewModel) GetCapabilitiesLoaded() bool {
@@ -538,6 +540,18 @@ func (m *AttachmentEvalViewModel) GetFailureSummary() *Text {
 	}
 	return nil
 }
+func (m *AttachmentEvalViewModel) GetImagesPickBlockedReason() *Text {
+	if m != nil {
+		return m.ImagesPickBlockedReason
+	}
+	return nil
+}
+func (m *AttachmentEvalViewModel) GetFilesPickBlockedReason() *Text {
+	if m != nil {
+		return m.FilesPickBlockedReason
+	}
+	return nil
+}
 
 var LitewireDesc_AttachmentEvalViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -565,6 +579,8 @@ var LitewireDesc_AttachmentEvalViewModel = litewire.MessageDesc{
 		{Num: 22, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.Notice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 23, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.Problems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ImageProblemView},
 		{Num: 24, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.FailureSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 25, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.ImagesPickBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 26, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.FilesPickBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
