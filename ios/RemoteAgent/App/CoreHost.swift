@@ -1257,7 +1257,7 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         if !activeDirPickers.values.contains(key) {
             let screens = self.screens
-            await MainActor.run { screens.dirPickers.removeValue(forKey: key) }
+            await MainActor.run { _ = screens.dirPickers.removeValue(forKey: key) }
         }
     }
 

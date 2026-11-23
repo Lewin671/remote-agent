@@ -27,7 +27,7 @@ struct HandoffScreen: View {
     var body: some View {
         let settings = context.core.settings
         let sec = settings.security
-        let isClient = settings.hasAccount && !sec.unlinked
+        let isClient = settings.hasAccount_p && !sec.unlinked
         let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: sec.authorityName))
         SettingsPage {
             if sec.isManager { outgoing }

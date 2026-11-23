@@ -739,12 +739,13 @@ private struct UsageHeroBlock: View {
 
     @ViewBuilder private func compositionColumn(lineHeight: CGFloat, minHeight: CGFloat, width: CGFloat) -> some View {
         let comp = hero.hasComposition ? hero.composition : PBCoreUsageCompositionView()
-        var items: [(String, String, Bool)] = []
-        if comp.hasUncachedInputText { items.append((L10n.usageCompUncached(), comp.uncachedInputText.rendered(), false)) }
-        if comp.hasCacheReadText { items.append((L10n.usageCompCacheRead(), comp.cacheReadText.rendered(), false)) }
-        if comp.hasCacheWriteText { items.append((L10n.usageCompCacheWrite(), comp.cacheWriteText.rendered(), false)) }
-        if comp.hasOutputText { items.append((L10n.usageCompOutput(), comp.outputText.rendered(), false)) }
-        if comp.hasReasoningOutputText { items.append((L10n.usageCompReasoningLabel(), comp.reasoningOutputText.rendered(), true)) }
+        let items: [(String, String, Bool)] = [
+            comp.hasUncachedInputText ? (L10n.usageCompUncached(), comp.uncachedInputText.rendered(), false) : nil,
+            comp.hasCacheReadText ? (L10n.usageCompCacheRead(), comp.cacheReadText.rendered(), false) : nil,
+            comp.hasCacheWriteText ? (L10n.usageCompCacheWrite(), comp.cacheWriteText.rendered(), false) : nil,
+            comp.hasOutputText ? (L10n.usageCompOutput(), comp.outputText.rendered(), false) : nil,
+            comp.hasReasoningOutputText ? (L10n.usageCompReasoningLabel(), comp.reasoningOutputText.rendered(), true) : nil,
+        ].compactMap { $0 }
         let fontSize: CGFloat = isWide ? 12.5 : 12
 
         VStack(alignment: .leading, spacing: 0) {

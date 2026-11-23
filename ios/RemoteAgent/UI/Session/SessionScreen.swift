@@ -138,7 +138,7 @@ struct SessionScreen: View {
             let caps = AttachmentCapabilities(
                 header.capabilities,
                 hasMachine: !header.machineID.isEmpty,
-                online: header.computerOnline && !header.computerUnlinked && header.connState == .online
+                online: header.computerOnline && !header.computerUnlinked && header.connState == .connected
             )
             for item in matching {
                 SessionImages.applyRestore(
@@ -515,9 +515,9 @@ struct SessionScreen: View {
             list.append(SheetAction(
                 forkLabel,
                 enabled: forkAction.enabled || forkAction.busy,
-                busy: forkAction.busy,
                 note: forkNote,
                 noteError: forkAction.noteError,
+                busy: forkAction.busy,
                 keepOpen: true
             ) {
                 guard !forkAction.busy, forkAction.enabled else { return }

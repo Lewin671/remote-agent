@@ -36,7 +36,7 @@ struct ComposerAttachments {
     }
 
     init(sessionID: String, header: PBSessionHeaderView, remote: Remote) {
-        let online = header.computerOnline && !header.computerUnlinked && header.connState == .online
+        let online = header.computerOnline && !header.computerUnlinked && header.connState == .connected
         self.init(
             remote: remote,
             key: ImageCenter.sessionKey(sessionID),

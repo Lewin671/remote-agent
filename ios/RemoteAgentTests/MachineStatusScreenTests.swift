@@ -72,7 +72,11 @@ import Testing
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-locale-\(UUID())")!)
         let model = AppModel(settings: settings)
         let remote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        let initial: RemoteState = {
+            var s = Demo.state(.everyday)
+            s.machines["mac"]?.meta?.capabilities.usageStats = true
+            return s
+        }()
         model.setForeground(true)
         model.showDemo(account: Demo.account, remote: remote, initial: initial) {
             await remote.showForTest(state: initial)
@@ -84,7 +88,7 @@ import Testing
             try? await Task.sleep(for: .milliseconds(20))
         }
         await host.openUsageScreen(machineID: "mac")
-        for _ in 0..<200 where !(model.context?.core.usageView.hero.hasTotalTokensText ?? false) {
+        for _ in 0..<200 where (model.context?.core.usageView.hero.totalTokens ?? 0) == 0 {
             try? await Task.sleep(for: .milliseconds(20))
         }
         await host.setUILocale("zh-CN")

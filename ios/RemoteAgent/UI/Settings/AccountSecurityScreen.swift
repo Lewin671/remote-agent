@@ -77,7 +77,7 @@ struct AccountSecurityDetails: View {
             if sec.isManager {
                 GRow(L10n.securityRecoveryCode(), chevron: true) { nav.open(.recoveryCode) }
                 GRow(L10n.securityTransferManagement(), chevron: true) { nav.open(.handoff) }
-            } else if settings.hasAccount && !sec.unlinked {
+            } else if settings.hasAccount_p && !sec.unlinked {
                 GRow(L10n.securityTakeOverManagement(), chevron: true) { nav.open(.handoff) }
             }
         }

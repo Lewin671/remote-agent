@@ -505,7 +505,7 @@ struct ChatPane: View {
                     let caps = AttachmentCapabilities(
                         header.capabilities,
                         hasMachine: !header.machineID.isEmpty,
-                        online: header.computerOnline && !header.computerUnlinked && header.connState == .online
+                        online: header.computerOnline && !header.computerUnlinked && header.connState == .connected
                     )
                     if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
                         SessionImages.putBack(o, session: sessionID, caps: caps, remote: context.remote, store: context.sessionStore)

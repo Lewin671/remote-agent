@@ -333,7 +333,7 @@ struct ScheduleRecoveryNotice: View {
             Text(text).font(.subheadline).ink(DS.orangeInk).frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             if let recovery { Btn(recovery, kind: .primary, enabled: enabled, action: action) }
-            if let enableCli { Btn(enableCli, kind: recovery == nil ? .primary : .plain, action: onEnableCli) }
+            if let enableCli { Btn(enableCli, kind: recovery == nil ? .primary : .secondary, action: onEnableCli) }
         }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
     }
 }

@@ -254,38 +254,7 @@ struct SessionModelSheet: View {
                 if !modelRunning && !modelError.isEmpty { Hint(L10n.modesSwitchFailed(reason: modelError), color: DS.red) }
             }
             if actions.hasUsageEntry && actions.usageEntry.visible {
-                let entry = actions.usageEntry
-                FieldLabel(L10n.usageTitle())
-                if entry.loading {
-                    LoadingRow(inset: 0)
-                } else {
-                    let valueStr: String = {
-                        if entry.hasData && entry.hasTotalTokensText {
-                            let s = entry.totalTokensText.rendered()
-                            if !s.isEmpty { return s }
-                        }
-                        return entry.hasValueText ? entry.valueText.rendered() : ""
-                    }()
-                    let descStr: String = {
-                        if entry.hasFormattedSubtitle {
-                            let s = entry.formattedSubtitle.rendered()
-                            if !s.isEmpty { return s }
-                        }
-                        return entry.hasSubtitle ? entry.subtitle.rendered() : ""
-                    }()
-                    ListItem(
-                        L10n.usageTitle(),
-                        desc: descStr,
-                        enabled: entry.supported && onUsage != nil,
-                        small: valueStr.isEmpty ? nil : valueStr,
-                        last: true,
-                        onTap: entry.supported ? onUsage : nil
-                    )
-                    if entry.hasFootnote {
-                        let foot = entry.footnote.rendered()
-                        if !foot.isEmpty { Hint(foot) }
-                    }
-                }
+                usageEntrySection(actions.usageEntry)
             }
         }
         .onChange(of: actions.modelChoices, initial: true) { _, choices in
@@ -311,6 +280,40 @@ struct SessionModelSheet: View {
         }
         .task {
             await context.coreHost.openSession(sessionID, refreshModels: true)
+        }
+    }
+
+    @ViewBuilder private func usageEntrySection(_ entry: PBSessionUsageEntryView) -> some View {
+        FieldLabel(L10n.usageTitle())
+        if entry.loading {
+            LoadingRow(inset: 0)
+        } else {
+            let valueStr: String = {
+                if entry.hasData_p && entry.hasTotalTokensText {
+                    let s = entry.totalTokensText.rendered()
+                    if !s.isEmpty { return s }
+                }
+                return entry.hasValueText ? entry.valueText.rendered() : ""
+            }()
+            let descStr: String = {
+                if entry.hasFormattedSubtitle {
+                    let s = entry.formattedSubtitle.rendered()
+                    if !s.isEmpty { return s }
+                }
+                return entry.hasSubtitle ? entry.subtitle.rendered() : ""
+            }()
+            ListItem(
+                L10n.usageTitle(),
+                desc: descStr,
+                enabled: entry.supported && onUsage != nil,
+                small: valueStr.isEmpty ? nil : valueStr,
+                last: true,
+                onTap: entry.supported ? onUsage : nil
+            )
+            if entry.hasFootnote {
+                let foot = entry.footnote.rendered()
+                if !foot.isEmpty { Hint(foot) }
+            }
         }
     }
 

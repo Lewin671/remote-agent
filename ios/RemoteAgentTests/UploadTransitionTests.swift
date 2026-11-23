@@ -32,21 +32,19 @@ private struct TransitionChannel: UploadChannel {
     private func remote() throws -> Remote {
         try Remote(account: Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff"), http: AppModel.http)
     }
-    private func machine(_ id: String) -> MachineView {
-        MachineView(id: id, online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
-    }
     @Test func offlineAToBToANeverRestoresOldReadiness() async throws {
         let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
         let remote = try remote()
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), key = "session:transition"
         let draft = center.draft(key); await center.restoredDraft(key); draft.append([p])
-        center.aim(key, at: "a", blocked: false, machine: machine("a"))
+        let caps = AttachmentCapabilities(supportsFiles: true)
+        center.aim(key, at: "a", blocked: false, caps: caps)
         #expect(p.readyFor("a"))
         let token = p.generation
-        center.aim(key, at: "b", blocked: true, machine: machine("b"))
+        center.aim(key, at: "b", blocked: true, caps: caps)
         #expect(p.generation > token && p.imageId == nil && p.machineId == nil && p.expiresMs == 0)
-        center.aim(key, at: "a", blocked: true, machine: machine("a"))
+        center.aim(key, at: "a", blocked: true, caps: caps)
         #expect(!draft.ready(machineId: "a") && draft.fileIds(machineId: "a").isEmpty)
         #expect(p.imageId == nil && p.machineId == nil && p.expiresMs == 0)
     }
