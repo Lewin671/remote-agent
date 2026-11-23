@@ -205,14 +205,14 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			out.Truncated = a.Truncated
 			var bodyStr string
 			if a.Command != "" {
-				out.Title = text.Msg(text.KeyListStateAndroidRequestCommand)
+				out.Title = text.Msg(text.KeyListStateRequestCommandPlain)
 				bodyStr = strings.TrimSpace(a.Command)
 			} else {
 				tool := strings.TrimSpace(a.ToolName)
 				if tool != "" {
-					out.Title = text.JoinLiteral(" · ", text.Msg(text.KeyListStateAndroidRequestPermission), text.Plain(tool))
+					out.Title = text.JoinLiteral(" · ", text.Msg(text.KeyListStateRequestPermissionPlain), text.Plain(tool))
 				} else {
-					out.Title = text.Msg(text.KeyListStateAndroidRequestPermission)
+					out.Title = text.Msg(text.KeyListStateRequestPermissionPlain)
 				}
 				switch {
 				case a.Description != "":

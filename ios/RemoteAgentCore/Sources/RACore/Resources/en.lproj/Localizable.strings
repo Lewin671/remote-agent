@@ -643,6 +643,8 @@
 "new_session_unexpected_reply" = "Unexpected response";
 "new_session_unknown_start_retry" = "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.";
 "new_session_use_machine" = "Use %1$@";
+"notifications_android_a_conversation_turn_finished" = "A conversation turn finished";
+"notifications_android_a_session_needs_your_attention" = "A session needs your attention";
 "notifications_scheduled_tasks_have_new_results" = "Scheduled tasks have new results";
 "notifications_the_browser_did_not_allow_notifications" = "The browser did not allow notifications";
 "projects_add_again" = "Add again";

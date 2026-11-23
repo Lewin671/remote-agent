@@ -572,6 +572,8 @@ export interface MessageArgs {
   "new_session.unexpected_reply": { [name: string]: never };
   "new_session.unknown_start_retry": { [name: string]: never };
   "new_session.use_machine": { name: string };
+  "notifications.android_a_conversation_turn_finished": { [name: string]: never };
+  "notifications.android_a_session_needs_your_attention": { [name: string]: never };
   "notifications.scheduled_tasks_have_new_results": { [name: string]: never };
   "notifications.the_browser_did_not_allow_notifications": { [name: string]: never };
   "projects.add_again": { [name: string]: never };
@@ -2542,6 +2544,8 @@ export const messages = {
     "new_session.unexpected_reply": "Unexpected response",
     "new_session.unknown_start_retry": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
     "new_session.use_machine": "Use {name}",
+    "notifications.android_a_conversation_turn_finished": "A conversation turn finished",
+    "notifications.android_a_session_needs_your_attention": "A session needs your attention",
     "notifications.scheduled_tasks_have_new_results": "Scheduled tasks have new results",
     "notifications.the_browser_did_not_allow_notifications": "The browser did not allow notifications",
     "projects.add_again": "Add again",
@@ -4855,6 +4859,8 @@ export const messages = {
     "new_session.unexpected_reply": "意外的回复",
     "new_session.unknown_start_retry": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
     "new_session.use_machine": "改用 {name}",
+    "notifications.android_a_conversation_turn_finished": "一轮对话结束了",
+    "notifications.android_a_session_needs_your_attention": "有会话在等你处理",
     "notifications.scheduled_tasks_have_new_results": "定时任务有新结果",
     "notifications.the_browser_did_not_allow_notifications": "浏览器没有允许通知",
     "projects.add_again": "重新添加",

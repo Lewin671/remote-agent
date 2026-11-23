@@ -290,14 +290,16 @@ func buildSessionHeader(
 		if out.LookupFailed {
 			out.LookupErrorText = in.LookupErrorText
 		}
-		out.Missing = (in.SessionsListed && !in.LookingUp) || (out.LookupFailed && in.LookupErrorText == nil)
-		switch {
-		case out.LookupFailed && in.LookupErrorText != nil:
+		if out.LookupFailed && in.LookupErrorText != nil {
+			out.Missing = false
 			out.StatusText = in.LookupErrorText
-		case out.Missing:
-			out.MissingText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
-		default:
-			out.StatusText = text.Msg(text.KeyCommonLoading)
+		} else {
+			out.Missing = (in.SessionsListed && !in.LookingUp) || out.LookupFailed
+			if out.Missing {
+				out.MissingText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
+			} else {
+				out.StatusText = text.Msg(text.KeyCommonLoading)
+			}
 		}
 		out.Title = text.Msg(text.KeySessionTitle)
 		out.Capabilities = &corev1.SessionCapabilitiesView{}

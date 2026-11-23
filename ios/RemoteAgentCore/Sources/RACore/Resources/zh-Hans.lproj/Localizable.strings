@@ -643,6 +643,8 @@
 "new_session_unexpected_reply" = "意外的回复";
 "new_session_unknown_start_retry" = "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次";
 "new_session_use_machine" = "改用 %1$@";
+"notifications_android_a_conversation_turn_finished" = "一轮对话结束了";
+"notifications_android_a_session_needs_your_attention" = "有会话在等你处理";
 "notifications_scheduled_tasks_have_new_results" = "定时任务有新结果";
 "notifications_the_browser_did_not_allow_notifications" = "浏览器没有允许通知";
 "projects_add_again" = "重新添加";

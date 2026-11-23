@@ -6,7 +6,9 @@
     "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -20,7 +22,9 @@
     "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
-      "android"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

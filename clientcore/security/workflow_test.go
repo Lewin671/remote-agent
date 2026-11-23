@@ -1657,7 +1657,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		},
 	}
 	aOK := buildNotifyDisplay(nil, devicesec.Header{Session: "s1"}, appNC)
-	if !aOK.Valid || aOK.ApprovalId != "ap-1" || !aOK.Truncated || aOK.Title.GetKey() != text.KeyListStateAndroidRequestCommand || aOK.BigText.GetLiteral() != "Run Go tests\ngo test ./..." {
+	if !aOK.Valid || aOK.ApprovalId != "ap-1" || !aOK.Truncated || aOK.Title.GetKey() != text.KeyListStateRequestCommandPlain || aOK.BigText.GetLiteral() != "Run Go tests\ngo test ./..." {
 		t.Fatalf("expected valid approval display, got %+v", aOK)
 	}
 }
