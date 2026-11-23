@@ -17,9 +17,9 @@ import androidx.test.core.app.ApplicationProvider
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
-import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import io.github.lewin671.remoteagent.data.SharedTextMaxBytes
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -45,6 +45,10 @@ class SharedTextViewerUiTest {
         manager = SharedFileManager(context) { null }
     }
 
+    @After fun teardown() {
+        manager.close()
+    }
+
     private fun mountHost() {
         ui.setContent {
             RaTheme(LightPalette) {
@@ -62,7 +66,7 @@ class SharedTextViewerUiTest {
             .setDisplayName("notes.md")
             .setSizeBytes(bytes.size.toLong())
             .build()
-        val local = manager.store.localFileFor("text", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
+        val local = manager.seedCommittedFileForTest("text", file.fileId, file.displayName, bytes)
         ui.runOnIdle { openSharedFile(context, file, local, host) }
         ui.waitUntil(5_000) {
             ui.mainClock.advanceTimeByFrame()

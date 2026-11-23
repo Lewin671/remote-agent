@@ -25,12 +25,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.lewin671.remoteagent.core.SharedFileTransferState
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
 import io.github.lewin671.remoteagent.core.proto.SharedFileKind
 import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
-import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import java.io.File
 import org.junit.After
@@ -47,7 +45,10 @@ class SharedTextViewerOnDeviceTest {
     private var dark by mutableStateOf(false)
     private val chatScroll = ScrollState(240)
 
-    @After fun cleanup() { manager.clearAll() }
+    @After fun cleanup() {
+        kotlinx.coroutines.runBlocking { manager.clearAll() }
+        manager.close()
+    }
 
     private fun show(name: String, content: String) {
         val file = SessionSharedFileItem.newBuilder()
@@ -59,8 +60,7 @@ class SharedTextViewerOnDeviceTest {
             .setPrimaryAction(SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN)
             .setPrimaryEnabled(true)
             .build()
-        val local = manager.store.localFileFor("text-preview", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeText(content) }
-        manager.store.setStateForTest("text-preview", file.fileId, SharedFileTransferState.Downloaded(local))
+        manager.seedCommittedFileForTest("text-preview", file.fileId, file.displayName, content.toByteArray())
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
                 SharedFileHost("text-preview", mapOf(file.fileId to file), Modifier.fillMaxSize(), manager) {

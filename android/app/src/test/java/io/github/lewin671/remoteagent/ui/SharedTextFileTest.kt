@@ -12,6 +12,7 @@ import io.github.lewin671.remoteagent.data.isSharedMarkdownFile
 import io.github.lewin671.remoteagent.data.readSharedTextFile
 import java.io.File
 import java.util.Locale
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -37,6 +38,10 @@ class SharedTextFileTest {
             .get(null) as MutableMap<*, *>).clear()
         manager = SharedFileManager(context) { null }
         local = File(manager.rootDir, "text-test/document").apply { parentFile!!.mkdirs(); writeText("hello") }
+    }
+
+    @After fun teardown() {
+        manager.close()
     }
 
     @Test fun routesEverySpecifiedExtensionCaseInsensitively() {

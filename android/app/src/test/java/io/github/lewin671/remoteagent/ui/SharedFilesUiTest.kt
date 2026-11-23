@@ -53,7 +53,6 @@ import io.github.lewin671.remoteagent.RaAppTestRule
 import io.github.lewin671.remoteagent.core.Account
 import io.github.lewin671.remoteagent.core.Api
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.SharedFileTransferState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionAgentMessageItem
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
@@ -62,6 +61,7 @@ import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolCallItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
 import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
+import io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect
 import io.github.lewin671.remoteagent.core.proto.SharedFileKind
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
 import io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView
@@ -203,17 +203,64 @@ class SharedFilesUiTest {
     }
 
     @Test
-    fun autoOpenBelongsToThePageThatStartedTheDownload() {
-        val host = SharedFileHostState(manager, "s")
-        val file = sharedFileItem("f", "cover.png", 10)
-        host.startDownload(file)
-        assertTrue(host.consumeAutoOpen("f"))
-        assertEquals(false, host.consumeAutoOpen("f"))
-        host.startDownload(file)
-        host.leavePage()
-        assertEquals(false, host.consumeAutoOpen("f"))
-        val returned = SharedFileHostState(manager, "s")
-        assertEquals(false, returned.consumeAutoOpen("f"))
+    fun completedEffectAutoOpensOnlyWhenAutoOpenIsTrueAndNotDeliverOnly() {
+        val file = sharedFileItem("f-ao", "cover.png", 10, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
+        manager.seedCommittedFileForTest("s-ao", "f-ao", "cover.png", ByteArray(10))
+        lateinit var host: SharedFileHostState
+        render {
+            SharedFileHost("s-ao", mapOf("f-ao" to file), manager = manager) {
+                host = LocalSharedFileHost.current!!
+            }
+        }
+
+        // auto_open = false: must not open viewer.
+        manager.emitCompletedForTest(
+            SharedFileCompletedEffect.newBuilder()
+                .setSessionId("s-ao")
+                .setFileId("f-ao")
+                .setDisplayName("cover.png")
+                .setKind(SharedFileKind.SHARED_FILE_KIND_IMAGE)
+                .setSizeBytes(10)
+                .setAutoOpen(false)
+                .setDeliverOnly(false)
+                .build(),
+        )
+        ui.waitForIdle()
+        assertNull(host.imagePreview)
+
+        // deliver_only = true: must not open viewer even if auto_open were set.
+        manager.emitCompletedForTest(
+            SharedFileCompletedEffect.newBuilder()
+                .setSessionId("s-ao")
+                .setFileId("f-ao")
+                .setDisplayName("cover.png")
+                .setKind(SharedFileKind.SHARED_FILE_KIND_IMAGE)
+                .setSizeBytes(10)
+                .setAutoOpen(true)
+                .setDeliverOnly(true)
+                .build(),
+        )
+        ui.waitForIdle()
+        assertNull(host.imagePreview)
+
+        // auto_open = true and deliver_only = false: opens image viewer.
+        manager.emitCompletedForTest(
+            SharedFileCompletedEffect.newBuilder()
+                .setSessionId("s-ao")
+                .setFileId("f-ao")
+                .setDisplayName("cover.png")
+                .setKind(SharedFileKind.SHARED_FILE_KIND_IMAGE)
+                .setSizeBytes(10)
+                .setAutoOpen(true)
+                .setDeliverOnly(false)
+                .build(),
+        )
+        ui.waitUntil(5_000) {
+            ui.mainClock.advanceTimeByFrame()
+            ui.waitForIdle()
+            host.imagePreview != null
+        }
+        assertEquals("cover.png", host.imagePreview?.item?.displayName)
     }
 
     @Before
@@ -222,11 +269,13 @@ class SharedFilesUiTest {
             .get(null) as MutableMap<*, *>).clear()
         tempDir = Files.createTempDirectory("sf-ui-test").toFile()
         manager = SharedFileManager(context) { remote }
+        manager.attachRemote(remote)
     }
 
     @After
     fun teardown() {
-        manager.clearAll()
+        kotlinx.coroutines.runBlocking { manager.clearAll() }
+        manager.close()
         remote.close()
         tempDir.deleteRecursively()
     }
@@ -351,11 +400,8 @@ class SharedFilesUiTest {
             subtitle = "PDF · 2.1 MB",
             displayPath = "~/Docs/report.pdf",
         )
-        val localVideo = File(tempDir, "daocheng-final.mp4").apply { writeBytes(ByteArray(100)) }
-        val localPdf = File(tempDir, "report.pdf").apply { writeBytes(ByteArray(100)) }
-
-        manager.store.setStateForTest("s1", "v1", SharedFileTransferState.Downloaded(localVideo, durationMs = 102_000L))
-        manager.store.setStateForTest("s1", "p1", SharedFileTransferState.Downloaded(localPdf))
+        manager.seedCommittedFileForTest("s1", "v1", "daocheng-final.mp4", ByteArray(100), durationMs = 102_000L)
+        manager.seedCommittedFileForTest("s1", "p1", "report.pdf", ByteArray(100))
 
         render {
             SharedFileHost("s1", mapOf("v1" to videoFile, "p1" to pdfFile), manager = manager) {
@@ -371,8 +417,12 @@ class SharedFilesUiTest {
         ui.onNodeWithText("删除本机副本").assertExists()
 
         ui.onNodeWithText("删除本机副本").performClick()
-        ui.waitForIdle()
-        assertEquals(SharedFileTransferState.Idle, manager.store.states.value["s1:v1"])
+        ui.waitUntil(5_000) {
+            ui.mainClock.advanceTimeByFrame()
+            ui.waitForIdle()
+            manager.localFileIfDownloaded("s1", "v1", "daocheng-final.mp4") == null
+        }
+        assertNull(manager.localFileIfDownloaded("s1", "v1", "daocheng-final.mp4"))
 
         render {
             SharedFileHost("s1", mapOf("p1" to pdfFile), manager = manager) {
@@ -523,10 +573,10 @@ class SharedFilesUiTest {
         val fImg = sharedFileItem("m-img", "cover.png", 1_800_000L, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED, subtitle = "图片 · 1.8 MB")
         val fVid = sharedFileItem("m-vid", "daocheng-final-vertical-1080-v3.mp4", 61_700_000L, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADING, subtitle = "12.0 / 61.7 MB", progress = 0.2)
         val fZip = sharedFileItem("m-zip", "project.zip", 88_400_000L, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_AVAILABLE, subtitle = "压缩包 · 88.4 MB")
-        val imgFile = File(tempDir, "cover-$tag.png").apply {
-            outputStream().use { createMockThumbnailBitmap(warm = false).compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
-        manager.store.setStateForTest("s-multi", fImg.fileId, SharedFileTransferState.Downloaded(imgFile))
+        val imgBytes = java.io.ByteArrayOutputStream().also {
+            createMockThumbnailBitmap(warm = false).compress(Bitmap.CompressFormat.PNG, 100, it)
+        }.toByteArray()
+        val imgFile = manager.seedCommittedFileForTest("s-multi", fImg.fileId, fImg.displayName, imgBytes)
 
         render(theme) {
             val px = with(LocalDensity.current) { SharedTileSize.roundToPx() }
@@ -567,8 +617,7 @@ class SharedFilesUiTest {
             status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED,
             subtitle = "1:42 · 24.3 MB",
         )
-        val doneFile = File(tempDir, "$id-$tag.mp4").apply { writeBytes(ByteArray(10)) }
-        manager.store.setStateForTest(session, sf.fileId, SharedFileTransferState.Downloaded(doneFile, durationMs = 102_000L))
+        val doneFile = manager.seedCommittedFileForTest(session, sf.fileId, sf.displayName, ByteArray(10), durationMs = 102_000L)
 
         render(theme) {
             val px = with(LocalDensity.current) { SharedTileSize.roundToPx() }
@@ -650,11 +699,7 @@ class SharedFilesUiTest {
 
     private fun downloadedFile(session: String, id: String, name: String, durationMs: Long? = 102_000L): SessionSharedFileItem {
         val sf = sharedFileItem(id, name, 24_300_000L, status = SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED, subtitle = "1:42 · 24.3 MB")
-        val local = File(manager.rootDir, "$session/$id/$name").apply {
-            parentFile!!.mkdirs()
-            writeBytes(ByteArray(16))
-        }
-        manager.store.setStateForTest(session, id, SharedFileTransferState.Downloaded(local, durationMs))
+        manager.seedCommittedFileForTest(session, id, name, ByteArray(16), durationMs)
         return sf
     }
 

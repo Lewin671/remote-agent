@@ -270,7 +270,7 @@ class RaApp : Application() {
         runCatching { eventAccess.clear() }
         runCatching { imageEnvelopes.clear() }
         runCatching { pendingStore.clearAll() }
-        runCatching { sharedFiles.clearAll() }
+        runCatching { sharedFiles.clearAllOnDiskAsync() }
         runCatching { directPrefs.clear() }
         runCatching { io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp) }
         runCatching { getSharedPreferences("schedule-seen", MODE_PRIVATE).edit().clear().commit() }
@@ -393,7 +393,7 @@ class RaApp : Application() {
                     withContext(Dispatchers.IO) {
                         localFiles.clearFolder("session:$sid")
                         io.github.lewin671.remoteagent.ui.OutgoingRecords(localFiles).removeSession(sid)
-                        sharedFiles.removeSession(sid)
+                        sharedFiles.forgetSession(sid)
                     }
                 },
                 monotonic = android.os.SystemClock::elapsedRealtime,
@@ -545,6 +545,7 @@ class RaApp : Application() {
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
                 getSystemService(NotificationManager::class.java).cancelAll()
                 leaving?.let { Push.unregister(it) }
+                leaving?.clearAllSharedFiles()
                 leaving?.close()
                 try {
                     withContext(Dispatchers.IO) {
@@ -554,7 +555,7 @@ class RaApp : Application() {
                             { eventAccess.clear() },
                             { imageEnvelopes.clear() },
                             { pendingStore.clearAll() },
-                            { sharedFiles.clearAll() },
+                            { sharedFiles.clearAllOnDisk() },
                             { contentResolver.persistedUriPermissions.forEach { permission ->
                                 runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
                             } },

@@ -29,12 +29,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
-import io.github.lewin671.remoteagent.core.SharedFileTransferState
 import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
 import io.github.lewin671.remoteagent.core.proto.SharedFileKind
 import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
-import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
 import java.io.File
 import org.junit.After
@@ -54,7 +52,10 @@ class SharedPdfViewerOnDeviceTest {
     private lateinit var host: SharedFileHostState
     private val output = File(context.getExternalFilesDir(null), "pdf-preview-shots").apply { mkdirs() }
 
-    @After fun cleanup() { manager.clearAll() }
+    @After fun cleanup() {
+        kotlinx.coroutines.runBlocking { manager.clearAll() }
+        manager.close()
+    }
 
     private fun show(name: String) {
         val bytes = instrumentation.context.assets.open(name).use { it.readBytes() }
@@ -67,8 +68,7 @@ class SharedPdfViewerOnDeviceTest {
             .setPrimaryAction(SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN)
             .setPrimaryEnabled(true)
             .build()
-        local = manager.store.localFileFor("pdf-preview", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
-        manager.store.setStateForTest("pdf-preview", file.fileId, SharedFileTransferState.Downloaded(local))
+        local = manager.seedCommittedFileForTest("pdf-preview", file.fileId, file.displayName, bytes)
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
                 SharedFileHost("pdf-preview", mapOf(file.fileId to file), Modifier.fillMaxSize(), manager) {

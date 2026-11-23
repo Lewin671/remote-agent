@@ -38,7 +38,7 @@ class SharedFileManagerTest {
             assertArrayEquals(source.readBytes(), output.readBytes())
             assertEquals(0, provider.published?.getAsInteger(MediaStore.MediaColumns.IS_PENDING))
         } finally {
-            manager.store.close()
+            manager.close()
             dir.deleteRecursively()
         }
     }
