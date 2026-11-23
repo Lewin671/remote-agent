@@ -807,12 +807,7 @@ private struct HeroContent: View {
 
     private var figure: (value: String, number: Double, unit: String) {
         if chart.hasScrub_p {
-            let idx = Int(chart.scrubIndex)
-            let val = chart.points.indices.contains(idx) ? chart.points[idx].value : (metric == .cpu ? cpu.value : mem.value)
-            if metric == .cpu {
-                return ("\(Int(val.rounded()))", val, "%")
-            }
-            return (chart.scrubValue.rendered().or("—"), val, "")
+            return (chart.scrubValueText.or("—"), chart.scrubNumericValue, chart.scrubUnit)
         }
         if metric == .cpu {
             return (cpu.valueText.or("—"), cpu.value, cpu.unit)

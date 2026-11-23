@@ -123,8 +123,7 @@ struct SessionScreen: View {
             } else {
                 SessionAbsent(header: header, online: state.conn == .online) {
                     Task {
-                        await context.coreHost.fetchSession(id)
-                        await context.coreHost.openSession(id, refreshModels: false)
+                        await context.coreHost.retryLoadSession(id)
                     }
                 }
                 .navBar(L10n.homeSessionsTab())

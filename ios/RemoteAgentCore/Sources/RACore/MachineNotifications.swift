@@ -17,8 +17,8 @@ public func receiveMachineDiskNotification(
     notifyRecord: Data,
     machineID: String,
     tag: String,
-    showContent: Bool = true,
-    locked: Bool = false,
+    showContent: Bool,
+    locked: Bool,
     nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
     locale: String = MessageLocale.current
 ) throws -> MachineDiskNotice? {
@@ -34,7 +34,7 @@ public func receiveMachineDiskNotification(
     }
     let detailed = !locked && (showContent || display.showDetailedByDefault)
     let title = detailed ? display.title.rendered(locale: locale) : ""
-    let body = detailed ? display.body.rendered(locale: locale) : display.genericBody.rendered(locale: locale)
+    let body = detailed ? display.body.rendered(locale: locale) : display.fullGenericBody.rendered(locale: locale)
     return MachineDiskNotice(machineID: display.machineID, tag: display.tag, title: title, body: body)
 }
 extension Remote {

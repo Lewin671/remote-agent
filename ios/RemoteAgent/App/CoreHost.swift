@@ -425,7 +425,7 @@ actor CoreHost: SyncEngine {
         hooksInstalled = true
         await executor.installCoreHooks(Remote.CoreHooks(
             onFetchSession: { [weak self] sid in
-                await self?.dispatch { $0.fetchSession.sessionID = sid }
+                await self?.dispatch { $0.sessionRetryLoad.sessionID = sid }
             },
             onRefresh: { [weak self] in
                 await self?.reconnectNowAsync()
@@ -1329,10 +1329,10 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func fetchSession(_ sid: String) async {
+    func retryLoadSession(_ sid: String) async {
         guard !closed, !sid.isEmpty else { return }
         await dispatch {
-            $0.fetchSession.sessionID = sid
+            $0.sessionRetryLoad.sessionID = sid
         }
     }
 

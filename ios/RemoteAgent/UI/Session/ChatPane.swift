@@ -585,7 +585,7 @@ struct ChatPane: View {
             let failure = tl.hasError ? tl.error.rendered() : tl.fetchError.rendered()
             items.append(ChatCollectionItem("chat-fetch-error") {
                 Banner(L10n.sessionIosHistoryFailed(reason: failure), tone: .error, action: L10n.commonRetry()) {
-                    Task { await context.coreHost.loadEarlierSessionHistory(sessionID) }
+                    Task { await context.coreHost.retryLoadSession(sessionID) }
                 }
                 .padding(.horizontal, chatMargin).padding(.vertical, 8)
             })
