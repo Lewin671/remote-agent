@@ -23,13 +23,6 @@ const (
 	EtaDelayMs int64 = 3_000
 )
 
-// BlockPlan lists every block offset required to fetch a file and the unpadded payload length
-// of its final block.
-type BlockPlan struct {
-	Offsets            []int64
-	LastBlockFileBytes int32
-}
-
 // PartialMeta holds the persisted metadata of an incomplete download on disk / OPFS.
 type PartialMeta struct {
 	ExpectedSizeBytes int64
@@ -60,31 +53,6 @@ func EffectiveStorageFullKind(configured corev1.SharedFileFailureKind) corev1.Sh
 // Shared-file downloads fail closed (CHECKSUM_MISMATCH) when SHA-256 is absent or malformed.
 func HasValidSHA256(hash []byte) bool {
 	return len(hash) == Sha256Len
-}
-
-// PlanBlocks computes the exact block offsets and final-block unpadded length matching
-// testdata/shared-files/blocks.json. Empty files still fetch one full block at offset 0.
-func PlanBlocks(sizeBytes int64, chunkBytes int32) (BlockPlan, bool) {
-	if sizeBytes < 0 || chunkBytes <= 0 {
-		return BlockPlan{}, false
-	}
-	if sizeBytes == 0 {
-		return BlockPlan{Offsets: []int64{0}, LastBlockFileBytes: 0}, true
-	}
-	step := int64(chunkBytes)
-	count := (sizeBytes + step - 1) / step
-	offsets := make([]int64, 0, count)
-	for off := int64(0); off < sizeBytes; off += step {
-		offsets = append(offsets, off)
-	}
-	rem := int32(sizeBytes % step)
-	if rem == 0 {
-		rem = chunkBytes
-	}
-	return BlockPlan{
-		Offsets:            offsets,
-		LastBlockFileBytes: rem,
-	}, true
 }
 
 // ValidateChunk verifies a GetSharedFileChunkResponse against protocol invariants:

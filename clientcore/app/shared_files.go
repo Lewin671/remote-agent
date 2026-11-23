@@ -43,10 +43,9 @@ const (
 )
 
 type sfEntry struct {
-	key        sfKey
-	status     corev1.SharedFileTransferStatus
-	phase      sfPhase
-	generation uint64
+	key    sfKey
+	status corev1.SharedFileTransferStatus
+	phase  sfPhase
 
 	// Authoritative file metadata snapshot captured at download start (survives history buffer eviction).
 	machineID        string
@@ -75,7 +74,6 @@ type sfEntry struct {
 	reconnectNotBeforeMs    int64
 	autoOpen                bool
 	deliverOnly             bool
-	zeroByteDone            bool
 
 	// In-flight correlation IDs.
 	activeReqID            string
@@ -536,7 +534,6 @@ func (c *Core) handleSharedFileStartDownload(ctx *sync.StepContext, act *corev1.
 		}
 	}
 
-	entry.generation++
 	mgr.markScanMutated(key)
 	entry.machineID = sess.MachineID
 	entry.displayName = displayName
@@ -556,7 +553,6 @@ func (c *Core) handleSharedFileStartDownload(ctx *sync.StepContext, act *corev1.
 	entry.waitingReconnect = false
 	entry.reconnectDeadlineMonoMs = 0
 	entry.reconnectNotBeforeMs = 0
-	entry.zeroByteDone = false
 	entry.failureKind = corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_UNSPECIFIED
 	entry.failureDetail = ""
 	entry.failureText = nil
@@ -822,7 +818,6 @@ func (c *Core) handleSharedFileWriteChunkResult(ctx *sync.StepContext, ev *corev
 	entry.committedOffset = entry.pendingCommittedOffset
 	entry.downloadedBytes = min(entry.committedOffset, entry.sizeBytes)
 	entry.sessionBytes += entry.pendingValidLen
-	entry.zeroByteDone = true
 	entry.waitingReconnect = false
 	if entry.sizeBytes > 0 && entry.committedOffset > 0 {
 		entry.hasPartial = true
@@ -1044,7 +1039,6 @@ func (c *Core) handleSharedFilePauseDownload(ctx *sync.StepContext, act *corev1.
 func (c *Core) pauseEntry(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, true)
 	mgr.markScanMutated(entry.key)
-	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED
 	entry.phase = sfPhaseIdle
 	entry.downloadedBytes = min(entry.committedOffset, entry.sizeBytes)
@@ -1435,7 +1429,6 @@ func (c *Core) cancelActiveTransferWork(ctx *sync.StepContext, mgr *sfManager, e
 func (c *Core) markEntryCleanedUp(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
 	mgr.markScanMutated(entry.key)
-	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP
 	entry.phase = sfPhaseIdle
 	entry.downloadedBytes = 0
@@ -1455,7 +1448,6 @@ func (c *Core) markEntryCleanedUp(ctx *sync.StepContext, mgr *sfManager, entry *
 func (c *Core) failEntryChecksum(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
 	mgr.markScanMutated(entry.key)
-	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED
 	entry.phase = sfPhaseIdle
 	entry.downloadedBytes = 0
@@ -1482,7 +1474,6 @@ func (c *Core) failEntryPreservingPartial(
 ) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
 	mgr.markScanMutated(entry.key)
-	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED
 	entry.phase = sfPhaseIdle
 	entry.downloadedBytes = min(entry.committedOffset, entry.sizeBytes)

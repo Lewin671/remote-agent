@@ -2,6 +2,8 @@ package sharedfiles
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -14,7 +16,7 @@ import (
 
 func uint64Ptr(v uint64) *uint64 { return &v }
 
-func TestPlanBlocksSharedVectors(t *testing.T) {
+func TestValidateChunkSharedVectors(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "shared-files", "blocks.json"))
 	if err != nil {
 		t.Fatalf("read blocks.json: %v", err)
@@ -27,6 +29,7 @@ func TestPlanBlocksSharedVectors(t *testing.T) {
 			Offsets            []string `json:"offsets"`
 			LastBlockFileBytes string   `json:"lastBlockFileBytes"`
 			InvalidOffsets     []string `json:"invalidOffsets"`
+			Sha256             string   `json:"sha256"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -38,6 +41,7 @@ func TestPlanBlocksSharedVectors(t *testing.T) {
 	}
 	blockBytes := int32(blockBytes64)
 
+	fullBlock := make([]byte, blockBytes)
 	for _, tc := range doc.Cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			sizeBytes, err := strconv.ParseInt(tc.SizeBytes, 10, 64)
@@ -48,24 +52,60 @@ func TestPlanBlocksSharedVectors(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parse lastBlockFileBytes: %v", err)
 			}
-			plan, ok := PlanBlocks(sizeBytes, blockBytes)
-			if !ok {
-				t.Fatalf("PlanBlocks(%d, %d) failed", sizeBytes, blockBytes)
+
+			// Drive the exact production offset progression via ValidateChunk.
+			var gotOffsets []int64
+			var lastBlockFileBytes int32
+			hasher := sha256.New()
+			offset := int64(0)
+			for {
+				gotOffsets = append(gotOffsets, offset)
+				if tc.Sha256 != "" {
+					clear(fullBlock)
+					validLen := sizeBytes - offset
+					if validLen > int64(blockBytes) {
+						validLen = int64(blockBytes)
+					}
+					for j := int64(0); j < validLen; j++ {
+						fullBlock[j] = byte((offset + j) % 251)
+					}
+				}
+				resp := &v1.GetSharedFileChunkResponse{
+					Data:       fullBlock,
+					TotalBytes: uint64Ptr(uint64(sizeBytes)),
+				}
+				validData, nextCommit, ok := ValidateChunk(resp, sizeBytes, blockBytes, offset)
+				if !ok {
+					t.Fatalf("ValidateChunk(size=%d, block=%d, off=%d) failed", sizeBytes, blockBytes, offset)
+				}
+				lastBlockFileBytes = int32(len(validData))
+				if tc.Sha256 != "" {
+					_, _ = hasher.Write(validData)
+				}
+				offset = nextCommit
+				if sizeBytes == 0 || offset >= sizeBytes {
+					break
+				}
 			}
-			if plan.LastBlockFileBytes != int32(wantLast) {
-				t.Fatalf("lastBlockFileBytes = %d, want %d", plan.LastBlockFileBytes, wantLast)
+
+			if lastBlockFileBytes != int32(wantLast) {
+				t.Fatalf("lastBlockFileBytes = %d, want %d", lastBlockFileBytes, wantLast)
 			}
-			if len(plan.Offsets) != len(tc.Offsets) {
-				t.Fatalf("len(offsets) = %d, want %d", len(plan.Offsets), len(tc.Offsets))
+			if len(gotOffsets) != len(tc.Offsets) {
+				t.Fatalf("len(offsets) = %d, want %d", len(gotOffsets), len(tc.Offsets))
 			}
 			for i, wantStr := range tc.Offsets {
 				wantOff, _ := strconv.ParseInt(wantStr, 10, 64)
-				if plan.Offsets[i] != wantOff {
-					t.Fatalf("offsets[%d] = %d, want %d", i, plan.Offsets[i], wantOff)
+				if gotOffsets[i] != wantOff {
+					t.Fatalf("offsets[%d] = %d, want %d", i, gotOffsets[i], wantOff)
+				}
+			}
+			if tc.Sha256 != "" {
+				if gotHash := hex.EncodeToString(hasher.Sum(nil)); gotHash != tc.Sha256 {
+					t.Fatalf("sha256 = %s, want %s", gotHash, tc.Sha256)
 				}
 			}
 			// Verify invalidOffsets are rejected by ValidateChunk.
-			fullBlock := make([]byte, blockBytes)
 			for _, badStr := range tc.InvalidOffsets {
 				badOff, _ := strconv.ParseInt(badStr, 10, 64)
 				resp := &v1.GetSharedFileChunkResponse{Data: fullBlock, TotalBytes: uint64Ptr(uint64(sizeBytes))}
