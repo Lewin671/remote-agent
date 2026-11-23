@@ -35,7 +35,7 @@ private struct TransitionChannel: UploadChannel {
     @Test func offlineAToBToANeverRestoresOldReadiness() async throws {
         let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
         let remote = try remote()
-        ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), key = "session:transition"
         let draft = center.draft(key); await center.restoredDraft(key); draft.append([p])
         let caps = AttachmentCapabilities(supportsFiles: true)
@@ -52,7 +52,7 @@ private struct TransitionChannel: UploadChannel {
     @Test func removalIsVisibleBeforeTheCancellationHandlerRuns() async throws {
         let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
         let remote = try remote()
-        ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), key = "session:remove"
         let draft = center.draft(key); await center.restoredDraft(key); draft.append([p])
         var installed = false, observed = false

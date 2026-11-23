@@ -10,9 +10,22 @@ import Testing
     }
     private func state(support: Bool) -> RemoteState {
         var state = RemoteState()
-        state.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = support })
+        state.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = support
+        })
         state.sessions["s"] = SessionView(id: "s", machineId: "m")
         return state
+    }
+    private func host(for remote: Remote, state: RemoteState) async throws -> CoreHost {
+        await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: remote.account, defaults: UserDefaults(suiteName: "ra-fc-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        await host.seedDemo(state: state)
+        return host
     }
     private func readyFile() -> PendingImage {
         let p = PendingImage(id: "picked-file", uri: nil)
@@ -21,8 +34,8 @@ import Testing
         return p
     }
     @Test func aReadyFileCannotLeaveTheComposerAfterCapabilityDisappears() async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: false))
-        ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        let remote = try remote(); let coreHost = try await host(for: remote, state: state(support: false)); defer { coreHost.close() }
+        ImageCenter.install(remote: remote, coreHost: coreHost, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), draft = center.draft("session:s"), p = readyFile()
         await center.restoredDraft(draft.key); draft.append([p])
         var failure: String?
@@ -37,8 +50,8 @@ import Testing
 
     @Test(arguments: [false, true])
     func restoringAnOutgoingChecksBeforeChangingTheDraftOrRemovingTheRecord(direct: Bool) async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: false))
-        let files = VolatileFiles(); ImageCenter.install(remote: remote, files: files); defer { ImageCenter.remove(remote) }
+        let remote = try remote(); let coreHost = try await host(for: remote, state: state(support: false)); defer { coreHost.close() }
+        let files = VolatileFiles(); ImageCenter.install(remote: remote, coreHost: coreHost, files: files); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), draft = center.draft("session:s"), store = SessionStore()
         await center.restoredDraft(draft.key); store.setDraft("s", "existing text")
         let p = readyFile(), o = Outgoing(requestId: "original-request", text: "restore this", fileIds: ["file-1"], images: [p])
@@ -58,8 +71,8 @@ import Testing
     }
 
     @Test func remoteHistoryRestoreRejectsBeforeAddingPlaceholdersOrText() async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: false))
-        ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        let remote = try remote(); let coreHost = try await host(for: remote, state: state(support: false)); defer { coreHost.close() }
+        ImageCenter.install(remote: remote, coreHost: coreHost, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), store = SessionStore(), draft = center.draft("session:s")
         await center.restoredDraft(draft.key); store.setDraft("s", "existing")
         #expect(await !center.putBack(sid: "s", text: "restore", files: [.with { $0.name = "report.csv"; $0.fileID = "file-1" }], store: store))
@@ -71,8 +84,8 @@ import Testing
     }
 
     @Test func capabilityIsRecheckedAfterSavingTheOutgoingRecord() async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: true))
-        ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        let remote = try remote(); let coreHost = try await host(for: remote, state: state(support: true)); defer { coreHost.close() }
+        ImageCenter.install(remote: remote, coreHost: coreHost, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), draft = center.draft("session:s")
         await center.restoredDraft(draft.key); draft.append([readyFile()])
         let gate = CapabilitySaveGate(); defer { gate.open.signal() }
@@ -82,7 +95,10 @@ import Testing
             gate.markEntered(); gate.open.wait()
         }, submit: { submitted.append($0) }) { if case .failure(let error) = $0 { failure = errorText(error) } }
         await eventually { gate.entered }
-        await remote.showForTest(state: state(support: false)); gate.open.signal()
+        let dropped = state(support: false)
+        await remote.showForTest(state: dropped)
+        await coreHost.seedDemo(state: dropped)
+        gate.open.signal()
         await eventually { failure != nil || !submitted.isEmpty }
         #expect(failure?.contains("更新") == true && submitted.isEmpty)
         #expect(draft.images.count == 1 && center.heldOutgoing("s", requestId: "original") == nil)

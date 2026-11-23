@@ -111,7 +111,7 @@ func requiresFileCapability(_ command: PBCommand) -> Bool {
 extension Remote {
     /// Current advertised metadata is the only capability authority. No metadata
     /// means no file permission; never downgrade a file request to text.
-    public nonisolated func requireFileCapability(machineId: String, hasFiles: Bool) throws {
+    nonisolated func requireFileCapability(machineId: String, hasFiles: Bool) throws {
         if hasFiles && capabilities(state.value.machines[machineId])?.fileUpload != true {
             throw CommandError("file_upload_unsupported", fileCapabilityUpdate)
         }

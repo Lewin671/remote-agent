@@ -28,7 +28,7 @@ import Testing
     private func center() throws -> (Remote, ImageCenter) {
         let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
-        ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles(), live: false)
         return (remote, ImageCenter.of(remote))
     }
 
@@ -137,7 +137,7 @@ import Testing
         defer { try? FileManager.default.removeItem(at: url) }
         let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
-        ImageCenter.install(remote: remote, files: VolatileFiles())
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles())
         defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote)
         let draft = center.draft("session:test")

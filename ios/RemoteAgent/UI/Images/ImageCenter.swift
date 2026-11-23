@@ -24,6 +24,13 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
+/// Core attachment evaluator injected into `ImageCenter` (`CoreHost` in production, test doubles in unit tests).
+protocol AttachmentEvaluating: Sendable {
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel
+}
+
+extension CoreHost: AttachmentEvaluating {}
+
 /// Sealed files that are neither sealed nor files: for sample data, where nothing is stored.
 final class VolatileFiles: RACore.SealedFiles, @unchecked Sendable {
     private let lock = NSLock()
@@ -88,7 +95,7 @@ final class ImageCenter {
     @ObservationIgnored private static var centers: [ObjectIdentifier: ImageCenter] = [:]
 
     /// Called when an account comes into use. `live` false is sample data: nothing is uploaded.
-    static func install(remote: Remote, coreHost: CoreHost? = nil, files: any RACore.SealedFiles, live: Bool = true) {
+    static func install(remote: Remote, coreHost: any AttachmentEvaluating, files: any RACore.SealedFiles, live: Bool = true) {
         centers[ObjectIdentifier(remote)]?.close()
         centers[ObjectIdentifier(remote)] = ImageCenter(remote: remote, coreHost: coreHost, files: files, live: live)
     }
@@ -98,11 +105,11 @@ final class ImageCenter {
         centers.removeValue(forKey: ObjectIdentifier(remote))?.close()
     }
 
-    /// The images of the account `remote` syncs. One that was never installed (a test's) keeps nothing on disk.
+    /// The images of the account `remote` syncs. `install(remote:coreHost:files:)` must be called first.
     static func of(_ remote: Remote) -> ImageCenter {
-        if let c = centers[ObjectIdentifier(remote)] { return c }
-        let c = ImageCenter(remote: remote, coreHost: nil, files: VolatileFiles(), live: true)
-        centers[ObjectIdentifier(remote)] = c
+        guard let c = centers[ObjectIdentifier(remote)] else {
+            preconditionFailure("ImageCenter.install must be called before ImageCenter.of")
+        }
         return c
     }
 
@@ -110,9 +117,7 @@ final class ImageCenter {
 
     @ObservationIgnored let remote: Remote
     @ObservationIgnored let live: Bool
-    @ObservationIgnored private let coreHost: CoreHost?
-    @ObservationIgnored private var fallbackCore: CoreClient?
-    @ObservationIgnored private var fallbackLocale = ""
+    @ObservationIgnored private let coreHost: any AttachmentEvaluating
     @ObservationIgnored private let files: any RACore.SealedFiles
     @ObservationIgnored private let records: OutgoingRecords
     @ObservationIgnored private(set) var uploads: ImageUploads!
@@ -167,7 +172,7 @@ final class ImageCenter {
     private(set) var outgoingRestoreErrors: [String: String] = [:]
     var picking: [String: Pick] = [:]
 
-    private init(remote: Remote, coreHost: CoreHost?, files: any RACore.SealedFiles, live: Bool) {
+    private init(remote: Remote, coreHost: any AttachmentEvaluating, files: any RACore.SealedFiles, live: Bool) {
         self.remote = remote
         self.coreHost = coreHost
         self.files = files
@@ -215,8 +220,6 @@ final class ImageCenter {
         evaluatedProblems.removeAll()
         failureSummaries.removeAll()
         libraryRooms.removeAll()
-        fallbackCore?.close()
-        fallbackCore = nil
         viewed.clear()
         previews.removeAllObjects()
     }
@@ -275,26 +278,7 @@ final class ImageCenter {
     // MARK: Core AttachmentEval
 
     func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel {
-        let eval: PBAttachmentEvalViewModel
-        if let coreHost {
-            eval = await coreHost.evaluateAttachments(request)
-        } else {
-            let locale = MessageLocale.current
-            let client: CoreClient
-            if let existing = fallbackCore {
-                client = existing
-            } else if let created = try? CoreClient() {
-                fallbackCore = created
-                client = created
-            } else {
-                return PBAttachmentEvalViewModel()
-            }
-            if fallbackLocale != locale {
-                fallbackLocale = locale
-                _ = try? client.dispatch(.with { $0.localeChanged.uiLocale = locale })
-            }
-            eval = (try? client.view(.with { $0.attachmentEval = request }).attachmentEval) ?? PBAttachmentEvalViewModel()
-        }
+        let eval = await coreHost.evaluateAttachments(request)
         if eval.originalImageMaxBytes > 0 { originalMaxBytes = eval.originalImageMaxBytes }
         return eval
     }
@@ -942,11 +926,6 @@ final class ImageCenter {
         let draft = draft(Self.sessionKey(sid))
         let picked = draft.images
         if picked.isEmpty { return false }
-        do { try remote.requireFileCapability(machineId: machineId, hasFiles: picked.contains(where: \.isFile)) }
-        catch {
-            Task { done(.failure(error)) }
-            return true
-        }
         uploads.sendAll(draft, machineId: machineId)
         guard draft.ready(machineId: machineId) else {
             Task { done(.failure(UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending()))) }
@@ -960,14 +939,12 @@ final class ImageCenter {
         let record = o.record
         let records = records
         Task {
-            if coreHost != nil {
-                let check = await evaluateDraft(key, machineId: machineId)
-                if !check.allowed {
-                    let reason = check.reason
-                    if !reason.isEmpty { say(key, reason) }
-                    done(.failure(UserError(reason)))
-                    return
-                }
+            let preCheck = await evaluateDraft(key, machineId: machineId)
+            if !preCheck.allowed {
+                let reason = preCheck.reason
+                if !reason.isEmpty { say(key, reason) }
+                done(.failure(UserError(reason)))
+                return
             }
             let kept: Result<Void, Error> = await Task.detached {
                 Result {
@@ -986,20 +963,12 @@ final class ImageCenter {
                 done(.failure(UserError(closed ? L10nMessage.attachmentIosSignedOutOfTheAccount() : L10nMessage.imageIosSessionRemoved())))
                 return
             }
-            if coreHost != nil {
-                let check = await evaluateDraft(key, machineId: machineId)
-                if !check.allowed {
-                    try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
-                    let reason = check.reason
-                    if !reason.isEmpty { say(key, reason) }
-                    done(.failure(UserError(reason)))
-                    return
-                }
-            }
-            do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }
-            catch {
+            let postCheck = await evaluateDraft(key, machineId: machineId)
+            if !postCheck.allowed {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
-                done(.failure(error))
+                let reason = postCheck.reason
+                if !reason.isEmpty { say(key, reason) }
+                done(.failure(UserError(reason)))
                 return
             }
             // Saving originals can outlast an upload. Nothing has been sent yet.
@@ -1053,7 +1022,15 @@ final class ImageCenter {
                 return
             }
             do {
-                try remote.requireFileCapability(machineId: machineId, hasFiles: base.images.contains(where: \.isFile))
+                if !base.images.isEmpty {
+                    let cands = Self.candidates(for: base.images)
+                    let eval = await evaluateAttachments(
+                        evalRequest(key: Self.sessionKey(sid), machineId: machineId, currentImages: 0, currentFiles: 0, candidates: cands)
+                    )
+                    if eval.decisions.count != cands.count || !eval.decisions.allSatisfy(\.accepted) {
+                        throw UserError(Self.rejectionReason(from: eval))
+                    }
+                }
                 var newImageIds: [String] = []
                 var newFileIds: [String] = []
                 var newImages: [PendingImage] = []
@@ -1176,10 +1153,6 @@ final class ImageCenter {
             d.noticeMessage = .restoreUnavailable
             return false
         }
-        let hasFiles = items.contains(where: \.isFile)
-        if coreHost == nil {
-            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
-        }
         let machineId = remote.current.sessions[sid]?.machineId ?? targets[key] ?? ""
         let cands = Self.candidates(for: items)
         let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: cands))
@@ -1195,20 +1168,12 @@ final class ImageCenter {
     }
 
     func canPutBack(sid: String, _ o: Outgoing) async -> Bool {
-        let hasFiles = !o.fileIds.isEmpty || o.images.contains(where: \.isFile)
-        if coreHost == nil {
-            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
-        }
         if o.images.isEmpty { return true }
         return await evaluatePutBack(sid: sid, items: o.images)
     }
 
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
     func putBack(sid: String, _ o: Outgoing, releaseFailure: Bool = false) async -> Bool {
-        let hasFiles = !o.fileIds.isEmpty || o.images.contains(where: \.isFile)
-        if coreHost == nil {
-            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
-        }
         if o.images.isEmpty {
             adoptRestored(sid, requestId: o.requestId)
             release(sid, o)
@@ -1226,12 +1191,6 @@ final class ImageCenter {
         // only copy a reclaimed process would find.
         draft.whenKept(o.images.map(\.id)) { [weak self] in self?.dropRecord(sid, o.requestId) }
         return true
-    }
-
-    private func canRestoreFiles(_ sid: String, hasFiles: Bool) -> Bool {
-        let machine = remote.current.sessions[sid]?.machineId ?? ""
-        do { try remote.requireFileCapability(machineId: machine, hasFiles: hasFiles); return true }
-        catch { say(Self.sessionKey(sid), errorText(error)); return false }
     }
 
     /// History can hold remote-only files. Evaluate via Core `AttachmentEval` before creating

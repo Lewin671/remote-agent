@@ -8,6 +8,32 @@ import UIKit
 
 @testable import RemoteAgent
 
+/// Test double for `AttachmentEvaluating` in tests that exercise local draft/outbox mechanics rather than Core limits.
+struct StubAttachmentEvaluator: AttachmentEvaluating {
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel {
+        PBAttachmentEvalViewModel.with {
+            $0.capabilitiesLoaded = true
+            $0.supportsImages = true
+            $0.supportsFiles = true
+            $0.maxImages = 6
+            $0.maxFiles = 6
+            $0.maxFileBytes = 100 * 1024 * 1024
+            $0.maxFileNameBytes = 255
+            $0.originalImageMaxBytes = 20 * 1024 * 1024
+            $0.canPickImages = true
+            $0.canPickFiles = true
+            $0.canPickGallery = true
+            $0.decisions = request.candidates.map { cand in
+                PBAttachmentCandidateDecision.with {
+                    $0.accepted = true
+                    $0.route = cand.forceFile ? .file : .image
+                    $0.displayName = cand.name
+                }
+            }
+        }
+    }
+}
+
 /// Messages with images, from the box to the CLI: Android's SendImagesTest and the image half of `Outbox`.
 @MainActor
 @Suite struct SessionImagesTests {
@@ -43,7 +69,7 @@ import UIKit
     }
 
     private func center() -> ImageCenter {
-        ImageCenter.install(remote: remote, files: files)
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: files)
         return ImageCenter.of(remote)
     }
 
@@ -672,7 +698,7 @@ extension SessionImagesTests {
         let record = Outgoing(requestId: "old", text: "keep", images: [ready("outgoing")])
         try OutgoingRecords(files: disk).save(sid: sid, record.record, original: false)
         disk.failReads(true)
-        ImageCenter.install(remote: remote, files: disk)
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: disk)
         defer { ImageCenter.remove(remote) }
         let c = ImageCenter.of(remote)
         let d = c.draft("session:s1")
@@ -712,7 +738,7 @@ extension SessionImagesTests {
         let first = ImageDraft(key: "session:s1", files: disk, saves: nil)
         first.append([ready("old")])
         disk.hold()
-        ImageCenter.install(remote: remote, files: disk)
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: disk)
         let c = ImageCenter.of(remote)
         let restored = c.draft("session:s1")
         let waiting = Task { await c.restoredDraft("session:s1") }
@@ -720,7 +746,7 @@ extension SessionImagesTests {
         #expect(!disk.mainRead)
         #expect(restored.images.isEmpty && restored.restoring)
         ImageCenter.remove(remote)
-        ImageCenter.install(remote: remote, files: VolatileFiles())
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles())
         disk.release.signal()
         await waiting.value
         #expect(restored.images.isEmpty)
@@ -733,7 +759,7 @@ extension SessionImagesTests {
         let o = Outgoing(requestId: "old", text: "旧账户", imageIds: ["old-image"], images: [ready("old")], original: true)
         try OutgoingRecords(files: disk).save(sid: sid, o.record, original: true)
         disk.hold()
-        ImageCenter.install(remote: remote, files: disk)
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: disk)
         let c = ImageCenter.of(remote)
         c.restoreOutgoing(sid)
         let waiting = Task { await c.restoredOutgoing(sid) }

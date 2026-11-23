@@ -779,14 +779,15 @@ final class AppModel {
                 Demo.models.map { ("\($0.machineId)/\($0.agent.rawValue)", $0.models) },
                 uniquingKeysWith: { _, rhs in rhs }
             )
-            context = AccountContext(
+            let ctx = AccountContext(
                 account: account,
                 remote: remote,
                 demoDirectories: Demo.directories,
                 demoModels: models,
                 demoMode: true
             )
-            ImageCenter.install(remote: remote, coreHost: context?.coreHost, files: VolatileFiles(), live: false)
+            context = ctx
+            ImageCenter.install(remote: remote, coreHost: ctx.coreHost, files: VolatileFiles(), live: false)
             let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
             SharedFileCenter.install(remote: remote, coreHost: context?.coreHost, root: demoSharedRoot)
             stage = .ready

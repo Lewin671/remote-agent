@@ -15,7 +15,7 @@ import UIKit
         http: AppModel.http)
 
     private func center() -> ImageCenter {
-        ImageCenter.install(remote: remote, files: VolatileFiles())
+        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles())
         return ImageCenter.of(remote)
     }
 
