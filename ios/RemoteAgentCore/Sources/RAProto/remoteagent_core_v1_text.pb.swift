@@ -118,10 +118,6 @@ public struct PBCoreText: Sendable {
   /// Clears the value of `timestamp`. Subsequent reads from it will return its default value.
   public mutating func clearTimestamp() {self._timestamp = nil}
 
-  /// Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
-  /// Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
-  public var literalEn: String = String()
-
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -238,7 +234,7 @@ extension PBCoreTimestampArg: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBCoreText: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Text"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{1}args\0\u{1}literal\0\u{1}join\0\u{3}separator_key\0\u{3}separator_literal\0\u{1}timestamp\0\u{3}literal_en\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{1}args\0\u{1}literal\0\u{1}join\0\u{3}separator_key\0\u{3}separator_literal\0\u{1}timestamp\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -253,7 +249,6 @@ extension PBCoreText: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
       case 5: try { try decoder.decodeSingularStringField(value: &self.separatorKey) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.separatorLiteral) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._timestamp) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.literalEn) }()
       default: break
       }
     }
@@ -285,9 +280,6 @@ extension PBCoreText: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     try { if let v = self._timestamp {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
     } }()
-    if !self.literalEn.isEmpty {
-      try visitor.visitSingularStringField(value: self.literalEn, fieldNumber: 8)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -299,7 +291,6 @@ extension PBCoreText: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if lhs.separatorKey != rhs.separatorKey {return false}
     if lhs.separatorLiteral != rhs.separatorLiteral {return false}
     if lhs._timestamp != rhs._timestamp {return false}
-    if lhs.literalEn != rhs.literalEn {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

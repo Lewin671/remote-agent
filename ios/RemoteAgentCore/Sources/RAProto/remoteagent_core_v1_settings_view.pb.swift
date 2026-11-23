@@ -2735,34 +2735,35 @@ public struct PBPlainDiagCheckView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBDiagRowView: @unchecked Sendable {
+public struct PBDiagRowView: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   public var labelText: PBCoreText {
-    get {return _storage._labelText ?? PBCoreText()}
-    set {_uniqueStorage()._labelText = newValue}
+    get {return _labelText ?? PBCoreText()}
+    set {_labelText = newValue}
   }
   /// Returns true if `labelText` has been explicitly set.
-  public var hasLabelText: Bool {return _storage._labelText != nil}
+  public var hasLabelText: Bool {return self._labelText != nil}
   /// Clears the value of `labelText`. Subsequent reads from it will return its default value.
-  public mutating func clearLabelText() {_uniqueStorage()._labelText = nil}
+  public mutating func clearLabelText() {self._labelText = nil}
 
   public var valueText: PBCoreText {
-    get {return _storage._valueText ?? PBCoreText()}
-    set {_uniqueStorage()._valueText = newValue}
+    get {return _valueText ?? PBCoreText()}
+    set {_valueText = newValue}
   }
   /// Returns true if `valueText` has been explicitly set.
-  public var hasValueText: Bool {return _storage._valueText != nil}
+  public var hasValueText: Bool {return self._valueText != nil}
   /// Clears the value of `valueText`. Subsequent reads from it will return its default value.
-  public mutating func clearValueText() {_uniqueStorage()._valueText = nil}
+  public mutating func clearValueText() {self._valueText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _labelText: PBCoreText? = nil
+  fileprivate var _valueText: PBCoreText? = nil
 }
 
 public struct PBDiagGroupView: Sendable {
@@ -7046,74 +7047,36 @@ extension PBDiagRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   public static let protoMessageName: String = _protobuf_package + ".DiagRowView"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}label_text\0\u{3}value_text\0")
 
-  fileprivate class _StorageClass {
-    var _labelText: PBCoreText? = nil
-    var _valueText: PBCoreText? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _labelText = source._labelText
-      _valueText = source._valueText
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeSingularMessageField(value: &_storage._labelText) }()
-        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._labelText) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._valueText) }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      try { if let v = _storage._labelText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-      } }()
-      try { if let v = _storage._valueText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      } }()
-    }
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._labelText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._valueText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBDiagRowView, rhs: PBDiagRowView) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._labelText != rhs_storage._labelText {return false}
-        if _storage._valueText != rhs_storage._valueText {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs._labelText != rhs._labelText {return false}
+    if lhs._valueText != rhs._valueText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

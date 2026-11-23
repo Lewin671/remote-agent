@@ -6,6 +6,7 @@ package usage
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
@@ -208,12 +209,13 @@ func NiceCeiling(peak uint64) uint64 {
 	return res
 }
 
-// ProjectionOptions controls sorting, single-model filtering, and bucket scrubbing.
+// ProjectionOptions controls sorting, single-model filtering, bucket scrubbing, and UI locale formatting.
 type ProjectionOptions struct {
 	SortBy            corev1.UsageSortColumn
 	SelectedSeriesKey string
 	HasScrub          bool
 	ScrubBucketIndex  int32
+	UILocale          string
 }
 
 // UsageProjection holds all derived view models for the Usage & Speed page.
@@ -459,7 +461,7 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 			PreviousBackfilling: prevBF,
 			UsageRequestCount:   c.UsageRequestCount,
 			SpeedRequestCount:   c.SpeedRequestCount,
-			TotalTokensText:     FormatTokensText(tot),
+			TotalTokensText:     FormatTokensText(tot, opts.UILocale),
 			CacheHitText:        cacheText,
 			SpeedText:           speedText,
 			TtftText:            ttftText,
@@ -629,8 +631,8 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 		YMax:     yMax,
 		YMid:     yMid,
 		Buckets:  barBuckets,
-		YMaxText: FormatTokensText(yMax),
-		YMidText: FormatTokensText(yMid),
+		YMaxText: FormatTokensText(yMax, opts.UILocale),
+		YMidText: FormatTokensText(yMid, opts.UILocale),
 	}
 
 	var periodCacheHas bool
@@ -726,8 +728,8 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 		}
 	}
 
-	hero.TotalTokensText = FormatTokensText(hero.TotalTokens)
-	populateCompositionTexts(hero.Composition)
+	hero.TotalTokensText = FormatTokensText(hero.TotalTokens, opts.UILocale)
+	populateCompositionTexts(hero.Composition, opts.UILocale)
 
 	return UsageProjection{
 		HasAnyUsage:      true,
@@ -740,24 +742,24 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 	}
 }
 
-func populateCompositionTexts(c *corev1.UsageCompositionView) {
+func populateCompositionTexts(c *corev1.UsageCompositionView, uiLocale string) {
 	if c == nil {
 		return
 	}
 	if c.UncachedInputTokens > 0 {
-		c.UncachedInputText = FormatTokensText(c.UncachedInputTokens)
+		c.UncachedInputText = FormatTokensText(c.UncachedInputTokens, uiLocale)
 	}
 	if c.CacheReadTokens > 0 {
-		c.CacheReadText = FormatTokensText(c.CacheReadTokens)
+		c.CacheReadText = FormatTokensText(c.CacheReadTokens, uiLocale)
 	}
 	if c.CacheWriteTokens > 0 {
-		c.CacheWriteText = FormatTokensText(c.CacheWriteTokens)
+		c.CacheWriteText = FormatTokensText(c.CacheWriteTokens, uiLocale)
 	}
 	if c.OutputTokens > 0 {
-		c.OutputText = FormatTokensText(c.OutputTokens)
+		c.OutputText = FormatTokensText(c.OutputTokens, uiLocale)
 	}
 	if c.ReasoningOutputTokens > 0 {
-		c.ReasoningOutputText = FormatTokensText(c.ReasoningOutputTokens)
+		c.ReasoningOutputText = FormatTokensText(c.ReasoningOutputTokens, uiLocale)
 	}
 }
 
@@ -855,9 +857,29 @@ func FormatTokens(n uint64, english bool) string {
 	return formatScaled(float64(n)/1_000_000_000.0, "B", 100)
 }
 
-// FormatTokensText returns a locale-aware Text for n (Chinese 万/亿 in Literal, English k/M/B in LiteralEn).
-func FormatTokensText(n uint64) *corev1.Text {
-	return text.LocalizedPlain(FormatTokens(n, false), FormatTokens(n, true))
+// NormalizeUILocale normalizes a BCP 47 UI locale tag, defaulting empty strings to "zh-CN".
+func NormalizeUILocale(locale string) string {
+	trimmed := strings.TrimSpace(locale)
+	if trimmed == "" {
+		return "zh-CN"
+	}
+	return trimmed
+}
+
+// IsEnglishLocale reports whether a BCP 47 UI locale tag uses English/SI token units (k/M/B).
+// Empty or Chinese tags ("zh", "zh-CN", "zh-Hans", etc.) return false (万/亿); other tags return true.
+func IsEnglishLocale(locale string) bool {
+	trimmed := strings.TrimSpace(locale)
+	if trimmed == "" {
+		return false
+	}
+	lower := strings.ToLower(strings.ReplaceAll(trimmed, "_", "-"))
+	return lower != "zh" && !strings.HasPrefix(lower, "zh-")
+}
+
+// FormatTokensText returns a plain literal Text for n formatted according to uiLocale (defaulting to zh-CN).
+func FormatTokensText(n uint64, uiLocale string) *corev1.Text {
+	return text.Plain(FormatTokens(n, IsEnglishLocale(uiLocale)))
 }
 
 // FormatCacheHit formats a [0..1] cache hit rate without lying near 0% or 100%.

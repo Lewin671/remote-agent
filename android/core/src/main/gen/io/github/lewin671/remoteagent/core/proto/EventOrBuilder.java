@@ -99,6 +99,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.TokenResultEvent getTokenResult();
 
   /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   * @return Whether the localeChanged field is set.
+   */
+  boolean hasLocaleChanged();
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   * @return The localeChanged.
+   */
+  io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent getLocaleChanged();
+
+  /**
    * <code>.remoteagent.core.v1.StreamReadyEvent stream_ready = 10 [json_name = "streamReady"];</code>
    * @return Whether the streamReady field is set.
    */

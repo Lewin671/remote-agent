@@ -29,6 +29,7 @@ public  final class Event extends
     CACHE_BOOTSTRAP_LOADED(6),
     CACHE_EVENTS_LOADED(7),
     TOKEN_RESULT(8),
+    LOCALE_CHANGED(9),
     STREAM_READY(10),
     STREAM_CLOSED(11),
     STREAM_FRAME(12),
@@ -196,6 +197,7 @@ public  final class Event extends
         case 6: return CACHE_BOOTSTRAP_LOADED;
         case 7: return CACHE_EVENTS_LOADED;
         case 8: return TOKEN_RESULT;
+        case 9: return LOCALE_CHANGED;
         case 10: return STREAM_READY;
         case 11: return STREAM_CLOSED;
         case 12: return STREAM_FRAME;
@@ -772,6 +774,58 @@ public  final class Event extends
    */
   private void clearTokenResult() {
     if (eventCase_ == 8) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int LOCALE_CHANGED_FIELD_NUMBER = 9;
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLocaleChanged() {
+    return eventCase_ == 9;
+  }
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent getLocaleChanged() {
+    if (eventCase_ == 9) {
+       return (io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLocaleChanged(io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeLocaleChanged(io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 9 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 9;
+  }
+  /**
+   * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+   */
+  private void clearLocaleChanged() {
+    if (eventCase_ == 9) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -8997,6 +9051,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLocaleChanged() {
+      return instance.hasLocaleChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent getLocaleChanged() {
+      return instance.getLocaleChanged();
+    }
+    /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    public Builder setLocaleChanged(io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent value) {
+      copyOnWrite();
+      instance.setLocaleChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    public Builder setLocaleChanged(
+        io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLocaleChanged(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    public Builder mergeLocaleChanged(io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent value) {
+      copyOnWrite();
+      instance.mergeLocaleChanged(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.LocaleChangedEvent locale_changed = 9 [json_name = "localeChanged"];</code>
+     */
+    public Builder clearLocaleChanged() {
+      copyOnWrite();
+      instance.clearLocaleChanged();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.StreamReadyEvent stream_ready = 10 [json_name = "streamReady"];</code>
      */
     @java.lang.Override
@@ -16175,6 +16277,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.TokenResultEvent.class,
+            io.github.lewin671.remoteagent.core.proto.LocaleChangedEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamReadyEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamClosedEvent.class,
             io.github.lewin671.remoteagent.core.proto.StreamFrameEvent.class,
@@ -16325,30 +16428,30 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u009c\u0001\u0000\u0001\u01d1\u009c\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u009d\u0001\u0000\u0001\u01d1\u009d\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
-              "\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
-              "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
-              "\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000" +
-              "\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00002<\u0000" +
-              "3<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;<\u0000b\u0002c" +
-              "\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000\u00ce<\u0000" +
-              "\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4<\u0000\u00d5" +
-              "<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130<\u0000" +
-              "\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000\u0141" +
-              "<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a<\u0000" +
-              "\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000\u0153" +
-              "<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159<\u0000" +
-              "\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000\u0160" +
-              "<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a<\u0000" +
-              "\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000\u0179" +
-              "<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f<\u0000" +
-              "\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197" +
-              "<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000" +
-              "\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4" +
-              "<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000" +
-              "\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0" +
-              "<\u0000\u01d1<\u0000";
+              "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
+              "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
+              "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
+              "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
+              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
+              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
+              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
+              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
+              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
+              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
+              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
+              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
+              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
+              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
+              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178" +
+              "<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000" +
+              "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196" +
+              "<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000" +
+              "\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3" +
+              "<\u0000\u01a4<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000" +
+              "\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf" +
+              "<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

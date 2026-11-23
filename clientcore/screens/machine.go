@@ -300,7 +300,7 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 				SpeedRequestCount: s.Current.SpeedRequestCount,
 				FewSpeedSamples:   fewSpeed,
 				TitleText:         text.Plain(agentName + " · " + s.Model),
-				TotalTokensText:   usage.FormatTokensText(tot),
+				TotalTokensText:   usage.FormatTokensText(tot, st.UILocale),
 				MetaText:          metaText,
 			})
 		}

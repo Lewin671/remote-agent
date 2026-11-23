@@ -201,6 +201,7 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 			SelectedSeriesKey: selectedKey,
 			HasScrub:          hasScrub,
 			ScrubBucketIndex:  scrubIdx,
+			UILocale:          st.UILocale,
 		})
 		vm.HasAnyUsage = proj.HasAnyUsage
 		vm.Hero = proj.Hero
@@ -220,11 +221,11 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 		}
 	}
 
-	populateUsageDecorations(vm)
+	populateUsageDecorations(vm, st.UILocale)
 	return vm
 }
 
-func populateUsageDecorations(vm *corev1.UsageViewModel) {
+func populateUsageDecorations(vm *corev1.UsageViewModel, uiLocale string) {
 	if vm == nil {
 		return
 	}
@@ -319,7 +320,7 @@ func populateUsageDecorations(vm *corev1.UsageViewModel) {
 		vm.Hero.ScopeText = text.Msg(text.KeyUsageScopeAllEmpty)
 	} else {
 		if vm.Hero.TotalTokensText == nil {
-			vm.Hero.TotalTokensText = usage.FormatTokensText(vm.Hero.TotalTokens)
+			vm.Hero.TotalTokensText = usage.FormatTokensText(vm.Hero.TotalTokens, uiLocale)
 		}
 		if !vm.Hero.Scrubbing {
 			if vm.Hero.HasSelectedModel {

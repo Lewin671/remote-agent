@@ -29,9 +29,6 @@ message Text {
   string separator_key = 5;
   string separator_literal = 6;
   TimestampArg timestamp = 7;
-  // Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
-  // Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
-  string literal_en = 8;
 }
 
 // TextArg provides a typed substitution parameter for a Text key.

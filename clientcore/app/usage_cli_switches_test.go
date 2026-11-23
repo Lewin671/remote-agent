@@ -659,7 +659,7 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	if !u.GetHasAnyUsage() || u.GetOutputSpeedStrip().GetHasValue() || u.GetRows()[0].GetHasSpeed() || u.GetUnsupportedFootnote() != nil || len(u.GetRows()) != 1 {
 		t.Fatalf("unexpected Antigravity UsageViewModel: hasUsage=%v stripHasSpeed=%v rowHasSpeed=%v unavail=%+v len=%d", u.GetHasAnyUsage(), u.GetOutputSpeedStrip().GetHasValue(), u.GetRows()[0].GetHasSpeed(), u.GetUnsupportedFootnote(), len(u.GetRows()))
 	}
-	if u.GetEmptyKind() != corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NONE || u.GetHero().GetTotalTokensText().GetLiteral() != "11万" || u.GetHero().GetTotalTokensText().GetLiteralEn() != "110k" {
+	if u.GetEmptyKind() != corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NONE || u.GetHero().GetTotalTokensText().GetLiteral() != "11万" {
 		t.Fatalf("unexpected formatted UsageViewModel hero/empty: empty=%v tok=%+v", u.GetEmptyKind(), u.GetHero().GetTotalTokensText())
 	}
 	if u.GetHero().GetSublineText() == nil || u.GetChartsA11YLabel().GetKey() != "usage.charts_a11y" || u.GetRows()[0].GetCacheHitText().GetLiteral() == "" {
@@ -674,6 +674,17 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	if mu == nil || !mu.GetHasData() || mu.GetUnsupportedFootnote() != nil || len(mu.GetRows()) != 1 || mu.GetRows()[0].GetHasSpeed() {
 		t.Fatalf("unexpected Antigravity MachineStatus preview: %+v", mu)
 	}
+	if mu.GetRows()[0].GetTotalTokensText().GetLiteral() != "11万" {
+		t.Fatalf("expected zh-CN MachineStatus row tokens 11万, got %+v", mu.GetRows()[0].GetTotalTokensText())
+	}
+
+	msetVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineSettings{MachineSettings: &corev1.MachineSettingsScreenRequest{MachineId: "m-1"}}})
+	if err != nil {
+		t.Fatalf("View(MachineSettings): %v", err)
+	}
+	if msetVM.GetMachineSettings().GetUsageTokensText().GetLiteral() != "11万" {
+		t.Fatalf("expected zh-CN MachineSettings usage tokens 11万, got %+v", msetVM.GetMachineSettings().GetUsageTokensText())
+	}
 
 	sessVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-1"}}})
 	if err != nil {
@@ -683,8 +694,82 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	if ue == nil || ue.GetSourceUnavailable() || !ue.GetHasData() || ue.GetTotalTokens() != 110_000 || !ue.GetHasCacheHit() || ue.GetHasSpeed() {
 		t.Fatalf("unexpected Antigravity Session UsageEntry: %+v", ue)
 	}
-	if ue.GetTotalTokensText().GetLiteral() != "11万" || ue.GetTotalTokensText().GetLiteralEn() != "110k" || ue.GetFormattedSubtitle().GetKey() != "usage.entry_no_speed" {
+	if ue.GetTotalTokensText().GetLiteral() != "11万" || ue.GetFormattedSubtitle().GetKey() != "usage.entry_no_speed" {
 		t.Fatalf("unexpected formatted Session UsageEntry: tok=%+v sub=%+v", ue.GetTotalTokensText(), ue.GetFormattedSubtitle())
+	}
+
+	// Sending the default locale "zh-CN" on startup is a no-op (no redundant RenderEffect).
+	noopBatch := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_633_600_070,
+		Event: &corev1.Event_LocaleChanged{LocaleChanged: &corev1.LocaleChangedEvent{UiLocale: "zh-CN"}},
+	})
+	for _, eff := range noopBatch.Effects {
+		if eff.GetRender() != nil {
+			t.Fatalf("expected no RenderEffect when locale stays zh-CN, got %+v", eff.GetRender())
+		}
+	}
+
+	// Switching to "en" refreshes Usage, MachineStatus, MachineSettings, and Session and formats tokens as "110k".
+	enSteps := []struct {
+		locale       string
+		wantRender   bool
+		wantTokens   string
+	}{
+		{"en", true, "110k"},
+		{"en", false, "110k"},
+		{"zh-CN", true, "11万"},
+		{"en-US", true, "110k"},
+		{"", true, "11万"},
+	}
+	for i, tc := range enSteps {
+		batch := c.Dispatch(&corev1.Event{
+			NowMs: 1_791_633_600_080 + int64(i)*10,
+			Event: &corev1.Event_LocaleChanged{LocaleChanged: &corev1.LocaleChangedEvent{UiLocale: tc.locale}},
+		})
+		var rendered []corev1.ScreenTarget
+		for _, eff := range batch.Effects {
+			if r := eff.GetRender(); r != nil {
+				rendered = append(rendered, r.Screens...)
+			}
+		}
+		if tc.wantRender {
+			for _, wantTarget := range []corev1.ScreenTarget{
+				corev1.ScreenTarget_SCREEN_TARGET_USAGE,
+				corev1.ScreenTarget_SCREEN_TARGET_MACHINE_STATUS,
+				corev1.ScreenTarget_SCREEN_TARGET_MACHINE_SETTINGS,
+				corev1.ScreenTarget_SCREEN_TARGET_SESSION,
+			} {
+				found := false
+				for _, got := range rendered {
+					if got == wantTarget {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("step %d (locale=%q): missing render target %v in %v", i, tc.locale, wantTarget, rendered)
+				}
+			}
+		} else if len(rendered) != 0 {
+			t.Fatalf("step %d (locale=%q): expected no render targets, got %v", i, tc.locale, rendered)
+		}
+
+		u2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Usage{Usage: &corev1.UsageScreenRequest{MachineId: "m-1", Preset: v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS}}})
+		if got := u2.GetUsage().GetHero().GetTotalTokensText().GetLiteral(); got != tc.wantTokens {
+			t.Fatalf("step %d (locale=%q): Usage hero tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
+		}
+		ms2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineStatus{MachineStatus: &corev1.MachineStatusScreenRequest{MachineId: "m-1"}}})
+		if got := ms2.GetMachineStatus().GetModelUsage().GetRows()[0].GetTotalTokensText().GetLiteral(); got != tc.wantTokens {
+			t.Fatalf("step %d (locale=%q): MachineStatus row tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
+		}
+		mset2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineSettings{MachineSettings: &corev1.MachineSettingsScreenRequest{MachineId: "m-1"}}})
+		if got := mset2.GetMachineSettings().GetUsageTokensText().GetLiteral(); got != tc.wantTokens {
+			t.Fatalf("step %d (locale=%q): MachineSettings usage tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
+		}
+		sess2, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-1"}}})
+		if got := sess2.GetSession().GetActions().GetUsageEntry().GetTotalTokensText().GetLiteral(); got != tc.wantTokens {
+			t.Fatalf("step %d (locale=%q): Session usage entry tokens = %q, want %q", i, tc.locale, got, tc.wantTokens)
+		}
 	}
 }
 

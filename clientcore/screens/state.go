@@ -126,6 +126,9 @@ type State struct {
 
 	Schedules *ScheduleState
 
+	// UILocale stores the shell's active BCP 47 UI locale tag (empty defaults to "zh-CN").
+	UILocale string
+
 	// DirectReportFn returns the live direct-path preference & report when transport is owned by Core.
 	DirectReportFn func(machineID string) (enabled bool, report *corev1.DirectRouteReport, ok bool)
 }

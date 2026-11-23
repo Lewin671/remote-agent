@@ -98,9 +98,33 @@ func TestFormatTtftAndDelta(t *testing.T) {
 	if got := FormatDeltaTriangle(-1234.4); got.GetLiteral() != "▼1,234%" {
 		t.Errorf("FormatDeltaTriangle(-1234.4) = %+v, want ▼1,234%%", got)
 	}
-	tokTxt := FormatTokensText(12_345)
-	if tokTxt.GetLiteral() != "1.2万" || tokTxt.GetLiteralEn() != "12.3k" {
-		t.Errorf("FormatTokensText(12345) = (%q, %q), want (1.2万, 12.3k)", tokTxt.GetLiteral(), tokTxt.GetLiteralEn())
+	tokCases := []struct {
+		n      uint64
+		locale string
+		want   string
+	}{
+		{0, "", "0"},
+		{8_420, "", "8,420"},
+		{8_420, "zh-CN", "8,420"},
+		{8_420, "en", "8.4k"},
+		{12_345, "", "1.2万"},
+		{12_345, "zh-CN", "1.2万"},
+		{12_345, "zh-Hans", "1.2万"},
+		{12_345, "zh_CN", "1.2万"},
+		{12_345, "en", "12.3k"},
+		{12_345, "en-US", "12.3k"},
+		{4_820_000, "zh-CN", "482万"},
+		{4_820_000, "en", "4.8M"},
+		{140_000_000, "zh-CN", "1.4亿"},
+		{140_000_000, "en", "140M"},
+		{3_480_000_000, "zh-CN", "34.8亿"},
+		{3_480_000_000, "en", "3.5B"},
+	}
+	for _, tc := range tokCases {
+		got := FormatTokensText(tc.n, tc.locale)
+		if got.GetKey() != "" || got.GetLiteral() != tc.want {
+			t.Errorf("FormatTokensText(%d, %q) = (key=%q, literal=%q), want literal %q", tc.n, tc.locale, got.GetKey(), got.GetLiteral(), tc.want)
+		}
 	}
 }
 
@@ -341,5 +365,34 @@ func TestComputeDeltasThresholdsAndBuildUsageProjection(t *testing.T) {
 	}
 	if pScrub.OutputSpeedStrip.HasValue || pScrub.TtftStrip.HasValue || pScrub.CacheHitStrip.HasValue {
 		t.Fatalf("expected strip HasValue=false on empty scrubbed bucket")
+	}
+
+	// 4. Projection text formatting follows UILocale (default/zh-CN vs en).
+	localeCases := []struct {
+		locale     string
+		wantHero   string
+		wantRow0   string
+		wantYMax   string
+		wantOutput string
+	}{
+		{"", "596万", "482万", "400万", "90.5万"},
+		{"zh-CN", "596万", "482万", "400万", "90.5万"},
+		{"en", "6M", "4.8M", "4M", "905k"},
+		{"en-US", "6M", "4.8M", "4M", "905k"},
+	}
+	for _, tc := range localeCases {
+		pLoc := BuildUsageProjection(resp, ProjectionOptions{UILocale: tc.locale})
+		if pLoc.Hero.GetTotalTokensText().GetLiteral() != tc.wantHero {
+			t.Errorf("locale=%q Hero.TotalTokensText = %q, want %q", tc.locale, pLoc.Hero.GetTotalTokensText().GetLiteral(), tc.wantHero)
+		}
+		if pLoc.Rows[0].GetTotalTokensText().GetLiteral() != tc.wantRow0 {
+			t.Errorf("locale=%q Rows[0].TotalTokensText = %q, want %q", tc.locale, pLoc.Rows[0].GetTotalTokensText().GetLiteral(), tc.wantRow0)
+		}
+		if pLoc.BarChart.GetYMaxText().GetLiteral() != tc.wantYMax {
+			t.Errorf("locale=%q BarChart.YMaxText = %q, want %q", tc.locale, pLoc.BarChart.GetYMaxText().GetLiteral(), tc.wantYMax)
+		}
+		if pLoc.Hero.GetComposition().GetOutputText().GetLiteral() != tc.wantOutput {
+			t.Errorf("locale=%q Composition.OutputText = %q, want %q", tc.locale, pLoc.Hero.GetComposition().GetOutputText().GetLiteral(), tc.wantOutput)
+		}
 	}
 }

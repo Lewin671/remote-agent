@@ -135,6 +135,12 @@ message NetworkChangedEvent {
   string signature = 2;
 }
 
+// Notifies Core of the shell's active UI locale as a BCP 47 tag (e.g. "zh-CN", "en").
+// Shells send this on startup and whenever the UI language changes; empty defaults to "zh-CN".
+message LocaleChangedEvent {
+  string ui_locale = 1;
+}
+
 enum TimerKind {
   TIMER_KIND_UNSPECIFIED = 0;
   TIMER_KIND_RECONNECT = 1;
@@ -510,6 +516,7 @@ message Event {
     CacheBootstrapLoadedEvent cache_bootstrap_loaded = 6;
     CacheEventsLoadedEvent cache_events_loaded = 7;
     TokenResultEvent token_result = 8;
+    LocaleChangedEvent locale_changed = 9;
     StreamReadyEvent stream_ready = 10;
     StreamClosedEvent stream_closed = 11;
     StreamFrameEvent stream_frame = 12;

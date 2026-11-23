@@ -764,13 +764,13 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		tot := sumEnabledUsageTokens(m.Meta, snap7)
 		if tot > 0 {
 			vm.UsageTotalTokens = tot
-			vm.UsageTokensText = usage.FormatTokensText(tot)
+			vm.UsageTokensText = usage.FormatTokensText(tot, st.UILocale)
 			vm.UsageCachedOffline = cached7
 		} else {
 			snap30, cached30, _, _ := lookupUsageSnapshot(st, machineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_THIRTY_DAYS, 0, 0, vm.Online)
 			if tot30 := sumEnabledUsageTokens(m.Meta, snap30); tot30 > 0 {
 				vm.UsageTotalTokens = tot30
-				vm.UsageTokensText = usage.FormatTokensText(tot30)
+				vm.UsageTokensText = usage.FormatTokensText(tot30, st.UILocale)
 				vm.UsageFallbackThirtyDays = true
 				vm.UsageCachedOffline = cached30
 			} else if snap7 != nil || snap30 != nil {

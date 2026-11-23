@@ -961,7 +961,7 @@ func buildSessionUsageEntry(st *State, lm *lists.Machine, caps lists.AgentCapabi
 	entry.HasData = true
 	entry.Backfilling = snap != nil && snap.Backfilling
 	entry.TotalTokens = usage.TotalTokens(matched.Current)
-	entry.TotalTokensText = usage.FormatTokensText(entry.TotalTokens)
+	entry.TotalTokensText = usage.FormatTokensText(entry.TotalTokens, st.UILocale)
 	entry.HasCacheHit = matched.Current.HasCacheHitRate
 	entry.CacheHitRate = matched.Current.CacheHitRate
 	if entry.HasCacheHit {

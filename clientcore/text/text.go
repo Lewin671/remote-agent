@@ -13,18 +13,6 @@ func Plain(s string) *corev1.Text {
 	return &corev1.Text{Literal: s}
 }
 
-// LocalizedPlain constructs a literal Text with distinct Chinese and English renderings
-// (e.g. "1.2万" vs "12k"). When en is empty or equal to zh, only Literal is populated.
-func LocalizedPlain(zh, en string) *corev1.Text {
-	if zh == "" && en == "" {
-		return nil
-	}
-	if en == "" || en == zh {
-		return &corev1.Text{Literal: zh}
-	}
-	return &corev1.Text{Literal: zh, LiteralEn: en}
-}
-
 // Msg constructs a localizable Text referencing key with optional substitution args.
 func Msg(key string, args ...*corev1.TextArg) *corev1.Text {
 	if key == "" {
@@ -134,7 +122,7 @@ func IsEmpty(t *corev1.Text) bool {
 	if t == nil {
 		return true
 	}
-	return t.Key == "" && t.Literal == "" && t.LiteralEn == "" && len(t.Join) == 0 && t.Timestamp == nil
+	return t.Key == "" && t.Literal == "" && len(t.Join) == 0 && t.Timestamp == nil
 }
 
 func filterNonEmpty(parts []*corev1.Text) []*corev1.Text {

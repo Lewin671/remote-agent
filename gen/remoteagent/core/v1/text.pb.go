@@ -147,11 +147,8 @@ type Text struct {
 	SeparatorKey     string                 `protobuf:"bytes,5,opt,name=separator_key,json=separatorKey,proto3" json:"separator_key,omitempty"`
 	SeparatorLiteral string                 `protobuf:"bytes,6,opt,name=separator_literal,json=separatorLiteral,proto3" json:"separator_literal,omitempty"`
 	Timestamp        *TimestampArg          `protobuf:"bytes,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	// Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
-	// Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
-	LiteralEn     string `protobuf:"bytes,8,opt,name=literal_en,json=literalEn,proto3" json:"literal_en,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Text) Reset() {
@@ -231,13 +228,6 @@ func (x *Text) GetTimestamp() *TimestampArg {
 		return x.Timestamp
 	}
 	return nil
-}
-
-func (x *Text) GetLiteralEn() string {
-	if x != nil {
-		return x.LiteralEn
-	}
-	return ""
 }
 
 // TextArg provides a typed substitution parameter for a Text key.
@@ -386,7 +376,7 @@ const file_remoteagent_core_v1_text_proto_rawDesc = "" +
 	"\x1eremoteagent/core/v1/text.proto\x12\x13remoteagent.core.v1\"b\n" +
 	"\fTimestampArg\x12\x17\n" +
 	"\aunix_ms\x18\x01 \x01(\x03R\x06unixMs\x129\n" +
-	"\x05style\x18\x02 \x01(\x0e2#.remoteagent.core.v1.TimestampStyleR\x05style\"\xc5\x02\n" +
+	"\x05style\x18\x02 \x01(\x0e2#.remoteagent.core.v1.TimestampStyleR\x05style\"\xa6\x02\n" +
 	"\x04Text\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
 	"\x04args\x18\x02 \x03(\v2\x1c.remoteagent.core.v1.TextArgR\x04args\x12\x18\n" +
@@ -394,9 +384,7 @@ const file_remoteagent_core_v1_text_proto_rawDesc = "" +
 	"\x04join\x18\x04 \x03(\v2\x19.remoteagent.core.v1.TextR\x04join\x12#\n" +
 	"\rseparator_key\x18\x05 \x01(\tR\fseparatorKey\x12+\n" +
 	"\x11separator_literal\x18\x06 \x01(\tR\x10separatorLiteral\x12?\n" +
-	"\ttimestamp\x18\a \x01(\v2!.remoteagent.core.v1.TimestampArgR\ttimestamp\x12\x1d\n" +
-	"\n" +
-	"literal_en\x18\b \x01(\tR\tliteralEn\"\x91\x02\n" +
+	"\ttimestamp\x18\a \x01(\v2!.remoteagent.core.v1.TimestampArgR\ttimestamp\"\x91\x02\n" +
 	"\aTextArg\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1d\n" +
 	"\tstr_value\x18\x02 \x01(\tH\x00R\bstrValue\x12\x1d\n" +

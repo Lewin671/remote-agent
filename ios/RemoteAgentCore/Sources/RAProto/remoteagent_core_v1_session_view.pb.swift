@@ -2484,50 +2484,35 @@ public struct PBSessionTrayUndoView: Sendable {
   fileprivate var _label: PBCoreText? = nil
 }
 
-public struct PBSessionPendingTrayView: @unchecked Sendable {
+public struct PBSessionPendingTrayView: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var groups: [PBSessionTrayGroupView] {
-    get {return _storage._groups}
-    set {_uniqueStorage()._groups = newValue}
-  }
+  public var groups: [PBSessionTrayGroupView] = []
 
-  public var orderedItems: [PBSessionTrayItemView] {
-    get {return _storage._orderedItems}
-    set {_uniqueStorage()._orderedItems = newValue}
-  }
+  public var orderedItems: [PBSessionTrayItemView] = []
 
-  public var totalCount: Int32 {
-    get {return _storage._totalCount}
-    set {_uniqueStorage()._totalCount = newValue}
-  }
+  public var totalCount: Int32 = 0
 
-  public var failedCount: Int32 {
-    get {return _storage._failedCount}
-    set {_uniqueStorage()._failedCount = newValue}
-  }
+  public var failedCount: Int32 = 0
 
-  public var offline: Bool {
-    get {return _storage._offline}
-    set {_uniqueStorage()._offline = newValue}
-  }
+  public var offline: Bool = false
 
   public var undo: PBSessionTrayUndoView {
-    get {return _storage._undo ?? PBSessionTrayUndoView()}
-    set {_uniqueStorage()._undo = newValue}
+    get {return _undo ?? PBSessionTrayUndoView()}
+    set {_undo = newValue}
   }
   /// Returns true if `undo` has been explicitly set.
-  public var hasUndo: Bool {return _storage._undo != nil}
+  public var hasUndo: Bool {return self._undo != nil}
   /// Clears the value of `undo`. Subsequent reads from it will return its default value.
-  public mutating func clearUndo() {_uniqueStorage()._undo = nil}
+  public mutating func clearUndo() {self._undo = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _storage = _StorageClass.defaultInstance
+  fileprivate var _undo: PBSessionTrayUndoView? = nil
 }
 
 public struct PBSessionComposerView: @unchecked Sendable {
@@ -6957,102 +6942,56 @@ extension PBSessionPendingTrayView: SwiftProtobuf.Message, SwiftProtobuf._Messag
   public static let protoMessageName: String = _protobuf_package + ".SessionPendingTrayView"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}groups\0\u{3}ordered_items\0\u{3}total_count\0\u{3}failed_count\0\u{1}offline\0\u{1}undo\0")
 
-  fileprivate class _StorageClass {
-    var _groups: [PBSessionTrayGroupView] = []
-    var _orderedItems: [PBSessionTrayItemView] = []
-    var _totalCount: Int32 = 0
-    var _failedCount: Int32 = 0
-    var _offline: Bool = false
-    var _undo: PBSessionTrayUndoView? = nil
-
-      // This property is used as the initial default value for new instances of the type.
-      // The type itself is protecting the reference to its storage via CoW semantics.
-      // This will force a copy to be made of this reference when the first mutation occurs;
-      // hence, it is safe to mark this as `nonisolated(unsafe)`.
-      static nonisolated(unsafe) let defaultInstance = _StorageClass()
-
-    private init() {}
-
-    init(copying source: _StorageClass) {
-      _groups = source._groups
-      _orderedItems = source._orderedItems
-      _totalCount = source._totalCount
-      _failedCount = source._failedCount
-      _offline = source._offline
-      _undo = source._undo
-    }
-  }
-
-  fileprivate mutating func _uniqueStorage() -> _StorageClass {
-    if !isKnownUniquelyReferenced(&_storage) {
-      _storage = _StorageClass(copying: _storage)
-    }
-    return _storage
-  }
-
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    _ = _uniqueStorage()
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      while let fieldNumber = try decoder.nextFieldNumber() {
-        // The use of inline closures is to circumvent an issue where the compiler
-        // allocates stack space for every case branch when no optimizations are
-        // enabled. https://github.com/apple/swift-protobuf/issues/1034
-        switch fieldNumber {
-        case 1: try { try decoder.decodeRepeatedMessageField(value: &_storage._groups) }()
-        case 2: try { try decoder.decodeRepeatedMessageField(value: &_storage._orderedItems) }()
-        case 3: try { try decoder.decodeSingularInt32Field(value: &_storage._totalCount) }()
-        case 4: try { try decoder.decodeSingularInt32Field(value: &_storage._failedCount) }()
-        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._offline) }()
-        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._undo) }()
-        default: break
-        }
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.groups) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.orderedItems) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.totalCount) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.failedCount) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.offline) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._undo) }()
+      default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every if/case branch local when no optimizations
-      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-      // https://github.com/apple/swift-protobuf/issues/1182
-      if !_storage._groups.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._groups, fieldNumber: 1)
-      }
-      if !_storage._orderedItems.isEmpty {
-        try visitor.visitRepeatedMessageField(value: _storage._orderedItems, fieldNumber: 2)
-      }
-      if _storage._totalCount != 0 {
-        try visitor.visitSingularInt32Field(value: _storage._totalCount, fieldNumber: 3)
-      }
-      if _storage._failedCount != 0 {
-        try visitor.visitSingularInt32Field(value: _storage._failedCount, fieldNumber: 4)
-      }
-      if _storage._offline != false {
-        try visitor.visitSingularBoolField(value: _storage._offline, fieldNumber: 5)
-      }
-      try { if let v = _storage._undo {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
-      } }()
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.groups.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.groups, fieldNumber: 1)
     }
+    if !self.orderedItems.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.orderedItems, fieldNumber: 2)
+    }
+    if self.totalCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.totalCount, fieldNumber: 3)
+    }
+    if self.failedCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.failedCount, fieldNumber: 4)
+    }
+    if self.offline != false {
+      try visitor.visitSingularBoolField(value: self.offline, fieldNumber: 5)
+    }
+    try { if let v = self._undo {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionPendingTrayView, rhs: PBSessionPendingTrayView) -> Bool {
-    if lhs._storage !== rhs._storage {
-      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
-        let _storage = _args.0
-        let rhs_storage = _args.1
-        if _storage._groups != rhs_storage._groups {return false}
-        if _storage._orderedItems != rhs_storage._orderedItems {return false}
-        if _storage._totalCount != rhs_storage._totalCount {return false}
-        if _storage._failedCount != rhs_storage._failedCount {return false}
-        if _storage._offline != rhs_storage._offline {return false}
-        if _storage._undo != rhs_storage._undo {return false}
-        return true
-      }
-      if !storagesAreEqual {return false}
-    }
+    if lhs.groups != rhs.groups {return false}
+    if lhs.orderedItems != rhs.orderedItems {return false}
+    if lhs.totalCount != rhs.totalCount {return false}
+    if lhs.failedCount != rhs.failedCount {return false}
+    if lhs.offline != rhs.offline {return false}
+    if lhs._undo != rhs._undo {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

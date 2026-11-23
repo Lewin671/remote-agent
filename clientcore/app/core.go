@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -439,6 +440,21 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 	st := c.m.state
 
 	switch k := ev.Event.(type) {
+	case *corev1.Event_LocaleChanged:
+		if k.LocaleChanged == nil {
+			return nil
+		}
+		prev := usage.NormalizeUILocale(st.UILocale)
+		next := usage.NormalizeUILocale(k.LocaleChanged.UiLocale)
+		st.UILocale = next
+		if next == prev {
+			return nil
+		}
+		c.m.usageDirty = true
+		c.m.settingsDirty.MachineStatus = true
+		c.m.settingsDirty.MachineSettings = true
+		c.m.ensureSessionStore().pendingDirty = true
+
 	case *corev1.Event_HomeSetScope:
 		if k.HomeSetScope == nil {
 			return nil
