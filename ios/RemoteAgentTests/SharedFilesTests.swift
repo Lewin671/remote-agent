@@ -8,32 +8,48 @@ import UIKit
 
 @testable import RemoteAgent
 
-/// A computer that serves one file, 1000 bytes a block.
-private final class Computer: SharedFileFetching, @unchecked Sendable {
+/// In-process chunk responder backing `CoreHost.setDemoCommandResponder` for real-Core smoke tests.
+private final class FakeChunkServer: @unchecked Sendable {
     let content: Data
+    let blockBytes: Int
     private let lock = NSLock()
     private var calls = 0
-    private var gate: CheckedContinuation<Void, Never>?
     private var holdAt: Int?
+    private var gate: CheckedContinuation<Void, Never>?
     private let held = AsyncStream<Bool>.makeStream()
-    func waitUntilHeld() async -> Bool { await nextEvent(held.stream) == true }
-    init(_ content: Data) { self.content = content }
+
+    init(_ content: Data, blockBytes: Int = 1000) {
+        self.content = content
+        self.blockBytes = blockBytes
+    }
+
     var count: Int { lock.withLock { calls } }
     func hold(at call: Int) { lock.withLock { holdAt = call } }
-    func release() { lock.withLock { () -> CheckedContinuation<Void, Never>? in defer { gate = nil }; return gate }?.resume() }
+    func waitUntilHeld() async -> Bool { await nextEvent(held.stream) == true }
+    func release() {
+        lock.withLock { () -> CheckedContinuation<Void, Never>? in defer { gate = nil }; return gate }?.resume()
+    }
 
-    func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
-        let n = lock.withLock { () -> Int in calls += 1; return calls - 1 }
-        if lock.withLock({ holdAt }) == n {
-            await withCheckedContinuation { c in
-                lock.withLock { gate = c }
-                held.continuation.yield(true)
+    func action(for effect: PBCoreDispatchCommandEffect, request: PBGetSharedFileChunkRequest) -> CoreHost.DemoCommandAction {
+        .asyncRespond { [self] in
+            let n = lock.withLock { () -> Int in calls += 1; return calls - 1 }
+            if lock.withLock({ holdAt }) == n {
+                await withCheckedContinuation { c in
+                    lock.withLock { gate = c }
+                    held.continuation.yield(true)
+                }
+            }
+            var block = Data(count: blockBytes)
+            let from = Int(request.offset)
+            let take = max(0, min(blockBytes, content.count - from))
+            if take > 0 { block.replaceSubrange(0..<take, with: content[from..<from + take]) }
+            return CoreHost.demoExecutedOutcome(for: effect) {
+                $0.getSharedFileChunk = .with {
+                    $0.data = block
+                    $0.totalBytes = UInt64(content.count)
+                }
             }
         }
-        var block = Data(count: 1000)
-        let from = Int(offset), take = max(0, min(1000, content.count - from))
-        if take > 0 { block.replaceSubrange(0..<take, with: content[from..<from + take]) }
-        return .with { $0.data = block; $0.totalBytes = UInt64(content.count) }
     }
 }
 
@@ -46,22 +62,141 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
     }
 }
 
-private final class ReportSpy: @unchecked Sendable {
-    private let lock = NSLock()
-    private var items: [PBSharedFileLocalStateEvent] = []
-    func record(_ event: PBSharedFileLocalStateEvent) { lock.withLock { items.append(event) } }
-    var events: [PBSharedFileLocalStateEvent] { lock.withLock { items } }
-}
-
 @MainActor @Suite struct SharedFilesTests {
-    private func file(_ content: Data, id: String = "f1", name: String = "cover.png") -> PBSharedFile {
-        .with {
-            $0.fileID = id; $0.name = name; $0.sizeBytes = Int64(content.count)
-            $0.sha256 = Data(SHA256.hash(data: content)); $0.path = "/Users/me/\(name)"
+    private let content = Data((0..<2500).map { UInt8($0 % 251) })
+    private let key = SharedFileKey(sessionId: "s1", fileId: "f1")
+
+    @MainActor final class Opened {
+        var urls: [URL] = []
+        private let signal = AsyncStream<URL>.makeStream()
+        func record(_ url: URL) { urls.append(url); signal.continuation.yield(url) }
+        func next() async -> URL? { await nextEvent(signal.stream) }
+    }
+
+    private struct Harness {
+        let host: CoreHost
+        let screens: CoreScreens
+        let center: SharedFileCenter
+        let store: SharedFileStore
+        let root: URL
+        let opened: Opened
+
+        @MainActor func item(sessionID: String = "s1", fileID: String = "f1") -> PBSessionSharedFileItem? {
+            guard let items = screens.sessions[sessionID]?.timeline.items else { return nil }
+            for row in items {
+                if case .sharedFiles(let sf)? = row.kind,
+                   let match = sf.files.first(where: { $0.fileID == fileID })
+                {
+                    return match
+                }
+            }
+            return nil
+        }
+
+        func tearDown() async {
+            await MainActor.run { center.close() }
+            await host.closeAsync()
+            try? FileManager.default.removeItem(at: root)
         }
     }
 
-    private func item(
+    private func makeHarness(
+        content: Data,
+        fileName: String = "cover.png",
+        server: FakeChunkServer,
+        root existingRoot: URL? = nil,
+        scanLocal: Bool = true
+    ) async throws -> Harness {
+        let root = existingRoot ?? FileManager.default.temporaryDirectory.appendingPathComponent("sf-smoke-\(UUID().uuidString)")
+        let account = Account(
+            server: "http://127.0.0.1:1",
+            deviceId: "00112233445566778899aabbccddeeff",
+            accountId: "11111111111111111111111111111111"
+        )
+        let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
+        let screens = CoreScreens()
+        let store = SharedFileStore(root: root)
+        let host = try CoreHost.live(
+            remote: remote,
+            account: account,
+            defaults: UserDefaults(suiteName: "sf-test-\(UUID().uuidString)")!,
+            screens: screens,
+            sharedFileStore: store,
+            demoMode: true,
+            onNavigate: { _ in }
+        )
+        let opened = Opened()
+        let center = SharedFileCenter(store: store, coreHost: host, allowMissingReports: true, open: { opened.record($0) })
+        await host.setSharedFileHandlers(center.handlers())
+        await host.setDemoCommandResponder { eff, cmd in
+            if case .getSharedFileChunk(let req)? = cmd.kind {
+                return server.action(for: eff, request: req)
+            }
+            return nil
+        }
+
+        var state = RemoteState()
+        state.conn = .online
+        state.link = .online
+        state.machines["m1"] = MachineView(
+            id: "m1", online: true, lastSeenMs: nowMs(),
+            meta: .with {
+                $0.hostname = "MacBook"
+                $0.home = "/Users/me"
+                $0.os = "darwin"
+                $0.protocolVersion = peerProtocolVersion
+                $0.capabilities = .with {
+                    $0.sharedFiles = true
+                    $0.sharedFileChunkBytes = Int32(server.blockBytes)
+                    $0.maxSharedFileBytes = 104_857_600
+                }
+            },
+            metaRev: 1
+        )
+        state.sessions["s1"] = SessionView(
+            id: "s1", machineId: "m1",
+            info: .with {
+                $0.id = "s1"
+                $0.cwd = "/Users/me/proj"
+                $0.title = "Files"
+                $0.status = .idle
+                $0.agent = .codex
+            },
+            metaRev: 1, updatedMs: nowMs()
+        )
+        let ev = PBEvent.with {
+            $0.seq = 1
+            $0.toolCall = .with {
+                $0.title = "send_file"
+                $0.callID = "send-f1"
+                $0.kind = .other
+                $0.status = "completed"
+                $0.itemType = "remote_agent/send_file"
+                $0.sharedFiles = [.with {
+                    $0.fileID = "f1"
+                    $0.name = fileName
+                    $0.sizeBytes = Int64(content.count)
+                    $0.sha256 = Data(SHA256.hash(data: content))
+                    $0.path = "/Users/me/\(fileName)"
+                }]
+            }
+        }
+        await host.seedDemo(state: state, events: ["s1": [ev]])
+        if scanLocal {
+            await host.dispatch(PBCoreEvent.with {
+                $0.sharedFileConfig = .with {
+                    $0.localCacheMaxBytes = 0
+                    $0.storageFullKind = .phoneStorageFull
+                    $0.scanLocal = true
+                }
+            })
+            await host.drainSharedFileQueue()
+        }
+        _ = await host.acquireSessionWatch("s1")
+        return Harness(host: host, screens: screens, center: center, store: store, root: root, opened: opened)
+    }
+
+    private func cardVM(
         _ content: Data,
         id: String = "f1",
         name: String = "cover.png",
@@ -84,181 +219,139 @@ private final class ReportSpy: @unchecked Sendable {
         }
     }
 
-    private let content = Data((0..<2500).map { UInt8($0 % 251) })
-    private let key = SharedFileKey(sessionId: "s1", fileId: "f1")
+    // MARK: Real-Core Smoke Tests
 
-    private func center(
-        _ computer: Computer,
-        opened: Opened,
-        spy: ReportSpy = ReportSpy(),
-        clock: @escaping @Sendable () -> Int64 = { nowMs() }
-    ) -> (SharedFileCenter, URL) {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("sf-\(UUID().uuidString)")
-        let store = SharedFileStore(root: root, fetcher: computer, isMachineOnline: { _ in true }, blockBytes: { _ in 1000 })
-        return (SharedFileCenter(store: store, open: { opened.record($0) }, report: { spy.record($0) }, clock: clock), root)
+    @Test func coreDrivenDownloadAutoOpensWhenSessionVisibleAndOpensOnLaterTap() async throws {
+        let server = FakeChunkServer(content)
+        let h = try await makeHarness(content: content, server: server)
+        defer { Task { await h.tearDown() } }
+
+        let visibleToken = await h.host.enterVisibleSession("s1")
+        let initial = try #require(h.item())
+        #expect(initial.status == .available)
+
+        h.center.tap(initial, sessionId: "s1")
+        let openedURL = try #require(await h.opened.next())
+        #expect(try Data(contentsOf: openedURL) == content)
+        #expect(h.opened.urls.count == 1)
+
+        await eventually("downloaded in Core VM") { h.item()?.status == .downloaded }
+        let downloaded = try #require(h.item())
+        #expect(downloaded.primaryAction == .open)
+
+        // Tapping 打开 later opens the committed copy again.
+        h.center.tap(downloaded, sessionId: "s1")
+        #expect(h.opened.urls.count == 2)
+
+        // Leaving session clears visible session cleanly.
+        await h.host.leaveVisibleSession(visibleToken)
     }
 
-    @MainActor final class Opened {
-        var urls: [URL] = []
-        private let signal = AsyncStream<URL>.makeStream()
-        func record(_ url: URL) { urls.append(url); signal.continuation.yield(url) }
-        func next() async -> URL? { await nextEvent(signal.stream) }
+    @Test func leavingVisibleSessionSuppressesAutoOpenOnCompletion() async throws {
+        let server = FakeChunkServer(content)
+        server.hold(at: 1)
+        defer { server.release() }
+        let h = try await makeHarness(content: content, server: server)
+        defer { Task { await h.tearDown() } }
+
+        let token = await h.host.enterVisibleSession("s1")
+        let initial = try #require(h.item())
+        h.center.tap(initial, sessionId: "s1")
+        try #require(await server.waitUntilHeld())
+
+        // Leave session before download finishes -> Core revokes auto-open ticket.
+        await h.host.leaveVisibleSession(token)
+        server.release()
+
+        await eventually("downloaded") { h.item()?.status == .downloaded }
+        await h.host.drainSharedFileQueue()
+        #expect(h.opened.urls.isEmpty)
     }
 
-    // MARK: Downloading & Core reporting
+    @Test func pauseResumeDeleteClearAndMissingCopyWorkThroughCore() async throws {
+        let server = FakeChunkServer(content)
+        server.hold(at: 1)
+        defer { server.release() }
+        let h = try await makeHarness(content: content, fileName: "clip.mp4", server: server)
+        defer { Task { await h.tearDown() } }
 
-    @Test func aTapDownloadsOpensAndReportsLocalStateToCore() async throws {
-        let computer = Computer(content)
-        let opened = Opened()
-        let spy = ReportSpy()
-        let (c, root) = center(computer, opened: opened, spy: spy)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.tap(item(content, status: .available, action: .download), sessionId: "s1")
-        let url = try #require(await opened.next())
-        #expect(opened.urls.count == 1)
-        #expect(try Data(contentsOf: url) == content)
-        #expect({ if case .downloaded = c.transfer(key, file: f) { true } else { false } }())
-        await c.flushReports()
-        let statuses = spy.events.flatMap(\.updates).map(\.status)
-        #expect(statuses.contains(.downloading))
-        #expect(statuses.last == .downloaded)
-        // Tapping 打开 later opens it again.
-        c.tap(item(content, status: .downloaded, action: .open), sessionId: "s1")
-        #expect(opened.urls.count == 2)
-        // Disabled primary action does nothing.
-        c.tap(item(content, status: .offline, action: .download, enabled: false), sessionId: "s1")
-        #expect(opened.urls.count == 2)
+        let initial = try #require(h.item())
+        h.center.tap(initial, sessionId: "s1")
+        try #require(await server.waitUntilHeld())
+
+        // Pause while chunk 1 is in flight.
+        await eventually("downloading") { h.item()?.status == .downloading }
+        h.center.pauseDownload(key)
+        await eventually("paused") { h.item()?.status == .paused }
+        server.release()
+
+        // Resume and finish.
+        h.center.startDownload(key, autoOpenIfStaying: false)
+        await eventually("downloaded") { h.item()?.status == .downloaded }
+        #expect(h.center.usedBytes() >= 2500)
+
+        // Record duration -> persisted in .meta and visible in Core.
+        await h.host.recordSharedFileDuration(sessionID: "s1", fileID: "f1", durationMs: 102_000)
+        await h.host.drainSharedFileQueue()
+
+        // Simulate OS reclaiming cache file -> opening reports SharedFileLocalMissingEvent -> reverts to available.
+        if let local = h.store.existingLocalURL(key, name: "clip.mp4") {
+            try FileManager.default.removeItem(at: local)
+        }
+        h.center.open(key, name: "clip.mp4")
+        await eventually("reverted to available after OS purge") { h.item()?.status == .available }
+        #expect(h.opened.urls.isEmpty)
+
+        // Download again, then clearAll empties disk and resets state.
+        h.center.startDownload(key, autoOpenIfStaying: false)
+        await eventually("re-downloaded") { h.item()?.status == .downloaded }
+        await h.center.clearAll()
+        await eventually("cleared") { h.item()?.status == .available }
+        #expect(h.center.usedBytes() == 0)
     }
 
-    @Test(arguments: [String?.some("s1"), nil])
-    func leavingThePageOrAppTakesBackTheTicket(_ sessionId: String?) async throws {
-        let computer = Computer(content)
-        computer.hold(at: 1)
-        defer { computer.release() }
-        let opened = Opened()
-        let (c, root) = center(computer, opened: opened)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.tap(item(content, status: .available, action: .download), sessionId: "s1")
-        try #require(await computer.waitUntilHeld())
-        c.leftPage(sessionId)
-        computer.release()
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        let barrier = SharedFileKey(sessionId: "barrier", fileId: "barrier")
-        await c.appeared(barrier, file: f)
-        await eventually("completion consumed") { c.states[barrier] != nil }
-        #expect(opened.urls.isEmpty)
-    }
+    @Test func startupScanRestoresCompletedCopyAndDurationAcrossRestart() async throws {
+        let sharedRoot = FileManager.default.temporaryDirectory.appendingPathComponent("sf-restart-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: sharedRoot) }
 
-    @Test func aPauseWinsOverTheBlockThatWasOnItsWay() async throws {
-        let computer = Computer(content)
-        computer.hold(at: 1)
-        let opened = Opened()
-        let (c, root) = center(computer, opened: opened)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.tap(item(content, status: .available, action: .download), sessionId: "s1")
-        defer { computer.release() }
-        try #require(await computer.waitUntilHeld())
-        c.tap(item(content, status: .downloading, action: .pause), sessionId: "s1")
-        await eventually("paused") { if case .paused = c.transfer(key, file: f) { true } else { false } }
-        computer.release()
-        try await Task.sleep(nanoseconds: 100_000_000)
-        guard case .paused(let done, _) = c.transfer(key, file: f) else { Issue.record("not paused"); return }
-        #expect(done == 1000)
-        #expect(opened.urls.isEmpty)
-        c.tap(item(content, status: .paused, action: .resume), sessionId: "s1")
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-    }
+        let server1 = FakeChunkServer(content)
+        let h1 = try await makeHarness(content: content, fileName: "clip.mp4", server: server1, root: sharedRoot)
+        h1.center.startDownload(key, autoOpenIfStaying: false)
+        await eventually("downloaded") { h1.item()?.status == .downloaded }
+        await h1.host.recordSharedFileDuration(sessionID: "s1", fileID: "f1", durationMs: 65_000)
+        await h1.host.drainSharedFileQueue()
+        await h1.host.closeAsync()
+        h1.center.close()
 
-    @Test func theSameFileOnTwoCardsIsOneState() async {
-        let computer = Computer(content)
-        let (c, root) = center(computer, opened: Opened())
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.begin(key, file: f)
-        c.begin(key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        #expect(computer.count == 3)
-        #expect(c.transfer(SharedFileKey(sessionId: "s1", fileId: "f1"), file: f) == c.transfer(key, file: f))
-    }
-
-    @Test func deletingTheCopyDropsItsThumbnailAndReportsUnspecifiedToCore() async {
-        let computer = Computer(content)
-        let spy = ReportSpy()
-        let (c, root) = center(computer, opened: Opened(), spy: spy)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.begin(key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        await c.loadMedia(key, url: { if case .downloaded(let u, _) = c.transfer(key, file: f) { u } else { URL(fileURLWithPath: "/") } }(), kind: .other)
-        c.deleteLocal(key)
-        await eventually("idle") { c.transfer(key, file: f) == .idle }
-        await c.flushReports()
-        #expect(spy.events.last?.updates.last?.status == .unspecified)
-        #expect(c.thumbnail(key) == nil)
-        #expect(await c.usedBytes() == 0)
-    }
-
-    @Test func removingASessionDeletesItsFilesAndSendsClearSessionId() async {
-        let computer = Computer(content)
-        let spy = ReportSpy()
-        let (c, root) = center(computer, opened: Opened(), spy: spy)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.begin(key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        #expect(await c.usedBytes() >= 2500)
-        c.forgetSession("s1")
-        await eventually("emptied") { c.transfer(key, file: f) == .idle }
-        await c.flushReports()
-        #expect(spy.events.contains { $0.clearSessionID_p == "s1" })
-        #expect(await c.usedBytes() == 0)
-    }
-
-    @Test func clearingAndStartupSyncReportReplaceAllToCore() async {
-        let computer = Computer(content)
-        let spy = ReportSpy()
-        let (c, root) = center(computer, opened: Opened(), spy: spy)
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(content)
-        c.begin(key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-
-        // A second center on the same root scans disk and sends replace_all = true.
-        let spy2 = ReportSpy()
-        let store2 = SharedFileStore(root: root, fetcher: computer, isMachineOnline: { _ in true }, blockBytes: { _ in 1000 })
-        let c2 = SharedFileCenter(store: store2, open: { _ in }, report: { spy2.record($0) })
-        defer { c2.close() }
-        await c2.syncAllToCore()
-        await c2.flushReports()
-        let firstSync = spy2.events.first
-        #expect(firstSync?.replaceAll == true)
-        #expect(firstSync?.updates.first?.fileID == "f1")
-        #expect(firstSync?.updates.first?.status == .downloaded)
-
-        await c.clearAll()
-        await c.flushReports()
-        #expect(spy.events.contains { $0.replaceAll && $0.updates.isEmpty })
-        #expect(await c.usedBytes() == 0)
+        // Second CoreHost on the same root scans local storage and restores DOWNLOADED + duration.
+        let server2 = FakeChunkServer(content)
+        let h2 = try await makeHarness(content: content, fileName: "clip.mp4", server: server2, root: sharedRoot)
+        defer { Task { await h2.host.closeAsync(); await MainActor.run { h2.center.close() } } }
+        await eventually("restored downloaded") { h2.item()?.status == .downloaded }
+        #expect(server2.count == 0)
     }
 
     @Test func aThumbnailIsMadeFromTheCopy() async throws {
         let png = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 20)).image { ctx in
             UIColor.red.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 20))
         }.pngData()!
-        let computer = Computer(png)
-        let (c, root) = center(computer, opened: Opened())
-        defer { c.close(); try? FileManager.default.removeItem(at: root) }
-        let f = file(png)
-        c.begin(key, file: f)
-        await eventually("downloaded") { if case .downloaded = c.transfer(key, file: f) { true } else { false } }
-        guard case .downloaded(let url, _) = c.transfer(key, file: f) else { return }
-        await c.loadMedia(key, url: url, kind: .image)
-        #expect(c.thumbnail(key) != nil)
-        let media = await SharedFileMedia.read(URL(fileURLWithPath: "/nonexistent"), kind: .image)
-        #expect(media.thumbnail == nil)
+        let server = FakeChunkServer(png)
+        let h = try await makeHarness(content: png, fileName: "cover.png", server: server)
+        defer { Task { await h.tearDown() } }
+
+        h.center.startDownload(key, autoOpenIfStaying: false)
+        await eventually("downloaded") { h.item()?.status == .downloaded }
+        await h.center.loadMedia(key, name: "cover.png", kind: .image)
+        #expect(h.center.thumbnail(key) != nil)
+        let missing = await SharedFileMedia.read(URL(fileURLWithPath: "/nonexistent"), kind: .image)
+        #expect(missing.thumbnail == nil)
+
+        // Deleting local copy clears thumbnail and disk.
+        h.center.deleteLocal(key)
+        await eventually("deleted") { h.item()?.status == .available }
+        await h.host.drainSharedFileQueue()
+        #expect(h.center.thumbnail(key) == nil)
+        #expect(h.center.usedBytes() == 0)
     }
 
     // MARK: Drawing from Core ViewModel
@@ -280,7 +373,7 @@ private final class ReportSpy: @unchecked Sendable {
             (.cleaned, .unspecified, false, 0),
         ]
         for (status, action, enabled, progress) in cases {
-            var vm = item(content, name: "daocheng-final-vertical-1080-v3.mp4", status: status, action: action, enabled: enabled)
+            var vm = cardVM(content, name: "daocheng-final-vertical-1080-v3.mp4", status: status, action: action, enabled: enabled)
             vm.kind = .video
             vm.nameHead = "daocheng-final-vertical-1080-"
             vm.nameTail = "-v3.mp4"
@@ -298,7 +391,7 @@ private final class ReportSpy: @unchecked Sendable {
     }
 
     @Test func theSubtitleOfALargeTypeSizeIsNotCut() {
-        var vm = item(content, status: .failed, action: .retry)
+        var vm = cardVM(content, status: .failed, action: .retry)
         vm.subtitle = .with { $0.literal = "没下载下来，文件校验不一致" }
         vm.subtitleIsError = true
         let small = render(SharedFileCardBody(item: vm, width: 200), size: .large)

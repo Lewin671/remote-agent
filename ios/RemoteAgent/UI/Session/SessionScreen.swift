@@ -56,6 +56,11 @@ private enum SessionSheet: String, Identifiable {
     var id: String { rawValue }
 }
 
+private struct VisibleSessionKey: Equatable {
+    let id: String
+    let active: Bool
+}
+
 private let sessionTabKey = "session-view.tab"
 
 /// A session: its chat and its terminal. `terminal` opens it on the terminal.
@@ -130,6 +135,16 @@ struct SessionScreen: View {
             }
         }
         .followCoreSession(id, refreshModels: menu || sheet == .model, window: windowRequest)
+        .task(id: VisibleSessionKey(id: id, active: scenePhase == .active)) {
+            guard scenePhase == .active, !id.isEmpty else { return }
+            let token = await context.coreHost.enterVisibleSession(id)
+            defer {
+                Task { await context.coreHost.leaveVisibleSession(token) }
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
+            }
+        }
         .sessionSamples(id)
         .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
             let matching = restores.filter { $0.effect.sessionID == id }
@@ -234,8 +249,6 @@ struct SessionScreen: View {
         .task(id: id) {
             SessionImages.restore(session: id, remote: context.remote)
         }
-        .onDisappear { SharedFileCenter.of(context.remote).leftPage(id) }
-        .onChange(of: scenePhase) { _, phase in if phase != .active { SharedFileCenter.of(context.remote).leftPage() } }
         .animation(Motion.enter(), value: SharedFileCenter.of(context.remote).notice)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(titleText)

@@ -94,7 +94,13 @@ enum SessionSamples {
         var eventsMap = events(now)
         eventsMap["sample-start"] = Demo.events(now, [user("给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")])
         demoEvents = eventsMap
+        let fakeFiles = SharedFileDebug.fake
+            ? Dictionary(uniqueKeysWithValues: SharedFileDebug.fakes.map { ($0.id, $0.data) })
+            : [:]
         await coreHost.setDemoCommandResponder { eff, cmd in
+            if case .getSharedFileChunk(let req)? = cmd.kind, !fakeFiles.isEmpty {
+                return SharedFileDebug.demoChunkAction(effect: eff, request: req, files: fakeFiles)
+            }
             guard case .send(let s)? = cmd.kind else { return nil }
             switch s.requestID {
             case "s1":
@@ -121,9 +127,6 @@ enum SessionSamples {
         }
         await remote.showForTest(state: state)
         await coreHost.appendDemoSessionData(state: state, events: eventsMap, modelLists: modelLists)
-        if let forced = SharedFileDebug.localStateEvent(for: eventsMap) {
-            await coreHost.reportSharedFileLocalState(forced)
-        }
         await local(coreHost)
     }
 
@@ -145,7 +148,7 @@ enum SessionSamples {
                         $0.fileUpload = ProcessInfo.processInfo.arguments.contains("-fileUploads")
                         // Only the main sample computer hands out files; the other keeps send_file a plain tool row.
                         $0.sharedFiles = shares
-                        $0.sharedFileChunkBytes = shares ? Int32(defaultSharedFileBlockBytes) : 0
+                        $0.sharedFileChunkBytes = shares ? Int32(SharedFileDebug.demoBlockBytes) : 0
                         $0.maxSharedFileBytes = shares ? 104_857_600 : 0
                     }
                     $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in .with { $0.agent = agent } }
