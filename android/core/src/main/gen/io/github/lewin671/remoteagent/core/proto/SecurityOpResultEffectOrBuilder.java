@@ -29,18 +29,6 @@ public interface SecurityOpResultEffectOrBuilder extends
       getErrorBytes();
 
   /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @return The errorCode.
-   */
-  java.lang.String getErrorCode();
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @return The bytes for errorCode.
-   */
-  com.google.protobuf.ByteString
-      getErrorCodeBytes();
-
-  /**
    * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 4 [json_name = "opened"];</code>
    * @return Whether the opened field is set.
    */

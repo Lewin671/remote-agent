@@ -533,15 +533,15 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	}
 
 	// 2. Lease expiry & clock skew on live CanSeal.
-	if err := eng.CanSeal(nowMs + 10 + devicesec.Lease + 1); !errors.Is(err, ErrLeaseExpired) || ErrorCode(err) != "stale" {
-		t.Fatalf("expected ErrLeaseExpired/stale, got %v (%s)", err, ErrorCode(err))
+	if err := eng.CanSeal(nowMs + 10 + devicesec.Lease + 1); !errors.Is(err, ErrLeaseExpired) || StructuredErrorCode(err) != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_LEASE_EXPIRED {
+		t.Fatalf("expected ErrLeaseExpired/LEASE_EXPIRED, got %v (%v)", err, StructuredErrorCode(err))
 	}
 	skewEng := NewEngine(pool, 0)
 	skewEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 	executeHostEffects(t, skewEng, phone, nowMs-int64(devicesec.MaxClockSkew)-100, skewEng.ApplyRecord(nowMs-int64(devicesec.MaxClockSkew)-100, RecordUpdate{
 		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
 	}))
-	if err := skewEng.CanSeal(nowMs - int64(devicesec.MaxClockSkew) - 100); !errors.Is(err, ErrClockSkewed) || ErrorCode(err) != "clock" {
+	if err := skewEng.CanSeal(nowMs - int64(devicesec.MaxClockSkew) - 100); !errors.Is(err, ErrClockSkewed) || StructuredErrorCode(err) != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CLOCK_SKEWED {
 		t.Fatalf("expected ErrClockSkewed, got %v", err)
 	}
 
@@ -581,7 +581,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	eng.OpenBatch(nowMs+100, []OpenItem{{Env: envUnknownInner, ExpectedPurpose: devicesec.Event, SessionID: "sess-u", History: true}}, func(r []OpenResult) {
 		openRes = r
 	})
-	if len(openRes) != 1 || openRes[0].Err == nil || ErrorCode(openRes[0].Err) != "invalid" {
+	if len(openRes) != 1 || openRes[0].Err == nil || StructuredErrorCode(openRes[0].Err) != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_INVALID {
 		t.Fatalf("expected strict unknown inner Event rejection, got %+v", openRes)
 	}
 

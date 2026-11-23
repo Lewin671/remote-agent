@@ -444,31 +444,25 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 	if err != nil {
 		res.Error = err.Error()
 		if we := asWfError(err); we != nil {
-			res.ErrorCode, res.Retryable, res.Uncertain, res.ErrorAction = we.code, we.retryable, we.uncertain, we.action
+			res.Retryable, res.Uncertain, res.ErrorAction = we.retryable, we.uncertain, we.action
 			res.StructuredErrorCode = StructuredErrorCodeFromString(we.code)
 		} else {
-			res.ErrorCode = ErrorCode(err)
 			res.StructuredErrorCode = StructuredErrorCode(err)
 			if re := asRpcError(err); re != nil {
 				switch re.code {
 				case connectCodePermissionDenied:
-					res.ErrorCode = "permission_denied"
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED
 				case connectCodeNotFound:
-					res.ErrorCode = "not_found"
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_NOT_FOUND
 				case connectCodeFailedPrecondition:
-					res.ErrorCode = "failed_precondition"
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_FAILED_PRECONDITION
 				case connectCodeResourceExhausted:
-					res.ErrorCode = "resource_exhausted"
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED
 				case connectCodeCanceled:
-					res.ErrorCode = "canceled"
 					res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_CANCELED
 				default:
 					if re.code == connectCodeUnavailable || re.network {
-						res.ErrorCode, res.Retryable, res.Uncertain = "unavailable", true, true
+						res.Retryable, res.Uncertain = true, true
 						res.StructuredErrorCode = corev1.SecurityErrorCode_SECURITY_ERROR_CODE_UNAVAILABLE
 					}
 				}

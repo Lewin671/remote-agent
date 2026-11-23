@@ -31,28 +31,6 @@ var (
 	ErrNeedEntropy                = errors.New("security: waiting for OS entropy")
 )
 
-// ErrorCode returns the wire/UI classification code for an opening or sealing error.
-func ErrorCode(err error) string {
-	switch {
-	case err == nil:
-		return ""
-	case errors.Is(err, ErrRecoveryHistoryUnavailable):
-		return "recovery_unavailable"
-	case errors.Is(err, ErrUnsupportedHistory):
-		return "unsupported_history"
-	case errors.Is(err, ErrClockSkewed), errors.Is(err, devicesec.ErrClock):
-		return "clock"
-	case errors.Is(err, ErrLeaseExpired), errors.Is(err, devicesec.ErrStale):
-		return "stale"
-	case errors.Is(err, devicesec.ErrUntrusted), errors.Is(err, ErrNotMember):
-		return "untrusted"
-	case errors.Is(err, devicesec.ErrCapacity):
-		return "capacity"
-	default:
-		return "invalid"
-	}
-}
-
 // StructuredErrorCode returns a typed SecurityErrorCode that distinguishes
 // ErrLeaseExpired from generic stale state without inspecting error message text.
 func StructuredErrorCode(err error) corev1.SecurityErrorCode {
@@ -1606,7 +1584,6 @@ func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
 	e.emitSecurityOpResult(&corev1.SecurityOpResultEffect{
 		OpId:                opID,
 		Error:               err.Error(),
-		ErrorCode:           ErrorCode(err),
 		StructuredErrorCode: StructuredErrorCode(err),
 	})
 }

@@ -1230,7 +1230,6 @@ type SecurityOpResultEffect struct {
 	_                   [0]func()
 	OpId                uint64
 	Error               string
-	ErrorCode           string
 	Result              isSecurityOpResultEffect_Result
 	StructuredErrorCode SecurityErrorCode
 }
@@ -1275,12 +1274,6 @@ func (m *SecurityOpResultEffect) GetError() string {
 	}
 	return ""
 }
-func (m *SecurityOpResultEffect) GetErrorCode() string {
-	if m != nil {
-		return m.ErrorCode
-	}
-	return ""
-}
 func (m *SecurityOpResultEffect) GetOpened() *SecurityOpenEnvelopeResult {
 	if x, ok := m.GetResult().(*SecurityOpResultEffect_Opened); ok && x != nil {
 		return x.Opened
@@ -1310,7 +1303,6 @@ var LitewireDesc_SecurityOpResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.OpId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.Error), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.ErrorCode), Kind: litewire.KindString},
 		{Num: litewire.Number(1), Kind: litewire.KindCustom},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityOpResultEffect{}.StructuredErrorCode), Kind: litewire.KindInt32},
 	},
@@ -4530,7 +4522,6 @@ type SecurityWorkflowResultEffect struct {
 	ActionId              uint64
 	Ok                    bool
 	Error                 string
-	ErrorCode             string
 	Retryable             bool
 	Uncertain             bool
 	ErrorAction           string
@@ -4563,12 +4554,6 @@ func (m *SecurityWorkflowResultEffect) GetOk() bool {
 func (m *SecurityWorkflowResultEffect) GetError() string {
 	if m != nil {
 		return m.Error
-	}
-	return ""
-}
-func (m *SecurityWorkflowResultEffect) GetErrorCode() string {
-	if m != nil {
-		return m.ErrorCode
 	}
 	return ""
 }
@@ -4668,7 +4653,6 @@ var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ActionId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Ok), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Error), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorCode), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Retryable), Kind: litewire.KindBool},
 		{Num: 6, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Uncertain), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorAction), Kind: litewire.KindString},

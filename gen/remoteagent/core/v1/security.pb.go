@@ -1936,10 +1936,9 @@ func (x *SecuritySealEnvelopeResult) GetPayloadHash() []byte {
 }
 
 type SecurityOpResultEffect struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	OpId      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	Error     string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
-	ErrorCode string                 `protobuf:"bytes,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	OpId  uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	Error string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	// Types that are valid to be assigned to Result:
 	//
 	//	*SecurityOpResultEffect_Opened
@@ -1991,13 +1990,6 @@ func (x *SecurityOpResultEffect) GetOpId() uint64 {
 func (x *SecurityOpResultEffect) GetError() string {
 	if x != nil {
 		return x.Error
-	}
-	return ""
-}
-
-func (x *SecurityOpResultEffect) GetErrorCode() string {
-	if x != nil {
-		return x.ErrorCode
 	}
 	return ""
 }
@@ -5717,7 +5709,6 @@ type SecurityWorkflowResultEffect struct {
 	ActionId              uint64                      `protobuf:"varint,1,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
 	Ok                    bool                        `protobuf:"varint,2,opt,name=ok,proto3" json:"ok,omitempty"`
 	Error                 string                      `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	ErrorCode             string                      `protobuf:"bytes,4,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	Retryable             bool                        `protobuf:"varint,5,opt,name=retryable,proto3" json:"retryable,omitempty"`
 	Uncertain             bool                        `protobuf:"varint,6,opt,name=uncertain,proto3" json:"uncertain,omitempty"`
 	ErrorAction           string                      `protobuf:"bytes,7,opt,name=error_action,json=errorAction,proto3" json:"error_action,omitempty"`
@@ -5784,13 +5775,6 @@ func (x *SecurityWorkflowResultEffect) GetOk() bool {
 func (x *SecurityWorkflowResultEffect) GetError() string {
 	if x != nil {
 		return x.Error
-	}
-	return ""
-}
-
-func (x *SecurityWorkflowResultEffect) GetErrorCode() string {
-	if x != nil {
-		return x.ErrorCode
 	}
 	return ""
 }
@@ -6476,17 +6460,16 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x1aSecuritySealEnvelopeResult\x124\n" +
 	"\benvelope\x18\x01 \x01(\v2\x18.remoteagent.v1.EnvelopeR\benvelope\x12(\n" +
 	"\x10request_key_hash\x18\x02 \x01(\fR\x0erequestKeyHash\x12!\n" +
-	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\"\x83\x03\n" +
+	"\fpayload_hash\x18\x03 \x01(\fR\vpayloadHash\"\xf6\x02\n" +
 	"\x16SecurityOpResultEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x14\n" +
-	"\x05error\x18\x02 \x01(\tR\x05error\x12\x1d\n" +
-	"\n" +
-	"error_code\x18\x03 \x01(\tR\terrorCode\x12I\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\x12I\n" +
 	"\x06opened\x18\x04 \x01(\v2/.remoteagent.core.v1.SecurityOpenEnvelopeResultH\x00R\x06opened\x12I\n" +
 	"\x06sealed\x18\x05 \x01(\v2/.remoteagent.core.v1.SecuritySealEnvelopeResultH\x00R\x06sealed\x12#\n" +
 	"\fsession_seed\x18\x06 \x01(\fH\x00R\vsessionSeed\x12Z\n" +
 	"\x15structured_error_code\x18\a \x01(\x0e2&.remoteagent.core.v1.SecurityErrorCodeR\x13structuredErrorCodeB\b\n" +
-	"\x06result\"\x97\x01\n" +
+	"\x06resultJ\x04\b\x03\x10\x04R\n" +
+	"error_code\"\x97\x01\n" +
 	"\vDemoMachine\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x16\n" +
@@ -6812,13 +6795,11 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"get_status\x18( \x01(\v2(.remoteagent.core.v1.SecurityActionEmptyH\x00R\tgetStatus\x12^\n" +
 	"\x15check_retained_denied\x18) \x01(\v2(.remoteagent.core.v1.SecurityActionEmptyH\x00R\x13checkRetainedDenied\x12g\n" +
 	"\x1arepublish_recovery_objects\x18* \x01(\v2'.remoteagent.core.v1.SecurityBoolActionH\x00R\x18republishRecoveryObjectsB\b\n" +
-	"\x06action\"\xbe\a\n" +
+	"\x06action\"\xb1\a\n" +
 	"\x1cSecurityWorkflowResultEffect\x12\x1b\n" +
 	"\taction_id\x18\x01 \x01(\x04R\bactionId\x12\x0e\n" +
 	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error\x12\x1d\n" +
-	"\n" +
-	"error_code\x18\x04 \x01(\tR\terrorCode\x12\x1c\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\x12\x1c\n" +
 	"\tretryable\x18\x05 \x01(\bR\tretryable\x12\x1c\n" +
 	"\tuncertain\x18\x06 \x01(\bR\tuncertain\x12!\n" +
 	"\ferror_action\x18\a \x01(\tR\verrorAction\x12C\n" +
@@ -6836,7 +6817,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"exitAdvice\x12T\n" +
 	"\x0faccount_adopted\x18\x11 \x01(\v2+.remoteagent.core.v1.SecurityAccountAdoptedR\x0eaccountAdopted\x12\x12\n" +
 	"\x04flag\x18\x12 \x01(\bR\x04flag\x12Z\n" +
-	"\x15structured_error_code\x18\x13 \x01(\x0e2&.remoteagent.core.v1.SecurityErrorCodeR\x13structuredErrorCode\"b\n" +
+	"\x15structured_error_code\x18\x13 \x01(\x0e2&.remoteagent.core.v1.SecurityErrorCodeR\x13structuredErrorCodeJ\x04\b\x04\x10\x05R\n" +
+	"error_code\"b\n" +
 	"\x1bSecurityStatusChangedEffect\x12C\n" +
 	"\x06status\x18\x01 \x01(\v2+.remoteagent.core.v1.SecurityWorkflowStatusR\x06status\"\xeb\x02\n" +
 	"\x17SecurityOpenNotifyEvent\x12\x13\n" +

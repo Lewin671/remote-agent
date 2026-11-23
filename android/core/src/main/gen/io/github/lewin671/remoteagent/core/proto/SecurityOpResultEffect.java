@@ -16,7 +16,6 @@ public  final class SecurityOpResultEffect extends
     SecurityOpResultEffectOrBuilder {
   private SecurityOpResultEffect() {
     error_ = "";
-    errorCode_ = "";
   }
   private int resultCase_ = 0;
   private java.lang.Object result_;
@@ -134,54 +133,6 @@ public  final class SecurityOpResultEffect extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     error_ = value.toStringUtf8();
-
-  }
-
-  public static final int ERROR_CODE_FIELD_NUMBER = 3;
-  private java.lang.String errorCode_;
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @return The errorCode.
-   */
-  @java.lang.Override
-  public java.lang.String getErrorCode() {
-    return errorCode_;
-  }
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @return The bytes for errorCode.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getErrorCodeBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(errorCode_);
-  }
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @param value The errorCode to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setErrorCode(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    errorCode_ = value;
-  }
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   */
-  private void clearErrorCode() {
-
-    errorCode_ = getDefaultInstance().getErrorCode();
-  }
-  /**
-   * <code>string error_code = 3 [json_name = "errorCode"];</code>
-   * @param value The bytes for errorCode to set.
-   */
-  private void setErrorCodeBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    errorCode_ = value.toStringUtf8();
 
   }
 
@@ -557,55 +508,6 @@ public  final class SecurityOpResultEffect extends
     }
 
     /**
-     * <code>string error_code = 3 [json_name = "errorCode"];</code>
-     * @return The errorCode.
-     */
-    @java.lang.Override
-    public java.lang.String getErrorCode() {
-      return instance.getErrorCode();
-    }
-    /**
-     * <code>string error_code = 3 [json_name = "errorCode"];</code>
-     * @return The bytes for errorCode.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getErrorCodeBytes() {
-      return instance.getErrorCodeBytes();
-    }
-    /**
-     * <code>string error_code = 3 [json_name = "errorCode"];</code>
-     * @param value The errorCode to set.
-     * @return This builder for chaining.
-     */
-    public Builder setErrorCode(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setErrorCode(value);
-      return this;
-    }
-    /**
-     * <code>string error_code = 3 [json_name = "errorCode"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearErrorCode() {
-      copyOnWrite();
-      instance.clearErrorCode();
-      return this;
-    }
-    /**
-     * <code>string error_code = 3 [json_name = "errorCode"];</code>
-     * @param value The bytes for errorCode to set.
-     * @return This builder for chaining.
-     */
-    public Builder setErrorCodeBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setErrorCodeBytes(value);
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.SecurityOpenEnvelopeResult opened = 4 [json_name = "opened"];</code>
      */
     @java.lang.Override
@@ -803,14 +705,13 @@ public  final class SecurityOpResultEffect extends
             "resultCase_",
             "opId_",
             "error_",
-            "errorCode_",
             io.github.lewin671.remoteagent.core.proto.SecurityOpenEnvelopeResult.class,
             io.github.lewin671.remoteagent.core.proto.SecuritySealEnvelopeResult.class,
             "structuredErrorCode_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0001\u0000\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u0208\u0004<\u0000\u0005<\u0000\u0006=\u0000\u0007\f";
+              "\u0000\u0006\u0001\u0000\u0001\u0007\u0006\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0004<\u0000\u0005<\u0000\u0006=\u0000\u0007\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

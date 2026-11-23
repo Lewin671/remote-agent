@@ -210,7 +210,7 @@ class PairingControllerTest {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
                 .setError("security.pairing_expired_or_was_canceled")
-                .setErrorCode("not_found")
+                .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_NOT_FOUND)
                 .setRetryable(false)
                 .setUncertain(false)
         }
@@ -229,7 +229,7 @@ class PairingControllerTest {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
                 .setError("security.the_security_operation_s_outcome_is_unverified_continue_the")
-                .setErrorCode("unavailable")
+                .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_UNAVAILABLE)
                 .setRetryable(true)
                 .setUncertain(true)
         }
@@ -256,7 +256,7 @@ class PairingControllerTest {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
                 .setError("security.pairing_expired_or_was_canceled")
-                .setErrorCode("not_found")
+                .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_NOT_FOUND)
                 .setRetryable(false)
                 .setUncertain(false)
         }

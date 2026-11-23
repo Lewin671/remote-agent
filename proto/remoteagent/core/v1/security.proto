@@ -195,9 +195,10 @@ enum SecurityErrorCode {
 }
 
 message SecurityOpResultEffect {
+  reserved 3;
+  reserved "error_code";
   uint64 op_id = 1;
   string error = 2;
-  string error_code = 3;
   oneof result {
     SecurityOpenEnvelopeResult opened = 4;
     SecuritySealEnvelopeResult sealed = 5;
@@ -632,10 +633,11 @@ message SecurityWorkflowActionEvent {
 }
 
 message SecurityWorkflowResultEffect {
+  reserved 4;
+  reserved "error_code";
   uint64 action_id = 1;
   bool ok = 2;
   string error = 3;
-  string error_code = 4;
   bool retryable = 5;
   bool uncertain = 6;
   string error_action = 7;

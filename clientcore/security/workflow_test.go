@@ -766,7 +766,7 @@ func TestWorkflowPairingCrashRepairAndFallback(t *testing.T) {
 	syncB := b.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_SyncNow{SyncNow: &corev1.SecuritySyncNowAction{Touch: true}},
 	})
-	if syncB.Ok || syncB.ErrorCode != "permission_denied" {
+	if syncB.Ok || syncB.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_PERMISSION_DENIED {
 		t.Fatalf("expected B sync permission_denied after removal, got %+v", syncB)
 	}
 	if b.eng.BuildWorkflowStatus().Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
@@ -1565,9 +1565,6 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	}
 	if got := StructuredErrorCode(devicesec.ErrStale); got != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE {
 		t.Fatalf("StructuredErrorCode(ErrStale) = %v, want STALE", got)
-	}
-	if ErrorCode(ErrLeaseExpired) != "stale" {
-		t.Fatalf("legacy ErrorCode(ErrLeaseExpired) must stay stale for untouched shells")
 	}
 
 	// Disk notification: valid critical & warning.

@@ -35,18 +35,6 @@ public interface SecurityWorkflowResultEffectOrBuilder extends
       getErrorBytes();
 
   /**
-   * <code>string error_code = 4 [json_name = "errorCode"];</code>
-   * @return The errorCode.
-   */
-  java.lang.String getErrorCode();
-  /**
-   * <code>string error_code = 4 [json_name = "errorCode"];</code>
-   * @return The bytes for errorCode.
-   */
-  com.google.protobuf.ByteString
-      getErrorCodeBytes();
-
-  /**
    * <code>bool retryable = 5 [json_name = "retryable"];</code>
    * @return The retryable.
    */
