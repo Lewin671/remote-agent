@@ -1144,8 +1144,8 @@ final class ImageCenter {
         }
     }
 
-    private func evaluatePutBack(sid: String, items: [PendingImage]) async -> Bool {
-        if items.isEmpty { return true }
+    private func evaluatePutBack(sid: String, items: [PendingImage], extraFileCount: Int = 0) async -> Bool {
+        if items.isEmpty && extraFileCount <= 0 { return true }
         let key = Self.sessionKey(sid)
         let d = draft(key)
         guard !d.restoring, d.restoreError == nil else {
@@ -1153,7 +1153,17 @@ final class ImageCenter {
             return false
         }
         let machineId = remote.current.sessions[sid]?.machineId ?? targets[key] ?? ""
-        let cands = Self.candidates(for: items)
+        var cands = Self.candidates(for: items)
+        if extraFileCount > 0 {
+            for _ in 0..<extraFileCount {
+                cands.append(.with {
+                    $0.name = "file"
+                    $0.sizeBytes = 0
+                    $0.sizeUnknown = false
+                    $0.forceFile = true
+                })
+            }
+        }
         let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: cands))
         guard eval.decisions.count == cands.count, eval.decisions.allSatisfy(\.accepted) else {
             let reason = Self.rejectionReason(from: eval)
@@ -1167,18 +1177,25 @@ final class ImageCenter {
     }
 
     func canPutBack(sid: String, _ o: Outgoing) async -> Bool {
-        if o.images.isEmpty { return true }
-        return await evaluatePutBack(sid: sid, items: o.images)
+        let extraFiles = o.images.isEmpty ? o.fileIds.count : 0
+        if o.images.isEmpty && extraFiles == 0 { return true }
+        return await evaluatePutBack(sid: sid, items: o.images, extraFileCount: extraFiles)
     }
 
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
     func putBack(sid: String, _ o: Outgoing, releaseFailure: Bool = false) async -> Bool {
+        let extraFiles = o.images.isEmpty ? o.fileIds.count : 0
+        if o.images.isEmpty && extraFiles == 0 {
+            adoptRestored(sid, requestId: o.requestId)
+            release(sid, o)
+            return true
+        }
+        guard await evaluatePutBack(sid: sid, items: o.images, extraFileCount: extraFiles) else { return false }
         if o.images.isEmpty {
             adoptRestored(sid, requestId: o.requestId)
             release(sid, o)
             return true
         }
-        guard await evaluatePutBack(sid: sid, items: o.images) else { return false }
         adoptRestored(sid, requestId: o.requestId)
         let draft = draft(Self.sessionKey(sid))
         if o.state == .failed || releaseFailure {

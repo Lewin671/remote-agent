@@ -97,7 +97,7 @@ import Testing
         await eventually { gate.entered }
         let dropped = state(support: false)
         await remote.showForTest(state: dropped)
-        await coreHost.seedDemo(state: dropped)
+        await coreHost.appendDemoSessionData(state: dropped)
         gate.open.signal()
         await eventually { failure != nil || !submitted.isEmpty }
         #expect(failure?.contains("更新") == true && submitted.isEmpty)
