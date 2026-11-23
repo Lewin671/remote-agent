@@ -394,3 +394,31 @@ it("blocks opening pickers at the limit and blocks sending when a draft exceeds 
   evalHost.setCaps({ fileUpload: true, maxImages: 1, maxFiles: 1 });
   expect(tray.checkSendBlocked()).toBe(message("attachment.images_limit", { limit: 1, count: 1 }));
 });
+
+it("evaluates put-back via Core with put_back=true so offline restore works while limits still apply", () => {
+  const { tray, evalHost } = setup({ fileUpload: true });
+  evalHost.setCaps({ fileUpload: true, maxImages: 2, maxFiles: 1, online: false });
+  // Normal picker is blocked while the computer is offline.
+  expect(tray.checkPickBlocked(false, "")).toContain("离线");
+  // Putting back an image and a file still passes Core AttachmentEval when put_back=true.
+  expect(tray.checkPutBack([{ mimeType: "image/png" }], [{ name: "a.txt", sizeBytes: 4 }])).toEqual({
+    ok: true,
+    reason: "",
+  });
+  expect(tray.restore([{ imageId: "img1", thumb: file("one") }])).toBe(true);
+  expect(tray.restoreFiles([{ fileId: "f1", name: "a.txt", size: 4, file: new File(["data"], "a.txt") }])).toBe(true);
+  expect(tray.images()).toHaveLength(1);
+  expect(tray.files()).toHaveLength(1);
+  // Exceeding the per-message limit while offline is rejected with Core's localized reason and adds nothing.
+  const overImgs = tray.checkPutBack([{ mimeType: "image/png" }, { mimeType: "image/png" }]);
+  expect(overImgs.ok).toBe(false);
+  expect(overImgs.reason).toContain("2");
+  expect(tray.restore([{ imageId: "img2", thumb: file("two") }, { imageId: "img3", thumb: file("three") }])).toBe(false);
+  expect(tray.images()).toHaveLength(1);
+  expect(tray.note).toContain("2");
+  const overFiles = tray.checkPutBack([], [{ name: "b.txt", sizeBytes: 4 }]);
+  expect(overFiles.ok).toBe(false);
+  expect(overFiles.reason).toContain("1");
+  expect(tray.restoreFiles([{ fileId: "f2", name: "b.txt", size: 4, file: new File(["data"], "b.txt") }])).toBe(false);
+  expect(tray.files()).toHaveLength(1);
+});

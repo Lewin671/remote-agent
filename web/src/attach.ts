@@ -214,21 +214,57 @@ export class Tray {
     return renderText(ev.notice) || renderText(rejected.rejectReason);
   }
 
-  /** Checks against Core AttachmentEval whether adding the given counts fits in the current draft. */
-  canFit(addImages: number, addFiles: number): { images: boolean; files: boolean } {
-    if (this.evaluate) {
-      const ev = this.evaluate({
-        machineId: this.machineId,
-        sessionId: this.sessionId,
-        currentImages: this.images().length,
-        currentFiles: this.files().length,
-      });
-      this.syncLimits(ev);
+  /** Evaluates via Core AttachmentEval (`put_back=true`) whether putting back the given candidates fits
+   * the machine's capabilities and per-message limits (ignoring online state). */
+  private evalPutBack(
+    candidates: readonly { name: string; mimeType: string; sizeBytes: number; forceFile: boolean }[],
+  ): { ok: boolean; reason: string; eval?: AttachmentEvalViewModel } {
+    if (!candidates.length) return { ok: true, reason: "" };
+    if (this.restoring || !this.evaluate) return { ok: false, reason: "" };
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: this.images().length,
+      currentFiles: this.files().length,
+      putBack: true,
+      candidates: candidates.map((c) =>
+        create(AttachmentCandidateInputSchema, {
+          name: c.name,
+          mimeType: c.mimeType,
+          sizeBytes: BigInt(Math.max(0, Math.floor(c.sizeBytes))),
+          sizeUnknown: false,
+          forceFile: c.forceFile,
+        }),
+      ),
+    });
+    if (ev.decisions.length === candidates.length && ev.decisions.every((d) => d.accepted)) {
+      return { ok: true, reason: "", eval: ev };
     }
-    return {
-      images: this.images().length + addImages <= this.max,
-      files: this.files().length + addFiles <= this.maxFiles,
-    };
+    const rejected = ev.decisions.find((d) => !d.accepted);
+    const reason = renderText(ev.notice) || renderText(rejected?.rejectReason) || "";
+    return { ok: false, reason, eval: ev };
+  }
+
+  /** Evaluates against Core AttachmentEval (`put_back=true`) whether putting back the given images and files fits. */
+  checkPutBack(
+    images: readonly { name?: string; mimeType?: string; sizeBytes?: number }[],
+    files: readonly { name?: string; mimeType?: string; sizeBytes?: number }[] = [],
+  ): { ok: boolean; reason: string } {
+    const res = this.evalPutBack([
+      ...images.map((im) => ({
+        name: im.name ?? "",
+        mimeType: im.mimeType || "image/png",
+        sizeBytes: im.sizeBytes ?? 0,
+        forceFile: false,
+      })),
+      ...files.map((f) => ({
+        name: f.name ?? "",
+        mimeType: f.mimeType ?? "",
+        sizeBytes: f.sizeBytes ?? 0,
+        forceFile: true,
+      })),
+    ]);
+    return { ok: res.ok, reason: res.reason };
   }
 
   /** Evaluates a picked/dropped/pasted batch synchronously via Core AttachmentEval and queues accepted items. */
@@ -327,9 +363,22 @@ export class Tray {
 
   /** Images put back from a message that was not sent. Local bytes are
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
-   * false, with nothing added, when they do not all fit. */
+   * false, with nothing added, when Core AttachmentEval (`put_back=true`) rejects them. */
   restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
-    if (this.restoring || !this.canFit(images.length, 0).images) return false;
+    if (this.restoring) return false;
+    const check = this.evalPutBack(
+      images.map((im) => ({
+        name: im.file instanceof File ? im.file.name : "",
+        mimeType: im.file?.type || im.thumb?.type || "image/png",
+        sizeBytes: im.file?.size ?? im.thumb?.size ?? 0,
+        forceFile: false,
+      })),
+    );
+    if (!check.ok) {
+      if (check.reason) this.note = check.reason;
+      this.onChange();
+      return false;
+    }
     if (!this.images().length) this.original = original;
     for (const im of images) {
       const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };
@@ -365,16 +414,22 @@ export class Tray {
   }
 
   restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
-    const meta = this.evalFileMeta(
-      files.map((f) => ({ name: f.name, mimeType: f.file?.type ?? "", sizeBytes: f.size })),
+    if (this.restoring) return false;
+    if (!files.length) return true;
+    const check = this.evalPutBack(
+      files.map((f) => ({
+        name: f.name,
+        mimeType: f.file?.type ?? "",
+        sizeBytes: f.size,
+        forceFile: true,
+      })),
     );
-    const blocked = renderText(meta?.fileUploadBlockedReason) || this.fileBlocked;
-    if (files.length && (!this.fileSupported || blocked)) {
-      this.note = blocked;
+    if (!check.ok) {
+      if (check.reason) this.note = check.reason;
       this.onChange();
       return false;
     }
-    if (this.files().length + files.length > this.maxFiles) return false;
+    const meta = check.eval;
     files.forEach((f, idx) => {
       const d = meta?.decisions[idx];
       const item: TrayItem = {

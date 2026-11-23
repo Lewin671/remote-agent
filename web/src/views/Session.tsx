@@ -1446,42 +1446,51 @@ export function SessionPage({
         pendingRestoreFiles.current.get(eff.requestId) ??
         eff.fileIds.map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
       pendingRestoreFiles.current.delete(eff.requestId);
-      if (files.length) {
-        if (fileWhy) {
-          toastRef.current(fileWhy);
+      const existingDraft = remote.drafts.get(sessionId) ?? "";
+      if (eff.text) {
+        remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n" + eff.text : eff.text);
+      }
+      const savedImages = saved?.items?.filter((it) => it.kind !== "file") ?? [];
+      const imageCandidates = eff.imageIds.map((_, i) => {
+        const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
+        return {
+          name: src instanceof File ? src.name : "",
+          mimeType: src?.type || "image/png",
+          sizeBytes: src?.size ?? 0,
+        };
+      });
+      const fileCandidates = files.map((f) => ({
+        name: f.name,
+        mimeType: f.file?.type ?? "",
+        sizeBytes: Number(f.sizeBytes),
+      }));
+      if (imageCandidates.length || fileCandidates.length) {
+        const check = tray.checkPutBack(imageCandidates, fileCandidates);
+        if (!check.ok) {
+          if (check.reason) toastRef.current(check.reason);
+          setComposerKey((k) => k + 1);
+          setTimeout(() => composerRef.current?.focus());
           return;
         }
       }
-      if (!tray.canFit(0, files.length).files) {
-        toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
-        return;
-      }
-      if (
-        eff.imageIds.length &&
-        !tray.restore(
+      if (eff.imageIds.length) {
+        tray.restore(
           eff.imageIds.map((imageId, i) => ({
             imageId,
             thumb: saved?.thumbs?.[i],
-            file: saved?.items?.filter((it) => it.kind !== "file")[i]?.file,
+            file: savedImages[i]?.file,
           })),
           !!saved?.original,
-        )
-      ) {
-        toastRef.current(
-          i18n.t("composer.restore_images_full", { existing: tray.images().length, count: eff.imageIds.length }),
         );
-        return;
       }
       if (files.length) {
         tray.restoreFiles(files.map((f) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: f.file })));
       }
-      const existingDraft = remote.drafts.get(sessionId) ?? "";
-      remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n" + eff.text : eff.text);
       stash?.delete(eff.requestId);
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
     });
-  }, [host, remote, sessionId, machineId, fileWhy, tray, stash]);
+  }, [host, remote, sessionId, machineId, tray, stash]);
 
   useEffect(() => {
     return host.onResendAttachments(sessionId, async (eff: SessionResendAttachmentsEffect) => {
@@ -1641,7 +1650,7 @@ export function SessionPage({
   const handleRestoreTrayItem = async (reqId: string) => {
     const it = (vm.composer?.pendingTray?.orderedItems ?? []).find((x) => x.requestId === reqId);
     const saved = stash?.get(reqId);
-    const files =
+    const files: NonNullable<LocalSendAttachments["files"]> =
       saved?.files ?? (it?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
     try {
       await remote.restoreDraft(sessionId, tray);
@@ -1649,22 +1658,29 @@ export function SessionPage({
       return;
     }
     if (!mountedSession.current) return;
-    if (files.length) {
-      if (fileWhy) {
-        toastRef.current(fileWhy);
+    const savedImages = saved?.items?.filter((x) => x.kind !== "file") ?? [];
+    const imageCandidates = (it?.imageIds ?? []).map((_, i) => {
+      const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
+      return {
+        name: src instanceof File ? src.name : "",
+        mimeType: src?.type || "image/png",
+        sizeBytes: src?.size ?? 0,
+      };
+    });
+    const fileCandidates = files.map((f) => ({
+      name: f.name,
+      mimeType: f.file?.type ?? "",
+      sizeBytes: Number(f.sizeBytes),
+    }));
+    if (imageCandidates.length || fileCandidates.length) {
+      const check = tray.checkPutBack(imageCandidates, fileCandidates);
+      if (!check.ok) {
+        if (check.reason) toastRef.current(check.reason);
         return;
       }
-      if (!tray.canFit(0, files.length).files) {
-        toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
-        return;
-      }
-      pendingRestoreFiles.current.set(reqId, files);
     }
-    if ((it?.imageIds.length ?? 0) > 0 && !tray.canFit(it!.imageIds.length, 0).images) {
-      toastRef.current(
-        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: it!.imageIds.length }),
-      );
-      return;
+    if (files.length) {
+      pendingRestoreFiles.current.set(reqId, files);
     }
     host.sessionRestoreTrayItem(sessionId, reqId);
   };
@@ -1719,9 +1735,7 @@ export function SessionPage({
             !!saved.original,
           )
         ) {
-          toastRef.current(
-            i18n.t("composer.restore_images_full", { existing: tray.images().length, count: images.length }),
-          );
+          if (tray.note) toastRef.current(tray.note);
           return;
         }
       }
