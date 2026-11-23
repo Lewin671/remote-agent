@@ -68,6 +68,7 @@ import {
   HomeSetFilterActionSchema,
   HomeSetScopeActionSchema,
   LocalCalendarSchema,
+  LocaleChangedEventSchema,
   MonthStartSchema,
   NavigateRoute,
   NetworkChangedEventSchema,
@@ -800,6 +801,7 @@ export class CoreHost {
   private extraListeners = new Set<() => void>();
   private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
+  private unsubscribeLocale?: () => void;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
   private pendingEvents: Array<{ ev: Event; onProcessed?: () => void }> = [];
@@ -882,6 +884,18 @@ export class CoreHost {
       }),
     });
     this.emit({ case: "scheduleLocalContext", value: scheduleLocalContext() });
+    this.emit({
+      case: "localeChanged",
+      value: create(LocaleChangedEventSchema, { uiLocale: l10n.localeStore.snapshot() }),
+    });
+    this.unsubscribeLocale = l10n.localeStore.subscribe(() => {
+      if (!this.closed) {
+        this.emit({
+          case: "localeChanged",
+          value: create(LocaleChangedEventSchema, { uiLocale: l10n.localeStore.snapshot() }),
+        });
+      }
+    });
   }
 
   private emit(event: Event["event"], onProcessed?: () => void) {
@@ -2924,6 +2938,8 @@ export class CoreHost {
 
   dispose() {
     if (this.closed) return;
+    this.unsubscribeLocale?.();
+    this.unsubscribeLocale = undefined;
     this.stop();
     this.closed = true;
     this.pendingEvents = [];

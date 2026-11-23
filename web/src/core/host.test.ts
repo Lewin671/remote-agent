@@ -24,12 +24,14 @@ import { DemoSecuritySchema, SeedDemoWorldEventSchema } from "../gen/remoteagent
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { localeStore } from "../i18n";
 import { CoreHost, type CoreExecutor, type StreamLegCallbacks } from "./host";
 
 const hosts: CoreHost[] = [];
 
 afterEach(() => {
   while (hosts.length) hosts.pop()!.dispose();
+  localeStore.overrideForTesting(undefined);
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -348,4 +350,25 @@ test("warmLocalCache uses timeout guard when cache read stalls without blocking 
   });
   expect(seenTimeout).toBe(CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS);
   expect(host.viewSyncState().machines).toEqual([]);
+});
+
+test("CoreHost dispatches LocaleChangedEvent on init and locale changes and unsubscribes on dispose", () => {
+  const rendered: ScreenTarget[][] = [];
+  localeStore.overrideForTesting("zh-CN");
+  const host = new CoreHost(undefined, {
+    executor: makeExecutor(),
+    onEffect: (e) => {
+      if (e.effect.case === "render") rendered.push([...e.effect.value.screens]);
+    },
+  });
+  hosts.push(host);
+  rendered.length = 0;
+
+  localeStore.overrideForTesting("en");
+  expect(rendered.some((targets) => targets.includes(ScreenTarget.USAGE) && targets.includes(ScreenTarget.MACHINE_STATUS))).toBe(true);
+
+  rendered.length = 0;
+  host.dispose();
+  localeStore.overrideForTesting("zh-CN");
+  expect(rendered).toEqual([]);
 });
