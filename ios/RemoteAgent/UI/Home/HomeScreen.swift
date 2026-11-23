@@ -170,7 +170,7 @@ struct HomeContent: View {
                     .padding(.top, 4)
             }
         case .none, .unspecified, .UNRECOGNIZED:
-            if empty.hasMessage && empty.message.key == "common.loading" {
+            if empty.loading {
                 ProgressView().frame(maxWidth: .infinity).padding(.vertical, 48)
             }
         }
@@ -405,7 +405,7 @@ private struct HomeScopeSheet: View {
     var body: some View {
         if browsing {
             SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
-            CoreDirPicker { machine, path in
+            CoreDirPicker(pickerKey: "home-scope") { machine, path in
                 onClose()
                 nav.open(.newProjectAt(machine: machine, path: path))
             }

@@ -31,7 +31,7 @@ struct CoreProjectSettingsSheet: View {
     var body: some View {
         let vm = context.core.newSession
         let panel = vm.modelPanel
-        let blocked = prefsBlocked(model.state)
+        let blocked: String? = vm.prefsBlocked ? vm.prefsBlockedReason.rendered() : nil
         let hasMachines = panel.machineChoices.count > 1
         let root = open == .main && !hasMachines ? ProjectSettingsPage.model : open
         let shown = page == .main ? root : page

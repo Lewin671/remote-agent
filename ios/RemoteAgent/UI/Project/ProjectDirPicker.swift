@@ -9,8 +9,9 @@ struct DirectorySource {
     var list: @MainActor (_ machine: String, _ path: String) async throws -> PBListDirectoriesResponse
 }
 
-/// Core-backed directory picker driven by `PBCoreDirPickerView`.
+/// Core-backed directory picker driven by `PBCoreDirPickerView`, isolated by `pickerKey`.
 struct CoreDirPicker: View {
+    let pickerKey: String
     var machine: String? = nil
     var onPage: Bool = false
     var forNewTask: Bool = false
@@ -18,7 +19,7 @@ struct CoreDirPicker: View {
     @Environment(AccountContext.self) private var context
 
     var body: some View {
-        let picker = context.core.manageProjects.dirPicker
+        let picker = context.core.dirPickers[pickerKey] ?? PBCoreDirPickerView()
         CoreDirPickerContent(
             picker: picker,
             onPage: onPage,
@@ -29,6 +30,7 @@ struct CoreDirPicker: View {
                         $0.machineID = next
                         $0.path = ""
                         $0.forNewTask = forNewTask
+                        $0.pickerKey = pickerKey
                     }
                 }
             },
@@ -37,6 +39,7 @@ struct CoreDirPicker: View {
                     $0.projectDirNavigate = .with {
                         $0.machineID = picker.machineID
                         $0.path = path
+                        $0.pickerKey = pickerKey
                     }
                 }
             },
@@ -45,6 +48,7 @@ struct CoreDirPicker: View {
                     $0.projectDirNavigate = .with {
                         $0.machineID = picker.machineID
                         $0.path = picker.currentPath
+                        $0.pickerKey = pickerKey
                     }
                 }
             },
@@ -52,25 +56,31 @@ struct CoreDirPicker: View {
                 Haptics.confirm()
                 let chosenMachine = picker.machineID
                 let chosenPath = picker.currentPath
-                context.dispatch { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() }
+                context.dispatch { $0.projectCloseDirPicker = .with { $0.pickerKey = pickerKey } }
                 onChosen(chosenMachine, chosenPath)
             }
         )
-        .task(id: machine ?? "") {
-            await context.coreHost.setManageActive(true)
+        .task(id: "\(pickerKey)|\(machine ?? "")") {
+            let token = await context.coreHost.acquireDirPicker(key: pickerKey)
             let initialPath = HomeLaunch.value("-dirPath") ?? ""
             context.dispatch {
                 $0.projectOpenDirPicker = .with {
                     $0.machineID = machine ?? ""
                     $0.path = initialPath
                     $0.forNewTask = forNewTask
+                    $0.pickerKey = pickerKey
                 }
             }
-        }
-        .onDisappear {
-            Task {
-                await context.coreHost.dispatch(PBCoreEvent.with { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() })
-                await context.coreHost.setManageActive(false)
+            defer {
+                let host = context.coreHost
+                let key = pickerKey
+                Task {
+                    await host.dispatch(PBCoreEvent.with { $0.projectCloseDirPicker = .with { $0.pickerKey = key } })
+                    await host.releaseDirPicker(token)
+                }
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3600))
             }
         }
         .debugSignal("dir.first") {
@@ -79,6 +89,7 @@ struct CoreDirPicker: View {
                     $0.projectDirNavigate = .with {
                         $0.machineID = picker.machineID
                         $0.path = first.path
+                        $0.pickerKey = pickerKey
                     }
                 }
             }
@@ -89,6 +100,7 @@ struct CoreDirPicker: View {
                     $0.projectDirNavigate = .with {
                         $0.machineID = picker.machineID
                         $0.path = picker.parentPath
+                        $0.pickerKey = pickerKey
                     }
                 }
             }
@@ -97,7 +109,7 @@ struct CoreDirPicker: View {
             if picker.canConfirm {
                 let m = picker.machineID
                 let p = picker.currentPath
-                context.dispatch { $0.projectCloseDirPicker = PBCoreDirPickerCloseAction() }
+                context.dispatch { $0.projectCloseDirPicker = .with { $0.pickerKey = pickerKey } }
                 onChosen(m, p)
             }
         }

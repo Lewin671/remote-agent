@@ -502,6 +502,43 @@ private actor NavRecorder {
         )
     }
 
+    @Test func concurrentDirPickersStayIsolatedByPickerKey() async throws {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-dirpicker-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let remote = Demo.remote()
+        let initial = Demo.state(.everyday)
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
+            await remote.showForTest(state: initial)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        let core = try #require(model.context?.core)
+        for _ in 0..<200 where core.home.headline.title.rendered().isEmpty {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        let t1 = await host.acquireDirPicker(key: "manage")
+        let t2 = await host.acquireDirPicker(key: "schedule-form")
+        await host.dispatch(PBCoreEvent.with {
+            $0.projectOpenDirPicker = .with { $0.machineID = "mac"; $0.path = "/Users/me/Code"; $0.pickerKey = "manage" }
+        })
+        await host.dispatch(PBCoreEvent.with {
+            $0.projectOpenDirPicker = .with { $0.machineID = "mac"; $0.path = "/Users/me/Docs"; $0.pickerKey = "schedule-form" }
+        })
+        for _ in 0..<200 where (core.dirPickers["manage"]?.currentPath ?? "").isEmpty || (core.dirPickers["schedule-form"]?.currentPath ?? "").isEmpty {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(core.dirPickers["manage"]?.pickerKey == "manage")
+        #expect(core.dirPickers["schedule-form"]?.pickerKey == "schedule-form")
+        #expect(core.dirPickers["manage"]?.currentPath != core.dirPickers["schedule-form"]?.currentPath)
+        await host.dispatch(PBCoreEvent.with { $0.projectCloseDirPicker = .with { $0.pickerKey = "manage" } })
+        await host.releaseDirPicker(t1)
+        #expect(core.dirPickers["manage"] == nil)
+        #expect(core.dirPickers["schedule-form"]?.currentPath == "/Users/me/Docs")
+        await host.dispatch(PBCoreEvent.with { $0.projectCloseDirPicker = .with { $0.pickerKey = "schedule-form" } })
+        await host.releaseDirPicker(t2)
+    }
+
     private func render<V: View>(_ view: V) {
         let host = UIHostingController(rootView: view)
         let size = host.sizeThatFits(in: CGSize(width: 390, height: 1200))

@@ -126,7 +126,7 @@ struct ScheduleConfigSheet: View {
         NavigationStack {
             Group {
                 if browsingNewDir {
-                    CoreDirPicker(machine: vm.lockMachine && !vm.machineID.isEmpty ? vm.machineID : nil, forNewTask: true) { mid, path in
+                    CoreDirPicker(pickerKey: "schedule-\(formKey)", machine: vm.lockMachine && !vm.machineID.isEmpty ? vm.machineID : nil, forNewTask: true) { mid, path in
                         context.dispatch { $0.scheduleFormSelectProject = .with { $0.formKey = formKey; $0.projectKey = path; $0.machineID = mid } }
                         finishProjectPick()
                     }

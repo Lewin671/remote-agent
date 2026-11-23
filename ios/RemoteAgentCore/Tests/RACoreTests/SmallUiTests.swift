@@ -59,13 +59,7 @@ import Testing
 
 /// Words the screens share; Android has no tests of these.
 @Suite(.timeLimit(.minutes(2))) struct CommonTests {
-    @Test func preferencesAndImageHelpers() {
-        var st = RemoteState()
-        #expect(prefsBlocked(st) == L10n.projectsConnectToEdit())
-        st.conn = .online
-        #expect(prefsBlocked(st) == L10n.projectsLoading())
-        st.prefs = .empty
-        #expect(prefsBlocked(st) == nil)
+    @Test func imageHelpers() {
         #expect(fileName("/tmp/a/shot.png") == "shot.png")
         #expect(fileName("/tmp/a/") == L10n.imageTitle())
         #expect(aspect(.with { $0.width = 400; $0.height = 100 }) == 2.5)

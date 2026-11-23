@@ -16,6 +16,7 @@ struct ApprovalTarget {
     let truncated: Bool
     let isSkeleton: Bool
     let expired: Bool
+    let locked: Bool
     let commandState: PBSessionCommandState?
     let canAlwaysAllow: Bool
     let alwaysLabel: String
@@ -35,6 +36,7 @@ struct ApprovalTarget {
         self.truncated = a.bodyTruncated
         self.isSkeleton = dock.isSkeleton
         self.expired = false
+        self.locked = dock.isSkeleton
         self.commandState = dock.hasCommand ? dock.command : nil
         self.canAlwaysAllow = a.canAlwaysAllow
         self.alwaysLabel = a.hasAlwaysLabel ? a.alwaysLabel.rendered() : L10n.approvalAlwaysAllow()
@@ -50,6 +52,7 @@ struct ApprovalTarget {
         self.truncated = card.truncated
         self.isSkeleton = false
         self.expired = false
+        self.locked = card.locked
         self.commandState = commandState
         self.canAlwaysAllow = card.alwaysKind != .unspecified
         self.alwaysLabel = L10n.approvalAlwaysAllow()
@@ -89,7 +92,7 @@ struct ApprovalDecision: View {
     var body: some View {
         let state = model.state
         let truncated = target.truncated
-        let locked = state.peer(target.machineId).unlinked || target.expired || target.isSkeleton
+        let locked = target.locked || state.peer(target.machineId).unlinked || target.expired || target.isSkeleton
         let always = target.canAlwaysAllow || capabilities(state.machines[target.machineId])?.approvalAlways == true
         VStack(alignment: .leading, spacing: 0) {
             if denying {

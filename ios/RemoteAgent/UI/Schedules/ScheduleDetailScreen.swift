@@ -40,6 +40,9 @@ struct ScheduleDetailScreen: View {
             vm: displayed, connectionBar: { ConnectionBar() },
             onRetryMachine: { context.dispatch { $0.scheduleRefresh.value = machine } },
             onRecover: { operate(.recover) },
+            onEnableCli: { agent in
+                nav.open(.machine(id: machine, initialCliAgent: MachineScreenContent<EmptyView>.agentSlug(agent)))
+            },
             onRetryMutation: { context.dispatch { $0.scheduleRetryMutation = .with { $0.machineID = machine; $0.taskID = id } } },
             onAbandonMutation: { context.dispatch { $0.scheduleAbandonMutation = .with { $0.machineID = machine; $0.taskID = id } } },
             onShowLatestResult: { context.dispatch { $0.scheduleDetailShowLatestResult = taskRef } },
@@ -141,6 +144,7 @@ struct ScheduleDetailContent<ConnectionView: View>: View {
     @ViewBuilder var connectionBar: () -> ConnectionView
     var onRetryMachine: () -> Void = {}
     var onRecover: () -> Void = {}
+    var onEnableCli: (PBAgent) -> Void = { _ in }
     var onRetryMutation: () -> Void = {}
     var onAbandonMutation: () -> Void = {}
     var onShowLatestResult: () -> Void = {}
@@ -180,8 +184,14 @@ struct ScheduleDetailContent<ConnectionView: View>: View {
             }
             if vm.readOnly && vm.hasReadOnlyNotice { Banner(vm.readOnlyNotice.rendered()).padding(.horizontal, 16).padding(.top, 12) }
             if vm.attention.show {
-                ScheduleRecoveryNotice(text: vm.attention.message.rendered(), recovery: vm.attention.showPrimaryAction ? vm.attention.primaryActionLabel.rendered() : nil,
-                                       enabled: vm.attention.primaryActionEnabled, action: onRecover)
+                ScheduleRecoveryNotice(
+                    text: vm.attention.message.rendered(),
+                    recovery: vm.attention.showPrimaryAction ? vm.attention.primaryActionLabel.rendered() : nil,
+                    enabled: vm.attention.primaryActionEnabled,
+                    action: onRecover,
+                    enableCli: vm.attention.showEnableCliAction ? L10n.newSessionEnableAgent() : nil,
+                    onEnableCli: { onEnableCli(vm.attention.disabledAgent) }
+                )
             }
             ScheduleMutationBanner(mutation: vm.mutation, onRetry: onRetryMutation, onAbandon: onAbandonMutation).padding(.horizontal, 16).padding(.top, 12)
             if vm.resultCard.hasResult_p && vm.resultCard.hasNewerResult_p { TextAction(L10n.homeIosNewResults(), action: onShowLatestResult).padding(.horizontal, 16) }
@@ -316,11 +326,14 @@ struct ScheduleRecoveryNotice: View {
     let recovery: String?
     let enabled: Bool
     let action: () -> Void
+    var enableCli: String? = nil
+    var onEnableCli: () -> Void = {}
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(text).font(.subheadline).ink(DS.orangeInk).frame(maxWidth: .infinity, alignment: .leading).padding(16)
                 .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             if let recovery { Btn(recovery, kind: .primary, enabled: enabled, action: action) }
+            if let enableCli { Btn(enableCli, kind: recovery == nil ? .primary : .plain, action: onEnableCli) }
         }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
     }
 }

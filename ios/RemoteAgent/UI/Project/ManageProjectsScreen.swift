@@ -57,8 +57,13 @@ struct ManageProjectsScreen: View {
         }
         .kitSheet(isPresented: $adding, size: .large) {
             SheetHead(L10n.projectsNewChooseDirectory())
-            CoreDirPicker { _, path in
-                context.dispatch { $0.projectAdd.path = path }
+            CoreDirPicker(pickerKey: "manage") { _, path in
+                context.dispatch {
+                    $0.projectAdd = .with {
+                        $0.path = path
+                        $0.pickerKey = "manage"
+                    }
+                }
                 adding = false
             }
         }

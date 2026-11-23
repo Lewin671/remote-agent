@@ -29,6 +29,7 @@ final class CoreScreens {
     var home = PBCoreHomeViewModel()
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
+    var dirPickers: [String: PBCoreDirPickerView] = [:]
     var newSession = PBCoreNewSessionViewModel()
     var sessions: [String: PBSessionViewModel] = [:]
     var schedules = PBSchedulesViewModel()
@@ -316,6 +317,7 @@ actor CoreHost: SyncEngine {
     private var activeScheduleDetail: (machineID: String, taskID: String)?
     private var activeScheduleFormKey = ""
     private var scheduleStripWatches: [UUID: String] = [:]
+    private var activeDirPickers: [UUID: String] = [:]
     private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
     private var activeDirectDiagnosticsID = ""
     private var hooksInstalled = false
@@ -1241,6 +1243,23 @@ actor CoreHost: SyncEngine {
         await renderTargets([.project])
     }
 
+    func acquireDirPicker(key: String) async -> UUID? {
+        guard !closed, !key.isEmpty else { return nil }
+        let token = UUID()
+        activeDirPickers[token] = key
+        await renderTargets([.project])
+        return token
+    }
+
+    func releaseDirPicker(_ token: UUID?) async {
+        guard let token, let key = activeDirPickers.removeValue(forKey: token) else { return }
+        guard !closed else { return }
+        if !activeDirPickers.values.contains(key) {
+            let screens = self.screens
+            await MainActor.run { screens.dirPickers.removeValue(forKey: key) }
+        }
+    }
+
     func acquireSessionWatch(
         _ sid: String,
         initialWindow: PBSessionWindowRequest = .with { $0.limit = 80 }
@@ -2127,6 +2146,7 @@ actor CoreHost: SyncEngine {
         var devicesVM: PBDevicesViewModel?
         var clientDetailVM: PBClientDetailViewModel?
         var directDiagnosticsVM: PBDirectDiagnosticsViewModel?
+        var dirPickerVMs: [String: PBCoreDirPickerView] = [:]
         var sessionVMs: [String: PBSessionViewModel] = [:]
         var scheduleStripVMs: [String: PBScheduleSessionStripViewModel] = [:]
 
@@ -2147,6 +2167,18 @@ actor CoreHost: SyncEngine {
                         $0.machineID = activeManageMachineID
                     }
                 }).project
+            }
+            for pickerKey in Set(activeDirPickers.values) {
+                if let vm = try? client.view(PBCoreScreen.with {
+                    $0.project = .with {
+                        $0.manage = true
+                        $0.endedLimit = 50
+                        $0.machineID = activeManageMachineID
+                        $0.pickerKey = pickerKey
+                    }
+                }).project, vm.hasManage {
+                    dirPickerVMs[pickerKey] = vm.manage.dirPicker
+                }
             }
         }
         if targets.contains(.newSession) {
@@ -2263,7 +2295,7 @@ actor CoreHost: SyncEngine {
         }
 
         await MainActor.run { [
-            screens, homeVM, projectVM, newSessionVM,
+            screens, homeVM, projectVM, dirPickerVMs, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             directDiagnosticsVM, sessionVMs, scheduleStripVMs
@@ -2272,6 +2304,9 @@ actor CoreHost: SyncEngine {
             if let projectVM {
                 if projectVM.hasDetail { screens.projectDetail = projectVM.detail }
                 if projectVM.hasManage { screens.manageProjects = projectVM.manage }
+            }
+            for (pk, vm) in dirPickerVMs {
+                screens.dirPickers[pk] = vm
             }
             if let newSessionVM { screens.newSession = newSessionVM }
             if let schedulesVM { screens.schedules = schedulesVM }

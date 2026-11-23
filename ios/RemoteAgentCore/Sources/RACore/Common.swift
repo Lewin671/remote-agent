@@ -4,13 +4,6 @@ import RAProto
 
 public func machineLabel(_ state: RemoteState, id: String) -> String { machineName(state.machines[id], id: id) }
 
-/// Why the preferences cannot be changed now, or nil when they can.
-public func prefsBlocked(_ state: RemoteState) -> String? {
-    if state.conn != .online { return L10n.projectsConnectToEdit() }
-    if state.prefs == nil { return L10n.projectsLoading() }
-    return nil
-}
-
 /// Width over height of an image as the event says, so its place is kept before anything loads.
 public func aspect(_ ref: PBImageRef) -> Double {
     let w: Int32, h: Int32

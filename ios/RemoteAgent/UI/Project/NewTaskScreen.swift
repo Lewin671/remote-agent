@@ -66,7 +66,7 @@ struct NewTaskScreen: View {
             Group {
                 if browsing {
                     SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
-                    CoreDirPicker(forNewTask: true) { pickedMachine, path in
+                    CoreDirPicker(pickerKey: "new-task", forNewTask: true) { pickedMachine, path in
                         choose(path, on: pickedMachine)
                     }
                 } else {

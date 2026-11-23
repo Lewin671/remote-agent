@@ -229,7 +229,7 @@ struct MachineStatusScreen: View {
                 case .pickFolder:
                     VStack(spacing: 0) {
                         SheetHead(L10n.projectsNewChooseDirectory(), action: L10n.commonCancel()) { cleanup = nil }
-                        CoreDirPicker(machine: id, forNewTask: true) { pickedMachine, path in
+                        CoreDirPicker(pickerKey: "machine-status-\(id)", machine: id, forNewTask: true) { pickedMachine, path in
                             cleanup = .task(key: path, machine: pickedMachine, prompt: L10n.machineStatusCleanupPrompt())
                         }
                     }

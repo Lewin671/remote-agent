@@ -22,13 +22,11 @@ struct NewSessionBox: View {
     var onMachineStatus: (String) -> Void = { _ in }
     var sheet: NewTaskChrome?
 
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var text = ""
 
     var body: some View {
         let vm = context.core.newSession
-        let state = model.state
         let machineId = vm.config.machineID.isEmpty ? nil : vm.config.machineID
         let images = ComposerAttachments(
             newSession: vm,
@@ -40,7 +38,7 @@ struct NewSessionBox: View {
             text: $text,
             focus: focus,
             images: images,
-            blockedReason: prefsBlocked(state),
+            blockedReason: vm.prefsBlocked ? vm.prefsBlockedReason.rendered() : nil,
             draftError: context.sessionStore.draftErrors["new:" + vm.projectKey.ifEmpty(key)],
             onPromptChanged: { prompt in
                 let count = Int32(images.draft.images.count)

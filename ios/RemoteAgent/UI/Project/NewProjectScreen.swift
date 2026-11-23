@@ -9,7 +9,7 @@ struct NewProjectScreen: View {
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                CoreDirPicker(onPage: true) { machine, path in
+                CoreDirPicker(pickerKey: "new-project", onPage: true) { machine, path in
                     nav.open(.newProjectAt(machine: machine, path: path))
                 }
             }

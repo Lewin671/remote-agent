@@ -30,7 +30,7 @@ struct PickProjectSheet: View {
         Group {
             if browsing {
                 SheetHead(L10n.projectsNewChooseDirectory(), onBack: { browsing = false })
-                CoreDirPicker(forNewTask: true) { machine, path in
+                CoreDirPicker(pickerKey: "pick-project", forNewTask: true) { machine, path in
                     onPick(NewTaskTarget(key: path, machine: machine))
                 }
             } else {
