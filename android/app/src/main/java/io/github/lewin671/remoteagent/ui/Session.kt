@@ -1015,8 +1015,8 @@ internal fun Composer(
     var text by images.text
     val keeping = Outbox.keeping(sid)
     val maxImg = attachCaps.maxImages
-    val blocked = if (caps.hasImageUploadBlockedReason()) uiText(caps.imageUploadBlockedReason).ifEmpty { null } else null
-    RefreshDraftUploads(images, remote, machineId, blocked, attachCaps, sessionId = sid)
+    val pickState = rememberAttachmentPickState(remote, machineId, sid, images.pictures.size, images.documents.size, attachCaps)
+    RefreshDraftUploads(images, remote, machineId, attachCaps, sessionId = sid)
     val pick = rememberImagePicker(images, remote, machineId, attachCaps, sessionId = sid)
     val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, attachCaps)
 
@@ -1085,9 +1085,10 @@ internal fun Composer(
             (images.images.isEmpty() || images.ready(machineId)),
         onSend = { send() },
         onPlus = pick,
+        onPlusBlocked = if (composer.canAttachImages && !images.restoring) ({ showAttachmentBlockedNotice(images, remote, machineId, sid, copy = copy) }) else null,
         onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
         fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
-        plusEnabled = composer.canAttachImages && !images.restoring && (blocked == null || (attachCaps.supportsFiles && online && header.computerOnline)),
+        plusEnabled = composer.canAttachImages && !images.restoring && pickState.canPickAny,
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
             remote.submitSessionCommand(

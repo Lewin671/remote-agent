@@ -425,23 +425,75 @@ private object VideoFrames {
     }
 }
 
+/**
+ * Evaluates `+` button availability and block reason via Core (`Screen.attachment_eval`) on state
+ * changes (inside `LaunchedEffect`, never synchronously during composition).
+ */
+@Composable
+internal fun rememberAttachmentPickState(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    currentImages: Int,
+    currentFiles: Int,
+    caps: AttachmentCaps,
+): AttachmentPickState {
+    var pickState by remember(remote, machineId, sessionId) {
+        mutableStateOf(
+            AttachmentPickState(
+                blockedReason = caps.imageUploadBlockedReason ?: caps.fileUploadBlockedReason,
+            ),
+        )
+    }
+    LaunchedEffect(remote, machineId, sessionId, currentImages, currentFiles, caps) {
+        val eval = remote.evaluateAttachments(
+            AttachmentEvalScreenRequest.newBuilder().apply {
+                if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+                if (sessionId.isNotEmpty()) setSessionId(sessionId)
+                setCurrentImages(currentImages)
+                setCurrentFiles(currentFiles)
+            }.build(),
+        )
+        pickState = eval.toPickState()
+    }
+    return pickState
+}
+
+/** Shows Core's current attachment block reason for `+` when tapped while disabled. */
+internal fun showAttachmentBlockedNotice(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
+) {
+    val eval = remote.evaluateAttachments(
+        AttachmentEvalScreenRequest.newBuilder().apply {
+            if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+            if (sessionId.isNotEmpty()) setSessionId(sessionId)
+            setCurrentImages(draft.pictures.size)
+            setCurrentFiles(draft.documents.size)
+        }.build(),
+    )
+    val reason = eval.toPickState().blockedReason?.let { coreTextToMessageText(it).resolve(copy) }.orEmpty()
+    if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
+}
+
 /** Upload again when an unused image expires, including after the page returns from the background. */
 @Composable
 internal fun RefreshDraftUploads(
     draft: ImageDraft,
     remote: Remote,
     machineId: String?,
-    blocked: String?,
     caps: AttachmentCaps,
     sessionId: String = "",
 ) {
     draft.bindRemote(remote)
     val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sessionId, draft.documents, draft.pictures, caps)
     val deadlines = draft.images.map { it.expiresMs }
-    LaunchedEffect(draft, machineId, blocked, draftBlocked, caps, deadlines, draft.images.size, draft.restoring) {
+    LaunchedEffect(draft, machineId, draftBlocked, caps, deadlines, draft.images.size, draft.restoring) {
         if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)
-        if (draft.restoring || machineId == null || !caps.machineOnline) return@LaunchedEffect
-        if (blocked != null && !caps.supportsFiles) return@LaunchedEffect
+        if (draft.restoring || machineId == null || !caps.canUploadAnything) return@LaunchedEffect
         draft.sendAllTo(remote, machineId, caps, sessionId)
         val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
         if (next != null) {

@@ -546,8 +546,8 @@ class ImageDraft(
         val filesBlocked = documents.isNotEmpty() &&
             evaluateDraftAttachmentsBlocked(remote, machineId, sessionId, documents = documents) != null
         for (img in images) {
-            if (img.isFile && filesBlocked) continue
-            if (!img.isFile && !effective.supportsImages) continue
+            if (img.isFile && (filesBlocked || !effective.canUploadFiles)) continue
+            if (!img.isFile && !effective.canUploadImages) continue
             if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId, caps = effective)
         }
     }

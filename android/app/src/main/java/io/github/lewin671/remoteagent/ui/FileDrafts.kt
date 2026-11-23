@@ -31,12 +31,41 @@ data class AttachmentCaps(
     val galleryAllowsVideo: Boolean,
     val galleryAcceptMime: String,
     val capabilitiesLoaded: Boolean,
-    val machineOnline: Boolean,
     val imageUploadBlockedReason: CoreText?,
     val fileUploadBlockedReason: CoreText?,
     val originalImageHint: CoreText?,
     val fileMetadataNotice: CoreText?,
-)
+) {
+    val canUploadImages: Boolean get() = supportsImages && imageUploadBlockedReason == null
+    val canUploadFiles: Boolean get() = supportsFiles && fileUploadBlockedReason == null
+    val canUploadAnything: Boolean get() = canUploadImages || canUploadFiles
+}
+
+/** Core `AttachmentEval` verdict for whether the composer `+` button is available and why it is blocked. */
+internal data class AttachmentPickState(
+    val canPickGallery: Boolean = false,
+    val canPickFiles: Boolean = false,
+    val blockedReason: CoreText? = null,
+) {
+    val canPickAny: Boolean get() = canPickGallery || canPickFiles
+}
+
+internal fun AttachmentEvalViewModel.toPickState(): AttachmentPickState {
+    val reason = when {
+        canPickGallery || canPickFiles -> null
+        hasGalleryBlockedReason() -> galleryBlockedReason
+        hasFilesPickBlockedReason() -> filesPickBlockedReason
+        hasImagesPickBlockedReason() -> imagesPickBlockedReason
+        hasImageUploadBlockedReason() -> imageUploadBlockedReason
+        hasFileUploadBlockedReason() -> fileUploadBlockedReason
+        else -> null
+    }
+    return AttachmentPickState(
+        canPickGallery = canPickGallery,
+        canPickFiles = canPickFiles,
+        blockedReason = reason,
+    )
+}
 
 internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
     val caps = capabilities
@@ -52,7 +81,6 @@ internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
         galleryAllowsVideo = caps.galleryAllowsVideo,
         galleryAcceptMime = caps.galleryAcceptMime,
         capabilitiesLoaded = caps.capabilitiesLoaded,
-        machineOnline = computerOnline && !computerUnlinked,
         imageUploadBlockedReason = if (caps.hasImageUploadBlockedReason()) caps.imageUploadBlockedReason else null,
         fileUploadBlockedReason = if (caps.hasFileUploadBlockedReason()) caps.fileUploadBlockedReason else null,
         originalImageHint = if (caps.hasOriginalImageHint()) caps.originalImageHint else null,
@@ -60,31 +88,7 @@ internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
     )
 }
 
-internal fun NewSessionViewModel.attachmentCaps(fallbackOnline: Boolean = false): AttachmentCaps {
-    val selectedChoice = modelPanel.machineChoicesList.firstOrNull { it.machineId == config.machineId }
-        ?: modelPanel.machineChoicesList.firstOrNull { it.selected }
-    val online = selectedChoice?.online ?: fallbackOnline
-    return AttachmentCaps(
-        supportsImages = supportsImages,
-        supportsFiles = supportsFiles,
-        maxImages = maxImages,
-        maxFiles = maxFiles,
-        maxFileBytes = maxFileBytes,
-        maxFileNameBytes = maxFileNameBytes,
-        maxFileSizeText = maxFileSizeText,
-        originalImageMaxBytes = originalImageMaxBytes,
-        galleryAllowsVideo = galleryAllowsVideo,
-        galleryAcceptMime = galleryAcceptMime,
-        capabilitiesLoaded = capabilitiesLoaded,
-        machineOnline = online,
-        imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
-        fileUploadBlockedReason = if (hasFileUploadBlockedReason()) fileUploadBlockedReason else null,
-        originalImageHint = if (hasOriginalImageHint()) originalImageHint else null,
-        fileMetadataNotice = if (hasFileMetadataNotice()) fileMetadataNotice else null,
-    )
-}
-
-internal fun AttachmentEvalViewModel.toAttachmentCaps(online: Boolean = true): AttachmentCaps = AttachmentCaps(
+internal fun NewSessionViewModel.attachmentCaps(): AttachmentCaps = AttachmentCaps(
     supportsImages = supportsImages,
     supportsFiles = supportsFiles,
     maxImages = maxImages,
@@ -96,7 +100,24 @@ internal fun AttachmentEvalViewModel.toAttachmentCaps(online: Boolean = true): A
     galleryAllowsVideo = galleryAllowsVideo,
     galleryAcceptMime = galleryAcceptMime,
     capabilitiesLoaded = capabilitiesLoaded,
-    machineOnline = online,
+    imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
+    fileUploadBlockedReason = if (hasFileUploadBlockedReason()) fileUploadBlockedReason else null,
+    originalImageHint = if (hasOriginalImageHint()) originalImageHint else null,
+    fileMetadataNotice = if (hasFileMetadataNotice()) fileMetadataNotice else null,
+)
+
+internal fun AttachmentEvalViewModel.toAttachmentCaps(): AttachmentCaps = AttachmentCaps(
+    supportsImages = supportsImages,
+    supportsFiles = supportsFiles,
+    maxImages = maxImages,
+    maxFiles = maxFiles,
+    maxFileBytes = maxFileBytes,
+    maxFileNameBytes = maxFileNameBytes,
+    maxFileSizeText = maxFileSizeText,
+    originalImageMaxBytes = originalImageMaxBytes,
+    galleryAllowsVideo = galleryAllowsVideo,
+    galleryAcceptMime = galleryAcceptMime,
+    capabilitiesLoaded = capabilitiesLoaded,
     imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
     fileUploadBlockedReason = if (hasFileUploadBlockedReason()) fileUploadBlockedReason else null,
     originalImageHint = if (hasOriginalImageHint()) originalImageHint else null,
@@ -108,8 +129,7 @@ internal fun Remote.attachmentCapsFor(machineId: String?, sessionId: String = ""
         if (!machineId.isNullOrEmpty()) setMachineId(machineId)
         if (sessionId.isNotEmpty()) setSessionId(sessionId)
     }.build()
-    val online = state.value.machines[machineId]?.pathState?.reachable == true
-    return evaluateAttachments(req).toAttachmentCaps(online = online)
+    return evaluateAttachments(req).toAttachmentCaps()
 }
 
 internal data class PickedUriMeta(
@@ -185,7 +205,7 @@ internal fun ImageDraft.addPickedCandidates(
                 }
             }.build()
             val eval = remote.evaluateAttachments(evalReq)
-            val effective = caps ?: eval.toAttachmentCaps(online = remote.state.value.machines[machineId]?.pathState?.reachable == true)
+            val effective = caps ?: eval.toAttachmentCaps()
             if (AccountMemory.token !== accountToken) return@launch
 
             val notices = mutableListOf<String>()

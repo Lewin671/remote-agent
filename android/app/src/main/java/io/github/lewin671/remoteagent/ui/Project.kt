@@ -94,12 +94,10 @@ fun NewSessionBox(
         }
     }
 
-    val online = state.peer(machine).ready
-    val fallbackOnline = machine != null && online && state.machines[machine]?.pathState?.reachable == true
     val copy = uiText()
-    val attachCaps = view.attachmentCaps(fallbackOnline = fallbackOnline)
-    val blocked = if (view.hasImageUploadBlockedReason()) uiText(view.imageUploadBlockedReason).ifEmpty { null } else null
-    RefreshDraftUploads(images, remote, machine, blocked, attachCaps)
+    val attachCaps = view.attachmentCaps()
+    val pickState = rememberAttachmentPickState(remote, machine, "", images.pictures.size, images.documents.size, attachCaps)
+    RefreshDraftUploads(images, remote, machine, attachCaps)
     val pick = rememberImagePicker(images, remote, machine, attachCaps)
     val draftBlocked = rememberDraftAttachmentsBlocked(remote, machine, "", images.documents, images.pictures, attachCaps)
 
@@ -116,7 +114,7 @@ fun NewSessionBox(
             images.notice = currentBlocked
             return
         }
-        if (machine != null && blocked == null) images.sendAllTo(remote, machine, attachCaps)
+        if (machine != null && attachCaps.canUploadAnything) images.sendAllTo(remote, machine, attachCaps)
         if (!canStart) return
         val st = Starts.of(key)
         val cfgKey = Triple(cfg.machineId, cfg.agent.number, "${cfg.model}/${cfg.effort}/${cfg.standardContext}")
@@ -235,9 +233,10 @@ fun NewSessionBox(
             canSend = canStart,
             onSend = { start() },
             onPlus = pick,
+            onPlusBlocked = if (!images.restoring) ({ showAttachmentBlockedNotice(images, remote, machine, copy = copy) }) else null,
             onFile = rememberDocumentPicker(images, remote, machine, attachCaps),
             fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
-            plusEnabled = !images.restoring && (blocked == null || attachCaps.supportsFiles && attachCaps.machineOnline),
+            plusEnabled = !images.restoring && pickState.canPickAny,
             sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,
             hasDraft = text.isNotBlank() || images.images.isNotEmpty(),

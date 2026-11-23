@@ -100,4 +100,45 @@ class FileCapabilityGateTest {
             AccountMemory.clear()
         }
     }
+
+    @Test fun attachmentPickStateFollowsCoreEvalOnlineAndOffline() {
+        val r = remote()
+        try {
+            val caps = MachineCapabilities.newBuilder().setImageUpload(true).setFileUpload(true).build()
+            val meta = MachineMeta.newBuilder().setHostname("MacBook").setCapabilities(caps).build()
+            r.showForTest(
+                RemoteState(
+                    conn = ConnState.ONLINE,
+                    machines = mapOf("computer" to MachineView("computer", true, 0, meta)),
+                    sessions = mapOf("capability" to SessionView("capability", "computer")),
+                ),
+            )
+            val req = io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.newBuilder()
+                .setMachineId("computer")
+                .setSessionId("capability")
+                .build()
+            val onlinePick = r.evaluateAttachments(req).toPickState()
+            assertTrue(onlinePick.canPickGallery)
+            assertTrue(onlinePick.canPickFiles)
+            assertTrue(onlinePick.canPickAny)
+            assertNull(onlinePick.blockedReason)
+
+            r.showForTest(
+                RemoteState(
+                    conn = ConnState.ONLINE,
+                    machines = mapOf("computer" to MachineView("computer", false, 0, meta)),
+                    sessions = mapOf("capability" to SessionView("capability", "computer")),
+                ),
+            )
+            val offlinePick = r.evaluateAttachments(req).toPickState()
+            assertFalse(offlinePick.canPickGallery)
+            assertFalse(offlinePick.canPickFiles)
+            assertFalse(offlinePick.canPickAny)
+            assertNotNull(offlinePick.blockedReason)
+            assertTrue(coreTextToMessageText(offlinePick.blockedReason!!).resolve(::sessionText).contains("离线"))
+        } finally {
+            r.close()
+            AccountMemory.clear()
+        }
+    }
 }
