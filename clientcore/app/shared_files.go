@@ -101,15 +101,18 @@ type sfStaleVerify struct {
 }
 
 type sfManager struct {
-	localCacheMaxBytes int64
-	storageFullKind    corev1.SharedFileFailureKind
-	nextOpID           uint64
-	activeScanOpID     uint64
-	visibleSessionID   string
-	entries            map[sfKey]*sfEntry
-	reqToKey           map[string]sfKey
-	staleVerifyOps     map[uint64]sfStaleVerify
-	inFlightVerifyKey  map[sfKey]uint64
+	localCacheMaxBytes    int64
+	storageFullKind       corev1.SharedFileFailureKind
+	nextOpID              uint64
+	activeScanOpID        uint64
+	scanBaselineKeys      map[sfKey]bool
+	scanMutatedKeys       map[sfKey]bool
+	scanForgottenSessions map[string]bool
+	visibleSessionID      string
+	entries               map[sfKey]*sfEntry
+	reqToKey              map[string]sfKey
+	staleVerifyOps        map[uint64]sfStaleVerify
+	inFlightVerifyKey     map[sfKey]uint64
 }
 
 func newSFManager() *sfManager {
@@ -120,6 +123,16 @@ func newSFManager() *sfManager {
 		staleVerifyOps:    make(map[uint64]sfStaleVerify),
 		inFlightVerifyKey: make(map[sfKey]uint64),
 	}
+}
+
+func (mgr *sfManager) markScanMutated(key sfKey) {
+	if mgr == nil || mgr.activeScanOpID == 0 {
+		return
+	}
+	if mgr.scanMutatedKeys == nil {
+		mgr.scanMutatedKeys = make(map[sfKey]bool)
+	}
+	mgr.scanMutatedKeys[key] = true
 }
 
 func (m *Model) ensureSharedFiles() *sfManager {
@@ -311,6 +324,14 @@ func (c *Core) handleSharedFileConfig(ev *corev1.SharedFileConfigEvent) []*corev
 	}
 	opID := mgr.allocOpID()
 	mgr.activeScanOpID = opID
+	mgr.scanBaselineKeys = make(map[sfKey]bool, len(mgr.entries))
+	for k, e := range mgr.entries {
+		if e != nil && e.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED {
+			mgr.scanBaselineKeys[k] = true
+		}
+	}
+	mgr.scanMutatedKeys = make(map[sfKey]bool)
+	mgr.scanForgottenSessions = make(map[string]bool)
 	return []*corev1.Effect{
 		{
 			Effect: &corev1.Effect_SharedFileScanLocal{
@@ -325,15 +346,22 @@ func (c *Core) handleSharedFileLocalScanned(ev *corev1.SharedFileLocalScannedEve
 		return nil
 	}
 	mgr := c.m.ensureSharedFiles()
-	if ev.OpId != 0 && mgr.activeScanOpID != 0 && ev.OpId != mgr.activeScanOpID {
-		return nil
-	}
-	if ev.Error != "" {
+	if ev.OpId == 0 || mgr.activeScanOpID == 0 || ev.OpId != mgr.activeScanOpID {
 		return nil
 	}
 	mgr.activeScanOpID = 0
+	baseline := mgr.scanBaselineKeys
+	mutated := mgr.scanMutatedKeys
+	forgotten := mgr.scanForgottenSessions
+	mgr.scanBaselineKeys = nil
+	mgr.scanMutatedKeys = nil
+	mgr.scanForgottenSessions = nil
+	if ev.Error != "" {
+		return nil
+	}
 
-	// Preserve already-probed media durations and active in-flight downloads.
+	// Preserve already-probed media durations, active downloads, and any entry created or
+	// mutated while the scan was in flight. Only clear pre-scan entries missing from disk.
 	savedDurations := make(map[sfKey]int64)
 	for k, e := range mgr.entries {
 		if e == nil {
@@ -342,7 +370,8 @@ func (c *Core) handleSharedFileLocalScanned(ev *corev1.SharedFileLocalScannedEve
 		if e.hasDuration {
 			savedDurations[k] = e.durationMs
 		}
-		if e.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
+		if baseline[k] && !mutated[k] &&
+			e.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
 			delete(mgr.entries, k)
 			c.clearSharedFileUI(k)
 		}
@@ -354,14 +383,19 @@ func (c *Core) handleSharedFileLocalScanned(ev *corev1.SharedFileLocalScannedEve
 			continue
 		}
 		key := sfKey{sessionID: le.SessionId, fileID: le.FileId}
+		if forgotten[key.sessionID] || mutated[key] {
+			continue
+		}
 		if existing := mgr.entries[key]; existing != nil && existing.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
 			continue
 		}
 		if le.Completed {
 			if le.BytesOnDisk < 0 || (le.ExpectedSizeBytes > 0 && le.BytesOnDisk != le.ExpectedSizeBytes) {
+				effects = append(effects, makeDeleteLocalEffect(key))
 				continue
 			}
 			if sf := c.findSharedFileInSession(le.SessionId, le.FileId); sf != nil && sf.SizeBytes != le.BytesOnDisk {
+				effects = append(effects, makeDeleteLocalEffect(key))
 				continue
 			}
 			entry := &sfEntry{
@@ -503,6 +537,7 @@ func (c *Core) handleSharedFileStartDownload(ctx *sync.StepContext, act *corev1.
 	}
 
 	entry.generation++
+	mgr.markScanMutated(key)
 	entry.machineID = sess.MachineID
 	entry.displayName = displayName
 	entry.kind = cls.Kind
@@ -756,6 +791,7 @@ func (c *Core) handleSharedFileWriteChunkResult(ctx *sync.StepContext, ev *corev
 	if entry.pausedPendingWriteOpID != 0 && entry.pausedPendingWriteOpID == ev.OpId {
 		entry.pausedPendingWriteOpID = 0
 		if ev.Ok && entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED {
+			mgr.markScanMutated(key)
 			entry.committedOffset = entry.pausedPendingCommitOff
 			entry.downloadedBytes = min(entry.committedOffset, entry.sizeBytes)
 			if entry.sizeBytes > 0 && entry.committedOffset > 0 {
@@ -932,6 +968,7 @@ func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerify
 
 	if deliverOnly {
 		// > local_cache_max_bytes (e.g. Web > 50 MiB): delivered directly without local cache; return to AVAILABLE.
+		mgr.markScanMutated(key)
 		delete(mgr.entries, key)
 		c.clearSharedFileUI(key)
 		return []*corev1.Effect{
@@ -951,6 +988,7 @@ func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerify
 		}
 	}
 
+	mgr.markScanMutated(key)
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED
 	entry.phase = sfPhaseIdle
 	entry.downloadedBytes = sizeBytes
@@ -1005,6 +1043,7 @@ func (c *Core) handleSharedFilePauseDownload(ctx *sync.StepContext, act *corev1.
 
 func (c *Core) pauseEntry(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, true)
+	mgr.markScanMutated(entry.key)
 	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED
 	entry.phase = sfPhaseIdle
@@ -1033,6 +1072,7 @@ func (c *Core) handleSharedFileCancelDownload(ctx *sync.StepContext, act *corev1
 		delete(mgr.entries, key)
 		c.clearSharedFileUI(key)
 	}
+	mgr.markScanMutated(key)
 	return []*corev1.Effect{makeDeletePartialEffect(key)}
 }
 
@@ -1046,6 +1086,7 @@ func (c *Core) handleSharedFileDeleteLocal(ctx *sync.StepContext, act *corev1.Sh
 		c.cancelActiveTransferWork(ctx, mgr, entry, false)
 		delete(mgr.entries, key)
 	}
+	mgr.markScanMutated(key)
 	c.clearSharedFileUI(key)
 	return []*corev1.Effect{makeDeleteLocalEffect(key)}
 }
@@ -1069,6 +1110,12 @@ func (c *Core) handleSharedFileForgetSession(ctx *sync.StepContext, act *corev1.
 	}
 	sid := act.SessionId
 	if mgr := c.m.sharedFiles; mgr != nil {
+		if mgr.activeScanOpID != 0 {
+			if mgr.scanForgottenSessions == nil {
+				mgr.scanForgottenSessions = make(map[string]bool)
+			}
+			mgr.scanForgottenSessions[sid] = true
+		}
 		for k, entry := range mgr.entries {
 			if k.sessionID != sid {
 				continue
@@ -1094,6 +1141,10 @@ func (c *Core) handleSharedFileForgetSession(ctx *sync.StepContext, act *corev1.
 
 func (c *Core) handleSharedFileClearAll(ctx *sync.StepContext) []*corev1.Effect {
 	if mgr := c.m.sharedFiles; mgr != nil {
+		mgr.activeScanOpID = 0
+		mgr.scanBaselineKeys = nil
+		mgr.scanMutatedKeys = nil
+		mgr.scanForgottenSessions = nil
 		for k, entry := range mgr.entries {
 			c.cancelActiveTransferWork(ctx, mgr, entry, false)
 			delete(mgr.entries, k)
@@ -1147,6 +1198,7 @@ func (c *Core) handleSharedFileLocalMissing(ctx *sync.StepContext, ev *corev1.Sh
 		return
 	}
 	_ = ctx
+	mgr.markScanMutated(key)
 	delete(mgr.entries, key)
 	c.clearSharedFileUI(key)
 }
@@ -1271,7 +1323,8 @@ func (c *Core) reconcileSharedFileDownloads(effects *[]*corev1.Effect, dirty *sy
 		if entry == nil {
 			continue
 		}
-		if entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED ||
+		if entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED ||
+			entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED ||
 			entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP {
 			continue
 		}
@@ -1301,7 +1354,7 @@ func (c *Core) reconcileSharedFileDownloads(effects *[]*corev1.Effect, dirty *sy
 			if entry.phase == sfPhaseVerifying || entry.phase == sfPhaseWaitingPriorVerify {
 				continue
 			}
-			hadPartial := entry.hasPartial || entry.phase == sfPhaseWritingChunk
+			hadPartial := entry.hasPartial || entry.phase == sfPhaseWritingChunk || entry.pausedPendingWriteOpID != 0
 			c.cancelActiveTransferWork(ctx, mgr, entry, false)
 			if hadPartial {
 				extraEffects = append(extraEffects, makeDeletePartialEffect(key))
@@ -1367,6 +1420,9 @@ func (c *Core) cancelActiveTransferWork(ctx *sync.StepContext, mgr *sfManager, e
 			}
 		}
 	}
+	if !isPause {
+		entry.pausedPendingWriteOpID = 0
+	}
 	if entry.phase == sfPhaseVerifying && entry.activeOpID != 0 {
 		mgr.staleVerifyOps[entry.activeOpID] = sfStaleVerify{
 			key:         entry.key,
@@ -1378,6 +1434,7 @@ func (c *Core) cancelActiveTransferWork(ctx *sync.StepContext, mgr *sfManager, e
 
 func (c *Core) markEntryCleanedUp(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
+	mgr.markScanMutated(entry.key)
 	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP
 	entry.phase = sfPhaseIdle
@@ -1397,6 +1454,7 @@ func (c *Core) markEntryCleanedUp(ctx *sync.StepContext, mgr *sfManager, entry *
 
 func (c *Core) failEntryChecksum(ctx *sync.StepContext, mgr *sfManager, entry *sfEntry) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
+	mgr.markScanMutated(entry.key)
 	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED
 	entry.phase = sfPhaseIdle
@@ -1423,6 +1481,7 @@ func (c *Core) failEntryPreservingPartial(
 	errText *corev1.Text,
 ) {
 	c.cancelActiveTransferWork(ctx, mgr, entry, false)
+	mgr.markScanMutated(entry.key)
 	entry.generation++
 	entry.status = corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED
 	entry.phase = sfPhaseIdle

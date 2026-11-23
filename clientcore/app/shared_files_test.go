@@ -354,6 +354,22 @@ func (h *sfHarness) setMachineOnline(online bool) *corev1.EffectBatch {
 	})
 }
 
+func (h *sfHarness) triggerScan() uint64 {
+	h.t.Helper()
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SharedFileConfig{
+			SharedFileConfig: &corev1.SharedFileConfigEvent{ScanLocal: true},
+		},
+	})
+	for _, ef := range eff.GetEffects() {
+		if sc := ef.GetSharedFileScanLocal(); sc != nil {
+			return sc.GetOpId()
+		}
+	}
+	h.t.Fatalf("expected SharedFileScanLocalEffect")
+	return 0
+}
+
 func (h *sfHarness) setSessionExited() *corev1.EffectBatch {
 	return h.dispatch(&corev1.Event{
 		Event: &corev1.Event_StreamFrame{
@@ -1583,9 +1599,11 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 
 	t.Run("delete local, forget session, and clear all emit storage cleanup effects", func(t *testing.T) {
 		h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-del", Name: "pic.png", SizeBytes: 64, Sha256: sfTestHash(0xf1)})
+		scanOp := h.triggerScan()
 		h.dispatch(&corev1.Event{
 			Event: &corev1.Event_SharedFileLocalScanned{
 				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId: scanOp,
 					Entries: []*corev1.SharedFileLocalEntry{
 						{SessionId: h.sessionID, FileId: "f-del", Completed: true, BytesOnDisk: 64, ExpectedSizeBytes: 64},
 					},
@@ -1678,9 +1696,11 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 				SharedFileDurationProbed: &corev1.SharedFileDurationProbedEvent{SessionId: h.sessionID, FileId: "f-dur", DurationMs: 65_000},
 			},
 		})
+		scanOp := h.triggerScan()
 		h.dispatch(&corev1.Event{
 			Event: &corev1.Event_SharedFileLocalScanned{
 				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId: scanOp,
 					Entries: []*corev1.SharedFileLocalEntry{
 						{SessionId: h.sessionID, FileId: "f-dur", Completed: true, BytesOnDisk: 64, ExpectedSizeBytes: 64},
 					},
@@ -2010,6 +2030,443 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 					t.Fatalf("final status = %v, want %v", c.GetStatus(), tc.wantStatus)
 				}
 			})
+		}
+	})
+
+	t.Run("scan rejects mismatched/zero op_id, deletes size-mismatched copies, and preserves concurrent downloads", func(t *testing.T) {
+		h := newSFHarness(t, block,
+			&v1.SharedFile{FileId: "f-old", Name: "old.bin", SizeBytes: 64, Sha256: sfTestHash(0x31)},
+			&v1.SharedFile{FileId: "f-mid", Name: "mid.bin", SizeBytes: 64, Sha256: sfTestHash(0x32)},
+			&v1.SharedFile{FileId: "f-act", Name: "act.bin", SizeBytes: 128, Sha256: sfTestHash(0x33)},
+			&v1.SharedFile{FileId: "f-badsize", Name: "badsize.bin", SizeBytes: 64, Sha256: sfTestHash(0x34)},
+		)
+
+		// Unsolicited scan result with op_id=0 or no active scan must be ignored.
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileLocalScanned{
+				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId: 0,
+					Entries: []*corev1.SharedFileLocalEntry{
+						{SessionId: h.sessionID, FileId: "f-old", Completed: true, BytesOnDisk: 64, ExpectedSizeBytes: 64},
+					},
+				},
+			},
+		})
+		if h.card("f-old").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+			t.Fatalf("scan with op_id=0 must be ignored")
+		}
+
+		// First valid scan hydrates f-old as DOWNLOADED.
+		scan1 := h.triggerScan()
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileLocalScanned{
+				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId: scan1,
+					Entries: []*corev1.SharedFileLocalEntry{
+						{SessionId: h.sessionID, FileId: "f-old", Completed: true, BytesOnDisk: 64, ExpectedSizeBytes: 64},
+					},
+				},
+			},
+		})
+		if h.card("f-old").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+			t.Fatalf("expected f-old DOWNLOADED after scan1")
+		}
+
+		// Start scan2: while scan2 is in flight, f-mid starts & finishes DOWNLOADED, and f-act starts DOWNLOADING.
+		scan2 := h.triggerScan()
+		// Mismatched op_id is ignored without consuming scan2.
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileLocalScanned{
+				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{OpId: scan2 + 99},
+			},
+		})
+
+		// Complete f-mid during scan2.
+		eff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileStartDownload{
+				SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-mid"},
+			},
+		})
+		inspM := findInspectDisk(eff)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileDiskInspected{
+				SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: inspM.GetOpId(), SessionId: h.sessionID, FileId: "f-mid", Known: false},
+			},
+		})
+		dcM, _ := findDispatchChunk(eff)
+		eff = h.deliverChunkOK(dcM, bytes.Repeat([]byte{1}, 64), 64)
+		wcM := findWriteChunk(eff)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileWriteChunkResult{
+				SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wcM.GetOpId(), SessionId: h.sessionID, FileId: "f-mid", Ok: true},
+			},
+		})
+		vcM := findVerifyCommit(eff)
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+				SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{OpId: vcM.GetOpId(), SessionId: h.sessionID, FileId: "f-mid", Ok: true},
+			},
+		})
+
+		// Start f-act (stays DOWNLOADING).
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileStartDownload{
+				SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-act"},
+			},
+		})
+
+		// scan2 arrives: f-old is missing on disk, f-mid is not in snapshot, f-act has stale partial, f-badsize has wrong size (32 != 64).
+		effScan2 := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileLocalScanned{
+				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId: scan2,
+					Entries: []*corev1.SharedFileLocalEntry{
+						{
+							SessionId:         h.sessionID,
+							FileId:            "f-act",
+							Completed:         false,
+							BytesOnDisk:       64,
+							ExpectedSizeBytes: 128,
+							ChunkBytes:        block,
+							CommittedOffset:   64,
+							Sha256:            sfTestHash(0x33),
+						},
+						{
+							SessionId:         h.sessionID,
+							FileId:            "f-badsize",
+							Completed:         true,
+							BytesOnDisk:       32,
+							ExpectedSizeBytes: 64,
+						},
+					},
+				},
+			},
+		})
+		if dl := findDeleteLocal(effScan2); dl == nil || dl.GetFileId() != "f-badsize" {
+			t.Fatalf("expected DeleteLocal for size-mismatched f-badsize, got %+v", dl)
+		}
+		if h.card("f-old").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+			t.Fatalf("pre-scan f-old absent on disk should be cleared back to AVAILABLE")
+		}
+		if h.card("f-mid").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+			t.Fatalf("f-mid committed during scan must NOT be wiped")
+		}
+		if h.card("f-act").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING {
+			t.Fatalf("active f-act must remain DOWNLOADING")
+		}
+	})
+
+	t.Run("pause during chunk 0 write followed by session exit emits DeletePartial and discards late write", func(t *testing.T) {
+		h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-c0", Name: "c0.bin", SizeBytes: 128, Sha256: sfTestHash(0x41)})
+		eff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileStartDownload{
+				SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-c0"},
+			},
+		})
+		insp := findInspectDisk(eff)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileDiskInspected{
+				SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-c0", Known: false},
+			},
+		})
+		dc0, _ := findDispatchChunk(eff)
+		eff = h.deliverChunkOK(dc0, bytes.Repeat([]byte{1}, 64), 128)
+		wc0 := findWriteChunk(eff)
+
+		// Pause while chunk 0 write is in flight (hasPartial is still false!).
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFilePauseDownload{
+				SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: h.sessionID, FileId: "f-c0"},
+			},
+		})
+		// Session exits BEFORE wc0 returns -> MUST emit DeletePartial so no orphan .part remains!
+		effExit := h.setSessionExited()
+		if dp := findDeletePartial(effExit); dp == nil || dp.GetFileId() != "f-c0" {
+			t.Fatalf("expected DeletePartial on session exit with pending paused chunk 0 write, got %+v", dp)
+		}
+		// Late WriteChunkResult arrives -> ignored, stays CLEANED.
+		effLate := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileWriteChunkResult{
+				SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc0.GetOpId(), SessionId: h.sessionID, FileId: "f-c0", Ok: true},
+			},
+		})
+		if dc, _ := findDispatchChunk(effLate); dc != nil {
+			t.Fatalf("late write after session exit must not dispatch next chunk")
+		}
+		if c := h.card("f-c0"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED {
+			t.Fatalf("expected CLEANED, got %+v", c)
+		}
+	})
+
+	t.Run("reconcile skips duration-only UNSPECIFIED entry on session exit", func(t *testing.T) {
+		h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-duro", Name: "clip.mp4", SizeBytes: 64, Sha256: sfTestHash(0x42)})
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileDurationProbed{
+				SharedFileDurationProbed: &corev1.SharedFileDurationProbedEvent{SessionId: h.sessionID, FileId: "f-duro", DurationMs: 5_000},
+			},
+		})
+		effExit := h.setSessionExited()
+		if findDeletePartial(effExit) != nil {
+			t.Fatalf("duration-only UNSPECIFIED entry must not emit DeletePartial on session exit")
+		}
+		entry := h.core.m.sharedFiles.entries[sfKey{sessionID: h.sessionID, fileID: "f-duro"}]
+		if entry == nil || entry.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED {
+			t.Fatalf("reconcile must leave duration-only entry as UNSPECIFIED, got %+v", entry)
+		}
+	})
+
+	t.Run("pause then immediate resume while old WriteChunk is in flight and cancel discarding late WriteChunk", func(t *testing.T) {
+		t.Run("pause then resume while old WriteChunk in flight", func(t *testing.T) {
+			h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-pr", Name: "pr.bin", SizeBytes: 128, Sha256: sfTestHash(0x43)})
+			eff := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileStartDownload{
+					SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-pr"},
+				},
+			})
+			insp := findInspectDisk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileDiskInspected{
+					SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Known: false},
+				},
+			})
+			dc0, _ := findDispatchChunk(eff)
+			eff = h.deliverChunkOK(dc0, bytes.Repeat([]byte{1}, 64), 128)
+			wc0 := findWriteChunk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileWriteChunkResult{
+					SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc0.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Ok: true},
+				},
+			})
+			dc1, _ := findDispatchChunk(eff)
+			eff = h.deliverChunkOK(dc1, bytes.Repeat([]byte{2}, 64), 128)
+			wc1Old := findWriteChunk(eff)
+
+			// Pause then immediately resume BEFORE wc1Old settles.
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFilePauseDownload{
+					SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: h.sessionID, FileId: "f-pr"},
+				},
+			})
+			effRes := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileStartDownload{
+					SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-pr"},
+				},
+			})
+			insp2 := findInspectDisk(effRes)
+			if insp2 == nil || insp2.GetRequiredBytes() != 64 {
+				t.Fatalf("expected resume InspectDisk(64), got %+v", insp2)
+			}
+			// Late wc1Old arrives while inspecting disk: must be ignored!
+			effLate := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileWriteChunkResult{
+					SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc1Old.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Ok: true},
+				},
+			})
+			if findVerifyCommit(effLate) != nil {
+				t.Fatalf("stale WriteChunkResult after resume must be ignored")
+			}
+			// New round proceeds cleanly from offset 64 to DOWNLOADED.
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileDiskInspected{
+					SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp2.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Known: false},
+				},
+			})
+			dc1New, req1New := findDispatchChunk(eff)
+			if dc1New == nil || req1New.GetOffset() != 64 {
+				t.Fatalf("expected re-fetch at offset 64, got %+v", req1New)
+			}
+			eff = h.deliverChunkOK(dc1New, bytes.Repeat([]byte{2}, 64), 128)
+			wc1New := findWriteChunk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileWriteChunkResult{
+					SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc1New.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Ok: true},
+				},
+			})
+			vc := findVerifyCommit(eff)
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+					SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{OpId: vc.GetOpId(), SessionId: h.sessionID, FileId: "f-pr", Ok: true},
+				},
+			})
+			if h.card("f-pr").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+				t.Fatalf("expected DOWNLOADED after clean resume")
+			}
+		})
+
+		t.Run("cancel discards late WriteChunk result", func(t *testing.T) {
+			h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-cw", Name: "cw.bin", SizeBytes: 128, Sha256: sfTestHash(0x44)})
+			eff := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileStartDownload{
+					SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-cw"},
+				},
+			})
+			insp := findInspectDisk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileDiskInspected{
+					SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-cw", Known: false},
+				},
+			})
+			dc0, _ := findDispatchChunk(eff)
+			eff = h.deliverChunkOK(dc0, bytes.Repeat([]byte{1}, 64), 128)
+			wc0 := findWriteChunk(eff)
+
+			effCancel := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileCancelDownload{
+					SharedFileCancelDownload: &corev1.SharedFileCancelDownloadAction{SessionId: h.sessionID, FileId: "f-cw"},
+				},
+			})
+			if findDeletePartial(effCancel) == nil {
+				t.Fatalf("expected DeletePartial on cancel")
+			}
+			effLate := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileWriteChunkResult{
+					SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc0.GetOpId(), SessionId: h.sessionID, FileId: "f-cw", Ok: true},
+				},
+			})
+			if dc, _ := findDispatchChunk(effLate); dc != nil || findVerifyCommit(effLate) != nil {
+				t.Fatalf("late WriteChunkResult after cancel must be discarded")
+			}
+			if h.card("f-cw").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+				t.Fatalf("expected AVAILABLE after cancel + late WriteChunkResult")
+			}
+		})
+	})
+
+	t.Run("WAITING_RECONNECT pause, cancel, and session exit emit CancelTimer", func(t *testing.T) {
+		cases := []struct {
+			name            string
+			act             func(h *sfHarness) *corev1.EffectBatch
+			wantDeletePart  bool
+			wantStatus      corev1.SharedFileCardStatus
+		}{
+			{
+				name: "pause cancels reconnect timer and keeps partial",
+				act: func(h *sfHarness) *corev1.EffectBatch {
+					return h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFilePauseDownload{
+							SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: h.sessionID, FileId: "f-wr"},
+						},
+					})
+				},
+				wantDeletePart: false,
+				wantStatus:     corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED,
+			},
+			{
+				name: "cancel cancels reconnect timer and deletes partial",
+				act: func(h *sfHarness) *corev1.EffectBatch {
+					return h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileCancelDownload{
+							SharedFileCancelDownload: &corev1.SharedFileCancelDownloadAction{SessionId: h.sessionID, FileId: "f-wr"},
+						},
+					})
+				},
+				wantDeletePart: true,
+				wantStatus:     corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE,
+			},
+			{
+				name: "session exit cancels reconnect timer and deletes partial",
+				act: func(h *sfHarness) *corev1.EffectBatch {
+					return h.setSessionExited()
+				},
+				wantDeletePart: true,
+				wantStatus:     corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-wr", Name: "wr.bin", SizeBytes: 128, Sha256: sfTestHash(0x45)})
+				eff := h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileStartDownload{
+						SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-wr"},
+					},
+				})
+				insp := findInspectDisk(eff)
+				eff = h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileDiskInspected{
+						SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-wr", Known: false},
+					},
+				})
+				dc0, _ := findDispatchChunk(eff)
+				eff = h.deliverChunkOK(dc0, bytes.Repeat([]byte{1}, 64), 128)
+				wc0 := findWriteChunk(eff)
+				eff = h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileWriteChunkResult{
+						SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc0.GetOpId(), SessionId: h.sessionID, FileId: "f-wr", Ok: true},
+					},
+				})
+				dc1, _ := findDispatchChunk(eff)
+				h.setMachineOnline(false)
+				eff = h.deliverTransportDrop(dc1, "network")
+				if findSFScheduleTimer(eff, corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT) == nil {
+					t.Fatalf("expected reconnect timer scheduled")
+				}
+
+				effAct := tc.act(h)
+				if findSFCancelTimer(effAct, corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT) == nil {
+					t.Fatalf("expected CancelTimer(TIMER_KIND_SHARED_FILE_RECONNECT)")
+				}
+				if gotDP := findDeletePartial(effAct) != nil; gotDP != tc.wantDeletePart {
+					t.Fatalf("DeletePartial = %v, want %v", gotDP, tc.wantDeletePart)
+				}
+				h.setMachineOnline(true)
+				if c := h.card("f-wr"); c.GetStatus() != tc.wantStatus {
+					t.Fatalf("status = %v, want %v", c.GetStatus(), tc.wantStatus)
+				}
+			})
+		}
+	})
+
+	t.Run("zero-byte file pause and resume succeeds without InspectDisk", func(t *testing.T) {
+		h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-zres", Name: "empty.txt", SizeBytes: 0, Sha256: sfTestHash(0x46)})
+		eff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileStartDownload{
+				SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-zres"},
+			},
+		})
+		if findInspectDisk(eff) != nil {
+			t.Fatalf("0-byte file must skip InspectDisk")
+		}
+		if dc, _ := findDispatchChunk(eff); dc == nil {
+			t.Fatalf("expected initial chunk fetch for 0-byte file")
+		}
+		// Pause while chunk 0 fetch is in flight -> PAUSED.
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFilePauseDownload{
+				SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: h.sessionID, FileId: "f-zres"},
+			},
+		})
+		if h.card("f-zres").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED {
+			t.Fatalf("expected PAUSED for 0-byte file")
+		}
+		// Resume -> skips InspectDisk, fetches chunk 0, writes empty slice, verifies, completes DOWNLOADED!
+		effRes := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileStartDownload{
+				SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-zres"},
+			},
+		})
+		if findInspectDisk(effRes) != nil {
+			t.Fatalf("0-byte file resume must skip InspectDisk")
+		}
+		dcRes, reqRes := findDispatchChunk(effRes)
+		if dcRes == nil || reqRes.GetOffset() != 0 {
+			t.Fatalf("expected 0-byte resume fetch at offset 0, got %+v", reqRes)
+		}
+		eff = h.deliverChunkOK(dcRes, make([]byte, block), 0)
+		wc := findWriteChunk(eff)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileWriteChunkResult{
+				SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc.GetOpId(), SessionId: h.sessionID, FileId: "f-zres", Ok: true},
+			},
+		})
+		vc := findVerifyCommit(eff)
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+				SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{OpId: vc.GetOpId(), SessionId: h.sessionID, FileId: "f-zres", Ok: true},
+			},
+		})
+		if h.card("f-zres").GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+			t.Fatalf("expected 0-byte file DOWNLOADED after resume")
 		}
 	})
 }
