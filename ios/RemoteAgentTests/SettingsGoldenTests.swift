@@ -94,26 +94,7 @@ import UIKit
         }
     }
 
-    @Test func usageFormatAndOpenParamsWorkAcrossLocalesAndPresets() {
-        MessageLocale.$overrideForTesting.withValue("zh-CN") {
-            #expect(UsageFormat.formatTokens(0) == "0")
-            #expect(UsageFormat.formatTokens(9_850) == "9,850")
-            #expect(UsageFormat.formatTokens(34_500_000) == "3,450万")
-            #expect(UsageFormat.formatTokens(120_000_000) == "1.2亿")
-            #expect(UsageFormat.formatTokens(12_860_000_000) == "128.6亿")
-            #expect(UsageFormat.formatCacheHit(0.624) == "62%")
-            #expect(UsageFormat.formatSpeed(74.2) == "74")
-            #expect(UsageFormat.formatTtftSeconds(820) == "0.8s")
-            #expect(UsageFormat.formatTtftSeconds(14_200) == "14s")
-            #expect(UsageFormat.formatDeltaTriangle(1_240) == "▲1,240%")
-            #expect(UsageFormat.formatDeltaTriangle(-72) == "▼72%")
-            #expect(UsageFormat.formatDeltaTriangle(0.2) == L10n.usageFlat())
-        }
-        MessageLocale.$overrideForTesting.withValue("en") {
-            #expect(UsageFormat.formatTokens(1_500) == "1.5k")
-            #expect(UsageFormat.formatTokens(2_400_000) == "2.4M")
-        }
-
+    @Test func usageOpenParamsWorkAcrossPresets() {
         let nowMs: Int64 = 1_760_000_000_000
         let today = CoreHost.buildUsageOpenParams(preset: .today, nowMs: nowMs)
         #expect(today.bucketBoundsMs.count == 25)
@@ -137,9 +118,13 @@ import UIKit
         let strip = PBCoreUsageMetricStripView.with {
             $0.hasValue_p = true
             $0.currentValue = 0.94
+            $0.currentValueText = .with { $0.plain = "94%" }
             $0.hasRange_p = true
+            $0.showRange = true
             $0.minValue = 0.90
             $0.maxValue = 0.97
+            $0.minValueText = .with { $0.plain = "90%" }
+            $0.maxValueText = .with { $0.plain = "97%" }
             $0.scaleMin = 0.88
             $0.scaleMax = 0.99
             $0.lastValidIndex = 1
@@ -151,6 +136,7 @@ import UIKit
         let vm = PBCoreUsageViewModel.with {
             $0.machineID = "mac"
             $0.machineName = "Workstation"
+            $0.subtitle = .with { $0.plain = "Workstation" }
             $0.found = true
             $0.supported = true
             $0.online = true
@@ -159,9 +145,14 @@ import UIKit
             $0.rangeDays = 1
             $0.sortBy = .tokens
             $0.hasAnyUsage_p = true
+            $0.emptyKind = .none
+            $0.chartsA11YLabel = .with { $0.plain = "Workstation usage" }
             $0.hero = .with {
                 $0.totalModelCount = 2
                 $0.totalTokens = 720_000_000
+                $0.totalTokensText = .with { $0.plain = "7.2亿" }
+                $0.scopeText = .with { $0.plain = "全部 2 个模型" }
+                $0.sublineText = .with { $0.plain = "862 次请求 · ▼72%" }
                 $0.requestCount = 862
                 $0.hasTokensDelta_p = true
                 $0.tokensDeltaPercent = -72
@@ -172,11 +163,18 @@ import UIKit
                     $0.cacheWriteTokens = 4_400_000
                     $0.outputTokens = 3_240_000
                     $0.reasoningOutputTokens = 1_360_000
+                    $0.uncachedInputText = .with { $0.plain = "4,226万" }
+                    $0.cacheReadText = .with { $0.plain = "6.7亿" }
+                    $0.cacheWriteText = .with { $0.plain = "440万" }
+                    $0.outputText = .with { $0.plain = "324万" }
+                    $0.reasoningOutputText = .with { $0.plain = "136万" }
                 }
             }
             $0.barChart = .with {
                 $0.yMax = 100_000_000
                 $0.yMid = 50_000_000
+                $0.yMaxText = .with { $0.plain = "1亿" }
+                $0.yMidText = .with { $0.plain = "5,000万" }
                 $0.buckets = [
                     .with {
                         $0.startMs = now - 7_200_000
@@ -203,12 +201,16 @@ import UIKit
                     $0.seriesKey = "1:gpt-6-astra"
                     $0.shareRatio = 1
                     $0.totalTokens = 380_000_000
+                    $0.totalTokensText = .with { $0.plain = "3.8亿" }
                     $0.hasCacheHit_p = true
                     $0.cacheHitRate = 0.96
+                    $0.cacheHitText = .with { $0.plain = "96%" }
                     $0.hasSpeed_p = true
                     $0.speedP50 = 118
+                    $0.speedText = .with { $0.plain = "118" }
                     $0.hasTtft_p = true
                     $0.ttftP50Ms = 400
+                    $0.ttftText = .with { $0.plain = "0.4s" }
                 },
                 .with {
                     $0.agent = .claude
@@ -217,6 +219,7 @@ import UIKit
                     $0.seriesKey = "2:claude-sonnet-4-6"
                     $0.shareRatio = 0.05
                     $0.totalTokens = 18_000_000
+                    $0.totalTokensText = .with { $0.plain = "1,800万" }
                 },
             ]
         }
@@ -230,12 +233,16 @@ import UIKit
             $0.preset = .today
             $0.granularity = .hour
             $0.hasAnyUsage_p = false
+            $0.emptyKind = .noRecords
         }))
         render(UsageScreenContent(vm: PBCoreUsageViewModel.with {
             $0.machineID = "mac"
             $0.machineName = "Workstation"
             $0.found = true
             $0.supported = false
+            $0.emptyKind = .unsupported
+            $0.emptyTitle = .with { $0.plain = "Unsupported" }
+            $0.emptyBody = .with { $0.plain = "Update daemon" }
         }))
     }
 

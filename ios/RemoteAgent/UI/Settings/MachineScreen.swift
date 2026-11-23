@@ -18,8 +18,8 @@ struct MachineScreen: View {
         let host = context.coreHost
         let watchKey = "\(id):\(model.foreground)"
         let current = context.core.machineSettings
-        let online = current.machineID == id ? current.online : (model.state.machines[id]?.pathState.reachable ?? false)
-        let settingsKey = "\(id):\(online):\(model.state.conn == .online)"
+        let online = current.machineID == id ? current.online : false
+        let settingsKey = "\(id):\(online):\(current.appOnline)"
         contentView
             .task(id: settingsKey) { await host.openMachineSettings(machineID: id) }
             .task(id: watchKey) {
@@ -383,14 +383,16 @@ struct MachineScreenContent<Management: View>: View {
     }
 
     private func usageEntrySummary(_ vm: PBMachineSettingsViewModel) -> String {
-        if vm.usageTotalTokens > 0 {
-            let formatted = UsageFormat.formatTokens(Double(vm.usageTotalTokens))
-            if vm.usageCachedOffline {
-                return L10n.settingsUsageSummaryCached(value: formatted)
-            } else if vm.usageFallbackThirtyDays {
-                return L10n.settingsUsageSummary30D(value: formatted)
-            } else {
-                return L10n.settingsUsageSummary7D(value: formatted)
+        if vm.usageTotalTokens > 0, vm.hasUsageTokensText {
+            let formatted = vm.usageTokensText.rendered()
+            if !formatted.isEmpty {
+                if vm.usageCachedOffline {
+                    return L10n.settingsUsageSummaryCached(value: formatted)
+                } else if vm.usageFallbackThirtyDays {
+                    return L10n.settingsUsageSummary30D(value: formatted)
+                } else {
+                    return L10n.settingsUsageSummary7D(value: formatted)
+                }
             }
         }
         return vm.usageEmptyText.rendered().or(L10n.settingsUsageSummaryEmpty())

@@ -84,13 +84,13 @@ import Testing
             try? await Task.sleep(for: .milliseconds(20))
         }
         await host.openUsageScreen(machineID: "mac")
-        for _ in 0..<200 where (model.context?.core.usage.hero.totalTokensText ?? "").isEmpty {
+        for _ in 0..<200 where !(model.context?.core.usageView.hero.hasTotalTokensText ?? false) {
             try? await Task.sleep(for: .milliseconds(20))
         }
         await host.setUILocale("zh-CN")
-        let zhText = model.context!.core.usage.hero.totalTokensText
+        let zhText = model.context!.core.usageView.hero.totalTokensText.rendered(locale: "zh-CN")
         await host.setUILocale("en")
-        let enText = model.context!.core.usage.hero.totalTokensText
+        let enText = model.context!.core.usageView.hero.totalTokensText.rendered(locale: "en")
         #expect(zhText != enText)
         #expect(zhText.contains("万") || zhText.contains("亿"))
         #expect(enText.contains("k") || enText.contains("M") || enText.contains("B"))

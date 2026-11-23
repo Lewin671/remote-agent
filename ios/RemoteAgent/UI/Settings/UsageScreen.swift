@@ -3,92 +3,6 @@ import RAProto
 import SwiftUI
 import UIKit
 
-/// Shared token / rate / latency formatting matching Core / Web / Android specs.
-enum UsageFormat {
-    static var isChinese: Bool { MessageLocale.current.lowercased().hasPrefix("zh") }
-
-    static func commaUint(_ n: Double) -> String {
-        guard n.isFinite else { return "0" }
-        let value = max(0, n.rounded())
-        let fmt = NumberFormatter()
-        fmt.locale = Locale(identifier: "en_US")
-        fmt.numberStyle = .decimal
-        fmt.usesGroupingSeparator = true
-        fmt.maximumFractionDigits = 0
-        return fmt.string(from: NSNumber(value: value)) ?? String(Int64(value))
-    }
-
-    private static func scaled(_ val: Double, unit: String, maxOneDec: Double = 100) -> String {
-        if val < maxOneDec {
-            let rounded = (val * 10).rounded() / 10
-            if rounded == rounded.rounded() {
-                return "\(Int(rounded))\(unit)"
-            }
-            return String(format: "%.1f%@", rounded, unit)
-        }
-        return commaUint(val.rounded()) + unit
-    }
-
-    static func formatTokens(_ val: Double) -> String {
-        guard val.isFinite, val > 0 else { return "0" }
-        if !isChinese {
-            if val < 1000 { return commaUint(val) }
-            if val < 999_500 { return scaled(val / 1000, unit: "k") }
-            if val < 999_500_000 { return scaled(val / 1_000_000, unit: "M") }
-            return scaled(val / 1_000_000_000, unit: "B")
-        }
-        let wan = L10n.usageUnitWan()
-        let yi = L10n.usageUnitYi()
-        if val < 10_000 { return commaUint(val) }
-        if val < 99_950_000 {
-            let w = val / 10_000
-            if w < 100 { return scaled(w, unit: wan, maxOneDec: 100) }
-            return commaUint(w.rounded()) + wan
-        }
-        if val < 100_000_000 { return "1\(yi)" }
-        if val < 99_995_000_000 { return scaled(val / 100_000_000, unit: yi, maxOneDec: 1000) }
-        return commaUint((val / 100_000_000).rounded()) + yi
-    }
-
-    static func formatCacheHit(_ rate: Double) -> String {
-        guard rate.isFinite, rate > 0 else { return "0%" }
-        if rate >= 1 { return "100%" }
-        let pct = rate * 100
-        if pct < 1 || pct > 99 {
-            let rounded = (pct * 10).rounded() / 10
-            if rounded == rounded.rounded() { return "\(Int(rounded))%" }
-            return String(format: "%.1f%%", rounded)
-        }
-        return "\(Int(pct.rounded()))%"
-    }
-
-    static func formatSpeed(_ tokPerSec: Double) -> String {
-        guard tokPerSec.isFinite, tokPerSec > 0 else { return "0" }
-        if tokPerSec < 10 {
-            let rounded = (tokPerSec * 10).rounded() / 10
-            if rounded == rounded.rounded() { return "\(Int(rounded))" }
-            return String(format: "%.1f", rounded)
-        }
-        return commaUint(tokPerSec.rounded())
-    }
-
-    static func formatTtftSeconds(_ ms: Double) -> String {
-        guard ms.isFinite, ms > 0 else { return "0.0s" }
-        if ms < 10_000 {
-            let sec = max(0.1, (ms / 100).rounded() / 10)
-            return String(format: "%.1fs", sec)
-        }
-        return "\(Int((ms / 1000).rounded()))s"
-    }
-
-    static func formatDeltaTriangle(_ pct: Double) -> String {
-        guard pct.isFinite else { return "" }
-        if abs(pct) < 0.5 { return L10n.usageFlat() }
-        let arrow = pct > 0 ? "▲" : "▼"
-        return "\(arrow)\(commaUint(abs(pct)))%"
-    }
-}
-
 enum UsageTickAlign {
     case start, center, end
 }
@@ -318,6 +232,7 @@ struct UsageScreen: View {
             $0.machineID = id
             $0.loading = true
             $0.supported = true
+            $0.emptyKind = .loading
         }
     }
 }
@@ -352,9 +267,11 @@ struct UsageScreenContent: View {
     }
 
     var body: some View {
-        let subtitle: String? = vm.found
-            ? (vm.online ? machineName : L10n.usageSubtitleOffline(name: machineName))
-            : nil
+        let subtitle: String? = {
+            guard vm.found, vm.hasSubtitle else { return nil }
+            let text = vm.subtitle.rendered()
+            return text.isEmpty ? nil : text
+        }()
 
         Page(gray: false) {
             GeometryReader { geo in
@@ -501,80 +418,48 @@ struct UsageScreenContent: View {
         isWide: Bool,
         onRowTap: @escaping (PBCoreUsageModelRowView) -> Void
     ) -> some View {
-        let errStr = vm.errorText.rendered()
-        let allSourcesUnavailable = vm.found && vm.supported && !vm.hasAnyUsage_p && !vm.loading && errStr.isEmpty &&
-            (vm.online || vm.cachedOffline) &&
-            !vm.sources.isEmpty && vm.sources.allSatisfy { $0.state == .unavailable }
-        let unavailNames = vm.sources
-            .filter { $0.state == .unavailable }
-            .map { agentName($0.agent) }
-            .joined(separator: ", ")
-            .or("Antigravity")
-        let showOfflineEmpty = vm.found && vm.supported && !vm.online && !vm.hasAnyUsage_p && !vm.cachedOffline && !vm.loading
-        let showEmptyRecords = vm.found && vm.supported && !vm.hasAnyUsage_p && !vm.loading && errStr.isEmpty &&
-            !showOfflineEmpty && !allSourcesUnavailable
-
-        if !vm.found && vm.loading {
+        switch vm.emptyKind {
+        case .loading:
             if showSkeleton { skeletonCard.padding(.horizontal, 16) }
-        } else if !vm.found {
-            PageNote(L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
+        case .notFound:
+            PageNote(vm.hasEmptyBody ? vm.emptyBody.rendered() : L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
                 .padding(.horizontal, 16)
-        } else if !vm.supported {
-            let note = vm.hasUnsupportedFootnote ? vm.unsupportedFootnote.rendered() : ""
+        case .unsupported, .offlineEmpty, .loadError, .allSourcesUnavailable:
             edgeCard(
-                title: L10n.usageUnsupportedTitle(),
-                body: note.isEmpty ? L10n.usageUnsupportedBody(name: machineName) : note
+                title: vm.emptyTitle.rendered(),
+                body: vm.emptyBody.rendered(),
+                actionTitle: vm.emptyCanRetry ? L10n.commonRetry() : nil,
+                action: vm.emptyCanRetry ? onRetry : nil
             )
             .padding(.horizontal, 16)
-        } else if showOfflineEmpty {
-            edgeCard(
-                title: L10n.usageOfflineEmptyTitle(name: machineName),
-                body: L10n.usageOfflineEmptyBody(name: machineName)
-            )
-            .padding(.horizontal, 16)
-        } else if !errStr.isEmpty && !vm.hasAnyUsage_p && !vm.loading {
-            edgeCard(
-                title: L10n.usageLoadErrorTitle(),
-                body: errStr,
-                actionTitle: L10n.commonRetry(),
-                action: onRetry
-            )
-            .padding(.horizontal, 16)
-        } else if vm.loading && !vm.hasAnyUsage_p {
-            if showSkeleton { skeletonCard.padding(.horizontal, 16) }
-        } else if allSourcesUnavailable {
-            let note = vm.hasUnsupportedFootnote ? vm.unsupportedFootnote.rendered() : ""
-            edgeCard(
-                title: note.isEmpty ? L10n.usageOnlyUnavailableTitle(agents: unavailNames) : note,
-                body: L10n.usageOnlyUnavailableBody(agents: unavailNames)
-            )
-            .padding(.horizontal, 16)
-        } else if showEmptyRecords {
+        case .noRecords:
             UsageEmptyRecordsBlock(vm: vm, preset: preset, isWide: isWide)
                 .padding(.horizontal, 16)
-        } else if vm.hasAnyUsage_p {
-            UsageHeroBlock(
-                vm: vm,
-                isWide: isWide,
-                onClearSeries: { onSelectSeries("", false) }
-            )
-            .padding(.horizontal, 16)
+        case .none, .unspecified, .UNRECOGNIZED:
+            if vm.hasAnyUsage_p {
+                UsageHeroBlock(
+                    vm: vm,
+                    isWide: isWide,
+                    onClearSeries: { onSelectSeries("", false) }
+                )
+                .padding(.horizontal, 16)
 
-            UsageChartsStack(
-                vm: vm,
-                isWide: isWide,
-                onScrub: onScrub
-            )
-            .padding(.top, 16)
-            .padding(.horizontal, 16)
+                UsageChartsStack(
+                    vm: vm,
+                    isWide: isWide,
+                    onScrub: onScrub
+                )
+                .padding(.top, 16)
+                .padding(.horizontal, 16)
 
-            UsageModelTable(
-                vm: vm,
-                isWide: isWide,
-                onSelectSort: onSelectSort,
-                onSelectRow: onRowTap
-            )
-            .padding(.top, 22)
+                UsageModelTable(
+                    vm: vm,
+                    isWide: isWide,
+                    onSelectSort: onSelectSort,
+                    onSelectRow: onRowTap
+                )
+                .padding(.top, 22)
+            }
         }
     }
 
@@ -648,30 +533,15 @@ struct UsageScreenContent: View {
     }
 
     @ViewBuilder private var bannersSection: some View {
-        let errStr = vm.errorText.rendered()
-        if vm.found && vm.supported && (vm.cachedOffline || vm.backfilling || (!errStr.isEmpty && vm.hasAnyUsage_p)) {
+        if !vm.banners.isEmpty {
             VStack(spacing: 8) {
-                if vm.cachedOffline && vm.hasAnyUsage_p {
+                ForEach(Array(vm.banners.enumerated()), id: \.offset) { _, b in
+                    let tone: BannerTone = b.isError ? .error : (b.kind == .offlineCached ? .warn : .plain)
                     GroupBanner(
-                        L10n.usageOfflineBanner(name: machineName, time: formatOfflineTime(vm.cachedAtMs)),
-                        tone: .warn
-                    )
-                }
-                if vm.backfilling {
-                    GroupBanner(
-                        L10n.usageBackfillingBanner(
-                            scanned: Int(vm.backfillScannedDays),
-                            total: vm.backfillTotalDays > 0 ? Int(vm.backfillTotalDays) : 90
-                        ),
-                        tone: .plain
-                    )
-                }
-                if !errStr.isEmpty && vm.hasAnyUsage_p {
-                    GroupBanner(
-                        [L10n.usageLoadErrorTitle(), errStr].joined(separator: L10n.commonIosNoteSeparator()),
-                        tone: .error,
-                        action: L10n.commonRetry(),
-                        onAction: onRetry
+                        b.text.rendered(),
+                        tone: tone,
+                        action: b.canRetry ? L10n.commonRetry() : nil,
+                        onAction: b.canRetry ? onRetry : nil
                     )
                 }
             }
@@ -738,13 +608,6 @@ struct UsageScreenContent: View {
         GroupNote(L10n.usageCustomRangeLimitHint())
     }
 
-    private func formatOfflineTime(_ ms: Int64) -> String {
-        guard ms > 0 else { return "" }
-        let d = Date(timeIntervalSince1970: Double(ms) / 1000.0)
-        let cal = Calendar.current
-        return String(format: "%02d:%02d", cal.component(.hour, from: d), cal.component(.minute, from: d))
-    }
-
     private func customPickerDateBounds() -> (min: Date, max: Date) {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
@@ -771,31 +634,8 @@ private struct UsageHeroBlock: View {
     }
 
     private var subline: String {
-        if hero.scrubbing { return "" }
-        let countInt = Int(clamping: hero.requestCount)
-        var parts = [
-            L10n.usageHeroReqs(
-                count: countInt,
-                formatted: UsageFormat.commaUint(Double(hero.requestCount))
-            ),
-        ]
-        if hero.hasSharePercent_p {
-            let pctStr = hero.shareRatio < 0.01 ? "<1%" : "\(Int((hero.shareRatio * 100).rounded()))%"
-            parts.append(L10n.usageHeroShare(pct: pctStr))
-        }
-        if hero.previousBackfilling {
-            parts.append(L10n.usageBackfillingCell())
-        } else if hero.hasTokensDelta_p {
-            if abs(hero.tokensDeltaPercent) < 0.5 {
-                parts.append(L10n.usageFlat())
-            } else {
-                let period = vm.rangeDays <= 1
-                    ? L10n.usageVsYesterday()
-                    : L10n.usageVsPrevDays(days: Int(vm.rangeDays))
-                parts.append("\(UsageFormat.formatDeltaTriangle(hero.tokensDeltaPercent)) \(period)")
-            }
-        }
-        return parts.joined(separator: " · ")
+        if hero.scrubbing || !hero.hasSublineText { return "" }
+        return hero.sublineText.rendered()
     }
 
     var body: some View {
@@ -813,7 +653,7 @@ private struct UsageHeroBlock: View {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(UsageFormat.formatTokens(Double(hero.totalTokens)))
+                        Text(hero.hasTotalTokensText ? hero.totalTokensText.rendered() : "0")
                             .font(.system(size: bigSize, weight: .bold, design: .rounded))
                             .tracking(-0.8)
                             .monospacedDigit()
@@ -867,7 +707,7 @@ private struct UsageHeroBlock: View {
                         .frame(width: 13, height: 13)
                         .accessibilityLabel(agentName(hero.selectedAgent))
                 }
-                Text(hero.selectedModel)
+                Text(hero.hasScopeText ? hero.scopeText.rendered() : hero.selectedModel)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(DS.ink)
                     .lineLimit(1)
@@ -888,7 +728,7 @@ private struct UsageHeroBlock: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.usageScopeClearA11Y())
             } else {
-                Text(L10n.usageScopeAllModels(count: Int(hero.totalModelCount)))
+                Text(hero.hasScopeText ? hero.scopeText.rendered() : L10n.usageScopeAllModels(count: Int(hero.totalModelCount)))
                     .font(.system(size: 12))
                     .foregroundStyle(DS.ink2)
                     .lineLimit(1)
@@ -899,13 +739,12 @@ private struct UsageHeroBlock: View {
 
     @ViewBuilder private func compositionColumn(lineHeight: CGFloat, minHeight: CGFloat, width: CGFloat) -> some View {
         let comp = hero.hasComposition ? hero.composition : PBCoreUsageCompositionView()
-        let items: [(String, UInt64, Bool)] = [
-            (L10n.usageCompUncached(), comp.uncachedInputTokens, false),
-            (L10n.usageCompCacheRead(), comp.cacheReadTokens, false),
-            (L10n.usageCompCacheWrite(), comp.cacheWriteTokens, false),
-            (L10n.usageCompOutput(), comp.outputTokens, false),
-            (L10n.usageCompReasoningLabel(), comp.reasoningOutputTokens, true),
-        ].filter { $0.1 > 0 }
+        var items: [(String, String, Bool)] = []
+        if comp.hasUncachedInputText { items.append((L10n.usageCompUncached(), comp.uncachedInputText.rendered(), false)) }
+        if comp.hasCacheReadText { items.append((L10n.usageCompCacheRead(), comp.cacheReadText.rendered(), false)) }
+        if comp.hasCacheWriteText { items.append((L10n.usageCompCacheWrite(), comp.cacheWriteText.rendered(), false)) }
+        if comp.hasOutputText { items.append((L10n.usageCompOutput(), comp.outputText.rendered(), false)) }
+        if comp.hasReasoningOutputText { items.append((L10n.usageCompReasoningLabel(), comp.reasoningOutputText.rendered(), true)) }
         let fontSize: CGFloat = isWide ? 12.5 : 12
 
         VStack(alignment: .leading, spacing: 0) {
@@ -917,7 +756,7 @@ private struct UsageHeroBlock: View {
                         .padding(.leading, it.2 ? 10 : 0)
                         .lineLimit(1)
                     Spacer(minLength: 4)
-                    Text(UsageFormat.formatTokens(Double(it.1)))
+                    Text(it.1)
                         .font(.system(size: fontSize, weight: it.2 ? .regular : .medium))
                         .monospacedDigit()
                         .foregroundStyle(it.2 ? DS.ink2 : DS.ink)
@@ -1034,7 +873,6 @@ private struct UsageChartsStack: View {
                         label: L10n.usageStripCacheHit(),
                         unit: nil,
                         strip: vm.hasCacheHitStrip ? vm.cacheHitStrip : PBCoreUsageMetricStripView(),
-                        formatVal: UsageFormat.formatCacheHit,
                         scrubbing: scrubbing,
                         scrubIdx: scrubIdx,
                         height: stripH
@@ -1044,7 +882,6 @@ private struct UsageChartsStack: View {
                         label: L10n.usageStripSpeed(),
                         unit: L10n.usageKpiUnitToks(),
                         strip: vm.hasOutputSpeedStrip ? vm.outputSpeedStrip : PBCoreUsageMetricStripView(),
-                        formatVal: UsageFormat.formatSpeed,
                         scrubbing: scrubbing,
                         scrubIdx: scrubIdx,
                         height: stripH
@@ -1054,7 +891,6 @@ private struct UsageChartsStack: View {
                         label: L10n.usageStripTtft(),
                         unit: nil,
                         strip: vm.hasTtftStrip ? vm.ttftStrip : PBCoreUsageMetricStripView(),
-                        formatVal: UsageFormat.formatTtftSeconds,
                         scrubbing: scrubbing,
                         scrubIdx: scrubIdx,
                         height: stripH
@@ -1091,11 +927,7 @@ private struct UsageChartsStack: View {
             UsageAxisView(ticks: ticks)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.usageChartsA11Y(
-            count: vm.rows.count,
-            name: vm.machineName.or(vm.machineID),
-            total: UsageFormat.formatTokens(Double(hero.totalTokens))
-        ))
+        .accessibilityLabel(vm.hasChartsA11YLabel ? vm.chartsA11YLabel.rendered() : "")
     }
 
     private func scrubGesture(bucketCount: Int) -> some Gesture {
@@ -1186,8 +1018,12 @@ private struct UsageBarChartCanvas: View {
                     }
                 }
 
-                drawHaloLabel(ctx, text: UsageFormat.formatTokens(Double(barChart.yMax)), x: w, bottomY: topPad - 2)
-                drawHaloLabel(ctx, text: UsageFormat.formatTokens(Double(barChart.yMid)), x: w, bottomY: midY - 2)
+                if barChart.hasYMaxText {
+                    drawHaloLabel(ctx, text: barChart.yMaxText.rendered(), x: w, bottomY: topPad - 2)
+                }
+                if barChart.hasYMidText {
+                    drawHaloLabel(ctx, text: barChart.yMidText.rendered(), x: w, bottomY: midY - 2)
+                }
             }
 
             var base = Path()
@@ -1218,7 +1054,6 @@ private struct UsageStripBlock: View {
     let label: String
     let unit: String?
     let strip: PBCoreUsageMetricStripView
-    let formatVal: (Double) -> String
     let scrubbing: Bool
     let scrubIdx: Int
     let height: CGFloat
@@ -1236,10 +1071,9 @@ private struct UsageStripBlock: View {
                 .frame(height: 17)
                 Color.clear.frame(height: height)
             } else {
-                let curStr = strip.hasValue_p ? formatVal(strip.currentValue) : "–"
-                let minStr = formatVal(strip.minValue)
-                let maxStr = formatVal(strip.maxValue)
-                let showRange = minStr != maxStr
+                let curStr = strip.hasCurrentValueText ? strip.currentValueText.rendered() : "–"
+                let minStr = strip.hasMinValueText ? strip.minValueText.rendered() : ""
+                let maxStr = strip.hasMaxValueText ? strip.maxValueText.rendered() : ""
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(label).font(.system(size: 12)).foregroundStyle(DS.ink2)
@@ -1251,7 +1085,7 @@ private struct UsageStripBlock: View {
                         Text(unit).font(.system(size: 12)).foregroundStyle(DS.ink2)
                     }
                     Spacer()
-                    if showRange {
+                    if strip.showRange {
                         let rangeText = [minStr, maxStr].joined(separator: " – ")
                         Text(rangeText)
                             .font(.system(size: 11))
@@ -1463,11 +1297,7 @@ private struct UsageModelTable: View {
     }
 
     @ViewBuilder private func modelRow(_ row: PBCoreUsageModelRowView, hPad: CGFloat) -> some View {
-        let deltaStr: String = {
-            if row.previousBackfilling { return L10n.usageBackfillingCell() }
-            if row.hasTokensDelta_p { return UsageFormat.formatDeltaTriangle(row.tokensDeltaPercent) }
-            return ""
-        }()
+        let deltaStr = row.hasDeltaText ? row.deltaText.rendered() : ""
         let shape = RoundedRectangle(cornerRadius: isWide ? 10 : 0, style: .continuous)
 
         Button {
@@ -1509,16 +1339,16 @@ private struct UsageModelTable: View {
                     .frame(height: 3)
                     .frame(maxWidth: .infinity)
 
-                    Text(UsageFormat.formatTokens(Double(row.totalTokens)))
+                    Text(row.hasTotalTokensText ? row.totalTokensText.rendered() : "0")
                         .font(.system(size: 13, weight: .semibold))
                         .monospacedDigit()
                         .foregroundStyle(DS.ink)
                         .lineLimit(1)
                         .frame(width: 62, alignment: .trailing)
 
-                    metricCell(row.hasCacheHit_p ? UsageFormat.formatCacheHit(row.cacheHitRate) : nil, width: 42)
-                    metricCell(row.hasSpeed_p ? UsageFormat.formatSpeed(row.speedP50) : nil, width: 46)
-                    metricCell(row.hasTtft_p ? UsageFormat.formatTtftSeconds(row.ttftP50Ms) : nil, width: 44)
+                    metricCell(row.hasCacheHitText ? row.cacheHitText.rendered() : nil, width: 42)
+                    metricCell(row.hasSpeedText ? row.speedText.rendered() : nil, width: 46)
+                    metricCell(row.hasTtftText ? row.ttftText.rendered() : nil, width: 44)
                 }
                 .frame(minHeight: 17)
             }
