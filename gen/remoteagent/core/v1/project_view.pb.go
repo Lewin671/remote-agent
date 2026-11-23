@@ -568,6 +568,7 @@ type DirPickerView struct {
 	Error         *Text                   `protobuf:"bytes,10,opt,name=error,proto3" json:"error,omitempty"`
 	ConfirmLabel  *Text                   `protobuf:"bytes,11,opt,name=confirm_label,json=confirmLabel,proto3" json:"confirm_label,omitempty"`
 	CanConfirm    bool                    `protobuf:"varint,12,opt,name=can_confirm,json=canConfirm,proto3" json:"can_confirm,omitempty"`
+	PickerKey     string                  `protobuf:"bytes,13,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -684,6 +685,13 @@ func (x *DirPickerView) GetCanConfirm() bool {
 		return x.CanConfirm
 	}
 	return false
+}
+
+func (x *DirPickerView) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
+	}
+	return ""
 }
 
 type ManageProjectsView struct {
@@ -919,7 +927,7 @@ const file_remoteagent_core_v1_project_view_proto_rawDesc = "" +
 	"\x04path\x18\x02 \x01(\tR\x04path\"6\n" +
 	"\fDirEntryView\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\x8d\x04\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"\xac\x04\n" +
 	"\rDirPickerView\x12\x12\n" +
 	"\x04open\x18\x01 \x01(\bR\x04open\x12 \n" +
 	"\ffor_new_task\x18\x02 \x01(\bR\n" +
@@ -937,7 +945,9 @@ const file_remoteagent_core_v1_project_view_proto_rawDesc = "" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\x05error\x12>\n" +
 	"\rconfirm_label\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\fconfirmLabel\x12\x1f\n" +
 	"\vcan_confirm\x18\f \x01(\bR\n" +
-	"canConfirm\"\xf9\x03\n" +
+	"canConfirm\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\r \x01(\tR\tpickerKey\"\xf9\x03\n" +
 	"\x12ManageProjectsView\x12A\n" +
 	"\alisting\x18\x01 \x01(\v2'.remoteagent.core.v1.ProjectListingViewR\alisting\x12\x19\n" +
 	"\bcan_edit\x18\x02 \x01(\bR\acanEdit\x12@\n" +

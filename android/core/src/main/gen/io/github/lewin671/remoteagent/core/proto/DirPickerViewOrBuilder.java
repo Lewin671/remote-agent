@@ -133,4 +133,16 @@ public interface DirPickerViewOrBuilder extends
    * @return The canConfirm.
    */
   boolean getCanConfirm();
+
+  /**
+   * <code>string picker_key = 13 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  java.lang.String getPickerKey();
+  /**
+   * <code>string picker_key = 13 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  com.google.protobuf.ByteString
+      getPickerKeyBytes();
 }

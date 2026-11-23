@@ -33,4 +33,16 @@ public interface DirNavigateActionOrBuilder extends
    */
   com.google.protobuf.ByteString
       getPathBytes();
+
+  /**
+   * <code>string picker_key = 3 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  java.lang.String getPickerKey();
+  /**
+   * <code>string picker_key = 3 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  com.google.protobuf.ByteString
+      getPickerKeyBytes();
 }

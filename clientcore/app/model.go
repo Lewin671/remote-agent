@@ -37,6 +37,7 @@ type cmdMeta struct {
 	revision      uint64
 	usageKey      screens.UsageCacheKey
 	toggleEnabled bool
+	pickerKey     string
 }
 
 type scheduleDirty struct {

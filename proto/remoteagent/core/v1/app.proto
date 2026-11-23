@@ -28,6 +28,7 @@ message ProjectScreenRequest {
   bool manage = 2;
   int32 ended_limit = 3;
   string machine_id = 4;
+  string picker_key = 5;
 }
 
 message NewSessionScreenRequest {
@@ -439,20 +440,25 @@ message ProjectKeyAction {
 
 message ProjectAddAction {
   string path = 1;
+  string picker_key = 2;
 }
 
 message DirPickerOpenAction {
   string machine_id = 1;
   string path = 2;
   bool for_new_task = 3;
+  string picker_key = 4;
 }
 
 message DirNavigateAction {
   string machine_id = 1;
   string path = 2;
+  string picker_key = 3;
 }
 
-message DirPickerCloseAction {}
+message DirPickerCloseAction {
+  string picker_key = 1;
+}
 
 message NewSessionOpenAction {
   string project_key = 1;

@@ -124,6 +124,7 @@ type ProjectScreenRequest struct {
 	Manage     bool
 	EndedLimit int32
 	MachineId  string
+	PickerKey  string
 }
 
 func (m *ProjectScreenRequest) GetProjectKey() string {
@@ -150,6 +151,12 @@ func (m *ProjectScreenRequest) GetMachineId() string {
 	}
 	return ""
 }
+func (m *ProjectScreenRequest) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
+}
 
 var LitewireDesc_ProjectScreenRequest = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ProjectScreenRequest{}) },
@@ -158,6 +165,7 @@ var LitewireDesc_ProjectScreenRequest = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(ProjectScreenRequest{}.Manage), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(ProjectScreenRequest{}.EndedLimit), Kind: litewire.KindInt32},
 		{Num: 4, Offset: unsafe.Offsetof(ProjectScreenRequest{}.MachineId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(ProjectScreenRequest{}.PickerKey), Kind: litewire.KindString},
 	},
 }
 
@@ -3513,8 +3521,9 @@ func (m *ProjectKeyAction) Unmarshal(b []byte) error {
 }
 
 type ProjectAddAction struct {
-	_    [0]func()
-	Path string
+	_         [0]func()
+	Path      string
+	PickerKey string
 }
 
 func (m *ProjectAddAction) GetPath() string {
@@ -3523,11 +3532,18 @@ func (m *ProjectAddAction) GetPath() string {
 	}
 	return ""
 }
+func (m *ProjectAddAction) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
+}
 
 var LitewireDesc_ProjectAddAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ProjectAddAction{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ProjectAddAction{}.Path), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(ProjectAddAction{}.PickerKey), Kind: litewire.KindString},
 	},
 }
 
@@ -3540,6 +3556,7 @@ type DirPickerOpenAction struct {
 	MachineId  string
 	Path       string
 	ForNewTask bool
+	PickerKey  string
 }
 
 func (m *DirPickerOpenAction) GetMachineId() string {
@@ -3560,6 +3577,12 @@ func (m *DirPickerOpenAction) GetForNewTask() bool {
 	}
 	return false
 }
+func (m *DirPickerOpenAction) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
+}
 
 var LitewireDesc_DirPickerOpenAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirPickerOpenAction{}) },
@@ -3567,6 +3590,7 @@ var LitewireDesc_DirPickerOpenAction = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(DirPickerOpenAction{}.MachineId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(DirPickerOpenAction{}.Path), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(DirPickerOpenAction{}.ForNewTask), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(DirPickerOpenAction{}.PickerKey), Kind: litewire.KindString},
 	},
 }
 
@@ -3578,6 +3602,7 @@ type DirNavigateAction struct {
 	_         [0]func()
 	MachineId string
 	Path      string
+	PickerKey string
 }
 
 func (m *DirNavigateAction) GetMachineId() string {
@@ -3592,12 +3617,19 @@ func (m *DirNavigateAction) GetPath() string {
 	}
 	return ""
 }
+func (m *DirNavigateAction) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
+}
 
 var LitewireDesc_DirNavigateAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirNavigateAction{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(DirNavigateAction{}.MachineId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(DirNavigateAction{}.Path), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DirNavigateAction{}.PickerKey), Kind: litewire.KindString},
 	},
 }
 
@@ -3606,10 +3638,22 @@ func (m *DirNavigateAction) Unmarshal(b []byte) error {
 }
 
 type DirPickerCloseAction struct {
+	_         [0]func()
+	PickerKey string
+}
+
+func (m *DirPickerCloseAction) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
 }
 
 var LitewireDesc_DirPickerCloseAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DirPickerCloseAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DirPickerCloseAction{}.PickerKey), Kind: litewire.KindString},
+	},
 }
 
 func (m *DirPickerCloseAction) Unmarshal(b []byte) error {

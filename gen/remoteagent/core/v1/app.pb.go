@@ -482,6 +482,7 @@ type ProjectScreenRequest struct {
 	Manage        bool                   `protobuf:"varint,2,opt,name=manage,proto3" json:"manage,omitempty"`
 	EndedLimit    int32                  `protobuf:"varint,3,opt,name=ended_limit,json=endedLimit,proto3" json:"ended_limit,omitempty"`
 	MachineId     string                 `protobuf:"bytes,4,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	PickerKey     string                 `protobuf:"bytes,5,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -540,6 +541,13 @@ func (x *ProjectScreenRequest) GetEndedLimit() int32 {
 func (x *ProjectScreenRequest) GetMachineId() string {
 	if x != nil {
 		return x.MachineId
+	}
+	return ""
+}
+
+func (x *ProjectScreenRequest) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
 	}
 	return ""
 }
@@ -4364,6 +4372,7 @@ func (x *ProjectKeyAction) GetProjectKey() string {
 type ProjectAddAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	PickerKey     string                 `protobuf:"bytes,2,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4405,11 +4414,19 @@ func (x *ProjectAddAction) GetPath() string {
 	return ""
 }
 
+func (x *ProjectAddAction) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
+	}
+	return ""
+}
+
 type DirPickerOpenAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	ForNewTask    bool                   `protobuf:"varint,3,opt,name=for_new_task,json=forNewTask,proto3" json:"for_new_task,omitempty"`
+	PickerKey     string                 `protobuf:"bytes,4,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4465,10 +4482,18 @@ func (x *DirPickerOpenAction) GetForNewTask() bool {
 	return false
 }
 
+func (x *DirPickerOpenAction) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
+	}
+	return ""
+}
+
 type DirNavigateAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	PickerKey     string                 `protobuf:"bytes,3,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4517,8 +4542,16 @@ func (x *DirNavigateAction) GetPath() string {
 	return ""
 }
 
+func (x *DirNavigateAction) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
+	}
+	return ""
+}
+
 type DirPickerCloseAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PickerKey     string                 `protobuf:"bytes,1,opt,name=picker_key,json=pickerKey,proto3" json:"picker_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4551,6 +4584,13 @@ func (x *DirPickerCloseAction) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DirPickerCloseAction.ProtoReflect.Descriptor instead.
 func (*DirPickerCloseAction) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_app_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *DirPickerCloseAction) GetPickerKey() string {
+	if x != nil {
+		return x.PickerKey
+	}
+	return ""
 }
 
 type NewSessionOpenAction struct {
@@ -10298,7 +10338,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x1dremoteagent/core/v1/app.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a&remoteagent/core/v1/machine_view.proto\x1a*remoteagent/core/v1/new_session_view.proto\x1a&remoteagent/core/v1/project_view.proto\x1a'remoteagent/core/v1/settings_view.proto\x1a&remoteagent/core/v1/session_view.proto\x1a(remoteagent/core/v1/schedules_view.proto\x1a\"remoteagent/core/v1/security.proto\x1a#remoteagent/core/v1/sync_view.proto\x1a#remoteagent/core/v1/transport.proto\x1a$remoteagent/core/v1/usage_view.proto\x1a\x1dremoteagent/v1/envelope.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1aremoteagent/v1/relay.proto\x1a\x1bremoteagent/v1/remote.proto\"4\n" +
 	"\x11HomeScreenRequest\x12\x1f\n" +
 	"\vended_limit\x18\x01 \x01(\x05R\n" +
-	"endedLimit\"\x8f\x01\n" +
+	"endedLimit\"\xae\x01\n" +
 	"\x14ProjectScreenRequest\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\x12\x16\n" +
@@ -10306,7 +10346,9 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\vended_limit\x18\x03 \x01(\x05R\n" +
 	"endedLimit\x12\x1d\n" +
 	"\n" +
-	"machine_id\x18\x04 \x01(\tR\tmachineId\":\n" +
+	"machine_id\x18\x04 \x01(\tR\tmachineId\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\x05 \x01(\tR\tpickerKey\":\n" +
 	"\x17NewSessionScreenRequest\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\"\x18\n" +
@@ -10637,20 +10679,28 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x05query\x18\x01 \x01(\tR\x05query\"3\n" +
 	"\x10ProjectKeyAction\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
-	"projectKey\"&\n" +
+	"projectKey\"E\n" +
 	"\x10ProjectAddAction\x12\x12\n" +
-	"\x04path\x18\x01 \x01(\tR\x04path\"j\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\x02 \x01(\tR\tpickerKey\"\x89\x01\n" +
 	"\x13DirPickerOpenAction\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\x12 \n" +
 	"\ffor_new_task\x18\x03 \x01(\bR\n" +
-	"forNewTask\"F\n" +
+	"forNewTask\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\x04 \x01(\tR\tpickerKey\"e\n" +
 	"\x11DirNavigateAction\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\x16\n" +
-	"\x14DirPickerCloseAction\"7\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\x03 \x01(\tR\tpickerKey\"5\n" +
+	"\x14DirPickerCloseAction\x12\x1d\n" +
+	"\n" +
+	"picker_key\x18\x01 \x01(\tR\tpickerKey\"7\n" +
 	"\x14NewSessionOpenAction\x12\x1f\n" +
 	"\vproject_key\x18\x01 \x01(\tR\n" +
 	"projectKey\"@\n" +

@@ -17,6 +17,7 @@ public  final class DirPickerOpenAction extends
   private DirPickerOpenAction() {
     machineId_ = "";
     path_ = "";
+    pickerKey_ = "";
   }
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
   private java.lang.String machineId_;
@@ -138,6 +139,54 @@ public  final class DirPickerOpenAction extends
   private void clearForNewTask() {
 
     forNewTask_ = false;
+  }
+
+  public static final int PICKER_KEY_FIELD_NUMBER = 4;
+  private java.lang.String pickerKey_;
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  @java.lang.Override
+  public java.lang.String getPickerKey() {
+    return pickerKey_;
+  }
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPickerKeyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(pickerKey_);
+  }
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @param value The pickerKey to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPickerKey(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    pickerKey_ = value;
+  }
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   */
+  private void clearPickerKey() {
+
+    pickerKey_ = getDefaultInstance().getPickerKey();
+  }
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @param value The bytes for pickerKey to set.
+   */
+  private void setPickerKeyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    pickerKey_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DirPickerOpenAction parseFrom(
@@ -363,6 +412,55 @@ public  final class DirPickerOpenAction extends
       return this;
     }
 
+    /**
+     * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+     * @return The pickerKey.
+     */
+    @java.lang.Override
+    public java.lang.String getPickerKey() {
+      return instance.getPickerKey();
+    }
+    /**
+     * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+     * @return The bytes for pickerKey.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPickerKeyBytes() {
+      return instance.getPickerKeyBytes();
+    }
+    /**
+     * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+     * @param value The pickerKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPickerKey(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPickerKey(value);
+      return this;
+    }
+    /**
+     * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPickerKey() {
+      copyOnWrite();
+      instance.clearPickerKey();
+      return this;
+    }
+    /**
+     * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+     * @param value The bytes for pickerKey to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPickerKeyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPickerKeyBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DirPickerOpenAction)
   }
   @java.lang.Override
@@ -382,10 +480,11 @@ public  final class DirPickerOpenAction extends
             "machineId_",
             "path_",
             "forNewTask_",
+            "pickerKey_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -10,18 +10,22 @@ import (
 )
 
 // BuildProject constructs the ProjectViewModel for project detail (with endedLimit window) or management.
-func BuildProject(st *State, projectKey string, manage bool, endedLimit int, machineID ...string) *corev1.ProjectViewModel {
+// Optional trailing args are machineID (index 0) and pickerKey (index 1).
+func BuildProject(st *State, projectKey string, manage bool, endedLimit int, extra ...string) *corev1.ProjectViewModel {
 	if st == nil {
 		st = NewState(nil)
 	}
-	var filterMachineID string
-	if len(machineID) > 0 {
-		filterMachineID = machineID[0]
+	var filterMachineID, pickerKey string
+	if len(extra) > 0 {
+		filterMachineID = extra[0]
+	}
+	if len(extra) > 1 {
+		pickerKey = extra[1]
 	}
 	if manage || projectKey == "" || filterMachineID != "" {
 		return &corev1.ProjectViewModel{
 			Kind:   corev1.ProjectViewKind_PROJECT_VIEW_KIND_MANAGE,
-			Manage: buildManageProjectsView(st, filterMachineID),
+			Manage: buildManageProjectsView(st, filterMachineID, pickerKey),
 		}
 	}
 	return &corev1.ProjectViewModel{
@@ -169,7 +173,7 @@ func filterProjectsByMachine(res *lists.ProjectsViewResult, machineID string) *l
 	return &copyRes
 }
 
-func buildManageProjectsView(st *State, filterMachineID string) *corev1.ManageProjectsView {
+func buildManageProjectsView(st *State, filterMachineID, pickerKey string) *corev1.ManageProjectsView {
 	res := lists.BuildProjects(&st.World, st.ProjectSearch, st.RememberedScope, st.RememberedScopeToken, nil, st.Scope)
 	res = filterProjectsByMachine(res, filterMachineID)
 	canEdit := st.World.Connection == lists.ConnConnected && !st.World.AccountControlLost && !st.World.AccountClockSkewed
@@ -192,7 +196,7 @@ func buildManageProjectsView(st *State, filterMachineID string) *corev1.ManagePr
 		ChangedElsewhere:  st.ProjectChangedElsewhere,
 		Syncing:           st.World.PrefsSyncing,
 		SaveError:         saveErr,
-		DirPicker:         buildDirPickerView(st),
+		DirPicker:         buildDirPickerView(st, pickerKey),
 		ProjectCount:      int32(len(res.Listed)),
 		FilterMachineId:   filterMachineID,
 		FilterMachineName: filterMachineName,
@@ -212,8 +216,8 @@ func (s dirPickerMachinesSorted) Less(i, j int) bool {
 	return s[i].ID < s[j].ID
 }
 
-func buildDirPickerView(st *State) *corev1.DirPickerView {
-	dp := st.DirPicker
+func buildDirPickerView(st *State, pickerKey string) *corev1.DirPickerView {
+	dp := st.DirPickerFor(pickerKey)
 	var sorted []*lists.Machine
 	for _, m := range st.World.Machines {
 		if m != nil {
@@ -281,5 +285,6 @@ func buildDirPickerView(st *State) *corev1.DirPickerView {
 		Error:        errText,
 		ConfirmLabel: confirmLabel,
 		CanConfirm:   canConfirm,
+		PickerKey:    pickerKey,
 	}
 }

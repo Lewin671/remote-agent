@@ -77,6 +77,7 @@ message DirPickerView {
   Text error = 10;
   Text confirm_label = 11;
   bool can_confirm = 12;
+  string picker_key = 13;
 }
 
 message ManageProjectsView {

@@ -430,6 +430,8 @@ public struct PBCoreProjectScreenRequest: Sendable {
 
   public var machineID: String = String()
 
+  public var pickerKey: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1959,6 +1961,8 @@ public struct PBCoreProjectAddAction: Sendable {
 
   public var path: String = String()
 
+  public var pickerKey: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1975,6 +1979,8 @@ public struct PBCoreDirPickerOpenAction: Sendable {
 
   public var forNewTask: Bool = false
 
+  public var pickerKey: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1989,6 +1995,8 @@ public struct PBCoreDirNavigateAction: Sendable {
 
   public var path: String = String()
 
+  public var pickerKey: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1998,6 +2006,8 @@ public struct PBCoreDirPickerCloseAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
+
+  public var pickerKey: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4801,7 +4811,7 @@ extension PBCoreHomeScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProjectScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_key\0\u{1}manage\0\u{3}ended_limit\0\u{3}machine_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_key\0\u{1}manage\0\u{3}ended_limit\0\u{3}machine_id\0\u{3}picker_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4813,6 +4823,7 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 2: try { try decoder.decodeSingularBoolField(value: &self.manage) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.endedLimit) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.pickerKey) }()
       default: break
       }
     }
@@ -4831,6 +4842,9 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.machineID.isEmpty {
       try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 4)
     }
+    if !self.pickerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.pickerKey, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4839,6 +4853,7 @@ extension PBCoreProjectScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.manage != rhs.manage {return false}
     if lhs.endedLimit != rhs.endedLimit {return false}
     if lhs.machineID != rhs.machineID {return false}
+    if lhs.pickerKey != rhs.pickerKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -7986,7 +8001,7 @@ extension PBCoreProjectKeyAction: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreProjectAddAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ProjectAddAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}picker_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7995,6 +8010,7 @@ extension PBCoreProjectAddAction: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.pickerKey) }()
       default: break
       }
     }
@@ -8004,11 +8020,15 @@ extension PBCoreProjectAddAction: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
+    if !self.pickerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.pickerKey, fieldNumber: 2)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreProjectAddAction, rhs: PBCoreProjectAddAction) -> Bool {
     if lhs.path != rhs.path {return false}
+    if lhs.pickerKey != rhs.pickerKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8016,7 +8036,7 @@ extension PBCoreProjectAddAction: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreDirPickerOpenAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirPickerOpenAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}path\0\u{3}for_new_task\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}path\0\u{3}for_new_task\0\u{3}picker_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8027,6 +8047,7 @@ extension PBCoreDirPickerOpenAction: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.path) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.forNewTask) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.pickerKey) }()
       default: break
       }
     }
@@ -8042,6 +8063,9 @@ extension PBCoreDirPickerOpenAction: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if self.forNewTask != false {
       try visitor.visitSingularBoolField(value: self.forNewTask, fieldNumber: 3)
     }
+    if !self.pickerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.pickerKey, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -8049,6 +8073,7 @@ extension PBCoreDirPickerOpenAction: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.machineID != rhs.machineID {return false}
     if lhs.path != rhs.path {return false}
     if lhs.forNewTask != rhs.forNewTask {return false}
+    if lhs.pickerKey != rhs.pickerKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8056,7 +8081,7 @@ extension PBCoreDirPickerOpenAction: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCoreDirNavigateAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirNavigateAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}path\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}path\0\u{3}picker_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -8066,6 +8091,7 @@ extension PBCoreDirNavigateAction: SwiftProtobuf.Message, SwiftProtobuf._Message
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.pickerKey) }()
       default: break
       }
     }
@@ -8078,12 +8104,16 @@ extension PBCoreDirNavigateAction: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 2)
     }
+    if !self.pickerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.pickerKey, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreDirNavigateAction, rhs: PBCoreDirNavigateAction) -> Bool {
     if lhs.machineID != rhs.machineID {return false}
     if lhs.path != rhs.path {return false}
+    if lhs.pickerKey != rhs.pickerKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8091,18 +8121,29 @@ extension PBCoreDirNavigateAction: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreDirPickerCloseAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirPickerCloseAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}picker_key\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    // Load everything into unknown fields
-    while try decoder.nextFieldNumber() != nil {}
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.pickerKey) }()
+      default: break
+      }
+    }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.pickerKey.isEmpty {
+      try visitor.visitSingularStringField(value: self.pickerKey, fieldNumber: 1)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreDirPickerCloseAction, rhs: PBCoreDirPickerCloseAction) -> Bool {
+    if lhs.pickerKey != rhs.pickerKey {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

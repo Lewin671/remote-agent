@@ -199,3 +199,71 @@ func TestStandaloneNewTaskTakesCLIAndModelPicks(t *testing.T) {
 		t.Fatalf("model pick did not show: %q", got)
 	}
 }
+
+func TestDirPickerKeyedIsolation(t *testing.T) {
+	c := New()
+	defer c.Close()
+	seedOneMachine(c)
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{
+				PickerKey:  "manage",
+				MachineId:  "m-1",
+				Path:       "/Users/alice/manage",
+				ForNewTask: false,
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1110,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{
+				PickerKey:  "schedule",
+				MachineId:  "m-1",
+				Path:       "/Users/alice/schedule",
+				ForNewTask: true,
+			},
+		},
+	})
+
+	viewPicker := func(key string) *corev1.DirPickerView {
+		vm, err := c.View(&corev1.Screen{
+			Screen: &corev1.Screen_Project{
+				Project: &corev1.ProjectScreenRequest{Manage: true, PickerKey: key},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vm.GetProject().GetManage().GetDirPicker()
+	}
+
+	pManage := viewPicker("manage")
+	pSched := viewPicker("schedule")
+	pDefault := viewPicker("")
+	if !pManage.GetOpen() || pManage.GetCurrentPath() != "/Users/alice/manage" || pManage.GetForNewTask() || pManage.GetPickerKey() != "manage" {
+		t.Fatalf("unexpected manage picker: %+v", pManage)
+	}
+	if !pSched.GetOpen() || pSched.GetCurrentPath() != "/Users/alice/schedule" || !pSched.GetForNewTask() || pSched.GetPickerKey() != "schedule" {
+		t.Fatalf("unexpected schedule picker: %+v", pSched)
+	}
+	if pDefault.GetOpen() {
+		t.Fatalf("default picker slot must remain closed while keyed pickers are open")
+	}
+
+	// Closing "schedule" must not close or clear "manage".
+	c.Dispatch(&corev1.Event{
+		NowMs: 1120,
+		Event: &corev1.Event_ProjectCloseDirPicker{
+			ProjectCloseDirPicker: &corev1.DirPickerCloseAction{PickerKey: "schedule"},
+		},
+	})
+	if viewPicker("schedule").GetOpen() {
+		t.Fatalf("expected schedule picker closed")
+	}
+	if got := viewPicker("manage"); !got.GetOpen() || got.GetCurrentPath() != "/Users/alice/manage" {
+		t.Fatalf("closing schedule picker affected manage picker: %+v", got)
+	}
+}

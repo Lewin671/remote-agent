@@ -402,6 +402,11 @@ public struct PBCoreDirPickerView: @unchecked Sendable {
     set {_uniqueStorage()._canConfirm = newValue}
   }
 
+  public var pickerKey: String {
+    get {return _storage._pickerKey}
+    set {_uniqueStorage()._pickerKey = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -987,7 +992,7 @@ extension PBCoreDirEntryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DirPickerView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}open\0\u{3}for_new_task\0\u{1}machines\0\u{3}machine_id\0\u{3}current_path\0\u{1}crumbs\0\u{3}parent_path\0\u{1}dirs\0\u{1}loading\0\u{1}error\0\u{3}confirm_label\0\u{3}can_confirm\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}open\0\u{3}for_new_task\0\u{1}machines\0\u{3}machine_id\0\u{3}current_path\0\u{1}crumbs\0\u{3}parent_path\0\u{1}dirs\0\u{1}loading\0\u{1}error\0\u{3}confirm_label\0\u{3}can_confirm\0\u{3}picker_key\0")
 
   fileprivate class _StorageClass {
     var _open: Bool = false
@@ -1002,6 +1007,7 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _error: PBCoreText? = nil
     var _confirmLabel: PBCoreText? = nil
     var _canConfirm: Bool = false
+    var _pickerKey: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1024,6 +1030,7 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _error = source._error
       _confirmLabel = source._confirmLabel
       _canConfirm = source._canConfirm
+      _pickerKey = source._pickerKey
     }
   }
 
@@ -1054,6 +1061,7 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._error) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._confirmLabel) }()
         case 12: try { try decoder.decodeSingularBoolField(value: &_storage._canConfirm) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._pickerKey) }()
         default: break
         }
       }
@@ -1102,6 +1110,9 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._canConfirm != false {
         try visitor.visitSingularBoolField(value: _storage._canConfirm, fieldNumber: 12)
       }
+      if !_storage._pickerKey.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._pickerKey, fieldNumber: 13)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1123,6 +1134,7 @@ extension PBCoreDirPickerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._error != rhs_storage._error {return false}
         if _storage._confirmLabel != rhs_storage._confirmLabel {return false}
         if _storage._canConfirm != rhs_storage._canConfirm {return false}
+        if _storage._pickerKey != rhs_storage._pickerKey {return false}
         return true
       }
       if !storagesAreEqual {return false}

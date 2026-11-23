@@ -9,4 +9,16 @@ package io.github.lewin671.remoteagent.core.proto;
 public interface DirPickerCloseActionOrBuilder extends
     // @@protoc_insertion_point(interface_extends:remoteagent.core.v1.DirPickerCloseAction)
     com.google.protobuf.MessageLiteOrBuilder {
+
+  /**
+   * <code>string picker_key = 1 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  java.lang.String getPickerKey();
+  /**
+   * <code>string picker_key = 1 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  com.google.protobuf.ByteString
+      getPickerKeyBytes();
 }

@@ -424,6 +424,7 @@ type DirPickerView struct {
 	Error        *Text
 	ConfirmLabel *Text
 	CanConfirm   bool
+	PickerKey    string
 }
 
 func (m *DirPickerView) GetOpen() bool {
@@ -498,6 +499,12 @@ func (m *DirPickerView) GetCanConfirm() bool {
 	}
 	return false
 }
+func (m *DirPickerView) GetPickerKey() string {
+	if m != nil {
+		return m.PickerKey
+	}
+	return ""
+}
 
 var LitewireDesc_DirPickerView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -513,6 +520,7 @@ var LitewireDesc_DirPickerView = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(DirPickerView{}.Error), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 11, Offset: unsafe.Offsetof(DirPickerView{}.ConfirmLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 12, Offset: unsafe.Offsetof(DirPickerView{}.CanConfirm), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(DirPickerView{}.PickerKey), Kind: litewire.KindString},
 	},
 }
 

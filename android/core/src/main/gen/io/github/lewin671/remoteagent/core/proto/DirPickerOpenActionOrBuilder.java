@@ -39,4 +39,16 @@ public interface DirPickerOpenActionOrBuilder extends
    * @return The forNewTask.
    */
   boolean getForNewTask();
+
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  java.lang.String getPickerKey();
+  /**
+   * <code>string picker_key = 4 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  com.google.protobuf.ByteString
+      getPickerKeyBytes();
 }

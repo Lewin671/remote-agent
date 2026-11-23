@@ -114,7 +114,7 @@ type State struct {
 
 	ProjectSearch string
 
-	DirPicker DirPickerState
+	DirPickers map[string]*DirPickerState
 
 	MachineModels   map[MachineAgentKey]*ModelsCacheEntry
 	MachineSettings map[string]*SettingsCacheEntry
@@ -138,6 +138,7 @@ func NewState(w *world.State) *State {
 	}
 	return &State{
 		State:           w,
+		DirPickers:      make(map[string]*DirPickerState),
 		MachineModels:   make(map[MachineAgentKey]*ModelsCacheEntry),
 		MachineSettings: make(map[string]*SettingsCacheEntry),
 		UsageSnapshots:  make(map[UsageCacheKey]*UsageSnapshotEntry),
@@ -145,4 +146,28 @@ func NewState(w *world.State) *State {
 		NewSessions:     make(map[string]*NewSessionDraft),
 		Schedules:       NewScheduleState(),
 	}
+}
+
+// EnsureDirPicker returns the mutable DirPickerState for pickerKey ("" for the default slot).
+func (st *State) EnsureDirPicker(pickerKey string) *DirPickerState {
+	if st.DirPickers == nil {
+		st.DirPickers = make(map[string]*DirPickerState)
+	}
+	dp := st.DirPickers[pickerKey]
+	if dp == nil {
+		dp = &DirPickerState{}
+		st.DirPickers[pickerKey] = dp
+	}
+	return dp
+}
+
+// DirPickerFor returns a copy of the DirPickerState for pickerKey (or zero value if absent).
+func (st *State) DirPickerFor(pickerKey string) DirPickerState {
+	if st == nil || st.DirPickers == nil {
+		return DirPickerState{}
+	}
+	if dp := st.DirPickers[pickerKey]; dp != nil {
+		return *dp
+	}
+	return DirPickerState{}
 }

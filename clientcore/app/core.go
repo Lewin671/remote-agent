@@ -50,15 +50,17 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		var manage bool
 		var endedLimit int
 		var machineID string
+		var pickerKey string
 		if s.Project != nil {
 			key = s.Project.ProjectKey
 			manage = s.Project.Manage
 			endedLimit = int(s.Project.EndedLimit)
 			machineID = s.Project.MachineId
+			pickerKey = s.Project.PickerKey
 		}
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Project{
-				Project: screens.BuildProject(c.m.state, key, manage, endedLimit, machineID),
+				Project: screens.BuildProject(c.m.state, key, manage, endedLimit, machineID, pickerKey),
 			},
 		}, nil
 
@@ -263,7 +265,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			effects = append(effects, c.onUsageStatsSettled(sc, meta, &dirty)...)
 
 		case cmdKindListDirs:
-			dp := &c.m.state.DirPicker
+			dp := c.m.state.EnsureDirPicker(meta.pickerKey)
 			if dp.ActiveRequestID != "" && sc.RequestID != "" && dp.ActiveRequestID != sc.RequestID {
 				continue
 			}
@@ -516,17 +518,18 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 
 	case *corev1.Event_ProjectAdd:
 		if k.ProjectAdd != nil && k.ProjectAdd.Path != "" {
-			machID := st.DirPicker.MachineID
-			forNewTask := st.DirPicker.ForNewTask
+			dp := st.EnsureDirPicker(k.ProjectAdd.PickerKey)
+			machID := dp.MachineID
+			forNewTask := dp.ForNewTask
 			if op := lists.PlanAddProject(&st.World, machID, k.ProjectAdd.Path); op != nil {
 				c.m.sync.EnqueuePrefsOp(ctx, op, false, "")
 			}
-			st.DirPicker.Open = false
-			st.DirPicker.ForNewTask = false
-			st.DirPicker.Loading = false
-			st.DirPicker.Error = ""
-			st.DirPicker.ErrorText = nil
-			st.DirPicker.ActiveRequestID = ""
+			dp.Open = false
+			dp.ForNewTask = false
+			dp.Loading = false
+			dp.Error = ""
+			dp.ErrorText = nil
+			dp.ActiveRequestID = ""
 			if forNewTask {
 				d := c.m.ensureDraft(k.ProjectAdd.Path)
 				d.MachineChosen = machID != ""
@@ -568,6 +571,8 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 
 	case *corev1.Event_ProjectOpenDirPicker:
 		if k.ProjectOpenDirPicker != nil {
+			pickerKey := k.ProjectOpenDirPicker.PickerKey
+			dp := st.EnsureDirPicker(pickerKey)
 			machID := k.ProjectOpenDirPicker.MachineId
 			if machID == "" {
 				for _, m := range st.World.Machines {
@@ -576,39 +581,47 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					}
 				}
 			}
-			st.DirPicker.Open = true
-			st.DirPicker.ForNewTask = k.ProjectOpenDirPicker.ForNewTask
-			st.DirPicker.MachineID = machID
-			st.DirPicker.CurrentPath = k.ProjectOpenDirPicker.Path
-			st.DirPicker.Error = ""
-			st.DirPicker.ErrorText = nil
+			dp.Open = true
+			dp.ForNewTask = k.ProjectOpenDirPicker.ForNewTask
+			dp.MachineID = machID
+			dp.CurrentPath = k.ProjectOpenDirPicker.Path
+			dp.Error = ""
+			dp.ErrorText = nil
 			if machID != "" {
-				st.DirPicker.Loading = true
-				c.submitListDirs(ctx, machID, k.ProjectOpenDirPicker.Path)
+				dp.Loading = true
+				c.submitListDirs(ctx, pickerKey, machID, k.ProjectOpenDirPicker.Path)
 			} else {
-				st.DirPicker.Loading = false
-				st.DirPicker.ActiveRequestID = ""
+				dp.Loading = false
+				dp.ActiveRequestID = ""
 			}
 			ctx.Dirty.Add(false, true, true)
 		}
 
 	case *corev1.Event_ProjectDirNavigate:
 		if k.ProjectDirNavigate != nil {
+			pickerKey := k.ProjectDirNavigate.PickerKey
+			dp := st.EnsureDirPicker(pickerKey)
 			machID := k.ProjectDirNavigate.MachineId
 			if machID == "" {
-				machID = st.DirPicker.MachineID
+				machID = dp.MachineID
 			}
-			st.DirPicker.MachineID = machID
-			st.DirPicker.CurrentPath = k.ProjectDirNavigate.Path
-			st.DirPicker.Error = ""
-			st.DirPicker.ErrorText = nil
-			st.DirPicker.Loading = true
-			c.submitListDirs(ctx, machID, k.ProjectDirNavigate.Path)
+			dp.MachineID = machID
+			dp.CurrentPath = k.ProjectDirNavigate.Path
+			dp.Error = ""
+			dp.ErrorText = nil
+			dp.Loading = true
+			c.submitListDirs(ctx, pickerKey, machID, k.ProjectDirNavigate.Path)
 			ctx.Dirty.Add(false, true, true)
 		}
 
 	case *corev1.Event_ProjectCloseDirPicker:
-		st.DirPicker = screens.DirPickerState{}
+		var pickerKey string
+		if k.ProjectCloseDirPicker != nil {
+			pickerKey = k.ProjectCloseDirPicker.PickerKey
+		}
+		if st.DirPickers != nil {
+			delete(st.DirPickers, pickerKey)
+		}
 		ctx.Dirty.Add(false, true, true)
 
 	case *corev1.Event_NewSessionOpen:
@@ -834,7 +847,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 	return effects
 }
 
-func (c *Core) submitListDirs(ctx *sync.StepContext, machineID, dirPath string) {
+func (c *Core) submitListDirs(ctx *sync.StepContext, pickerKey, machineID, dirPath string) {
 	reqID, ok := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
 		MachineID: machineID,
 		Command: &v1.Command{
@@ -847,12 +860,14 @@ func (c *Core) submitListDirs(ctx *sync.StepContext, machineID, dirPath string) 
 		c.m.pendingCmdMeta[reqID] = cmdMeta{
 			kind:      cmdKindListDirs,
 			machineID: machineID,
+			pickerKey: pickerKey,
 		}
 	}
+	dp := c.m.state.EnsureDirPicker(pickerKey)
 	if ok {
-		c.m.state.DirPicker.ActiveRequestID = reqID
+		dp.ActiveRequestID = reqID
 	} else {
-		c.m.state.DirPicker.Loading = false
-		c.m.state.DirPicker.ActiveRequestID = ""
+		dp.Loading = false
+		dp.ActiveRequestID = ""
 	}
 }

@@ -45,4 +45,16 @@ public interface ProjectScreenRequestOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMachineIdBytes();
+
+  /**
+   * <code>string picker_key = 5 [json_name = "pickerKey"];</code>
+   * @return The pickerKey.
+   */
+  java.lang.String getPickerKey();
+  /**
+   * <code>string picker_key = 5 [json_name = "pickerKey"];</code>
+   * @return The bytes for pickerKey.
+   */
+  com.google.protobuf.ByteString
+      getPickerKeyBytes();
 }
