@@ -376,9 +376,9 @@ private fun HeroCard(
                     val pText = uiText(view.memory.pressureText)
                     val tText = uiText(view.memory.totalText)
                     val sText = uiText(view.memory.swapText)
+                    val secondary = tText.ifEmpty { sText }
                     if (pText.isNotEmpty()) Text(pText, style = T.s13b, color = ink, maxLines = 1)
-                    if (tText.isNotEmpty()) Text(tText, style = T.s12.digits(), color = ink2, maxLines = 1)
-                    if (sText.isNotEmpty()) Text(sText, style = T.s12.digits(), color = ink2, maxLines = 1)
+                    if (secondary.isNotEmpty()) Text(secondary, style = T.s12.digits(), color = ink2, maxLines = 1)
                 }
             }
         }
@@ -481,12 +481,12 @@ private fun MemoryTile(
             PressureScale(mem.pressurePosition.toFloat(), Modifier.alpha(if (dim) .5f else 1f))
         }
         Spacer(Modifier.height(10.dp))
+        val secondary = uiText(mem.totalText).ifEmpty { uiText(mem.swapText) }.takeIf { it.isNotEmpty() }
         SayLines(
             uiText(mem.pressureText),
             ink,
-            uiText(mem.totalText),
+            secondary,
             ink2,
-            uiText(mem.swapText).takeIf { it.isNotEmpty() },
         )
     }
 }
