@@ -80,8 +80,10 @@ export function SecurityPage({
   const managerName = settingsVm.authorityName || l10n.t("security.client");
   const recoveryPending = settingsVm.recoveryPending;
   const recoveryReadyMs = settingsVm.recoveryReadyMs;
-  const candidateName = (id: string) =>
-    devicesVm.clients.find((c) => c.deviceId === id)?.displayName || l10n.t("security.client");
+  const candidateName = (id: string) => {
+    const match = devicesVm.clients.find((c) => { return c.deviceId === id; });
+    return match?.displayName || l10n.t("security.client");
+  };
   const visible = usePageVisible();
   const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
   const now = useNow(30_000);
@@ -153,7 +155,7 @@ export function SecurityPage({
   const draft =
     pending?.kind === "offer" ||
     (pending?.kind === "state" && pending.action === "recovery");
-  const localClient = devicesVm.clients.some((c) => c.isSelf);
+  const localClient = devicesVm.clients.some((c) => { return c.isSelf; });
   return (
     <div className="page set" data-route="account-security">
       {abandonOffer && <Alert title={l10n.t("security.abandon_this_succession_preparation")}
@@ -296,7 +298,8 @@ export function SecurityPage({
             <p className="gf">
               {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}</p>
           </>
-        ) : page === "recovery" && isAuthority ? (
+        ) : null}
+        {page === "recovery" && !code && isAuthority && (
           <>
           <p className="txt">{l10n.t("security.replacing_the_recovery_code_immediately_invalidates_the_old_code")}</p>
           <div className="grp">
@@ -314,7 +317,7 @@ export function SecurityPage({
               {l10n.t("security.generate_new_recovery_code")}</button>
           </div>
           </>
-        ) : null}
+        )}
         {page === "handoff" && (isAuthority ? (
           <>
             <p className="txt">

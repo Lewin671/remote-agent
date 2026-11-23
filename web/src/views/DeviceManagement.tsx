@@ -49,12 +49,12 @@ export function DeviceActions({
   incomplete?: boolean;
 }) {
   const vm = useDevicesView(useCoreHost(remote));
-  const [confirm, setConfirm] = useState<"remove" | "delete">();
+  const [confirm, setConfirm] = useState<"remove" | "delete" | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const active = remote.devices.has(id);
   const managerName = vm.authorityName || l10n.t("security.client");
-  if (!vm.isManager)
+  if (!vm.isManager) {
     return (
       <p className="gf">
         {machine
@@ -62,10 +62,12 @@ export function DeviceActions({
           : l10n.t("security.manage_on_authority", { name: managerName })}
       </p>
     );
-  if (id === vm.authorityDeviceId)
+  }
+  if (id === vm.authorityDeviceId) {
     return (
       <p className="gf">{l10n.t("security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management")}</p>
     );
+  }
   return (
     <>
       <div className="grp">

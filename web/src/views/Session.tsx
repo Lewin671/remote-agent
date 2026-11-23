@@ -2088,7 +2088,7 @@ const ChatBody = memo(function ChatBody({
       {remote && (
         <HistoryOpening
           waiting={!ready && rows.length === 0}
-          connected={header?.connState === ConnState.CONNECTED}
+          connected={header?.connState ? header.connState === ConnState.CONNECTED : remote.conn === "online"}
           scroller={scroller}
           error={historyError || undefined}
           onRetry={onRetryEvents}

@@ -7,6 +7,9 @@ export interface AgentEntry {
   readonly trustFolderHint: string | null;
   readonly permissionModeNotice: string | null;
   readonly showMaxEffort: boolean;
+  // Retained until i18n/messages/modes.json drops orphan keys modes.ask_permission_desc and modes.plan_propose_desc.
+  readonly askModeDesc?: string;
+  readonly planModeDesc?: string;
 }
 
 const CODEX_ENTRY: AgentEntry = {
@@ -23,6 +26,8 @@ const CLAUDE_ENTRY: AgentEntry = {
   get trustFolderHint() { return i18n.t("dock.trust_folder"); },
   get permissionModeNotice() { return i18n.t("modes.permission_notice"); },
   showMaxEffort: false,
+  get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
+  get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
 };
 
 const ANTIGRAVITY_ENTRY: AgentEntry = {
