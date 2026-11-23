@@ -519,64 +519,6 @@ it("stops and says so once the server no longer knows this device", async () => 
   }
 });
 
-it("restores, for the next visit's first paint, the model lists and settings the machines last reported", async () => {
-  const { DemoRemote } = await import("./dev/demo");
-  const { Agent } = await import("./gen/remoteagent/v1/event_pb");
-  const kept = new Map<string, unknown>();
-  const cache = {
-    read: async () => [],
-    readNewest: async () => [],
-    append: async () => undefined,
-    drop: async () => undefined,
-    trim: async () => undefined,
-    get: async (k: string) => kept.get(k),
-    set: async (k: string, v: unknown) => void kept.set(k, v),
-  };
-  const account = {
-    server: "https://ra.example.com",
-    root: {} as CryptoKey,
-    rootRaw: new Uint8Array(32),
-    devicePrivate: {} as CryptoKey,
-    deviceId: "me",
-  };
-  class Kept extends DemoRemote {
-    static open() {
-      return new Kept(account, cache);
-    }
-    warmed() {
-      return (this as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
-    }
-  }
-  const first = trackDemo(Kept.open());
-  // Exercise real demo responses/cache writes without its two simulated
-  // 500 ms network delays. This test asserts persistence, not latency.
-  vi.spyOn(first as any, "pause").mockResolvedValue(undefined);
-  (first as unknown as { seed(): void; syncDemoToCore(): void }).seed(); // the demo's machines, online
-  (first as unknown as { syncDemoToCore(): void }).syncDemoToCore();
-  expect(first.cachedModels("mac", Agent.CODEX)).toBeUndefined();
-  const models = await first.listModels("mac", Agent.CODEX);
-  await first.settings("mac");
-  await vi.waitFor(() => expect(kept.has("info")).toBe(true));
-
-  // The next visit knows them before any machine answers.
-  const next = trackDemo(Kept.open());
-  await next.warmed();
-  expect(
-    next.cachedModels("mac", Agent.CODEX)?.models.map((m) => m.displayName),
-  ).toEqual(models.models.map((m) => m.displayName));
-  expect(next.cachedModels("mac", Agent.CLAUDE)).toBeUndefined();
-  expect(next.cachedSettings("mac")).toEqual(first.cachedSettings("mac"));
-
-  // Another account's or device's values are not taken.
-  const other = trackDemo(new (class extends DemoRemote {
-    constructor() {
-      super({ ...account, deviceId: "someone-else" }, cache);
-    }
-  })());
-  await (other as unknown as { warmInfoOnce(): Promise<void> }).warmInfoOnce();
-  expect(other.cachedModels("mac", Agent.CODEX)).toBeUndefined();
-});
-
 it("keeps an unauthenticated command result unknown and retries its slot", async () => {
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   const { create } = await import("@bufbuild/protobuf");

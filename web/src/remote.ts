@@ -179,8 +179,6 @@ import {
 import { matchesFormat, mimeOf } from "./imageview";
 import {
   ImageUploadState,
-  DaemonSettingsSchema,
-  ListModelsResponseSchema,
   type DaemonSettings,
   type ListModelsResponse,
   type Session,
@@ -414,13 +412,10 @@ export class Remote implements CoreExecutor {
   private cachedMachineMap?: Map<string, MachineView>;
   private cachedSessionMap?: Map<string, SessionView>;
   private cachedDeviceMap?: Map<string, DeviceInfo>;
-  private cachedInfoWarmed = false;
   private imageCache = new Map<string, ImageResult>();
   private models = new Map<string, Promise<ListModelsResponse>>();
   private modelReads = new Set<string>();
-  private modelLists = new Map<string, ListModelsResponse>();
   private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
-  private settingsRead = new Map<string, DaemonSettings | undefined>();
 
   protected constructor(
     readonly account: StoredAccount,
@@ -1020,7 +1015,6 @@ export class Remote implements CoreExecutor {
   }
 
   async readBootstrapCache(opId: bigint): Promise<CacheBootstrapLoadedEvent> {
-    await this.warmInfoOnce();
     const homeScopeToken = readStoredScopeToken();
     let scopeHmacKey = new Uint8Array(32);
     const wireMachines: RemoteMachine[] = [], wireSessions: RemoteSession[] = [];
@@ -1694,26 +1688,6 @@ export class Remote implements CoreExecutor {
     return this.cache?.set(name, value && { ...value, deviceId: this.account.deviceId, server: this.account.server }).catch(() => undefined);
   }
 
-  private async warmInfoOnce() {
-    if (this.cachedInfoWarmed || !this.cache) return;
-    this.cachedInfoWarmed = true;
-    try {
-      const info = (await this.cache.get("info")) as Record<string, unknown> | undefined;
-      if (info && info.deviceId === this.account.deviceId && info.server === this.account.server) {
-        for (const [k, b] of Object.entries((info.models ?? {}) as Record<string, Uint8Array>)) if (!this.modelLists.has(k)) this.modelLists.set(k, fromBinary(ListModelsResponseSchema, b));
-        for (const [k, b] of Object.entries((info.settings ?? {}) as Record<string, Uint8Array>)) if (!this.settingsRead.has(k)) this.settingsRead.set(k, fromBinary(DaemonSettingsSchema, b));
-      }
-    } catch { /* ignore cached info read failure */ }
-  }
-
-  private keepInfo() {
-    if (!this.cache) return;
-    const models: Record<string, Uint8Array> = {}, settings: Record<string, Uint8Array> = {};
-    for (const [k, v] of this.modelLists) models[k] = toBinary(ListModelsResponseSchema, v);
-    for (const [k, v] of this.settingsRead) if (v) settings[k] = toBinary(DaemonSettingsSchema, v);
-    void this.keepValue("info", { models, settings });
-  }
-
   // --- Transitional Step 3/4 Command Runner (reuses executeSealedAttempt) ---
 
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
@@ -2264,17 +2238,12 @@ export class Remote implements CoreExecutor {
     await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
   }
 
-  cachedModels(machineId: string, agent: Agent): ListModelsResponse | undefined {
-    return this.modelLists.get(machineId + "/" + agent);
-  }
   listModels(machineId: string, agent: Agent = DEFAULT_AGENT, fresh = false): Promise<ListModelsResponse> {
     const key = machineId + "/" + agent;
     let p = fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
     if (!p) {
       p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
         if (r.kind.case !== "listModels") throw new Error(l10n.t("new_session.unexpected_reply"));
-        this.modelLists.set(key, r.kind.value);
-        this.keepInfo();
         this.changed();
         return r.kind.value;
       });
@@ -2288,17 +2257,12 @@ export class Remote implements CoreExecutor {
     return p;
   }
 
-  cachedSettings(machineId: string): DaemonSettings | undefined { return this.settingsRead.get(machineId); }
   settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
     let p = fresh ? undefined : this.settingsCache.get(machineId);
     if (!p) {
       p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
         if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-        if (this.settingsCache.get(machineId) === p) {
-          this.settingsRead.set(machineId, r.kind.value.settings);
-          this.keepInfo();
-          this.changed();
-        }
+        if (this.settingsCache.get(machineId) === p) this.changed();
         return r.kind.value.settings;
       });
       p.catch(() => { if (this.settingsCache.get(machineId) === p) this.settingsCache.delete(machineId); });
