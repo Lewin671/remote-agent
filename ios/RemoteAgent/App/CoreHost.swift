@@ -292,7 +292,7 @@ actor CoreHost: SyncEngine {
     }
 
     struct SharedFileHandlers: Sendable {
-        var onCompleted: @MainActor @Sendable (PBSharedFileCompletedEffect) -> Void = { _ in }
+        var onCompleted: @MainActor @Sendable (PBSharedFileCompletedEffect, Bool) -> Void = { _, _ in }
         var onClearThumbnail: @MainActor @Sendable (SharedFileKey) -> Void = { _ in }
         var onClearSessionThumbnails: @MainActor @Sendable (String) -> Void = { _ in }
         var onClearAllThumbnails: @MainActor @Sendable () -> Void = {}
@@ -2285,9 +2285,10 @@ actor CoreHost: SyncEngine {
             await self.renderTargets(renderTargets)
         }
         if !completedSharedFiles.isEmpty, let onCompleted = self.sharedFileHandlers?.onCompleted {
+            let visibleSessionID = self.currentVisibleSessionID
             await MainActor.run {
                 for eff in completedSharedFiles {
-                    onCompleted(eff)
+                    onCompleted(eff, !visibleSessionID.isEmpty && eff.sessionID == visibleSessionID)
                 }
             }
         }

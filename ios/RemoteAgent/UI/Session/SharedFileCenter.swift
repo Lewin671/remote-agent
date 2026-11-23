@@ -75,6 +75,7 @@ final class SharedFileCenter {
     @ObservationIgnored private let present: @MainActor (URL) -> Void
     @ObservationIgnored private let allowMissingReports: Bool
     @ObservationIgnored private var loading = Set<SharedFileKey>()
+    @ObservationIgnored private var probedDurations = Set<SharedFileKey>()
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
     /// Pictures and first frames of copies that are on the phone.
@@ -96,7 +97,9 @@ final class SharedFileCenter {
 
     func handlers() -> CoreHost.SharedFileHandlers {
         CoreHost.SharedFileHandlers(
-            onCompleted: { [weak self] eff in self?.handleCompleted(eff) },
+            onCompleted: { [weak self] eff, isVisibleSession in
+                self?.handleCompleted(eff, isVisibleSession: isVisibleSession)
+            },
             onClearThumbnail: { [weak self] key in self?.clearThumbnail(key) },
             onClearSessionThumbnails: { [weak self] sid in self?.clearThumbnails(sessionID: sid) },
             onClearAllThumbnails: { [weak self] in self?.clearAllThumbnails() }
@@ -108,38 +111,53 @@ final class SharedFileCenter {
         noticeTask = nil
         thumbnails.removeAll()
         loading.removeAll()
+        probedDurations.removeAll()
     }
 
     // MARK: Core Effects
 
     /// Handles `SharedFileCompletedEffect` emitted by Core after verification and commit.
-    func handleCompleted(_ effect: PBSharedFileCompletedEffect) {
+    func handleCompleted(_ effect: PBSharedFileCompletedEffect, isVisibleSession: Bool) {
         guard !effect.deliverOnly else { return }
-        Haptics.light()
-        if UIAccessibility.isVoiceOverRunning {
-            AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: effect.displayName)).post()
+        if isVisibleSession {
+            Haptics.light()
+            if UIAccessibility.isVoiceOverRunning {
+                AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: effect.displayName)).post()
+            }
         }
         let key = SharedFileKey(sessionId: effect.sessionID, fileId: effect.fileID)
         if effect.autoOpen {
             open(key, name: effect.displayName)
         }
-        if effect.kind == .image || effect.kind == .video || effect.kind == .audio {
-            Task { await loadMedia(key, name: effect.displayName, kind: effect.kind) }
+        let hasMediaDuration = effect.kind == .video || effect.kind == .audio
+        if effect.kind == .image || hasMediaDuration {
+            Task {
+                await loadMedia(
+                    key,
+                    name: effect.displayName,
+                    kind: effect.kind,
+                    hasMediaDuration: hasMediaDuration,
+                    hasDurationText: false
+                )
+            }
         }
     }
 
     func clearThumbnail(_ key: SharedFileKey) {
         thumbnails.removeValue(forKey: key)
+        probedDurations.remove(key)
     }
 
     func clearThumbnails(sessionID: String) {
         for key in Array(thumbnails.keys) where key.sessionId == sessionID {
             thumbnails.removeValue(forKey: key)
         }
+        probedDurations = probedDurations.filter { $0.sessionId != sessionID }
     }
 
     func clearAllThumbnails() {
         thumbnails.removeAll()
+        probedDurations.removeAll()
     }
 
     // MARK: Controls (User -> Core Actions)
@@ -189,6 +207,7 @@ final class SharedFileCenter {
 
     func deleteLocal(_ key: SharedFileKey) {
         thumbnails.removeValue(forKey: key)
+        probedDurations.remove(key)
         guard let host = coreHost else { return }
         Task { await host.deleteSharedFileLocal(sessionID: key.sessionId, fileID: key.fileId) }
     }
@@ -224,6 +243,7 @@ final class SharedFileCenter {
 
     private func reportMissingIfNeeded(_ key: SharedFileKey) {
         thumbnails.removeValue(forKey: key)
+        probedDurations.remove(key)
         guard allowMissingReports, let host = coreHost else { return }
         Task { await host.reportSharedFileLocalMissing(sessionID: key.sessionId, fileID: key.fileId) }
     }
@@ -274,18 +294,27 @@ final class SharedFileCenter {
     // MARK: From the copy only
 
     /// A picture's or video's first frame, and a video's or recording's length, read from the copy on the phone (never asked of the computer).
-    func loadMedia(_ key: SharedFileKey, name: String, kind: PBSharedFileKind) async {
-        guard kind == .image || kind == .video || kind == .audio, !loading.contains(key) else { return }
+    func loadMedia(
+        _ key: SharedFileKey,
+        name: String,
+        kind: PBSharedFileKind,
+        hasMediaDuration: Bool = false,
+        hasDurationText: Bool = false
+    ) async {
+        let needsThumbnail = (kind == .image || kind == .video) && thumbnails[key] == nil
+        let needsDuration = hasMediaDuration && !hasDurationText && !probedDurations.contains(key)
+        guard (needsThumbnail || needsDuration), !loading.contains(key) else { return }
         #if DEBUG
         if SharedFileDebug.hasForcedStates { return }
         #endif
         guard let url = existingCopy(key, name: name) else { return }
-        if kind == .audio || thumbnails[key] == nil {
-            loading.insert(key)
-            defer { loading.remove(key) }
-            let media = await Task.detached(priority: .utility) { await SharedFileMedia.read(url, kind: kind) }.value
-            guard store.existingLocalURL(key, name: name) != nil else { return }
-            if let image = media.thumbnail { thumbnails[key] = image }
+        loading.insert(key)
+        defer { loading.remove(key) }
+        let media = await Task.detached(priority: .utility) { await SharedFileMedia.read(url, kind: kind) }.value
+        guard store.existingLocalURL(key, name: name) != nil else { return }
+        if needsThumbnail, let image = media.thumbnail { thumbnails[key] = image }
+        if needsDuration {
+            probedDurations.insert(key)
             if let ms = media.durationMs, ms > 0, let host = coreHost {
                 await host.recordSharedFileDuration(sessionID: key.sessionId, fileID: key.fileId, durationMs: ms)
             }

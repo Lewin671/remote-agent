@@ -92,7 +92,13 @@ struct SharedFileCardView: View {
             }
             .task(id: MediaProbeKey(session: env.session, fileID: item.fileID, downloaded: item.status == .downloaded)) {
                 if item.status == .downloaded {
-                    await center.loadMedia(key, name: item.displayName, kind: item.kind)
+                    await center.loadMedia(
+                        key,
+                        name: item.displayName,
+                        kind: item.kind,
+                        hasMediaDuration: item.hasMediaDuration,
+                        hasDurationText: !item.durationText.isEmpty
+                    )
                 }
             }
             #if DEBUG

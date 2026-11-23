@@ -476,7 +476,7 @@ export function SharedFileCard({
       case SharedFileMenuAction.DOWNLOAD:
       case SharedFileMenuAction.RESUME:
       case SharedFileMenuAction.RETRY:
-        host.sharedFileStartDownload(sessionId, file.fileId, false);
+        host.sharedFileStartDownload(sessionId, file.fileId, true);
         break;
       case SharedFileMenuAction.PAUSE:
         host.sharedFilePauseDownload(sessionId, file.fileId);
