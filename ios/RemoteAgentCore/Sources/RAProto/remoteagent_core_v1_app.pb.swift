@@ -93,6 +93,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case directSession // = 13
   case terminalReopen // = 14
   case securityPoll // = 15
+  case sharedFileReconnect // = 16
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -117,6 +118,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 13: self = .directSession
     case 14: self = .terminalReopen
     case 15: self = .securityPoll
+    case 16: self = .sharedFileReconnect
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -139,6 +141,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .directSession: return 13
     case .terminalReopen: return 14
     case .securityPoll: return 15
+    case .sharedFileReconnect: return 16
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -161,6 +164,7 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .directSession,
     .terminalReopen,
     .securityPoll,
+    .sharedFileReconnect,
   ]
 
 }
@@ -2913,6 +2917,118 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .sessionImageViewerClose(newValue)}
   }
 
+  public var sharedFileConfig: PBSharedFileConfigEvent {
+    get {
+      if case .sharedFileConfig(let v)? = _storage._event {return v}
+      return PBSharedFileConfigEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileConfig(newValue)}
+  }
+
+  public var sharedFileLocalScanned: PBSharedFileLocalScannedEvent {
+    get {
+      if case .sharedFileLocalScanned(let v)? = _storage._event {return v}
+      return PBSharedFileLocalScannedEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileLocalScanned(newValue)}
+  }
+
+  public var sharedFileStartDownload: PBSharedFileStartDownloadAction {
+    get {
+      if case .sharedFileStartDownload(let v)? = _storage._event {return v}
+      return PBSharedFileStartDownloadAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileStartDownload(newValue)}
+  }
+
+  public var sharedFilePauseDownload: PBSharedFilePauseDownloadAction {
+    get {
+      if case .sharedFilePauseDownload(let v)? = _storage._event {return v}
+      return PBSharedFilePauseDownloadAction()
+    }
+    set {_uniqueStorage()._event = .sharedFilePauseDownload(newValue)}
+  }
+
+  public var sharedFileCancelDownload: PBSharedFileCancelDownloadAction {
+    get {
+      if case .sharedFileCancelDownload(let v)? = _storage._event {return v}
+      return PBSharedFileCancelDownloadAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileCancelDownload(newValue)}
+  }
+
+  public var sharedFileDeleteLocal: PBSharedFileDeleteLocalAction {
+    get {
+      if case .sharedFileDeleteLocal(let v)? = _storage._event {return v}
+      return PBSharedFileDeleteLocalAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileDeleteLocal(newValue)}
+  }
+
+  public var sharedFileSetVisibleSession: PBSharedFileSetVisibleSessionAction {
+    get {
+      if case .sharedFileSetVisibleSession(let v)? = _storage._event {return v}
+      return PBSharedFileSetVisibleSessionAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileSetVisibleSession(newValue)}
+  }
+
+  public var sharedFileForgetSession: PBSharedFileForgetSessionAction {
+    get {
+      if case .sharedFileForgetSession(let v)? = _storage._event {return v}
+      return PBSharedFileForgetSessionAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileForgetSession(newValue)}
+  }
+
+  public var sharedFileDurationProbed: PBSharedFileDurationProbedEvent {
+    get {
+      if case .sharedFileDurationProbed(let v)? = _storage._event {return v}
+      return PBSharedFileDurationProbedEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileDurationProbed(newValue)}
+  }
+
+  public var sharedFileLocalMissing: PBSharedFileLocalMissingEvent {
+    get {
+      if case .sharedFileLocalMissing(let v)? = _storage._event {return v}
+      return PBSharedFileLocalMissingEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileLocalMissing(newValue)}
+  }
+
+  public var sharedFileClearAll: PBSharedFileClearAllAction {
+    get {
+      if case .sharedFileClearAll(let v)? = _storage._event {return v}
+      return PBSharedFileClearAllAction()
+    }
+    set {_uniqueStorage()._event = .sharedFileClearAll(newValue)}
+  }
+
+  public var sharedFileDiskInspected: PBSharedFileDiskInspectedEvent {
+    get {
+      if case .sharedFileDiskInspected(let v)? = _storage._event {return v}
+      return PBSharedFileDiskInspectedEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileDiskInspected(newValue)}
+  }
+
+  public var sharedFileWriteChunkResult: PBSharedFileWriteChunkResultEvent {
+    get {
+      if case .sharedFileWriteChunkResult(let v)? = _storage._event {return v}
+      return PBSharedFileWriteChunkResultEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileWriteChunkResult(newValue)}
+  }
+
+  public var sharedFileVerifyAndCommitResult: PBSharedFileVerifyAndCommitResultEvent {
+    get {
+      if case .sharedFileVerifyAndCommitResult(let v)? = _storage._event {return v}
+      return PBSharedFileVerifyAndCommitResultEvent()
+    }
+    set {_uniqueStorage()._event = .sharedFileVerifyAndCommitResult(newValue)}
+  }
+
   public var scheduleCacheLoaded: PBScheduleCacheLoadedEvent {
     get {
       if case .scheduleCacheLoaded(let v)? = _storage._event {return v}
@@ -3564,6 +3680,20 @@ public struct PBCoreEvent: @unchecked Sendable {
     case sessionImageViewerOpen(PBSessionImageViewerOpenAction)
     case sessionImageViewerNavigate(PBSessionImageViewerNavigateAction)
     case sessionImageViewerClose(PBSessionImageViewerCloseAction)
+    case sharedFileConfig(PBSharedFileConfigEvent)
+    case sharedFileLocalScanned(PBSharedFileLocalScannedEvent)
+    case sharedFileStartDownload(PBSharedFileStartDownloadAction)
+    case sharedFilePauseDownload(PBSharedFilePauseDownloadAction)
+    case sharedFileCancelDownload(PBSharedFileCancelDownloadAction)
+    case sharedFileDeleteLocal(PBSharedFileDeleteLocalAction)
+    case sharedFileSetVisibleSession(PBSharedFileSetVisibleSessionAction)
+    case sharedFileForgetSession(PBSharedFileForgetSessionAction)
+    case sharedFileDurationProbed(PBSharedFileDurationProbedEvent)
+    case sharedFileLocalMissing(PBSharedFileLocalMissingEvent)
+    case sharedFileClearAll(PBSharedFileClearAllAction)
+    case sharedFileDiskInspected(PBSharedFileDiskInspectedEvent)
+    case sharedFileWriteChunkResult(PBSharedFileWriteChunkResultEvent)
+    case sharedFileVerifyAndCommitResult(PBSharedFileVerifyAndCommitResultEvent)
     case scheduleCacheLoaded(PBScheduleCacheLoadedEvent)
     case scheduleSeenLoaded(PBScheduleSeenLoadedEvent)
     case scheduleLocalContext(PBScheduleLocalContextEvent)
@@ -4519,6 +4649,78 @@ public struct PBCoreEffect: Sendable {
     set {effect = .sessionResendAttachments(newValue)}
   }
 
+  public var sharedFileScanLocal: PBSharedFileScanLocalEffect {
+    get {
+      if case .sharedFileScanLocal(let v)? = effect {return v}
+      return PBSharedFileScanLocalEffect()
+    }
+    set {effect = .sharedFileScanLocal(newValue)}
+  }
+
+  public var sharedFileInspectDisk: PBSharedFileInspectDiskEffect {
+    get {
+      if case .sharedFileInspectDisk(let v)? = effect {return v}
+      return PBSharedFileInspectDiskEffect()
+    }
+    set {effect = .sharedFileInspectDisk(newValue)}
+  }
+
+  public var sharedFileWriteChunk: PBSharedFileWriteChunkEffect {
+    get {
+      if case .sharedFileWriteChunk(let v)? = effect {return v}
+      return PBSharedFileWriteChunkEffect()
+    }
+    set {effect = .sharedFileWriteChunk(newValue)}
+  }
+
+  public var sharedFileVerifyAndCommit: PBSharedFileVerifyAndCommitEffect {
+    get {
+      if case .sharedFileVerifyAndCommit(let v)? = effect {return v}
+      return PBSharedFileVerifyAndCommitEffect()
+    }
+    set {effect = .sharedFileVerifyAndCommit(newValue)}
+  }
+
+  public var sharedFileDeletePartial: PBSharedFileDeletePartialEffect {
+    get {
+      if case .sharedFileDeletePartial(let v)? = effect {return v}
+      return PBSharedFileDeletePartialEffect()
+    }
+    set {effect = .sharedFileDeletePartial(newValue)}
+  }
+
+  public var sharedFileDeleteLocal: PBSharedFileDeleteLocalEffect {
+    get {
+      if case .sharedFileDeleteLocal(let v)? = effect {return v}
+      return PBSharedFileDeleteLocalEffect()
+    }
+    set {effect = .sharedFileDeleteLocal(newValue)}
+  }
+
+  public var sharedFileDeleteSession: PBSharedFileDeleteSessionEffect {
+    get {
+      if case .sharedFileDeleteSession(let v)? = effect {return v}
+      return PBSharedFileDeleteSessionEffect()
+    }
+    set {effect = .sharedFileDeleteSession(newValue)}
+  }
+
+  public var sharedFileClearAll: PBSharedFileClearAllEffect {
+    get {
+      if case .sharedFileClearAll(let v)? = effect {return v}
+      return PBSharedFileClearAllEffect()
+    }
+    set {effect = .sharedFileClearAll(newValue)}
+  }
+
+  public var sharedFileCompleted: PBSharedFileCompletedEffect {
+    get {
+      if case .sharedFileCompleted(let v)? = effect {return v}
+      return PBSharedFileCompletedEffect()
+    }
+    set {effect = .sharedFileCompleted(newValue)}
+  }
+
   public var scheduleReadCache: PBScheduleReadCacheEffect {
     get {
       if case .scheduleReadCache(let v)? = effect {return v}
@@ -4788,6 +4990,15 @@ public struct PBCoreEffect: Sendable {
     case usageCacheWrite(PBCoreUsageCacheWriteEffect)
     case sessionRestoreComposer(PBSessionRestoreComposerEffect)
     case sessionResendAttachments(PBSessionResendAttachmentsEffect)
+    case sharedFileScanLocal(PBSharedFileScanLocalEffect)
+    case sharedFileInspectDisk(PBSharedFileInspectDiskEffect)
+    case sharedFileWriteChunk(PBSharedFileWriteChunkEffect)
+    case sharedFileVerifyAndCommit(PBSharedFileVerifyAndCommitEffect)
+    case sharedFileDeletePartial(PBSharedFileDeletePartialEffect)
+    case sharedFileDeleteLocal(PBSharedFileDeleteLocalEffect)
+    case sharedFileDeleteSession(PBSharedFileDeleteSessionEffect)
+    case sharedFileClearAll(PBSharedFileClearAllEffect)
+    case sharedFileCompleted(PBSharedFileCompletedEffect)
     case scheduleReadCache(PBScheduleReadCacheEffect)
     case scheduleDeleteCache(PBScheduleDeleteCacheEffect)
     case scheduleLoadSeen(PBScheduleLoadSeenEffect)
@@ -4846,7 +5057,7 @@ extension PBCoreSyncLifecycleKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreTimerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0\u{1}TIMER_KIND_SECURITY_POLL\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0\u{1}TIMER_KIND_SECURITY_POLL\0\u{1}TIMER_KIND_SHARED_FILE_RECONNECT\0")
 }
 
 extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
@@ -8585,7 +8796,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{3}shared_file_local_state\0\u{3}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{4}Q\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{3}shared_file_local_state\0\u{3}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{3}shared_file_config\0\u{3}shared_file_local_scanned\0\u{3}shared_file_start_download\0\u{3}shared_file_pause_download\0\u{3}shared_file_cancel_download\0\u{3}shared_file_delete_local\0\u{3}shared_file_set_visible_session\0\u{3}shared_file_forget_session\0\u{3}shared_file_duration_probed\0\u{3}shared_file_local_missing\0\u{3}shared_file_clear_all\0\u{3}shared_file_disk_inspected\0\u{3}shared_file_write_chunk_result\0\u{3}shared_file_verify_and_commit_result\0\u{4}C\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -9499,6 +9710,188 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
             _storage._event = .sessionImageViewerClose(v)
+          }
+        }()
+        case 220: try {
+          var v: PBSharedFileConfigEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileConfig(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileConfig(v)
+          }
+        }()
+        case 221: try {
+          var v: PBSharedFileLocalScannedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileLocalScanned(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileLocalScanned(v)
+          }
+        }()
+        case 222: try {
+          var v: PBSharedFileStartDownloadAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileStartDownload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileStartDownload(v)
+          }
+        }()
+        case 223: try {
+          var v: PBSharedFilePauseDownloadAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFilePauseDownload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFilePauseDownload(v)
+          }
+        }()
+        case 224: try {
+          var v: PBSharedFileCancelDownloadAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileCancelDownload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileCancelDownload(v)
+          }
+        }()
+        case 225: try {
+          var v: PBSharedFileDeleteLocalAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileDeleteLocal(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileDeleteLocal(v)
+          }
+        }()
+        case 226: try {
+          var v: PBSharedFileSetVisibleSessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileSetVisibleSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileSetVisibleSession(v)
+          }
+        }()
+        case 227: try {
+          var v: PBSharedFileForgetSessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileForgetSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileForgetSession(v)
+          }
+        }()
+        case 228: try {
+          var v: PBSharedFileDurationProbedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileDurationProbed(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileDurationProbed(v)
+          }
+        }()
+        case 229: try {
+          var v: PBSharedFileLocalMissingEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileLocalMissing(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileLocalMissing(v)
+          }
+        }()
+        case 230: try {
+          var v: PBSharedFileClearAllAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileClearAll(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileClearAll(v)
+          }
+        }()
+        case 231: try {
+          var v: PBSharedFileDiskInspectedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileDiskInspected(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileDiskInspected(v)
+          }
+        }()
+        case 232: try {
+          var v: PBSharedFileWriteChunkResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileWriteChunkResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileWriteChunkResult(v)
+          }
+        }()
+        case 233: try {
+          var v: PBSharedFileVerifyAndCommitResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .sharedFileVerifyAndCommitResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .sharedFileVerifyAndCommitResult(v)
           }
         }()
         case 300: try {
@@ -10979,6 +11372,62 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .sessionImageViewerClose?: try {
         guard case .sessionImageViewerClose(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 219)
+      }()
+      case .sharedFileConfig?: try {
+        guard case .sharedFileConfig(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 220)
+      }()
+      case .sharedFileLocalScanned?: try {
+        guard case .sharedFileLocalScanned(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 221)
+      }()
+      case .sharedFileStartDownload?: try {
+        guard case .sharedFileStartDownload(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 222)
+      }()
+      case .sharedFilePauseDownload?: try {
+        guard case .sharedFilePauseDownload(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 223)
+      }()
+      case .sharedFileCancelDownload?: try {
+        guard case .sharedFileCancelDownload(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 224)
+      }()
+      case .sharedFileDeleteLocal?: try {
+        guard case .sharedFileDeleteLocal(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 225)
+      }()
+      case .sharedFileSetVisibleSession?: try {
+        guard case .sharedFileSetVisibleSession(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 226)
+      }()
+      case .sharedFileForgetSession?: try {
+        guard case .sharedFileForgetSession(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 227)
+      }()
+      case .sharedFileDurationProbed?: try {
+        guard case .sharedFileDurationProbed(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 228)
+      }()
+      case .sharedFileLocalMissing?: try {
+        guard case .sharedFileLocalMissing(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 229)
+      }()
+      case .sharedFileClearAll?: try {
+        guard case .sharedFileClearAll(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 230)
+      }()
+      case .sharedFileDiskInspected?: try {
+        guard case .sharedFileDiskInspected(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 231)
+      }()
+      case .sharedFileWriteChunkResult?: try {
+        guard case .sharedFileWriteChunkResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 232)
+      }()
+      case .sharedFileVerifyAndCommitResult?: try {
+        guard case .sharedFileVerifyAndCommitResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 233)
       }()
       case .scheduleCacheLoaded?: try {
         guard case .scheduleCacheLoaded(let v)? = _storage._event else { preconditionFailure() }
@@ -12771,7 +13220,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{4}\u{13}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{1a}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{3}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{1a}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -13011,6 +13460,123 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
         if let v = v {
           if hadOneofValue {try decoder.handleConflictingOneOf()}
           self.effect = .sessionResendAttachments(v)
+        }
+      }()
+      case 42: try {
+        var v: PBSharedFileScanLocalEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileScanLocal(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileScanLocal(v)
+        }
+      }()
+      case 43: try {
+        var v: PBSharedFileInspectDiskEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileInspectDisk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileInspectDisk(v)
+        }
+      }()
+      case 44: try {
+        var v: PBSharedFileWriteChunkEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileWriteChunk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileWriteChunk(v)
+        }
+      }()
+      case 45: try {
+        var v: PBSharedFileVerifyAndCommitEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileVerifyAndCommit(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileVerifyAndCommit(v)
+        }
+      }()
+      case 46: try {
+        var v: PBSharedFileDeletePartialEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileDeletePartial(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileDeletePartial(v)
+        }
+      }()
+      case 47: try {
+        var v: PBSharedFileDeleteLocalEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileDeleteLocal(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileDeleteLocal(v)
+        }
+      }()
+      case 48: try {
+        var v: PBSharedFileDeleteSessionEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileDeleteSession(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileDeleteSession(v)
+        }
+      }()
+      case 49: try {
+        var v: PBSharedFileClearAllEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileClearAll(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileClearAll(v)
+        }
+      }()
+      case 50: try {
+        var v: PBSharedFileCompletedEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .sharedFileCompleted(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .sharedFileCompleted(v)
         }
       }()
       case 60: try {
@@ -13576,6 +14142,42 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .sessionResendAttachments?: try {
       guard case .sessionResendAttachments(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
+    }()
+    case .sharedFileScanLocal?: try {
+      guard case .sharedFileScanLocal(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
+    }()
+    case .sharedFileInspectDisk?: try {
+      guard case .sharedFileInspectDisk(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 43)
+    }()
+    case .sharedFileWriteChunk?: try {
+      guard case .sharedFileWriteChunk(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 44)
+    }()
+    case .sharedFileVerifyAndCommit?: try {
+      guard case .sharedFileVerifyAndCommit(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 45)
+    }()
+    case .sharedFileDeletePartial?: try {
+      guard case .sharedFileDeletePartial(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 46)
+    }()
+    case .sharedFileDeleteLocal?: try {
+      guard case .sharedFileDeleteLocal(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 47)
+    }()
+    case .sharedFileDeleteSession?: try {
+      guard case .sharedFileDeleteSession(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 48)
+    }()
+    case .sharedFileClearAll?: try {
+      guard case .sharedFileClearAll(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 49)
+    }()
+    case .sharedFileCompleted?: try {
+      guard case .sharedFileCompleted(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 50)
     }()
     case .scheduleReadCache?: try {
       guard case .scheduleReadCache(let v)? = self.effect else { preconditionFailure() }

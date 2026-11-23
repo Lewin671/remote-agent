@@ -1012,6 +1012,160 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionImageViewerCloseAction getSessionImageViewerClose();
 
   /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   * @return Whether the sharedFileConfig field is set.
+   */
+  boolean hasSharedFileConfig();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   * @return The sharedFileConfig.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent getSharedFileConfig();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   * @return Whether the sharedFileLocalScanned field is set.
+   */
+  boolean hasSharedFileLocalScanned();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   * @return The sharedFileLocalScanned.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent getSharedFileLocalScanned();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   * @return Whether the sharedFileStartDownload field is set.
+   */
+  boolean hasSharedFileStartDownload();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   * @return The sharedFileStartDownload.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction getSharedFileStartDownload();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   * @return Whether the sharedFilePauseDownload field is set.
+   */
+  boolean hasSharedFilePauseDownload();
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   * @return The sharedFilePauseDownload.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction getSharedFilePauseDownload();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   * @return Whether the sharedFileCancelDownload field is set.
+   */
+  boolean hasSharedFileCancelDownload();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   * @return The sharedFileCancelDownload.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction getSharedFileCancelDownload();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   * @return Whether the sharedFileDeleteLocal field is set.
+   */
+  boolean hasSharedFileDeleteLocal();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   * @return The sharedFileDeleteLocal.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction getSharedFileDeleteLocal();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   * @return Whether the sharedFileSetVisibleSession field is set.
+   */
+  boolean hasSharedFileSetVisibleSession();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   * @return The sharedFileSetVisibleSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction getSharedFileSetVisibleSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   * @return Whether the sharedFileForgetSession field is set.
+   */
+  boolean hasSharedFileForgetSession();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   * @return The sharedFileForgetSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction getSharedFileForgetSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   * @return Whether the sharedFileDurationProbed field is set.
+   */
+  boolean hasSharedFileDurationProbed();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   * @return The sharedFileDurationProbed.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent getSharedFileDurationProbed();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   * @return Whether the sharedFileLocalMissing field is set.
+   */
+  boolean hasSharedFileLocalMissing();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   * @return The sharedFileLocalMissing.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent getSharedFileLocalMissing();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   * @return Whether the sharedFileClearAll field is set.
+   */
+  boolean hasSharedFileClearAll();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   * @return The sharedFileClearAll.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction getSharedFileClearAll();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   * @return Whether the sharedFileDiskInspected field is set.
+   */
+  boolean hasSharedFileDiskInspected();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   * @return The sharedFileDiskInspected.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent getSharedFileDiskInspected();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   * @return Whether the sharedFileWriteChunkResult field is set.
+   */
+  boolean hasSharedFileWriteChunkResult();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   * @return The sharedFileWriteChunkResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent getSharedFileWriteChunkResult();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   * @return Whether the sharedFileVerifyAndCommitResult field is set.
+   */
+  boolean hasSharedFileVerifyAndCommitResult();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   * @return The sharedFileVerifyAndCommitResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent getSharedFileVerifyAndCommitResult();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
    * @return Whether the scheduleCacheLoaded field is set.
    */

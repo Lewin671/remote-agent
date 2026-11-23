@@ -44,6 +44,15 @@ public  final class Effect extends
     USAGE_CACHE_WRITE(76),
     SESSION_RESTORE_COMPOSER(40),
     SESSION_RESEND_ATTACHMENTS(41),
+    SHARED_FILE_SCAN_LOCAL(42),
+    SHARED_FILE_INSPECT_DISK(43),
+    SHARED_FILE_WRITE_CHUNK(44),
+    SHARED_FILE_VERIFY_AND_COMMIT(45),
+    SHARED_FILE_DELETE_PARTIAL(46),
+    SHARED_FILE_DELETE_LOCAL(47),
+    SHARED_FILE_DELETE_SESSION(48),
+    SHARED_FILE_CLEAR_ALL(49),
+    SHARED_FILE_COMPLETED(50),
     SCHEDULE_READ_CACHE(60),
     SCHEDULE_DELETE_CACHE(61),
     SCHEDULE_LOAD_SEEN(62),
@@ -114,6 +123,15 @@ public  final class Effect extends
         case 76: return USAGE_CACHE_WRITE;
         case 40: return SESSION_RESTORE_COMPOSER;
         case 41: return SESSION_RESEND_ATTACHMENTS;
+        case 42: return SHARED_FILE_SCAN_LOCAL;
+        case 43: return SHARED_FILE_INSPECT_DISK;
+        case 44: return SHARED_FILE_WRITE_CHUNK;
+        case 45: return SHARED_FILE_VERIFY_AND_COMMIT;
+        case 46: return SHARED_FILE_DELETE_PARTIAL;
+        case 47: return SHARED_FILE_DELETE_LOCAL;
+        case 48: return SHARED_FILE_DELETE_SESSION;
+        case 49: return SHARED_FILE_CLEAR_ALL;
+        case 50: return SHARED_FILE_COMPLETED;
         case 60: return SCHEDULE_READ_CACHE;
         case 61: return SCHEDULE_DELETE_CACHE;
         case 62: return SCHEDULE_LOAD_SEEN;
@@ -1460,6 +1478,474 @@ public  final class Effect extends
    */
   private void clearSessionResendAttachments() {
     if (effectCase_ == 41) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_SCAN_LOCAL_FIELD_NUMBER = 42;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileScanLocal() {
+    return effectCase_ == 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect getSharedFileScanLocal() {
+    if (effectCase_ == 42) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileScanLocal(io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileScanLocal(io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 42 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   */
+  private void clearSharedFileScanLocal() {
+    if (effectCase_ == 42) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_INSPECT_DISK_FIELD_NUMBER = 43;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileInspectDisk() {
+    return effectCase_ == 43;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect getSharedFileInspectDisk() {
+    if (effectCase_ == 43) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileInspectDisk(io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 43;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileInspectDisk(io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 43 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 43;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   */
+  private void clearSharedFileInspectDisk() {
+    if (effectCase_ == 43) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_WRITE_CHUNK_FIELD_NUMBER = 44;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileWriteChunk() {
+    return effectCase_ == 44;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect getSharedFileWriteChunk() {
+    if (effectCase_ == 44) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileWriteChunk(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 44;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileWriteChunk(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 44 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 44;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   */
+  private void clearSharedFileWriteChunk() {
+    if (effectCase_ == 44) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_VERIFY_AND_COMMIT_FIELD_NUMBER = 45;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileVerifyAndCommit() {
+    return effectCase_ == 45;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect getSharedFileVerifyAndCommit() {
+    if (effectCase_ == 45) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileVerifyAndCommit(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 45;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileVerifyAndCommit(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 45 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 45;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   */
+  private void clearSharedFileVerifyAndCommit() {
+    if (effectCase_ == 45) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DELETE_PARTIAL_FIELD_NUMBER = 46;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDeletePartial() {
+    return effectCase_ == 46;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect getSharedFileDeletePartial() {
+    if (effectCase_ == 46) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDeletePartial(io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 46;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDeletePartial(io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 46 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 46;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   */
+  private void clearSharedFileDeletePartial() {
+    if (effectCase_ == 46) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DELETE_LOCAL_FIELD_NUMBER = 47;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDeleteLocal() {
+    return effectCase_ == 47;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect getSharedFileDeleteLocal() {
+    if (effectCase_ == 47) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 47;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 47 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 47;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  private void clearSharedFileDeleteLocal() {
+    if (effectCase_ == 47) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DELETE_SESSION_FIELD_NUMBER = 48;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDeleteSession() {
+    return effectCase_ == 48;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect getSharedFileDeleteSession() {
+    if (effectCase_ == 48) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDeleteSession(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 48;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDeleteSession(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 48 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 48;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   */
+  private void clearSharedFileDeleteSession() {
+    if (effectCase_ == 48) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_CLEAR_ALL_FIELD_NUMBER = 49;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileClearAll() {
+    return effectCase_ == 49;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect getSharedFileClearAll() {
+    if (effectCase_ == 49) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 49;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 49 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 49;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   */
+  private void clearSharedFileClearAll() {
+    if (effectCase_ == 49) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_COMPLETED_FIELD_NUMBER = 50;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileCompleted() {
+    return effectCase_ == 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect getSharedFileCompleted() {
+    if (effectCase_ == 50) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileCompleted(io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileCompleted(io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 50 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 50;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   */
+  private void clearSharedFileCompleted() {
+    if (effectCase_ == 50) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -4355,6 +4841,438 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileScanLocal() {
+      return instance.hasSharedFileScanLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect getSharedFileScanLocal() {
+      return instance.getSharedFileScanLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    public Builder setSharedFileScanLocal(io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect value) {
+      copyOnWrite();
+      instance.setSharedFileScanLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    public Builder setSharedFileScanLocal(
+        io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileScanLocal(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    public Builder mergeSharedFileScanLocal(io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileScanLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+     */
+    public Builder clearSharedFileScanLocal() {
+      copyOnWrite();
+      instance.clearSharedFileScanLocal();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileInspectDisk() {
+      return instance.hasSharedFileInspectDisk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect getSharedFileInspectDisk() {
+      return instance.getSharedFileInspectDisk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    public Builder setSharedFileInspectDisk(io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect value) {
+      copyOnWrite();
+      instance.setSharedFileInspectDisk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    public Builder setSharedFileInspectDisk(
+        io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileInspectDisk(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    public Builder mergeSharedFileInspectDisk(io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileInspectDisk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+     */
+    public Builder clearSharedFileInspectDisk() {
+      copyOnWrite();
+      instance.clearSharedFileInspectDisk();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileWriteChunk() {
+      return instance.hasSharedFileWriteChunk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect getSharedFileWriteChunk() {
+      return instance.getSharedFileWriteChunk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    public Builder setSharedFileWriteChunk(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect value) {
+      copyOnWrite();
+      instance.setSharedFileWriteChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    public Builder setSharedFileWriteChunk(
+        io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileWriteChunk(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    public Builder mergeSharedFileWriteChunk(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileWriteChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+     */
+    public Builder clearSharedFileWriteChunk() {
+      copyOnWrite();
+      instance.clearSharedFileWriteChunk();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileVerifyAndCommit() {
+      return instance.hasSharedFileVerifyAndCommit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect getSharedFileVerifyAndCommit() {
+      return instance.getSharedFileVerifyAndCommit();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    public Builder setSharedFileVerifyAndCommit(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect value) {
+      copyOnWrite();
+      instance.setSharedFileVerifyAndCommit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    public Builder setSharedFileVerifyAndCommit(
+        io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileVerifyAndCommit(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    public Builder mergeSharedFileVerifyAndCommit(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileVerifyAndCommit(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+     */
+    public Builder clearSharedFileVerifyAndCommit() {
+      copyOnWrite();
+      instance.clearSharedFileVerifyAndCommit();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDeletePartial() {
+      return instance.hasSharedFileDeletePartial();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect getSharedFileDeletePartial() {
+      return instance.getSharedFileDeletePartial();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    public Builder setSharedFileDeletePartial(io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect value) {
+      copyOnWrite();
+      instance.setSharedFileDeletePartial(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    public Builder setSharedFileDeletePartial(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDeletePartial(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    public Builder mergeSharedFileDeletePartial(io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileDeletePartial(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+     */
+    public Builder clearSharedFileDeletePartial() {
+      copyOnWrite();
+      instance.clearSharedFileDeletePartial();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDeleteLocal() {
+      return instance.hasSharedFileDeleteLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect getSharedFileDeleteLocal() {
+      return instance.getSharedFileDeleteLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder setSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect value) {
+      copyOnWrite();
+      instance.setSharedFileDeleteLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder setSharedFileDeleteLocal(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDeleteLocal(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder mergeSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileDeleteLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder clearSharedFileDeleteLocal() {
+      copyOnWrite();
+      instance.clearSharedFileDeleteLocal();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDeleteSession() {
+      return instance.hasSharedFileDeleteSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect getSharedFileDeleteSession() {
+      return instance.getSharedFileDeleteSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    public Builder setSharedFileDeleteSession(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect value) {
+      copyOnWrite();
+      instance.setSharedFileDeleteSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    public Builder setSharedFileDeleteSession(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDeleteSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    public Builder mergeSharedFileDeleteSession(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileDeleteSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+     */
+    public Builder clearSharedFileDeleteSession() {
+      copyOnWrite();
+      instance.clearSharedFileDeleteSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileClearAll() {
+      return instance.hasSharedFileClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect getSharedFileClearAll() {
+      return instance.getSharedFileClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder setSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect value) {
+      copyOnWrite();
+      instance.setSharedFileClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder setSharedFileClearAll(
+        io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileClearAll(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder mergeSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder clearSharedFileClearAll() {
+      copyOnWrite();
+      instance.clearSharedFileClearAll();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileCompleted() {
+      return instance.hasSharedFileCompleted();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect getSharedFileCompleted() {
+      return instance.getSharedFileCompleted();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    public Builder setSharedFileCompleted(io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect value) {
+      copyOnWrite();
+      instance.setSharedFileCompleted(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    public Builder setSharedFileCompleted(
+        io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileCompleted(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    public Builder mergeSharedFileCompleted(io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect value) {
+      copyOnWrite();
+      instance.mergeSharedFileCompleted(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+     */
+    public Builder clearSharedFileCompleted() {
+      copyOnWrite();
+      instance.clearSharedFileCompleted();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
      */
     @java.lang.Override
@@ -5854,6 +6772,15 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleReadCacheEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleDeleteCacheEffect.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLoadSeenEffect.class,
@@ -5893,14 +6820,15 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u00007\u0001\u0000\u0001\u00917\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000@\u0001\u0000\u0001\u0091@\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
-              ")<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000" +
-              "I<\u0000J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000" +
-              "l<\u0000m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
-              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
-              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
+              ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000" +
+              "<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000" +
+              "J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000" +
+              "m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
+              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
+              "<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

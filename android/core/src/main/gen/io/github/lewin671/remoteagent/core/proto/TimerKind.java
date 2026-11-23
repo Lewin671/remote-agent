@@ -75,6 +75,10 @@ public enum TimerKind
    * <code>TIMER_KIND_SECURITY_POLL = 15;</code>
    */
   TIMER_KIND_SECURITY_POLL(15),
+  /**
+   * <code>TIMER_KIND_SHARED_FILE_RECONNECT = 16;</code>
+   */
+  TIMER_KIND_SHARED_FILE_RECONNECT(16),
   UNRECOGNIZED(-1),
   ;
 
@@ -142,6 +146,10 @@ public enum TimerKind
    * <code>TIMER_KIND_SECURITY_POLL = 15;</code>
    */
   public static final int TIMER_KIND_SECURITY_POLL_VALUE = 15;
+  /**
+   * <code>TIMER_KIND_SHARED_FILE_RECONNECT = 16;</code>
+   */
+  public static final int TIMER_KIND_SHARED_FILE_RECONNECT_VALUE = 16;
 
 
   @java.lang.Override
@@ -181,6 +189,7 @@ public enum TimerKind
       case 13: return TIMER_KIND_DIRECT_SESSION;
       case 14: return TIMER_KIND_TERMINAL_REOPEN;
       case 15: return TIMER_KIND_SECURITY_POLL;
+      case 16: return TIMER_KIND_SHARED_FILE_RECONNECT;
       default: return null;
     }
   }

@@ -286,6 +286,105 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect getSessionResendAttachments();
 
   /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   * @return Whether the sharedFileScanLocal field is set.
+   */
+  boolean hasSharedFileScanLocal();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>
+   * @return The sharedFileScanLocal.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect getSharedFileScanLocal();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   * @return Whether the sharedFileInspectDisk field is set.
+   */
+  boolean hasSharedFileInspectDisk();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileInspectDiskEffect shared_file_inspect_disk = 43 [json_name = "sharedFileInspectDisk"];</code>
+   * @return The sharedFileInspectDisk.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect getSharedFileInspectDisk();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   * @return Whether the sharedFileWriteChunk field is set.
+   */
+  boolean hasSharedFileWriteChunk();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkEffect shared_file_write_chunk = 44 [json_name = "sharedFileWriteChunk"];</code>
+   * @return The sharedFileWriteChunk.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect getSharedFileWriteChunk();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   * @return Whether the sharedFileVerifyAndCommit field is set.
+   */
+  boolean hasSharedFileVerifyAndCommit();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45 [json_name = "sharedFileVerifyAndCommit"];</code>
+   * @return The sharedFileVerifyAndCommit.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect getSharedFileVerifyAndCommit();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   * @return Whether the sharedFileDeletePartial field is set.
+   */
+  boolean hasSharedFileDeletePartial();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeletePartialEffect shared_file_delete_partial = 46 [json_name = "sharedFileDeletePartial"];</code>
+   * @return The sharedFileDeletePartial.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect getSharedFileDeletePartial();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   * @return Whether the sharedFileDeleteLocal field is set.
+   */
+  boolean hasSharedFileDeleteLocal();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalEffect shared_file_delete_local = 47 [json_name = "sharedFileDeleteLocal"];</code>
+   * @return The sharedFileDeleteLocal.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect getSharedFileDeleteLocal();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   * @return Whether the sharedFileDeleteSession field is set.
+   */
+  boolean hasSharedFileDeleteSession();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteSessionEffect shared_file_delete_session = 48 [json_name = "sharedFileDeleteSession"];</code>
+   * @return The sharedFileDeleteSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect getSharedFileDeleteSession();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   * @return Whether the sharedFileClearAll field is set.
+   */
+  boolean hasSharedFileClearAll();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllEffect shared_file_clear_all = 49 [json_name = "sharedFileClearAll"];</code>
+   * @return The sharedFileClearAll.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect getSharedFileClearAll();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   * @return Whether the sharedFileCompleted field is set.
+   */
+  boolean hasSharedFileCompleted();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCompletedEffect shared_file_completed = 50 [json_name = "sharedFileCompleted"];</code>
+   * @return The sharedFileCompleted.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileCompletedEffect getSharedFileCompleted();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleReadCacheEffect schedule_read_cache = 60 [json_name = "scheduleReadCache"];</code>
    * @return Whether the scheduleReadCache field is set.
    */

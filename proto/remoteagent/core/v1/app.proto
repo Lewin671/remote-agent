@@ -9,6 +9,7 @@ import "remoteagent/core/v1/new_session_view.proto";
 import "remoteagent/core/v1/project_view.proto";
 import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/session_view.proto";
+import "remoteagent/core/v1/shared_files.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/sync_view.proto";
@@ -161,6 +162,7 @@ enum TimerKind {
   TIMER_KIND_DIRECT_SESSION = 13;
   TIMER_KIND_TERMINAL_REOPEN = 14;
   TIMER_KIND_SECURITY_POLL = 15;
+  TIMER_KIND_SHARED_FILE_RECONNECT = 16;
 }
 
 message TimerFiredEvent {
@@ -602,6 +604,20 @@ message Event {
     SessionImageViewerOpenAction session_image_viewer_open = 217;
     SessionImageViewerNavigateAction session_image_viewer_navigate = 218;
     SessionImageViewerCloseAction session_image_viewer_close = 219;
+    SharedFileConfigEvent shared_file_config = 220;
+    SharedFileLocalScannedEvent shared_file_local_scanned = 221;
+    SharedFileStartDownloadAction shared_file_start_download = 222;
+    SharedFilePauseDownloadAction shared_file_pause_download = 223;
+    SharedFileCancelDownloadAction shared_file_cancel_download = 224;
+    SharedFileDeleteLocalAction shared_file_delete_local = 225;
+    SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226;
+    SharedFileForgetSessionAction shared_file_forget_session = 227;
+    SharedFileDurationProbedEvent shared_file_duration_probed = 228;
+    SharedFileLocalMissingEvent shared_file_local_missing = 229;
+    SharedFileClearAllAction shared_file_clear_all = 230;
+    SharedFileDiskInspectedEvent shared_file_disk_inspected = 231;
+    SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232;
+    SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;
@@ -916,6 +932,15 @@ message Effect {
     UsageCacheWriteEffect usage_cache_write = 76;
     SessionRestoreComposerEffect session_restore_composer = 40;
     SessionResendAttachmentsEffect session_resend_attachments = 41;
+    SharedFileScanLocalEffect shared_file_scan_local = 42;
+    SharedFileInspectDiskEffect shared_file_inspect_disk = 43;
+    SharedFileWriteChunkEffect shared_file_write_chunk = 44;
+    SharedFileVerifyAndCommitEffect shared_file_verify_and_commit = 45;
+    SharedFileDeletePartialEffect shared_file_delete_partial = 46;
+    SharedFileDeleteLocalEffect shared_file_delete_local = 47;
+    SharedFileDeleteSessionEffect shared_file_delete_session = 48;
+    SharedFileClearAllEffect shared_file_clear_all = 49;
+    SharedFileCompletedEffect shared_file_completed = 50;
     ScheduleReadCacheEffect schedule_read_cache = 60;
     ScheduleDeleteCacheEffect schedule_delete_cache = 61;
     ScheduleLoadSeenEffect schedule_load_seen = 62;

@@ -1,0 +1,251 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/session_view.proto";
+
+// ---- Shared-File Download Configuration, Actions, and I/O Results (Shell -> Core) ----
+
+// SharedFileIOErrorKind classifies platform local-storage and verification errors reported
+// by shell I/O executors back to Core.
+enum SharedFileIOErrorKind {
+  SHARED_FILE_IO_ERROR_KIND_UNSPECIFIED = 0;
+  // Local filesystem or browser OPFS/storage quota exhausted (ENOSPC / NSFileWriteOutOfSpaceError / QuotaExceededError).
+  // Core normalizes this to SharedFileConfigEvent.storage_full_kind (PHONE_STORAGE_FULL or BROWSER_STORAGE_FULL).
+  SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL = 1;
+  // SHA-256 verification failed, or the partial file is missing/corrupt/truncated.
+  SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH = 2;
+  // Other local I/O error; error_detail carries the platform diagnostic message.
+  SHARED_FILE_IO_ERROR_KIND_OTHER = 3;
+}
+
+// SharedFileConfigEvent configures platform storage policy for Core-driven shared-file downloads.
+// Platform differences (such as Web's 50 MiB local-cache cap and browser vs phone storage-full
+// wording) are expressed strictly via this config; Core contains no platform branches.
+message SharedFileConfigEvent {
+  // Maximum file size (in bytes) retained in local cache after download completion.
+  // 0 means unlimited (up to the protocol limit; Android / iOS).
+  // Web sets 52428800 (50 MiB): files strictly larger than this value are verified and delivered
+  // directly to the user without retaining a local copy, and the card returns to AVAILABLE.
+  int64 local_cache_max_bytes = 1;
+  // Failure kind used when disk-space preflight or local I/O runs out of space.
+  // Defaults to SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL when UNSPECIFIED.
+  // Web sets SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL.
+  SharedFileFailureKind storage_full_kind = 2;
+  // When true, Core immediately emits SharedFileScanLocalEffect to discover persisted
+  // completed copies and resumable partial downloads from local storage.
+  bool scan_local = 3;
+}
+
+// SharedFileLocalEntry describes one persisted completed copy or partial download found in local storage.
+message SharedFileLocalEntry {
+  string session_id = 1;
+  string file_id = 2;
+  // True when a committed complete copy exists locally; false when only partial chunks exist.
+  bool completed = 3;
+  // Actual byte size of the completed file (when completed=true) or .part file (when completed=false).
+  int64 bytes_on_disk = 4;
+  // Metadata persisted alongside the partial/completed file.
+  int64 expected_size_bytes = 5;
+  int32 chunk_bytes = 6;
+  int64 committed_offset = 7;
+  bytes sha256 = 8;
+  bool has_duration = 9;
+  int64 duration_ms = 10;
+}
+
+// SharedFileLocalScannedEvent reports the results of SharedFileScanLocalEffect.
+message SharedFileLocalScannedEvent {
+  uint64 op_id = 1;
+  repeated SharedFileLocalEntry entries = 2;
+  string error = 3;
+}
+
+// SharedFileStartDownloadAction starts, resumes, or retries downloading one shared file.
+message SharedFileStartDownloadAction {
+  string session_id = 1;
+  string file_id = 2;
+  // True when user tapped the card/menu on the currently visible session page, arming the
+  // auto-open-on-completion ticket (revoked if user leaves the session or backgrounds the app).
+  bool auto_open_if_staying = 3;
+}
+
+// SharedFilePauseDownloadAction pauses an in-flight download while preserving already written blocks.
+message SharedFilePauseDownloadAction {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileCancelDownloadAction cancels a download (or clears partial bytes on a paused/failed transfer).
+message SharedFileCancelDownloadAction {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileDeleteLocalAction deletes the local cached copy and any partial blocks for one shared file.
+message SharedFileDeleteLocalAction {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileSetVisibleSessionAction updates which session page is currently visible for auto-open eligibility.
+// Empty session_id indicates no session page is visible and revokes all pending auto-open tickets.
+message SharedFileSetVisibleSessionAction {
+  string session_id = 1;
+}
+
+// SharedFileForgetSessionAction drops all local shared-file state and cached files for one session.
+message SharedFileForgetSessionAction {
+  string session_id = 1;
+}
+
+// SharedFileClearAllAction drops all local shared-file state and cached files across all sessions.
+message SharedFileClearAllAction {}
+
+// SharedFileDurationProbedEvent reports locally probed media duration (in ms) for a video/audio copy.
+message SharedFileDurationProbedEvent {
+  string session_id = 1;
+  string file_id = 2;
+  int64 duration_ms = 3;
+}
+
+// SharedFileLocalMissingEvent notifies Core that a previously downloaded local copy is no longer on disk
+// (e.g., reclaimed by the OS cache cleaner), reverting the card to remote availability.
+message SharedFileLocalMissingEvent {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileDiskInspectedEvent reports the result of SharedFileInspectDiskEffect.
+message SharedFileDiskInspectedEvent {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  // True when the platform was able to determine available space.
+  // When false (e.g. browser without storage quota estimate), Core proceeds and relies on
+  // STORAGE_FULL error normalization during chunk write / commit.
+  bool known = 4;
+  int64 available_bytes = 5;
+  SharedFileIOErrorKind error_kind = 6;
+  string error_detail = 7;
+}
+
+// SharedFileWriteChunkResultEvent reports the result of SharedFileWriteChunkEffect.
+message SharedFileWriteChunkResultEvent {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  bool ok = 4;
+  SharedFileIOErrorKind error_kind = 5;
+  string error_detail = 6;
+}
+
+// SharedFileVerifyAndCommitResultEvent reports the result of SharedFileVerifyAndCommitEffect.
+message SharedFileVerifyAndCommitResultEvent {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  bool ok = 4;
+  SharedFileIOErrorKind error_kind = 5;
+  string error_detail = 6;
+  // Optional media duration (in ms) when probed synchronously during commit.
+  bool has_duration = 7;
+  int64 duration_ms = 8;
+}
+
+// ---- Shared-File Platform I/O & Notification Effects (Core -> Shell) ----
+
+// SharedFileScanLocalEffect instructs the shell to enumerate all persisted completed copies
+// and partial downloads currently in local storage (OPFS on Web, app cache dir on Android/iOS).
+message SharedFileScanLocalEffect {
+  uint64 op_id = 1;
+}
+
+// SharedFileInspectDiskEffect instructs the shell to check available local storage space
+// before starting or resuming a chunked download.
+message SharedFileInspectDiskEffect {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  // Remaining bytes required to complete the file (total_size_bytes - resumed_offset).
+  int64 required_bytes = 4;
+}
+
+// SharedFileWriteChunkEffect instructs the shell to write one validated, unpadded chunk to
+// partial storage and persist partial resume metadata.
+message SharedFileWriteChunkEffect {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  // Sanitized display filename (stored in partial metadata for startup enumeration).
+  string display_name = 4;
+  // Byte offset within the unpadded file where `data` should be written.
+  int64 offset = 5;
+  // Valid unpadded bytes for this chunk (Core has already stripped zero-padding; empty for 0-byte files).
+  bytes data = 6;
+  // Expected total unpadded file size in bytes.
+  int64 total_size_bytes = 7;
+  // Negotiated block size in bytes.
+  int32 chunk_bytes = 8;
+  // New committed byte offset persisted in metadata once this write succeeds.
+  int64 committed_offset = 9;
+  // Required 32-byte expected SHA-256 digest persisted in metadata for resume validation.
+  bytes expected_sha256 = 10;
+  // When true (starting fresh at offset 0), shell recreates/truncates any stale partial file.
+  bool reset_partial = 11;
+}
+
+// SharedFileVerifyAndCommitEffect instructs the shell to compute SHA-256 over the first
+// `total_size_bytes` of the partial file, compare with `expected_sha256`, and either commit
+// to local cache or deliver directly (when deliver_only=true).
+message SharedFileVerifyAndCommitEffect {
+  uint64 op_id = 1;
+  string session_id = 2;
+  string file_id = 3;
+  // Sanitized filename used for the committed local file or browser save dialog.
+  string display_name = 4;
+  // Exact unpadded byte length to verify and commit.
+  int64 total_size_bytes = 5;
+  // Required 32-byte expected SHA-256 digest.
+  bytes expected_sha256 = 6;
+  // When true (size_bytes > local_cache_max_bytes), shell verifies SHA-256, triggers direct
+  // user delivery/save, and deletes the partial without retaining a local cache copy.
+  bool deliver_only = 7;
+  // True when the file is video or audio and the shell may probe local media duration on commit.
+  bool probe_duration = 8;
+}
+
+// SharedFileDeletePartialEffect instructs the shell to remove partial chunks and partial metadata.
+message SharedFileDeletePartialEffect {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileDeleteLocalEffect instructs the shell to remove both the committed local copy and any partial files.
+message SharedFileDeleteLocalEffect {
+  string session_id = 1;
+  string file_id = 2;
+}
+
+// SharedFileDeleteSessionEffect instructs the shell to remove all cached and partial files for a session.
+message SharedFileDeleteSessionEffect {
+  string session_id = 1;
+}
+
+// SharedFileClearAllEffect instructs the shell to remove all cached and partial shared files across all sessions.
+message SharedFileClearAllEffect {}
+
+// SharedFileCompletedEffect notifies the shell that a shared-file download finished and verified.
+message SharedFileCompletedEffect {
+  string session_id = 1;
+  string file_id = 2;
+  string display_name = 3;
+  SharedFileKind kind = 4;
+  int64 size_bytes = 5;
+  // True when the user initiated this download while viewing this session and remained on the
+  // session page in the foreground until completion; shell should open the file directly.
+  bool auto_open = 6;
+  // True when the file exceeded local_cache_max_bytes and was delivered directly without
+  // retaining a local copy (card returned to AVAILABLE).
+  bool deliver_only = 7;
+}

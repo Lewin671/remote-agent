@@ -112,6 +112,20 @@ public  final class Event extends
     SESSION_IMAGE_VIEWER_OPEN(217),
     SESSION_IMAGE_VIEWER_NAVIGATE(218),
     SESSION_IMAGE_VIEWER_CLOSE(219),
+    SHARED_FILE_CONFIG(220),
+    SHARED_FILE_LOCAL_SCANNED(221),
+    SHARED_FILE_START_DOWNLOAD(222),
+    SHARED_FILE_PAUSE_DOWNLOAD(223),
+    SHARED_FILE_CANCEL_DOWNLOAD(224),
+    SHARED_FILE_DELETE_LOCAL(225),
+    SHARED_FILE_SET_VISIBLE_SESSION(226),
+    SHARED_FILE_FORGET_SESSION(227),
+    SHARED_FILE_DURATION_PROBED(228),
+    SHARED_FILE_LOCAL_MISSING(229),
+    SHARED_FILE_CLEAR_ALL(230),
+    SHARED_FILE_DISK_INSPECTED(231),
+    SHARED_FILE_WRITE_CHUNK_RESULT(232),
+    SHARED_FILE_VERIFY_AND_COMMIT_RESULT(233),
     SCHEDULE_CACHE_LOADED(300),
     SCHEDULE_SEEN_LOADED(301),
     SCHEDULE_LOCAL_CONTEXT(302),
@@ -285,6 +299,20 @@ public  final class Event extends
         case 217: return SESSION_IMAGE_VIEWER_OPEN;
         case 218: return SESSION_IMAGE_VIEWER_NAVIGATE;
         case 219: return SESSION_IMAGE_VIEWER_CLOSE;
+        case 220: return SHARED_FILE_CONFIG;
+        case 221: return SHARED_FILE_LOCAL_SCANNED;
+        case 222: return SHARED_FILE_START_DOWNLOAD;
+        case 223: return SHARED_FILE_PAUSE_DOWNLOAD;
+        case 224: return SHARED_FILE_CANCEL_DOWNLOAD;
+        case 225: return SHARED_FILE_DELETE_LOCAL;
+        case 226: return SHARED_FILE_SET_VISIBLE_SESSION;
+        case 227: return SHARED_FILE_FORGET_SESSION;
+        case 228: return SHARED_FILE_DURATION_PROBED;
+        case 229: return SHARED_FILE_LOCAL_MISSING;
+        case 230: return SHARED_FILE_CLEAR_ALL;
+        case 231: return SHARED_FILE_DISK_INSPECTED;
+        case 232: return SHARED_FILE_WRITE_CHUNK_RESULT;
+        case 233: return SHARED_FILE_VERIFY_AND_COMMIT_RESULT;
         case 300: return SCHEDULE_CACHE_LOADED;
         case 301: return SCHEDULE_SEEN_LOADED;
         case 302: return SCHEDULE_LOCAL_CONTEXT;
@@ -5100,6 +5128,734 @@ public  final class Event extends
    */
   private void clearSessionImageViewerClose() {
     if (eventCase_ == 219) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_CONFIG_FIELD_NUMBER = 220;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileConfig() {
+    return eventCase_ == 220;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent getSharedFileConfig() {
+    if (eventCase_ == 220) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileConfig(io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 220;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileConfig(io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 220 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 220;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+   */
+  private void clearSharedFileConfig() {
+    if (eventCase_ == 220) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_LOCAL_SCANNED_FIELD_NUMBER = 221;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileLocalScanned() {
+    return eventCase_ == 221;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent getSharedFileLocalScanned() {
+    if (eventCase_ == 221) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileLocalScanned(io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 221;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileLocalScanned(io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 221 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 221;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+   */
+  private void clearSharedFileLocalScanned() {
+    if (eventCase_ == 221) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_START_DOWNLOAD_FIELD_NUMBER = 222;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileStartDownload() {
+    return eventCase_ == 222;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction getSharedFileStartDownload() {
+    if (eventCase_ == 222) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileStartDownload(io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 222;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileStartDownload(io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 222 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 222;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+   */
+  private void clearSharedFileStartDownload() {
+    if (eventCase_ == 222) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_PAUSE_DOWNLOAD_FIELD_NUMBER = 223;
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFilePauseDownload() {
+    return eventCase_ == 223;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction getSharedFilePauseDownload() {
+    if (eventCase_ == 223) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFilePauseDownload(io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 223;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFilePauseDownload(io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 223 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 223;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+   */
+  private void clearSharedFilePauseDownload() {
+    if (eventCase_ == 223) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_CANCEL_DOWNLOAD_FIELD_NUMBER = 224;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileCancelDownload() {
+    return eventCase_ == 224;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction getSharedFileCancelDownload() {
+    if (eventCase_ == 224) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileCancelDownload(io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 224;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileCancelDownload(io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 224 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 224;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+   */
+  private void clearSharedFileCancelDownload() {
+    if (eventCase_ == 224) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DELETE_LOCAL_FIELD_NUMBER = 225;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDeleteLocal() {
+    return eventCase_ == 225;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction getSharedFileDeleteLocal() {
+    if (eventCase_ == 225) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 225;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 225 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 225;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+   */
+  private void clearSharedFileDeleteLocal() {
+    if (eventCase_ == 225) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_SET_VISIBLE_SESSION_FIELD_NUMBER = 226;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileSetVisibleSession() {
+    return eventCase_ == 226;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction getSharedFileSetVisibleSession() {
+    if (eventCase_ == 226) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileSetVisibleSession(io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 226;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileSetVisibleSession(io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 226 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 226;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+   */
+  private void clearSharedFileSetVisibleSession() {
+    if (eventCase_ == 226) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_FORGET_SESSION_FIELD_NUMBER = 227;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileForgetSession() {
+    return eventCase_ == 227;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction getSharedFileForgetSession() {
+    if (eventCase_ == 227) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileForgetSession(io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 227;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileForgetSession(io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 227 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 227;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+   */
+  private void clearSharedFileForgetSession() {
+    if (eventCase_ == 227) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DURATION_PROBED_FIELD_NUMBER = 228;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDurationProbed() {
+    return eventCase_ == 228;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent getSharedFileDurationProbed() {
+    if (eventCase_ == 228) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDurationProbed(io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 228;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDurationProbed(io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 228 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 228;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+   */
+  private void clearSharedFileDurationProbed() {
+    if (eventCase_ == 228) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_LOCAL_MISSING_FIELD_NUMBER = 229;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileLocalMissing() {
+    return eventCase_ == 229;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent getSharedFileLocalMissing() {
+    if (eventCase_ == 229) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileLocalMissing(io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 229;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileLocalMissing(io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 229 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 229;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+   */
+  private void clearSharedFileLocalMissing() {
+    if (eventCase_ == 229) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_CLEAR_ALL_FIELD_NUMBER = 230;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileClearAll() {
+    return eventCase_ == 230;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction getSharedFileClearAll() {
+    if (eventCase_ == 230) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 230;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 230 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 230;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+   */
+  private void clearSharedFileClearAll() {
+    if (eventCase_ == 230) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_DISK_INSPECTED_FIELD_NUMBER = 231;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileDiskInspected() {
+    return eventCase_ == 231;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent getSharedFileDiskInspected() {
+    if (eventCase_ == 231) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileDiskInspected(io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 231;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileDiskInspected(io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 231 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 231;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+   */
+  private void clearSharedFileDiskInspected() {
+    if (eventCase_ == 231) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_WRITE_CHUNK_RESULT_FIELD_NUMBER = 232;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileWriteChunkResult() {
+    return eventCase_ == 232;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent getSharedFileWriteChunkResult() {
+    if (eventCase_ == 232) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileWriteChunkResult(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 232;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileWriteChunkResult(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 232 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 232;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+   */
+  private void clearSharedFileWriteChunkResult() {
+    if (eventCase_ == 232) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SHARED_FILE_VERIFY_AND_COMMIT_RESULT_FIELD_NUMBER = 233;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSharedFileVerifyAndCommitResult() {
+    return eventCase_ == 233;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent getSharedFileVerifyAndCommitResult() {
+    if (eventCase_ == 233) {
+       return (io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFileVerifyAndCommitResult(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 233;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSharedFileVerifyAndCommitResult(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 233 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 233;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+   */
+  private void clearSharedFileVerifyAndCommitResult() {
+    if (eventCase_ == 233) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -13305,6 +14061,678 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileConfig() {
+      return instance.hasSharedFileConfig();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent getSharedFileConfig() {
+      return instance.getSharedFileConfig();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    public Builder setSharedFileConfig(io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent value) {
+      copyOnWrite();
+      instance.setSharedFileConfig(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    public Builder setSharedFileConfig(
+        io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileConfig(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    public Builder mergeSharedFileConfig(io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileConfig(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileConfigEvent shared_file_config = 220 [json_name = "sharedFileConfig"];</code>
+     */
+    public Builder clearSharedFileConfig() {
+      copyOnWrite();
+      instance.clearSharedFileConfig();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileLocalScanned() {
+      return instance.hasSharedFileLocalScanned();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent getSharedFileLocalScanned() {
+      return instance.getSharedFileLocalScanned();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    public Builder setSharedFileLocalScanned(io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent value) {
+      copyOnWrite();
+      instance.setSharedFileLocalScanned(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    public Builder setSharedFileLocalScanned(
+        io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileLocalScanned(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    public Builder mergeSharedFileLocalScanned(io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileLocalScanned(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalScannedEvent shared_file_local_scanned = 221 [json_name = "sharedFileLocalScanned"];</code>
+     */
+    public Builder clearSharedFileLocalScanned() {
+      copyOnWrite();
+      instance.clearSharedFileLocalScanned();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileStartDownload() {
+      return instance.hasSharedFileStartDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction getSharedFileStartDownload() {
+      return instance.getSharedFileStartDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    public Builder setSharedFileStartDownload(io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction value) {
+      copyOnWrite();
+      instance.setSharedFileStartDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    public Builder setSharedFileStartDownload(
+        io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileStartDownload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    public Builder mergeSharedFileStartDownload(io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileStartDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileStartDownloadAction shared_file_start_download = 222 [json_name = "sharedFileStartDownload"];</code>
+     */
+    public Builder clearSharedFileStartDownload() {
+      copyOnWrite();
+      instance.clearSharedFileStartDownload();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFilePauseDownload() {
+      return instance.hasSharedFilePauseDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction getSharedFilePauseDownload() {
+      return instance.getSharedFilePauseDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    public Builder setSharedFilePauseDownload(io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction value) {
+      copyOnWrite();
+      instance.setSharedFilePauseDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    public Builder setSharedFilePauseDownload(
+        io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFilePauseDownload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    public Builder mergeSharedFilePauseDownload(io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction value) {
+      copyOnWrite();
+      instance.mergeSharedFilePauseDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePauseDownloadAction shared_file_pause_download = 223 [json_name = "sharedFilePauseDownload"];</code>
+     */
+    public Builder clearSharedFilePauseDownload() {
+      copyOnWrite();
+      instance.clearSharedFilePauseDownload();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileCancelDownload() {
+      return instance.hasSharedFileCancelDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction getSharedFileCancelDownload() {
+      return instance.getSharedFileCancelDownload();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    public Builder setSharedFileCancelDownload(io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction value) {
+      copyOnWrite();
+      instance.setSharedFileCancelDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    public Builder setSharedFileCancelDownload(
+        io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileCancelDownload(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    public Builder mergeSharedFileCancelDownload(io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileCancelDownload(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCancelDownloadAction shared_file_cancel_download = 224 [json_name = "sharedFileCancelDownload"];</code>
+     */
+    public Builder clearSharedFileCancelDownload() {
+      copyOnWrite();
+      instance.clearSharedFileCancelDownload();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDeleteLocal() {
+      return instance.hasSharedFileDeleteLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction getSharedFileDeleteLocal() {
+      return instance.getSharedFileDeleteLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder setSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction value) {
+      copyOnWrite();
+      instance.setSharedFileDeleteLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder setSharedFileDeleteLocal(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDeleteLocal(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder mergeSharedFileDeleteLocal(io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileDeleteLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDeleteLocalAction shared_file_delete_local = 225 [json_name = "sharedFileDeleteLocal"];</code>
+     */
+    public Builder clearSharedFileDeleteLocal() {
+      copyOnWrite();
+      instance.clearSharedFileDeleteLocal();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileSetVisibleSession() {
+      return instance.hasSharedFileSetVisibleSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction getSharedFileSetVisibleSession() {
+      return instance.getSharedFileSetVisibleSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    public Builder setSharedFileSetVisibleSession(io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction value) {
+      copyOnWrite();
+      instance.setSharedFileSetVisibleSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    public Builder setSharedFileSetVisibleSession(
+        io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileSetVisibleSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    public Builder mergeSharedFileSetVisibleSession(io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileSetVisibleSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileSetVisibleSessionAction shared_file_set_visible_session = 226 [json_name = "sharedFileSetVisibleSession"];</code>
+     */
+    public Builder clearSharedFileSetVisibleSession() {
+      copyOnWrite();
+      instance.clearSharedFileSetVisibleSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileForgetSession() {
+      return instance.hasSharedFileForgetSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction getSharedFileForgetSession() {
+      return instance.getSharedFileForgetSession();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    public Builder setSharedFileForgetSession(io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction value) {
+      copyOnWrite();
+      instance.setSharedFileForgetSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    public Builder setSharedFileForgetSession(
+        io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileForgetSession(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    public Builder mergeSharedFileForgetSession(io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileForgetSession(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileForgetSessionAction shared_file_forget_session = 227 [json_name = "sharedFileForgetSession"];</code>
+     */
+    public Builder clearSharedFileForgetSession() {
+      copyOnWrite();
+      instance.clearSharedFileForgetSession();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDurationProbed() {
+      return instance.hasSharedFileDurationProbed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent getSharedFileDurationProbed() {
+      return instance.getSharedFileDurationProbed();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    public Builder setSharedFileDurationProbed(io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent value) {
+      copyOnWrite();
+      instance.setSharedFileDurationProbed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    public Builder setSharedFileDurationProbed(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDurationProbed(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    public Builder mergeSharedFileDurationProbed(io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileDurationProbed(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDurationProbedEvent shared_file_duration_probed = 228 [json_name = "sharedFileDurationProbed"];</code>
+     */
+    public Builder clearSharedFileDurationProbed() {
+      copyOnWrite();
+      instance.clearSharedFileDurationProbed();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileLocalMissing() {
+      return instance.hasSharedFileLocalMissing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent getSharedFileLocalMissing() {
+      return instance.getSharedFileLocalMissing();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    public Builder setSharedFileLocalMissing(io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent value) {
+      copyOnWrite();
+      instance.setSharedFileLocalMissing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    public Builder setSharedFileLocalMissing(
+        io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileLocalMissing(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    public Builder mergeSharedFileLocalMissing(io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileLocalMissing(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileLocalMissingEvent shared_file_local_missing = 229 [json_name = "sharedFileLocalMissing"];</code>
+     */
+    public Builder clearSharedFileLocalMissing() {
+      copyOnWrite();
+      instance.clearSharedFileLocalMissing();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileClearAll() {
+      return instance.hasSharedFileClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction getSharedFileClearAll() {
+      return instance.getSharedFileClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder setSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction value) {
+      copyOnWrite();
+      instance.setSharedFileClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder setSharedFileClearAll(
+        io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileClearAll(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder mergeSharedFileClearAll(io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction value) {
+      copyOnWrite();
+      instance.mergeSharedFileClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileClearAllAction shared_file_clear_all = 230 [json_name = "sharedFileClearAll"];</code>
+     */
+    public Builder clearSharedFileClearAll() {
+      copyOnWrite();
+      instance.clearSharedFileClearAll();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileDiskInspected() {
+      return instance.hasSharedFileDiskInspected();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent getSharedFileDiskInspected() {
+      return instance.getSharedFileDiskInspected();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    public Builder setSharedFileDiskInspected(io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent value) {
+      copyOnWrite();
+      instance.setSharedFileDiskInspected(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    public Builder setSharedFileDiskInspected(
+        io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileDiskInspected(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    public Builder mergeSharedFileDiskInspected(io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileDiskInspected(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileDiskInspectedEvent shared_file_disk_inspected = 231 [json_name = "sharedFileDiskInspected"];</code>
+     */
+    public Builder clearSharedFileDiskInspected() {
+      copyOnWrite();
+      instance.clearSharedFileDiskInspected();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileWriteChunkResult() {
+      return instance.hasSharedFileWriteChunkResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent getSharedFileWriteChunkResult() {
+      return instance.getSharedFileWriteChunkResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    public Builder setSharedFileWriteChunkResult(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent value) {
+      copyOnWrite();
+      instance.setSharedFileWriteChunkResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    public Builder setSharedFileWriteChunkResult(
+        io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileWriteChunkResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    public Builder mergeSharedFileWriteChunkResult(io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileWriteChunkResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232 [json_name = "sharedFileWriteChunkResult"];</code>
+     */
+    public Builder clearSharedFileWriteChunkResult() {
+      copyOnWrite();
+      instance.clearSharedFileWriteChunkResult();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSharedFileVerifyAndCommitResult() {
+      return instance.hasSharedFileVerifyAndCommitResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent getSharedFileVerifyAndCommitResult() {
+      return instance.getSharedFileVerifyAndCommitResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    public Builder setSharedFileVerifyAndCommitResult(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent value) {
+      copyOnWrite();
+      instance.setSharedFileVerifyAndCommitResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    public Builder setSharedFileVerifyAndCommitResult(
+        io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFileVerifyAndCommitResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    public Builder mergeSharedFileVerifyAndCommitResult(io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent value) {
+      copyOnWrite();
+      instance.mergeSharedFileVerifyAndCommitResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233 [json_name = "sharedFileVerifyAndCommitResult"];</code>
+     */
+    public Builder clearSharedFileVerifyAndCommitResult() {
+      copyOnWrite();
+      instance.clearSharedFileVerifyAndCommitResult();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
      */
     @java.lang.Override
@@ -16850,6 +18278,20 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SessionImageViewerOpenAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionImageViewerNavigateAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionImageViewerCloseAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileConfigEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileStartDownloadAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFilePauseDownloadAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileCancelDownloadAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileSetVisibleSessionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileForgetSessionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDurationProbedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileLocalMissingEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileClearAllAction.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent.class,
+            io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
@@ -16943,7 +18385,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00a2\u0001\u0000\u0001\u01d1\u00a2\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00b0\u0001\u0000\u0001\u01d1\u00b0\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -16953,21 +18395,23 @@ public  final class Event extends
               "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
               "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
               "<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u00d8<\u0000\u00d9<\u0000\u00da<\u0000" +
-              "\u00db<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130<\u0000\u0136" +
-              "<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000\u0141<\u0000" +
-              "\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a<\u0000\u014b" +
-              "<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000\u0153<\u0000" +
-              "\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159<\u0000\u015a" +
-              "<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000\u0160<\u0000" +
-              "\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a<\u0000\u016b" +
-              "<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000\u0179<\u0000" +
-              "\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f<\u0000\u0180" +
-              "<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000\u0197<\u0000" +
-              "\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d<\u0000\u019e" +
-              "<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000\u01a4<\u0000" +
-              "\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9<\u0000\u01ca" +
-              "<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000\u01d0<\u0000" +
-              "\u01d1<\u0000";
+              "\u00db<\u0000\u00dc<\u0000\u00dd<\u0000\u00de<\u0000\u00df<\u0000\u00e0<\u0000\u00e1" +
+              "<\u0000\u00e2<\u0000\u00e3<\u0000\u00e4<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7<\u0000" +
+              "\u00e8<\u0000\u00e9<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130" +
+              "<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000" +
+              "\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a" +
+              "<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000" +
+              "\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159" +
+              "<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000" +
+              "\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a" +
+              "<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000" +
+              "\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f" +
+              "<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000" +
+              "\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d" +
+              "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
+              "\u01a4<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
+              "<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000" +
+              "\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

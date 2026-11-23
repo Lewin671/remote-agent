@@ -24,22 +24,23 @@ const (
 type TimerKind int32
 
 const (
-	TimerKind_TIMER_KIND_UNSPECIFIED         TimerKind = 0
-	TimerKind_TIMER_KIND_RECONNECT           TimerKind = 1
-	TimerKind_TIMER_KIND_STREAM_OPEN         TimerKind = 2
-	TimerKind_TIMER_KIND_LIVENESS            TimerKind = 3
-	TimerKind_TIMER_KIND_LINK_GRACE          TimerKind = 4
-	TimerKind_TIMER_KIND_LIST_RETRY          TimerKind = 5
-	TimerKind_TIMER_KIND_PREFS_RETRY         TimerKind = 6
-	TimerKind_TIMER_KIND_HISTORY_SWEEP       TimerKind = 7
-	TimerKind_TIMER_KIND_LIVE_POLL           TimerKind = 8
-	TimerKind_TIMER_KIND_COMMAND_RETRY       TimerKind = 9
-	TimerKind_TIMER_KIND_SESSION_UNDO        TimerKind = 10
-	TimerKind_TIMER_KIND_SESSION_STEER_GRACE TimerKind = 11
-	TimerKind_TIMER_KIND_DIRECT_ENGINE       TimerKind = 12
-	TimerKind_TIMER_KIND_DIRECT_SESSION      TimerKind = 13
-	TimerKind_TIMER_KIND_TERMINAL_REOPEN     TimerKind = 14
-	TimerKind_TIMER_KIND_SECURITY_POLL       TimerKind = 15
+	TimerKind_TIMER_KIND_UNSPECIFIED           TimerKind = 0
+	TimerKind_TIMER_KIND_RECONNECT             TimerKind = 1
+	TimerKind_TIMER_KIND_STREAM_OPEN           TimerKind = 2
+	TimerKind_TIMER_KIND_LIVENESS              TimerKind = 3
+	TimerKind_TIMER_KIND_LINK_GRACE            TimerKind = 4
+	TimerKind_TIMER_KIND_LIST_RETRY            TimerKind = 5
+	TimerKind_TIMER_KIND_PREFS_RETRY           TimerKind = 6
+	TimerKind_TIMER_KIND_HISTORY_SWEEP         TimerKind = 7
+	TimerKind_TIMER_KIND_LIVE_POLL             TimerKind = 8
+	TimerKind_TIMER_KIND_COMMAND_RETRY         TimerKind = 9
+	TimerKind_TIMER_KIND_SESSION_UNDO          TimerKind = 10
+	TimerKind_TIMER_KIND_SESSION_STEER_GRACE   TimerKind = 11
+	TimerKind_TIMER_KIND_DIRECT_ENGINE         TimerKind = 12
+	TimerKind_TIMER_KIND_DIRECT_SESSION        TimerKind = 13
+	TimerKind_TIMER_KIND_TERMINAL_REOPEN       TimerKind = 14
+	TimerKind_TIMER_KIND_SECURITY_POLL         TimerKind = 15
+	TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT TimerKind = 16
 )
 
 type OutcomeSource int32
@@ -4633,6 +4634,104 @@ type Event_SessionImageViewerClose struct {
 
 func (*Event_SessionImageViewerClose) isEvent_Event() {}
 
+type Event_SharedFileConfig struct {
+	_                [0]func()
+	SharedFileConfig *SharedFileConfigEvent
+}
+
+func (*Event_SharedFileConfig) isEvent_Event() {}
+
+type Event_SharedFileLocalScanned struct {
+	_                      [0]func()
+	SharedFileLocalScanned *SharedFileLocalScannedEvent
+}
+
+func (*Event_SharedFileLocalScanned) isEvent_Event() {}
+
+type Event_SharedFileStartDownload struct {
+	_                       [0]func()
+	SharedFileStartDownload *SharedFileStartDownloadAction
+}
+
+func (*Event_SharedFileStartDownload) isEvent_Event() {}
+
+type Event_SharedFilePauseDownload struct {
+	_                       [0]func()
+	SharedFilePauseDownload *SharedFilePauseDownloadAction
+}
+
+func (*Event_SharedFilePauseDownload) isEvent_Event() {}
+
+type Event_SharedFileCancelDownload struct {
+	_                        [0]func()
+	SharedFileCancelDownload *SharedFileCancelDownloadAction
+}
+
+func (*Event_SharedFileCancelDownload) isEvent_Event() {}
+
+type Event_SharedFileDeleteLocal struct {
+	_                     [0]func()
+	SharedFileDeleteLocal *SharedFileDeleteLocalAction
+}
+
+func (*Event_SharedFileDeleteLocal) isEvent_Event() {}
+
+type Event_SharedFileSetVisibleSession struct {
+	_                           [0]func()
+	SharedFileSetVisibleSession *SharedFileSetVisibleSessionAction
+}
+
+func (*Event_SharedFileSetVisibleSession) isEvent_Event() {}
+
+type Event_SharedFileForgetSession struct {
+	_                       [0]func()
+	SharedFileForgetSession *SharedFileForgetSessionAction
+}
+
+func (*Event_SharedFileForgetSession) isEvent_Event() {}
+
+type Event_SharedFileDurationProbed struct {
+	_                        [0]func()
+	SharedFileDurationProbed *SharedFileDurationProbedEvent
+}
+
+func (*Event_SharedFileDurationProbed) isEvent_Event() {}
+
+type Event_SharedFileLocalMissing struct {
+	_                      [0]func()
+	SharedFileLocalMissing *SharedFileLocalMissingEvent
+}
+
+func (*Event_SharedFileLocalMissing) isEvent_Event() {}
+
+type Event_SharedFileClearAll struct {
+	_                  [0]func()
+	SharedFileClearAll *SharedFileClearAllAction
+}
+
+func (*Event_SharedFileClearAll) isEvent_Event() {}
+
+type Event_SharedFileDiskInspected struct {
+	_                       [0]func()
+	SharedFileDiskInspected *SharedFileDiskInspectedEvent
+}
+
+func (*Event_SharedFileDiskInspected) isEvent_Event() {}
+
+type Event_SharedFileWriteChunkResult struct {
+	_                          [0]func()
+	SharedFileWriteChunkResult *SharedFileWriteChunkResultEvent
+}
+
+func (*Event_SharedFileWriteChunkResult) isEvent_Event() {}
+
+type Event_SharedFileVerifyAndCommitResult struct {
+	_                               [0]func()
+	SharedFileVerifyAndCommitResult *SharedFileVerifyAndCommitResultEvent
+}
+
+func (*Event_SharedFileVerifyAndCommitResult) isEvent_Event() {}
+
 type Event_ScheduleCacheLoaded struct {
 	_                   [0]func()
 	ScheduleCacheLoaded *ScheduleCacheLoadedEvent
@@ -5654,6 +5753,90 @@ func (m *Event) GetSessionImageViewerClose() *SessionImageViewerCloseAction {
 	}
 	return nil
 }
+func (m *Event) GetSharedFileConfig() *SharedFileConfigEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileConfig); ok && x != nil {
+		return x.SharedFileConfig
+	}
+	return nil
+}
+func (m *Event) GetSharedFileLocalScanned() *SharedFileLocalScannedEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileLocalScanned); ok && x != nil {
+		return x.SharedFileLocalScanned
+	}
+	return nil
+}
+func (m *Event) GetSharedFileStartDownload() *SharedFileStartDownloadAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileStartDownload); ok && x != nil {
+		return x.SharedFileStartDownload
+	}
+	return nil
+}
+func (m *Event) GetSharedFilePauseDownload() *SharedFilePauseDownloadAction {
+	if x, ok := m.GetEvent().(*Event_SharedFilePauseDownload); ok && x != nil {
+		return x.SharedFilePauseDownload
+	}
+	return nil
+}
+func (m *Event) GetSharedFileCancelDownload() *SharedFileCancelDownloadAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileCancelDownload); ok && x != nil {
+		return x.SharedFileCancelDownload
+	}
+	return nil
+}
+func (m *Event) GetSharedFileDeleteLocal() *SharedFileDeleteLocalAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileDeleteLocal); ok && x != nil {
+		return x.SharedFileDeleteLocal
+	}
+	return nil
+}
+func (m *Event) GetSharedFileSetVisibleSession() *SharedFileSetVisibleSessionAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileSetVisibleSession); ok && x != nil {
+		return x.SharedFileSetVisibleSession
+	}
+	return nil
+}
+func (m *Event) GetSharedFileForgetSession() *SharedFileForgetSessionAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileForgetSession); ok && x != nil {
+		return x.SharedFileForgetSession
+	}
+	return nil
+}
+func (m *Event) GetSharedFileDurationProbed() *SharedFileDurationProbedEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileDurationProbed); ok && x != nil {
+		return x.SharedFileDurationProbed
+	}
+	return nil
+}
+func (m *Event) GetSharedFileLocalMissing() *SharedFileLocalMissingEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileLocalMissing); ok && x != nil {
+		return x.SharedFileLocalMissing
+	}
+	return nil
+}
+func (m *Event) GetSharedFileClearAll() *SharedFileClearAllAction {
+	if x, ok := m.GetEvent().(*Event_SharedFileClearAll); ok && x != nil {
+		return x.SharedFileClearAll
+	}
+	return nil
+}
+func (m *Event) GetSharedFileDiskInspected() *SharedFileDiskInspectedEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileDiskInspected); ok && x != nil {
+		return x.SharedFileDiskInspected
+	}
+	return nil
+}
+func (m *Event) GetSharedFileWriteChunkResult() *SharedFileWriteChunkResultEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileWriteChunkResult); ok && x != nil {
+		return x.SharedFileWriteChunkResult
+	}
+	return nil
+}
+func (m *Event) GetSharedFileVerifyAndCommitResult() *SharedFileVerifyAndCommitResultEvent {
+	if x, ok := m.GetEvent().(*Event_SharedFileVerifyAndCommitResult); ok && x != nil {
+		return x.SharedFileVerifyAndCommitResult
+	}
+	return nil
+}
 func (m *Event) GetScheduleCacheLoaded() *ScheduleCacheLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_ScheduleCacheLoaded); ok && x != nil {
 		return x.ScheduleCacheLoaded
@@ -6108,24 +6291,26 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart3(num, wtyp, bp)
 	case num <= 212:
 		return m.extraUnmarshalPart4(num, wtyp, bp)
-	case num <= 304:
+	case num <= 224:
 		return m.extraUnmarshalPart5(num, wtyp, bp)
-	case num <= 326:
+	case num <= 302:
 		return m.extraUnmarshalPart6(num, wtyp, bp)
-	case num <= 343:
+	case num <= 324:
 		return m.extraUnmarshalPart7(num, wtyp, bp)
-	case num <= 355:
+	case num <= 341:
 		return m.extraUnmarshalPart8(num, wtyp, bp)
-	case num <= 379:
+	case num <= 353:
 		return m.extraUnmarshalPart9(num, wtyp, bp)
-	case num <= 408:
+	case num <= 377:
 		return m.extraUnmarshalPart10(num, wtyp, bp)
-	case num <= 420:
+	case num <= 406:
 		return m.extraUnmarshalPart11(num, wtyp, bp)
-	case num <= 463:
+	case num <= 418:
 		return m.extraUnmarshalPart12(num, wtyp, bp)
-	case num <= 465:
+	case num <= 461:
 		return m.extraUnmarshalPart13(num, wtyp, bp)
+	case num <= 465:
+		return m.extraUnmarshalPart14(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -6695,6 +6880,122 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SessionImageViewerClose
+		case 220:
+			w, _ := m.Event.(*Event_SharedFileConfig)
+			if w == nil || w.SharedFileConfig == nil {
+				w = &Event_SharedFileConfig{SharedFileConfig: &SharedFileConfigEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileConfig
+		case 221:
+			w, _ := m.Event.(*Event_SharedFileLocalScanned)
+			if w == nil || w.SharedFileLocalScanned == nil {
+				w = &Event_SharedFileLocalScanned{SharedFileLocalScanned: &SharedFileLocalScannedEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileLocalScanned
+		case 222:
+			w, _ := m.Event.(*Event_SharedFileStartDownload)
+			if w == nil || w.SharedFileStartDownload == nil {
+				w = &Event_SharedFileStartDownload{SharedFileStartDownload: &SharedFileStartDownloadAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileStartDownload
+		case 223:
+			w, _ := m.Event.(*Event_SharedFilePauseDownload)
+			if w == nil || w.SharedFilePauseDownload == nil {
+				w = &Event_SharedFilePauseDownload{SharedFilePauseDownload: &SharedFilePauseDownloadAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFilePauseDownload
+		case 224:
+			w, _ := m.Event.(*Event_SharedFileCancelDownload)
+			if w == nil || w.SharedFileCancelDownload == nil {
+				w = &Event_SharedFileCancelDownload{SharedFileCancelDownload: &SharedFileCancelDownloadAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileCancelDownload
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 225:
+			w, _ := m.Event.(*Event_SharedFileDeleteLocal)
+			if w == nil || w.SharedFileDeleteLocal == nil {
+				w = &Event_SharedFileDeleteLocal{SharedFileDeleteLocal: &SharedFileDeleteLocalAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileDeleteLocal
+		case 226:
+			w, _ := m.Event.(*Event_SharedFileSetVisibleSession)
+			if w == nil || w.SharedFileSetVisibleSession == nil {
+				w = &Event_SharedFileSetVisibleSession{SharedFileSetVisibleSession: &SharedFileSetVisibleSessionAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileSetVisibleSession
+		case 227:
+			w, _ := m.Event.(*Event_SharedFileForgetSession)
+			if w == nil || w.SharedFileForgetSession == nil {
+				w = &Event_SharedFileForgetSession{SharedFileForgetSession: &SharedFileForgetSessionAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileForgetSession
+		case 228:
+			w, _ := m.Event.(*Event_SharedFileDurationProbed)
+			if w == nil || w.SharedFileDurationProbed == nil {
+				w = &Event_SharedFileDurationProbed{SharedFileDurationProbed: &SharedFileDurationProbedEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileDurationProbed
+		case 229:
+			w, _ := m.Event.(*Event_SharedFileLocalMissing)
+			if w == nil || w.SharedFileLocalMissing == nil {
+				w = &Event_SharedFileLocalMissing{SharedFileLocalMissing: &SharedFileLocalMissingEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileLocalMissing
+		case 230:
+			w, _ := m.Event.(*Event_SharedFileClearAll)
+			if w == nil || w.SharedFileClearAll == nil {
+				w = &Event_SharedFileClearAll{SharedFileClearAll: &SharedFileClearAllAction{}}
+				m.Event = w
+			}
+			sub = w.SharedFileClearAll
+		case 231:
+			w, _ := m.Event.(*Event_SharedFileDiskInspected)
+			if w == nil || w.SharedFileDiskInspected == nil {
+				w = &Event_SharedFileDiskInspected{SharedFileDiskInspected: &SharedFileDiskInspectedEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileDiskInspected
+		case 232:
+			w, _ := m.Event.(*Event_SharedFileWriteChunkResult)
+			if w == nil || w.SharedFileWriteChunkResult == nil {
+				w = &Event_SharedFileWriteChunkResult{SharedFileWriteChunkResult: &SharedFileWriteChunkResultEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileWriteChunkResult
+		case 233:
+			w, _ := m.Event.(*Event_SharedFileVerifyAndCommitResult)
+			if w == nil || w.SharedFileVerifyAndCommitResult == nil {
+				w = &Event_SharedFileVerifyAndCommitResult{SharedFileVerifyAndCommitResult: &SharedFileVerifyAndCommitResultEvent{}}
+				m.Event = w
+			}
+			sub = w.SharedFileVerifyAndCommitResult
 		case 300:
 			w, _ := m.Event.(*Event_ScheduleCacheLoaded)
 			if w == nil || w.ScheduleCacheLoaded == nil {
@@ -6716,6 +7017,24 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleLocalContext
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 303:
 			w, _ := m.Event.(*Event_ScheduleRefresh)
 			if w == nil || w.ScheduleRefresh == nil {
@@ -6730,24 +7049,6 @@ func (m *Event) extraUnmarshalPart5(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleSetVisibleSession
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 310:
 			w, _ := m.Event.(*Event_ScheduleListOpen)
 			if w == nil || w.ScheduleListOpen == nil {
@@ -6818,6 +7119,24 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleDetailToggleQuietGroup
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 325:
 			w, _ := m.Event.(*Event_ScheduleDetailShowAllRuns)
 			if w == nil || w.ScheduleDetailShowAllRuns == nil {
@@ -6832,24 +7151,6 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleDetailOpenRun
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 330:
 			w, _ := m.Event.(*Event_ScheduleOperate)
 			if w == nil || w.ScheduleOperate == nil {
@@ -6920,6 +7221,24 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormSetTitle
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 342:
 			w, _ := m.Event.(*Event_ScheduleFormSetNotify)
 			if w == nil || w.ScheduleFormSetNotify == nil {
@@ -6934,24 +7253,6 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormSelectProject
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 344:
 			w, _ := m.Event.(*Event_ScheduleFormSelectMachine)
 			if w == nil || w.ScheduleFormSelectMachine == nil {
@@ -7022,6 +7323,24 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.MachineStatusScrub
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 354:
 			w, _ := m.Event.(*Event_MachineStatusCleanup)
 			if w == nil || w.MachineStatusCleanup == nil {
@@ -7036,24 +7355,6 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.MachineStatusPollTick
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 360:
 			w, _ := m.Event.(*Event_MachineSettingsOpen)
 			if w == nil || w.MachineSettingsOpen == nil {
@@ -7124,6 +7425,24 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ConnCheckStatus
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 378:
 			w, _ := m.Event.(*Event_ClientUpdateState)
 			if w == nil || w.ClientUpdateState == nil {
@@ -7138,24 +7457,6 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.CheckForUpdates
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 380:
 			w, _ := m.Event.(*Event_UsageScreenOpen)
 			if w == nil || w.UsageScreenOpen == nil {
@@ -7226,6 +7527,24 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcCreated
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 407:
 			w, _ := m.Event.(*Event_DirectPcDescription)
 			if w == nil || w.DirectPcDescription == nil {
@@ -7240,24 +7559,6 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcRemoteSet
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 409:
 			w, _ := m.Event.(*Event_DirectPcCandidatesAdded)
 			if w == nil || w.DirectPcCandidatesAdded == nil {
@@ -7328,6 +7629,24 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectBulkTransferBegin
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 419:
 			w, _ := m.Event.(*Event_DirectBulkTransferDone)
 			if w == nil || w.DirectBulkTransferDone == nil {
@@ -7342,24 +7661,6 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.TerminalStream
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 421:
 			w, _ := m.Event.(*Event_DirectPreferencesLoaded)
 			if w == nil || w.DirectPreferencesLoaded == nil {
@@ -7430,6 +7731,24 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityStorageResult
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 462:
 			w, _ := m.Event.(*Event_SecurityRpcResult)
 			if w == nil || w.SecurityRpcResult == nil {
@@ -7444,24 +7763,6 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityForeground
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 464:
 			w, _ := m.Event.(*Event_SecurityAction)
 			if w == nil || w.SecurityAction == nil {
@@ -9075,6 +9376,69 @@ type Effect_SessionResendAttachments struct {
 
 func (*Effect_SessionResendAttachments) isEffect_Effect() {}
 
+type Effect_SharedFileScanLocal struct {
+	_                   [0]func()
+	SharedFileScanLocal *SharedFileScanLocalEffect
+}
+
+func (*Effect_SharedFileScanLocal) isEffect_Effect() {}
+
+type Effect_SharedFileInspectDisk struct {
+	_                     [0]func()
+	SharedFileInspectDisk *SharedFileInspectDiskEffect
+}
+
+func (*Effect_SharedFileInspectDisk) isEffect_Effect() {}
+
+type Effect_SharedFileWriteChunk struct {
+	_                    [0]func()
+	SharedFileWriteChunk *SharedFileWriteChunkEffect
+}
+
+func (*Effect_SharedFileWriteChunk) isEffect_Effect() {}
+
+type Effect_SharedFileVerifyAndCommit struct {
+	_                         [0]func()
+	SharedFileVerifyAndCommit *SharedFileVerifyAndCommitEffect
+}
+
+func (*Effect_SharedFileVerifyAndCommit) isEffect_Effect() {}
+
+type Effect_SharedFileDeletePartial struct {
+	_                       [0]func()
+	SharedFileDeletePartial *SharedFileDeletePartialEffect
+}
+
+func (*Effect_SharedFileDeletePartial) isEffect_Effect() {}
+
+type Effect_SharedFileDeleteLocal struct {
+	_                     [0]func()
+	SharedFileDeleteLocal *SharedFileDeleteLocalEffect
+}
+
+func (*Effect_SharedFileDeleteLocal) isEffect_Effect() {}
+
+type Effect_SharedFileDeleteSession struct {
+	_                       [0]func()
+	SharedFileDeleteSession *SharedFileDeleteSessionEffect
+}
+
+func (*Effect_SharedFileDeleteSession) isEffect_Effect() {}
+
+type Effect_SharedFileClearAll struct {
+	_                  [0]func()
+	SharedFileClearAll *SharedFileClearAllEffect
+}
+
+func (*Effect_SharedFileClearAll) isEffect_Effect() {}
+
+type Effect_SharedFileCompleted struct {
+	_                   [0]func()
+	SharedFileCompleted *SharedFileCompletedEffect
+}
+
+func (*Effect_SharedFileCompleted) isEffect_Effect() {}
+
 type Effect_ScheduleReadCache struct {
 	_                 [0]func()
 	ScheduleReadCache *ScheduleReadCacheEffect
@@ -9441,6 +9805,60 @@ func (m *Effect) GetSessionResendAttachments() *SessionResendAttachmentsEffect {
 	}
 	return nil
 }
+func (m *Effect) GetSharedFileScanLocal() *SharedFileScanLocalEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileScanLocal); ok && x != nil {
+		return x.SharedFileScanLocal
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileInspectDisk() *SharedFileInspectDiskEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileInspectDisk); ok && x != nil {
+		return x.SharedFileInspectDisk
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileWriteChunk() *SharedFileWriteChunkEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileWriteChunk); ok && x != nil {
+		return x.SharedFileWriteChunk
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileVerifyAndCommit() *SharedFileVerifyAndCommitEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileVerifyAndCommit); ok && x != nil {
+		return x.SharedFileVerifyAndCommit
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileDeletePartial() *SharedFileDeletePartialEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileDeletePartial); ok && x != nil {
+		return x.SharedFileDeletePartial
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileDeleteLocal() *SharedFileDeleteLocalEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileDeleteLocal); ok && x != nil {
+		return x.SharedFileDeleteLocal
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileDeleteSession() *SharedFileDeleteSessionEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileDeleteSession); ok && x != nil {
+		return x.SharedFileDeleteSession
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileClearAll() *SharedFileClearAllEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileClearAll); ok && x != nil {
+		return x.SharedFileClearAll
+	}
+	return nil
+}
+func (m *Effect) GetSharedFileCompleted() *SharedFileCompletedEffect {
+	if x, ok := m.GetEffect().(*Effect_SharedFileCompleted); ok && x != nil {
+		return x.SharedFileCompleted
+	}
+	return nil
+}
 func (m *Effect) GetScheduleReadCache() *ScheduleReadCacheEffect {
 	if x, ok := m.GetEffect().(*Effect_ScheduleReadCache); ok && x != nil {
 		return x.ScheduleReadCache
@@ -9653,6 +10071,9 @@ func extraMarshal_Effect(base unsafe.Pointer, b []byte, idx litewire.Number) []b
 		if !ok {
 			b, ok = m.appendMarshalEffectPart4(b)
 		}
+		if !ok {
+			b, ok = m.appendMarshalEffectPart5(b)
+		}
 	}
 	return b
 }
@@ -9790,6 +10211,42 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.SessionResendAttachments != nil {
 			onum, omsg = 41, x.SessionResendAttachments
 		}
+	case *Effect_SharedFileScanLocal:
+		if x != nil && x.SharedFileScanLocal != nil {
+			onum, omsg = 42, x.SharedFileScanLocal
+		}
+	case *Effect_SharedFileInspectDisk:
+		if x != nil && x.SharedFileInspectDisk != nil {
+			onum, omsg = 43, x.SharedFileInspectDisk
+		}
+	case *Effect_SharedFileWriteChunk:
+		if x != nil && x.SharedFileWriteChunk != nil {
+			onum, omsg = 44, x.SharedFileWriteChunk
+		}
+	case *Effect_SharedFileVerifyAndCommit:
+		if x != nil && x.SharedFileVerifyAndCommit != nil {
+			onum, omsg = 45, x.SharedFileVerifyAndCommit
+		}
+	case *Effect_SharedFileDeletePartial:
+		if x != nil && x.SharedFileDeletePartial != nil {
+			onum, omsg = 46, x.SharedFileDeletePartial
+		}
+	case *Effect_SharedFileDeleteLocal:
+		if x != nil && x.SharedFileDeleteLocal != nil {
+			onum, omsg = 47, x.SharedFileDeleteLocal
+		}
+	case *Effect_SharedFileDeleteSession:
+		if x != nil && x.SharedFileDeleteSession != nil {
+			onum, omsg = 48, x.SharedFileDeleteSession
+		}
+	case *Effect_SharedFileClearAll:
+		if x != nil && x.SharedFileClearAll != nil {
+			onum, omsg = 49, x.SharedFileClearAll
+		}
+	case *Effect_SharedFileCompleted:
+		if x != nil && x.SharedFileCompleted != nil {
+			onum, omsg = 50, x.SharedFileCompleted
+		}
 	case *Effect_ScheduleReadCache:
 		if x != nil && x.ScheduleReadCache != nil {
 			onum, omsg = 60, x.ScheduleReadCache
@@ -9798,6 +10255,20 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleDeleteCache != nil {
 			onum, omsg = 61, x.ScheduleDeleteCache
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_ScheduleLoadSeen:
 		if x != nil && x.ScheduleLoadSeen != nil {
 			onum, omsg = 62, x.ScheduleLoadSeen
@@ -9834,20 +10305,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectPcAddCandidates != nil {
 			onum, omsg = 106, x.DirectPcAddCandidates
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_DirectPcConfirm:
 		if x != nil && x.DirectPcConfirm != nil {
 			onum, omsg = 107, x.DirectPcConfirm
@@ -9860,6 +10317,20 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectDcReadStats != nil {
 			onum, omsg = 109, x.DirectDcReadStats
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_DirectBulkRoute:
 		if x != nil && x.DirectBulkRoute != nil {
 			onum, omsg = 111, x.DirectBulkRoute
@@ -9896,20 +10367,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityKeyEncapsulate != nil {
 			onum, omsg = 138, x.SecurityKeyEncapsulate
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_SecurityKeyDiscard:
 		if x != nil && x.SecurityKeyDiscard != nil {
 			onum, omsg = 139, x.SecurityKeyDiscard
@@ -9922,6 +10379,20 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityRpc != nil {
 			onum, omsg = 141, x.SecurityRpc
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SecurityWorkflowResult:
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
