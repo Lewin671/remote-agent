@@ -1,5 +1,4 @@
 import * as i18n from "./i18n";
-import type { ApprovalRequested } from "./gen/remoteagent/v1/event_pb";
 
 // Approval text must reveal display controls without changing the request.
 // Keep normal language, emoji, line breaks and tabs intact.
@@ -8,9 +7,4 @@ export function approvalDisplay(text: string): string {
     (char) => "\\u" + char.charCodeAt(0).toString(16).padStart(4, "0"));
 }
 
-// The relay already appends this text to every field it shortens.
-const truncatedNote = "\n…（remote-agent：内容过长，已截断）";
 export function approvalTruncatedMessage(): string { return i18n.t("approval.truncated"); }
-export function approvalTruncated(a: ApprovalRequested): boolean {
-  return [a.description, a.command, a.toolInputJson].some(s => s.endsWith(truncatedNote));
-}

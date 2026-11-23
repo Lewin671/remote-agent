@@ -33,18 +33,3 @@ export function FileChip({ file, state, progress = 0, error, onRetry, onRemove }
 export function FileChips({ files }: { files?: Pick<SentFile, "name" | "sizeBytes" | "fileId">[] }) {
   return files?.length ? <div className="file-chips">{files.map((f) => <FileChip key={f.fileId} file={f} />)}</div> : null;
 }
-
-/** Hide only complete, attested path lines; leave all other text verbatim. */
-export function withoutFileLines(text: string, files: Pick<SentFile, "path">[]): string {
-  const paths = new Set(files.map((f) => f.path).filter(Boolean));
-  const lines = text.split("\n");
-  const hidden = new Set<number>();
-  lines.forEach((line, i) => {
-    const path = line.startsWith('File: @"') && line.endsWith('" (file)') ? "@" + line.slice(8, -8) : line.startsWith("File: ") ? line.slice(6) : line;
-    if (paths.has(path) || path.startsWith("@") && paths.has(path.slice(1))) {
-      hidden.add(i);
-      if (i > 0 && lines[i - 1] === "") hidden.add(i - 1);
-    }
-  });
-  return lines.filter((_, i) => !hidden.has(i)).join("\n");
-}

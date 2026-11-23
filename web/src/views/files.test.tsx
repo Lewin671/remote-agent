@@ -17,7 +17,7 @@ import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { PendingTray } from "./Queue";
 import { Tray } from "../attach";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
-import { FileChip, withoutFileLines } from "./Files";
+import { FileChip } from "./Files";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
 let host: HTMLElement;
@@ -79,22 +79,6 @@ it("uses one chip for progress, failed retry/remove and sent files", async () =>
   act(() => root!.render(<FileChip file={file} state="uploading" progress={0.4} />));
   expect(host.textContent).toContain("40%"); expect(host.querySelector("progress")?.value).toBe(0.4);
 });
-it("hides exact file lines and their separator only, preserving surrounding text", () => {
-  const files = [{ path: "/uploads/s/files/id/data.csv" }];
-  expect(withoutFileLines("hello\n\n@" + files[0].path, files)).toBe("hello");
-  expect(withoutFileLines(files[0].path, files)).toBe("");
-  const raw = "mention " + files[0].path + "\n" + files[0].path + " extra\n\nkeep";
-  expect(withoutFileLines(raw, files)).toBe(raw);
-});
-
-it("hides labeled file lines without hiding ordinary File: sentences", () => {
-  const files = [{ path: "/uploads/s/files/id/x.png" }];
-  for (const prefix of ["File: ", "File: @"]) {
-    expect(withoutFileLines("\n" + prefix + files[0].path, files)).toBe("");
-    expect(withoutFileLines("hello\n\n" + prefix + files[0].path, files)).toBe("hello");
-    expect(withoutFileLines(prefix + files[0].path + " more", files)).toBe(prefix + files[0].path + " more");
-  }
-});
 
 it("closes the plus menu after either choice, outside click and Escape", async () => {
   const t = tray(); mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
@@ -132,13 +116,6 @@ it("rejects dropped folders before reading or uploading zero-byte entries", asyn
   expect(blocked).toHaveBeenCalledWith(message("attachment.zip_folder"));
   await vi.waitFor(() => expect(t.ready()).toBe(true));
   expect(t.files().map((f) => f.name)).toEqual(["empty.txt"]);
-});
-
-it("hides the exact quoted Claude reference and preserves surrounding text", () => {
- const path="/uploads/s/files/id/笔记";
- expect(withoutFileLines(`File: @"${path}" (file)`,[{path}])).toBe("");
- expect(withoutFileLines(`hello\n\nFile: @"${path}" (file)`,[{path}])).toBe("hello");
- expect(withoutFileLines(`File: @"${path}" (file) extra`,[{path}])).toContain("extra");
 });
 
 it.each([false, true])("renders attachment indicator in pending tray row (text=%s)", (text) => {

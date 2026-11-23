@@ -51,7 +51,7 @@ import { getView, setView, type View } from "../view";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
-import { FileChips, withoutFileLines } from "./Files";
+import { FileChips } from "./Files";
 import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
 import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
@@ -2197,7 +2197,7 @@ const TimelineRow = memo(function TimelineRow({
         sizeBytes: f.sizeBytes,
         path: f.path,
       }));
-      const segs = splitPlaceholders(withoutFileLines(m.text, files), m.images);
+      const segs = splitPlaceholders(m.text, m.images);
       const caption = renderText(m.originCaption);
       return (
         <div className="me" data-msg-id={item.id}>

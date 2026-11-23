@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { expect, it, vi } from "vitest";
-import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "./approval-display";
+import { approvalTruncatedMessage, approvalDisplay } from "./approval-display";
 import { ApprovalRequestedSchema } from "./gen/remoteagent/v1/event_pb";
 import {
   SessionApprovalDockViewSchema,
@@ -91,8 +91,6 @@ it("shows safe approval text without mutating the approval or decision command",
 
 it.each(["command", "description", "toolInputJson"] as const)("blocks allow and allow-always when %s was truncated", async (field) => {
   const a = create(ApprovalRequestedSchema, { approvalId: "oversized", command: "safe prefix", [field]: "cut\n…（remote-agent：内容过长，已截断）" });
-  expect(approvalTruncated(a)).toBe(true);
-  expect(approvalTruncated(create(ApprovalRequestedSchema, { command: "echo 完整" }))).toBe(false);
   const approval = create(SessionApprovalDockViewSchema, {
     approvalId: a.approvalId,
     toolName: "Bash",
