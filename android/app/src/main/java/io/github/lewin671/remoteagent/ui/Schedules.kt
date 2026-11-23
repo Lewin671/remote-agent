@@ -369,7 +369,10 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             remote.coreHost.sendEvent { setScheduleMarkUnread(ScheduleTaskBoolAction.newBuilder().setMachineId(machine).setTaskId(id).setValue(true)) }
             nav.schedules()
         },
-        onOpenMachineSettings = nav.device,
+        onOpenMachineSettings = { m, ag ->
+            if (ag != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED) nav.deviceForAgent(m, ag)
+            else nav.device(m)
+        },
     )
 }
 
@@ -384,7 +387,7 @@ internal fun ScheduleDetailScreenContent(
     onOpenTargetSession: (String) -> Unit = {},
     onOpenEdit: (ScheduleFormMode) -> Unit = {},
     onMarkUnreadAndBackToInbox: () -> Unit = {},
-    onOpenMachineSettings: (String) -> Unit = {},
+    onOpenMachineSettings: (String, io.github.lewin671.remoteagent.proto.Agent) -> Unit = { _, _ -> },
 ) {
     val copy = uiText()
     var menu by remember { mutableStateOf(false) }
@@ -431,13 +434,11 @@ internal fun ScheduleDetailScreenContent(
                 { onEvent { setScheduleAbandonMutation(ScheduleMutationRef.newBuilder().setMachineId(vm.machineId).setTaskId(vm.taskId)) } },
             )
             if (vm.attention.show) {
-                val disabledBanner =
-                    vm.attention.message.key == "schedule.agent_disabled_pre_run" ||
-                        vm.attention.message.key == "schedule.agent_disabled_stopped"
+                val enableCli = vm.attention.showEnableCliAction && vm.machineId.isNotEmpty()
                 ScheduleAttentionBanner(
                     uiText(vm.attention.message),
-                    action = if (disabledBanner && vm.machineId.isNotEmpty()) copy(UiMessages.scheduleEnableCli()) else null,
-                    onAction = if (disabledBanner && vm.machineId.isNotEmpty()) ({ onOpenMachineSettings(vm.machineId) }) else null,
+                    action = if (enableCli) copy(UiMessages.scheduleEnableCli()) else null,
+                    onAction = if (enableCli) ({ onOpenMachineSettings(vm.machineId, vm.attention.disabledAgent) }) else null,
                 )
                 if (vm.attention.showPrimaryAction) {
                     PillButton(uiText(vm.attention.primaryActionLabel), { operate(ScheduleOperationKind.SCHEDULE_OPERATION_KIND_RECOVER) },
@@ -752,13 +753,16 @@ internal fun ScheduleAgentSetting(agents: List<AgentOptionView>, selected: io.gi
     Box(Modifier.bottomLine(pal.sep)) { GRow("CLI", trailing = { SegPick(agents.map { it.displayName }, idx, enabled) { onSelect(agents[it].agent) } }) }
 }
 
+private const val SCHEDULE_FORM_PICKER_KEY = "schedule-form"
+
 @Composable
 fun NewScheduleScreen(session: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val syncView by remote.coreHost.syncStateView.collectAsState()
     val home by remote.homeView.collectAsState()
-    val projectView by remote.projectView.collectAsState()
+    val dirPicker by remember(remote) { remote.coreHost.watchDirPicker(SCHEDULE_FORM_PICKER_KEY) }
+        .collectAsState(initial = DirPickerView.getDefaultInstance())
     val vm by remote.scheduleFormView.collectAsState()
     val mode = if (session.isNotEmpty()) ScheduleFormMode.SCHEDULE_FORM_MODE_CREATE_FOR_SESSION else ScheduleFormMode.SCHEDULE_FORM_MODE_CREATE_NEW
     LaunchedEffect(remote, session) { remote.coreHost.openScheduleForm(mode = mode, sessionId = session) }
@@ -768,8 +772,8 @@ fun NewScheduleScreen(session: String) {
     }
     val content: @Composable () -> Unit = {
         ScheduleEditorContent(
-            vm, home.sidebarProjects, projectView.manage.dirPicker, { ConnBanner(syncView) }, ::close,
-            { remote.coreHost.openDirPicker(forNewTask = false) }, { remote.coreHost.closeDirPicker() }, remote.coreHost::sendEvent,
+            vm, home.sidebarProjects, dirPicker, { ConnBanner(syncView) }, ::close,
+            { remote.coreHost.openDirPicker(SCHEDULE_FORM_PICKER_KEY, forNewTask = false) }, { remote.coreHost.closeDirPicker(SCHEDULE_FORM_PICKER_KEY) }, remote.coreHost::sendEvent,
         )
     }
     if (session.isEmpty()) content() else Sheet(::close, scroll = false) { Box(Modifier.fillMaxHeight(.9f)) { content() } }

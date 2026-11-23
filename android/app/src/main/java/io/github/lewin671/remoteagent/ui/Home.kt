@@ -162,7 +162,7 @@ fun HomeScreen() {
                 DiskReminderCards(settingsView.diskRemindersList)
             }
             val emptyKind = if (vm.hasEmpty()) vm.empty.kind else HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED
-            if (!hasHeadline && emptyKind == HomeEmptyKind.HOME_EMPTY_KIND_NONE && !hasRows) {
+            if (vm.hasEmpty() && vm.empty.loading) {
                 item(key = "loading") {
                     var showLoading by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
@@ -180,12 +180,9 @@ fun HomeScreen() {
                     val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
                     Box(anim) {
                         androidx.compose.runtime.key(vm.topAttentionCard.approvalId) {
-                            val cardLocked = syncView.machinesList
-                                .firstOrNull { it.machineId == vm.topAttentionCard.machineId }
-                                ?.let { !it.reachable && it.unlinked } ?: vm.headline.unlinked
                             ApprovalCard(
                                 vm.topAttentionCard,
-                                locked = cardLocked,
+                                locked = vm.topAttentionCard.locked,
                                 onOpen = { nav.session(vm.topAttentionCard.sessionId) },
                                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp),
                             )
@@ -369,20 +366,23 @@ private fun ScopeCapsule(scopeKey: String, title: String, modifier: Modifier = M
     }
 }
 
+private const val HOME_SCOPE_PICKER_KEY = "home-scope"
+
 @Composable
 private fun ScopeSheet(vm: HomeViewModel, onPick: (String) -> Unit, onClose: () -> Unit) {
     val p = pal
     val nav = LocalNav.current
     val remote = LocalRemote.current
-    val projectView by remote.projectView.collectAsState()
+    val dirPicker by remember(remote) { remote.coreHost.watchDirPicker(HOME_SCOPE_PICKER_KEY) }
+        .collectAsState(initial = DirPickerView.getDefaultInstance())
     var browsing by remember { mutableStateOf(false) }
     Sheet(onClose, scroll = !browsing) {
         if (browsing) {
             CoreDirPickerBody(
-                projectView.manage.dirPicker,
-                onBack = { remote.coreHost.closeDirPicker(); browsing = false },
+                dirPicker,
+                onBack = { remote.coreHost.closeDirPicker(HOME_SCOPE_PICKER_KEY); browsing = false },
                 onChosen = { _, path ->
-                    remote.coreHost.addProject(path)
+                    remote.coreHost.addProject(path, HOME_SCOPE_PICKER_KEY)
                     browsing = false
                     onClose()
                     nav.projectNew(path)
@@ -407,7 +407,7 @@ private fun ScopeSheet(vm: HomeViewModel, onPick: (String) -> Unit, onClose: () 
         CoreProjectList(
             vm.sidebarProjects,
             onSearch = { remote.coreHost.setProjectSearch(it) },
-            onNew = { remote.coreHost.openDirPicker(forNewTask = false); browsing = true },
+            onNew = { remote.coreHost.openDirPicker(HOME_SCOPE_PICKER_KEY, forNewTask = false); browsing = true },
             first = allRow?.let { all ->
                 @Composable {
                     Row(

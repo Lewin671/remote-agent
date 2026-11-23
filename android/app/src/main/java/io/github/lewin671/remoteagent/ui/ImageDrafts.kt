@@ -165,22 +165,6 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
 fun needsUpload(img: PendingImage, machineId: String): Boolean =
     !img.needsProcessing && !img.readyFor(machineId) && !(img.transportMachine() == machineId && (img.job?.isActive == true || img.state is PendingImage.State.Uploading))
 
-/** Whether a machine takes images, and if not, why, in words. */
-fun uploadBlocked(m: MachineView?, online: Boolean, name: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
-    val caps = capabilities(m)
-    return when {
-        m == null -> copy(UiMessages.attachmentAndroidChooseComputer())
-        caps == null -> copy(UiMessages.attachmentComputerUnread(name = name))
-        // The daemon's folder has spaces in its path, which the CLIs do not take.
-        !caps.imageUpload -> copy(UiMessages.attachmentPathSpaces(name = name))
-        !m.pathState.reachable || !online -> copy(UiMessages.attachmentComputerOffline(name = name))
-        else -> null
-    }
-}
-
-/** The most images a message may carry to this machine: six, or fewer if the daemon says so. */
-fun maxImages(m: MachineView?): Int = capabilities(m)?.maxImagesPerMessage?.takeIf { it in 1 until MAX_IMAGES } ?: MAX_IMAGES
-
 private const val ORDER = "order"
 
 /** Writes images under [folder]. Which of the folder's images belong to it, and in what order, is [saveOrder]'s to say. */
@@ -454,8 +438,8 @@ class ImageDraft(
      * Sends the image to [machineId] unless it is there or on its way there.
      * An upload to another machine is dropped: the latest target wins.
      */
-    fun upload(remote: Remote, img: PendingImage, machineId: String, forceFresh: Boolean = false) {
-        if (img.isFile) { uploadDocument(remote, img, machineId, forceFresh); return }
+    fun upload(remote: Remote, img: PendingImage, machineId: String, forceFresh: Boolean = false, caps: AttachmentCaps? = null) {
+        if (img.isFile) { uploadDocument(remote, img, machineId, forceFresh, caps = caps); return }
         if (img.needsProcessing) return
         val p = img.processed ?: return
         if (!forceFresh && !needsUpload(img, machineId)) return
@@ -533,14 +517,14 @@ class ImageDraft(
     }
 
     /** Makes sure every image is on [machineId], e.g. after the new-session card changed machines. */
-    fun sendAllTo(remote: Remote, machineId: String) {
+    internal fun sendAllTo(remote: Remote, machineId: String, caps: AttachmentCaps? = null) {
         retarget(remote, machineId)
         if (selectedMachine != machineId) return
-        val machine = remote.state.value.machines[machineId]
+        val effective = caps ?: remote.state.value.machines[machineId].toAttachmentCaps()
         for (img in images) {
-            if (img.isFile && fileDraftBlocked(this, machine, copy = ::sessionText) != null) continue
-            if (!img.isFile && capabilities(machine)?.imageUpload != true) continue
-            if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId)
+            if (img.isFile && fileDraftBlocked(this, effective, copy = ::sessionText) != null) continue
+            if (!img.isFile && !effective.supportsImages) continue
+            if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId, caps = effective)
         }
     }
 

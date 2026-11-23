@@ -127,6 +127,8 @@ fun RemoveProjectConfirm(key: String, onDismiss: () -> Unit, projectName: String
     }
 }
 
+private const val MANAGE_PICKER_KEY = "manage"
+
 /** 项目管理: renders Core's [io.github.lewin671.remoteagent.core.proto.ManageProjectsView]. */
 @Composable
 fun ManageProjectsScreen(machineId: String = "") {
@@ -136,15 +138,18 @@ fun ManageProjectsScreen(machineId: String = "") {
     val initialView = remember(remote, activeMachineId) { remote.coreHost.snapshotProjectView(manage = true, machineId = activeMachineId) }
     val rawView by remote.projectView.collectAsState()
     val projectView = if (rawView.hasManage() && rawView.manage.filterMachineId == activeMachineId) rawView else initialView
+    val dirPicker by remember(remote) { remote.coreHost.watchDirPicker(MANAGE_PICKER_KEY) }
+        .collectAsState(initial = projectView.manage.dirPicker)
     LaunchedEffect(activeMachineId) { remote.coreHost.openManageProjects(activeMachineId) }
     ManageProjectsScreenContent(
         manage = projectView.manage,
+        dirPicker = dirPicker,
         onShowAllMachines = { activeMachineId = "" },
         onSearch = { remote.coreHost.setProjectSearch(it) },
         onSelectProject = { key -> remote.coreHost.setHomeScope(key); nav.home() },
-        onOpenDirPicker = { remote.coreHost.openDirPicker(forNewTask = false) },
-        onCloseDirPicker = { remote.coreHost.closeDirPicker() },
-        onAddProject = { path -> remote.coreHost.addProject(path) },
+        onOpenDirPicker = { remote.coreHost.openDirPicker(MANAGE_PICKER_KEY, forNewTask = false) },
+        onCloseDirPicker = { remote.coreHost.closeDirPicker(MANAGE_PICKER_KEY) },
+        onAddProject = { path -> remote.coreHost.addProject(path, MANAGE_PICKER_KEY) },
         onTogglePin = { key -> remote.coreHost.toggleProjectPin(key) },
         onToggleHide = { key -> remote.coreHost.toggleProjectHide(key) },
     )
@@ -153,6 +158,7 @@ fun ManageProjectsScreen(machineId: String = "") {
 @Composable
 internal fun ManageProjectsScreenContent(
     manage: ManageProjectsView,
+    dirPicker: io.github.lewin671.remoteagent.core.proto.DirPickerView = manage.dirPicker,
     onShowAllMachines: () -> Unit = {},
     onSearch: (String) -> Unit = {},
     onSelectProject: (String) -> Unit = {},
@@ -263,7 +269,7 @@ internal fun ManageProjectsScreenContent(
     }
     if (adding) Sheet({ onCloseDirPicker(); adding = false }, scroll = false) {
         CoreDirPickerBody(
-            manage.dirPicker,
+            dirPicker,
             onBack = { onCloseDirPicker(); adding = false },
         ) { _, path ->
             onAddProject(path)

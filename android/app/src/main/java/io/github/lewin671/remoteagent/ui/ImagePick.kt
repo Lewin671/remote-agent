@@ -72,17 +72,23 @@ import androidx.compose.foundation.layout.BoxScope
  * images it says why instead, unless videos can still go.
  */
 @Composable
-fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int, videos: Boolean = false): () -> Unit {
+internal fun rememberImagePicker(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    blocked: String?,
+    caps: AttachmentCaps,
+): () -> Unit {
     val copy = uiText()
     val context = LocalContext.current
-    val state by remote.state.collectAsState()
-    val machine = state.machines[machineId]
+    val max = caps.maxImages
+    val videos = caps.supportsFiles
     val images = blocked == null
-    val room = io.github.lewin671.remoteagent.core.libraryRoom(if (images) draft.pictures.size else max, max, draft.documents.size, io.github.lewin671.remoteagent.core.maxFiles(machine), videos)
+    val room = io.github.lewin671.remoteagent.core.libraryRoom(if (images) draft.pictures.size else max, max, draft.documents.size, caps.maxFiles, videos)
     val take = { uris: List<android.net.Uri> ->
         val (moving, still) = uris.partition { io.github.lewin671.remoteagent.core.isVideo(context.contentResolver.getType(it), it.lastPathSegment.orEmpty()) }
         if (still.isNotEmpty()) draft.add(context, still, max, remote) { machineId }
-        if (moving.isNotEmpty()) draft.addDocuments(context, moving, remote, machineId, videos = true)
+        if (moving.isNotEmpty()) draft.addDocuments(context, moving, remote, machineId, caps = caps, videos = true)
     }
     val many = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, room))) { uris ->
         if (uris.isNotEmpty()) take(uris)
@@ -94,7 +100,7 @@ fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, b
         when {
             draft.restoring -> Unit
             blocked != null && !videos -> ImageNotices.show(draft.key, blocked)
-            room == 0 -> ImageNotices.show(draft.key, if (images) copy(UiMessages.attachmentMaxImages(count = max)) else copy(UiMessages.attachmentMaxFiles(count = (io.github.lewin671.remoteagent.core.maxFiles(machine)).toInt())))
+            room == 0 -> ImageNotices.show(draft.key, if (images) copy(UiMessages.attachmentMaxImages(count = max)) else copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
             else -> {
                 val type = when {
                     !images -> ActivityResultContracts.PickVisualMedia.VideoOnly
@@ -124,7 +130,7 @@ object ImageNotices {
  * computer.
  */
 @Composable
-fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) {
+internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int, caps: AttachmentCaps? = null) {
     val copy = uiText()
     val p = pal
     val context = LocalContext.current
@@ -151,7 +157,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
         return
     }
-    FileStrip(draft, remote, machineId)
+    FileStrip(draft, remote, machineId, caps)
     val thumbs = draft.images.filter { !it.isFile || isVideoDraft(it) }
     if (thumbs.isEmpty()) {
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() }
@@ -167,7 +173,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                   Box(Modifier.align(Alignment.BottomStart).size(64.dp).clip(Radii.R14).background(p.fill)
                     .clickable(role = Role.Button) {
                         if (!img.isFile) viewing = index
-                        else if (img.state is PendingImage.State.Failed) machineId?.let { draft.upload(remote, img, it, forceFresh = true) }
+                        else if (img.state is PendingImage.State.Failed) machineId?.let { draft.upload(remote, img, it, forceFresh = true, caps = caps) }
                     }.semantics {
                         if (!img.isFile) { contentDescription = copy(UiMessages.imagePosition(count = draft.pictures.size, index = (index + 1).toInt())); stateDescription = imageStateWords(img) }
                     }) {
@@ -279,22 +285,20 @@ private object VideoFrames {
 
 /** Upload again when an unused image expires, including after the page returns from the background. */
 @Composable
-internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
+internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, caps: AttachmentCaps) {
     val copy = uiText()
     draft.bindRemote(remote)
-    val state by remote.state.collectAsState()
-    val machine = state.machines[machineId]
-    val fileBlocked = fileDraftBlocked(draft, machine, copy = copy)
+    val fileBlocked = fileDraftBlocked(draft, caps, copy = copy)
     val deadlines = draft.images.map { it.expiresMs }
-    LaunchedEffect(draft, machineId, blocked, fileBlocked, deadlines, draft.images.size, draft.restoring) {
+    LaunchedEffect(draft, machineId, blocked, fileBlocked, caps, deadlines, draft.images.size, draft.restoring) {
         if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)
-        if (draft.restoring || machineId == null || machine?.pathState?.reachable != true || !remote.state.value.peer(machineId).ready) return@LaunchedEffect
-        if (blocked != null && !io.github.lewin671.remoteagent.core.filesSupported(machine)) return@LaunchedEffect
-        draft.sendAllTo(remote, machineId)
+        if (draft.restoring || machineId == null || !caps.machineOnline) return@LaunchedEffect
+        if (blocked != null && !caps.supportsFiles) return@LaunchedEffect
+        draft.sendAllTo(remote, machineId, caps)
         val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
         if (next != null) {
             kotlinx.coroutines.delay((next - System.currentTimeMillis()).coerceAtLeast(1))
-            draft.sendAllTo(remote, machineId)
+            draft.sendAllTo(remote, machineId, caps)
         }
     }
 }

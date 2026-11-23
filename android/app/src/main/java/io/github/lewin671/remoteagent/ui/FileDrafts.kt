@@ -7,8 +7,60 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.core.proto.NewSessionViewModel
+import io.github.lewin671.remoteagent.core.proto.SessionHeaderView
 import kotlinx.coroutines.*
 import java.io.InputStream
+
+/** Attachment capabilities projected by Core for the current session or new-session target. */
+data class AttachmentCaps(
+    val supportsImages: Boolean = false,
+    val supportsFiles: Boolean = false,
+    val maxImages: Int = MAX_IMAGES,
+    val maxFiles: Int = MAX_FILES,
+    val maxFileBytes: Long = MAX_FILE_BYTES,
+    val capabilitiesLoaded: Boolean = false,
+    val machineOnline: Boolean = false,
+)
+
+internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
+    val caps = capabilities
+    return AttachmentCaps(
+        supportsImages = caps.supportsImages,
+        supportsFiles = caps.supportsFiles,
+        maxImages = caps.maxImages.takeIf { it > 0 } ?: MAX_IMAGES,
+        maxFiles = caps.maxFiles.takeIf { it > 0 } ?: MAX_FILES,
+        maxFileBytes = caps.maxFileBytes.takeIf { it > 0L } ?: MAX_FILE_BYTES,
+        capabilitiesLoaded = caps.capabilitiesLoaded,
+        machineOnline = computerOnline && !computerUnlinked,
+    )
+}
+
+internal fun NewSessionViewModel.attachmentCaps(fallbackOnline: Boolean = false): AttachmentCaps {
+    val selectedChoice = modelPanel.machineChoicesList.firstOrNull { it.machineId == config.machineId }
+        ?: modelPanel.machineChoicesList.firstOrNull { it.selected }
+    val online = selectedChoice?.online ?: fallbackOnline
+    return AttachmentCaps(
+        supportsImages = supportsImages,
+        supportsFiles = supportsFiles,
+        maxImages = maxImages.takeIf { it > 0 } ?: MAX_IMAGES,
+        maxFiles = maxFiles.takeIf { it > 0 } ?: MAX_FILES,
+        maxFileBytes = maxFileBytes.takeIf { it > 0L } ?: MAX_FILE_BYTES,
+        capabilitiesLoaded = capabilitiesLoaded,
+        machineOnline = online,
+    )
+}
+
+internal fun MachineView?.toAttachmentCaps(online: Boolean = this?.pathState?.reachable == true): AttachmentCaps =
+    AttachmentCaps(
+        supportsImages = capabilities(this)?.imageUpload == true,
+        supportsFiles = filesSupported(this),
+        maxImages = capabilities(this)?.maxImagesPerMessage?.takeIf { it > 0 } ?: MAX_IMAGES,
+        maxFiles = maxFiles(this),
+        maxFileBytes = maxFileBytes(this),
+        capabilitiesLoaded = capabilities(this) != null,
+        machineOnline = online,
+    )
 
 /** Provider size is a display hint; the hashing pass establishes the actual byte count. */
 internal fun documentEntry(context: Context, uri: Uri): PendingImage {
@@ -28,7 +80,14 @@ internal fun documentEntry(context: Context, uri: Uri): PendingImage {
 }
 
 /** Files from 文件, or ([videos]) videos from the library, which are turned away as they are picked when over the size limit. */
-internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: Remote, machine: String?, videos: Boolean = false) {
+internal fun ImageDraft.addDocuments(
+    context: Context,
+    uris: List<Uri>,
+    remote: Remote,
+    machine: String?,
+    caps: AttachmentCaps? = null,
+    videos: Boolean = false,
+) {
     if (restoring || readingFiles || uris.isEmpty()) return
     bindRemote(remote)
     readingFiles = true
@@ -37,18 +96,18 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
         try {
             for (uri in uris) {
                 try {
-                    val target = remote.state.value.machines[machine]
-                    if (!filesSupported(target)) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentUpdateRequired()), imageKind = ImageProblemKind.UPDATE_REQUIRED)
-                    if (documents.size >= maxFiles(target)) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = (maxFiles(target)).toInt())); break }
+                    val effective = caps ?: remote.state.value.machines[machine].toAttachmentCaps()
+                    if (!effective.supportsFiles) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentUpdateRequired()), imageKind = ImageProblemKind.UPDATE_REQUIRED)
+                    if (documents.size >= effective.maxFiles) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = effective.maxFiles)); break }
                     val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
-                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = sessionText(it); continue }
+                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, effective.maxFileBytes)?.let { notice = sessionText(it); continue }
                     if (AccountMemory.token !== accountToken) { PendingUris.release(entry); return@launch }
                     PendingUris.retain(entry)
                     val kept = runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
                     if (!kept) notice = sessionText(UiMessages.attachmentAndroidPermissionTemporary())
                     images += entry
                     prepared(entry)
-                    machine?.let { upload(remote, entry, it) }
+                    machine?.let { upload(remote, entry, it, caps = effective) }
                 } catch (e: CancellationException) { throw e
                 } catch (e: Exception) {
                     notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else displayError(e)
@@ -58,22 +117,31 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
     }
 }
 
-internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
+internal fun fileDraftBlocked(draft: ImageDraft, caps: AttachmentCaps, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? {
     if (draft.documents.isEmpty()) return null
-    if (!filesSupported(machine)) return copy(UiMessages.attachmentUpdateRequired())
-    if (draft.documents.size > maxFiles(machine)) return copy(UiMessages.attachmentMaxFiles(count = (maxFiles(machine)).toInt()))
-    return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, maxFiles(machine), maxFileBytes(machine))?.resolve(copy) }
+    if (!caps.supportsFiles) return copy(UiMessages.attachmentUpdateRequired())
+    if (draft.documents.size > caps.maxFiles) return copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles))
+    return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, caps.maxFiles, caps.maxFileBytes)?.resolve(copy) }
 }
 
-internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, target: String, forceFresh: Boolean = false) {
+internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? =
+    fileDraftBlocked(draft, machine.toAttachmentCaps(), copy)
+
+internal fun ImageDraft.uploadDocument(
+    remote: Remote,
+    entry: PendingImage,
+    target: String,
+    forceFresh: Boolean = false,
+    caps: AttachmentCaps? = null,
+) {
     bindRemote(remote)
-    val machine = remote.state.value.machines[target]
-    if (!filesSupported(machine)) {
+    val effective = caps ?: remote.state.value.machines[target].toAttachmentCaps()
+    if (!effective.supportsFiles) {
         val turn = entry.stopUpload()
         if (entry.valid(turn)) entry.state = PendingImage.State.Failed(AppImageFailure.UPDATE_REQUIRED)
         return
     }
-    startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), maxFileBytes(machine), forceFresh = forceFresh) {
+    startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), effective.maxFileBytes, forceFresh = forceFresh) {
         RaApp.instance.contentResolver.openInputStream(Uri.parse(entry.uri)) ?: throw java.io.FileNotFoundException()
     }
 }

@@ -141,6 +141,7 @@ class CoreHost(
     private val testSessionViews = HashMap<String, SessionViewModel>()
     private val scheduleStripWatchers = HashMap<String, KeyedWatcher<ScheduleSessionStripViewModel, Unit>>()
     private val testScheduleStripViews = HashMap<String, ScheduleSessionStripViewModel>()
+    private val dirPickerWatchers = HashMap<String, KeyedWatcher<DirPickerView, Unit>>()
 
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
@@ -718,12 +719,35 @@ class CoreHost(
         when (target) {
             ScreenTarget.SCREEN_TARGET_SESSION -> refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
             ScreenTarget.SCREEN_TARGET_SCHEDULE_SESSION_STRIP -> refreshAllKeyed(scheduleStripWatchers, ::refreshScheduleStripOnWorker)
+            ScreenTarget.SCREEN_TARGET_PROJECT -> {
+                val slot = screenSlots[target]
+                if (slot != null) {
+                    val screen = slot.build()
+                    if (screen != null) {
+                        val vm = viewOnWorker(screen)
+                        if (vm != null) slot.update(vm)
+                    }
+                }
+                refreshAllKeyed(dirPickerWatchers, ::refreshDirPickerOnWorker)
+            }
             else -> {
                 val slot = screenSlots[target] ?: return
                 val screen = slot.build() ?: return
                 val vm = viewOnWorker(screen) ?: return
                 slot.update(vm)
             }
+        }
+    }
+
+    private fun refreshDirPickerOnWorker(pickerKey: String) {
+        if (pickerKey.isEmpty() || closed.get() || testOverrideViews) return
+        val watcher = synchronized(dirPickerWatchers) { dirPickerWatchers[pickerKey] ?: return }
+        val screen = Screen.newBuilder()
+            .setProject(ProjectScreenRequest.newBuilder().setManage(true).setPickerKey(pickerKey))
+            .build()
+        val vm = viewOnWorker(screen) ?: return
+        if (vm.viewCase == ViewModel.ViewCase.PROJECT && vm.project.hasManage()) {
+            watcher.flow.value = vm.project.manage.dirPicker
         }
     }
 
@@ -799,6 +823,16 @@ class CoreHost(
                 if (--existing.refCount <= 0) scheduleStripWatchers.remove(sessionId)
             }
         }
+
+    fun watchDirPicker(pickerKey: String): Flow<DirPickerView> {
+        require(pickerKey.isNotEmpty()) { "pickerKey must not be empty" }
+        return KeyedWatchFlow(dirPickerWatchers, pickerKey, { acquireDirPickerWatcher(pickerKey) }) {
+            synchronized(dirPickerWatchers) {
+                val existing = dirPickerWatchers[pickerKey] ?: return@synchronized
+                if (--existing.refCount <= 0) dirPickerWatchers.remove(pickerKey)
+            }
+        }
+    }
 
     fun updateSessionWindow(sessionId: String, window: SessionWindowRequest) {
         val updated = synchronized(sessionWatchers) {
@@ -1045,6 +1079,26 @@ class CoreHost(
         return watcher
     }
 
+    private fun acquireDirPickerWatcher(pickerKey: String): KeyedWatcher<DirPickerView, Unit> {
+        val (watcher, becameActive) = synchronized(dirPickerWatchers) {
+            val existing = dirPickerWatchers[pickerKey]
+            if (existing != null) {
+                existing.refCount++
+                existing to false
+            } else {
+                val created = KeyedWatcher(
+                    MutableStateFlow(DirPickerView.getDefaultInstance()),
+                    Unit,
+                    refCount = 1,
+                )
+                dirPickerWatchers[pickerKey] = created
+                created to true
+            }
+        }
+        if (becameActive) dispatchAction { refreshDirPickerOnWorker(pickerKey) }
+        return watcher
+    }
+
     private inline fun send(block: CoreEvent.Builder.() -> Unit) = dispatch(CoreEvent.newBuilder().apply(block).build())
 
     private inline fun sendOnWorker(block: CoreEvent.Builder.() -> Unit) {
@@ -1116,18 +1170,44 @@ class CoreHost(
     fun toggleProjectHide(key: String) =
         send { setProjectToggleHide(ProjectKeyAction.newBuilder().setProjectKey(key)) }
 
-    fun addProject(path: String) = dispatchAction {
+    fun addProject(path: String, pickerKey: String = "") = dispatchAction {
         newSessionProjectKey = path
-        sendOnWorker { setProjectAdd(ProjectAddAction.newBuilder().setPath(path)) }
+        sendOnWorker {
+            val b = ProjectAddAction.newBuilder().setPath(path)
+            if (pickerKey.isNotEmpty()) b.setPickerKey(pickerKey)
+            setProjectAdd(b)
+        }
     }
 
-    fun openDirPicker(machineId: String = "", path: String = "", forNewTask: Boolean = false) =
-        send { setProjectOpenDirPicker(DirPickerOpenAction.newBuilder().setMachineId(machineId).setPath(path).setForNewTask(forNewTask)) }
+    fun openDirPicker(pickerKey: String, machineId: String = "", path: String = "", forNewTask: Boolean = false) {
+        require(pickerKey.isNotEmpty()) { "pickerKey must not be empty" }
+        send {
+            setProjectOpenDirPicker(
+                DirPickerOpenAction.newBuilder()
+                    .setPickerKey(pickerKey)
+                    .setMachineId(machineId)
+                    .setPath(path)
+                    .setForNewTask(forNewTask),
+            )
+        }
+    }
 
-    fun navigateDirPicker(machineId: String = "", path: String = "") =
-        send { setProjectDirNavigate(DirNavigateAction.newBuilder().setMachineId(machineId).setPath(path)) }
+    fun navigateDirPicker(pickerKey: String, machineId: String = "", path: String = "") {
+        require(pickerKey.isNotEmpty()) { "pickerKey must not be empty" }
+        send {
+            setProjectDirNavigate(
+                DirNavigateAction.newBuilder()
+                    .setPickerKey(pickerKey)
+                    .setMachineId(machineId)
+                    .setPath(path),
+            )
+        }
+    }
 
-    fun closeDirPicker() = send { setProjectCloseDirPicker(DirPickerCloseAction.getDefaultInstance()) }
+    fun closeDirPicker(pickerKey: String) {
+        require(pickerKey.isNotEmpty()) { "pickerKey must not be empty" }
+        send { setProjectCloseDirPicker(DirPickerCloseAction.newBuilder().setPickerKey(pickerKey)) }
+    }
 
     fun openNewSession(projectKey: String) = dispatchAction {
         if (projectKey.isNotEmpty()) newSessionProjectKey = projectKey

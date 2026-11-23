@@ -53,6 +53,7 @@ import io.github.lewin671.remoteagent.proto.ProjectSummary
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -539,6 +540,72 @@ class CoreHostSmokeTest {
 
             h.setUiLocale("zh-CN")
             assertEquals("150万", h.usageView.value.hero.totalTokensText.literal)
+        } finally {
+            h.close()
+        }
+    }
+
+    @Test
+    fun dirPickerWatchersStayIsolatedByPickerKey() = kotlinx.coroutines.runBlocking {
+        val nowMs = 1_776_000_000_000L
+        val h = CoreHost(
+            workerDispatcher = Dispatchers.Unconfined,
+            clock = { nowMs },
+            zone = { ZoneId.of("UTC") },
+        )
+        try {
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setSeedDemoWorld(
+                        SeedDemoWorldEvent.newBuilder()
+                            .addMachines(
+                                io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+                                    .setMachineId("m1")
+                                    .setOnline(true)
+                                    .setMeta(
+                                        MachineMeta.newBuilder()
+                                            .setHostname("Mac Studio")
+                                            .setHome("/Users/dev")
+                                            .setProtocolVersion(PEER_PROTOCOL_VERSION),
+                                    ),
+                            )
+                            .setSecurity(
+                                DemoSecurity.newBuilder()
+                                    .setIsMember(true)
+                                    .setSelfDeviceId("c1")
+                                    .setAuthorityDeviceId("c1")
+                                    .addTrustedMachineIds("m1")
+                                    .setHeadEpoch(1L)
+                                    .setLeaseEndMs(nowMs + 3_600_000L),
+                            ),
+                    )
+                    .build(),
+            )
+            val manageFlow = h.watchDirPicker("manage")
+            val scheduleFlow = h.watchDirPicker("schedule-form")
+            var latestManage = io.github.lewin671.remoteagent.core.proto.DirPickerView.getDefaultInstance()
+            var latestSchedule = io.github.lewin671.remoteagent.core.proto.DirPickerView.getDefaultInstance()
+            val j1 = launch(Dispatchers.Unconfined) { manageFlow.collect { latestManage = it } }
+            val j2 = launch(Dispatchers.Unconfined) { scheduleFlow.collect { latestSchedule = it } }
+            try {
+                h.openDirPicker("manage", machineId = "m1", path = "/Users/dev/a", forNewTask = false)
+                assertTrue(latestManage.open)
+                assertEquals("manage", latestManage.pickerKey)
+                org.junit.Assert.assertFalse(latestSchedule.open)
+
+                h.openDirPicker("schedule-form", machineId = "m1", path = "/Users/dev/b", forNewTask = true)
+                assertTrue(latestSchedule.open)
+                assertEquals("schedule-form", latestSchedule.pickerKey)
+                assertTrue(latestSchedule.forNewTask)
+                org.junit.Assert.assertFalse(latestManage.forNewTask)
+
+                h.closeDirPicker("manage")
+                org.junit.Assert.assertFalse(latestManage.open)
+                assertTrue(latestSchedule.open)
+            } finally {
+                j1.cancel()
+                j2.cancel()
+            }
         } finally {
             h.close()
         }

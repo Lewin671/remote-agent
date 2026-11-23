@@ -24,19 +24,22 @@ import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.proto.SentFile
 
 @Composable
-internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId: String?): (() -> Unit)? {
+internal fun rememberDocumentPicker(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    caps: AttachmentCaps,
+): (() -> Unit)? {
     val copy = uiText()
     val context = LocalContext.current
-    val state by remote.state.collectAsState()
-    val machine = state.machines[machineId]
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
-        draft.addDocuments(context, it, remote, machineId)
+        draft.addDocuments(context, it, remote, machineId, caps = caps)
     }
-    if (!filesSupported(machine)) return null
+    if (!caps.supportsFiles) return null
     return {
         when {
             draft.restoring || draft.readingFiles -> Unit
-            draft.documents.size >= maxFiles(machine) -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = (maxFiles(machine)).toInt())))
+            draft.documents.size >= caps.maxFiles -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
             else -> picker.launch(arrayOf("*/*"))
         }
     }
@@ -95,17 +98,21 @@ internal fun FileChips(files: List<SentFile>) {
 
 /** The files in the box, apart from videos from the library, which sit among the images ([ImageStrip]). */
 @Composable
-internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?) {
+internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?, caps: AttachmentCaps? = null) {
     val copy = uiText()
     if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     val files = draft.documents.filterNot { isVideoDraft(it) }
-    val state by remote.state.collectAsState()
-    val blocked = fileDraftBlocked(draft, state.machines[machineId], copy = copy)
+    val blocked = if (caps != null) {
+        fileDraftBlocked(draft, caps, copy = copy)
+    } else {
+        val state by remote.state.collectAsState()
+        fileDraftBlocked(draft, state.machines[machineId], copy = copy)
+    }
     if (files.isEmpty() && blocked == null) return
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         files.forEach { file ->
             FileChip(file.fileName!!, file.fileBytes, file.state,
-                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true) } }, onRemove = { draft.remove(file) })
+                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true, caps = caps) } }, onRemove = { draft.remove(file) })
         }
         blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
         if (files.isNotEmpty()) Text(uiText(FILES_AS_THEY_ARE), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))

@@ -95,20 +95,21 @@ fun NewSessionBox(
     }
 
     val online = state.peer(machine).ready
-    val machineOnline = machine != null && online && state.machines[machine]?.pathState?.reachable == true
-    val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
-    RefreshDraftUploads(images, remote, machine, blocked)
-    val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }), videos = filesSupported(machine?.let { state.machines[it] }))
+    val fallbackOnline = machine != null && online && state.machines[machine]?.pathState?.reachable == true
+    val attachCaps = view.attachmentCaps(fallbackOnline = fallbackOnline)
+    val blocked = if (view.hasImageUploadBlockedReason()) uiText(view.imageUploadBlockedReason).ifEmpty { null } else null
+    RefreshDraftUploads(images, remote, machine, blocked, attachCaps)
+    val pick = rememberImagePicker(images, remote, machine, blocked, attachCaps)
 
     val uploadsReady =
         !images.restoring &&
             !images.readingFiles &&
-            fileDraftBlocked(images, machine?.let { state.machines[it] }) == null &&
+            fileDraftBlocked(images, attachCaps) == null &&
             (machine == null || images.images.all { it.readyFor(machine) })
     val canStart = view.canStart && uploadsReady
 
     fun start() {
-        if (machine != null && blocked == null) images.sendAllTo(remote, machine)
+        if (machine != null && blocked == null) images.sendAllTo(remote, machine, attachCaps)
         if (!canStart) return
         val st = Starts.of(key)
         val cfgKey = Triple(cfg.machineId, cfg.agent.number, "${cfg.model}/${cfg.effort}/${cfg.standardContext}")
@@ -227,12 +228,12 @@ fun NewSessionBox(
             canSend = canStart,
             onSend = { start() },
             onPlus = pick,
-            onFile = rememberDocumentPicker(images, remote, machine),
-            plusEnabled = !images.restoring && (blocked == null || filesSupported(machine?.let { state.machines[it] }) && machineOnline),
+            onFile = rememberDocumentPicker(images, remote, machine, attachCaps),
+            plusEnabled = !images.restoring && (blocked == null || attachCaps.supportsFiles && attachCaps.machineOnline),
             sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,
             hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
-            top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
+            top = { ImageStrip(images, remote, machine, attachCaps.maxImages, attachCaps) },
             tools = {
                 NewTaskTools(
                     view = view,
@@ -372,10 +373,12 @@ fun CoreProjectSettingsSheet(
     val view = if (projectKey.isEmpty() || rawView.projectKey == projectKey) rawView else initialView
     val syncView by remote.coreHost.syncStateView.collectAsState()
     val panel = view.modelPanel
-    val blockedPrefs = when {
+    val blockedPrefsText = when {
+        view.prefsBlocked && view.prefsBlockedReason.isCoreTextNotEmpty() -> uiText(view.prefsBlockedReason)
+        view.prefsBlocked -> uiText(UiMessages.projectsConnectToEdit())
         syncView.connection != io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED ->
-            UiMessages.projectsConnectToEdit()
-        !syncView.prefsLoaded -> UiMessages.projectsLoading()
+            uiText(UiMessages.projectsConnectToEdit())
+        !syncView.prefsLoaded -> uiText(UiMessages.projectsLoading())
         else -> null
     }
     val manyMachines = panel.machineChoicesCount > 1
@@ -383,7 +386,7 @@ fun CoreProjectSettingsSheet(
     var page by remember(open) { mutableStateOf(open) }
     val shown = page.ifEmpty { root }
     val back: (() -> Unit)? = if (shown == root) null else ({ page = "" })
-    val editable = blockedPrefs == null && view.settled
+    val editable = blockedPrefsText == null && view.settled
     val saveError = view.noticesList.firstOrNull { it.kind == NoticeKind.NOTICE_KIND_CONFIG_SAVE_ERROR }
     val agents = view.availableAgentsList
 
@@ -404,7 +407,7 @@ fun CoreProjectSettingsSheet(
         when (shown) {
             "" -> {
                 SheetHead(uiText(UiMessages.projectsAndroidSettings()), uiText(UiMessages.commonDone()), onClose)
-                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (blockedPrefsText != null) Notice(blockedPrefsText)
                 if (!view.settled) Hint(uiText(UiMessages.newSessionReadingPrevious()))
                 if (saveError != null) Notice(
                     uiText(saveError.text),
@@ -435,7 +438,7 @@ fun CoreProjectSettingsSheet(
             }
             "machine" -> {
                 SheetHead(uiText(UiMessages.commonMachine()), uiText(UiMessages.commonDone()), onClose, onBack = back)
-                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (blockedPrefsText != null) Notice(blockedPrefsText)
                 SheetList {
                     panel.machineChoicesList.forEachIndexed { i, mc ->
                         ListItem(
@@ -457,7 +460,7 @@ fun CoreProjectSettingsSheet(
             "model" -> {
                 val modelTitle = if (open.isEmpty() && back == null) UiMessages.projectsAndroidSettings() else UiMessages.modelsTitle()
                 SheetHead(uiText(modelTitle), uiText(UiMessages.commonDone()), onClose, onBack = back)
-                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (blockedPrefsText != null) Notice(blockedPrefsText)
                 if (!view.settled) Hint(uiText(UiMessages.newSessionReadingPrevious()))
                 if (saveError != null) Notice(
                     uiText(saveError.text),
@@ -590,6 +593,9 @@ internal fun NewSessionNoticeRow(
     )
 }
 
+private const val PICK_PROJECT_PICKER_KEY = "pick-project"
+private const val NEW_PROJECT_PICKER_KEY = "new-project"
+
 /**
  * 新会话 · 选项目 sheet from the new-session button on Home, driven by Core's [ProjectListingView].
  */
@@ -597,7 +603,8 @@ internal fun NewSessionNoticeRow(
 fun PickProjectSheet(listing: ProjectListingView, onClose: () -> Unit, replace: Boolean = false) {
     val nav = LocalNav.current
     val remote = LocalRemote.current
-    val projectView by remote.projectView.collectAsState()
+    val dirPicker by remember(remote) { remote.coreHost.watchDirPicker(PICK_PROJECT_PICKER_KEY) }
+        .collectAsState(initial = DirPickerView.getDefaultInstance())
     var browsing by remember { mutableStateOf(false) }
     Sheet(onClose, scroll = !browsing) {
         if (!browsing) {
@@ -605,7 +612,7 @@ fun PickProjectSheet(listing: ProjectListingView, onClose: () -> Unit, replace: 
             CoreProjectList(
                 listing,
                 onSearch = { remote.coreHost.setProjectSearch(it) },
-                onNew = { remote.coreHost.openDirPicker(forNewTask = true); browsing = true },
+                onNew = { remote.coreHost.openDirPicker(PICK_PROJECT_PICKER_KEY, forNewTask = true); browsing = true },
             ) { pr ->
                 CoreProjectRow(
                     pr,
@@ -619,10 +626,10 @@ fun PickProjectSheet(listing: ProjectListingView, onClose: () -> Unit, replace: 
             }
         } else {
             CoreDirPickerBody(
-                projectView.manage.dirPicker,
-                onBack = { remote.coreHost.closeDirPicker(); browsing = false },
+                dirPicker,
+                onBack = { remote.coreHost.closeDirPicker(PICK_PROJECT_PICKER_KEY); browsing = false },
             ) { _, path ->
-                remote.coreHost.addProject(path)
+                remote.coreHost.addProject(path, PICK_PROJECT_PICKER_KEY)
                 onClose()
                 nav.projectNew(path)
             }
@@ -675,7 +682,7 @@ fun CoreDirPickerBody(
                 { i ->
                     val m = picker.machinesList[i]
                     if (picker.machineId != m.machineId) {
-                        remote.coreHost.navigateDirPicker(m.machineId, "")
+                        remote.coreHost.navigateDirPicker(picker.pickerKey, m.machineId, "")
                     }
                 },
                 Modifier.padding(bottom = 10.dp),
@@ -687,7 +694,7 @@ fun CoreDirPickerBody(
                 uiText(picker.error),
                 tone = NoticeTone.ERROR,
                 action = uiText(UiMessages.commonRetry()),
-                onAction = { remote.coreHost.navigateDirPicker(picker.machineId, picker.currentPath) },
+                onAction = { remote.coreHost.navigateDirPicker(picker.pickerKey, picker.machineId, picker.currentPath) },
             )
             picker.loading && picker.crumbsCount == 0 && picker.dirsCount == 0 -> Text(
                 uiText(UiMessages.projectsReadingDirectory()),
@@ -730,7 +737,7 @@ fun CoreDirPickerBody(
                             ListItem(
                                 uiText(UiMessages.projectsParentDirectory()),
                                 last = picker.dirsCount == 0,
-                                onClick = if (picker.loading) null else ({ remote.coreHost.navigateDirPicker(picker.machineId, picker.parentPath) }),
+                                onClick = if (picker.loading) null else ({ remote.coreHost.navigateDirPicker(picker.pickerKey, picker.machineId, picker.parentPath) }),
                                 icon = Lucide.ChevronLeft,
                             )
                         }
@@ -738,7 +745,7 @@ fun CoreDirPickerBody(
                             ListItem(
                                 entry.name,
                                 last = i == picker.dirsCount - 1,
-                                onClick = if (picker.loading) null else ({ remote.coreHost.navigateDirPicker(picker.machineId, entry.path) }),
+                                onClick = if (picker.loading) null else ({ remote.coreHost.navigateDirPicker(picker.pickerKey, picker.machineId, entry.path) }),
                                 trailing = { Arrow(p.ink2, T.s15) },
                             )
                         }
@@ -761,16 +768,17 @@ fun CoreDirPickerBody(
 fun NewProjectScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val projectView by remote.projectView.collectAsState()
-    LaunchedEffect(Unit) { remote.coreHost.openDirPicker(forNewTask = true) }
+    val dirPicker by remember(remote) { remote.coreHost.watchDirPicker(NEW_PROJECT_PICKER_KEY) }
+        .collectAsState(initial = DirPickerView.getDefaultInstance())
+    LaunchedEffect(Unit) { remote.coreHost.openDirPicker(NEW_PROJECT_PICKER_KEY, forNewTask = true) }
     PageScaffold(uiText(UiMessages.projectsNewChooseDirectory())) {
         CoreDirPickerBody(
-            projectView.manage.dirPicker,
+            dirPicker,
             modifier = Modifier.weight(1f).padding(horizontal = 16.dp).padding(bottom = 8.dp),
             title = "",
             onBack = null,
         ) { machine, path ->
-            remote.coreHost.addProject(path)
+            remote.coreHost.addProject(path, NEW_PROJECT_PICKER_KEY)
             nav.newProjectAt(machine, path)
         }
     }

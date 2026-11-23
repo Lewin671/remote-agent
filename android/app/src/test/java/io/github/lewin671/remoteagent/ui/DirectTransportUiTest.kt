@@ -227,49 +227,45 @@ class DirectTransportUiTest {
 
     @Test
     fun connCheckDisplaysLatencyPerComputerAndUnsupportedFooter() {
-        val state = RemoteState(
-            conn = ConnState.ONLINE,
-            link = Link.ONLINE,
-            loaded = true,
-            machines = mapOf(
-                "m1" to MachineView(
-                    "m1",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                    meta = MachineMeta.newBuilder().setHostname("alpha").build(),
-                ),
-                "m2" to MachineView(
-                    "m2",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                    meta = MachineMeta.newBuilder().setHostname("beta").build(),
-                ),
-                "m3" to MachineView(
-                    "m3",
-                    online = false,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = false),
-                    meta = MachineMeta.newBuilder().setHostname("delta").build(),
-                ),
-            ),
-        )
         val settingsView = SettingsViewModel.newBuilder()
+            .setOnline(true)
+            .setConnCheck(
+                io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView.newBuilder()
+                    .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED)
+                    .setNetworkAvailable(true)
+                    .setLivePushConnected(true),
+            )
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId("m1")
+                    .setName("alpha")
+                    .setOnline(true)
+                    .setMember(true),
+            )
             .addMachines(
                 MachineListCardView.newBuilder()
                     .setMachineId("m2")
+                    .setName("beta")
+                    .setOnline(true)
+                    .setMember(true)
                     .setDirectRow(
                         ConnCheckDirectRowView.newBuilder()
                             .setVisible(false)
                             .setStage(ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED),
                     ),
             )
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId("m3")
+                    .setName("delta")
+                    .setOnline(false)
+                    .setMember(true),
+            )
             .build()
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 ConnCheckSheet(
-                    state = state,
+                    settingsView = settingsView,
                     onClose = {},
                     serverAddress = "https://example.com",
                     onlineMachines = { listOf("m1", "m2") },
@@ -277,7 +273,6 @@ class DirectTransportUiTest {
                     pingMachine = { 40L },
                     reconnectNow = {},
                     clock = { 1000L },
-                    settingsView = settingsView,
                 )
             }
         }
@@ -293,30 +288,20 @@ class DirectTransportUiTest {
     @Test
     fun connCheckSheetShowsDirectRowWithLatencyAndReasonsAndDiagSheetRetries() {
         fun lit(s: String) = CoreText.newBuilder().setLiteral(s).build()
-        val m1State = RemoteState(
-            conn = ConnState.ONLINE,
-            link = Link.ONLINE,
-            machines = mapOf(
-                "m1" to MachineView(
-                    "m1",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                    meta = MachineMeta.newBuilder().setHostname("alpha").build(),
-                ),
-                "m2" to MachineView(
-                    "m2",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                    meta = MachineMeta.newBuilder().setHostname("beta").build(),
-                ),
-            ),
-        )
         val settingsView = SettingsViewModel.newBuilder()
+            .setOnline(true)
+            .setConnCheck(
+                io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView.newBuilder()
+                    .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED)
+                    .setNetworkAvailable(true)
+                    .setLivePushConnected(true),
+            )
             .addMachines(
                 MachineListCardView.newBuilder()
                     .setMachineId("m1")
+                    .setName("alpha")
+                    .setOnline(true)
+                    .setMember(true)
                     .setDirectRow(
                         ConnCheckDirectRowView.newBuilder()
                             .setVisible(true)
@@ -329,6 +314,9 @@ class DirectTransportUiTest {
             .addMachines(
                 MachineListCardView.newBuilder()
                     .setMachineId("m2")
+                    .setName("beta")
+                    .setOnline(true)
+                    .setMember(true)
                     .setDirectRow(
                         ConnCheckDirectRowView.newBuilder()
                             .setVisible(true)
@@ -342,7 +330,7 @@ class DirectTransportUiTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 ConnCheckSheet(
-                    state = m1State,
+                    settingsView = settingsView,
                     onClose = {},
                     serverAddress = "https://example.com",
                     onlineMachines = { listOf("m1", "m2") },
@@ -350,7 +338,6 @@ class DirectTransportUiTest {
                     pingMachine = { 40L },
                     reconnectNow = {},
                     clock = { 1000L },
-                    settingsView = settingsView,
                 )
             }
         }

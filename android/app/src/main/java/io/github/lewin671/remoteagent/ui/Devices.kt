@@ -44,25 +44,18 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun DevicesScreen() {
-    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotDevicesView() }
     val rawVm by remote.devicesView.collectAsState()
     val vm = if (rawVm != DevicesViewModel.getDefaultInstance()) rawVm else initialVm
     val t = now()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         remote.coreHost.openDevices()
-        if (remote.coreHost.syncStateView.value.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED) remote.refreshDevices()
+        if (vm.online) remote.refreshDevices()
     }
     DevicesScreenContent(
         vm = vm,
-        clockWarning = syncView.accountClockSkewed,
-        recoveryPending = syncView.isManager && syncView.recoveryPending,
-        leaseEndMs = syncView.leaseEndMs,
         nowMs = t,
         onRecovery = { nav.recovery() },
         onClientClick = { nav.client(it) },
@@ -73,9 +66,9 @@ fun DevicesScreen() {
 @Composable
 internal fun DevicesScreenContent(
     vm: DevicesViewModel,
-    clockWarning: Boolean = false,
-    recoveryPending: Boolean = false,
-    leaseEndMs: Long = 0L,
+    clockWarning: Boolean = vm.clockSkewed,
+    recoveryPending: Boolean = vm.isManager && vm.recoveryPending,
+    leaseEndMs: Long = vm.leaseEndMs,
     nowMs: Long = System.currentTimeMillis(),
     onRecovery: () -> Unit = {},
     onClientClick: (String) -> Unit = {},

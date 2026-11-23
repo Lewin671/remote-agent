@@ -20,12 +20,11 @@ import kotlinx.coroutines.launch
 fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
-    val secStatus by remote.securityStatus.collectAsState()
+    val settingsView by remote.settingsView.collectAsState()
     HandoffPreparationContent(
         state = state,
         self = remote.account.deviceId,
-        hasHandoffOffer = secStatus?.hasHandoffOffer == true ||
-            state.devices[remote.account.deviceId]?.meta?.handoffRecoveryEd?.size() == 32,
+        hasHandoffOffer = settingsView.security.hasHandoffOffer,
         prepareCode = { remote.prepareHandoffCode(storagePersisted = true) },
         onBack = onBack,
         publishOffer = remote::publishHandoffOffer,

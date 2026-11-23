@@ -257,7 +257,24 @@ class I18nBatchCTest(private val locale: String) {
     @Test fun removed() { show { RemovedScreen(appFixture.app, remote) }; shot("removed") }
     @Test fun pair() { show { PairScreen() }; shot("pair") }
     @Test fun startup() { show { AccountLoadFailure(text(UiMessages.errorsDisconnectedFromServer()), {}, {}) }; shot("startup-error") }
-    @Test fun connection() { show { ConnCheckSheet(state.copy(conn = ConnState.OFFLINE), {}, "https://example.com", { listOf("m") }, { 750 }, { 1800 }, {}) }; shot("connection") }
+    @Test fun connection() {
+        val vm = io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder()
+            .setConnCheck(
+                io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView.newBuilder()
+                    .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_OFFLINE)
+                    .setNetworkAvailable(true),
+            )
+            .addMachines(
+                io.github.lewin671.remoteagent.core.proto.MachineListCardView.newBuilder()
+                    .setMachineId("m")
+                    .setName("studio-dev")
+                    .setOnline(true)
+                    .setMember(true),
+            )
+            .build()
+        show { ConnCheckSheet(vm, {}, "https://example.com", { listOf("m") }, { 750 }, { 1800 }, {}) }
+        shot("connection")
+    }
     @Test fun schedules() { show { SchedulesScreen() }; shot("schedules") }
     @Test fun scheduleDetail() { show { ScheduleDetailScreen("m", "t") }; shot("schedule-detail") }
     @Test fun scheduleEditor() { show { ScheduleEditorContent(sampleFormVm) }; shot("schedule-editor") }

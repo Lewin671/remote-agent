@@ -185,7 +185,8 @@ object ScreenGoldenLoader {
                     .setSubError(h.bool("subError"))
                     .setSubPath(h.bool("subPath"))
                     .setDetailsAction(h.bool("detailsAction"))
-                    .setUnlinked(h.bool("unlinked")),
+                    .setUnlinked(h.bool("unlinked"))
+                    .setIsConnecting(h.bool("isConnecting")),
             )
         }
         o.obj("empty")?.let { e ->
@@ -198,7 +199,8 @@ object ScreenGoldenLoader {
                     .setReadyMachineName(e.str("readyMachineName"))
                     .setCanAddDevice(e.bool("canAddDevice"))
                     .setCanStartFirst(e.bool("canStartFirst"))
-                    .setCanRetry(e.bool("canRetry")),
+                    .setCanRetry(e.bool("canRetry"))
+                    .setLoading(e.bool("loading")),
             )
         }
         setCanFilter(o.bool("canFilter"))
@@ -228,7 +230,8 @@ object ScreenGoldenLoader {
                     .setTruncated(c.bool("truncated"))
                     .setAlwaysKind(c.enum("alwaysKind", AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED))
                     .setAlwaysArg(c.str("alwaysArg"))
-                    .setAlwaysLabel(parseText(c.obj("alwaysLabel"))),
+                    .setAlwaysLabel(parseText(c.obj("alwaysLabel")))
+                    .setLocked(c.bool("locked")),
             )
         }
         o.arr("attention").forEach { e ->
@@ -365,6 +368,7 @@ object ScreenGoldenLoader {
         d.obj("error")?.let { setError(parseText(it)) }
         d.obj("confirmLabel")?.let { setConfirmLabel(parseText(it)) }
         setCanConfirm(d.bool("canConfirm"))
+        setPickerKey(d.str("pickerKey"))
     }.build()
 
     private fun parseProject(o: JsonObject): ProjectViewModel = ProjectViewModel.newBuilder().apply {
@@ -548,6 +552,16 @@ object ScreenGoldenLoader {
         }
         setProjectRemoved(o.bool("projectRemoved"))
         setAutoIssue(o.enum("autoIssue", AutoIssueKind.AUTO_ISSUE_KIND_UNSPECIFIED))
+        setPrefsBlocked(o.bool("prefsBlocked"))
+        o.obj("prefsBlockedReason")?.let { setPrefsBlockedReason(parseText(it)) }
+        setCapabilitiesLoaded(o.bool("capabilitiesLoaded"))
+        setSupportsImages(o.bool("supportsImages"))
+        setSupportsFiles(o.bool("supportsFiles"))
+        setMaxImages(o.i32("maxImages"))
+        setMaxFiles(o.i32("maxFiles"))
+        setMaxFileBytes(o.i64("maxFileBytes"))
+        o.obj("imageUploadBlockedReason")?.let { setImageUploadBlockedReason(parseText(it)) }
+        setDiskFull(o.bool("diskFull"))
     }.build()
 
     private fun parseRing(o: JsonObject): MachineRingView = MachineRingView.newBuilder().apply {
@@ -832,6 +846,8 @@ object ScreenGoldenLoader {
         .setLastSeenMs(m.i64("lastSeenMs"))
         .setStatusDot(m.enum("statusDot", MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED))
         .setStatusWarn(m.bool("statusWarn"))
+        .setInDeviceDirectory(m.bool("inDeviceDirectory"))
+        .setDirectReady(m.bool("directReady"))
         .apply {
             m.obj("statusText")?.let { setStatusText(parseText(it)) }
             m.arr("subtitleParts").forEach { se ->
@@ -881,6 +897,9 @@ object ScreenGoldenLoader {
                     .setAuthorityName(s.str("authorityName"))
                     .setRecoveryPending(s.bool("recoveryPending"))
                     .setRecoveryReadyMs(s.i64("recoveryReadyMs"))
+                    .setHasHandoffOffer(s.bool("hasHandoffOffer"))
+                    .setRecoveryStatusStale(s.bool("recoveryStatusStale"))
+                    .setLeaseEndMs(s.i64("leaseEndMs"))
                     .apply {
                         s.obj("summaryText")?.let { setSummaryText(parseText(it)) }
                         s.obj("recoveryNotice")?.let { setRecoveryNotice(parseText(it)) }
@@ -936,10 +955,20 @@ object ScreenGoldenLoader {
                 ConnCheckSummaryView.newBuilder()
                     .setServerState(c.enum("serverState", ConnProbeState.CONN_PROBE_STATE_UNSPECIFIED))
                     .setLatencyMs(c.i32("latencyMs"))
+                    .setConnState(c.enum("connState", ConnState.CONN_STATE_UNSPECIFIED))
+                    .setNetworkAvailable(c.bool("networkAvailable"))
+                    .setLivePushConnected(c.bool("livePushConnected"))
+                    .setEverOnline(c.bool("everOnline"))
+                    .setFailures(c.i32("failures"))
+                    .setConnStartedAtMs(c.i64("connStartedAtMs"))
+                    .setDisplayGrace(c.bool("displayGrace"))
+                    .setIsConnecting(c.bool("isConnecting"))
                     .apply {
                         c.obj("statusWord")?.let { setStatusWord(parseText(it)) }
                         c.obj("summaryText")?.let { setSummaryText(parseText(it)) }
                         c.obj("lastFailureText")?.let { setLastFailureText(parseText(it)) }
+                        c.obj("connStep")?.let { setConnStep(parseText(it)) }
+                        c.obj("bannerText")?.let { setBannerText(parseText(it)) }
                     },
             )
         }
@@ -1056,6 +1085,9 @@ object ScreenGoldenLoader {
         setUsageFallbackThirtyDays(o.bool("usageFallbackThirtyDays"))
         setUsageCachedOffline(o.bool("usageCachedOffline"))
         o.obj("usageEmptyText")?.let { setUsageEmptyText(parseText(it)) }
+        setAppOnline(o.bool("appOnline"))
+        setIsManager(o.bool("isManager"))
+        o.obj("usageTokensText")?.let { setUsageTokensText(parseText(it)) }
         o.obj("connection")?.let { setConnection(parseConnectionGroup(it)) }
         o.arr("cliVersions").forEach { ce ->
             val c = ce.jsonObject
@@ -1186,6 +1218,10 @@ object ScreenGoldenLoader {
         o.arr("clients").forEach { addClients(parseClientRow(it.jsonObject)) }
         o.arr("unfinishedPairings").forEach { addUnfinishedPairings(parseClientRow(it.jsonObject)) }
         o.obj("errorText")?.let { setErrorText(parseText(it)) }
+        setClockSkewed(o.bool("clockSkewed"))
+        setRecoveryPending(o.bool("recoveryPending"))
+        setLeaseEndMs(o.i64("leaseEndMs"))
+        setLoadFailed(o.bool("loadFailed"))
     }.build()
 
     private fun parseClientDetail(o: JsonObject): ClientDetailViewModel = ClientDetailViewModel.newBuilder().apply {
@@ -1918,6 +1954,8 @@ object ScreenGoldenLoader {
                     .setShowPrimaryAction(a.bool("showPrimaryAction"))
                     .setPrimaryActionKind(a.enum("primaryActionKind", ScheduleRecoveryActionKind.SCHEDULE_RECOVERY_ACTION_KIND_UNSPECIFIED))
                     .setPrimaryActionEnabled(a.bool("primaryActionEnabled"))
+                    .setShowEnableCliAction(a.bool("showEnableCliAction"))
+                    .setDisabledAgent(a.enum("disabledAgent", Agent.AGENT_UNSPECIFIED))
                     .apply {
                         a.obj("message")?.let { setMessage(parseText(it)) }
                         a.obj("primaryActionLabel")?.let { setPrimaryActionLabel(parseText(it)) }

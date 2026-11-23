@@ -225,7 +225,7 @@ fun SettingsScreen() {
         readExitAdvice = remote::checkExitAdvice,
         onExitAccount = { app.logout() },
     )
-    if (checking) ConnCheckSheet(state) { checking = false }
+    if (checking) ConnCheckSheet { checking = false }
     if (updating) UpdateSheet { updating = false }
 }
 
@@ -781,7 +781,6 @@ fun DeviceScreen(
 ) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val syncView by remote.coreHost.syncStateView.collectAsState()
     val scope = rememberCoroutineScope()
     val initialVm = remember(remote, id) { remote.coreHost.snapshotMachineSettingsView(id) }
     val rawVm by remote.machineSettingsView.collectAsState()
@@ -816,8 +815,8 @@ fun DeviceScreen(
         directDiagnostics = diagVm,
         openDirect = openDirect,
         initialAgent = initialAgent,
-        isAuthority = syncView.isManager,
-        appOnline = syncView.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED,
+        isAuthority = vm.isManager,
+        appOnline = vm.appOnline,
         removeRunning = remove.running,
         removeError = remove.error,
         onOpenStatus = { nav.machineStatus(id) },

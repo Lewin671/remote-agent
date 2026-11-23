@@ -335,6 +335,8 @@ class UsageAndCliSwitchesTest {
             .setAttention(
                 ScheduleAttentionView.newBuilder()
                     .setShow(true)
+                    .setShowEnableCliAction(true)
+                    .setDisabledAgent(Agent.AGENT_CODEX)
                     .setMessage(
                         CoreText.newBuilder()
                             .setKey("schedule.agent_disabled_pre_run")
