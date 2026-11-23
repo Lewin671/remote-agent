@@ -38,7 +38,7 @@ import type { Remote } from "../remote";
 import { DeviceActions } from "./DeviceManagement";
 import { RejoinButton } from "../Rejoin";
 import { LeaveAlert } from "./Security";
-import { authorityName, RecoveryNotice } from "./authority-notice";
+import { RecoveryNotice } from "./authority-notice";
 import { applyUpdate, useUpdate } from "../update";
 import {
   Banner,
@@ -676,7 +676,7 @@ export function ClientsScreenView({
             </button>
           )}
         </div>
-        {!vm.isManager && managementStandaloneSlot}
+        {!vm.isManager && (managementStandaloneSlot ?? (renderText(vm.addDeviceHint) ? <p className="gf">{renderText(vm.addDeviceHint)}</p> : null))}
         <div className="gf">{l10n.t("settings.clients_footer_redesign")}</div>
       </div>
     </div>
@@ -734,13 +734,6 @@ export function ClientsPage({
       onRetry={() => void remote.loadDevices()}
       devicesLoadError={remote.devicesStatus === "error"}
       unfinishedSlot={unfinishedSlot}
-      managementStandaloneSlot={
-        !remote.isAuthority ? (
-          <p className="gf">
-            {l10n.t("security.add_on_authority", { name: authorityName(remote) })}
-          </p>
-        ) : undefined
-      }
     />
   );
 }

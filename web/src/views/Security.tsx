@@ -1,7 +1,8 @@
 import * as l10n from "../i18n";
-import { ChevronRight, Lock } from "../icons";
+import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useState } from "react";
+import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
 import {
   BROWSER_AUTHORITY_NOTICE,
   createStandaloneSecurityClient,
@@ -12,41 +13,15 @@ import type {
   SecurityHandoffCandidate,
   SecurityPendingOpSummary,
 } from "../gen/remoteagent/core/v1/security_pb";
-import { clientName } from "../devices";
-import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import { errorText, type Remote } from "../remote";
 import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 
-import { authorityName } from "./authority-notice";
 export {
   ManagementEntry,
   PairCodePage,
   DeviceActions,
 } from "./DeviceManagement";
-
-export function SecurityGroup({
-  remote,
-  go,
-}: {
-  remote: Remote;
-  go: (r: string) => void;
-}) {
-  return (
-    <>
-      <div className="label">{l10n.t("security.account_security")}</div>
-      <div className="grp">
-        <button className="row" onClick={() => go("settings/security")}>
-          <span className="ico">
-            <Lock />
-          </span>
-          {l10n.t("security.account_security")}<span className="v">{remote.isAuthority ? l10n.t("security.this_device_manages_the_account") : authorityName(remote)}</span>
-          <ChevronRight className="chev" />
-        </button>
-      </div>
-    </>
-  );
-}
 
 export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
   const [advice, setAdvice] = useState("");
@@ -98,6 +73,15 @@ export function SecurityPage({
   onBack: () => void;
 }) {
   useRemote(remote);
+  const host = useCoreHost(remote);
+  const settingsVm = useSettingsView(host);
+  const devicesVm = useDevicesView(host);
+  const isAuthority = settingsVm.isManager;
+  const managerName = settingsVm.authorityName || l10n.t("security.client");
+  const recoveryPending = settingsVm.recoveryPending;
+  const recoveryReadyMs = settingsVm.recoveryReadyMs;
+  const candidateName = (id: string) =>
+    devicesVm.clients.find((c) => c.deviceId === id)?.displayName || l10n.t("security.client");
   const visible = usePageVisible();
   const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
   const now = useNow(30_000);
@@ -126,7 +110,7 @@ export function SecurityPage({
     setRotation(st.needsRecoveryCodeRotation);
     setProfileReady(st.hasAccountPublicProfile);
     setOfferedState(st.hasHandoffOffer);
-    if (st.isAuthority || remote.isAuthority) setOffers(await remote.handoffCandidates());
+    if (st.isAuthority || isAuthority) setOffers(await remote.handoffCandidates());
   };
   useEffect(() => {
     if (!visible) return;
@@ -142,8 +126,8 @@ export function SecurityPage({
   }, [
     remote,
     visible,
-    remote.isAuthority,
-    remote.recoveryPending,
+    isAuthority,
+    recoveryPending,
     remote.authorityError,
     now,
   ]);
@@ -169,8 +153,7 @@ export function SecurityPage({
   const draft =
     pending?.kind === "offer" ||
     (pending?.kind === "state" && pending.action === "recovery");
-  const localClient =
-    remote.devices.get(remote.account.deviceId)?.kind === DeviceKind.CLIENT;
+  const localClient = devicesVm.clients.some((c) => c.isSelf);
   return (
     <div className="page set" data-route="account-security">
       {abandonOffer && <Alert title={l10n.t("security.abandon_this_succession_preparation")}
@@ -179,12 +162,12 @@ export function SecurityPage({
           setAbandonOffer(false);
           void run(async () => { await remote.discardPendingOp(); setCode(""); setSaved(false); });
         }} />}
-      <NavBar title={page === "overview" ? l10n.t("security.account_security") : page === "recovery" ? l10n.t("security.recovery_code") : page === "pending" ? l10n.t("security.unfinished_security_operation") : remote.isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")} onBack={page === "overview" ? onBack : () => setPage("overview")} />
+      <NavBar title={page === "overview" ? l10n.t("security.account_security") : page === "recovery" ? l10n.t("security.recovery_code") : page === "pending" ? l10n.t("security.unfinished_security_operation") : isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")} onBack={page === "overview" ? onBack : () => setPage("overview")} />
       <div className="body security-body">
         <div className="set-banners">
-        {remote.recoveryPending && (
-          <Banner kind="warn" action={remote.isAuthority ? l10n.t("security.reject") : undefined} onAction={() => setPage("recovery")}>
-            {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
+        {recoveryPending && (
+          <Banner kind="warn" action={isAuthority ? l10n.t("security.reject") : undefined} onAction={() => setPage("recovery")}>
+            {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(recoveryReadyMs > 0n ? futureTime(recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
           </Banner>
         )}
         {remote.recoveryStatusStale && (
@@ -207,11 +190,11 @@ export function SecurityPage({
         )}
         {page === "overview" && <>
         <div className="grp">
-          <div className="row">{l10n.t("security.current_managing_client")}<span className="v">{remote.isAuthority ? l10n.t("security.this_device") : authorityName(remote)}</span></div>
+          <div className="row">{l10n.t("security.current_managing_client")}<span className="v">{isAuthority ? l10n.t("security.this_device") : managerName}</span></div>
           <div className="row">
             {l10n.t("security.remote_control_expiry")}<span className="v">{lease === undefined ? l10n.t("security.reading") : lease === null ? l10n.t("security.remote_control_expiry_not_received_yet") : futureTime(lease, now)}</span>
           </div>
-          {remote.isAuthority && (
+          {isAuthority && (
             <button
               className="row act"
               disabled={busy}
@@ -229,10 +212,10 @@ export function SecurityPage({
           )}
         </div>
         <p className="gf">{l10n.t("security.automatically_renews_when_you_return_to_the_managing_client")}</p>
-        {!remote.isAuthority && <p className="gf">{l10n.t("security.open_to_renew", { value: String(authorityName(remote)) })}</p>}
+        {!isAuthority && <p className="gf">{l10n.t("security.open_to_renew", { value: managerName })}</p>}
         <div className="grp">
-          {remote.isAuthority && <button className="row" onClick={() => setPage("recovery")}>{l10n.t("security.recovery_code")}<ChevronRight className="chev" /></button>}
-          {(remote.isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{remote.isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")}<ChevronRight className="chev" /></button>}
+          {isAuthority && <button className="row" onClick={() => setPage("recovery")}>{l10n.t("security.recovery_code")}<ChevronRight className="chev" /></button>}
+          {(isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")}<ChevronRight className="chev" /></button>}
         </div>
         </>}
         {page === "pending" && pending && (
@@ -289,7 +272,7 @@ export function SecurityPage({
               disabled={!saved || busy}
               onClick={() =>
                 void run(async () => {
-                  if (remote.isAuthority)
+                  if (isAuthority)
                     await remote.confirmRecoveryRotation();
                   else await remote.publishHandoffOffer();
                   if ((await remote.getSecurityStatus()).pendingOp)
@@ -297,7 +280,7 @@ export function SecurityPage({
                   setCode("");
                   setSaved(false);
                   setMessage(
-                    remote.isAuthority
+                    isAuthority
                       ? l10n.t("security.recovery_code_updated_the_previous_code_and_pending_recovery")
                       : l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current"),
                   );
@@ -306,14 +289,14 @@ export function SecurityPage({
             >
               {busy
                 ? l10n.t("security.publishing")
-                : remote.isAuthority
+                : isAuthority
                   ? l10n.t("security.saved_publish_replacement")
                   : l10n.t("security.saved_notify_managing_client")}
             </button>
             <p className="gf">
               {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}</p>
           </>
-        ) : page === "recovery" && remote.isAuthority ? (
+        ) : page === "recovery" && isAuthority ? (
           <>
           <p className="txt">{l10n.t("security.replacing_the_recovery_code_immediately_invalidates_the_old_code")}</p>
           <div className="grp">
@@ -332,7 +315,7 @@ export function SecurityPage({
           </div>
           </>
         ) : null}
-        {page === "handoff" && (remote.isAuthority ? (
+        {page === "handoff" && (isAuthority ? (
           <>
             <p className="txt">
               {l10n.t("security.once_the_successor_device_joins_and_confirms_saving_its")}</p>
@@ -345,7 +328,7 @@ export function SecurityPage({
                   onClick={() => setTarget(o.deviceId)}
                 >
                   {l10n.t("security.transfer_to")}{" "}
-                  {clientName(remote.devices.get(o.deviceId), remote.devices, o.deviceId)}
+                  {candidateName(o.deviceId)}
                   <ChevronRight className="chev" />
                 </button>
               ))}
@@ -429,7 +412,7 @@ export function SecurityPage({
       {target && (
         <Alert
           title={l10n.t("security.transfer_management")}
-          text={l10n.t("security.confirm_that_the_successor_device_saved_the_new_recovery", { value: String(clientName(remote.devices.get(target), remote.devices, target)) })}
+          text={l10n.t("security.confirm_that_the_successor_device_saved_the_new_recovery", { value: candidateName(target) })}
           ok={l10n.t("security.confirm_transfer")}
           danger
           onCancel={() => setTarget("")}

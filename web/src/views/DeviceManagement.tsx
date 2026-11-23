@@ -4,10 +4,11 @@ import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
+import { useCoreHost, useDevicesView } from "../core/host";
+import { renderText } from "../core/text";
 import type { SecurityPairingInfo } from "../gen/remoteagent/core/v1/security_pb";
 import { errorText, type Remote } from "../remote";
 import { Alert, Banner, NavBar, useRemote } from "../ui";
-import { authorityName } from "./authority-notice";
 
 /** 添加设备 on the current authority: a line of blue words with ＋ after
  * the computers' cards, or the last row of a list of them (row); on any
@@ -21,14 +22,15 @@ export function ManagementEntry({
   go: (r: string) => void;
   row?: boolean;
 }) {
-  return remote.isAuthority ? (
+  const vm = useDevicesView(useCoreHost(remote));
+  return vm.isManager ? (
     <button className={row ? "row has-ic act" : "addrow"} onClick={() => go("settings/add-device")}>
       <span className={row ? "lead" : undefined}><Plus /></span>
       <span className={row ? "row-name" : undefined}>{l10n.t("home.add_device")}</span>
     </button>
   ) : (
     <p className="gf">
-      {l10n.t("security.add_on_authority", { name: authorityName(remote) })}</p>
+      {renderText(vm.addDeviceHint) || l10n.t("security.add_on_authority", { name: vm.authorityName || l10n.t("security.client") })}</p>
   );
 }
 export function DeviceActions({
@@ -46,19 +48,21 @@ export function DeviceActions({
   onRemoved?: () => void;
   incomplete?: boolean;
 }) {
+  const vm = useDevicesView(useCoreHost(remote));
   const [confirm, setConfirm] = useState<"remove" | "delete">();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const active = remote.devices.has(id);
-  if (!remote.isAuthority)
+  const managerName = vm.authorityName || l10n.t("security.client");
+  if (!vm.isManager)
     return (
       <p className="gf">
         {machine
-          ? l10n.t("settings.remove_non_authority_footer", { name: authorityName(remote) })
-          : l10n.t("security.manage_on_authority", { name: authorityName(remote) })}
+          ? l10n.t("settings.remove_non_authority_footer", { name: managerName })
+          : l10n.t("security.manage_on_authority", { name: managerName })}
       </p>
     );
-  if (id === remote.authorityDeviceId)
+  if (id === vm.authorityDeviceId)
     return (
       <p className="gf">{l10n.t("security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management")}</p>
     );
@@ -137,6 +141,7 @@ export function PairCodePage({
   onBack: () => void;
 }) {
   useRemote(remote);
+  const devicesVm = useDevicesView(useCoreHost(remote));
   const [pair, setPair] = useState<SecurityPairingInfo>();
   const [qr, setQr] = useState<{ url: string; src: string }>();
   const [confirmed, setConfirmed] = useState(false);
@@ -210,7 +215,7 @@ export function PairCodePage({
       setBusy(false);
     }
   };
-  if (!remote.isAuthority)
+  if (!devicesVm.isManager)
     return (
       <div className="page set">
         <NavBar title={l10n.t("home.add_device")} onBack={onBack} />

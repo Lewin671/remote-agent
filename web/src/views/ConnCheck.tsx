@@ -8,7 +8,6 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ConnProbeState, useCoreHost, useSettingsView } from "../core/host";
 import { renderText } from "../core/text";
 import { ConnectionGroupStage } from "../gen/remoteagent/core/v1/settings_view_pb";
-import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
@@ -66,10 +65,10 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   }, [connecting, startedAt]);
   const stream = connWord(remote, true);
   const run = useRef(0);
-  const list = [...remote.machines.values()].sort((a, b) => Number(remote.peer(b.id).reachable) - Number(remote.peer(a.id).reachable) || machineName(a).localeCompare(machineName(b)));
+  const list = [...settingsVm.machines].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   const check = useCallback(async () => {
     const mine = ++run.current;
-    const online = [...remote.machines.values()].filter((m) => remote.peer(m.id).reachable).map((m) => m.id);
+    const online = host.viewSettings().machines.filter((m) => m.online).map((m) => m.machineId);
     setBusy(true);
     setServer({ state: "wait" });
     setMachines(new Map(online.map((id) => [id, { state: "wait" }])));
@@ -139,19 +138,18 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
         {list.map((m) => {
-          const reachable = remote.peer(m.id).reachable;
-          const directRow = reachable ? settingsVm.machines.find((x) => { return x.machineId === m.id; })?.directRow : undefined;
+          const directRow = m.online ? m.directRow : undefined;
           const status = directRow ? renderText(directRow.statusText) : "";
           const detail = directRow ? renderText(directRow.detailText) : "";
           const summary = [status, detail].filter(Boolean).join(" · ");
           return (
-            <Fragment key={m.id}>
+            <Fragment key={m.machineId}>
               <div className="mi">
-                <span className="mt">{machineName(m)}</span>
-                {reachable ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
+                <span className="mt">{m.name}</span>
+                {m.online ? <Result p={machines.get(m.machineId)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
               </div>
               {directRow?.visible && summary && (
-                <div className="mi conn-direct" data-machine-id={m.id}>
+                <div className="mi conn-direct" data-machine-id={m.machineId}>
                   <span className="mt">{summary}</span>
                 </div>
               )}

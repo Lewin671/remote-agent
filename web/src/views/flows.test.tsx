@@ -4435,7 +4435,6 @@ it("puts a daemon-rejected image message back with its text, original option and
 
 describe("adding devices on the current authority", () => {
   const hint = "要添加电脑或客户端，在管理端（Android 16 · Pixel 9）上打开「设置 › 添加设备」。";
-  const clientHint = "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。";
 
   it("says where to add a device in settings, with no 添加设备 to tap", async () => {
     const r = demo();
@@ -4451,7 +4450,7 @@ describe("adding devices on the current authority", () => {
     const { ClientsPage } = await import("./Settings");
     mount(<ClientsPage remote={r} go={() => undefined} onBack={() => undefined} />);
     expect(button(/添加设备|添加新客户端/)).toBeUndefined();
-    expect(host.textContent).toContain(clientHint);
+    expect(host.textContent).toContain(hint);
   });
 
   it("tells an account with no computer where to add one, without a button", () => {
