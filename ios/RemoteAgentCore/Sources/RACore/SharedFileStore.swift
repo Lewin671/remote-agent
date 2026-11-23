@@ -1,492 +1,506 @@
-// The phone's copies of files the agent shared, and the downloads that make
-// them: fetched in blocks over `GetSharedFileChunk`, kept across pauses and
-// a killed app, checked against the SHA-256 the event carries, and shared
-// by every card that shows the same file_id (ui-spec §4, §7, §8).
+// Thin platform I/O executor for Core-driven shared-file downloads:
+// disk scanning, free-space inspection, chunk persistence, streaming SHA-256
+// verification & atomic commit, and cache cleanup.
+//
+// All download state transitions, block planning, retries, and ETA live in Go clientcore.
+// Callers must serialize all storage operations through a single global FIFO queue.
 //
 // Layout under `root`, one folder per session and per file:
 //
-//   <session>/<file>/.part       the blocks so far
-//   <session>/<file>/.meta       JSON: size, block size, completed offset, SHA-256, duration
-//   <session>/<file>/file/<name> the finished copy, named as the sanitized name
-//
-// A pause, cancel or delete takes the download's token away: whatever its
-// task does after that (a block that was already on its way) is dropped,
-// never written and never shown (Android's pause race, device-report 1).
+//   <session>/<file>/.part       the unpadded blocks written so far
+//   <session>/<file>/.meta       v2 JSON metadata (schema_version=2)
+//   <session>/<file>/file/<name> the committed copy, named as the sanitized display name
 import CryptoKit
 import Foundation
 import RAProto
 
-/// Fetches one block of a shared file; `Remote.sharedFileFetcher` is the real one.
-public protocol SharedFileFetching: Sendable {
-    func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse
-}
+public struct SharedFileStore: Sendable {
+    private static let metaSchemaVersion = 2
 
-public enum SharedFileStoreEvent: Equatable, Sendable {
-    case state(SharedFileKey, SharedFileTransfer)
-    /// The finished copy has been checked and put in place.
-    case completed(SharedFileKey, URL)
-}
-
-public actor SharedFileStore {
     private struct Meta: Codable, Sendable {
-        var size: Int64
-        var blockBytes: Int
-        var completed: Int64
-        var sha256: String
+        var schemaVersion: Int
+        var sessionId: String
+        var fileId: String
+        var displayName: String
+        var totalSizeBytes: Int64
+        var chunkBytes: Int32
+        var committedOffset: Int64
+        var expectedSha256: Data
         var durationMs: Int64?
-        var sessionId: String?
-        var fileId: String?
-        var fileName: String?
+
+        enum CodingKeys: String, CodingKey {
+            case schemaVersion = "schema_version"
+            case sessionId = "session_id"
+            case fileId = "file_id"
+            case displayName = "display_name"
+            case totalSizeBytes = "total_size_bytes"
+            case chunkBytes = "chunk_bytes"
+            case committedOffset = "committed_offset"
+            case expectedSha256 = "expected_sha256"
+            case durationMs = "duration_ms"
+        }
     }
 
-    private struct Job {
-        let token: Int
-        let task: Task<Void, Never>
-    }
-
-    private nonisolated let root: URL
-    private let fetcher: any SharedFileFetching
-    private let isMachineOnline: @Sendable (String) -> Bool
-    private let blockBytesFor: @Sendable (String) -> Int
-    private let clock: @Sendable () -> Int64
-    private let sleep: @Sendable (Int64) async -> Void
-
-    private var jobs: [SharedFileKey: Job] = [:]
-    private var runningTasks: [Int: Task<Void, Never>] = [:]
-    private var stateWaitersForTest: [(key: SharedFileKey, pred: @Sendable (SharedFileTransfer) -> Bool, cont: CheckedContinuation<SharedFileTransfer, Never>)] = []
-    private var states: [SharedFileKey: SharedFileTransfer] = [:]
-    private var nextToken = 0
-    private let continuation: AsyncStream<SharedFileStoreEvent>.Continuation
-    /// What changed, in order. One reader.
-    public nonisolated let events: AsyncStream<SharedFileStoreEvent>
+    public let root: URL
+    private let availableCapacity: @Sendable (URL) throws -> Int64?
 
     public init(
-        root: URL, fetcher: any SharedFileFetching,
-        isMachineOnline: @escaping @Sendable (String) -> Bool,
-        blockBytes: @escaping @Sendable (String) -> Int = { _ in defaultSharedFileBlockBytes },
-        clock: @escaping @Sendable () -> Int64 = { nowMs() },
-        sleep: @escaping @Sendable (Int64) async -> Void = { try? await Task.sleep(nanoseconds: UInt64(max(0, $0)) * 1_000_000) }
+        root: URL,
+        availableCapacity: @escaping @Sendable (URL) throws -> Int64? = SharedFileStore.defaultAvailableCapacity
     ) {
         self.root = root
-        self.fetcher = fetcher
-        self.isMachineOnline = isMachineOnline
-        self.blockBytesFor = blockBytes
-        self.clock = clock
-        self.sleep = sleep
-        (events, continuation) = AsyncStream.makeStream(of: SharedFileStoreEvent.self, bufferingPolicy: .unbounded)
+        self.availableCapacity = availableCapacity
     }
-
-    deinit { continuation.finish() }
 
     // MARK: Paths
 
-    private nonisolated func directory(_ key: SharedFileKey) -> URL {
+    private func directory(_ key: SharedFileKey) -> URL {
         root.appending(path: sharedFileFolderName(key.sessionId), directoryHint: .isDirectory)
             .appending(path: sharedFileFolderName(key.fileId), directoryHint: .isDirectory)
     }
 
-    private nonisolated func partURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".part") }
-    private nonisolated func metaURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".meta") }
+    private func partURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".part") }
+    private func metaURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: ".meta") }
+    private func fileFolderURL(_ key: SharedFileKey) -> URL { directory(key).appending(path: "file", directoryHint: .isDirectory) }
 
-    /// Where the finished copy of `file` is, or would be.
-    public nonisolated func localURL(_ key: SharedFileKey, name: String) -> URL {
-        directory(key).appending(path: "file", directoryHint: .isDirectory)
-            .appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
+    /// Where the finished copy of `name` is, or would be.
+    public func localURL(_ key: SharedFileKey, name: String) -> URL {
+        fileFolderURL(key).appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
     }
 
-    private nonisolated func readMeta(_ key: SharedFileKey) -> Meta? {
-        guard let data = try? Data(contentsOf: metaURL(key)) else { return nil }
-        return try? JSONDecoder().decode(Meta.self, from: data)
-    }
-
-    private nonisolated func writeMeta(_ key: SharedFileKey, _ meta: Meta) throws {
-        try JSONEncoder().encode(meta).write(to: metaURL(key), options: .atomic)
-    }
-
-    private static func length(_ url: URL) -> Int64? {
-        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value
-    }
-
-    // MARK: State
-
-    private func set(_ key: SharedFileKey, _ state: SharedFileTransfer) {
-        guard states[key] != state else { return }
-        states[key] = state
-        continuation.yield(.state(key, state))
-        var remaining: [(key: SharedFileKey, pred: @Sendable (SharedFileTransfer) -> Bool, cont: CheckedContinuation<SharedFileTransfer, Never>)] = []
-        for waiter in stateWaitersForTest {
-            if waiter.key == key && waiter.pred(state) {
-                waiter.cont.resume(returning: state)
-            } else {
-                remaining.append(waiter)
-            }
-        }
-        stateWaitersForTest = remaining
-    }
-
-    func waitStateForTest(_ key: SharedFileKey, _ pred: @escaping @Sendable (SharedFileTransfer) -> Bool) async -> SharedFileTransfer {
-        let current = states[key] ?? .idle
-        if pred(current) { return current }
-        return await withCheckedContinuation { cont in
-            stateWaitersForTest.append((key, pred, cont))
-        }
-    }
-
-    func drainForTest() async {
-        while !runningTasks.isEmpty {
-            let current = Array(runningTasks.values)
-            for t in current { await t.value }
-        }
-    }
-
-    private func finishRunning(_ token: Int) {
-        runningTasks.removeValue(forKey: token)
-    }
-
-    /// The state of `key` as the disk says it, without starting anything.
-    public nonisolated func inspect(_ key: SharedFileKey, file: PBSharedFile) -> SharedFileTransfer {
-        let final = localURL(key, name: file.name)
-        let meta = readMeta(key)
-        if Self.length(final) == file.sizeBytes {
-            return .downloaded(url: final, durationMs: meta?.durationMs)
-        }
-        if let meta, meta.size == file.sizeBytes, meta.sha256 == file.sha256.hexString, meta.blockBytes > 0,
-           meta.completed > 0, meta.completed % Int64(meta.blockBytes) == 0,
-           (Self.length(partURL(key)) ?? 0) >= meta.completed
-        {
-            return .paused(done: min(meta.completed, file.sizeBytes), total: file.sizeBytes)
-        }
-        return .idle
-    }
-
-    /// What is known of the file now: a download in flight, else what is on the disk. A copy the system
-    /// took back (the cache is purged) is no longer a download.
-    @discardableResult
-    public func hydrate(_ key: SharedFileKey, file: PBSharedFile) -> SharedFileTransfer {
-        if let held = states[key] {
-            if jobs[key] != nil { return held }
-            switch held {
-            case .downloaded(let url, _): if FileManager.default.fileExists(atPath: url.path) { return held }
-            case .paused, .failed, .cleanedUp: return held
-            case .idle, .downloading: break
-            }
-        }
-        let found = inspect(key, file: file)
-        set(key, found)
-        return found
-    }
-
-    public func state(_ key: SharedFileKey) -> SharedFileTransfer { states[key] ?? .idle }
-
-    /// Scans all persisted copies and partial downloads on disk so the shell can send a full `replace_all` report on startup or account switch.
-    public func scanPersisted() -> [(SharedFileKey, SharedFileTransfer)] {
+    /// Returns the existing committed local copy on disk, or `nil` if absent (e.g. reclaimed by the OS cache cleaner).
+    public func existingLocalURL(_ key: SharedFileKey, name: String) -> URL? {
         let fm = FileManager.default
-        guard let sessionDirs = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else {
-            return []
-        }
-        var found: [(SharedFileKey, SharedFileTransfer)] = []
-        for sessionDir in sessionDirs {
-            guard let fileDirs = try? fm.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) else {
-                continue
-            }
-            for fileDir in fileDirs {
-                let metaFile = fileDir.appending(path: ".meta")
-                guard let data = try? Data(contentsOf: metaFile),
-                      let meta = try? JSONDecoder().decode(Meta.self, from: data)
-                else { continue }
-                let sid = meta.sessionId ?? sessionDir.lastPathComponent
-                let fid = meta.fileId ?? fileDir.lastPathComponent
-                let key = SharedFileKey(sessionId: sid, fileId: fid)
-                let fileFolder = fileDir.appending(path: "file", directoryHint: .isDirectory)
-                if let finalURL: URL = {
-                    if let name = meta.fileName, !name.isEmpty {
-                        let candidate = fileFolder.appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
-                        if Self.length(candidate) == meta.size { return candidate }
-                    }
-                    if let items = try? fm.contentsOfDirectory(at: fileFolder, includingPropertiesForKeys: nil, options: .skipsHiddenFiles) {
-                        return items.first { Self.length($0) == meta.size }
-                    }
-                    return nil
-                }() {
-                    let t = SharedFileTransfer.downloaded(url: finalURL, durationMs: meta.durationMs)
-                    if jobs[key] == nil { states[key] = t }
-                    found.append((key, t))
-                } else if meta.blockBytes > 0, meta.completed > 0, meta.completed % Int64(meta.blockBytes) == 0,
-                          (Self.length(fileDir.appending(path: ".part")) ?? 0) >= meta.completed
-                {
-                    let t = SharedFileTransfer.paused(done: min(meta.completed, meta.size), total: meta.size)
-                    if jobs[key] == nil { states[key] = t }
-                    found.append((key, t))
-                }
+        if !name.isEmpty {
+            let candidate = localURL(key, name: name)
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: candidate.path, isDirectory: &isDir), !isDir.boolValue {
+                return candidate
             }
         }
-        return found
-    }
-
-    // MARK: Controls
-
-    /// Starts, resumes or retries the download of `file`; a download already running is left alone.
-    public func start(_ key: SharedFileKey, file: PBSharedFile) {
-        if jobs[key] != nil { return }
-        let found = inspect(key, file: file)
-        if case .downloaded = found {
-            set(key, found)
-            return
+        let folder = fileFolderURL(key)
+        guard let items = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isRegularFileKey], options: .skipsHiddenFiles) else {
+            return nil
         }
-        nextToken += 1
-        let token = nextToken
-        let done: Int64 = if case .paused(let d, _) = found { d } else { 0 }
-        set(key, .downloading(done: done, total: file.sizeBytes, etaSeconds: nil, waitingReconnect: false))
-        let task = Task { [self] in
-            await run(key, file: file, token: token)
-            finishRunning(token)
+        return items.first { url in
+            (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
         }
-        runningTasks[token] = task
-        jobs[key] = Job(token: token, task: task)
-    }
-
-    /// Keeps what was fetched; nothing more is asked of the computer.
-    public func pause(_ key: SharedFileKey, file: PBSharedFile) {
-        guard let job = jobs.removeValue(forKey: key) else { return }
-        job.task.cancel()
-        let done = min(file.sizeBytes, readMeta(key)?.completed ?? 0)
-        set(key, .paused(done: done, total: file.sizeBytes))
-    }
-
-    /// Drops the blocks fetched so far.
-    public func cancel(_ key: SharedFileKey) {
-        jobs.removeValue(forKey: key)?.task.cancel()
-        try? FileManager.default.removeItem(at: partURL(key))
-        try? FileManager.default.removeItem(at: metaURL(key))
-        set(key, .idle)
-    }
-
-    /// 删除本机副本: the copy and anything partial.
-    public func deleteLocal(_ key: SharedFileKey) {
-        jobs.removeValue(forKey: key)?.task.cancel()
-        try? FileManager.default.removeItem(at: directory(key))
-        set(key, .idle)
-    }
-
-    /// The session is gone: its downloads stop and its folder goes.
-    public func removeSession(_ sessionId: String) {
-        for (key, job) in jobs where key.sessionId == sessionId {
-            job.task.cancel()
-            jobs[key] = nil
-        }
-        try? FileManager.default.removeItem(at: root.appending(path: sharedFileFolderName(sessionId), directoryHint: .isDirectory))
-        for key in states.keys where key.sessionId == sessionId {
-            states[key] = nil
-            continuation.yield(.state(key, .idle))
-        }
-    }
-
-    /// 清理: every copy and every partial download.
-    public func clearAll() {
-        for (_, job) in jobs { job.task.cancel() }
-        jobs.removeAll()
-        if let folders = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
-            for folder in folders { try? FileManager.default.removeItem(at: folder) }
-        }
-        for key in states.keys {
-            states[key] = nil
-            continuation.yield(.state(key, .idle))
-        }
-    }
-
-    /// The centre is closed: nothing more is fetched. What is on the disk stays, to be found again.
-    public func stop() {
-        for (_, job) in jobs { job.task.cancel() }
-        jobs.removeAll()
     }
 
     /// What the copies and partial downloads take on disk.
-    public func usedBytes() -> Int64 { Self.bytes(root) }
+    public func usedBytes() -> Int64 { ImageDiskPolicy.bytes(root) }
 
-    nonisolated static func bytes(_ root: URL) -> Int64 { ImageDiskPolicy.bytes(root) }
+    // MARK: Core Storage Effects
 
-    /// Notes the duration of a finished copy, which only the app can read (AVFoundation).
-    public func recordDuration(_ key: SharedFileKey, ms: Int64) {
-        guard case .downloaded(let url, _) = states[key], var meta = readMeta(key) else { return }
-        meta.durationMs = ms
-        try? writeMeta(key, meta)
-        set(key, .downloaded(url: url, durationMs: ms))
-    }
-
-    // MARK: The download
-
-    private func current(_ key: SharedFileKey, _ token: Int) -> Bool { jobs[key]?.token == token }
-
-    private func finish(_ key: SharedFileKey, _ token: Int, _ state: SharedFileTransfer) {
-        guard current(key, token) else { return }
-        jobs[key] = nil
-        set(key, state)
-    }
-
-    private func fail(_ key: SharedFileKey, _ token: Int, _ why: SharedFileFailure, dropBlocks: Bool = false) {
-        guard current(key, token) else { return }
-        if dropBlocks {
-            try? FileManager.default.removeItem(at: partURL(key))
-            try? FileManager.default.removeItem(at: metaURL(key))
-        }
-        finish(key, token, .failed(why))
-    }
-
-    private func run(_ key: SharedFileKey, file: PBSharedFile, token: Int) async {
+    /// Executes `SharedFileScanLocalEffect`: enumerates persisted completed copies and partial downloads.
+    /// Unrecognized / legacy `.meta` formats are never migrated and are reported as malformed so Core cleans them up.
+    public func scanLocal(opID: UInt64) -> PBSharedFileLocalScannedEvent {
         let fm = FileManager.default
-        let blockBytes = max(1, blockBytesFor(key.sessionId))
-        let size = file.sizeBytes
-        let hashHex = file.sha256.hexString
-        let part = partURL(key)
-        var next: Int64 = 0
-        do {
-            try fm.createDirectory(at: directory(key), withIntermediateDirectories: true, attributes: Self.protection)
-            if let meta = readMeta(key), meta.size == size, meta.blockBytes == blockBytes, meta.sha256 == hashHex,
-               meta.completed > 0, meta.completed % Int64(blockBytes) == 0,
-               (Self.length(part) ?? 0) >= min(meta.completed, size)
-            {
-                // Every block may already be in (the app went away before the check): only the check is left.
-                next = min(meta.completed, size)
-                let handle = try FileHandle(forWritingTo: part)
-                try handle.truncate(atOffset: UInt64(next))
-                try handle.close()
-            } else {
-                try? fm.removeItem(at: part)
-                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: 0, sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
-                fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection)
-            }
-        } catch {
-            fail(key, token, Self.failure(for: error))
-            return
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: root.path, isDirectory: &isDir), isDir.boolValue else {
+            return .with { $0.opID = opID }
         }
-        set(key, .downloading(done: next, total: size, etaSeconds: nil, waitingReconnect: false))
+        let sessionDirs: [URL]
+        do {
+            sessionDirs = try fm.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey], options: .skipsHiddenFiles)
+        } catch {
+            return .with {
+                $0.opID = opID
+                $0.error = error.localizedDescription
+            }
+        }
 
-        let plan = planSharedFileBlocks(size: size, blockBytes: blockBytes)
-        var index = next >= size && size > 0 ? plan.offsets.count : (plan.offsets.firstIndex { $0 >= next } ?? 0)
-        let started = clock()
-        var fetched: Int64 = 0
-        var retried = false
-        while index < plan.offsets.count {
-            guard current(key, token) else { return }
-            let offset = plan.offsets[index]
-            let reply: PBGetSharedFileChunkResponse
-            do {
-                reply = try await fetcher.fetchChunk(sessionId: key.sessionId, fileId: key.fileId, offset: offset)
-            } catch {
-                guard current(key, token), !Task.isCancelled else { return }
-                if let e = error as? CommandError, e.fromDaemon, e.code == "not_found" {
-                    // The computer dropped the file: nothing of it is kept.
-                    try? fm.removeItem(at: part)
-                    try? fm.removeItem(at: metaURL(key))
-                    finish(key, token, .cleanedUp)
-                    return
-                }
-                if Self.transient(error) {
-                    if retried {
-                        fail(key, token, .disconnected)
-                        return
+        var entries: [PBSharedFileLocalEntry] = []
+        for sessionDir in sessionDirs {
+            guard (try? sessionDir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+                  let fileDirs = try? fm.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: [.isDirectoryKey], options: .skipsHiddenFiles)
+            else { continue }
+
+            for fileDir in fileDirs {
+                guard (try? fileDir.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else { continue }
+                let metaFile = fileDir.appending(path: ".meta")
+                let partFile = fileDir.appending(path: ".part")
+                let fileFolder = fileDir.appending(path: "file", directoryHint: .isDirectory)
+                let fallbackSid = sessionDir.lastPathComponent
+                let fallbackFid = fileDir.lastPathComponent
+
+                guard let meta = Self.readMeta(at: metaFile),
+                      meta.schemaVersion == Self.metaSchemaVersion,
+                      !meta.sessionId.isEmpty,
+                      !meta.fileId.isEmpty
+                else {
+                    // Legacy or corrupt metadata: never read/migrate; report as malformed so Core emits DeleteLocal / DeletePartial.
+                    if Self.firstCommittedFile(in: fileFolder, preferredName: nil) != nil {
+                        entries.append(.with {
+                            $0.sessionID = fallbackSid
+                            $0.fileID = fallbackFid
+                            $0.completed = true
+                            $0.bytesOnDisk = -1
+                        })
+                    } else if fm.fileExists(atPath: partFile.path) || fm.fileExists(atPath: metaFile.path) {
+                        entries.append(.with {
+                            $0.sessionID = fallbackSid
+                            $0.fileID = fallbackFid
+                            $0.completed = false
+                            $0.bytesOnDisk = Self.fileLength(partFile) ?? 0
+                        })
                     }
-                    retried = true
-                    set(key, .downloading(done: min(offset, size), total: size, etaSeconds: nil, waitingReconnect: true))
-                    if await waitForComputer(key, token) { continue }
-                    fail(key, token, .disconnected)
-                    return
+                    continue
                 }
-                fail(key, token, .other((error as? CommandError)?.message ?? error.localizedDescription))
-                return
-            }
-            // The block was on its way while a pause or cancel went through: it is not this download's any more.
-            guard current(key, token) else { return }
 
-            guard reply.hasTotalBytes, reply.totalBytes == UInt64(size),
-                  reply.data.count == blockBytes || (size == 0 && reply.data.isEmpty)
-            else {
-                fail(key, token, .checksum, dropBlocks: true)
-                return
+                if let finalURL = Self.firstCommittedFile(in: fileFolder, preferredName: meta.displayName),
+                   let actualBytes = Self.fileLength(finalURL)
+                {
+                    entries.append(.with {
+                        $0.sessionID = meta.sessionId
+                        $0.fileID = meta.fileId
+                        $0.completed = true
+                        $0.bytesOnDisk = actualBytes
+                        $0.expectedSizeBytes = meta.totalSizeBytes
+                        $0.chunkBytes = meta.chunkBytes
+                        $0.committedOffset = meta.committedOffset
+                        $0.sha256 = meta.expectedSha256
+                        if let duration = meta.durationMs, duration > 0 {
+                            $0.hasDuration_p = true
+                            $0.durationMs = duration
+                        }
+                    })
+                } else if fm.fileExists(atPath: partFile.path), let partBytes = Self.fileLength(partFile) {
+                    entries.append(.with {
+                        $0.sessionID = meta.sessionId
+                        $0.fileID = meta.fileId
+                        $0.completed = false
+                        $0.bytesOnDisk = partBytes
+                        $0.expectedSizeBytes = meta.totalSizeBytes
+                        $0.chunkBytes = meta.chunkBytes
+                        $0.committedOffset = meta.committedOffset
+                        $0.sha256 = meta.expectedSha256
+                    })
+                } else {
+                    // Orphaned .meta with neither final copy nor .part: report malformed partial so Core cleans it up.
+                    entries.append(.with {
+                        $0.sessionID = meta.sessionId
+                        $0.fileID = meta.fileId
+                        $0.completed = false
+                        $0.bytesOnDisk = 0
+                    })
+                }
             }
-            let take = Int(min(Int64(blockBytes), max(0, size - offset)))
-            do {
-                let handle = try FileHandle(forUpdating: part)
-                defer { try? handle.close() }
-                try handle.seek(toOffset: UInt64(offset))
-                if take > 0 { try handle.write(contentsOf: reply.data.prefix(take)) }
-                try handle.truncate(atOffset: UInt64(offset + Int64(take)))
-                try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: offset + Int64(blockBytes), sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
-            } catch {
-                fail(key, token, Self.failure(for: error))
-                return
-            }
-            let done = min(size, offset + Int64(take))
-            fetched += Int64(take)
-            let elapsed = max(0, clock() - started)
-            var eta: Int?
-            if elapsed >= 3_000, fetched > 0, done < size {
-                eta = max(1, Int((Double(size - done) / (Double(fetched) / (Double(elapsed) / 1000))).rounded(.down)))
-            }
-            set(key, .downloading(done: done, total: size, etaSeconds: eta, waitingReconnect: false))
-            index += 1
         }
+        return .with {
+            $0.opID = opID
+            $0.entries = entries
+        }
+    }
 
-        guard current(key, token) else { return }
-        guard let digest = Self.sha256(of: part, bytes: size), digest == file.sha256 else {
-            fail(key, token, .checksum, dropBlocks: true)
-            return
-        }
-        let final = localURL(key, name: file.name)
+    /// Executes `SharedFileInspectDiskEffect`: reports free volume capacity for important usage.
+    public func inspectDisk(_ effect: PBSharedFileInspectDiskEffect) -> PBSharedFileDiskInspectedEvent {
+        let fm = FileManager.default
         do {
-            try fm.createDirectory(at: final.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: Self.protection)
-            try? fm.removeItem(at: final)
-            try fm.moveItem(at: part, to: final)
-            try writeMeta(key, Meta(size: size, blockBytes: blockBytes, completed: size, sha256: hashHex, durationMs: nil, sessionId: key.sessionId, fileId: key.fileId, fileName: safeLocalSharedFileName(file.name)))
+            try fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: Self.protection)
+            if let available = try availableCapacity(root) {
+                return .with {
+                    $0.opID = effect.opID
+                    $0.sessionID = effect.sessionID
+                    $0.fileID = effect.fileID
+                    $0.known = true
+                    $0.availableBytes = max(0, available)
+                }
+            }
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.known = false
+            }
         } catch {
-            fail(key, token, Self.failure(for: error))
-            return
+            let kind = Self.ioErrorKind(for: error)
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.known = false
+                if kind == .storageFull {
+                    $0.errorKind = .storageFull
+                    $0.errorDetail = error.localizedDescription
+                }
+            }
         }
-        finish(key, token, .downloaded(url: final, durationMs: nil))
-        continuation.yield(.completed(key, final))
     }
 
-    /// Waits for the computer to be reachable again, up to 30 seconds.
-    private func waitForComputer(_ key: SharedFileKey, _ token: Int) async -> Bool {
-        let deadline = clock() + sharedFileReconnectWaitMs
-        await sleep(1_000)
-        while clock() < deadline {
-            guard current(key, token) else { return false }
-            if isMachineOnline(key.sessionId) { return true }
-            await sleep(min(1_000, max(1, deadline - clock())))
+    /// Executes `SharedFileWriteChunkEffect`: writes validated unpadded chunk bytes to `.part` and atomically updates `.meta`.
+    public func writeChunk(_ effect: PBSharedFileWriteChunkEffect) -> PBSharedFileWriteChunkResultEvent {
+        let key = SharedFileKey(sessionId: effect.sessionID, fileId: effect.fileID)
+        let dir = directory(key)
+        let part = partURL(key)
+        let fm = FileManager.default
+
+        do {
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: Self.protection)
+            if effect.resetPartial {
+                try? fm.removeItem(at: part)
+                guard fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection) else {
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno != 0 ? errno : EIO))
+                }
+            } else if !fm.fileExists(atPath: part.path) {
+                if effect.offset > 0 {
+                    return .with {
+                        $0.opID = effect.opID
+                        $0.sessionID = effect.sessionID
+                        $0.fileID = effect.fileID
+                        $0.ok = false
+                        $0.errorKind = .checksumMismatch
+                        $0.errorDetail = "partial file missing"
+                    }
+                }
+                guard fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection) else {
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno != 0 ? errno : EIO))
+                }
+            } else if effect.offset > 0, (Self.fileLength(part) ?? 0) < effect.offset {
+                return .with {
+                    $0.opID = effect.opID
+                    $0.sessionID = effect.sessionID
+                    $0.fileID = effect.fileID
+                    $0.ok = false
+                    $0.errorKind = .checksumMismatch
+                    $0.errorDetail = "partial file truncated"
+                }
+            }
+
+            let offset = max(0, effect.offset)
+            let handle = try FileHandle(forUpdating: part)
+            var closed = false
+            defer { if !closed { try? handle.close() } }
+            try handle.seek(toOffset: UInt64(offset))
+            if !effect.data.isEmpty {
+                try handle.write(contentsOf: effect.data)
+            }
+            try handle.truncate(atOffset: UInt64(offset + Int64(effect.data.count)))
+            try handle.close()
+            closed = true
+
+            let meta = Meta(
+                schemaVersion: Self.metaSchemaVersion,
+                sessionId: effect.sessionID,
+                fileId: effect.fileID,
+                displayName: safeLocalSharedFileName(effect.displayName),
+                totalSizeBytes: effect.totalSizeBytes,
+                chunkBytes: effect.chunkBytes,
+                committedOffset: effect.committedOffset,
+                expectedSha256: effect.expectedSha256,
+                durationMs: nil
+            )
+            try Self.writeMeta(meta, to: metaURL(key))
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = true
+            }
+        } catch {
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = false
+                $0.errorKind = Self.ioErrorKind(for: error)
+                $0.errorDetail = error.localizedDescription
+            }
         }
-        return current(key, token) && isMachineOnline(key.sessionId)
     }
 
-    // MARK: Helpers
+    /// Executes `SharedFileVerifyAndCommitEffect`: streams SHA-256 over the first `total_size_bytes` of `.part`
+    /// and atomically commits to `file/<display_name>` (or removes `.part`/`.meta` on `deliver_only`).
+    public func verifyAndCommit(_ effect: PBSharedFileVerifyAndCommitEffect) -> PBSharedFileVerifyAndCommitResultEvent {
+        let key = SharedFileKey(sessionId: effect.sessionID, fileId: effect.fileID)
+        let part = partURL(key)
+        let metaFile = metaURL(key)
+        let fm = FileManager.default
 
-    nonisolated static var protection: [FileAttributeKey: Any] {
-        #if os(iOS)
-        [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
-        #else
-        [:]
-        #endif
+        func checksumFailure(_ detail: String) -> PBSharedFileVerifyAndCommitResultEvent {
+            try? fm.removeItem(at: part)
+            try? fm.removeItem(at: metaFile)
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = false
+                $0.errorKind = .checksumMismatch
+                $0.errorDetail = detail
+            }
+        }
+
+        guard effect.totalSizeBytes >= 0, effect.expectedSha256.count == 32 else {
+            return checksumFailure("invalid expected digest or size")
+        }
+
+        let digest: Data?
+        if effect.totalSizeBytes == 0 {
+            digest = Data(SHA256.hash(data: Data()))
+        } else {
+            digest = Self.sha256(of: part, bytes: effect.totalSizeBytes)
+        }
+        guard let digest, digest == effect.expectedSha256 else {
+            return checksumFailure("sha256 mismatch")
+        }
+
+        if effect.deliverOnly {
+            try? fm.removeItem(at: part)
+            try? fm.removeItem(at: metaFile)
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = true
+            }
+        }
+
+        let existingMeta = Self.readMeta(at: metaFile)
+        let fileName = safeLocalSharedFileName(effect.displayName)
+        let folder = fileFolderURL(key)
+        let final = folder.appending(path: fileName, directoryHint: .notDirectory)
+
+        do {
+            try fm.createDirectory(at: folder, withIntermediateDirectories: true, attributes: Self.protection)
+            if !fm.fileExists(atPath: part.path) {
+                guard effect.totalSizeBytes == 0,
+                      fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection)
+                else {
+                    return checksumFailure("partial file missing")
+                }
+            } else if let partLen = Self.fileLength(part), partLen != effect.totalSizeBytes {
+                let handle = try FileHandle(forUpdating: part)
+                var closed = false
+                defer { if !closed { try? handle.close() } }
+                try handle.truncate(atOffset: UInt64(effect.totalSizeBytes))
+                try handle.close()
+                closed = true
+            }
+
+            if let stale = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
+                for item in stale { try? fm.removeItem(at: item) }
+            }
+            try fm.moveItem(at: part, to: final)
+
+            let meta = Meta(
+                schemaVersion: Self.metaSchemaVersion,
+                sessionId: effect.sessionID,
+                fileId: effect.fileID,
+                displayName: fileName,
+                totalSizeBytes: effect.totalSizeBytes,
+                chunkBytes: existingMeta?.chunkBytes ?? 0,
+                committedOffset: effect.totalSizeBytes,
+                expectedSha256: effect.expectedSha256,
+                durationMs: existingMeta?.durationMs
+            )
+            try Self.writeMeta(meta, to: metaFile)
+
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = true
+            }
+        } catch {
+            return .with {
+                $0.opID = effect.opID
+                $0.sessionID = effect.sessionID
+                $0.fileID = effect.fileID
+                $0.ok = false
+                $0.errorKind = Self.ioErrorKind(for: error)
+                $0.errorDetail = error.localizedDescription
+            }
+        }
     }
 
-    /// An answer that says nothing about the file: the link, or the computer being away.
-    nonisolated static func transient(_ error: Error) -> Bool {
-        if error is URLError { return true }
-        guard let e = error as? CommandError else { return false }
-        if e.fromDaemon { return false }
-        return ["network", CommandError.unavailable, CommandError.unknownOutcome, "deadline_exceeded", "canceled"].contains(e.code)
+    /// Executes `SharedFileDeletePartialEffect`: removes `.part` and partial `.meta`, preserving any committed copy.
+    public func deletePartial(sessionID: String, fileID: String) {
+        let key = SharedFileKey(sessionId: sessionID, fileId: fileID)
+        let fm = FileManager.default
+        try? fm.removeItem(at: partURL(key))
+        let hasCommitted = Self.firstCommittedFile(in: fileFolderURL(key), preferredName: nil) != nil
+        if !hasCommitted {
+            try? fm.removeItem(at: metaURL(key))
+            let dir = directory(key)
+            if let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil), items.isEmpty {
+                try? fm.removeItem(at: dir)
+            }
+        }
     }
 
-    nonisolated static func failure(for error: Error) -> SharedFileFailure {
-        let e = error as NSError
-        if e.domain == NSCocoaErrorDomain && e.code == NSFileWriteOutOfSpaceError { return .diskFull }
-        if e.domain == NSPOSIXErrorDomain && e.code == Int(ENOSPC) { return .diskFull }
-        if let under = e.userInfo[NSUnderlyingErrorKey] as? NSError, under.domain == NSPOSIXErrorDomain, under.code == Int(ENOSPC) { return .diskFull }
-        return .other(e.localizedDescription)
+    /// Executes `SharedFileDeleteLocalEffect`: removes the committed copy, `.part`, and `.meta`.
+    public func deleteLocal(sessionID: String, fileID: String) {
+        let key = SharedFileKey(sessionId: sessionID, fileId: fileID)
+        try? FileManager.default.removeItem(at: directory(key))
     }
 
-    /// SHA-256 of the first `bytes` bytes of the file, read in pieces.
-    nonisolated static func sha256(of url: URL, bytes: Int64) -> Data? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+    /// Executes `SharedFileDeleteSessionEffect`: removes the entire session directory under `root`.
+    public func deleteSession(sessionID: String) {
+        try? FileManager.default.removeItem(at: root.appending(path: sharedFileFolderName(sessionID), directoryHint: .isDirectory))
+    }
+
+    /// Executes `SharedFileClearAllEffect`: empties `root`.
+    public func clearAll() {
+        let fm = FileManager.default
+        if let folders = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
+            for folder in folders { try? fm.removeItem(at: folder) }
+        }
+    }
+
+    /// Persists probed video/audio duration (in ms) in `.meta` when a committed copy exists on disk.
+    public func recordDuration(_ key: SharedFileKey, ms: Int64) {
+        guard ms > 0 else { return }
+        let metaFile = metaURL(key)
+        guard Self.firstCommittedFile(in: fileFolderURL(key), preferredName: nil) != nil,
+              var meta = Self.readMeta(at: metaFile),
+              meta.schemaVersion == Self.metaSchemaVersion,
+              meta.durationMs != ms
+        else { return }
+        meta.durationMs = ms
+        try? Self.writeMeta(meta, to: metaFile)
+    }
+
+    // MARK: Platform Helpers
+
+    public static func defaultAvailableCapacity(for url: URL) throws -> Int64? {
+        let keys: Set<URLResourceKey> = [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey]
+        let values = try url.resourceValues(forKeys: keys)
+        if let important = values.volumeAvailableCapacityForImportantUsage {
+            return important
+        }
+        if let standard = values.volumeAvailableCapacity {
+            return Int64(standard)
+        }
+        return nil
+    }
+
+    public static func ioErrorKind(for error: Error) -> PBSharedFileIOErrorKind {
+        isStorageFullError(error as NSError) ? .storageFull : .other
+    }
+
+    private static func isStorageFullError(_ error: NSError) -> Bool {
+        if error.domain == NSCocoaErrorDomain && error.code == NSFileWriteOutOfSpaceError {
+            return true
+        }
+        if error.domain == NSPOSIXErrorDomain && error.code == Int(ENOSPC) {
+            return true
+        }
+        if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError, isStorageFullError(underlying) {
+            return true
+        }
+        if let multi = error.userInfo[NSMultipleUnderlyingErrorsKey] as? [NSError], multi.contains(where: isStorageFullError) {
+            return true
+        }
+        return false
+    }
+
+    /// SHA-256 of the first `bytes` bytes of the file, streamed in 1 MiB pieces.
+    static func sha256(of url: URL, bytes: Int64) -> Data? {
+        guard bytes >= 0 else { return nil }
+        if bytes == 0 { return Data(SHA256.hash(data: Data())) }
+        guard let actual = fileLength(url), actual >= bytes,
+              let handle = try? FileHandle(forReadingFrom: url)
+        else { return nil }
         defer { try? handle.close() }
         var hash = SHA256()
         var left = bytes
@@ -497,8 +511,50 @@ public actor SharedFileStore {
         }
         return Data(hash.finalize())
     }
-}
 
-extension Data {
-    var hexString: String { map { String(format: "%02x", $0) }.joined() }
+    private static var protection: [FileAttributeKey: Any] {
+        #if os(iOS)
+        [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        #else
+        [:]
+        #endif
+    }
+
+    private static var writeOptions: Data.WritingOptions {
+        #if os(iOS)
+        [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+        #else
+        [.atomic]
+        #endif
+    }
+
+    private static func readMeta(at url: URL) -> Meta? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Meta.self, from: data)
+    }
+
+    private static func writeMeta(_ meta: Meta, to url: URL) throws {
+        try JSONEncoder().encode(meta).write(to: url, options: writeOptions)
+    }
+
+    private static func fileLength(_ url: URL) -> Int64? {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value
+    }
+
+    private static func firstCommittedFile(in folder: URL, preferredName: String?) -> URL? {
+        let fm = FileManager.default
+        if let name = preferredName, !name.isEmpty {
+            let candidate = folder.appending(path: safeLocalSharedFileName(name), directoryHint: .notDirectory)
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: candidate.path, isDirectory: &isDir), !isDir.boolValue {
+                return candidate
+            }
+        }
+        guard let items = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.isRegularFileKey], options: .skipsHiddenFiles) else {
+            return nil
+        }
+        return items.first { url in
+            (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+        }
+    }
 }

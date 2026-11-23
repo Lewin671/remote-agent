@@ -5,463 +5,245 @@ import Testing
 
 @testable import RACore
 
-/// A computer that serves one file in blocks, and what goes wrong on the way, as the test says.
-private final class Computer: SharedFileFetching, @unchecked Sendable {
-    enum Fault: Sendable {
-        case error(CommandError)
-        /// Waits until `release()`, then answers.
-        case hold
-    }
-
-    let lock = NSLock()
-    var content: Data
-    let blockBytes: Int
-    private var served: [Int64] = []
-    private var faults: [Int: Fault] = [:]
-    private var held: [CheckedContinuation<Void, Never>] = []
-    private var holdWaiters: [CheckedContinuation<Void, Never>] = []
-    private var corruptTotal = false
-    private var corruptData = false
-
-    init(content: Data, blockBytes: Int) {
-        self.content = content
-        self.blockBytes = blockBytes
-    }
-
-    /// The nth request (from 0) fails or holds.
-    func fault(at request: Int, _ fault: Fault) { lock.withLock { faults[request] = fault } }
-    func corrupt(total: Bool = false, data: Bool = false) { lock.withLock { corruptTotal = total; corruptData = data } }
-    var offsets: [Int64] { lock.withLock { served } }
-
-    func waitForHeld() async {
-        await withCheckedContinuation { c in
-            let ready = lock.withLock { () -> Bool in
-                if !held.isEmpty { return true }
-                holdWaiters.append(c)
-                return false
-            }
-            if ready { c.resume() }
-        }
-    }
-
-    func release() {
-        let waiting = lock.withLock { () -> [CheckedContinuation<Void, Never>] in defer { held = [] }; return held }
-        for w in waiting { w.resume() }
-    }
-
-    func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
-        let (n, fault) = lock.withLock { () -> (Int, Fault?) in
-            served.append(offset)
-            return (served.count - 1, faults[served.count - 1])
-        }
-        if case .error(let e)? = fault { throw e }
-        if case .hold? = fault {
-            await withCheckedContinuation { c in
-                let waiters = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
-                    held.append(c)
-                    let w = holdWaiters
-                    holdWaiters.removeAll()
-                    return w
-                }
-                for w in waiters { w.resume() }
-            }
-        }
-        _ = n
-        var block = Data(repeating: 0, count: blockBytes)
-        let from = Int(offset)
-        let take = max(0, min(blockBytes, content.count - from))
-        if take > 0 { block.replaceSubrange(0..<take, with: content[from..<from + take]) }
-        let (badTotal, badData) = lock.withLock { (corruptTotal, corruptData) }
-        if badData, take > 0 { block[0] ^= 0xff }
-        return .with {
-            $0.data = block
-            $0.totalBytes = UInt64(content.count) + (badTotal ? 1 : 0)
-        }
-    }
-}
-
-private final class Ticker: @unchecked Sendable {
-    private let lock = NSLock()
-    private var now: Int64 = 1_000_000
-    private var online = false
-    private var onlineAfter: Int64 = .max
-    var time: Int64 { lock.withLock { now } }
-    func advance(_ ms: Int64) { lock.withLock { now += ms } }
-    /// The computer is back once this many ms have passed from now.
-    func comesBack(after ms: Int64) { lock.withLock { onlineAfter = now + ms } }
-    var isOnline: Bool { lock.withLock { now >= onlineAfter } }
-}
-
+/// Platform I/O executor tests for `SharedFileStore`.
+/// Download state machine, block validation, resume, ETA, and reconnect rules are tested in Go `clientcore`.
 @Suite(.timeLimit(.minutes(2))) struct SharedFileStoreTests {
-    private let block = 1000
     private func pattern(_ n: Int) -> Data { Data((0..<n).map { UInt8($0 % 251) }) }
-    private func file(_ content: Data, id: String = "f1", name: String = "clip.mp4") -> PBSharedFile {
-        .with {
-            $0.fileID = id; $0.name = name; $0.sizeBytes = Int64(content.count)
-            $0.sha256 = Data(SHA256.hash(data: content)); $0.path = "/Users/me/\(name)"
-        }
-    }
-    private func root() -> URL {
-        FileManager.default.temporaryDirectory.appendingPathComponent("shared-files-\(UUID().uuidString)")
-    }
-    private func store(_ root: URL, _ computer: Computer, ticker: Ticker = Ticker(), online: Bool = true) -> SharedFileStore {
-        SharedFileStore(
-            root: root, fetcher: computer, isMachineOnline: { _ in online || ticker.isOnline }, blockBytes: { _ in block },
-            clock: { ticker.time }, sleep: { ticker.advance($0); await Task.yield() })
+    private func tempRoot() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("shared-file-io-\(UUID().uuidString)")
     }
     private let key = SharedFileKey(sessionId: "s1", fileId: "f1")
 
-    private func wait(_ store: SharedFileStore, key overrideKey: SharedFileKey? = nil, _ what: @escaping @Sendable (SharedFileTransfer) -> Bool) async -> SharedFileTransfer {
-        await store.waitStateForTest(overrideKey ?? key, what)
-    }
-    private func done(_ t: SharedFileTransfer) -> Bool { if case .downloaded = t { return true } else { return false } }
-    private func failed(_ t: SharedFileTransfer) -> Bool { if case .failed = t { return true } else { return false } }
-
-    // MARK: A whole download
-
-    @Test func fetchesEveryBlockChecksAndKeepsTheCopyUnderItsSanitizedName() async throws {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content, name: "../evil\u{202E}/clip.mp4")
-        await s.start(key, file: f)
-        let end = await wait(s) { done($0) }
-        guard case .downloaded(let url, _) = end else { Issue.record("\(end)"); return }
-        #expect(computer.offsets == [0, 1000, 2000])
-        #expect(try Data(contentsOf: url) == content)
-        #expect(url.lastPathComponent == "clip.mp4")
-        #expect(url.path.hasPrefix(dir.path))
-        #expect(await s.usedBytes() >= 2500)
-    }
-
-    @Test func tellsTheProgressAsItGoesAndWhenItIsDone() async throws {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(content))
-        var seen: [SharedFileTransfer] = []
-        var completed: URL?
-        for await e in s.events {
-            switch e {
-            case .state(_, let t): seen.append(t)
-            case .completed(_, let url): completed = url
-            }
-            if completed != nil { break }
+    private func writeEffect(
+        opID: UInt64,
+        sessionID: String = "s1",
+        fileID: String = "f1",
+        name: String = "clip.mp4",
+        offset: Int64,
+        data: Data,
+        total: Int64,
+        chunkBytes: Int32 = 1000,
+        committedOffset: Int64,
+        sha256: Data,
+        resetPartial: Bool
+    ) -> PBSharedFileWriteChunkEffect {
+        .with {
+            $0.opID = opID
+            $0.sessionID = sessionID
+            $0.fileID = fileID
+            $0.displayName = name
+            $0.offset = offset
+            $0.data = data
+            $0.totalSizeBytes = total
+            $0.chunkBytes = chunkBytes
+            $0.committedOffset = committedOffset
+            $0.expectedSha256 = sha256
+            $0.resetPartial = resetPartial
         }
-        let dones = seen.compactMap { t -> Int64? in if case .downloading(let d, _, _, _) = t { d } else { nil } }
-        #expect(dones == [0, 1000, 2000, 2500])
-        #expect(completed != nil)
     }
 
-    @Test func anEmptyFileIsOneBlockAndAnEmptyCopy() async throws {
-        let computer = Computer(content: Data(), blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(Data(), name: "empty.txt"))
-        guard case .downloaded(let url, _) = await wait(s, { done($0) }) else { Issue.record("not downloaded"); return }
-        #expect(computer.offsets == [0])
-        #expect(try Data(contentsOf: url).isEmpty)
+    private func verifyEffect(
+        opID: UInt64,
+        sessionID: String = "s1",
+        fileID: String = "f1",
+        name: String = "clip.mp4",
+        total: Int64,
+        sha256: Data,
+        deliverOnly: Bool = false
+    ) -> PBSharedFileVerifyAndCommitEffect {
+        .with {
+            $0.opID = opID
+            $0.sessionID = sessionID
+            $0.fileID = fileID
+            $0.displayName = name
+            $0.totalSizeBytes = total
+            $0.expectedSha256 = sha256
+            $0.deliverOnly = deliverOnly
+        }
     }
 
-    @Test func theSameFileIdIsOneDownloadHoweverManyCardsAskForIt() async {
+    @Test func writeChunksVerifyCommitAndScanCompletedWithDuration() throws {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
         let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        await s.start(key, file: f)
-        await s.start(key, file: f)
-        _ = await wait(s) { done($0) }
-        #expect(computer.offsets == [0, 1000, 2000])
-        // A card that appears later finds the same state without asking again.
-        #expect(done(await s.hydrate(key, file: f)))
-        await s.start(key, file: f)
-        #expect(computer.offsets.count == 3)
+        let hash = Data(SHA256.hash(data: content))
+
+        let r1 = store.writeChunk(writeEffect(
+            opID: 1, name: "../evil/clip.mp4", offset: 0, data: content[0..<1000],
+            total: 2500, committedOffset: 1000, sha256: hash, resetPartial: true))
+        #expect(r1.ok && r1.opID == 1)
+
+        let r2 = store.writeChunk(writeEffect(
+            opID: 2, name: "../evil/clip.mp4", offset: 1000, data: content[1000..<2000],
+            total: 2500, committedOffset: 2000, sha256: hash, resetPartial: false))
+        #expect(r2.ok && r2.opID == 2)
+
+        // Scan while partial should report completed=false with exact bytes and metadata.
+        let midScan = store.scanLocal(opID: 10)
+        #expect(midScan.opID == 10 && midScan.error.isEmpty)
+        let partialEntry = try #require(midScan.entries.first)
+        #expect(!partialEntry.completed)
+        #expect(partialEntry.sessionID == "s1" && partialEntry.fileID == "f1")
+        #expect(partialEntry.bytesOnDisk == 2000 && partialEntry.committedOffset == 2000)
+        #expect(partialEntry.expectedSizeBytes == 2500 && partialEntry.chunkBytes == 1000)
+        #expect(partialEntry.sha256 == hash)
+
+        let r3 = store.writeChunk(writeEffect(
+            opID: 3, name: "../evil/clip.mp4", offset: 2000, data: content[2000..<2500],
+            total: 2500, committedOffset: 2500, sha256: hash, resetPartial: false))
+        #expect(r3.ok)
+
+        let verified = store.verifyAndCommit(verifyEffect(opID: 4, name: "../evil/clip.mp4", total: 2500, sha256: hash))
+        #expect(verified.ok && verified.opID == 4)
+
+        let local = try #require(store.existingLocalURL(key, name: "../evil/clip.mp4"))
+        #expect(local.lastPathComponent == "clip.mp4")
+        #expect(local.path.hasPrefix(dir.path))
+        #expect(try Data(contentsOf: local) == content)
+        #expect(store.usedBytes() >= 2500)
+
+        store.recordDuration(key, ms: 102_000)
+        let doneScan = store.scanLocal(opID: 11)
+        let doneEntry = try #require(doneScan.entries.first)
+        #expect(doneEntry.completed)
+        #expect(doneEntry.bytesOnDisk == 2500 && doneEntry.expectedSizeBytes == 2500)
+        #expect(doneEntry.hasDuration_p && doneEntry.durationMs == 102_000)
     }
 
-    // MARK: Pause, resume, cancel
+    @Test func zeroByteFileCommitsAndScansCleanly() throws {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let hash = Data(SHA256.hash(data: Data()))
 
-    @Test func aPauseKeepsTheBlocksAndResumeAsksOnlyForTheRest() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 2, .hold)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        await computer.waitForHeld()
-        await s.pause(key, file: f)
-        #expect(await s.state(key) == .paused(done: 2000, total: 3500))
-        computer.release()
-        await s.drainForTest()
-        // The block that was on its way is not written, and the card does not go back to downloading.
-        #expect(await s.state(key) == .paused(done: 2000, total: 3500))
-        #expect(computer.offsets == [0, 1000, 2000])
-        await s.start(key, file: f)
-        guard case .downloaded(let url, _) = await wait(s, { done($0) }) else { Issue.record("not downloaded"); return }
-        #expect(computer.offsets == [0, 1000, 2000, 2000, 3000])
-        #expect(try! Data(contentsOf: url) == content)
+        let w = store.writeChunk(writeEffect(
+            opID: 1, name: "empty.txt", offset: 0, data: Data(),
+            total: 0, committedOffset: 0, sha256: hash, resetPartial: true))
+        #expect(w.ok)
+
+        let v = store.verifyAndCommit(verifyEffect(opID: 2, name: "empty.txt", total: 0, sha256: hash))
+        #expect(v.ok)
+
+        let local = try #require(store.existingLocalURL(key, name: "empty.txt"))
+        #expect(try Data(contentsOf: local).isEmpty)
+
+        let scan = store.scanLocal(opID: 3)
+        let entry = try #require(scan.entries.first)
+        #expect(entry.completed && entry.bytesOnDisk == 0 && entry.expectedSizeBytes == 0)
     }
 
-    @Test func aKilledAppComesBackPausedWithItsBlocks() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 2, .hold)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let f = file(content)
-        let first = store(dir, computer)
-        await first.start(key, file: f)
-        await computer.waitForHeld()
-        // The first process is gone: a second one reads what the disk says.
-        let second = store(dir, Computer(content: content, blockBytes: block))
-        #expect(await second.hydrate(key, file: f) == .paused(done: 2000, total: 3500))
-        computer.release()
-        await first.cancel(key)
-        await first.drainForTest()
+    @Test func verifyRejectsMismatchAndDeletesPartial() {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let content = pattern(1200)
+        var badHash = Data(SHA256.hash(data: content))
+        badHash[0] ^= 0xff
+
+        #expect(store.writeChunk(writeEffect(
+            opID: 1, offset: 0, data: content, total: 1200,
+            committedOffset: 1200, sha256: badHash, resetPartial: true)).ok)
+
+        let v = store.verifyAndCommit(verifyEffect(opID: 2, total: 1200, sha256: badHash))
+        #expect(!v.ok && v.errorKind == .checksumMismatch)
+        #expect(store.existingLocalURL(key, name: "clip.mp4") == nil)
+        #expect(store.scanLocal(opID: 3).entries.isEmpty)
     }
 
-    @Test func blocksOfAnotherFileOrSizeAreNotResumedFrom() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 2, .hold)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let first = store(dir, computer)
-        await first.start(key, file: file(content))
-        await computer.waitForHeld()
-        let other = pattern(3500).reversed().map { $0 } as [UInt8]
-        let changed = file(Data(other))
-        let second = store(dir, Computer(content: Data(other), blockBytes: block))
-        #expect(await second.hydrate(key, file: changed) == .idle)
-        computer.release()
-        await first.cancel(key)
-        await first.drainForTest()
+    @Test func legacyMetaFormatIsNotReadAndReportedMalformedForCleanup() throws {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let fm = FileManager.default
+
+        // Legacy partial (.meta using old camelCase fields without schema_version).
+        let legacyPartialDir = dir.appending(path: "s1/f-legacy-part", directoryHint: .isDirectory)
+        try fm.createDirectory(at: legacyPartialDir, withIntermediateDirectories: true)
+        try Data("{\"size\":2000,\"blockBytes\":1000,\"completed\":1000,\"sha256\":\"abcd\"}".utf8)
+            .write(to: legacyPartialDir.appending(path: ".meta"))
+        try pattern(1000).write(to: legacyPartialDir.appending(path: ".part"))
+
+        // Legacy completed copy with old .meta.
+        let legacyDoneDir = dir.appending(path: "s1/f-legacy-done", directoryHint: .isDirectory)
+        let legacyFileFolder = legacyDoneDir.appending(path: "file", directoryHint: .isDirectory)
+        try fm.createDirectory(at: legacyFileFolder, withIntermediateDirectories: true)
+        try Data("{\"size\":500,\"blockBytes\":1000,\"completed\":500,\"sha256\":\"abcd\"}".utf8)
+            .write(to: legacyDoneDir.appending(path: ".meta"))
+        try pattern(500).write(to: legacyFileFolder.appending(path: "old.bin"))
+
+        let scan = store.scanLocal(opID: 99)
+        let byID = Dictionary(uniqueKeysWithValues: scan.entries.map { ($0.fileID, $0) })
+
+        let partEntry = try #require(byID["f-legacy-part"])
+        #expect(!partEntry.completed && partEntry.committedOffset == 0 && partEntry.sha256.isEmpty)
+
+        let doneEntry = try #require(byID["f-legacy-done"])
+        #expect(doneEntry.completed && doneEntry.bytesOnDisk == -1)
     }
 
-    @Test func cancelDropsTheBlocks() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 2, .hold)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        await computer.waitForHeld()
-        await s.cancel(key)
-        computer.release()
-        await s.drainForTest()
-        #expect(await s.state(key) == .idle)
-        #expect(s.inspect(key, file: f) == .idle)
+    @Test func inspectDiskReportsKnownUnknownAndStorageFull() {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let req = PBSharedFileInspectDiskEffect.with {
+            $0.opID = 7; $0.sessionID = "s1"; $0.fileID = "f1"; $0.requiredBytes = 4096
+        }
+
+        let knownStore = SharedFileStore(root: dir, availableCapacity: { _ in 123_456 })
+        let known = knownStore.inspectDisk(req)
+        #expect(known.opID == 7 && known.known && known.availableBytes == 123_456 && known.errorKind == .unspecified)
+
+        let unknownStore = SharedFileStore(root: dir, availableCapacity: { _ in nil })
+        let unknown = unknownStore.inspectDisk(req)
+        #expect(!unknown.known && unknown.errorKind == .unspecified)
+
+        let fullStore = SharedFileStore(root: dir, availableCapacity: { _ in
+            throw NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)
+        })
+        let full = fullStore.inspectDisk(req)
+        #expect(!full.known && full.errorKind == .storageFull)
     }
 
-    // MARK: The link
-
-    @Test func aDroppedLinkWaitsForTheComputerAndGoesOnOnce() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 1, .error(CommandError("network", "down")))
-        let ticker = Ticker()
-        ticker.comesBack(after: 5_000)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer, ticker: ticker, online: false)
-        await s.start(key, file: file(content))
-        guard case .downloaded(let url, _) = await wait(s, { done($0) }) else { Issue.record("not downloaded"); return }
-        #expect(try! Data(contentsOf: url) == content)
-        // The block that failed is asked for again, from where it was.
-        #expect(computer.offsets == [0, 1000, 1000, 2000, 3000])
+    @Test func storageFullErrorsMapToStorageFullKind() {
+        #expect(SharedFileStore.ioErrorKind(for: NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)) == .storageFull)
+        #expect(SharedFileStore.ioErrorKind(for: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))) == .storageFull)
+        let wrapped = NSError(domain: NSCocoaErrorDomain, code: 512, userInfo: [
+            NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC)),
+        ])
+        #expect(SharedFileStore.ioErrorKind(for: wrapped) == .storageFull)
+        #expect(SharedFileStore.ioErrorKind(for: NSError(domain: NSCocoaErrorDomain, code: 513)) == .other)
     }
 
-    @Test func aComputerThatDoesNotComeBackWithin30SecondsFailsTheDownloadKeepingItsBlocks() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 2, .error(CommandError("unavailable", "offline")))
-        let ticker = Ticker()
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer, ticker: ticker, online: false)
-        let f = file(content)
-        let started = ticker.time
-        await s.start(key, file: f)
-        #expect(await wait(s, { failed($0) }) == .failed(.disconnected))
-        #expect(ticker.time - started >= 30_000)
-        #expect(s.inspect(key, file: f) == .paused(done: 2000, total: 3500))
-        // 重试 goes on from the blocks that are there.
-        await s.start(key, file: f)
-        _ = await wait(s) { done($0) }
-        #expect(computer.offsets == [0, 1000, 2000, 2000, 3000])
+    @Test func deletePartialDeleteLocalDeleteSessionAndClearAll() {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let content = pattern(1000)
+        let hash = Data(SHA256.hash(data: content))
+
+        // DeletePartial clears .part/.meta.
+        #expect(store.writeChunk(writeEffect(opID: 1, sessionID: "s1", fileID: "p1", offset: 0, data: content, total: 2000, committedOffset: 1000, sha256: hash, resetPartial: true)).ok)
+        store.deletePartial(sessionID: "s1", fileID: "p1")
+        #expect(store.scanLocal(opID: 2).entries.isEmpty)
+
+        // DeleteLocal clears committed copy.
+        #expect(store.writeChunk(writeEffect(opID: 3, sessionID: "s1", fileID: "f1", offset: 0, data: content, total: 1000, committedOffset: 1000, sha256: hash, resetPartial: true)).ok)
+        #expect(store.verifyAndCommit(verifyEffect(opID: 4, sessionID: "s1", fileID: "f1", total: 1000, sha256: hash)).ok)
+        #expect(store.existingLocalURL(key, name: "clip.mp4") != nil)
+        store.deleteLocal(sessionID: "s1", fileID: "f1")
+        #expect(store.existingLocalURL(key, name: "clip.mp4") == nil)
+
+        // DeleteSession & ClearAll.
+        #expect(store.writeChunk(writeEffect(opID: 5, sessionID: "s1", fileID: "f1", offset: 0, data: content, total: 1000, committedOffset: 1000, sha256: hash, resetPartial: true)).ok)
+        #expect(store.verifyAndCommit(verifyEffect(opID: 6, sessionID: "s1", fileID: "f1", total: 1000, sha256: hash)).ok)
+        #expect(store.writeChunk(writeEffect(opID: 7, sessionID: "s2", fileID: "f2", offset: 0, data: content, total: 1000, committedOffset: 1000, sha256: hash, resetPartial: true)).ok)
+        #expect(store.verifyAndCommit(verifyEffect(opID: 8, sessionID: "s2", fileID: "f2", total: 1000, sha256: hash)).ok)
+        store.deleteSession(sessionID: "s1")
+        #expect(store.scanLocal(opID: 9).entries.map(\.sessionID) == ["s2"])
+        store.clearAll()
+        #expect(store.scanLocal(opID: 10).entries.isEmpty)
+        #expect(store.usedBytes() == 0)
     }
 
-    @Test func aSecondDropFailsAtOnceRatherThanWaitingAgain() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 1, .error(CommandError("network", "down")))
-        computer.fault(at: 2, .error(CommandError("network", "down")))
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer, online: true)
-        await s.start(key, file: file(content))
-        #expect(await wait(s, { failed($0) }) == .failed(.disconnected))
-    }
-
-    @Test func theComputerSayingItHasNoSuchFileEndsItAsCleanedUp() async {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 1, .error(CommandError("not_found", "no such file", fromDaemon: true, readOnly: true,outcome:.executed)))
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        #expect(await wait(s, { $0 == .cleanedUp }) == .cleanedUp)
-        #expect(s.inspect(key, file: f) == .idle)
-    }
-
-    @Test func anUnknownSessionOfThisPhoneIsNotTheComputerCleaningUp() async {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 0, .error(CommandError("not_found", "unknown session")))
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(content))
-        #expect(await wait(s, { failed($0) }) == .failed(.other("unknown session")))
-    }
-
-    @Test func theComputersOwnReasonIsPassedOn() async {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 0, .error(CommandError("internal", "disk read error", fromDaemon: true, readOnly: true)))
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(content))
-        #expect(await wait(s, { failed($0) }) == .failed(.other("disk read error")))
-    }
-
-    // MARK: Checks
-
-    @Test func aBlockThatCarriesTheWrongTotalMakesTheDownloadFail() async {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.corrupt(total: true)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        #expect(await wait(s, { failed($0) }) == .failed(.checksum))
-        #expect(s.inspect(key, file: f) == .idle)
-    }
-
-    @Test func aHashThatDoesNotMatchThrowsTheWholeCopyAway() async {
-        let content = pattern(2500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.corrupt(data: true)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        #expect(await wait(s, { failed($0) }) == .failed(.checksum))
-        #expect(s.inspect(key, file: f) == .idle)
-        // 重试 begins from nothing.
-        computer.corrupt()
-        await s.start(key, file: f)
-        _ = await wait(s) { done($0) }
-        #expect(computer.offsets.suffix(3) == [0, 1000, 2000])
-    }
-
-    @Test func aMissingHashIsNotTrusted() async {
-        let content = pattern(1500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        var f = file(content)
-        f.sha256 = Data()
-        await s.start(key, file: f)
-        #expect(await wait(s, { failed($0) }) == .failed(.checksum))
-    }
-
-    @Test func aFullPhoneIsSaidSoInTheCocoaAndPosixWays() {
-        #expect(SharedFileStore.failure(for: NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)) == .diskFull)
-        #expect(SharedFileStore.failure(for: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))) == .diskFull)
-        let wrapped = NSError(domain: NSCocoaErrorDomain, code: 512, userInfo: [NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))])
-        #expect(SharedFileStore.failure(for: wrapped) == .diskFull)
-        if case .other = SharedFileStore.failure(for: NSError(domain: NSCocoaErrorDomain, code: 513)) {} else { Issue.record("other") }
-    }
-
-    // MARK: The copies
-
-    @Test func deletingTheCopyGoesBackToDownloadable() async {
-        let content = pattern(1500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        guard case .downloaded(let url, _) = await wait(s, { done($0) }) else { Issue.record("not downloaded"); return }
-        await s.deleteLocal(key)
-        #expect(await s.state(key) == .idle)
-        #expect(!FileManager.default.fileExists(atPath: url.path))
-        #expect(await s.usedBytes() == 0)
-    }
-
-    @Test func aCopyTheSystemTookBackIsDownloadableAgain() async {
-        let content = pattern(1500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        guard case .downloaded(let url, _) = await wait(s, { done($0) }) else { Issue.record("not downloaded"); return }
-        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
-        #expect(await s.hydrate(key, file: f) == .idle)
-    }
-
-    @Test func aCopyOnTheDiskIsFoundAgainByAnotherProcessWithItsDuration() async {
-        let content = pattern(1500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        let f = file(content)
-        await s.start(key, file: f)
-        _ = await wait(s) { done($0) }
-        await s.recordDuration(key, ms: 102_000)
-        let again = store(dir, computer)
-        guard case .downloaded(_, let ms) = await again.hydrate(key, file: f) else { Issue.record("not found"); return }
-        #expect(ms == 102_000)
-    }
-
-    @Test func removingASessionTakesItsFilesAndStopsItsDownloads() async {
-        let content = pattern(3500)
-        let computer = Computer(content: content, blockBytes: block)
-        computer.fault(at: 1, .hold)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(content))
-        await computer.waitForHeld()
-        await s.removeSession("s1")
-        computer.release()
-        await s.drainForTest()
-        #expect(await s.state(key) == .idle)
-        #expect(await s.usedBytes() == 0)
-        #expect(computer.offsets == [0, 1000])
-    }
-
-    @Test func clearingEverythingEmptiesTheFolderAndCountsNothing() async {
-        let content = pattern(1500)
-        let computer = Computer(content: content, blockBytes: block)
-        let dir = root(); defer { try? FileManager.default.removeItem(at: dir) }
-        let s = store(dir, computer)
-        await s.start(key, file: file(content))
-        _ = await wait(s) { done($0) }
-        let other = SharedFileKey(sessionId: "s2", fileId: "f9")
-        await s.start(other, file: file(content, id: "f9", name: "b.zip"))
-        _ = await wait(s, key: other) { done($0) }
-        #expect(await s.usedBytes() > 0)
-        await s.clearAll()
-        #expect(await s.usedBytes() == 0)
-        #expect(await s.state(key) == .idle)
-    }
-
-    @Test func theFolderNamesAreMadeOfSafeCharactersOnly() {
+    @Test func folderAndFileNamesStaySafe() {
         #expect(sharedFileFolderName("a1b2-c_3") == "a1b2-c_3")
         #expect(sharedFileFolderName("../x/y") == "___x_y")
         #expect(sharedFileFolderName("é") == "_")
+        #expect(safeLocalSharedFileName("../evil/clip.mp4") == "clip.mp4")
+        #expect(safeLocalSharedFileName("..") == "file")
     }
 }

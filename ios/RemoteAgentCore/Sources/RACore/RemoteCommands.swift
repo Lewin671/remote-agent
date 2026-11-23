@@ -498,25 +498,6 @@ extension Remote {
         return token
     }
 
-    // --- shared files ---
-
-    public func sharedFileChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
-        guard let machineId = machineIdForSessionIfKnown(sessionId) else {
-            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
-        }
-        var cmd = PBCommand()
-        cmd.getSharedFileChunk.sessionID = sessionId
-        cmd.getSharedFileChunk.fileID = fileId
-        cmd.getSharedFileChunk.offset = offset
-        let r = try await forward(try prepare(machineId: machineId, sessionId: sessionId, cmd))
-        guard case .getSharedFileChunk(let chunk)? = r.kind else {
-            throw CommandError(CommandError.internalFailure, L10nMessage.newSessionUnexpectedReply())
-        }
-        return chunk
-    }
-
-    public nonisolated var sharedFileFetcher: any SharedFileFetching { RemoteSharedFileFetcher(remote: self) }
-
     // --- images ---
 
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
@@ -583,12 +564,5 @@ extension PBCommand {
         default:
             false
         }
-    }
-}
-
-private struct RemoteSharedFileFetcher: SharedFileFetching {
-    let remote: Remote
-    func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
-        try await remote.sharedFileChunk(sessionId: sessionId, fileId: fileId, offset: offset)
     }
 }
