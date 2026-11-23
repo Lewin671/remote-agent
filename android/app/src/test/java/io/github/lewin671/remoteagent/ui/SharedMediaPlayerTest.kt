@@ -157,7 +157,7 @@ class SharedMediaPlayerTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 SharedMediaPlayerDialog(
-                    SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = true,
+                    SessionSharedFileItem.newBuilder().setDisplayName(file.name).build(), file, video = true,
                     onDismiss = {}, onAction = {},
                 )
             }
@@ -186,7 +186,7 @@ class SharedMediaPlayerTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 if (visible) SharedMediaPlayerDialog(
-                    SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = false,
+                    SessionSharedFileItem.newBuilder().setDisplayName(file.name).build(), file, video = false,
                     onDismiss = { visible = false }, onAction = {},
                 )
             }
@@ -218,7 +218,7 @@ class SharedMediaPlayerTest {
             CompositionLocalProvider(androidx.compose.ui.platform.LocalConfiguration provides configuration) {
                 RaTheme(ThemeMode.LIGHT) {
                     SharedMediaPlayerDialog(
-                        SessionSharedFileItem.newBuilder().setName(file.name).setDisplayName(file.name).build(), file, video = true,
+                        SessionSharedFileItem.newBuilder().setDisplayName(file.name).build(), file, video = true,
                         onDismiss = {}, onAction = {},
                     )
                 }

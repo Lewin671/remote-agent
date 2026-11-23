@@ -333,7 +333,7 @@ internal fun SharedMediaPlayerDialog(
             }
             SharedMediaPlayerPage(
                 engine = engine,
-                fileName = item.displayName.ifEmpty { item.name },
+                fileName = item.displayName,
                 video = video,
                 onClose = onDismiss,
                 onAction = onAction,

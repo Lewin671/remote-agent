@@ -173,7 +173,7 @@ class SharedTextFileTest {
 
     @Test fun openingTextDefersIoToTheHostAndDoesNotStartAnActivity() {
         val host = SharedFileHostState(manager, "text-test")
-        val file = SessionSharedFileItem.newBuilder().setFileId("text").setName("notes.md").setDisplayName("notes.md").build()
+        val file = SessionSharedFileItem.newBuilder().setFileId("text").setDisplayName("notes.md").build()
         openSharedFile(context, file, local, host)
         assertEquals(local, host.pendingTextPreview?.localFile)
         assertNull(host.textPreview)

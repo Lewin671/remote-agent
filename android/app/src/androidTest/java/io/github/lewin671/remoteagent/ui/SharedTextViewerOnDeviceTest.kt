@@ -52,7 +52,6 @@ class SharedTextViewerOnDeviceTest {
     private fun show(name: String, content: String) {
         val file = SessionSharedFileItem.newBuilder()
             .setFileId("text-preview")
-            .setName(name)
             .setDisplayName(name)
             .setSizeBytes(content.toByteArray().size.toLong())
             .setKind(SharedFileKind.SHARED_FILE_KIND_DOC)

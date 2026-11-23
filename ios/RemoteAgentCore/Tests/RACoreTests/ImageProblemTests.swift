@@ -17,7 +17,6 @@ import Testing
                 imageProblemInput(for: UserError(L10nMessage.imageIosCannotDecodeThisImage(), problemKind: .decode)),
             ]
         }
-        #expect(req.problems.allSatisfy { $0.localKey.isEmpty })
 
         let vm = try client.view(.with { $0.attachmentEval = req }).attachmentEval
         #expect(vm.problems.count == 4)

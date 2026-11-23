@@ -60,7 +60,6 @@ class SharedPdfViewerOnDeviceTest {
         val bytes = instrumentation.context.assets.open(name).use { it.readBytes() }
         val file = SessionSharedFileItem.newBuilder()
             .setFileId("pdf-preview")
-            .setName(name)
             .setDisplayName(name)
             .setSizeBytes(bytes.size.toLong())
             .setKind(SharedFileKind.SHARED_FILE_KIND_PDF)

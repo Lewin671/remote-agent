@@ -25,8 +25,7 @@ struct SharedFileNotice: Equatable, Identifiable {
 func sharedFileDescriptor(_ item: PBSessionSharedFileItem) -> PBSharedFile {
     .with {
         $0.fileID = item.fileID
-        $0.name = item.displayName.isEmpty ? item.name : item.displayName
-        $0.path = item.path
+        $0.name = item.displayName
         $0.sizeBytes = item.sizeBytes
         $0.sha256 = item.sha256
     }

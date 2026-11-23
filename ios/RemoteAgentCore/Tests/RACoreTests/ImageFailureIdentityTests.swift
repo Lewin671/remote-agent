@@ -43,7 +43,6 @@ import Testing
         ]
 
         let inputs = cases.map { imageProblemInput(for: $0.0) }
-        #expect(inputs.allSatisfy { $0.localKey.isEmpty })
 
         for locale in ["zh-CN", "en"] {
             let vm = try classify(inputs, locale: locale)
@@ -72,7 +71,7 @@ import Testing
             uploads.upload(image, machineId: "fixture-machine")
             let job = try #require(image.job); await job.value
             guard case .failed(let failure) = image.state else { Issue.record("upload did not fail"); return }
-            #expect(failure.input.errorCode == "network" && failure.input.localKey.isEmpty)
+            #expect(failure.input.errorCode == "network")
             #expect(failure.detail == nil)
             let classified = try #require(try classify([failure.input]).problems.first)
             #expect(classified.kind == .uploadFailed && classified.retryable)

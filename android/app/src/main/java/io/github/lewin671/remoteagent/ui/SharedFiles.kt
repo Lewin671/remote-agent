@@ -322,7 +322,6 @@ internal fun SharedFileHost(
                 val item = itemsById[comp.fileId] ?: SessionSharedFileItem.newBuilder()
                     .setFileId(comp.fileId)
                     .setDisplayName(comp.displayName)
-                    .setName(comp.displayName)
                     .setSizeBytes(comp.sizeBytes)
                     .setKind(comp.kind)
                     .build()
@@ -370,7 +369,7 @@ internal fun SharedFileHost(
     LaunchedEffect(liveHost.pendingTextPreview) {
         val pending = liveHost.pendingTextPreview ?: return@LaunchedEffect
         val text = withContext(Dispatchers.IO) { readSharedTextFile(pending.localFile) }
-        val name = pending.item.displayName.ifEmpty { pending.item.name }
+        val name = pending.item.displayName
         if (text != null) {
             liveHost.textPreview = SharedFileTextPreview(pending.item, pending.localFile, text)
         } else if (!manager.openExternal(context, pending.localFile, name)) {
@@ -380,7 +379,7 @@ internal fun SharedFileHost(
     }
 
     liveHost.textPreview?.let { preview ->
-        val name = preview.item.displayName.ifEmpty { preview.item.name }
+        val name = preview.item.displayName
         SharedFileTextViewerDialog(
             fileName = name,
             nameHead = preview.item.nameHead,
@@ -394,7 +393,7 @@ internal fun SharedFileHost(
     }
 
     liveHost.pdfPreview?.let { preview ->
-        val name = preview.item.displayName.ifEmpty { preview.item.name }
+        val name = preview.item.displayName
         SharedFilePdfViewer(
             fileName = name,
             nameHead = preview.item.nameHead,
@@ -414,7 +413,7 @@ internal fun SharedFileHost(
     }
 
     liveHost.imagePreview?.let { preview ->
-        val name = preview.item.displayName.ifEmpty { preview.item.name }
+        val name = preview.item.displayName
         SharedFileImageViewerDialog(
             item = preview.item,
             localFile = preview.localFile,
@@ -456,7 +455,7 @@ internal fun SharedFileHost(
     }
 
     liveHost.unopenableTarget?.let { target ->
-        val name = target.item.displayName.ifEmpty { target.item.name }
+        val name = target.item.displayName
         Alert(
             title = name,
             text = copy(UiMessages.sharedFileOpenNoApp()),
@@ -502,7 +501,7 @@ private fun handleMenuAction(
     scope: kotlinx.coroutines.CoroutineScope,
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
 ) {
-    val name = item.displayName.ifEmpty { item.name }
+    val name = item.displayName
     when (action) {
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_DOWNLOAD,
         SharedFileMenuAction.SHARED_FILE_MENU_ACTION_RESUME,
@@ -552,7 +551,7 @@ internal fun openSharedFile(
     localFile: File,
     host: SharedFileHostState?,
 ) {
-    val name = item.displayName.ifEmpty { item.name }
+    val name = item.displayName
     when (val route = sharedFileOpenRoute(name, item.kind)) {
         SharedFileOpenRoute.PDF_VIEWER -> host?.pdfPreview = SharedFilePreviewTarget(item, localFile)
         SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFilePreviewTarget(item, localFile)
@@ -667,7 +666,7 @@ internal fun SharedFileCard(
     shadowAlpha: Float = 1f,
 ) {
     val p = pal
-    val displayName = item.displayName.ifEmpty { item.name }
+    val displayName = item.displayName
     val cardDesc = if (item.hasA11YLabel()) uiText(item.a11YLabel) else displayName
 
     val bg = if (lifted) SharedFileSpec.liftSurface(p.dark) else p.bubble
@@ -1389,7 +1388,7 @@ private fun SharedFileImageViewerDialog(
     onShare: () -> Unit,
 ) {
     val copy = uiText()
-    val name = item.displayName.ifEmpty { item.name }
+    val name = item.displayName
     val sizeLabel = if (item.hasSizeText()) uiText(item.sizeText) else ""
     val bitmap by produceState<ImageBitmap?>(null, localFile.absolutePath) {
         value = withContext(Dispatchers.IO) {

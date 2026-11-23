@@ -59,7 +59,6 @@ class SharedTextViewerUiTest {
     private fun open(bytes: ByteArray) {
         val file = SessionSharedFileItem.newBuilder()
             .setFileId("text")
-            .setName("notes.md")
             .setDisplayName("notes.md")
             .setSizeBytes(bytes.size.toLong())
             .build()

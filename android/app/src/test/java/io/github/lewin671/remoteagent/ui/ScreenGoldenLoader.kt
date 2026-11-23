@@ -1697,7 +1697,6 @@ object ScreenGoldenLoader {
                         val f = fe.jsonObject
                         addFiles(
                             SessionFileRefView.newBuilder()
-                                .setName(f.str("name"))
                                 .setSizeBytes(f.i64("sizeBytes"))
                                 .setMimeType(f.str("mimeType"))
                                 .setDisplayName(f.str("displayName"))
@@ -1741,10 +1740,7 @@ object ScreenGoldenLoader {
                         addFiles(
                             SessionSharedFileItem.newBuilder()
                                 .setFileId(f.str("fileId"))
-                                .setName(f.str("name"))
-                                .setPath(f.str("path"))
                                 .setSizeBytes(f.i64("sizeBytes"))
-                                .setAvailable(f.bool("available"))
                                 .setDisplayName(f.str("displayName"))
                                 .setNameHead(f.str("nameHead"))
                                 .setNameTail(f.str("nameTail"))

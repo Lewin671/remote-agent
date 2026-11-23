@@ -337,6 +337,7 @@ private fun HeroCard(
 
     val a11yCard = uiText(if (metric == StatusMetric.CPU) view.cpu.a11YLabel else view.memory.a11YLabel)
     val a11yChart = uiText(chart.a11YSummary)
+    val scrubA11y = if (chart.hasScrub) uiText(chart.scrubA11YValue) else ""
     val prevSampleLabel = copy(UiMessages.machineStatusA11YPrevSample())
     val nextSampleLabel = copy(UiMessages.machineStatusA11YNextSample())
 
@@ -387,7 +388,6 @@ private fun HeroCard(
             Spacer(Modifier.height(12.dp))
             Box(
                 Modifier.fillMaxWidth().semantics {
-                    val scrubA11y = if (chart.hasScrub) uiText(chart.scrubA11YValue) else ""
                     if (scrubA11y.isNotEmpty()) stateDescription = scrubA11y
                     else if (a11yChart.isNotEmpty()) stateDescription = a11yChart
                     val actions = ArrayList<CustomAccessibilityAction>()

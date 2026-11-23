@@ -71,7 +71,7 @@ data class SharedFileTarget(
 fun SessionSharedFileItem.toSharedFileTarget(): SharedFileTarget =
     SharedFileTarget(
         fileId = fileId,
-        displayName = displayName.ifEmpty { name },
+        displayName = displayName,
         sizeBytes = sizeBytes,
         sha256 = sha256.toByteArray(),
         kind = kind,
