@@ -67,7 +67,7 @@ export class SharedFileExecutor {
   private readonly blobCache = new Map<string, Blob>();
   private readonly blobListeners = new Set<() => void>();
   private readonly pendingReads = new Map<string, Promise<Blob | undefined>>();
-  private autoOpenHandler?: (sessionId: string, fileId: string, blob: Blob) => void;
+  private autoOpenHandler?: (eff: SharedFileCompletedEffect, blob: Blob) => void;
 
   constructor(opts: SharedFileExecutorOptions) {
     this.store = opts.store ?? sharedFileStore;
@@ -102,7 +102,7 @@ export class SharedFileExecutor {
     return this.blobCache.get(this.key(sessionId, fileId));
   }
 
-  setAutoOpenHandler(fn?: (sessionId: string, fileId: string, blob: Blob) => void) {
+  setAutoOpenHandler(fn?: (eff: SharedFileCompletedEffect, blob: Blob) => void) {
     this.autoOpenHandler = fn;
   }
 
@@ -142,21 +142,24 @@ export class SharedFileExecutor {
 
   handleScanLocal(eff: SharedFileScanLocalEffect) {
     void this.enqueue(async () => {
+      let ev: Event["event"];
       try {
         const scanned = await this.store.scanLocal();
-        this.onEvent({
+        ev = {
           case: "sharedFileLocalScanned",
           value: create(SharedFileLocalScannedEventSchema, {
             opId: eff.opId,
             entries: scanned.map((e) => create(SharedFileLocalEntrySchema, { ...e, hasDuration: !!e.hasDuration, durationMs: e.durationMs ?? 0n })),
           }),
-        });
+        };
       } catch (err) {
-        this.onEvent({
+        const detail = classifyIOError(err).errorDetail || (err instanceof Error && err.name ? err.name : "scan_local_failed");
+        ev = {
           case: "sharedFileLocalScanned",
-          value: create(SharedFileLocalScannedEventSchema, { opId: eff.opId, error: classifyIOError(err).errorDetail }),
-        });
+          value: create(SharedFileLocalScannedEventSchema, { opId: eff.opId, error: detail }),
+        };
       }
+      this.onEvent(ev);
     });
   }
 
@@ -178,58 +181,83 @@ export class SharedFileExecutor {
 
   handleWriteChunk(eff: SharedFileWriteChunkEffect) {
     void this.enqueue(async () => {
+      let ok = false;
+      let errorKind = SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_UNSPECIFIED;
+      let errorDetail = "";
       try {
         await this.store.writeChunk(eff);
-        this.emitWriteResult(eff.opId, eff.sessionId, eff.fileId, true);
+        ok = true;
       } catch (err) {
         const io = classifyIOError(err);
-        this.emitWriteResult(eff.opId, eff.sessionId, eff.fileId, false, io.errorKind, io.errorDetail);
+        errorKind = io.errorKind;
+        errorDetail = io.errorDetail;
       }
+      this.emitWriteResult(eff.opId, eff.sessionId, eff.fileId, ok, errorKind, errorDetail);
     });
   }
 
   handleVerifyAndCommit(eff: SharedFileVerifyAndCommitEffect) {
     void this.enqueue(async () => {
-      const failChecksum = async () => {
+      let ok = false;
+      let errorKind = SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_UNSPECIFIED;
+      let errorDetail = "";
+      const markChecksumFail = async () => {
         await this.store.deletePartial(eff.sessionId, eff.fileId).catch(() => undefined);
-        this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, false, SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH);
+        ok = false;
+        errorKind = SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH;
+        errorDetail = "";
       };
+
       const totalSize = Number(eff.totalSizeBytes);
-      if (eff.expectedSha256.length !== 32 || !Number.isFinite(totalSize) || totalSize < 0) return failChecksum();
-
-      try {
-        let partial: Blob | undefined;
-        let digest: Uint8Array;
-        if (totalSize === 0) {
-          digest = await hashBlobStreaming(new Blob([]), 0);
-        } else {
-          partial = await this.store.readPartialBlob(eff.sessionId, eff.fileId);
-          if (!partial || partial.size < totalSize) return failChecksum();
-          digest = await hashBlobStreaming(partial, totalSize);
+      if (eff.expectedSha256.length !== 32 || !Number.isFinite(totalSize) || totalSize < 0) {
+        await markChecksumFail();
+      } else {
+        try {
+          let partial: Blob | undefined;
+          let digest: Uint8Array;
+          if (totalSize === 0) {
+            digest = await hashBlobStreaming(new Blob([]), 0);
+          } else {
+            partial = await this.store.readPartialBlob(eff.sessionId, eff.fileId);
+            if (!partial || partial.size < totalSize) {
+              await markChecksumFail();
+              digest = new Uint8Array();
+            } else {
+              digest = await hashBlobStreaming(partial, totalSize);
+            }
+          }
+          if (errorKind === SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_UNSPECIFIED) {
+            if (!equalBytes(digest, eff.expectedSha256)) {
+              await markChecksumFail();
+            } else if (eff.deliverOnly) {
+              const deliverBlob =
+                totalSize === 0 || !partial
+                  ? new Blob([], { type: "application/octet-stream" })
+                  : partial.size === totalSize
+                    ? partial
+                    : partial.slice(0, totalSize, "application/octet-stream");
+              this.onDeliverOnly(deliverBlob, eff.displayName);
+              await this.store.deletePartial(eff.sessionId, eff.fileId).catch(() => undefined);
+              ok = true;
+            } else {
+              const committed = await this.store.commitPartial(eff.sessionId, eff.fileId, totalSize);
+              this.blobCache.set(this.key(eff.sessionId, eff.fileId), committed);
+              this.emitBlobs();
+              ok = true;
+            }
+          }
+        } catch (err) {
+          if (err instanceof PartialTruncatedError) {
+            await markChecksumFail();
+          } else {
+            const io = classifyIOError(err);
+            ok = false;
+            errorKind = io.errorKind;
+            errorDetail = io.errorDetail;
+          }
         }
-        if (!equalBytes(digest, eff.expectedSha256)) return failChecksum();
-
-        if (eff.deliverOnly) {
-          const deliverBlob =
-            totalSize === 0 || !partial
-              ? new Blob([], { type: "application/octet-stream" })
-              : partial.size === totalSize
-                ? partial
-                : partial.slice(0, totalSize, "application/octet-stream");
-          this.onDeliverOnly(deliverBlob, eff.displayName);
-          await this.store.deletePartial(eff.sessionId, eff.fileId).catch(() => undefined);
-          this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, true);
-          return;
-        }
-        const committed = await this.store.commitPartial(eff.sessionId, eff.fileId, totalSize);
-        this.blobCache.set(this.key(eff.sessionId, eff.fileId), committed);
-        this.emitBlobs();
-        this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, true);
-      } catch (err) {
-        if (err instanceof PartialTruncatedError) return failChecksum();
-        const io = classifyIOError(err);
-        this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, false, io.errorKind, io.errorDetail);
       }
+      this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, ok, errorKind, errorDetail);
     });
   }
 
@@ -266,9 +294,9 @@ export class SharedFileExecutor {
   handleCompleted(eff: SharedFileCompletedEffect) {
     if (eff.deliverOnly || !eff.autoOpen || !this.autoOpenHandler) return;
     const cached = this.blobCache.get(this.key(eff.sessionId, eff.fileId));
-    if (cached) { this.autoOpenHandler(eff.sessionId, eff.fileId, cached); return; }
+    if (cached) { this.autoOpenHandler(eff, cached); return; }
     void this.ensureBlob(eff.sessionId, eff.fileId, { reportMissing: true }).then((blob) => {
-      if (blob) this.autoOpenHandler?.(eff.sessionId, eff.fileId, blob);
+      if (blob) this.autoOpenHandler?.(eff, blob);
     });
   }
 }

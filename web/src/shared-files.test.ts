@@ -468,6 +468,67 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
       expect(bytesToHex(got)).toBe(bytesToHex(expected));
     }
   });
+
+  it("emits WriteChunk/VerifyAndCommit/ScanLocal results only once even if onEvent throws, and reports non-empty scan error on quota failure", async () => {
+    const store = new MemorySharedFileStore();
+    const payload = new Uint8Array([1, 2, 3, 4]);
+    const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
+    const events: Event["event"][] = [];
+    const exec = new SharedFileExecutor({
+      store,
+      onEvent: (ev) => {
+        events.push(ev);
+        throw new Error("boom in listener");
+      },
+    });
+
+    exec.handleWriteChunk(
+      create(SharedFileWriteChunkEffectSchema, {
+        opId: 101n,
+        sessionId: "s1",
+        fileId: "f1",
+        displayName: "a.bin",
+        offset: 0n,
+        data: payload,
+        totalSizeBytes: 4n,
+        chunkBytes: 4,
+        committedOffset: 4n,
+        expectedSha256: hash,
+        resetPartial: true,
+      }),
+    );
+    exec.handleVerifyAndCommit(
+      create(SharedFileVerifyAndCommitEffectSchema, {
+        opId: 102n,
+        sessionId: "s1",
+        fileId: "f1",
+        displayName: "a.bin",
+        totalSizeBytes: 4n,
+        expectedSha256: hash,
+        deliverOnly: false,
+      }),
+    );
+    await exec.whenIdle();
+
+    expect(events).toHaveLength(2);
+    expect(events[0].case === "sharedFileWriteChunkResult" && events[0].value.ok && events[0].value.opId === 101n).toBe(true);
+    expect(events[1].case === "sharedFileVerifyAndCommitResult" && events[1].value.ok && events[1].value.opId === 102n).toBe(true);
+
+    // Quota failure during scanLocal must produce a non-empty error so Core never treats it as empty disk.
+    const scanEvents: Event["event"][] = [];
+    const scanSpy = vi.spyOn(store, "scanLocal").mockRejectedValueOnce(new StorageQuotaError());
+    const exec2 = new SharedFileExecutor({ store, onEvent: (ev) => scanEvents.push(ev) });
+    exec2.handleScanLocal(create(SharedFileScanLocalEffectSchema, { opId: 103n }));
+    await exec2.whenIdle();
+    scanSpy.mockRestore();
+
+    expect(scanEvents).toHaveLength(1);
+    expect(scanEvents[0].case).toBe("sharedFileLocalScanned");
+    if (scanEvents[0].case === "sharedFileLocalScanned") {
+      expect(scanEvents[0].value.opId).toBe(103n);
+      expect(scanEvents[0].value.error.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("CoreHost real Core WASM shared-file smoke test", () => {
@@ -572,7 +633,7 @@ describe("CoreHost real Core WASM shared-file smoke test", () => {
       sharedFileStore: demo.sharedFileStore,
       onDeliverLargeSharedFile: (blob, displayName) => delivered.push({ name: displayName, size: blob.size }),
     });
-    host.sharedFiles.setAutoOpenHandler((sid, fileId, blob) => opened.push({ sid, fileId, size: blob.size }));
+    host.sharedFiles.setAutoOpenHandler((eff, blob) => opened.push({ sid: eff.sessionId, fileId: eff.fileId, size: blob.size }));
     try {
       host.start();
       host.watchSession("s-smoke");

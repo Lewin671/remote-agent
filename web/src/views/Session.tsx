@@ -697,21 +697,36 @@ export function SessionScreenView({
   }, [items]);
   const sharedItemsRef = useRef(sharedItemsById);
   sharedItemsRef.current = sharedItemsById;
+  const [pendingAutoOpen, setPendingAutoOpen] = useState<{ sessionId: string; fileId: string; blob: Blob } | undefined>(undefined);
 
   useEffect(() => {
+    setPendingAutoOpen(undefined);
     if (!remote) return;
     const host = getCoreHost(remote);
     host.sharedFileSetVisibleSession(sid);
-    host.sharedFiles.setAutoOpenHandler((targetSid, fileId, blob) => {
-      if (targetSid !== sid) return;
-      const item = sharedItemsRef.current.get(fileId);
-      if (item) openSharedFile(item, blob);
+    host.sharedFiles.setAutoOpenHandler((eff, blob) => {
+      if (eff.sessionId !== sid) return;
+      const item = sharedItemsRef.current.get(eff.fileId);
+      if (item) {
+        openSharedFile(item, blob);
+      } else {
+        setPendingAutoOpen({ sessionId: eff.sessionId, fileId: eff.fileId, blob });
+      }
     });
     return () => {
       host.sharedFileSetVisibleSession("");
       host.sharedFiles.setAutoOpenHandler(undefined);
+      setPendingAutoOpen(undefined);
     };
   }, [remote, sid, openSharedFile]);
+
+  useEffect(() => {
+    if (!pendingAutoOpen || pendingAutoOpen.sessionId !== sid) return;
+    const item = sharedItemsById.get(pendingAutoOpen.fileId);
+    if (!item) return;
+    setPendingAutoOpen(undefined);
+    openSharedFile(item, pendingAutoOpen.blob);
+  }, [pendingAutoOpen, sid, sharedItemsById, openSharedFile]);
 
   const sharedFileCtx = useMemo(
     () => ({
