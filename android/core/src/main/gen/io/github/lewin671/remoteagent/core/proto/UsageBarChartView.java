@@ -17,6 +17,7 @@ public  final class UsageBarChartView extends
   private UsageBarChartView() {
     buckets_ = emptyProtobufList();
   }
+  private int bitField0_;
   public static final int Y_MAX_FIELD_NUMBER = 1;
   private long yMax_;
   /**
@@ -164,6 +165,102 @@ public  final class UsageBarChartView extends
   private void removeBuckets(int index) {
     ensureBucketsIsMutable();
     buckets_.remove(index);
+  }
+
+  public static final int Y_MAX_TEXT_FIELD_NUMBER = 4;
+  private io.github.lewin671.remoteagent.core.proto.Text yMaxText_;
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasYMaxText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getYMaxText() {
+    return yMaxText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : yMaxText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setYMaxText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    yMaxText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeYMaxText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (yMaxText_ != null &&
+        yMaxText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      yMaxText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(yMaxText_).mergeFrom(value).buildPartial();
+    } else {
+      yMaxText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   */
+  private void clearYMaxText() {
+    yMaxText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int Y_MID_TEXT_FIELD_NUMBER = 5;
+  private io.github.lewin671.remoteagent.core.proto.Text yMidText_;
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasYMidText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getYMidText() {
+    return yMidText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : yMidText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setYMidText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    yMidText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeYMidText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (yMidText_ != null &&
+        yMidText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      yMidText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(yMidText_).mergeFrom(value).buildPartial();
+    } else {
+      yMidText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   */
+  private void clearYMidText() {
+    yMidText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageBarChartView parseFrom(
@@ -421,6 +518,100 @@ public  final class UsageBarChartView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasYMaxText() {
+      return instance.hasYMaxText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getYMaxText() {
+      return instance.getYMaxText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    public Builder setYMaxText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setYMaxText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    public Builder setYMaxText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setYMaxText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    public Builder mergeYMaxText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeYMaxText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+     */
+    public Builder clearYMaxText() {  copyOnWrite();
+      instance.clearYMaxText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasYMidText() {
+      return instance.hasYMidText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getYMidText() {
+      return instance.getYMidText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    public Builder setYMidText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setYMidText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    public Builder setYMidText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setYMidText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    public Builder mergeYMidText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeYMidText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+     */
+    public Builder clearYMidText() {  copyOnWrite();
+      instance.clearYMidText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageBarChartView)
   }
   @java.lang.Override
@@ -437,14 +628,17 @@ public  final class UsageBarChartView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "yMax_",
             "yMid_",
             "buckets_",
             io.github.lewin671.remoteagent.core.proto.UsageBarBucketView.class,
+            "yMaxText_",
+            "yMidText_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u0003\u0002\u0003" +
-              "\u0003\u001b";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0003\u0002\u0003" +
+              "\u0003\u001b\u0004\u1009\u0000\u0005\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

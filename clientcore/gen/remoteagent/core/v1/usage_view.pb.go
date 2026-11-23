@@ -19,6 +19,79 @@ const (
 	UsageSortColumn_USAGE_SORT_COLUMN_TTFT        UsageSortColumn = 4
 )
 
+type UsageEmptyKind int32
+
+const (
+	UsageEmptyKind_USAGE_EMPTY_KIND_UNSPECIFIED             UsageEmptyKind = 0
+	UsageEmptyKind_USAGE_EMPTY_KIND_NONE                    UsageEmptyKind = 1
+	UsageEmptyKind_USAGE_EMPTY_KIND_LOADING                 UsageEmptyKind = 2
+	UsageEmptyKind_USAGE_EMPTY_KIND_NOT_FOUND               UsageEmptyKind = 3
+	UsageEmptyKind_USAGE_EMPTY_KIND_UNSUPPORTED             UsageEmptyKind = 4
+	UsageEmptyKind_USAGE_EMPTY_KIND_OFFLINE_EMPTY           UsageEmptyKind = 5
+	UsageEmptyKind_USAGE_EMPTY_KIND_LOAD_ERROR              UsageEmptyKind = 6
+	UsageEmptyKind_USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE UsageEmptyKind = 7
+	UsageEmptyKind_USAGE_EMPTY_KIND_NO_RECORDS              UsageEmptyKind = 8
+)
+
+type UsageBannerKind int32
+
+const (
+	UsageBannerKind_USAGE_BANNER_KIND_UNSPECIFIED    UsageBannerKind = 0
+	UsageBannerKind_USAGE_BANNER_KIND_OFFLINE_CACHED UsageBannerKind = 1
+	UsageBannerKind_USAGE_BANNER_KIND_BACKFILLING    UsageBannerKind = 2
+	UsageBannerKind_USAGE_BANNER_KIND_LOAD_ERROR     UsageBannerKind = 3
+)
+
+type UsageBannerView struct {
+	_        [0]func()
+	Kind     UsageBannerKind
+	IsError  bool
+	CanRetry bool
+	Text     *Text
+}
+
+func (m *UsageBannerView) GetKind() UsageBannerKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *UsageBannerView) GetIsError() bool {
+	if m != nil {
+		return m.IsError
+	}
+	return false
+}
+func (m *UsageBannerView) GetCanRetry() bool {
+	if m != nil {
+		return m.CanRetry
+	}
+	return false
+}
+func (m *UsageBannerView) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+
+var LitewireDesc_UsageBannerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(UsageBannerView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(UsageBannerView{}.IsError), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(UsageBannerView{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(UsageBannerView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *UsageBannerView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *UsageBannerView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UsageBannerView)
+}
+
 type UsageScreenRequest struct {
 	_             [0]func()
 	MachineId     string
@@ -89,6 +162,11 @@ type UsageCompositionView struct {
 	CacheWriteTokens      uint64
 	OutputTokens          uint64
 	ReasoningOutputTokens uint64
+	UncachedInputText     *Text
+	CacheReadText         *Text
+	CacheWriteText        *Text
+	OutputText            *Text
+	ReasoningOutputText   *Text
 }
 
 func (m *UsageCompositionView) GetUncachedInputTokens() uint64 {
@@ -121,6 +199,36 @@ func (m *UsageCompositionView) GetReasoningOutputTokens() uint64 {
 	}
 	return 0
 }
+func (m *UsageCompositionView) GetUncachedInputText() *Text {
+	if m != nil {
+		return m.UncachedInputText
+	}
+	return nil
+}
+func (m *UsageCompositionView) GetCacheReadText() *Text {
+	if m != nil {
+		return m.CacheReadText
+	}
+	return nil
+}
+func (m *UsageCompositionView) GetCacheWriteText() *Text {
+	if m != nil {
+		return m.CacheWriteText
+	}
+	return nil
+}
+func (m *UsageCompositionView) GetOutputText() *Text {
+	if m != nil {
+		return m.OutputText
+	}
+	return nil
+}
+func (m *UsageCompositionView) GetReasoningOutputText() *Text {
+	if m != nil {
+		return m.ReasoningOutputText
+	}
+	return nil
+}
 
 var LitewireDesc_UsageCompositionView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -129,6 +237,11 @@ var LitewireDesc_UsageCompositionView = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(UsageCompositionView{}.CacheWriteTokens), Kind: litewire.KindUint64},
 		{Num: 4, Offset: unsafe.Offsetof(UsageCompositionView{}.OutputTokens), Kind: litewire.KindUint64},
 		{Num: 5, Offset: unsafe.Offsetof(UsageCompositionView{}.ReasoningOutputTokens), Kind: litewire.KindUint64},
+		{Num: 6, Offset: unsafe.Offsetof(UsageCompositionView{}.UncachedInputText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(UsageCompositionView{}.CacheReadText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(UsageCompositionView{}.CacheWriteText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(UsageCompositionView{}.OutputText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(UsageCompositionView{}.ReasoningOutputText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -161,6 +274,9 @@ type UsageHeroView struct {
 	PreviousBackfilling   bool
 	Composition           *UsageCompositionView
 	PeriodCompositionRows int32
+	TotalTokensText       *Text
+	ScopeText             *Text
+	SublineText           *Text
 }
 
 func (m *UsageHeroView) GetScrubbing() bool {
@@ -277,6 +393,24 @@ func (m *UsageHeroView) GetPeriodCompositionRows() int32 {
 	}
 	return 0
 }
+func (m *UsageHeroView) GetTotalTokensText() *Text {
+	if m != nil {
+		return m.TotalTokensText
+	}
+	return nil
+}
+func (m *UsageHeroView) GetScopeText() *Text {
+	if m != nil {
+		return m.ScopeText
+	}
+	return nil
+}
+func (m *UsageHeroView) GetSublineText() *Text {
+	if m != nil {
+		return m.SublineText
+	}
+	return nil
+}
 
 var LitewireDesc_UsageHeroView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -299,6 +433,9 @@ var LitewireDesc_UsageHeroView = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(UsageHeroView{}.PreviousBackfilling), Kind: litewire.KindBool},
 		{Num: 18, Offset: unsafe.Offsetof(UsageHeroView{}.Composition), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageCompositionView},
 		{Num: 19, Offset: unsafe.Offsetof(UsageHeroView{}.PeriodCompositionRows), Kind: litewire.KindInt32},
+		{Num: 20, Offset: unsafe.Offsetof(UsageHeroView{}.TotalTokensText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 21, Offset: unsafe.Offsetof(UsageHeroView{}.ScopeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 22, Offset: unsafe.Offsetof(UsageHeroView{}.SublineText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -369,10 +506,12 @@ func (m *UsageBarBucketView) AppendMarshal(b []byte) []byte {
 }
 
 type UsageBarChartView struct {
-	_       [0]func()
-	YMax    uint64
-	YMid    uint64
-	Buckets []*UsageBarBucketView
+	_        [0]func()
+	YMax     uint64
+	YMid     uint64
+	Buckets  []*UsageBarBucketView
+	YMaxText *Text
+	YMidText *Text
 }
 
 func (m *UsageBarChartView) GetYMax() uint64 {
@@ -393,12 +532,26 @@ func (m *UsageBarChartView) GetBuckets() []*UsageBarBucketView {
 	}
 	return nil
 }
+func (m *UsageBarChartView) GetYMaxText() *Text {
+	if m != nil {
+		return m.YMaxText
+	}
+	return nil
+}
+func (m *UsageBarChartView) GetYMidText() *Text {
+	if m != nil {
+		return m.YMidText
+	}
+	return nil
+}
 
 var LitewireDesc_UsageBarChartView = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(UsageBarChartView{}.YMax), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(UsageBarChartView{}.YMid), Kind: litewire.KindUint64},
 		{Num: 3, Offset: unsafe.Offsetof(UsageBarChartView{}.Buckets), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageBarBucketView},
+		{Num: 4, Offset: unsafe.Offsetof(UsageBarChartView{}.YMaxText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(UsageBarChartView{}.YMidText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -445,17 +598,21 @@ func (m *UsageStripPointView) AppendMarshal(b []byte) []byte {
 }
 
 type UsageMetricStripView struct {
-	_              [0]func()
-	HasValue       bool
-	CurrentValue   float64
-	HasRange       bool
-	MinValue       float64
-	MaxValue       float64
-	ScaleMin       float64
-	ScaleMax       float64
-	LastValidIndex int32
-	AllPoints      []*UsageStripPointView
-	SelectedPoints []*UsageStripPointView
+	_                [0]func()
+	HasValue         bool
+	CurrentValue     float64
+	HasRange         bool
+	MinValue         float64
+	MaxValue         float64
+	ScaleMin         float64
+	ScaleMax         float64
+	LastValidIndex   int32
+	AllPoints        []*UsageStripPointView
+	SelectedPoints   []*UsageStripPointView
+	CurrentValueText *Text
+	MinValueText     *Text
+	MaxValueText     *Text
+	ShowRange        bool
 }
 
 func (m *UsageMetricStripView) GetHasValue() bool {
@@ -518,6 +675,30 @@ func (m *UsageMetricStripView) GetSelectedPoints() []*UsageStripPointView {
 	}
 	return nil
 }
+func (m *UsageMetricStripView) GetCurrentValueText() *Text {
+	if m != nil {
+		return m.CurrentValueText
+	}
+	return nil
+}
+func (m *UsageMetricStripView) GetMinValueText() *Text {
+	if m != nil {
+		return m.MinValueText
+	}
+	return nil
+}
+func (m *UsageMetricStripView) GetMaxValueText() *Text {
+	if m != nil {
+		return m.MaxValueText
+	}
+	return nil
+}
+func (m *UsageMetricStripView) GetShowRange() bool {
+	if m != nil {
+		return m.ShowRange
+	}
+	return false
+}
 
 var LitewireDesc_UsageMetricStripView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -531,6 +712,10 @@ var LitewireDesc_UsageMetricStripView = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(UsageMetricStripView{}.LastValidIndex), Kind: litewire.KindInt32},
 		{Num: 9, Offset: unsafe.Offsetof(UsageMetricStripView{}.AllPoints), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageStripPointView},
 		{Num: 10, Offset: unsafe.Offsetof(UsageMetricStripView{}.SelectedPoints), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageStripPointView},
+		{Num: 11, Offset: unsafe.Offsetof(UsageMetricStripView{}.CurrentValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(UsageMetricStripView{}.MinValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(UsageMetricStripView{}.MaxValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(UsageMetricStripView{}.ShowRange), Kind: litewire.KindBool},
 	},
 }
 
@@ -562,6 +747,11 @@ type UsageModelRowView struct {
 	PreviousBackfilling bool
 	UsageRequestCount   uint64
 	SpeedRequestCount   uint64
+	TotalTokensText     *Text
+	CacheHitText        *Text
+	SpeedText           *Text
+	TtftText            *Text
+	DeltaText           *Text
 }
 
 func (m *UsageModelRowView) GetAgent() v1.Agent {
@@ -672,6 +862,36 @@ func (m *UsageModelRowView) GetSpeedRequestCount() uint64 {
 	}
 	return 0
 }
+func (m *UsageModelRowView) GetTotalTokensText() *Text {
+	if m != nil {
+		return m.TotalTokensText
+	}
+	return nil
+}
+func (m *UsageModelRowView) GetCacheHitText() *Text {
+	if m != nil {
+		return m.CacheHitText
+	}
+	return nil
+}
+func (m *UsageModelRowView) GetSpeedText() *Text {
+	if m != nil {
+		return m.SpeedText
+	}
+	return nil
+}
+func (m *UsageModelRowView) GetTtftText() *Text {
+	if m != nil {
+		return m.TtftText
+	}
+	return nil
+}
+func (m *UsageModelRowView) GetDeltaText() *Text {
+	if m != nil {
+		return m.DeltaText
+	}
+	return nil
+}
 
 var LitewireDesc_UsageModelRowView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -693,6 +913,11 @@ var LitewireDesc_UsageModelRowView = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(UsageModelRowView{}.PreviousBackfilling), Kind: litewire.KindBool},
 		{Num: 17, Offset: unsafe.Offsetof(UsageModelRowView{}.UsageRequestCount), Kind: litewire.KindUint64},
 		{Num: 18, Offset: unsafe.Offsetof(UsageModelRowView{}.SpeedRequestCount), Kind: litewire.KindUint64},
+		{Num: 19, Offset: unsafe.Offsetof(UsageModelRowView{}.TotalTokensText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(UsageModelRowView{}.CacheHitText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 21, Offset: unsafe.Offsetof(UsageModelRowView{}.SpeedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 22, Offset: unsafe.Offsetof(UsageModelRowView{}.TtftText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 23, Offset: unsafe.Offsetof(UsageModelRowView{}.DeltaText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -734,6 +959,13 @@ type UsageViewModel struct {
 	TtftStrip                 *UsageMetricStripView
 	Rows                      []*UsageModelRowView
 	UnsupportedFootnote       *Text
+	Subtitle                  *Text
+	EmptyKind                 UsageEmptyKind
+	EmptyTitle                *Text
+	EmptyBody                 *Text
+	EmptyCanRetry             bool
+	Banners                   []*UsageBannerView
+	ChartsA11YLabel           *Text
 }
 
 func (m *UsageViewModel) GetMachineId() string {
@@ -904,6 +1136,48 @@ func (m *UsageViewModel) GetUnsupportedFootnote() *Text {
 	}
 	return nil
 }
+func (m *UsageViewModel) GetSubtitle() *Text {
+	if m != nil {
+		return m.Subtitle
+	}
+	return nil
+}
+func (m *UsageViewModel) GetEmptyKind() UsageEmptyKind {
+	if m != nil {
+		return m.EmptyKind
+	}
+	return 0
+}
+func (m *UsageViewModel) GetEmptyTitle() *Text {
+	if m != nil {
+		return m.EmptyTitle
+	}
+	return nil
+}
+func (m *UsageViewModel) GetEmptyBody() *Text {
+	if m != nil {
+		return m.EmptyBody
+	}
+	return nil
+}
+func (m *UsageViewModel) GetEmptyCanRetry() bool {
+	if m != nil {
+		return m.EmptyCanRetry
+	}
+	return false
+}
+func (m *UsageViewModel) GetBanners() []*UsageBannerView {
+	if m != nil {
+		return m.Banners
+	}
+	return nil
+}
+func (m *UsageViewModel) GetChartsA11YLabel() *Text {
+	if m != nil {
+		return m.ChartsA11YLabel
+	}
+	return nil
+}
 
 var LitewireDesc_UsageViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -935,6 +1209,13 @@ var LitewireDesc_UsageViewModel = litewire.MessageDesc{
 		{Num: 26, Offset: unsafe.Offsetof(UsageViewModel{}.TtftStrip), Kind: litewire.KindMessage, Sub: &LitewireDesc_UsageMetricStripView},
 		{Num: 27, Offset: unsafe.Offsetof(UsageViewModel{}.Rows), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageModelRowView},
 		{Num: 28, Offset: unsafe.Offsetof(UsageViewModel{}.UnsupportedFootnote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 29, Offset: unsafe.Offsetof(UsageViewModel{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 30, Offset: unsafe.Offsetof(UsageViewModel{}.EmptyKind), Kind: litewire.KindInt32},
+		{Num: 31, Offset: unsafe.Offsetof(UsageViewModel{}.EmptyTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 32, Offset: unsafe.Offsetof(UsageViewModel{}.EmptyBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 33, Offset: unsafe.Offsetof(UsageViewModel{}.EmptyCanRetry), Kind: litewire.KindBool},
+		{Num: 34, Offset: unsafe.Offsetof(UsageViewModel{}.Banners), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_UsageBannerView},
+		{Num: 35, Offset: unsafe.Offsetof(UsageViewModel{}.ChartsA11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

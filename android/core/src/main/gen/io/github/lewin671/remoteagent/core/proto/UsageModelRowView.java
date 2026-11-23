@@ -19,6 +19,7 @@ public  final class UsageModelRowView extends
     model_ = "";
     seriesKey_ = "";
   }
+  private int bitField0_;
   public static final int AGENT_FIELD_NUMBER = 1;
   private int agent_;
   /**
@@ -567,6 +568,246 @@ public  final class UsageModelRowView extends
   private void clearSpeedRequestCount() {
 
     speedRequestCount_ = 0L;
+  }
+
+  public static final int TOTAL_TOKENS_TEXT_FIELD_NUMBER = 19;
+  private io.github.lewin671.remoteagent.core.proto.Text totalTokensText_;
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTotalTokensText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+    return totalTokensText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : totalTokensText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    totalTokensText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (totalTokensText_ != null &&
+        totalTokensText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      totalTokensText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(totalTokensText_).mergeFrom(value).buildPartial();
+    } else {
+      totalTokensText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   */
+  private void clearTotalTokensText() {
+    totalTokensText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int CACHE_HIT_TEXT_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text cacheHitText_;
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCacheHitText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCacheHitText() {
+    return cacheHitText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cacheHitText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cacheHitText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cacheHitText_ != null &&
+        cacheHitText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cacheHitText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cacheHitText_).mergeFrom(value).buildPartial();
+    } else {
+      cacheHitText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   */
+  private void clearCacheHitText() {
+    cacheHitText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int SPEED_TEXT_FIELD_NUMBER = 21;
+  private io.github.lewin671.remoteagent.core.proto.Text speedText_;
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSpeedText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSpeedText() {
+    return speedText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : speedText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    speedText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (speedText_ != null &&
+        speedText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      speedText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(speedText_).mergeFrom(value).buildPartial();
+    } else {
+      speedText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   */
+  private void clearSpeedText() {
+    speedText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int TTFT_TEXT_FIELD_NUMBER = 22;
+  private io.github.lewin671.remoteagent.core.proto.Text ttftText_;
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTtftText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTtftText() {
+    return ttftText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : ttftText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTtftText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    ttftText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTtftText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (ttftText_ != null &&
+        ttftText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      ttftText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(ttftText_).mergeFrom(value).buildPartial();
+    } else {
+      ttftText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   */
+  private void clearTtftText() {
+    ttftText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int DELTA_TEXT_FIELD_NUMBER = 23;
+  private io.github.lewin671.remoteagent.core.proto.Text deltaText_;
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDeltaText() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDeltaText() {
+    return deltaText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : deltaText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDeltaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    deltaText_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDeltaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (deltaText_ != null &&
+        deltaText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      deltaText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(deltaText_).mergeFrom(value).buildPartial();
+    } else {
+      deltaText_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   */
+  private void clearDeltaText() {
+    deltaText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageModelRowView parseFrom(
@@ -1251,6 +1492,241 @@ public  final class UsageModelRowView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTotalTokensText() {
+      return instance.hasTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+      return instance.getTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTotalTokensText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTotalTokensText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    public Builder mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTotalTokensText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+     */
+    public Builder clearTotalTokensText() {  copyOnWrite();
+      instance.clearTotalTokensText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCacheHitText() {
+      return instance.hasCacheHitText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCacheHitText() {
+      return instance.getCacheHitText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    public Builder setCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCacheHitText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    public Builder setCacheHitText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCacheHitText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    public Builder mergeCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCacheHitText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+     */
+    public Builder clearCacheHitText() {  copyOnWrite();
+      instance.clearCacheHitText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSpeedText() {
+      return instance.hasSpeedText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSpeedText() {
+      return instance.getSpeedText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    public Builder setSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSpeedText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    public Builder setSpeedText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSpeedText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    public Builder mergeSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSpeedText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+     */
+    public Builder clearSpeedText() {  copyOnWrite();
+      instance.clearSpeedText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTtftText() {
+      return instance.hasTtftText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTtftText() {
+      return instance.getTtftText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    public Builder setTtftText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTtftText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    public Builder setTtftText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTtftText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    public Builder mergeTtftText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTtftText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+     */
+    public Builder clearTtftText() {  copyOnWrite();
+      instance.clearTtftText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDeltaText() {
+      return instance.hasDeltaText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDeltaText() {
+      return instance.getDeltaText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    public Builder setDeltaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDeltaText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    public Builder setDeltaText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDeltaText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    public Builder mergeDeltaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDeltaText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+     */
+    public Builder clearDeltaText() {  copyOnWrite();
+      instance.clearDeltaText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageModelRowView)
   }
   @java.lang.Override
@@ -1267,6 +1743,7 @@ public  final class UsageModelRowView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "agent_",
             "agentName_",
             "model_",
@@ -1285,12 +1762,18 @@ public  final class UsageModelRowView extends
             "previousBackfilling_",
             "usageRequestCount_",
             "speedRequestCount_",
+            "totalTokensText_",
+            "cacheHitText_",
+            "speedText_",
+            "ttftText_",
+            "deltaText_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0000\u0001\u0012\u0012\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0000\u0017\u0000\u0001\u0001\u0017\u0017\u0000\u0000\u0000\u0001\f\u0002\u0208" +
               "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0000\u0007\u0003\b\u0007\t\u0000\n\u0007" +
               "\u000b\u0000\f\u0007\r\u0000\u000e\u0007\u000f\u0000\u0010\u0007\u0011\u0003\u0012" +
-              "\u0003";
+              "\u0003\u0013\u1009\u0000\u0014\u1009\u0001\u0015\u1009\u0002\u0016\u1009\u0003\u0017" +
+              "\u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

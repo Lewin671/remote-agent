@@ -28,6 +28,7 @@ public  final class Text extends
     join_ = emptyProtobufList();
     separatorKey_ = "";
     separatorLiteral_ = "";
+    literalEn_ = "";
   }
   private int bitField0_;
   public static final int KEY_FIELD_NUMBER = 1;
@@ -462,6 +463,79 @@ public  final class Text extends
   private void clearTimestamp() {
     timestamp_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int LITERAL_EN_FIELD_NUMBER = 8;
+  private java.lang.String literalEn_;
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @return The literalEn.
+   */
+  @java.lang.Override
+  public java.lang.String getLiteralEn() {
+    return literalEn_;
+  }
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @return The bytes for literalEn.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getLiteralEnBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(literalEn_);
+  }
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @param value The literalEn to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLiteralEn(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    literalEn_ = value;
+  }
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   */
+  private void clearLiteralEn() {
+
+    literalEn_ = getDefaultInstance().getLiteralEn();
+  }
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @param value The bytes for literalEn to set.
+   */
+  private void setLiteralEnBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    literalEn_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.Text parseFrom(
@@ -1015,6 +1089,80 @@ public  final class Text extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+     * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+     * </pre>
+     *
+     * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+     * @return The literalEn.
+     */
+    @java.lang.Override
+    public java.lang.String getLiteralEn() {
+      return instance.getLiteralEn();
+    }
+    /**
+     * <pre>
+     * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+     * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+     * </pre>
+     *
+     * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+     * @return The bytes for literalEn.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getLiteralEnBytes() {
+      return instance.getLiteralEnBytes();
+    }
+    /**
+     * <pre>
+     * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+     * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+     * </pre>
+     *
+     * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+     * @param value The literalEn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLiteralEn(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setLiteralEn(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+     * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+     * </pre>
+     *
+     * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLiteralEn() {
+      copyOnWrite();
+      instance.clearLiteralEn();
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+     * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+     * </pre>
+     *
+     * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+     * @param value The bytes for literalEn to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLiteralEnBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setLiteralEnBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.Text)
   }
   @java.lang.Override
@@ -1041,10 +1189,11 @@ public  final class Text extends
             "separatorKey_",
             "separatorLiteral_",
             "timestamp_",
+            "literalEn_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0002\u0000\u0001\u0208\u0002\u001b" +
-              "\u0003\u0208\u0004\u001b\u0005\u0208\u0006\u0208\u0007\u1009\u0000";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0002\u0000\u0001\u0208\u0002\u001b\u0003\u0208" +
+              "\u0004\u001b\u0005\u0208\u0006\u0208\u0007\u1009\u0000\b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

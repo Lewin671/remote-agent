@@ -23,6 +23,8 @@ func TestFormatTokens(t *testing.T) {
 		{8_420, true, "8.4k"},
 		{12_000, false, "1.2万"},
 		{12_000, true, "12k"},
+		{12_345, true, "12.3k"},
+		{99_949, true, "99.9k"},
 		{486_000, false, "48.6万"},
 		{486_000, true, "486k"},
 		{999_600, true, "1M"},
@@ -57,12 +59,48 @@ func TestFormatCacheHit(t *testing.T) {
 		{0.004, "0.4%"},
 		{0.884, "88%"},
 		{0.996, "99.6%"},
+		{0.0001, "0.1%"},
+		{0.9999, "99.9%"},
 		{1.0, "100%"},
+		{math.NaN(), "0%"},
 	}
 	for _, tc := range cases {
 		if got := FormatCacheHit(tc.r); got != tc.exp {
 			t.Errorf("FormatCacheHit(%v) = %q, want %q", tc.r, got, tc.exp)
 		}
+	}
+}
+
+func TestFormatTtftAndDelta(t *testing.T) {
+	ttftCases := []struct {
+		ms   float64
+		want string
+	}{
+		{0, "0.0s"},
+		{-10, "0.0s"},
+		{math.NaN(), "0.0s"},
+		{20, "0.1s"},
+		{420, "0.4s"},
+		{9940, "9.9s"},
+		{12400, "12s"},
+	}
+	for _, tc := range ttftCases {
+		if got := FormatTtftSeconds(tc.ms); got != tc.want {
+			t.Errorf("FormatTtftSeconds(%v) = %q, want %q", tc.ms, got, tc.want)
+		}
+	}
+	if got := FormatDeltaTriangle(0.2); got.GetKey() != "usage.flat" {
+		t.Errorf("FormatDeltaTriangle(0.2) = %+v, want key usage.flat", got)
+	}
+	if got := FormatDeltaTriangle(12.6); got.GetLiteral() != "▲13%" {
+		t.Errorf("FormatDeltaTriangle(12.6) = %+v, want ▲13%%", got)
+	}
+	if got := FormatDeltaTriangle(-1234.4); got.GetLiteral() != "▼1,234%" {
+		t.Errorf("FormatDeltaTriangle(-1234.4) = %+v, want ▼1,234%%", got)
+	}
+	tokTxt := FormatTokensText(12_345)
+	if tokTxt.GetLiteral() != "1.2万" || tokTxt.GetLiteralEn() != "12.3k" {
+		t.Errorf("FormatTokensText(12345) = (%q, %q), want (1.2万, 12.3k)", tokTxt.GetLiteral(), tokTxt.GetLiteralEn())
 	}
 }
 

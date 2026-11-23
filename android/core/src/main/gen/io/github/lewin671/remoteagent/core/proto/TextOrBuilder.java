@@ -96,4 +96,26 @@ public interface TextOrBuilder extends
    * @return The timestamp.
    */
   io.github.lewin671.remoteagent.core.proto.TimestampArg getTimestamp();
+
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @return The literalEn.
+   */
+  java.lang.String getLiteralEn();
+  /**
+   * <pre>
+   * Optional English literal used when key is empty and formatting differs by locale (e.g. "1.2万" vs "12k").
+   * Shells render literal_en when non-empty and the UI locale is non-Chinese, otherwise literal.
+   * </pre>
+   *
+   * <code>string literal_en = 8 [json_name = "literalEn"];</code>
+   * @return The bytes for literalEn.
+   */
+  com.google.protobuf.ByteString
+      getLiteralEnBytes();
 }

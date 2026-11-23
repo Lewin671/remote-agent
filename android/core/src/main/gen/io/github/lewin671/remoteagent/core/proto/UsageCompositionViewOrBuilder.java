@@ -39,4 +39,59 @@ public interface UsageCompositionViewOrBuilder extends
    * @return The reasoningOutputTokens.
    */
   long getReasoningOutputTokens();
+
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   * @return Whether the uncachedInputText field is set.
+   */
+  boolean hasUncachedInputText();
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   * @return The uncachedInputText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getUncachedInputText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   * @return Whether the cacheReadText field is set.
+   */
+  boolean hasCacheReadText();
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   * @return The cacheReadText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCacheReadText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   * @return Whether the cacheWriteText field is set.
+   */
+  boolean hasCacheWriteText();
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   * @return The cacheWriteText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCacheWriteText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   * @return Whether the outputText field is set.
+   */
+  boolean hasOutputText();
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   * @return The outputText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getOutputText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   * @return Whether the reasoningOutputText field is set.
+   */
+  boolean hasReasoningOutputText();
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   * @return The reasoningOutputText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getReasoningOutputText();
 }

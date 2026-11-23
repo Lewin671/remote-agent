@@ -77,6 +77,193 @@ func (UsageSortColumn) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{0}
 }
 
+type UsageEmptyKind int32
+
+const (
+	UsageEmptyKind_USAGE_EMPTY_KIND_UNSPECIFIED             UsageEmptyKind = 0
+	UsageEmptyKind_USAGE_EMPTY_KIND_NONE                    UsageEmptyKind = 1
+	UsageEmptyKind_USAGE_EMPTY_KIND_LOADING                 UsageEmptyKind = 2
+	UsageEmptyKind_USAGE_EMPTY_KIND_NOT_FOUND               UsageEmptyKind = 3
+	UsageEmptyKind_USAGE_EMPTY_KIND_UNSUPPORTED             UsageEmptyKind = 4
+	UsageEmptyKind_USAGE_EMPTY_KIND_OFFLINE_EMPTY           UsageEmptyKind = 5
+	UsageEmptyKind_USAGE_EMPTY_KIND_LOAD_ERROR              UsageEmptyKind = 6
+	UsageEmptyKind_USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE UsageEmptyKind = 7
+	UsageEmptyKind_USAGE_EMPTY_KIND_NO_RECORDS              UsageEmptyKind = 8
+)
+
+// Enum value maps for UsageEmptyKind.
+var (
+	UsageEmptyKind_name = map[int32]string{
+		0: "USAGE_EMPTY_KIND_UNSPECIFIED",
+		1: "USAGE_EMPTY_KIND_NONE",
+		2: "USAGE_EMPTY_KIND_LOADING",
+		3: "USAGE_EMPTY_KIND_NOT_FOUND",
+		4: "USAGE_EMPTY_KIND_UNSUPPORTED",
+		5: "USAGE_EMPTY_KIND_OFFLINE_EMPTY",
+		6: "USAGE_EMPTY_KIND_LOAD_ERROR",
+		7: "USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE",
+		8: "USAGE_EMPTY_KIND_NO_RECORDS",
+	}
+	UsageEmptyKind_value = map[string]int32{
+		"USAGE_EMPTY_KIND_UNSPECIFIED":             0,
+		"USAGE_EMPTY_KIND_NONE":                    1,
+		"USAGE_EMPTY_KIND_LOADING":                 2,
+		"USAGE_EMPTY_KIND_NOT_FOUND":               3,
+		"USAGE_EMPTY_KIND_UNSUPPORTED":             4,
+		"USAGE_EMPTY_KIND_OFFLINE_EMPTY":           5,
+		"USAGE_EMPTY_KIND_LOAD_ERROR":              6,
+		"USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE": 7,
+		"USAGE_EMPTY_KIND_NO_RECORDS":              8,
+	}
+)
+
+func (x UsageEmptyKind) Enum() *UsageEmptyKind {
+	p := new(UsageEmptyKind)
+	*p = x
+	return p
+}
+
+func (x UsageEmptyKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UsageEmptyKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_usage_view_proto_enumTypes[1].Descriptor()
+}
+
+func (UsageEmptyKind) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_usage_view_proto_enumTypes[1]
+}
+
+func (x UsageEmptyKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UsageEmptyKind.Descriptor instead.
+func (UsageEmptyKind) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{1}
+}
+
+type UsageBannerKind int32
+
+const (
+	UsageBannerKind_USAGE_BANNER_KIND_UNSPECIFIED    UsageBannerKind = 0
+	UsageBannerKind_USAGE_BANNER_KIND_OFFLINE_CACHED UsageBannerKind = 1
+	UsageBannerKind_USAGE_BANNER_KIND_BACKFILLING    UsageBannerKind = 2
+	UsageBannerKind_USAGE_BANNER_KIND_LOAD_ERROR     UsageBannerKind = 3
+)
+
+// Enum value maps for UsageBannerKind.
+var (
+	UsageBannerKind_name = map[int32]string{
+		0: "USAGE_BANNER_KIND_UNSPECIFIED",
+		1: "USAGE_BANNER_KIND_OFFLINE_CACHED",
+		2: "USAGE_BANNER_KIND_BACKFILLING",
+		3: "USAGE_BANNER_KIND_LOAD_ERROR",
+	}
+	UsageBannerKind_value = map[string]int32{
+		"USAGE_BANNER_KIND_UNSPECIFIED":    0,
+		"USAGE_BANNER_KIND_OFFLINE_CACHED": 1,
+		"USAGE_BANNER_KIND_BACKFILLING":    2,
+		"USAGE_BANNER_KIND_LOAD_ERROR":     3,
+	}
+)
+
+func (x UsageBannerKind) Enum() *UsageBannerKind {
+	p := new(UsageBannerKind)
+	*p = x
+	return p
+}
+
+func (x UsageBannerKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UsageBannerKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_usage_view_proto_enumTypes[2].Descriptor()
+}
+
+func (UsageBannerKind) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_usage_view_proto_enumTypes[2]
+}
+
+func (x UsageBannerKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UsageBannerKind.Descriptor instead.
+func (UsageBannerKind) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{2}
+}
+
+type UsageBannerView struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          UsageBannerKind        `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.UsageBannerKind" json:"kind,omitempty"`
+	IsError       bool                   `protobuf:"varint,2,opt,name=is_error,json=isError,proto3" json:"is_error,omitempty"`
+	CanRetry      bool                   `protobuf:"varint,3,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	Text          *Text                  `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsageBannerView) Reset() {
+	*x = UsageBannerView{}
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsageBannerView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsageBannerView) ProtoMessage() {}
+
+func (x *UsageBannerView) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsageBannerView.ProtoReflect.Descriptor instead.
+func (*UsageBannerView) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *UsageBannerView) GetKind() UsageBannerKind {
+	if x != nil {
+		return x.Kind
+	}
+	return UsageBannerKind_USAGE_BANNER_KIND_UNSPECIFIED
+}
+
+func (x *UsageBannerView) GetIsError() bool {
+	if x != nil {
+		return x.IsError
+	}
+	return false
+}
+
+func (x *UsageBannerView) GetCanRetry() bool {
+	if x != nil {
+		return x.CanRetry
+	}
+	return false
+}
+
+func (x *UsageBannerView) GetText() *Text {
+	if x != nil {
+		return x.Text
+	}
+	return nil
+}
+
 type UsageScreenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
@@ -91,7 +278,7 @@ type UsageScreenRequest struct {
 
 func (x *UsageScreenRequest) Reset() {
 	*x = UsageScreenRequest{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -103,7 +290,7 @@ func (x *UsageScreenRequest) String() string {
 func (*UsageScreenRequest) ProtoMessage() {}
 
 func (x *UsageScreenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[0]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -116,7 +303,7 @@ func (x *UsageScreenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenRequest.ProtoReflect.Descriptor instead.
 func (*UsageScreenRequest) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{0}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *UsageScreenRequest) GetMachineId() string {
@@ -168,13 +355,18 @@ type UsageCompositionView struct {
 	CacheWriteTokens      uint64                 `protobuf:"varint,3,opt,name=cache_write_tokens,json=cacheWriteTokens,proto3" json:"cache_write_tokens,omitempty"`
 	OutputTokens          uint64                 `protobuf:"varint,4,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
 	ReasoningOutputTokens uint64                 `protobuf:"varint,5,opt,name=reasoning_output_tokens,json=reasoningOutputTokens,proto3" json:"reasoning_output_tokens,omitempty"`
+	UncachedInputText     *Text                  `protobuf:"bytes,6,opt,name=uncached_input_text,json=uncachedInputText,proto3" json:"uncached_input_text,omitempty"`
+	CacheReadText         *Text                  `protobuf:"bytes,7,opt,name=cache_read_text,json=cacheReadText,proto3" json:"cache_read_text,omitempty"`
+	CacheWriteText        *Text                  `protobuf:"bytes,8,opt,name=cache_write_text,json=cacheWriteText,proto3" json:"cache_write_text,omitempty"`
+	OutputText            *Text                  `protobuf:"bytes,9,opt,name=output_text,json=outputText,proto3" json:"output_text,omitempty"`
+	ReasoningOutputText   *Text                  `protobuf:"bytes,10,opt,name=reasoning_output_text,json=reasoningOutputText,proto3" json:"reasoning_output_text,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *UsageCompositionView) Reset() {
 	*x = UsageCompositionView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -186,7 +378,7 @@ func (x *UsageCompositionView) String() string {
 func (*UsageCompositionView) ProtoMessage() {}
 
 func (x *UsageCompositionView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[1]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -199,7 +391,7 @@ func (x *UsageCompositionView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageCompositionView.ProtoReflect.Descriptor instead.
 func (*UsageCompositionView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{1}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *UsageCompositionView) GetUncachedInputTokens() uint64 {
@@ -237,6 +429,41 @@ func (x *UsageCompositionView) GetReasoningOutputTokens() uint64 {
 	return 0
 }
 
+func (x *UsageCompositionView) GetUncachedInputText() *Text {
+	if x != nil {
+		return x.UncachedInputText
+	}
+	return nil
+}
+
+func (x *UsageCompositionView) GetCacheReadText() *Text {
+	if x != nil {
+		return x.CacheReadText
+	}
+	return nil
+}
+
+func (x *UsageCompositionView) GetCacheWriteText() *Text {
+	if x != nil {
+		return x.CacheWriteText
+	}
+	return nil
+}
+
+func (x *UsageCompositionView) GetOutputText() *Text {
+	if x != nil {
+		return x.OutputText
+	}
+	return nil
+}
+
+func (x *UsageCompositionView) GetReasoningOutputText() *Text {
+	if x != nil {
+		return x.ReasoningOutputText
+	}
+	return nil
+}
+
 type UsageHeroView struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Scrubbing             bool                   `protobuf:"varint,1,opt,name=scrubbing,proto3" json:"scrubbing,omitempty"`
@@ -258,13 +485,16 @@ type UsageHeroView struct {
 	PreviousBackfilling   bool                   `protobuf:"varint,17,opt,name=previous_backfilling,json=previousBackfilling,proto3" json:"previous_backfilling,omitempty"`
 	Composition           *UsageCompositionView  `protobuf:"bytes,18,opt,name=composition,proto3" json:"composition,omitempty"`
 	PeriodCompositionRows int32                  `protobuf:"varint,19,opt,name=period_composition_rows,json=periodCompositionRows,proto3" json:"period_composition_rows,omitempty"`
+	TotalTokensText       *Text                  `protobuf:"bytes,20,opt,name=total_tokens_text,json=totalTokensText,proto3" json:"total_tokens_text,omitempty"`
+	ScopeText             *Text                  `protobuf:"bytes,21,opt,name=scope_text,json=scopeText,proto3" json:"scope_text,omitempty"`
+	SublineText           *Text                  `protobuf:"bytes,22,opt,name=subline_text,json=sublineText,proto3" json:"subline_text,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *UsageHeroView) Reset() {
 	*x = UsageHeroView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -276,7 +506,7 @@ func (x *UsageHeroView) String() string {
 func (*UsageHeroView) ProtoMessage() {}
 
 func (x *UsageHeroView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[2]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -289,7 +519,7 @@ func (x *UsageHeroView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageHeroView.ProtoReflect.Descriptor instead.
 func (*UsageHeroView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{2}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UsageHeroView) GetScrubbing() bool {
@@ -425,6 +655,27 @@ func (x *UsageHeroView) GetPeriodCompositionRows() int32 {
 	return 0
 }
 
+func (x *UsageHeroView) GetTotalTokensText() *Text {
+	if x != nil {
+		return x.TotalTokensText
+	}
+	return nil
+}
+
+func (x *UsageHeroView) GetScopeText() *Text {
+	if x != nil {
+		return x.ScopeText
+	}
+	return nil
+}
+
+func (x *UsageHeroView) GetSublineText() *Text {
+	if x != nil {
+		return x.SublineText
+	}
+	return nil
+}
+
 type UsageBarBucketView struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	StartMs        int64                  `protobuf:"varint,1,opt,name=start_ms,json=startMs,proto3" json:"start_ms,omitempty"`
@@ -438,7 +689,7 @@ type UsageBarBucketView struct {
 
 func (x *UsageBarBucketView) Reset() {
 	*x = UsageBarBucketView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +701,7 @@ func (x *UsageBarBucketView) String() string {
 func (*UsageBarBucketView) ProtoMessage() {}
 
 func (x *UsageBarBucketView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[3]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +714,7 @@ func (x *UsageBarBucketView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageBarBucketView.ProtoReflect.Descriptor instead.
 func (*UsageBarBucketView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{3}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UsageBarBucketView) GetStartMs() int64 {
@@ -506,13 +757,15 @@ type UsageBarChartView struct {
 	YMax          uint64                 `protobuf:"varint,1,opt,name=y_max,json=yMax,proto3" json:"y_max,omitempty"`
 	YMid          uint64                 `protobuf:"varint,2,opt,name=y_mid,json=yMid,proto3" json:"y_mid,omitempty"`
 	Buckets       []*UsageBarBucketView  `protobuf:"bytes,3,rep,name=buckets,proto3" json:"buckets,omitempty"`
+	YMaxText      *Text                  `protobuf:"bytes,4,opt,name=y_max_text,json=yMaxText,proto3" json:"y_max_text,omitempty"`
+	YMidText      *Text                  `protobuf:"bytes,5,opt,name=y_mid_text,json=yMidText,proto3" json:"y_mid_text,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UsageBarChartView) Reset() {
 	*x = UsageBarChartView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -524,7 +777,7 @@ func (x *UsageBarChartView) String() string {
 func (*UsageBarChartView) ProtoMessage() {}
 
 func (x *UsageBarChartView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[4]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -537,7 +790,7 @@ func (x *UsageBarChartView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageBarChartView.ProtoReflect.Descriptor instead.
 func (*UsageBarChartView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{4}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UsageBarChartView) GetYMax() uint64 {
@@ -561,6 +814,20 @@ func (x *UsageBarChartView) GetBuckets() []*UsageBarBucketView {
 	return nil
 }
 
+func (x *UsageBarChartView) GetYMaxText() *Text {
+	if x != nil {
+		return x.YMaxText
+	}
+	return nil
+}
+
+func (x *UsageBarChartView) GetYMidText() *Text {
+	if x != nil {
+		return x.YMidText
+	}
+	return nil
+}
+
 type UsageStripPointView struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	HasValue      bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
@@ -571,7 +838,7 @@ type UsageStripPointView struct {
 
 func (x *UsageStripPointView) Reset() {
 	*x = UsageStripPointView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -583,7 +850,7 @@ func (x *UsageStripPointView) String() string {
 func (*UsageStripPointView) ProtoMessage() {}
 
 func (x *UsageStripPointView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[5]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -596,7 +863,7 @@ func (x *UsageStripPointView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageStripPointView.ProtoReflect.Descriptor instead.
 func (*UsageStripPointView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{5}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UsageStripPointView) GetHasValue() bool {
@@ -614,24 +881,28 @@ func (x *UsageStripPointView) GetValue() float64 {
 }
 
 type UsageMetricStripView struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	HasValue       bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
-	CurrentValue   float64                `protobuf:"fixed64,2,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"`
-	HasRange       bool                   `protobuf:"varint,3,opt,name=has_range,json=hasRange,proto3" json:"has_range,omitempty"`
-	MinValue       float64                `protobuf:"fixed64,4,opt,name=min_value,json=minValue,proto3" json:"min_value,omitempty"`
-	MaxValue       float64                `protobuf:"fixed64,5,opt,name=max_value,json=maxValue,proto3" json:"max_value,omitempty"`
-	ScaleMin       float64                `protobuf:"fixed64,6,opt,name=scale_min,json=scaleMin,proto3" json:"scale_min,omitempty"`
-	ScaleMax       float64                `protobuf:"fixed64,7,opt,name=scale_max,json=scaleMax,proto3" json:"scale_max,omitempty"`
-	LastValidIndex int32                  `protobuf:"varint,8,opt,name=last_valid_index,json=lastValidIndex,proto3" json:"last_valid_index,omitempty"`
-	AllPoints      []*UsageStripPointView `protobuf:"bytes,9,rep,name=all_points,json=allPoints,proto3" json:"all_points,omitempty"`
-	SelectedPoints []*UsageStripPointView `protobuf:"bytes,10,rep,name=selected_points,json=selectedPoints,proto3" json:"selected_points,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	HasValue         bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
+	CurrentValue     float64                `protobuf:"fixed64,2,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"`
+	HasRange         bool                   `protobuf:"varint,3,opt,name=has_range,json=hasRange,proto3" json:"has_range,omitempty"`
+	MinValue         float64                `protobuf:"fixed64,4,opt,name=min_value,json=minValue,proto3" json:"min_value,omitempty"`
+	MaxValue         float64                `protobuf:"fixed64,5,opt,name=max_value,json=maxValue,proto3" json:"max_value,omitempty"`
+	ScaleMin         float64                `protobuf:"fixed64,6,opt,name=scale_min,json=scaleMin,proto3" json:"scale_min,omitempty"`
+	ScaleMax         float64                `protobuf:"fixed64,7,opt,name=scale_max,json=scaleMax,proto3" json:"scale_max,omitempty"`
+	LastValidIndex   int32                  `protobuf:"varint,8,opt,name=last_valid_index,json=lastValidIndex,proto3" json:"last_valid_index,omitempty"`
+	AllPoints        []*UsageStripPointView `protobuf:"bytes,9,rep,name=all_points,json=allPoints,proto3" json:"all_points,omitempty"`
+	SelectedPoints   []*UsageStripPointView `protobuf:"bytes,10,rep,name=selected_points,json=selectedPoints,proto3" json:"selected_points,omitempty"`
+	CurrentValueText *Text                  `protobuf:"bytes,11,opt,name=current_value_text,json=currentValueText,proto3" json:"current_value_text,omitempty"`
+	MinValueText     *Text                  `protobuf:"bytes,12,opt,name=min_value_text,json=minValueText,proto3" json:"min_value_text,omitempty"`
+	MaxValueText     *Text                  `protobuf:"bytes,13,opt,name=max_value_text,json=maxValueText,proto3" json:"max_value_text,omitempty"`
+	ShowRange        bool                   `protobuf:"varint,14,opt,name=show_range,json=showRange,proto3" json:"show_range,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UsageMetricStripView) Reset() {
 	*x = UsageMetricStripView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[6]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -643,7 +914,7 @@ func (x *UsageMetricStripView) String() string {
 func (*UsageMetricStripView) ProtoMessage() {}
 
 func (x *UsageMetricStripView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[6]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +927,7 @@ func (x *UsageMetricStripView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageMetricStripView.ProtoReflect.Descriptor instead.
 func (*UsageMetricStripView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{6}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UsageMetricStripView) GetHasValue() bool {
@@ -729,6 +1000,34 @@ func (x *UsageMetricStripView) GetSelectedPoints() []*UsageStripPointView {
 	return nil
 }
 
+func (x *UsageMetricStripView) GetCurrentValueText() *Text {
+	if x != nil {
+		return x.CurrentValueText
+	}
+	return nil
+}
+
+func (x *UsageMetricStripView) GetMinValueText() *Text {
+	if x != nil {
+		return x.MinValueText
+	}
+	return nil
+}
+
+func (x *UsageMetricStripView) GetMaxValueText() *Text {
+	if x != nil {
+		return x.MaxValueText
+	}
+	return nil
+}
+
+func (x *UsageMetricStripView) GetShowRange() bool {
+	if x != nil {
+		return x.ShowRange
+	}
+	return false
+}
+
 type UsageModelRowView struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Agent               v1.Agent               `protobuf:"varint,1,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
@@ -749,13 +1048,18 @@ type UsageModelRowView struct {
 	PreviousBackfilling bool                   `protobuf:"varint,16,opt,name=previous_backfilling,json=previousBackfilling,proto3" json:"previous_backfilling,omitempty"`
 	UsageRequestCount   uint64                 `protobuf:"varint,17,opt,name=usage_request_count,json=usageRequestCount,proto3" json:"usage_request_count,omitempty"`
 	SpeedRequestCount   uint64                 `protobuf:"varint,18,opt,name=speed_request_count,json=speedRequestCount,proto3" json:"speed_request_count,omitempty"`
+	TotalTokensText     *Text                  `protobuf:"bytes,19,opt,name=total_tokens_text,json=totalTokensText,proto3" json:"total_tokens_text,omitempty"`
+	CacheHitText        *Text                  `protobuf:"bytes,20,opt,name=cache_hit_text,json=cacheHitText,proto3" json:"cache_hit_text,omitempty"`
+	SpeedText           *Text                  `protobuf:"bytes,21,opt,name=speed_text,json=speedText,proto3" json:"speed_text,omitempty"`
+	TtftText            *Text                  `protobuf:"bytes,22,opt,name=ttft_text,json=ttftText,proto3" json:"ttft_text,omitempty"`
+	DeltaText           *Text                  `protobuf:"bytes,23,opt,name=delta_text,json=deltaText,proto3" json:"delta_text,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
 
 func (x *UsageModelRowView) Reset() {
 	*x = UsageModelRowView{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -767,7 +1071,7 @@ func (x *UsageModelRowView) String() string {
 func (*UsageModelRowView) ProtoMessage() {}
 
 func (x *UsageModelRowView) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[7]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -780,7 +1084,7 @@ func (x *UsageModelRowView) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageModelRowView.ProtoReflect.Descriptor instead.
 func (*UsageModelRowView) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{7}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UsageModelRowView) GetAgent() v1.Agent {
@@ -909,6 +1213,41 @@ func (x *UsageModelRowView) GetSpeedRequestCount() uint64 {
 	return 0
 }
 
+func (x *UsageModelRowView) GetTotalTokensText() *Text {
+	if x != nil {
+		return x.TotalTokensText
+	}
+	return nil
+}
+
+func (x *UsageModelRowView) GetCacheHitText() *Text {
+	if x != nil {
+		return x.CacheHitText
+	}
+	return nil
+}
+
+func (x *UsageModelRowView) GetSpeedText() *Text {
+	if x != nil {
+		return x.SpeedText
+	}
+	return nil
+}
+
+func (x *UsageModelRowView) GetTtftText() *Text {
+	if x != nil {
+		return x.TtftText
+	}
+	return nil
+}
+
+func (x *UsageModelRowView) GetDeltaText() *Text {
+	if x != nil {
+		return x.DeltaText
+	}
+	return nil
+}
+
 type UsageViewModel struct {
 	state                     protoimpl.MessageState    `protogen:"open.v1"`
 	MachineId                 string                    `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
@@ -939,13 +1278,20 @@ type UsageViewModel struct {
 	TtftStrip                 *UsageMetricStripView     `protobuf:"bytes,26,opt,name=ttft_strip,json=ttftStrip,proto3" json:"ttft_strip,omitempty"`
 	Rows                      []*UsageModelRowView      `protobuf:"bytes,27,rep,name=rows,proto3" json:"rows,omitempty"`
 	UnsupportedFootnote       *Text                     `protobuf:"bytes,28,opt,name=unsupported_footnote,json=unsupportedFootnote,proto3" json:"unsupported_footnote,omitempty"`
+	Subtitle                  *Text                     `protobuf:"bytes,29,opt,name=subtitle,proto3" json:"subtitle,omitempty"`
+	EmptyKind                 UsageEmptyKind            `protobuf:"varint,30,opt,name=empty_kind,json=emptyKind,proto3,enum=remoteagent.core.v1.UsageEmptyKind" json:"empty_kind,omitempty"`
+	EmptyTitle                *Text                     `protobuf:"bytes,31,opt,name=empty_title,json=emptyTitle,proto3" json:"empty_title,omitempty"`
+	EmptyBody                 *Text                     `protobuf:"bytes,32,opt,name=empty_body,json=emptyBody,proto3" json:"empty_body,omitempty"`
+	EmptyCanRetry             bool                      `protobuf:"varint,33,opt,name=empty_can_retry,json=emptyCanRetry,proto3" json:"empty_can_retry,omitempty"`
+	Banners                   []*UsageBannerView        `protobuf:"bytes,34,rep,name=banners,proto3" json:"banners,omitempty"`
+	ChartsA11YLabel           *Text                     `protobuf:"bytes,35,opt,name=charts_a11y_label,json=chartsA11yLabel,proto3" json:"charts_a11y_label,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *UsageViewModel) Reset() {
 	*x = UsageViewModel{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -957,7 +1303,7 @@ func (x *UsageViewModel) String() string {
 func (*UsageViewModel) ProtoMessage() {}
 
 func (x *UsageViewModel) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[8]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +1316,7 @@ func (x *UsageViewModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageViewModel.ProtoReflect.Descriptor instead.
 func (*UsageViewModel) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{8}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UsageViewModel) GetMachineId() string {
@@ -1169,6 +1515,55 @@ func (x *UsageViewModel) GetUnsupportedFootnote() *Text {
 	return nil
 }
 
+func (x *UsageViewModel) GetSubtitle() *Text {
+	if x != nil {
+		return x.Subtitle
+	}
+	return nil
+}
+
+func (x *UsageViewModel) GetEmptyKind() UsageEmptyKind {
+	if x != nil {
+		return x.EmptyKind
+	}
+	return UsageEmptyKind_USAGE_EMPTY_KIND_UNSPECIFIED
+}
+
+func (x *UsageViewModel) GetEmptyTitle() *Text {
+	if x != nil {
+		return x.EmptyTitle
+	}
+	return nil
+}
+
+func (x *UsageViewModel) GetEmptyBody() *Text {
+	if x != nil {
+		return x.EmptyBody
+	}
+	return nil
+}
+
+func (x *UsageViewModel) GetEmptyCanRetry() bool {
+	if x != nil {
+		return x.EmptyCanRetry
+	}
+	return false
+}
+
+func (x *UsageViewModel) GetBanners() []*UsageBannerView {
+	if x != nil {
+		return x.Banners
+	}
+	return nil
+}
+
+func (x *UsageViewModel) GetChartsA11YLabel() *Text {
+	if x != nil {
+		return x.ChartsA11YLabel
+	}
+	return nil
+}
+
 type UsageScreenOpenEvent struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	MachineId       string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
@@ -1188,7 +1583,7 @@ type UsageScreenOpenEvent struct {
 
 func (x *UsageScreenOpenEvent) Reset() {
 	*x = UsageScreenOpenEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[9]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1200,7 +1595,7 @@ func (x *UsageScreenOpenEvent) String() string {
 func (*UsageScreenOpenEvent) ProtoMessage() {}
 
 func (x *UsageScreenOpenEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[9]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1213,7 +1608,7 @@ func (x *UsageScreenOpenEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenOpenEvent.ProtoReflect.Descriptor instead.
 func (*UsageScreenOpenEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{9}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UsageScreenOpenEvent) GetMachineId() string {
@@ -1302,7 +1697,7 @@ type UsageScreenRetryEvent struct {
 
 func (x *UsageScreenRetryEvent) Reset() {
 	*x = UsageScreenRetryEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[10]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +1709,7 @@ func (x *UsageScreenRetryEvent) String() string {
 func (*UsageScreenRetryEvent) ProtoMessage() {}
 
 func (x *UsageScreenRetryEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[10]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +1722,7 @@ func (x *UsageScreenRetryEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenRetryEvent.ProtoReflect.Descriptor instead.
 func (*UsageScreenRetryEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{10}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UsageScreenRetryEvent) GetMachineId() string {
@@ -1347,7 +1742,7 @@ type UsageScreenSelectSortEvent struct {
 
 func (x *UsageScreenSelectSortEvent) Reset() {
 	*x = UsageScreenSelectSortEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[11]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1359,7 +1754,7 @@ func (x *UsageScreenSelectSortEvent) String() string {
 func (*UsageScreenSelectSortEvent) ProtoMessage() {}
 
 func (x *UsageScreenSelectSortEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[11]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1372,7 +1767,7 @@ func (x *UsageScreenSelectSortEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenSelectSortEvent.ProtoReflect.Descriptor instead.
 func (*UsageScreenSelectSortEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{11}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UsageScreenSelectSortEvent) GetMachineId() string {
@@ -1400,7 +1795,7 @@ type UsageScreenSelectSeriesEvent struct {
 
 func (x *UsageScreenSelectSeriesEvent) Reset() {
 	*x = UsageScreenSelectSeriesEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[12]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1412,7 +1807,7 @@ func (x *UsageScreenSelectSeriesEvent) String() string {
 func (*UsageScreenSelectSeriesEvent) ProtoMessage() {}
 
 func (x *UsageScreenSelectSeriesEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[12]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1425,7 +1820,7 @@ func (x *UsageScreenSelectSeriesEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenSelectSeriesEvent.ProtoReflect.Descriptor instead.
 func (*UsageScreenSelectSeriesEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{12}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UsageScreenSelectSeriesEvent) GetMachineId() string {
@@ -1460,7 +1855,7 @@ type UsageScreenScrubEvent struct {
 
 func (x *UsageScreenScrubEvent) Reset() {
 	*x = UsageScreenScrubEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1472,7 +1867,7 @@ func (x *UsageScreenScrubEvent) String() string {
 func (*UsageScreenScrubEvent) ProtoMessage() {}
 
 func (x *UsageScreenScrubEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[13]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1485,7 +1880,7 @@ func (x *UsageScreenScrubEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageScreenScrubEvent.ProtoReflect.Descriptor instead.
 func (*UsageScreenScrubEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UsageScreenScrubEvent) GetMachineId() string {
@@ -1519,7 +1914,7 @@ type UsageCacheLoadedEvent struct {
 
 func (x *UsageCacheLoadedEvent) Reset() {
 	*x = UsageCacheLoadedEvent{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1531,7 +1926,7 @@ func (x *UsageCacheLoadedEvent) String() string {
 func (*UsageCacheLoadedEvent) ProtoMessage() {}
 
 func (x *UsageCacheLoadedEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[14]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1544,7 +1939,7 @@ func (x *UsageCacheLoadedEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageCacheLoadedEvent.ProtoReflect.Descriptor instead.
 func (*UsageCacheLoadedEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UsageCacheLoadedEvent) GetMachineId() string {
@@ -1571,7 +1966,7 @@ type UsageCacheWriteEffect struct {
 
 func (x *UsageCacheWriteEffect) Reset() {
 	*x = UsageCacheWriteEffect{}
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1583,7 +1978,7 @@ func (x *UsageCacheWriteEffect) String() string {
 func (*UsageCacheWriteEffect) ProtoMessage() {}
 
 func (x *UsageCacheWriteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[15]
+	mi := &file_remoteagent_core_v1_usage_view_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1596,7 +1991,7 @@ func (x *UsageCacheWriteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsageCacheWriteEffect.ProtoReflect.Descriptor instead.
 func (*UsageCacheWriteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_core_v1_usage_view_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UsageCacheWriteEffect) GetMachineId() string {
@@ -1617,7 +2012,12 @@ var File_remoteagent_core_v1_usage_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\n" +
-	"$remoteagent/core/v1/usage_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\"\x92\x02\n" +
+	"$remoteagent/core/v1/usage_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\"\xb2\x01\n" +
+	"\x0fUsageBannerView\x128\n" +
+	"\x04kind\x18\x01 \x01(\x0e2$.remoteagent.core.v1.UsageBannerKindR\x04kind\x12\x19\n" +
+	"\bis_error\x18\x02 \x01(\bR\aisError\x12\x1b\n" +
+	"\tcan_retry\x18\x03 \x01(\bR\bcanRetry\x12-\n" +
+	"\x04text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\"\x92\x02\n" +
 	"\x12UsageScreenRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x126\n" +
@@ -1627,13 +2027,20 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"focusModel\x128\n" +
 	"\x06preset\x18\x04 \x01(\x0e2 .remoteagent.v1.UsageRangePresetR\x06preset\x12&\n" +
 	"\x0fcustom_start_ms\x18\x05 \x01(\x03R\rcustomStartMs\x12\"\n" +
-	"\rcustom_end_ms\x18\x06 \x01(\x03R\vcustomEndMs\"\x81\x02\n" +
+	"\rcustom_end_ms\x18\x06 \x01(\x03R\vcustomEndMs\"\xdf\x04\n" +
 	"\x14UsageCompositionView\x122\n" +
 	"\x15uncached_input_tokens\x18\x01 \x01(\x04R\x13uncachedInputTokens\x12*\n" +
 	"\x11cache_read_tokens\x18\x02 \x01(\x04R\x0fcacheReadTokens\x12,\n" +
 	"\x12cache_write_tokens\x18\x03 \x01(\x04R\x10cacheWriteTokens\x12#\n" +
 	"\routput_tokens\x18\x04 \x01(\x04R\foutputTokens\x126\n" +
-	"\x17reasoning_output_tokens\x18\x05 \x01(\x04R\x15reasoningOutputTokens\"\xeb\x06\n" +
+	"\x17reasoning_output_tokens\x18\x05 \x01(\x04R\x15reasoningOutputTokens\x12I\n" +
+	"\x13uncached_input_text\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\x11uncachedInputText\x12A\n" +
+	"\x0fcache_read_text\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\rcacheReadText\x12C\n" +
+	"\x10cache_write_text\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\x0ecacheWriteText\x12:\n" +
+	"\voutput_text\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"outputText\x12M\n" +
+	"\x15reasoning_output_text\x18\n" +
+	" \x01(\v2\x19.remoteagent.core.v1.TextR\x13reasoningOutputText\"\xaa\b\n" +
 	"\rUsageHeroView\x12\x1c\n" +
 	"\tscrubbing\x18\x01 \x01(\bR\tscrubbing\x12,\n" +
 	"\x12scrub_bucket_index\x18\x02 \x01(\x05R\x10scrubBucketIndex\x12$\n" +
@@ -1656,21 +2063,29 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\x14tokens_delta_percent\x18\x10 \x01(\x01R\x12tokensDeltaPercent\x121\n" +
 	"\x14previous_backfilling\x18\x11 \x01(\bR\x13previousBackfilling\x12K\n" +
 	"\vcomposition\x18\x12 \x01(\v2).remoteagent.core.v1.UsageCompositionViewR\vcomposition\x126\n" +
-	"\x17period_composition_rows\x18\x13 \x01(\x05R\x15periodCompositionRows\"\xa9\x01\n" +
+	"\x17period_composition_rows\x18\x13 \x01(\x05R\x15periodCompositionRows\x12E\n" +
+	"\x11total_tokens_text\x18\x14 \x01(\v2\x19.remoteagent.core.v1.TextR\x0ftotalTokensText\x128\n" +
+	"\n" +
+	"scope_text\x18\x15 \x01(\v2\x19.remoteagent.core.v1.TextR\tscopeText\x12<\n" +
+	"\fsubline_text\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\vsublineText\"\xa9\x01\n" +
 	"\x12UsageBarBucketView\x12\x19\n" +
 	"\bstart_ms\x18\x01 \x01(\x03R\astartMs\x12\x15\n" +
 	"\x06end_ms\x18\x02 \x01(\x03R\x05endMs\x12\x1d\n" +
 	"\n" +
 	"all_tokens\x18\x03 \x01(\x04R\tallTokens\x12'\n" +
 	"\x0fselected_tokens\x18\x04 \x01(\x04R\x0eselectedTokens\x12\x19\n" +
-	"\bhas_data\x18\x05 \x01(\bR\ahasData\"\x80\x01\n" +
+	"\bhas_data\x18\x05 \x01(\bR\ahasData\"\xf2\x01\n" +
 	"\x11UsageBarChartView\x12\x13\n" +
 	"\x05y_max\x18\x01 \x01(\x04R\x04yMax\x12\x13\n" +
 	"\x05y_mid\x18\x02 \x01(\x04R\x04yMid\x12A\n" +
-	"\abuckets\x18\x03 \x03(\v2'.remoteagent.core.v1.UsageBarBucketViewR\abuckets\"H\n" +
+	"\abuckets\x18\x03 \x03(\v2'.remoteagent.core.v1.UsageBarBucketViewR\abuckets\x127\n" +
+	"\n" +
+	"y_max_text\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\byMaxText\x127\n" +
+	"\n" +
+	"y_mid_text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\byMidText\"H\n" +
 	"\x13UsageStripPointView\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value\"\xaf\x03\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value\"\x99\x05\n" +
 	"\x14UsageMetricStripView\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x12#\n" +
 	"\rcurrent_value\x18\x02 \x01(\x01R\fcurrentValue\x12\x1b\n" +
@@ -1683,7 +2098,12 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\n" +
 	"all_points\x18\t \x03(\v2(.remoteagent.core.v1.UsageStripPointViewR\tallPoints\x12Q\n" +
 	"\x0fselected_points\x18\n" +
-	" \x03(\v2(.remoteagent.core.v1.UsageStripPointViewR\x0eselectedPoints\"\xa2\x05\n" +
+	" \x03(\v2(.remoteagent.core.v1.UsageStripPointViewR\x0eselectedPoints\x12G\n" +
+	"\x12current_value_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\x10currentValueText\x12?\n" +
+	"\x0emin_value_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\fminValueText\x12?\n" +
+	"\x0emax_value_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\fmaxValueText\x12\x1d\n" +
+	"\n" +
+	"show_range\x18\x0e \x01(\bR\tshowRange\"\xd6\a\n" +
 	"\x11UsageModelRowView\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1d\n" +
 	"\n" +
@@ -1706,8 +2126,14 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\x14tokens_delta_percent\x18\x0f \x01(\x01R\x12tokensDeltaPercent\x121\n" +
 	"\x14previous_backfilling\x18\x10 \x01(\bR\x13previousBackfilling\x12.\n" +
 	"\x13usage_request_count\x18\x11 \x01(\x04R\x11usageRequestCount\x12.\n" +
-	"\x13speed_request_count\x18\x12 \x01(\x04R\x11speedRequestCount\"\xf2\n" +
+	"\x13speed_request_count\x18\x12 \x01(\x04R\x11speedRequestCount\x12E\n" +
+	"\x11total_tokens_text\x18\x13 \x01(\v2\x19.remoteagent.core.v1.TextR\x0ftotalTokensText\x12?\n" +
+	"\x0ecache_hit_text\x18\x14 \x01(\v2\x19.remoteagent.core.v1.TextR\fcacheHitText\x128\n" +
 	"\n" +
+	"speed_text\x18\x15 \x01(\v2\x19.remoteagent.core.v1.TextR\tspeedText\x126\n" +
+	"\tttft_text\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\bttftText\x128\n" +
+	"\n" +
+	"delta_text\x18\x17 \x01(\v2\x19.remoteagent.core.v1.TextR\tdeltaText\"\x92\x0e\n" +
 	"\x0eUsageViewModel\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -1742,7 +2168,17 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\n" +
 	"ttft_strip\x18\x1a \x01(\v2).remoteagent.core.v1.UsageMetricStripViewR\tttftStrip\x12:\n" +
 	"\x04rows\x18\x1b \x03(\v2&.remoteagent.core.v1.UsageModelRowViewR\x04rows\x12L\n" +
-	"\x14unsupported_footnote\x18\x1c \x01(\v2\x19.remoteagent.core.v1.TextR\x13unsupportedFootnote\"\xcb\x03\n" +
+	"\x14unsupported_footnote\x18\x1c \x01(\v2\x19.remoteagent.core.v1.TextR\x13unsupportedFootnote\x125\n" +
+	"\bsubtitle\x18\x1d \x01(\v2\x19.remoteagent.core.v1.TextR\bsubtitle\x12B\n" +
+	"\n" +
+	"empty_kind\x18\x1e \x01(\x0e2#.remoteagent.core.v1.UsageEmptyKindR\temptyKind\x12:\n" +
+	"\vempty_title\x18\x1f \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
+	"emptyTitle\x128\n" +
+	"\n" +
+	"empty_body\x18  \x01(\v2\x19.remoteagent.core.v1.TextR\temptyBody\x12&\n" +
+	"\x0fempty_can_retry\x18! \x01(\bR\remptyCanRetry\x12>\n" +
+	"\abanners\x18\" \x03(\v2$.remoteagent.core.v1.UsageBannerViewR\abanners\x12E\n" +
+	"\x11charts_a11y_label\x18# \x01(\v2\x19.remoteagent.core.v1.TextR\x0fchartsA11yLabel\"\xcb\x03\n" +
 	"\x14UsageScreenOpenEvent\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x128\n" +
@@ -1791,7 +2227,22 @@ const file_remoteagent_core_v1_usage_view_proto_rawDesc = "" +
 	"\x18USAGE_SORT_COLUMN_TOKENS\x10\x01\x12\x1f\n" +
 	"\x1bUSAGE_SORT_COLUMN_CACHE_HIT\x10\x02\x12\x1b\n" +
 	"\x17USAGE_SORT_COLUMN_SPEED\x10\x03\x12\x1a\n" +
-	"\x16USAGE_SORT_COLUMN_TTFT\x10\x04B\xd8\x01\n" +
+	"\x16USAGE_SORT_COLUMN_TTFT\x10\x04*\xc1\x02\n" +
+	"\x0eUsageEmptyKind\x12 \n" +
+	"\x1cUSAGE_EMPTY_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15USAGE_EMPTY_KIND_NONE\x10\x01\x12\x1c\n" +
+	"\x18USAGE_EMPTY_KIND_LOADING\x10\x02\x12\x1e\n" +
+	"\x1aUSAGE_EMPTY_KIND_NOT_FOUND\x10\x03\x12 \n" +
+	"\x1cUSAGE_EMPTY_KIND_UNSUPPORTED\x10\x04\x12\"\n" +
+	"\x1eUSAGE_EMPTY_KIND_OFFLINE_EMPTY\x10\x05\x12\x1f\n" +
+	"\x1bUSAGE_EMPTY_KIND_LOAD_ERROR\x10\x06\x12,\n" +
+	"(USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE\x10\a\x12\x1f\n" +
+	"\x1bUSAGE_EMPTY_KIND_NO_RECORDS\x10\b*\x9f\x01\n" +
+	"\x0fUsageBannerKind\x12!\n" +
+	"\x1dUSAGE_BANNER_KIND_UNSPECIFIED\x10\x00\x12$\n" +
+	" USAGE_BANNER_KIND_OFFLINE_CACHED\x10\x01\x12!\n" +
+	"\x1dUSAGE_BANNER_KIND_BACKFILLING\x10\x02\x12 \n" +
+	"\x1cUSAGE_BANNER_KIND_LOAD_ERROR\x10\x03B\xd8\x01\n" +
 	"\x17com.remoteagent.core.v1B\x0eUsageViewProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -1806,64 +2257,93 @@ func file_remoteagent_core_v1_usage_view_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_usage_view_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_usage_view_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_remoteagent_core_v1_usage_view_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_remoteagent_core_v1_usage_view_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_remoteagent_core_v1_usage_view_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_remoteagent_core_v1_usage_view_proto_goTypes = []any{
 	(UsageSortColumn)(0),                 // 0: remoteagent.core.v1.UsageSortColumn
-	(*UsageScreenRequest)(nil),           // 1: remoteagent.core.v1.UsageScreenRequest
-	(*UsageCompositionView)(nil),         // 2: remoteagent.core.v1.UsageCompositionView
-	(*UsageHeroView)(nil),                // 3: remoteagent.core.v1.UsageHeroView
-	(*UsageBarBucketView)(nil),           // 4: remoteagent.core.v1.UsageBarBucketView
-	(*UsageBarChartView)(nil),            // 5: remoteagent.core.v1.UsageBarChartView
-	(*UsageStripPointView)(nil),          // 6: remoteagent.core.v1.UsageStripPointView
-	(*UsageMetricStripView)(nil),         // 7: remoteagent.core.v1.UsageMetricStripView
-	(*UsageModelRowView)(nil),            // 8: remoteagent.core.v1.UsageModelRowView
-	(*UsageViewModel)(nil),               // 9: remoteagent.core.v1.UsageViewModel
-	(*UsageScreenOpenEvent)(nil),         // 10: remoteagent.core.v1.UsageScreenOpenEvent
-	(*UsageScreenRetryEvent)(nil),        // 11: remoteagent.core.v1.UsageScreenRetryEvent
-	(*UsageScreenSelectSortEvent)(nil),   // 12: remoteagent.core.v1.UsageScreenSelectSortEvent
-	(*UsageScreenSelectSeriesEvent)(nil), // 13: remoteagent.core.v1.UsageScreenSelectSeriesEvent
-	(*UsageScreenScrubEvent)(nil),        // 14: remoteagent.core.v1.UsageScreenScrubEvent
-	(*UsageCacheLoadedEvent)(nil),        // 15: remoteagent.core.v1.UsageCacheLoadedEvent
-	(*UsageCacheWriteEffect)(nil),        // 16: remoteagent.core.v1.UsageCacheWriteEffect
-	(v1.Agent)(0),                        // 17: remoteagent.v1.Agent
-	(v1.UsageRangePreset)(0),             // 18: remoteagent.v1.UsageRangePreset
-	(*Text)(nil),                         // 19: remoteagent.core.v1.Text
-	(v1.UsageBucketGranularity)(0),       // 20: remoteagent.v1.UsageBucketGranularity
-	(*v1.UsageAgentSource)(nil),          // 21: remoteagent.v1.UsageAgentSource
-	(*v1.UsageStatsResponse)(nil),        // 22: remoteagent.v1.UsageStatsResponse
+	(UsageEmptyKind)(0),                  // 1: remoteagent.core.v1.UsageEmptyKind
+	(UsageBannerKind)(0),                 // 2: remoteagent.core.v1.UsageBannerKind
+	(*UsageBannerView)(nil),              // 3: remoteagent.core.v1.UsageBannerView
+	(*UsageScreenRequest)(nil),           // 4: remoteagent.core.v1.UsageScreenRequest
+	(*UsageCompositionView)(nil),         // 5: remoteagent.core.v1.UsageCompositionView
+	(*UsageHeroView)(nil),                // 6: remoteagent.core.v1.UsageHeroView
+	(*UsageBarBucketView)(nil),           // 7: remoteagent.core.v1.UsageBarBucketView
+	(*UsageBarChartView)(nil),            // 8: remoteagent.core.v1.UsageBarChartView
+	(*UsageStripPointView)(nil),          // 9: remoteagent.core.v1.UsageStripPointView
+	(*UsageMetricStripView)(nil),         // 10: remoteagent.core.v1.UsageMetricStripView
+	(*UsageModelRowView)(nil),            // 11: remoteagent.core.v1.UsageModelRowView
+	(*UsageViewModel)(nil),               // 12: remoteagent.core.v1.UsageViewModel
+	(*UsageScreenOpenEvent)(nil),         // 13: remoteagent.core.v1.UsageScreenOpenEvent
+	(*UsageScreenRetryEvent)(nil),        // 14: remoteagent.core.v1.UsageScreenRetryEvent
+	(*UsageScreenSelectSortEvent)(nil),   // 15: remoteagent.core.v1.UsageScreenSelectSortEvent
+	(*UsageScreenSelectSeriesEvent)(nil), // 16: remoteagent.core.v1.UsageScreenSelectSeriesEvent
+	(*UsageScreenScrubEvent)(nil),        // 17: remoteagent.core.v1.UsageScreenScrubEvent
+	(*UsageCacheLoadedEvent)(nil),        // 18: remoteagent.core.v1.UsageCacheLoadedEvent
+	(*UsageCacheWriteEffect)(nil),        // 19: remoteagent.core.v1.UsageCacheWriteEffect
+	(*Text)(nil),                         // 20: remoteagent.core.v1.Text
+	(v1.Agent)(0),                        // 21: remoteagent.v1.Agent
+	(v1.UsageRangePreset)(0),             // 22: remoteagent.v1.UsageRangePreset
+	(v1.UsageBucketGranularity)(0),       // 23: remoteagent.v1.UsageBucketGranularity
+	(*v1.UsageAgentSource)(nil),          // 24: remoteagent.v1.UsageAgentSource
+	(*v1.UsageStatsResponse)(nil),        // 25: remoteagent.v1.UsageStatsResponse
 }
 var file_remoteagent_core_v1_usage_view_proto_depIdxs = []int32{
-	17, // 0: remoteagent.core.v1.UsageScreenRequest.focus_agent:type_name -> remoteagent.v1.Agent
-	18, // 1: remoteagent.core.v1.UsageScreenRequest.preset:type_name -> remoteagent.v1.UsageRangePreset
-	17, // 2: remoteagent.core.v1.UsageHeroView.selected_agent:type_name -> remoteagent.v1.Agent
-	2,  // 3: remoteagent.core.v1.UsageHeroView.composition:type_name -> remoteagent.core.v1.UsageCompositionView
-	4,  // 4: remoteagent.core.v1.UsageBarChartView.buckets:type_name -> remoteagent.core.v1.UsageBarBucketView
-	6,  // 5: remoteagent.core.v1.UsageMetricStripView.all_points:type_name -> remoteagent.core.v1.UsageStripPointView
-	6,  // 6: remoteagent.core.v1.UsageMetricStripView.selected_points:type_name -> remoteagent.core.v1.UsageStripPointView
-	17, // 7: remoteagent.core.v1.UsageModelRowView.agent:type_name -> remoteagent.v1.Agent
-	19, // 8: remoteagent.core.v1.UsageViewModel.error_text:type_name -> remoteagent.core.v1.Text
-	18, // 9: remoteagent.core.v1.UsageViewModel.preset:type_name -> remoteagent.v1.UsageRangePreset
-	20, // 10: remoteagent.core.v1.UsageViewModel.granularity:type_name -> remoteagent.v1.UsageBucketGranularity
-	0,  // 11: remoteagent.core.v1.UsageViewModel.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
-	21, // 12: remoteagent.core.v1.UsageViewModel.sources:type_name -> remoteagent.v1.UsageAgentSource
-	3,  // 13: remoteagent.core.v1.UsageViewModel.hero:type_name -> remoteagent.core.v1.UsageHeroView
-	5,  // 14: remoteagent.core.v1.UsageViewModel.bar_chart:type_name -> remoteagent.core.v1.UsageBarChartView
-	7,  // 15: remoteagent.core.v1.UsageViewModel.cache_hit_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
-	7,  // 16: remoteagent.core.v1.UsageViewModel.output_speed_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
-	7,  // 17: remoteagent.core.v1.UsageViewModel.ttft_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
-	8,  // 18: remoteagent.core.v1.UsageViewModel.rows:type_name -> remoteagent.core.v1.UsageModelRowView
-	19, // 19: remoteagent.core.v1.UsageViewModel.unsupported_footnote:type_name -> remoteagent.core.v1.Text
-	18, // 20: remoteagent.core.v1.UsageScreenOpenEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
-	17, // 21: remoteagent.core.v1.UsageScreenOpenEvent.focus_agent:type_name -> remoteagent.v1.Agent
-	0,  // 22: remoteagent.core.v1.UsageScreenSelectSortEvent.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
-	22, // 23: remoteagent.core.v1.UsageCacheLoadedEvent.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
-	22, // 24: remoteagent.core.v1.UsageCacheWriteEffect.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	2,  // 0: remoteagent.core.v1.UsageBannerView.kind:type_name -> remoteagent.core.v1.UsageBannerKind
+	20, // 1: remoteagent.core.v1.UsageBannerView.text:type_name -> remoteagent.core.v1.Text
+	21, // 2: remoteagent.core.v1.UsageScreenRequest.focus_agent:type_name -> remoteagent.v1.Agent
+	22, // 3: remoteagent.core.v1.UsageScreenRequest.preset:type_name -> remoteagent.v1.UsageRangePreset
+	20, // 4: remoteagent.core.v1.UsageCompositionView.uncached_input_text:type_name -> remoteagent.core.v1.Text
+	20, // 5: remoteagent.core.v1.UsageCompositionView.cache_read_text:type_name -> remoteagent.core.v1.Text
+	20, // 6: remoteagent.core.v1.UsageCompositionView.cache_write_text:type_name -> remoteagent.core.v1.Text
+	20, // 7: remoteagent.core.v1.UsageCompositionView.output_text:type_name -> remoteagent.core.v1.Text
+	20, // 8: remoteagent.core.v1.UsageCompositionView.reasoning_output_text:type_name -> remoteagent.core.v1.Text
+	21, // 9: remoteagent.core.v1.UsageHeroView.selected_agent:type_name -> remoteagent.v1.Agent
+	5,  // 10: remoteagent.core.v1.UsageHeroView.composition:type_name -> remoteagent.core.v1.UsageCompositionView
+	20, // 11: remoteagent.core.v1.UsageHeroView.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	20, // 12: remoteagent.core.v1.UsageHeroView.scope_text:type_name -> remoteagent.core.v1.Text
+	20, // 13: remoteagent.core.v1.UsageHeroView.subline_text:type_name -> remoteagent.core.v1.Text
+	7,  // 14: remoteagent.core.v1.UsageBarChartView.buckets:type_name -> remoteagent.core.v1.UsageBarBucketView
+	20, // 15: remoteagent.core.v1.UsageBarChartView.y_max_text:type_name -> remoteagent.core.v1.Text
+	20, // 16: remoteagent.core.v1.UsageBarChartView.y_mid_text:type_name -> remoteagent.core.v1.Text
+	9,  // 17: remoteagent.core.v1.UsageMetricStripView.all_points:type_name -> remoteagent.core.v1.UsageStripPointView
+	9,  // 18: remoteagent.core.v1.UsageMetricStripView.selected_points:type_name -> remoteagent.core.v1.UsageStripPointView
+	20, // 19: remoteagent.core.v1.UsageMetricStripView.current_value_text:type_name -> remoteagent.core.v1.Text
+	20, // 20: remoteagent.core.v1.UsageMetricStripView.min_value_text:type_name -> remoteagent.core.v1.Text
+	20, // 21: remoteagent.core.v1.UsageMetricStripView.max_value_text:type_name -> remoteagent.core.v1.Text
+	21, // 22: remoteagent.core.v1.UsageModelRowView.agent:type_name -> remoteagent.v1.Agent
+	20, // 23: remoteagent.core.v1.UsageModelRowView.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	20, // 24: remoteagent.core.v1.UsageModelRowView.cache_hit_text:type_name -> remoteagent.core.v1.Text
+	20, // 25: remoteagent.core.v1.UsageModelRowView.speed_text:type_name -> remoteagent.core.v1.Text
+	20, // 26: remoteagent.core.v1.UsageModelRowView.ttft_text:type_name -> remoteagent.core.v1.Text
+	20, // 27: remoteagent.core.v1.UsageModelRowView.delta_text:type_name -> remoteagent.core.v1.Text
+	20, // 28: remoteagent.core.v1.UsageViewModel.error_text:type_name -> remoteagent.core.v1.Text
+	22, // 29: remoteagent.core.v1.UsageViewModel.preset:type_name -> remoteagent.v1.UsageRangePreset
+	23, // 30: remoteagent.core.v1.UsageViewModel.granularity:type_name -> remoteagent.v1.UsageBucketGranularity
+	0,  // 31: remoteagent.core.v1.UsageViewModel.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
+	24, // 32: remoteagent.core.v1.UsageViewModel.sources:type_name -> remoteagent.v1.UsageAgentSource
+	6,  // 33: remoteagent.core.v1.UsageViewModel.hero:type_name -> remoteagent.core.v1.UsageHeroView
+	8,  // 34: remoteagent.core.v1.UsageViewModel.bar_chart:type_name -> remoteagent.core.v1.UsageBarChartView
+	10, // 35: remoteagent.core.v1.UsageViewModel.cache_hit_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
+	10, // 36: remoteagent.core.v1.UsageViewModel.output_speed_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
+	10, // 37: remoteagent.core.v1.UsageViewModel.ttft_strip:type_name -> remoteagent.core.v1.UsageMetricStripView
+	11, // 38: remoteagent.core.v1.UsageViewModel.rows:type_name -> remoteagent.core.v1.UsageModelRowView
+	20, // 39: remoteagent.core.v1.UsageViewModel.unsupported_footnote:type_name -> remoteagent.core.v1.Text
+	20, // 40: remoteagent.core.v1.UsageViewModel.subtitle:type_name -> remoteagent.core.v1.Text
+	1,  // 41: remoteagent.core.v1.UsageViewModel.empty_kind:type_name -> remoteagent.core.v1.UsageEmptyKind
+	20, // 42: remoteagent.core.v1.UsageViewModel.empty_title:type_name -> remoteagent.core.v1.Text
+	20, // 43: remoteagent.core.v1.UsageViewModel.empty_body:type_name -> remoteagent.core.v1.Text
+	3,  // 44: remoteagent.core.v1.UsageViewModel.banners:type_name -> remoteagent.core.v1.UsageBannerView
+	20, // 45: remoteagent.core.v1.UsageViewModel.charts_a11y_label:type_name -> remoteagent.core.v1.Text
+	22, // 46: remoteagent.core.v1.UsageScreenOpenEvent.preset:type_name -> remoteagent.v1.UsageRangePreset
+	21, // 47: remoteagent.core.v1.UsageScreenOpenEvent.focus_agent:type_name -> remoteagent.v1.Agent
+	0,  // 48: remoteagent.core.v1.UsageScreenSelectSortEvent.sort_by:type_name -> remoteagent.core.v1.UsageSortColumn
+	25, // 49: remoteagent.core.v1.UsageCacheLoadedEvent.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
+	25, // 50: remoteagent.core.v1.UsageCacheWriteEffect.snapshot:type_name -> remoteagent.v1.UsageStatsResponse
+	51, // [51:51] is the sub-list for method output_type
+	51, // [51:51] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_usage_view_proto_init() }
@@ -1877,8 +2357,8 @@ func file_remoteagent_core_v1_usage_view_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_usage_view_proto_rawDesc), len(file_remoteagent_core_v1_usage_view_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   16,
+			NumEnums:      3,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

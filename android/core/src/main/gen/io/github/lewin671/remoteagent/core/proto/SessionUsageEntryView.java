@@ -525,6 +525,198 @@ public  final class SessionUsageEntryView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int TOTAL_TOKENS_TEXT_FIELD_NUMBER = 18;
+  private io.github.lewin671.remoteagent.core.proto.Text totalTokensText_;
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTotalTokensText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+    return totalTokensText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : totalTokensText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    totalTokensText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (totalTokensText_ != null &&
+        totalTokensText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      totalTokensText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(totalTokensText_).mergeFrom(value).buildPartial();
+    } else {
+      totalTokensText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+   */
+  private void clearTotalTokensText() {
+    totalTokensText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int CACHE_HIT_TEXT_FIELD_NUMBER = 19;
+  private io.github.lewin671.remoteagent.core.proto.Text cacheHitText_;
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCacheHitText() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCacheHitText() {
+    return cacheHitText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cacheHitText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cacheHitText_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cacheHitText_ != null &&
+        cacheHitText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cacheHitText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cacheHitText_).mergeFrom(value).buildPartial();
+    } else {
+      cacheHitText_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+   */
+  private void clearCacheHitText() {
+    cacheHitText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
+  public static final int SPEED_TEXT_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text speedText_;
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSpeedText() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSpeedText() {
+    return speedText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : speedText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    speedText_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (speedText_ != null &&
+        speedText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      speedText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(speedText_).mergeFrom(value).buildPartial();
+    } else {
+      speedText_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+   */
+  private void clearSpeedText() {
+    speedText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int FORMATTED_SUBTITLE_FIELD_NUMBER = 21;
+  private io.github.lewin671.remoteagent.core.proto.Text formattedSubtitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFormattedSubtitle() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFormattedSubtitle() {
+    return formattedSubtitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : formattedSubtitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFormattedSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    formattedSubtitle_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFormattedSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (formattedSubtitle_ != null &&
+        formattedSubtitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      formattedSubtitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(formattedSubtitle_).mergeFrom(value).buildPartial();
+    } else {
+      formattedSubtitle_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+   */
+  private void clearFormattedSubtitle() {
+    formattedSubtitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1155,6 +1347,194 @@ public  final class SessionUsageEntryView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTotalTokensText() {
+      return instance.hasTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+      return instance.getTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTotalTokensText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTotalTokensText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    public Builder mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTotalTokensText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 18 [json_name = "totalTokensText"];</code>
+     */
+    public Builder clearTotalTokensText() {  copyOnWrite();
+      instance.clearTotalTokensText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCacheHitText() {
+      return instance.hasCacheHitText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCacheHitText() {
+      return instance.getCacheHitText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    public Builder setCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCacheHitText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    public Builder setCacheHitText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCacheHitText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    public Builder mergeCacheHitText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCacheHitText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_hit_text = 19 [json_name = "cacheHitText"];</code>
+     */
+    public Builder clearCacheHitText() {  copyOnWrite();
+      instance.clearCacheHitText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSpeedText() {
+      return instance.hasSpeedText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSpeedText() {
+      return instance.getSpeedText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    public Builder setSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSpeedText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    public Builder setSpeedText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSpeedText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    public Builder mergeSpeedText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSpeedText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text speed_text = 20 [json_name = "speedText"];</code>
+     */
+    public Builder clearSpeedText() {  copyOnWrite();
+      instance.clearSpeedText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFormattedSubtitle() {
+      return instance.hasFormattedSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFormattedSubtitle() {
+      return instance.getFormattedSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    public Builder setFormattedSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFormattedSubtitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    public Builder setFormattedSubtitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFormattedSubtitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    public Builder mergeFormattedSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFormattedSubtitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text formatted_subtitle = 21 [json_name = "formattedSubtitle"];</code>
+     */
+    public Builder clearFormattedSubtitle() {  copyOnWrite();
+      instance.clearFormattedSubtitle();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionUsageEntryView)
   }
   @java.lang.Override
@@ -1189,12 +1569,17 @@ public  final class SessionUsageEntryView extends
             "subtitle_",
             "valueText_",
             "footnote_",
+            "totalTokensText_",
+            "cacheHitText_",
+            "speedText_",
+            "formattedSubtitle_",
           };
           java.lang.String info =
-              "\u0000\u0011\u0000\u0001\u0001\u0011\u0011\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u0015\u0000\u0001\u0001\u0015\u0015\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0003\n\u0007" +
               "\u000b\u0000\f\u0007\r\u0000\u000e\u0003\u000f\u1009\u0000\u0010\u1009\u0001\u0011" +
-              "\u1009\u0002";
+              "\u1009\u0002\u0012\u1009\u0003\u0013\u1009\u0004\u0014\u1009\u0005\u0015\u1009\u0006" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

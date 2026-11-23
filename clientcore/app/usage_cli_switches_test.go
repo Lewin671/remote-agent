@@ -659,6 +659,12 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	if !u.GetHasAnyUsage() || u.GetOutputSpeedStrip().GetHasValue() || u.GetRows()[0].GetHasSpeed() || u.GetUnsupportedFootnote() != nil || len(u.GetRows()) != 1 {
 		t.Fatalf("unexpected Antigravity UsageViewModel: hasUsage=%v stripHasSpeed=%v rowHasSpeed=%v unavail=%+v len=%d", u.GetHasAnyUsage(), u.GetOutputSpeedStrip().GetHasValue(), u.GetRows()[0].GetHasSpeed(), u.GetUnsupportedFootnote(), len(u.GetRows()))
 	}
+	if u.GetEmptyKind() != corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NONE || u.GetHero().GetTotalTokensText().GetLiteral() != "11万" || u.GetHero().GetTotalTokensText().GetLiteralEn() != "110k" {
+		t.Fatalf("unexpected formatted UsageViewModel hero/empty: empty=%v tok=%+v", u.GetEmptyKind(), u.GetHero().GetTotalTokensText())
+	}
+	if u.GetHero().GetSublineText() == nil || u.GetChartsA11YLabel().GetKey() != "usage.charts_a11y" || u.GetRows()[0].GetCacheHitText().GetLiteral() == "" {
+		t.Fatalf("expected formatted subline/a11y/row cache hit on UsageViewModel")
+	}
 
 	msVM, err := c.View(&corev1.Screen{Screen: &corev1.Screen_MachineStatus{MachineStatus: &corev1.MachineStatusScreenRequest{MachineId: "m-1"}}})
 	if err != nil {
@@ -676,6 +682,9 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 	ue := sessVM.GetSession().GetActions().GetUsageEntry()
 	if ue == nil || ue.GetSourceUnavailable() || !ue.GetHasData() || ue.GetTotalTokens() != 110_000 || !ue.GetHasCacheHit() || ue.GetHasSpeed() {
 		t.Fatalf("unexpected Antigravity Session UsageEntry: %+v", ue)
+	}
+	if ue.GetTotalTokensText().GetLiteral() != "11万" || ue.GetTotalTokensText().GetLiteralEn() != "110k" || ue.GetFormattedSubtitle().GetKey() != "usage.entry_no_speed" {
+		t.Fatalf("unexpected formatted Session UsageEntry: tok=%+v sub=%+v", ue.GetTotalTokensText(), ue.GetFormattedSubtitle())
 	}
 }
 

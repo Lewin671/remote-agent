@@ -18,6 +18,7 @@ public  final class UsageMetricStripView extends
     allPoints_ = emptyProtobufList();
     selectedPoints_ = emptyProtobufList();
   }
+  private int bitField0_;
   public static final int HAS_VALUE_FIELD_NUMBER = 1;
   private boolean hasValue_;
   /**
@@ -418,6 +419,176 @@ public  final class UsageMetricStripView extends
   private void removeSelectedPoints(int index) {
     ensureSelectedPointsIsMutable();
     selectedPoints_.remove(index);
+  }
+
+  public static final int CURRENT_VALUE_TEXT_FIELD_NUMBER = 11;
+  private io.github.lewin671.remoteagent.core.proto.Text currentValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCurrentValueText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCurrentValueText() {
+    return currentValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : currentValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCurrentValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    currentValueText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCurrentValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (currentValueText_ != null &&
+        currentValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      currentValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(currentValueText_).mergeFrom(value).buildPartial();
+    } else {
+      currentValueText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   */
+  private void clearCurrentValueText() {
+    currentValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int MIN_VALUE_TEXT_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text minValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMinValueText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMinValueText() {
+    return minValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : minValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMinValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    minValueText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMinValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (minValueText_ != null &&
+        minValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      minValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(minValueText_).mergeFrom(value).buildPartial();
+    } else {
+      minValueText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   */
+  private void clearMinValueText() {
+    minValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int MAX_VALUE_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text maxValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMaxValueText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMaxValueText() {
+    return maxValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : maxValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMaxValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    maxValueText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMaxValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (maxValueText_ != null &&
+        maxValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      maxValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(maxValueText_).mergeFrom(value).buildPartial();
+    } else {
+      maxValueText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   */
+  private void clearMaxValueText() {
+    maxValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int SHOW_RANGE_FIELD_NUMBER = 14;
+  private boolean showRange_;
+  /**
+   * <code>bool show_range = 14 [json_name = "showRange"];</code>
+   * @return The showRange.
+   */
+  @java.lang.Override
+  public boolean getShowRange() {
+    return showRange_;
+  }
+  /**
+   * <code>bool show_range = 14 [json_name = "showRange"];</code>
+   * @param value The showRange to set.
+   */
+  private void setShowRange(boolean value) {
+    
+    showRange_ = value;
+  }
+  /**
+   * <code>bool show_range = 14 [json_name = "showRange"];</code>
+   */
+  private void clearShowRange() {
+
+    showRange_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageMetricStripView parseFrom(
@@ -945,6 +1116,175 @@ public  final class UsageMetricStripView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCurrentValueText() {
+      return instance.hasCurrentValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCurrentValueText() {
+      return instance.getCurrentValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    public Builder setCurrentValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCurrentValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    public Builder setCurrentValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCurrentValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    public Builder mergeCurrentValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCurrentValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+     */
+    public Builder clearCurrentValueText() {  copyOnWrite();
+      instance.clearCurrentValueText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMinValueText() {
+      return instance.hasMinValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMinValueText() {
+      return instance.getMinValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    public Builder setMinValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMinValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    public Builder setMinValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMinValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    public Builder mergeMinValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMinValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+     */
+    public Builder clearMinValueText() {  copyOnWrite();
+      instance.clearMinValueText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMaxValueText() {
+      return instance.hasMaxValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMaxValueText() {
+      return instance.getMaxValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    public Builder setMaxValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMaxValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    public Builder setMaxValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMaxValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    public Builder mergeMaxValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMaxValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+     */
+    public Builder clearMaxValueText() {  copyOnWrite();
+      instance.clearMaxValueText();
+      return this;
+    }
+
+    /**
+     * <code>bool show_range = 14 [json_name = "showRange"];</code>
+     * @return The showRange.
+     */
+    @java.lang.Override
+    public boolean getShowRange() {
+      return instance.getShowRange();
+    }
+    /**
+     * <code>bool show_range = 14 [json_name = "showRange"];</code>
+     * @param value The showRange to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShowRange(boolean value) {
+      copyOnWrite();
+      instance.setShowRange(value);
+      return this;
+    }
+    /**
+     * <code>bool show_range = 14 [json_name = "showRange"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShowRange() {
+      copyOnWrite();
+      instance.clearShowRange();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageMetricStripView)
   }
   @java.lang.Override
@@ -961,6 +1301,7 @@ public  final class UsageMetricStripView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "hasValue_",
             "currentValue_",
             "hasRange_",
@@ -973,10 +1314,15 @@ public  final class UsageMetricStripView extends
             io.github.lewin671.remoteagent.core.proto.UsageStripPointView.class,
             "selectedPoints_",
             io.github.lewin671.remoteagent.core.proto.UsageStripPointView.class,
+            "currentValueText_",
+            "minValueText_",
+            "maxValueText_",
+            "showRange_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0002\u0000\u0001\u0007\u0002\u0000\u0003\u0007" +
-              "\u0004\u0000\u0005\u0000\u0006\u0000\u0007\u0000\b\u0004\t\u001b\n\u001b";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0002\u0000\u0001\u0007\u0002\u0000" +
+              "\u0003\u0007\u0004\u0000\u0005\u0000\u0006\u0000\u0007\u0000\b\u0004\t\u001b\n\u001b" +
+              "\u000b\u1009\u0000\f\u1009\u0001\r\u1009\u0002\u000e\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

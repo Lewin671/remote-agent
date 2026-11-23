@@ -63,6 +63,7 @@ type Text struct {
 	SeparatorKey     string
 	SeparatorLiteral string
 	Timestamp        *TimestampArg
+	LiteralEn        string
 }
 
 func (m *Text) GetKey() string {
@@ -107,6 +108,12 @@ func (m *Text) GetTimestamp() *TimestampArg {
 	}
 	return nil
 }
+func (m *Text) GetLiteralEn() string {
+	if m != nil {
+		return m.LiteralEn
+	}
+	return ""
+}
 
 var LitewireDesc_Text = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -117,6 +124,7 @@ var LitewireDesc_Text = litewire.MessageDesc{
 		{Num: 5, Offset: unsafe.Offsetof(Text{}.SeparatorKey), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(Text{}.SeparatorLiteral), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(Text{}.Timestamp), Kind: litewire.KindMessage, Sub: &LitewireDesc_TimestampArg},
+		{Num: 8, Offset: unsafe.Offsetof(Text{}.LiteralEn), Kind: litewire.KindString},
 	},
 }
 

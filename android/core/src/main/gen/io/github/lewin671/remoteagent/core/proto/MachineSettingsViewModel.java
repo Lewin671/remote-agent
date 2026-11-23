@@ -2382,6 +2382,54 @@ public  final class MachineSettingsViewModel extends
     isManager_ = false;
   }
 
+  public static final int USAGE_TOKENS_TEXT_FIELD_NUMBER = 54;
+  private io.github.lewin671.remoteagent.core.proto.Text usageTokensText_;
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUsageTokensText() {
+    return ((bitField0_ & 0x00008000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getUsageTokensText() {
+    return usageTokensText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : usageTokensText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUsageTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    usageTokensText_ = value;
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeUsageTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (usageTokensText_ != null &&
+        usageTokensText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      usageTokensText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(usageTokensText_).mergeFrom(value).buildPartial();
+    } else {
+      usageTokensText_ = value;
+    }
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   */
+  private void clearUsageTokensText() {
+    usageTokensText_ = null;
+    bitField0_ = (bitField0_ & ~0x00008000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4900,6 +4948,53 @@ public  final class MachineSettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUsageTokensText() {
+      return instance.hasUsageTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getUsageTokensText() {
+      return instance.getUsageTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    public Builder setUsageTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setUsageTokensText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    public Builder setUsageTokensText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUsageTokensText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    public Builder mergeUsageTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeUsageTokensText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+     */
+    public Builder clearUsageTokensText() {  copyOnWrite();
+      instance.clearUsageTokensText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineSettingsViewModel)
   }
   @java.lang.Override
@@ -4976,16 +5071,17 @@ public  final class MachineSettingsViewModel extends
             "shortId_",
             "appOnline_",
             "isManager_",
+            "usageTokensText_",
           };
           java.lang.String info =
-              "\u00005\u0000\u0001\u000155\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u00006\u0000\u0001\u000166\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000\n\u1009\u0001" +
               "\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007\u0011\u0007" +
               "\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017\f\u0018" +
               "\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009\u0006\u001e" +
               "\u001b\u001f\u1009\u0007 \u0007!\u0007\"\u0007#\u0007$\u1009\b%\u1009\t&\u1009\n" +
               "\'\f(\u1009\u000b)\f*\u1009\f+\u0007,\u0007-\u0003.\u0007/\u00070\u1009\r1\u0004" +
-              "2\u1009\u000e3\u02084\u00075\u0007";
+              "2\u1009\u000e3\u02084\u00075\u00076\u1009\u000f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

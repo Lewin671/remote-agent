@@ -140,4 +140,59 @@ public interface UsageModelRowViewOrBuilder extends
    * @return The speedRequestCount.
    */
   long getSpeedRequestCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   * @return Whether the totalTokensText field is set.
+   */
+  boolean hasTotalTokensText();
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 19 [json_name = "totalTokensText"];</code>
+   * @return The totalTokensText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   * @return Whether the cacheHitText field is set.
+   */
+  boolean hasCacheHitText();
+  /**
+   * <code>.remoteagent.core.v1.Text cache_hit_text = 20 [json_name = "cacheHitText"];</code>
+   * @return The cacheHitText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCacheHitText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   * @return Whether the speedText field is set.
+   */
+  boolean hasSpeedText();
+  /**
+   * <code>.remoteagent.core.v1.Text speed_text = 21 [json_name = "speedText"];</code>
+   * @return The speedText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSpeedText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   * @return Whether the ttftText field is set.
+   */
+  boolean hasTtftText();
+  /**
+   * <code>.remoteagent.core.v1.Text ttft_text = 22 [json_name = "ttftText"];</code>
+   * @return The ttftText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTtftText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   * @return Whether the deltaText field is set.
+   */
+  boolean hasDeltaText();
+  /**
+   * <code>.remoteagent.core.v1.Text delta_text = 23 [json_name = "deltaText"];</code>
+   * @return The deltaText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDeltaText();
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 const MinTrendRequests = 3
@@ -422,6 +423,23 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 		if maxRowTok > 0 {
 			share = float64(tot) / float64(maxRowTok)
 		}
+		hasSpeed := c.HasSpeed && c.SpeedP50 > 0
+		hasTtft := c.HasTtft && c.TtftP50Ms > 0
+		var cacheText, speedText, ttftText, deltaText *corev1.Text
+		if c.HasCacheHitRate {
+			cacheText = text.Plain(FormatCacheHit(c.CacheHitRate))
+		}
+		if hasSpeed {
+			speedText = text.Plain(FormatSpeedValue(c.SpeedP50))
+		}
+		if hasTtft {
+			ttftText = text.Plain(FormatTtftSeconds(c.TtftP50Ms))
+		}
+		if prevBF {
+			deltaText = text.Msg(text.KeyUsageBackfillingCell)
+		} else if deltas.HasTokens {
+			deltaText = FormatDeltaTriangle(deltas.TokensPercent)
+		}
 		rows = append(rows, &corev1.UsageModelRowView{
 			Agent:               eff,
 			AgentName:           lists.AgentInfo(eff).Name,
@@ -432,15 +450,20 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 			TotalTokens:         tot,
 			HasCacheHit:         c.HasCacheHitRate,
 			CacheHitRate:        c.CacheHitRate,
-			HasSpeed:            c.HasSpeed && c.SpeedP50 > 0,
+			HasSpeed:            hasSpeed,
 			SpeedP50:            c.SpeedP50,
-			HasTtft:             c.HasTtft && c.TtftP50Ms > 0,
+			HasTtft:             hasTtft,
 			TtftP50Ms:           c.TtftP50Ms,
 			HasTokensDelta:      deltas.HasTokens,
 			TokensDeltaPercent:  deltas.TokensPercent,
 			PreviousBackfilling: prevBF,
 			UsageRequestCount:   c.UsageRequestCount,
 			SpeedRequestCount:   c.SpeedRequestCount,
+			TotalTokensText:     FormatTokensText(tot),
+			CacheHitText:        cacheText,
+			SpeedText:           speedText,
+			TtftText:            ttftText,
+			DeltaText:           deltaText,
 		})
 	}
 
@@ -601,10 +624,13 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 	}
 
 	yMax := NiceCeiling(peakAllTok)
+	yMid := yMax / 2
 	barChart := &corev1.UsageBarChartView{
-		YMax:    yMax,
-		YMid:    yMax / 2,
-		Buckets: barBuckets,
+		YMax:     yMax,
+		YMid:     yMid,
+		Buckets:  barBuckets,
+		YMaxText: FormatTokensText(yMax),
+		YMidText: FormatTokensText(yMid),
 	}
 
 	var periodCacheHas bool
@@ -639,8 +665,11 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 	}
 
 	cacheStrip := buildStripView(allCachePts, selCachePts, sel != nil, periodCacheHas, periodCacheVal, 0.05, scrubbing, scrubIdx)
+	populateStripTexts(cacheStrip, FormatCacheHit)
 	speedStrip := buildStripView(allSpeedPts, selSpeedPts, sel != nil, periodSpeedHas, periodSpeedVal, 1.0, scrubbing, scrubIdx)
+	populateStripTexts(speedStrip, FormatSpeedValue)
 	ttftStrip := buildStripView(allTtftPts, selTtftPts, sel != nil, periodTtftHas, periodTtftVal, 1.0, scrubbing, scrubIdx)
+	populateStripTexts(ttftStrip, FormatTtftSeconds)
 
 	periodComp := allPeriodComp
 	if sel != nil {
@@ -697,6 +726,9 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 		}
 	}
 
+	hero.TotalTokensText = FormatTokensText(hero.TotalTokens)
+	populateCompositionTexts(hero.Composition)
+
 	return UsageProjection{
 		HasAnyUsage:      true,
 		Hero:             hero,
@@ -705,6 +737,45 @@ func BuildUsageProjection(resp *v1.UsageStatsResponse, opts ProjectionOptions) U
 		OutputSpeedStrip: speedStrip,
 		TtftStrip:        ttftStrip,
 		Rows:             rows,
+	}
+}
+
+func populateCompositionTexts(c *corev1.UsageCompositionView) {
+	if c == nil {
+		return
+	}
+	if c.UncachedInputTokens > 0 {
+		c.UncachedInputText = FormatTokensText(c.UncachedInputTokens)
+	}
+	if c.CacheReadTokens > 0 {
+		c.CacheReadText = FormatTokensText(c.CacheReadTokens)
+	}
+	if c.CacheWriteTokens > 0 {
+		c.CacheWriteText = FormatTokensText(c.CacheWriteTokens)
+	}
+	if c.OutputTokens > 0 {
+		c.OutputText = FormatTokensText(c.OutputTokens)
+	}
+	if c.ReasoningOutputTokens > 0 {
+		c.ReasoningOutputText = FormatTokensText(c.ReasoningOutputTokens)
+	}
+}
+
+func populateStripTexts(s *corev1.UsageMetricStripView, fmtFn func(float64) string) {
+	if s == nil {
+		return
+	}
+	if s.HasValue {
+		s.CurrentValueText = text.Plain(fmtFn(s.CurrentValue))
+	} else {
+		s.CurrentValueText = text.Plain("–")
+	}
+	if s.HasRange {
+		minStr := fmtFn(s.MinValue)
+		maxStr := fmtFn(s.MaxValue)
+		s.MinValueText = text.Plain(minStr)
+		s.MaxValueText = text.Plain(maxStr)
+		s.ShowRange = minStr != maxStr
 	}
 }
 
@@ -738,6 +809,14 @@ func trimDotZero(s string) string {
 	return s
 }
 
+func formatScaled(val float64, unit string, maxOneDec float64) string {
+	if val < maxOneDec {
+		rounded := math.Round(val*10.0) / 10.0
+		return formatOneDecimal(rounded) + unit
+	}
+	return FormatCommaUint(uint64(math.Round(val))) + unit
+}
+
 // FormatTokens formats token counts (zh-CN: 万/亿, en: k/M/B)
 // with overflow-safe rounding (e.g. 99,960,000 -> 1亿; 999,600 -> 1M; 128.6亿).
 func FormatTokens(n uint64, english bool) string {
@@ -748,68 +827,42 @@ func FormatTokens(n uint64, english bool) string {
 		if n < 10_000 {
 			return FormatCommaUint(n)
 		}
+		if n < 99_950_000 {
+			w := float64(n) / 10_000.0
+			if w < 100 {
+				return formatScaled(w, "万", 100)
+			}
+			return FormatCommaUint(uint64(math.Round(w))) + "万"
+		}
 		if n < 100_000_000 {
-			if n >= 99_950_000 {
-				return "1亿"
-			}
-			if n < 1_000_000 {
-				v := math.Round(float64(n)/1_000.0) / 10.0
-				return formatOneDecimal(v) + "万"
-			}
-			wan := uint64(math.Round(float64(n) / 10_000.0))
-			if wan >= 10_000 {
-				yi := math.Round(float64(wan)/1_000.0) / 10.0
-				return formatOneDecimal(yi) + "亿"
-			}
-			return FormatCommaUint(wan) + "万"
+			return "1亿"
 		}
 		if n < 99_995_000_000 {
-			v := math.Round(float64(n)/10_000_000.0) / 10.0
-			return formatOneDecimal(v) + "亿"
+			return formatScaled(float64(n)/100_000_000.0, "亿", 1000)
 		}
-		yi := uint64(math.Round(float64(n) / 100_000_000.0))
-		return FormatCommaUint(yi) + "亿"
+		return FormatCommaUint(uint64(math.Round(float64(n)/100_000_000.0))) + "亿"
 	}
 
 	if n < 1_000 {
-		return strconv.FormatUint(n, 10)
+		return FormatCommaUint(n)
 	}
-	if n < 1_000_000 {
-		if n < 10_000 {
-			v := math.Round(float64(n)/100.0) / 10.0
-			return formatOneDecimal(v) + "k"
-		}
-		k := uint64(math.Round(float64(n) / 1_000.0))
-		if k >= 1_000 {
-			return "1M"
-		}
-		return strconv.FormatUint(k, 10) + "k"
+	if n < 999_500 {
+		return formatScaled(float64(n)/1_000.0, "k", 100)
 	}
-	if n < 1_000_000_000 {
-		if n < 100_000_000 {
-			v := math.Round(float64(n)/100_000.0) / 10.0
-			if v >= 1000 {
-				return "1B"
-			}
-			return formatOneDecimal(v) + "M"
-		}
-		m := uint64(math.Round(float64(n) / 1_000_000.0))
-		if m >= 1_000 {
-			return "1B"
-		}
-		return strconv.FormatUint(m, 10) + "M"
+	if n < 999_500_000 {
+		return formatScaled(float64(n)/1_000_000.0, "M", 100)
 	}
-	if n < 99_950_000_000 {
-		v := math.Round(float64(n)/100_000_000.0) / 10.0
-		return formatOneDecimal(v) + "B"
-	}
-	b := uint64(math.Round(float64(n) / 1_000_000_000.0))
-	return FormatCommaUint(b) + "B"
+	return formatScaled(float64(n)/1_000_000_000.0, "B", 100)
+}
+
+// FormatTokensText returns a locale-aware Text for n (Chinese 万/亿 in Literal, English k/M/B in LiteralEn).
+func FormatTokensText(n uint64) *corev1.Text {
+	return text.LocalizedPlain(FormatTokens(n, false), FormatTokens(n, true))
 }
 
 // FormatCacheHit formats a [0..1] cache hit rate without lying near 0% or 100%.
 func FormatCacheHit(rate float64) string {
-	if rate <= 0 {
+	if math.IsNaN(rate) || math.IsInf(rate, 0) || rate <= 0 {
 		return "0%"
 	}
 	if rate >= 1 {
@@ -835,7 +888,7 @@ func FormatCacheHit(rate float64) string {
 
 // FormatSpeedValue formats output speed scalar without unit.
 func FormatSpeedValue(tokPerSec float64) string {
-	if tokPerSec <= 0 {
+	if math.IsNaN(tokPerSec) || math.IsInf(tokPerSec, 0) || tokPerSec <= 0 {
 		return "0"
 	}
 	if tokPerSec < 10 {
@@ -843,4 +896,32 @@ func FormatSpeedValue(tokPerSec float64) string {
 	}
 	rounded := uint64(math.Round(tokPerSec))
 	return FormatCommaUint(rounded)
+}
+
+// FormatTtftSeconds formats time-to-first-token latency in milliseconds as seconds (e.g. "0.4s", "12s").
+func FormatTtftSeconds(ms float64) string {
+	if math.IsNaN(ms) || math.IsInf(ms, 0) || ms <= 0 {
+		return "0.0s"
+	}
+	if ms < 10_000 {
+		sec := math.Round(ms/100.0) / 10.0
+		if sec < 0.1 {
+			sec = 0.1
+		}
+		return strconv.FormatFloat(sec, 'f', 1, 64) + "s"
+	}
+	return strconv.FormatUint(uint64(math.Round(ms/1000.0)), 10) + "s"
+}
+
+// FormatDeltaTriangle formats a percentage delta with triangle indicator (▲/▼) or usage.flat when |pct| < 0.5.
+func FormatDeltaTriangle(pct float64) *corev1.Text {
+	if math.IsNaN(pct) || math.IsInf(pct, 0) || math.Abs(pct) < 0.5 {
+		return text.Msg(text.KeyUsageFlat)
+	}
+	rounded := uint64(math.Round(math.Abs(pct)))
+	arrow := "▼"
+	if pct > 0 {
+		arrow = "▲"
+	}
+	return text.Plain(arrow + FormatCommaUint(rounded) + "%")
 }

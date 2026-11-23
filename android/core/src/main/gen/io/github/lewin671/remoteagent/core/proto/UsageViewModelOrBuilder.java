@@ -255,4 +255,79 @@ public interface UsageViewModelOrBuilder extends
    * @return The unsupportedFootnote.
    */
   io.github.lewin671.remoteagent.core.proto.Text getUnsupportedFootnote();
+
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   * @return Whether the subtitle field is set.
+   */
+  boolean hasSubtitle();
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   * @return The subtitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSubtitle();
+
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @return The enum numeric value on the wire for emptyKind.
+   */
+  int getEmptyKindValue();
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @return The emptyKind.
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageEmptyKind getEmptyKind();
+
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   * @return Whether the emptyTitle field is set.
+   */
+  boolean hasEmptyTitle();
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   * @return The emptyTitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getEmptyTitle();
+
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   * @return Whether the emptyBody field is set.
+   */
+  boolean hasEmptyBody();
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   * @return The emptyBody.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getEmptyBody();
+
+  /**
+   * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+   * @return The emptyCanRetry.
+   */
+  boolean getEmptyCanRetry();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.UsageBannerView> 
+      getBannersList();
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.UsageBannerView getBanners(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  int getBannersCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   * @return Whether the chartsA11yLabel field is set.
+   */
+  boolean hasChartsA11YLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   * @return The chartsA11yLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getChartsA11YLabel();
 }

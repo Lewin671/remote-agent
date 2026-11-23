@@ -2537,6 +2537,7 @@ type MachineSettingsViewModel struct {
 	ShortId                        string
 	AppOnline                      bool
 	IsManager                      bool
+	UsageTokensText                *Text
 }
 
 func (m *MachineSettingsViewModel) GetMachineId() string {
@@ -2857,6 +2858,12 @@ func (m *MachineSettingsViewModel) GetIsManager() bool {
 	}
 	return false
 }
+func (m *MachineSettingsViewModel) GetUsageTokensText() *Text {
+	if m != nil {
+		return m.UsageTokensText
+	}
+	return nil
+}
 
 var LitewireDesc_MachineSettingsViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2913,6 +2920,7 @@ var LitewireDesc_MachineSettingsViewModel = litewire.MessageDesc{
 		{Num: 51, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.ShortId), Kind: litewire.KindString},
 		{Num: 52, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.AppOnline), Kind: litewire.KindBool},
 		{Num: 53, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.IsManager), Kind: litewire.KindBool},
+		{Num: 54, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.UsageTokensText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

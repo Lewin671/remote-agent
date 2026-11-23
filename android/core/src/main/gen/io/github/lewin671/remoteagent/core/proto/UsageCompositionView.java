@@ -16,6 +16,7 @@ public  final class UsageCompositionView extends
     UsageCompositionViewOrBuilder {
   private UsageCompositionView() {
   }
+  private int bitField0_;
   public static final int UNCACHED_INPUT_TOKENS_FIELD_NUMBER = 1;
   private long uncachedInputTokens_;
   /**
@@ -144,6 +145,246 @@ public  final class UsageCompositionView extends
   private void clearReasoningOutputTokens() {
 
     reasoningOutputTokens_ = 0L;
+  }
+
+  public static final int UNCACHED_INPUT_TEXT_FIELD_NUMBER = 6;
+  private io.github.lewin671.remoteagent.core.proto.Text uncachedInputText_;
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasUncachedInputText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getUncachedInputText() {
+    return uncachedInputText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : uncachedInputText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUncachedInputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    uncachedInputText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeUncachedInputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (uncachedInputText_ != null &&
+        uncachedInputText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      uncachedInputText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(uncachedInputText_).mergeFrom(value).buildPartial();
+    } else {
+      uncachedInputText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+   */
+  private void clearUncachedInputText() {
+    uncachedInputText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int CACHE_READ_TEXT_FIELD_NUMBER = 7;
+  private io.github.lewin671.remoteagent.core.proto.Text cacheReadText_;
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCacheReadText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCacheReadText() {
+    return cacheReadText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cacheReadText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCacheReadText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cacheReadText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCacheReadText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cacheReadText_ != null &&
+        cacheReadText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cacheReadText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cacheReadText_).mergeFrom(value).buildPartial();
+    } else {
+      cacheReadText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+   */
+  private void clearCacheReadText() {
+    cacheReadText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int CACHE_WRITE_TEXT_FIELD_NUMBER = 8;
+  private io.github.lewin671.remoteagent.core.proto.Text cacheWriteText_;
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCacheWriteText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCacheWriteText() {
+    return cacheWriteText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cacheWriteText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCacheWriteText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cacheWriteText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCacheWriteText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cacheWriteText_ != null &&
+        cacheWriteText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cacheWriteText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cacheWriteText_).mergeFrom(value).buildPartial();
+    } else {
+      cacheWriteText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+   */
+  private void clearCacheWriteText() {
+    cacheWriteText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int OUTPUT_TEXT_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.Text outputText_;
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOutputText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getOutputText() {
+    return outputText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : outputText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    outputText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (outputText_ != null &&
+        outputText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      outputText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(outputText_).mergeFrom(value).buildPartial();
+    } else {
+      outputText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+   */
+  private void clearOutputText() {
+    outputText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int REASONING_OUTPUT_TEXT_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.core.proto.Text reasoningOutputText_;
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasReasoningOutputText() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getReasoningOutputText() {
+    return reasoningOutputText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : reasoningOutputText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReasoningOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    reasoningOutputText_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeReasoningOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (reasoningOutputText_ != null &&
+        reasoningOutputText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      reasoningOutputText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(reasoningOutputText_).mergeFrom(value).buildPartial();
+    } else {
+      reasoningOutputText_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+   */
+  private void clearReasoningOutputText() {
+    reasoningOutputText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageCompositionView parseFrom(
@@ -383,6 +624,241 @@ public  final class UsageCompositionView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasUncachedInputText() {
+      return instance.hasUncachedInputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getUncachedInputText() {
+      return instance.getUncachedInputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    public Builder setUncachedInputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setUncachedInputText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    public Builder setUncachedInputText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setUncachedInputText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    public Builder mergeUncachedInputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeUncachedInputText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text uncached_input_text = 6 [json_name = "uncachedInputText"];</code>
+     */
+    public Builder clearUncachedInputText() {  copyOnWrite();
+      instance.clearUncachedInputText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCacheReadText() {
+      return instance.hasCacheReadText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCacheReadText() {
+      return instance.getCacheReadText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    public Builder setCacheReadText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCacheReadText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    public Builder setCacheReadText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCacheReadText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    public Builder mergeCacheReadText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCacheReadText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_read_text = 7 [json_name = "cacheReadText"];</code>
+     */
+    public Builder clearCacheReadText() {  copyOnWrite();
+      instance.clearCacheReadText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCacheWriteText() {
+      return instance.hasCacheWriteText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCacheWriteText() {
+      return instance.getCacheWriteText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    public Builder setCacheWriteText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCacheWriteText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    public Builder setCacheWriteText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCacheWriteText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    public Builder mergeCacheWriteText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCacheWriteText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cache_write_text = 8 [json_name = "cacheWriteText"];</code>
+     */
+    public Builder clearCacheWriteText() {  copyOnWrite();
+      instance.clearCacheWriteText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOutputText() {
+      return instance.hasOutputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getOutputText() {
+      return instance.getOutputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    public Builder setOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setOutputText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    public Builder setOutputText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOutputText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    public Builder mergeOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeOutputText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text output_text = 9 [json_name = "outputText"];</code>
+     */
+    public Builder clearOutputText() {  copyOnWrite();
+      instance.clearOutputText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasReasoningOutputText() {
+      return instance.hasReasoningOutputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getReasoningOutputText() {
+      return instance.getReasoningOutputText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    public Builder setReasoningOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setReasoningOutputText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    public Builder setReasoningOutputText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReasoningOutputText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    public Builder mergeReasoningOutputText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeReasoningOutputText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text reasoning_output_text = 10 [json_name = "reasoningOutputText"];</code>
+     */
+    public Builder clearReasoningOutputText() {  copyOnWrite();
+      instance.clearReasoningOutputText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageCompositionView)
   }
   @java.lang.Override
@@ -399,15 +875,22 @@ public  final class UsageCompositionView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "uncachedInputTokens_",
             "cacheReadTokens_",
             "cacheWriteTokens_",
             "outputTokens_",
             "reasoningOutputTokens_",
+            "uncachedInputText_",
+            "cacheReadText_",
+            "cacheWriteText_",
+            "outputText_",
+            "reasoningOutputText_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0003" +
-              "\u0003\u0003\u0004\u0003\u0005\u0003";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0003\u0002\u0003\u0003\u0003" +
+              "\u0004\u0003\u0005\u0003\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009\u0002\t\u1009" +
+              "\u0003\n\u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

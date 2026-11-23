@@ -463,6 +463,7 @@ message MachineSettingsViewModel {
   string short_id = 51;
   bool app_online = 52;
   bool is_manager = 53;
+  Text usage_tokens_text = 54;
 }
 
 // ---- Devices & Client Detail Screens ----

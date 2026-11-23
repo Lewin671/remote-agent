@@ -66,6 +66,137 @@ public enum PBCoreUsageSortColumn: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBCoreUsageEmptyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case none // = 1
+  case loading // = 2
+  case notFound // = 3
+  case unsupported // = 4
+  case offlineEmpty // = 5
+  case loadError // = 6
+  case allSourcesUnavailable // = 7
+  case noRecords // = 8
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .none
+    case 2: self = .loading
+    case 3: self = .notFound
+    case 4: self = .unsupported
+    case 5: self = .offlineEmpty
+    case 6: self = .loadError
+    case 7: self = .allSourcesUnavailable
+    case 8: self = .noRecords
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .none: return 1
+    case .loading: return 2
+    case .notFound: return 3
+    case .unsupported: return 4
+    case .offlineEmpty: return 5
+    case .loadError: return 6
+    case .allSourcesUnavailable: return 7
+    case .noRecords: return 8
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreUsageEmptyKind] = [
+    .unspecified,
+    .none,
+    .loading,
+    .notFound,
+    .unsupported,
+    .offlineEmpty,
+    .loadError,
+    .allSourcesUnavailable,
+    .noRecords,
+  ]
+
+}
+
+public enum PBCoreUsageBannerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case offlineCached // = 1
+  case backfilling // = 2
+  case loadError // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .offlineCached
+    case 2: self = .backfilling
+    case 3: self = .loadError
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .offlineCached: return 1
+    case .backfilling: return 2
+    case .loadError: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreUsageBannerKind] = [
+    .unspecified,
+    .offlineCached,
+    .backfilling,
+    .loadError,
+  ]
+
+}
+
+public struct PBCoreUsageBannerView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var kind: PBCoreUsageBannerKind = .unspecified
+
+  public var isError: Bool = false
+
+  public var canRetry: Bool = false
+
+  public var text: PBCoreText {
+    get {return _text ?? PBCoreText()}
+    set {_text = newValue}
+  }
+  /// Returns true if `text` has been explicitly set.
+  public var hasText: Bool {return self._text != nil}
+  /// Clears the value of `text`. Subsequent reads from it will return its default value.
+  public mutating func clearText() {self._text = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _text: PBCoreText? = nil
+}
+
 public struct PBCoreUsageScreenRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -88,24 +219,86 @@ public struct PBCoreUsageScreenRequest: Sendable {
   public init() {}
 }
 
-public struct PBCoreUsageCompositionView: Sendable {
+public struct PBCoreUsageCompositionView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var uncachedInputTokens: UInt64 = 0
+  public var uncachedInputTokens: UInt64 {
+    get {return _storage._uncachedInputTokens}
+    set {_uniqueStorage()._uncachedInputTokens = newValue}
+  }
 
-  public var cacheReadTokens: UInt64 = 0
+  public var cacheReadTokens: UInt64 {
+    get {return _storage._cacheReadTokens}
+    set {_uniqueStorage()._cacheReadTokens = newValue}
+  }
 
-  public var cacheWriteTokens: UInt64 = 0
+  public var cacheWriteTokens: UInt64 {
+    get {return _storage._cacheWriteTokens}
+    set {_uniqueStorage()._cacheWriteTokens = newValue}
+  }
 
-  public var outputTokens: UInt64 = 0
+  public var outputTokens: UInt64 {
+    get {return _storage._outputTokens}
+    set {_uniqueStorage()._outputTokens = newValue}
+  }
 
-  public var reasoningOutputTokens: UInt64 = 0
+  public var reasoningOutputTokens: UInt64 {
+    get {return _storage._reasoningOutputTokens}
+    set {_uniqueStorage()._reasoningOutputTokens = newValue}
+  }
+
+  public var uncachedInputText: PBCoreText {
+    get {return _storage._uncachedInputText ?? PBCoreText()}
+    set {_uniqueStorage()._uncachedInputText = newValue}
+  }
+  /// Returns true if `uncachedInputText` has been explicitly set.
+  public var hasUncachedInputText: Bool {return _storage._uncachedInputText != nil}
+  /// Clears the value of `uncachedInputText`. Subsequent reads from it will return its default value.
+  public mutating func clearUncachedInputText() {_uniqueStorage()._uncachedInputText = nil}
+
+  public var cacheReadText: PBCoreText {
+    get {return _storage._cacheReadText ?? PBCoreText()}
+    set {_uniqueStorage()._cacheReadText = newValue}
+  }
+  /// Returns true if `cacheReadText` has been explicitly set.
+  public var hasCacheReadText: Bool {return _storage._cacheReadText != nil}
+  /// Clears the value of `cacheReadText`. Subsequent reads from it will return its default value.
+  public mutating func clearCacheReadText() {_uniqueStorage()._cacheReadText = nil}
+
+  public var cacheWriteText: PBCoreText {
+    get {return _storage._cacheWriteText ?? PBCoreText()}
+    set {_uniqueStorage()._cacheWriteText = newValue}
+  }
+  /// Returns true if `cacheWriteText` has been explicitly set.
+  public var hasCacheWriteText: Bool {return _storage._cacheWriteText != nil}
+  /// Clears the value of `cacheWriteText`. Subsequent reads from it will return its default value.
+  public mutating func clearCacheWriteText() {_uniqueStorage()._cacheWriteText = nil}
+
+  public var outputText: PBCoreText {
+    get {return _storage._outputText ?? PBCoreText()}
+    set {_uniqueStorage()._outputText = newValue}
+  }
+  /// Returns true if `outputText` has been explicitly set.
+  public var hasOutputText: Bool {return _storage._outputText != nil}
+  /// Clears the value of `outputText`. Subsequent reads from it will return its default value.
+  public mutating func clearOutputText() {_uniqueStorage()._outputText = nil}
+
+  public var reasoningOutputText: PBCoreText {
+    get {return _storage._reasoningOutputText ?? PBCoreText()}
+    set {_uniqueStorage()._reasoningOutputText = newValue}
+  }
+  /// Returns true if `reasoningOutputText` has been explicitly set.
+  public var hasReasoningOutputText: Bool {return _storage._reasoningOutputText != nil}
+  /// Clears the value of `reasoningOutputText`. Subsequent reads from it will return its default value.
+  public mutating func clearReasoningOutputText() {_uniqueStorage()._reasoningOutputText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreUsageHeroView: @unchecked Sendable {
@@ -212,6 +405,33 @@ public struct PBCoreUsageHeroView: @unchecked Sendable {
     set {_uniqueStorage()._periodCompositionRows = newValue}
   }
 
+  public var totalTokensText: PBCoreText {
+    get {return _storage._totalTokensText ?? PBCoreText()}
+    set {_uniqueStorage()._totalTokensText = newValue}
+  }
+  /// Returns true if `totalTokensText` has been explicitly set.
+  public var hasTotalTokensText: Bool {return _storage._totalTokensText != nil}
+  /// Clears the value of `totalTokensText`. Subsequent reads from it will return its default value.
+  public mutating func clearTotalTokensText() {_uniqueStorage()._totalTokensText = nil}
+
+  public var scopeText: PBCoreText {
+    get {return _storage._scopeText ?? PBCoreText()}
+    set {_uniqueStorage()._scopeText = newValue}
+  }
+  /// Returns true if `scopeText` has been explicitly set.
+  public var hasScopeText: Bool {return _storage._scopeText != nil}
+  /// Clears the value of `scopeText`. Subsequent reads from it will return its default value.
+  public mutating func clearScopeText() {_uniqueStorage()._scopeText = nil}
+
+  public var sublineText: PBCoreText {
+    get {return _storage._sublineText ?? PBCoreText()}
+    set {_uniqueStorage()._sublineText = newValue}
+  }
+  /// Returns true if `sublineText` has been explicitly set.
+  public var hasSublineText: Bool {return _storage._sublineText != nil}
+  /// Clears the value of `sublineText`. Subsequent reads from it will return its default value.
+  public mutating func clearSublineText() {_uniqueStorage()._sublineText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -239,20 +459,49 @@ public struct PBCoreUsageBarBucketView: Sendable {
   public init() {}
 }
 
-public struct PBCoreUsageBarChartView: Sendable {
+public struct PBCoreUsageBarChartView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var yMax: UInt64 = 0
+  public var yMax: UInt64 {
+    get {return _storage._yMax}
+    set {_uniqueStorage()._yMax = newValue}
+  }
 
-  public var yMid: UInt64 = 0
+  public var yMid: UInt64 {
+    get {return _storage._yMid}
+    set {_uniqueStorage()._yMid = newValue}
+  }
 
-  public var buckets: [PBCoreUsageBarBucketView] = []
+  public var buckets: [PBCoreUsageBarBucketView] {
+    get {return _storage._buckets}
+    set {_uniqueStorage()._buckets = newValue}
+  }
+
+  public var yMaxText: PBCoreText {
+    get {return _storage._yMaxText ?? PBCoreText()}
+    set {_uniqueStorage()._yMaxText = newValue}
+  }
+  /// Returns true if `yMaxText` has been explicitly set.
+  public var hasYMaxText: Bool {return _storage._yMaxText != nil}
+  /// Clears the value of `yMaxText`. Subsequent reads from it will return its default value.
+  public mutating func clearYMaxText() {_uniqueStorage()._yMaxText = nil}
+
+  public var yMidText: PBCoreText {
+    get {return _storage._yMidText ?? PBCoreText()}
+    set {_uniqueStorage()._yMidText = newValue}
+  }
+  /// Returns true if `yMidText` has been explicitly set.
+  public var hasYMidText: Bool {return _storage._yMidText != nil}
+  /// Clears the value of `yMidText`. Subsequent reads from it will return its default value.
+  public mutating func clearYMidText() {_uniqueStorage()._yMidText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreUsageStripPointView: Sendable {
@@ -269,34 +518,98 @@ public struct PBCoreUsageStripPointView: Sendable {
   public init() {}
 }
 
-public struct PBCoreUsageMetricStripView: Sendable {
+public struct PBCoreUsageMetricStripView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var hasValue_p: Bool = false
+  public var hasValue_p: Bool {
+    get {return _storage._hasValue_p}
+    set {_uniqueStorage()._hasValue_p = newValue}
+  }
 
-  public var currentValue: Double = 0
+  public var currentValue: Double {
+    get {return _storage._currentValue}
+    set {_uniqueStorage()._currentValue = newValue}
+  }
 
-  public var hasRange_p: Bool = false
+  public var hasRange_p: Bool {
+    get {return _storage._hasRange_p}
+    set {_uniqueStorage()._hasRange_p = newValue}
+  }
 
-  public var minValue: Double = 0
+  public var minValue: Double {
+    get {return _storage._minValue}
+    set {_uniqueStorage()._minValue = newValue}
+  }
 
-  public var maxValue: Double = 0
+  public var maxValue: Double {
+    get {return _storage._maxValue}
+    set {_uniqueStorage()._maxValue = newValue}
+  }
 
-  public var scaleMin: Double = 0
+  public var scaleMin: Double {
+    get {return _storage._scaleMin}
+    set {_uniqueStorage()._scaleMin = newValue}
+  }
 
-  public var scaleMax: Double = 0
+  public var scaleMax: Double {
+    get {return _storage._scaleMax}
+    set {_uniqueStorage()._scaleMax = newValue}
+  }
 
-  public var lastValidIndex: Int32 = 0
+  public var lastValidIndex: Int32 {
+    get {return _storage._lastValidIndex}
+    set {_uniqueStorage()._lastValidIndex = newValue}
+  }
 
-  public var allPoints: [PBCoreUsageStripPointView] = []
+  public var allPoints: [PBCoreUsageStripPointView] {
+    get {return _storage._allPoints}
+    set {_uniqueStorage()._allPoints = newValue}
+  }
 
-  public var selectedPoints: [PBCoreUsageStripPointView] = []
+  public var selectedPoints: [PBCoreUsageStripPointView] {
+    get {return _storage._selectedPoints}
+    set {_uniqueStorage()._selectedPoints = newValue}
+  }
+
+  public var currentValueText: PBCoreText {
+    get {return _storage._currentValueText ?? PBCoreText()}
+    set {_uniqueStorage()._currentValueText = newValue}
+  }
+  /// Returns true if `currentValueText` has been explicitly set.
+  public var hasCurrentValueText: Bool {return _storage._currentValueText != nil}
+  /// Clears the value of `currentValueText`. Subsequent reads from it will return its default value.
+  public mutating func clearCurrentValueText() {_uniqueStorage()._currentValueText = nil}
+
+  public var minValueText: PBCoreText {
+    get {return _storage._minValueText ?? PBCoreText()}
+    set {_uniqueStorage()._minValueText = newValue}
+  }
+  /// Returns true if `minValueText` has been explicitly set.
+  public var hasMinValueText: Bool {return _storage._minValueText != nil}
+  /// Clears the value of `minValueText`. Subsequent reads from it will return its default value.
+  public mutating func clearMinValueText() {_uniqueStorage()._minValueText = nil}
+
+  public var maxValueText: PBCoreText {
+    get {return _storage._maxValueText ?? PBCoreText()}
+    set {_uniqueStorage()._maxValueText = newValue}
+  }
+  /// Returns true if `maxValueText` has been explicitly set.
+  public var hasMaxValueText: Bool {return _storage._maxValueText != nil}
+  /// Clears the value of `maxValueText`. Subsequent reads from it will return its default value.
+  public mutating func clearMaxValueText() {_uniqueStorage()._maxValueText = nil}
+
+  public var showRange: Bool {
+    get {return _storage._showRange}
+    set {_uniqueStorage()._showRange = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreUsageModelRowView: @unchecked Sendable {
@@ -393,6 +706,51 @@ public struct PBCoreUsageModelRowView: @unchecked Sendable {
     get {return _storage._speedRequestCount}
     set {_uniqueStorage()._speedRequestCount = newValue}
   }
+
+  public var totalTokensText: PBCoreText {
+    get {return _storage._totalTokensText ?? PBCoreText()}
+    set {_uniqueStorage()._totalTokensText = newValue}
+  }
+  /// Returns true if `totalTokensText` has been explicitly set.
+  public var hasTotalTokensText: Bool {return _storage._totalTokensText != nil}
+  /// Clears the value of `totalTokensText`. Subsequent reads from it will return its default value.
+  public mutating func clearTotalTokensText() {_uniqueStorage()._totalTokensText = nil}
+
+  public var cacheHitText: PBCoreText {
+    get {return _storage._cacheHitText ?? PBCoreText()}
+    set {_uniqueStorage()._cacheHitText = newValue}
+  }
+  /// Returns true if `cacheHitText` has been explicitly set.
+  public var hasCacheHitText: Bool {return _storage._cacheHitText != nil}
+  /// Clears the value of `cacheHitText`. Subsequent reads from it will return its default value.
+  public mutating func clearCacheHitText() {_uniqueStorage()._cacheHitText = nil}
+
+  public var speedText: PBCoreText {
+    get {return _storage._speedText ?? PBCoreText()}
+    set {_uniqueStorage()._speedText = newValue}
+  }
+  /// Returns true if `speedText` has been explicitly set.
+  public var hasSpeedText: Bool {return _storage._speedText != nil}
+  /// Clears the value of `speedText`. Subsequent reads from it will return its default value.
+  public mutating func clearSpeedText() {_uniqueStorage()._speedText = nil}
+
+  public var ttftText: PBCoreText {
+    get {return _storage._ttftText ?? PBCoreText()}
+    set {_uniqueStorage()._ttftText = newValue}
+  }
+  /// Returns true if `ttftText` has been explicitly set.
+  public var hasTtftText: Bool {return _storage._ttftText != nil}
+  /// Clears the value of `ttftText`. Subsequent reads from it will return its default value.
+  public mutating func clearTtftText() {_uniqueStorage()._ttftText = nil}
+
+  public var deltaText: PBCoreText {
+    get {return _storage._deltaText ?? PBCoreText()}
+    set {_uniqueStorage()._deltaText = newValue}
+  }
+  /// Returns true if `deltaText` has been explicitly set.
+  public var hasDeltaText: Bool {return _storage._deltaText != nil}
+  /// Clears the value of `deltaText`. Subsequent reads from it will return its default value.
+  public mutating func clearDeltaText() {_uniqueStorage()._deltaText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -574,6 +932,57 @@ public struct PBCoreUsageViewModel: @unchecked Sendable {
   /// Clears the value of `unsupportedFootnote`. Subsequent reads from it will return its default value.
   public mutating func clearUnsupportedFootnote() {_uniqueStorage()._unsupportedFootnote = nil}
 
+  public var subtitle: PBCoreText {
+    get {return _storage._subtitle ?? PBCoreText()}
+    set {_uniqueStorage()._subtitle = newValue}
+  }
+  /// Returns true if `subtitle` has been explicitly set.
+  public var hasSubtitle: Bool {return _storage._subtitle != nil}
+  /// Clears the value of `subtitle`. Subsequent reads from it will return its default value.
+  public mutating func clearSubtitle() {_uniqueStorage()._subtitle = nil}
+
+  public var emptyKind: PBCoreUsageEmptyKind {
+    get {return _storage._emptyKind}
+    set {_uniqueStorage()._emptyKind = newValue}
+  }
+
+  public var emptyTitle: PBCoreText {
+    get {return _storage._emptyTitle ?? PBCoreText()}
+    set {_uniqueStorage()._emptyTitle = newValue}
+  }
+  /// Returns true if `emptyTitle` has been explicitly set.
+  public var hasEmptyTitle: Bool {return _storage._emptyTitle != nil}
+  /// Clears the value of `emptyTitle`. Subsequent reads from it will return its default value.
+  public mutating func clearEmptyTitle() {_uniqueStorage()._emptyTitle = nil}
+
+  public var emptyBody: PBCoreText {
+    get {return _storage._emptyBody ?? PBCoreText()}
+    set {_uniqueStorage()._emptyBody = newValue}
+  }
+  /// Returns true if `emptyBody` has been explicitly set.
+  public var hasEmptyBody: Bool {return _storage._emptyBody != nil}
+  /// Clears the value of `emptyBody`. Subsequent reads from it will return its default value.
+  public mutating func clearEmptyBody() {_uniqueStorage()._emptyBody = nil}
+
+  public var emptyCanRetry: Bool {
+    get {return _storage._emptyCanRetry}
+    set {_uniqueStorage()._emptyCanRetry = newValue}
+  }
+
+  public var banners: [PBCoreUsageBannerView] {
+    get {return _storage._banners}
+    set {_uniqueStorage()._banners = newValue}
+  }
+
+  public var chartsA11YLabel: PBCoreText {
+    get {return _storage._chartsA11YLabel ?? PBCoreText()}
+    set {_uniqueStorage()._chartsA11YLabel = newValue}
+  }
+  /// Returns true if `chartsA11YLabel` has been explicitly set.
+  public var hasChartsA11YLabel: Bool {return _storage._chartsA11YLabel != nil}
+  /// Clears the value of `chartsA11YLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearChartsA11YLabel() {_uniqueStorage()._chartsA11YLabel = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -725,6 +1134,63 @@ extension PBCoreUsageSortColumn: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0USAGE_SORT_COLUMN_UNSPECIFIED\0\u{1}USAGE_SORT_COLUMN_TOKENS\0\u{1}USAGE_SORT_COLUMN_CACHE_HIT\0\u{1}USAGE_SORT_COLUMN_SPEED\0\u{1}USAGE_SORT_COLUMN_TTFT\0")
 }
 
+extension PBCoreUsageEmptyKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0USAGE_EMPTY_KIND_UNSPECIFIED\0\u{1}USAGE_EMPTY_KIND_NONE\0\u{1}USAGE_EMPTY_KIND_LOADING\0\u{1}USAGE_EMPTY_KIND_NOT_FOUND\0\u{1}USAGE_EMPTY_KIND_UNSUPPORTED\0\u{1}USAGE_EMPTY_KIND_OFFLINE_EMPTY\0\u{1}USAGE_EMPTY_KIND_LOAD_ERROR\0\u{1}USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE\0\u{1}USAGE_EMPTY_KIND_NO_RECORDS\0")
+}
+
+extension PBCoreUsageBannerKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0USAGE_BANNER_KIND_UNSPECIFIED\0\u{1}USAGE_BANNER_KIND_OFFLINE_CACHED\0\u{1}USAGE_BANNER_KIND_BACKFILLING\0\u{1}USAGE_BANNER_KIND_LOAD_ERROR\0")
+}
+
+extension PBCoreUsageBannerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".UsageBannerView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}is_error\0\u{3}can_retry\0\u{1}text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.isError) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.canRetry) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._text) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.kind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 1)
+    }
+    if self.isError != false {
+      try visitor.visitSingularBoolField(value: self.isError, fieldNumber: 2)
+    }
+    if self.canRetry != false {
+      try visitor.visitSingularBoolField(value: self.canRetry, fieldNumber: 3)
+    }
+    try { if let v = self._text {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBCoreUsageBannerView, rhs: PBCoreUsageBannerView) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.isError != rhs.isError {return false}
+    if lhs.canRetry != rhs.canRetry {return false}
+    if lhs._text != rhs._text {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageScreenRequest"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}focus_agent\0\u{3}focus_model\0\u{1}preset\0\u{3}custom_start_ms\0\u{3}custom_end_ms\0")
@@ -782,49 +1248,132 @@ extension PBCoreUsageScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreUsageCompositionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageCompositionView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}uncached_input_tokens\0\u{3}cache_read_tokens\0\u{3}cache_write_tokens\0\u{3}output_tokens\0\u{3}reasoning_output_tokens\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}uncached_input_tokens\0\u{3}cache_read_tokens\0\u{3}cache_write_tokens\0\u{3}output_tokens\0\u{3}reasoning_output_tokens\0\u{3}uncached_input_text\0\u{3}cache_read_text\0\u{3}cache_write_text\0\u{3}output_text\0\u{3}reasoning_output_text\0")
+
+  fileprivate class _StorageClass {
+    var _uncachedInputTokens: UInt64 = 0
+    var _cacheReadTokens: UInt64 = 0
+    var _cacheWriteTokens: UInt64 = 0
+    var _outputTokens: UInt64 = 0
+    var _reasoningOutputTokens: UInt64 = 0
+    var _uncachedInputText: PBCoreText? = nil
+    var _cacheReadText: PBCoreText? = nil
+    var _cacheWriteText: PBCoreText? = nil
+    var _outputText: PBCoreText? = nil
+    var _reasoningOutputText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _uncachedInputTokens = source._uncachedInputTokens
+      _cacheReadTokens = source._cacheReadTokens
+      _cacheWriteTokens = source._cacheWriteTokens
+      _outputTokens = source._outputTokens
+      _reasoningOutputTokens = source._reasoningOutputTokens
+      _uncachedInputText = source._uncachedInputText
+      _cacheReadText = source._cacheReadText
+      _cacheWriteText = source._cacheWriteText
+      _outputText = source._outputText
+      _reasoningOutputText = source._reasoningOutputText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.uncachedInputTokens) }()
-      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.cacheReadTokens) }()
-      case 3: try { try decoder.decodeSingularUInt64Field(value: &self.cacheWriteTokens) }()
-      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.outputTokens) }()
-      case 5: try { try decoder.decodeSingularUInt64Field(value: &self.reasoningOutputTokens) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._uncachedInputTokens) }()
+        case 2: try { try decoder.decodeSingularUInt64Field(value: &_storage._cacheReadTokens) }()
+        case 3: try { try decoder.decodeSingularUInt64Field(value: &_storage._cacheWriteTokens) }()
+        case 4: try { try decoder.decodeSingularUInt64Field(value: &_storage._outputTokens) }()
+        case 5: try { try decoder.decodeSingularUInt64Field(value: &_storage._reasoningOutputTokens) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._uncachedInputText) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._cacheReadText) }()
+        case 8: try { try decoder.decodeSingularMessageField(value: &_storage._cacheWriteText) }()
+        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._outputText) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._reasoningOutputText) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.uncachedInputTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.uncachedInputTokens, fieldNumber: 1)
-    }
-    if self.cacheReadTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.cacheReadTokens, fieldNumber: 2)
-    }
-    if self.cacheWriteTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.cacheWriteTokens, fieldNumber: 3)
-    }
-    if self.outputTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.outputTokens, fieldNumber: 4)
-    }
-    if self.reasoningOutputTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.reasoningOutputTokens, fieldNumber: 5)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._uncachedInputTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._uncachedInputTokens, fieldNumber: 1)
+      }
+      if _storage._cacheReadTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._cacheReadTokens, fieldNumber: 2)
+      }
+      if _storage._cacheWriteTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._cacheWriteTokens, fieldNumber: 3)
+      }
+      if _storage._outputTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._outputTokens, fieldNumber: 4)
+      }
+      if _storage._reasoningOutputTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._reasoningOutputTokens, fieldNumber: 5)
+      }
+      try { if let v = _storage._uncachedInputText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      try { if let v = _storage._cacheReadText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      try { if let v = _storage._cacheWriteText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      } }()
+      try { if let v = _storage._outputText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+      } }()
+      try { if let v = _storage._reasoningOutputText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageCompositionView, rhs: PBCoreUsageCompositionView) -> Bool {
-    if lhs.uncachedInputTokens != rhs.uncachedInputTokens {return false}
-    if lhs.cacheReadTokens != rhs.cacheReadTokens {return false}
-    if lhs.cacheWriteTokens != rhs.cacheWriteTokens {return false}
-    if lhs.outputTokens != rhs.outputTokens {return false}
-    if lhs.reasoningOutputTokens != rhs.reasoningOutputTokens {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._uncachedInputTokens != rhs_storage._uncachedInputTokens {return false}
+        if _storage._cacheReadTokens != rhs_storage._cacheReadTokens {return false}
+        if _storage._cacheWriteTokens != rhs_storage._cacheWriteTokens {return false}
+        if _storage._outputTokens != rhs_storage._outputTokens {return false}
+        if _storage._reasoningOutputTokens != rhs_storage._reasoningOutputTokens {return false}
+        if _storage._uncachedInputText != rhs_storage._uncachedInputText {return false}
+        if _storage._cacheReadText != rhs_storage._cacheReadText {return false}
+        if _storage._cacheWriteText != rhs_storage._cacheWriteText {return false}
+        if _storage._outputText != rhs_storage._outputText {return false}
+        if _storage._reasoningOutputText != rhs_storage._reasoningOutputText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -832,7 +1381,7 @@ extension PBCoreUsageCompositionView: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageHeroView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}scrubbing\0\u{3}scrub_bucket_index\0\u{3}scrub_start_ms\0\u{3}scrub_end_ms\0\u{3}has_selected_model\0\u{3}selected_agent\0\u{3}selected_agent_name\0\u{3}selected_model\0\u{3}selected_series_key\0\u{3}total_model_count\0\u{3}total_tokens\0\u{3}request_count\0\u{3}has_share_percent\0\u{3}share_ratio\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{1}composition\0\u{3}period_composition_rows\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}scrubbing\0\u{3}scrub_bucket_index\0\u{3}scrub_start_ms\0\u{3}scrub_end_ms\0\u{3}has_selected_model\0\u{3}selected_agent\0\u{3}selected_agent_name\0\u{3}selected_model\0\u{3}selected_series_key\0\u{3}total_model_count\0\u{3}total_tokens\0\u{3}request_count\0\u{3}has_share_percent\0\u{3}share_ratio\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{1}composition\0\u{3}period_composition_rows\0\u{3}total_tokens_text\0\u{3}scope_text\0\u{3}subline_text\0")
 
   fileprivate class _StorageClass {
     var _scrubbing: Bool = false
@@ -854,6 +1403,9 @@ extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _previousBackfilling: Bool = false
     var _composition: PBCoreUsageCompositionView? = nil
     var _periodCompositionRows: Int32 = 0
+    var _totalTokensText: PBCoreText? = nil
+    var _scopeText: PBCoreText? = nil
+    var _sublineText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -883,6 +1435,9 @@ extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _previousBackfilling = source._previousBackfilling
       _composition = source._composition
       _periodCompositionRows = source._periodCompositionRows
+      _totalTokensText = source._totalTokensText
+      _scopeText = source._scopeText
+      _sublineText = source._sublineText
     }
   }
 
@@ -920,6 +1475,9 @@ extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 17: try { try decoder.decodeSingularBoolField(value: &_storage._previousBackfilling) }()
         case 18: try { try decoder.decodeSingularMessageField(value: &_storage._composition) }()
         case 19: try { try decoder.decodeSingularInt32Field(value: &_storage._periodCompositionRows) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._totalTokensText) }()
+        case 21: try { try decoder.decodeSingularMessageField(value: &_storage._scopeText) }()
+        case 22: try { try decoder.decodeSingularMessageField(value: &_storage._sublineText) }()
         default: break
         }
       }
@@ -989,6 +1547,15 @@ extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if _storage._periodCompositionRows != 0 {
         try visitor.visitSingularInt32Field(value: _storage._periodCompositionRows, fieldNumber: 19)
       }
+      try { if let v = _storage._totalTokensText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
+      try { if let v = _storage._scopeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+      } }()
+      try { if let v = _storage._sublineText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1017,6 +1584,9 @@ extension PBCoreUsageHeroView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._previousBackfilling != rhs_storage._previousBackfilling {return false}
         if _storage._composition != rhs_storage._composition {return false}
         if _storage._periodCompositionRows != rhs_storage._periodCompositionRows {return false}
+        if _storage._totalTokensText != rhs_storage._totalTokensText {return false}
+        if _storage._scopeText != rhs_storage._scopeText {return false}
+        if _storage._sublineText != rhs_storage._sublineText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1078,39 +1648,97 @@ extension PBCoreUsageBarBucketView: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreUsageBarChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageBarChartView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}y_max\0\u{3}y_mid\0\u{1}buckets\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}y_max\0\u{3}y_mid\0\u{1}buckets\0\u{3}y_max_text\0\u{3}y_mid_text\0")
+
+  fileprivate class _StorageClass {
+    var _yMax: UInt64 = 0
+    var _yMid: UInt64 = 0
+    var _buckets: [PBCoreUsageBarBucketView] = []
+    var _yMaxText: PBCoreText? = nil
+    var _yMidText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _yMax = source._yMax
+      _yMid = source._yMid
+      _buckets = source._buckets
+      _yMaxText = source._yMaxText
+      _yMidText = source._yMidText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularUInt64Field(value: &self.yMax) }()
-      case 2: try { try decoder.decodeSingularUInt64Field(value: &self.yMid) }()
-      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.buckets) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._yMax) }()
+        case 2: try { try decoder.decodeSingularUInt64Field(value: &_storage._yMid) }()
+        case 3: try { try decoder.decodeRepeatedMessageField(value: &_storage._buckets) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._yMaxText) }()
+        case 5: try { try decoder.decodeSingularMessageField(value: &_storage._yMidText) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.yMax != 0 {
-      try visitor.visitSingularUInt64Field(value: self.yMax, fieldNumber: 1)
-    }
-    if self.yMid != 0 {
-      try visitor.visitSingularUInt64Field(value: self.yMid, fieldNumber: 2)
-    }
-    if !self.buckets.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.buckets, fieldNumber: 3)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._yMax != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._yMax, fieldNumber: 1)
+      }
+      if _storage._yMid != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._yMid, fieldNumber: 2)
+      }
+      if !_storage._buckets.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._buckets, fieldNumber: 3)
+      }
+      try { if let v = _storage._yMaxText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      try { if let v = _storage._yMidText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageBarChartView, rhs: PBCoreUsageBarChartView) -> Bool {
-    if lhs.yMax != rhs.yMax {return false}
-    if lhs.yMid != rhs.yMid {return false}
-    if lhs.buckets != rhs.buckets {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._yMax != rhs_storage._yMax {return false}
+        if _storage._yMid != rhs_storage._yMid {return false}
+        if _storage._buckets != rhs_storage._buckets {return false}
+        if _storage._yMaxText != rhs_storage._yMaxText {return false}
+        if _storage._yMidText != rhs_storage._yMidText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1153,74 +1781,160 @@ extension PBCoreUsageStripPointView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBCoreUsageMetricStripView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageMetricStripView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{3}current_value\0\u{3}has_range\0\u{3}min_value\0\u{3}max_value\0\u{3}scale_min\0\u{3}scale_max\0\u{3}last_valid_index\0\u{3}all_points\0\u{3}selected_points\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{3}current_value\0\u{3}has_range\0\u{3}min_value\0\u{3}max_value\0\u{3}scale_min\0\u{3}scale_max\0\u{3}last_valid_index\0\u{3}all_points\0\u{3}selected_points\0\u{3}current_value_text\0\u{3}min_value_text\0\u{3}max_value_text\0\u{3}show_range\0")
+
+  fileprivate class _StorageClass {
+    var _hasValue_p: Bool = false
+    var _currentValue: Double = 0
+    var _hasRange_p: Bool = false
+    var _minValue: Double = 0
+    var _maxValue: Double = 0
+    var _scaleMin: Double = 0
+    var _scaleMax: Double = 0
+    var _lastValidIndex: Int32 = 0
+    var _allPoints: [PBCoreUsageStripPointView] = []
+    var _selectedPoints: [PBCoreUsageStripPointView] = []
+    var _currentValueText: PBCoreText? = nil
+    var _minValueText: PBCoreText? = nil
+    var _maxValueText: PBCoreText? = nil
+    var _showRange: Bool = false
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _hasValue_p = source._hasValue_p
+      _currentValue = source._currentValue
+      _hasRange_p = source._hasRange_p
+      _minValue = source._minValue
+      _maxValue = source._maxValue
+      _scaleMin = source._scaleMin
+      _scaleMax = source._scaleMax
+      _lastValidIndex = source._lastValidIndex
+      _allPoints = source._allPoints
+      _selectedPoints = source._selectedPoints
+      _currentValueText = source._currentValueText
+      _minValueText = source._minValueText
+      _maxValueText = source._maxValueText
+      _showRange = source._showRange
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBoolField(value: &self.hasValue_p) }()
-      case 2: try { try decoder.decodeSingularDoubleField(value: &self.currentValue) }()
-      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasRange_p) }()
-      case 4: try { try decoder.decodeSingularDoubleField(value: &self.minValue) }()
-      case 5: try { try decoder.decodeSingularDoubleField(value: &self.maxValue) }()
-      case 6: try { try decoder.decodeSingularDoubleField(value: &self.scaleMin) }()
-      case 7: try { try decoder.decodeSingularDoubleField(value: &self.scaleMax) }()
-      case 8: try { try decoder.decodeSingularInt32Field(value: &self.lastValidIndex) }()
-      case 9: try { try decoder.decodeRepeatedMessageField(value: &self.allPoints) }()
-      case 10: try { try decoder.decodeRepeatedMessageField(value: &self.selectedPoints) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._hasValue_p) }()
+        case 2: try { try decoder.decodeSingularDoubleField(value: &_storage._currentValue) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._hasRange_p) }()
+        case 4: try { try decoder.decodeSingularDoubleField(value: &_storage._minValue) }()
+        case 5: try { try decoder.decodeSingularDoubleField(value: &_storage._maxValue) }()
+        case 6: try { try decoder.decodeSingularDoubleField(value: &_storage._scaleMin) }()
+        case 7: try { try decoder.decodeSingularDoubleField(value: &_storage._scaleMax) }()
+        case 8: try { try decoder.decodeSingularInt32Field(value: &_storage._lastValidIndex) }()
+        case 9: try { try decoder.decodeRepeatedMessageField(value: &_storage._allPoints) }()
+        case 10: try { try decoder.decodeRepeatedMessageField(value: &_storage._selectedPoints) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._currentValueText) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._minValueText) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._maxValueText) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._showRange) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.hasValue_p != false {
-      try visitor.visitSingularBoolField(value: self.hasValue_p, fieldNumber: 1)
-    }
-    if self.currentValue.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.currentValue, fieldNumber: 2)
-    }
-    if self.hasRange_p != false {
-      try visitor.visitSingularBoolField(value: self.hasRange_p, fieldNumber: 3)
-    }
-    if self.minValue.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.minValue, fieldNumber: 4)
-    }
-    if self.maxValue.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.maxValue, fieldNumber: 5)
-    }
-    if self.scaleMin.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.scaleMin, fieldNumber: 6)
-    }
-    if self.scaleMax.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.scaleMax, fieldNumber: 7)
-    }
-    if self.lastValidIndex != 0 {
-      try visitor.visitSingularInt32Field(value: self.lastValidIndex, fieldNumber: 8)
-    }
-    if !self.allPoints.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.allPoints, fieldNumber: 9)
-    }
-    if !self.selectedPoints.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.selectedPoints, fieldNumber: 10)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._hasValue_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasValue_p, fieldNumber: 1)
+      }
+      if _storage._currentValue.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._currentValue, fieldNumber: 2)
+      }
+      if _storage._hasRange_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasRange_p, fieldNumber: 3)
+      }
+      if _storage._minValue.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._minValue, fieldNumber: 4)
+      }
+      if _storage._maxValue.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._maxValue, fieldNumber: 5)
+      }
+      if _storage._scaleMin.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._scaleMin, fieldNumber: 6)
+      }
+      if _storage._scaleMax.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._scaleMax, fieldNumber: 7)
+      }
+      if _storage._lastValidIndex != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._lastValidIndex, fieldNumber: 8)
+      }
+      if !_storage._allPoints.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._allPoints, fieldNumber: 9)
+      }
+      if !_storage._selectedPoints.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._selectedPoints, fieldNumber: 10)
+      }
+      try { if let v = _storage._currentValueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
+      try { if let v = _storage._minValueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._maxValueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      if _storage._showRange != false {
+        try visitor.visitSingularBoolField(value: _storage._showRange, fieldNumber: 14)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreUsageMetricStripView, rhs: PBCoreUsageMetricStripView) -> Bool {
-    if lhs.hasValue_p != rhs.hasValue_p {return false}
-    if lhs.currentValue != rhs.currentValue {return false}
-    if lhs.hasRange_p != rhs.hasRange_p {return false}
-    if lhs.minValue != rhs.minValue {return false}
-    if lhs.maxValue != rhs.maxValue {return false}
-    if lhs.scaleMin != rhs.scaleMin {return false}
-    if lhs.scaleMax != rhs.scaleMax {return false}
-    if lhs.lastValidIndex != rhs.lastValidIndex {return false}
-    if lhs.allPoints != rhs.allPoints {return false}
-    if lhs.selectedPoints != rhs.selectedPoints {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._hasValue_p != rhs_storage._hasValue_p {return false}
+        if _storage._currentValue != rhs_storage._currentValue {return false}
+        if _storage._hasRange_p != rhs_storage._hasRange_p {return false}
+        if _storage._minValue != rhs_storage._minValue {return false}
+        if _storage._maxValue != rhs_storage._maxValue {return false}
+        if _storage._scaleMin != rhs_storage._scaleMin {return false}
+        if _storage._scaleMax != rhs_storage._scaleMax {return false}
+        if _storage._lastValidIndex != rhs_storage._lastValidIndex {return false}
+        if _storage._allPoints != rhs_storage._allPoints {return false}
+        if _storage._selectedPoints != rhs_storage._selectedPoints {return false}
+        if _storage._currentValueText != rhs_storage._currentValueText {return false}
+        if _storage._minValueText != rhs_storage._minValueText {return false}
+        if _storage._maxValueText != rhs_storage._maxValueText {return false}
+        if _storage._showRange != rhs_storage._showRange {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1228,7 +1942,7 @@ extension PBCoreUsageMetricStripView: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageModelRowView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}series_key\0\u{1}selected\0\u{3}share_ratio\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}speed_p50\0\u{3}has_ttft\0\u{3}ttft_p50_ms\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{3}usage_request_count\0\u{3}speed_request_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}series_key\0\u{1}selected\0\u{3}share_ratio\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}speed_p50\0\u{3}has_ttft\0\u{3}ttft_p50_ms\0\u{3}has_tokens_delta\0\u{3}tokens_delta_percent\0\u{3}previous_backfilling\0\u{3}usage_request_count\0\u{3}speed_request_count\0\u{3}total_tokens_text\0\u{3}cache_hit_text\0\u{3}speed_text\0\u{3}ttft_text\0\u{3}delta_text\0")
 
   fileprivate class _StorageClass {
     var _agent: PBAgent = .unspecified
@@ -1249,6 +1963,11 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _previousBackfilling: Bool = false
     var _usageRequestCount: UInt64 = 0
     var _speedRequestCount: UInt64 = 0
+    var _totalTokensText: PBCoreText? = nil
+    var _cacheHitText: PBCoreText? = nil
+    var _speedText: PBCoreText? = nil
+    var _ttftText: PBCoreText? = nil
+    var _deltaText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1277,6 +1996,11 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _previousBackfilling = source._previousBackfilling
       _usageRequestCount = source._usageRequestCount
       _speedRequestCount = source._speedRequestCount
+      _totalTokensText = source._totalTokensText
+      _cacheHitText = source._cacheHitText
+      _speedText = source._speedText
+      _ttftText = source._ttftText
+      _deltaText = source._deltaText
     }
   }
 
@@ -1313,6 +2037,11 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 16: try { try decoder.decodeSingularBoolField(value: &_storage._previousBackfilling) }()
         case 17: try { try decoder.decodeSingularUInt64Field(value: &_storage._usageRequestCount) }()
         case 18: try { try decoder.decodeSingularUInt64Field(value: &_storage._speedRequestCount) }()
+        case 19: try { try decoder.decodeSingularMessageField(value: &_storage._totalTokensText) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._cacheHitText) }()
+        case 21: try { try decoder.decodeSingularMessageField(value: &_storage._speedText) }()
+        case 22: try { try decoder.decodeSingularMessageField(value: &_storage._ttftText) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._deltaText) }()
         default: break
         }
       }
@@ -1321,6 +2050,10 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
       if _storage._agent != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._agent, fieldNumber: 1)
       }
@@ -1375,6 +2108,21 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
       if _storage._speedRequestCount != 0 {
         try visitor.visitSingularUInt64Field(value: _storage._speedRequestCount, fieldNumber: 18)
       }
+      try { if let v = _storage._totalTokensText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      } }()
+      try { if let v = _storage._cacheHitText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
+      try { if let v = _storage._speedText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
+      } }()
+      try { if let v = _storage._ttftText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 22)
+      } }()
+      try { if let v = _storage._deltaText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1402,6 +2150,11 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._previousBackfilling != rhs_storage._previousBackfilling {return false}
         if _storage._usageRequestCount != rhs_storage._usageRequestCount {return false}
         if _storage._speedRequestCount != rhs_storage._speedRequestCount {return false}
+        if _storage._totalTokensText != rhs_storage._totalTokensText {return false}
+        if _storage._cacheHitText != rhs_storage._cacheHitText {return false}
+        if _storage._speedText != rhs_storage._speedText {return false}
+        if _storage._ttftText != rhs_storage._ttftText {return false}
+        if _storage._deltaText != rhs_storage._deltaText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1413,7 +2166,7 @@ extension PBCoreUsageModelRowView: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".UsageViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}supported\0\u{1}online\0\u{1}loading\0\u{3}error_text\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}backfilling\0\u{3}backfill_scanned_days\0\u{3}backfill_total_days\0\u{3}previous_period_backfilling\0\u{1}preset\0\u{1}granularity\0\u{3}start_ms\0\u{3}end_ms\0\u{3}range_days\0\u{3}sort_by\0\u{1}sources\0\u{3}has_any_usage\0\u{1}hero\0\u{3}bar_chart\0\u{3}cache_hit_strip\0\u{3}output_speed_strip\0\u{3}ttft_strip\0\u{1}rows\0\u{3}unsupported_footnote\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}machine_name\0\u{1}found\0\u{1}supported\0\u{1}online\0\u{1}loading\0\u{3}error_text\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}backfilling\0\u{3}backfill_scanned_days\0\u{3}backfill_total_days\0\u{3}previous_period_backfilling\0\u{1}preset\0\u{1}granularity\0\u{3}start_ms\0\u{3}end_ms\0\u{3}range_days\0\u{3}sort_by\0\u{1}sources\0\u{3}has_any_usage\0\u{1}hero\0\u{3}bar_chart\0\u{3}cache_hit_strip\0\u{3}output_speed_strip\0\u{3}ttft_strip\0\u{1}rows\0\u{3}unsupported_footnote\0\u{1}subtitle\0\u{3}empty_kind\0\u{3}empty_title\0\u{3}empty_body\0\u{3}empty_can_retry\0\u{1}banners\0\u{3}charts_a11y_label\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -1444,6 +2197,13 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _ttftStrip: PBCoreUsageMetricStripView? = nil
     var _rows: [PBCoreUsageModelRowView] = []
     var _unsupportedFootnote: PBCoreText? = nil
+    var _subtitle: PBCoreText? = nil
+    var _emptyKind: PBCoreUsageEmptyKind = .unspecified
+    var _emptyTitle: PBCoreText? = nil
+    var _emptyBody: PBCoreText? = nil
+    var _emptyCanRetry: Bool = false
+    var _banners: [PBCoreUsageBannerView] = []
+    var _chartsA11YLabel: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1482,6 +2242,13 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _ttftStrip = source._ttftStrip
       _rows = source._rows
       _unsupportedFootnote = source._unsupportedFootnote
+      _subtitle = source._subtitle
+      _emptyKind = source._emptyKind
+      _emptyTitle = source._emptyTitle
+      _emptyBody = source._emptyBody
+      _emptyCanRetry = source._emptyCanRetry
+      _banners = source._banners
+      _chartsA11YLabel = source._chartsA11YLabel
     }
   }
 
@@ -1528,6 +2295,13 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 26: try { try decoder.decodeSingularMessageField(value: &_storage._ttftStrip) }()
         case 27: try { try decoder.decodeRepeatedMessageField(value: &_storage._rows) }()
         case 28: try { try decoder.decodeSingularMessageField(value: &_storage._unsupportedFootnote) }()
+        case 29: try { try decoder.decodeSingularMessageField(value: &_storage._subtitle) }()
+        case 30: try { try decoder.decodeSingularEnumField(value: &_storage._emptyKind) }()
+        case 31: try { try decoder.decodeSingularMessageField(value: &_storage._emptyTitle) }()
+        case 32: try { try decoder.decodeSingularMessageField(value: &_storage._emptyBody) }()
+        case 33: try { try decoder.decodeSingularBoolField(value: &_storage._emptyCanRetry) }()
+        case 34: try { try decoder.decodeRepeatedMessageField(value: &_storage._banners) }()
+        case 35: try { try decoder.decodeSingularMessageField(value: &_storage._chartsA11YLabel) }()
         default: break
         }
       }
@@ -1624,6 +2398,27 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       try { if let v = _storage._unsupportedFootnote {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 28)
       } }()
+      try { if let v = _storage._subtitle {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
+      } }()
+      if _storage._emptyKind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._emptyKind, fieldNumber: 30)
+      }
+      try { if let v = _storage._emptyTitle {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
+      } }()
+      try { if let v = _storage._emptyBody {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+      } }()
+      if _storage._emptyCanRetry != false {
+        try visitor.visitSingularBoolField(value: _storage._emptyCanRetry, fieldNumber: 33)
+      }
+      if !_storage._banners.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._banners, fieldNumber: 34)
+      }
+      try { if let v = _storage._chartsA11YLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1661,6 +2456,13 @@ extension PBCoreUsageViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._ttftStrip != rhs_storage._ttftStrip {return false}
         if _storage._rows != rhs_storage._rows {return false}
         if _storage._unsupportedFootnote != rhs_storage._unsupportedFootnote {return false}
+        if _storage._subtitle != rhs_storage._subtitle {return false}
+        if _storage._emptyKind != rhs_storage._emptyKind {return false}
+        if _storage._emptyTitle != rhs_storage._emptyTitle {return false}
+        if _storage._emptyBody != rhs_storage._emptyBody {return false}
+        if _storage._emptyCanRetry != rhs_storage._emptyCanRetry {return false}
+        if _storage._banners != rhs_storage._banners {return false}
+        if _storage._chartsA11YLabel != rhs_storage._chartsA11YLabel {return false}
         return true
       }
       if !storagesAreEqual {return false}

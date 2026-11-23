@@ -2,6 +2,7 @@ package screens
 
 import (
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -79,16 +80,35 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 
 	if m == nil {
 		vm.MachineName = machine.ShortID(req.MachineId)
+		vm.Subtitle = text.Plain(vm.MachineName)
 		vm.Loading = waitingForMachineList(st)
+		if vm.Loading {
+			vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_LOADING
+		} else {
+			vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NOT_FOUND
+			vm.EmptyTitle = text.Msg(text.KeySettingsDeviceNotFound)
+		}
+		vm.Hero.TotalTokensText = text.Plain("0")
+		vm.Hero.ScopeText = text.Msg(text.KeyUsageScopeAllEmpty)
 		return vm
 	}
 
 	vm.Found = true
 	vm.MachineName = lists.MachineName(m, req.MachineId)
 	vm.Online = lists.MachineReachable(m)
+	if !vm.Online {
+		vm.Subtitle = text.Msg(text.KeyUsageSubtitleOffline, text.Str("name", vm.MachineName))
+	} else {
+		vm.Subtitle = text.Plain(vm.MachineName)
+	}
 	vm.Supported = m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.UsageStats
 	if !vm.Supported {
 		vm.UnsupportedFootnote = text.Msg(text.KeyUsageUnsupportedBody, text.Str("name", vm.MachineName))
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_UNSUPPORTED
+		vm.EmptyTitle = text.Msg(text.KeyUsageUnsupportedTitle)
+		vm.EmptyBody = vm.UnsupportedFootnote
+		vm.Hero.TotalTokensText = text.Plain("0")
+		vm.Hero.ScopeText = text.Msg(text.KeyUsageScopeAllEmpty)
 		return vm
 	}
 
@@ -199,5 +219,157 @@ func BuildUsageView(st *State, syncView *corev1.SyncStateView, req *corev1.Usage
 			}
 		}
 	}
+
+	populateUsageDecorations(vm)
 	return vm
+}
+
+func populateUsageDecorations(vm *corev1.UsageViewModel) {
+	if vm == nil {
+		return
+	}
+	name := vm.MachineName
+	if name == "" {
+		name = vm.MachineId
+	}
+
+	// Banners (shown when found && supported)
+	if vm.Found && vm.Supported {
+		if vm.CachedOffline {
+			var tArg *corev1.TextArg
+			if vm.CachedAtMs > 0 {
+				tArg = text.ArgTimestamp("time", vm.CachedAtMs, corev1.TimestampStyle_TIMESTAMP_STYLE_TIME)
+			} else {
+				tArg = text.Str("time", "")
+			}
+			vm.Banners = append(vm.Banners, &corev1.UsageBannerView{
+				Kind: corev1.UsageBannerKind_USAGE_BANNER_KIND_OFFLINE_CACHED,
+				Text: text.Msg(text.KeyUsageOfflineBanner, text.Str("name", name), tArg),
+			})
+		}
+		if vm.Backfilling {
+			total := vm.BackfillTotalDays
+			if total <= 0 {
+				total = 90
+			}
+			vm.Banners = append(vm.Banners, &corev1.UsageBannerView{
+				Kind: corev1.UsageBannerKind_USAGE_BANNER_KIND_BACKFILLING,
+				Text: text.Msg(text.KeyUsageBackfillingBanner, text.Int("scanned", int64(vm.BackfillScannedDays)), text.Int("total", int64(total))),
+			})
+		}
+		if !text.IsEmpty(vm.ErrorText) && vm.HasAnyUsage {
+			vm.Banners = append(vm.Banners, &corev1.UsageBannerView{
+				Kind:     corev1.UsageBannerKind_USAGE_BANNER_KIND_LOAD_ERROR,
+				IsError:  true,
+				CanRetry: true,
+				Text:     text.JoinLiteral("：", text.Msg(text.KeyUsageLoadErrorTitle), vm.ErrorText),
+			})
+		}
+	}
+
+	// Empty state matrix
+	hasErr := !text.IsEmpty(vm.ErrorText)
+	allSourcesUnavailable := false
+	var unavailNames []string
+	if len(vm.Sources) > 0 {
+		allUnavail := true
+		for _, s := range vm.Sources {
+			if s == nil {
+				continue
+			}
+			if s.State == v1.UsageSourceState_USAGE_SOURCE_STATE_UNAVAILABLE {
+				unavailNames = append(unavailNames, lists.AgentInfo(s.Agent).Name)
+			} else {
+				allUnavail = false
+			}
+		}
+		allSourcesUnavailable = allUnavail && len(unavailNames) > 0
+	}
+
+	switch {
+	case vm.HasAnyUsage:
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NONE
+	case !vm.Online && !vm.CachedOffline && !vm.Loading:
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_OFFLINE_EMPTY
+		vm.EmptyTitle = text.Msg(text.KeyUsageOfflineEmptyTitle, text.Str("name", name))
+		vm.EmptyBody = text.Msg(text.KeyUsageOfflineEmptyBody, text.Str("name", name))
+	case hasErr && !vm.Loading:
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_LOAD_ERROR
+		vm.EmptyTitle = text.Msg(text.KeyUsageLoadErrorTitle)
+		vm.EmptyBody = vm.ErrorText
+		vm.EmptyCanRetry = true
+	case vm.Loading:
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_LOADING
+	case (vm.Online || vm.CachedOffline) && allSourcesUnavailable:
+		joined := strings.Join(unavailNames, ", ")
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE
+		vm.EmptyTitle = text.Msg(text.KeyUsageOnlyUnavailableTitle, text.Str("agents", joined))
+		vm.EmptyBody = text.Msg(text.KeyUsageOnlyUnavailableBody, text.Str("agents", joined))
+	default:
+		vm.EmptyKind = corev1.UsageEmptyKind_USAGE_EMPTY_KIND_NO_RECORDS
+		vm.EmptyTitle = text.Msg(text.KeyUsageEmptyNoRecords)
+	}
+
+	// Hero formatted scope & subline + charts a11y
+	if vm.Hero == nil {
+		vm.Hero = &corev1.UsageHeroView{Composition: &corev1.UsageCompositionView{}}
+	}
+	if !vm.HasAnyUsage {
+		vm.Hero.TotalTokensText = text.Plain("0")
+		vm.Hero.ScopeText = text.Msg(text.KeyUsageScopeAllEmpty)
+	} else {
+		if vm.Hero.TotalTokensText == nil {
+			vm.Hero.TotalTokensText = usage.FormatTokensText(vm.Hero.TotalTokens)
+		}
+		if !vm.Hero.Scrubbing {
+			if vm.Hero.HasSelectedModel {
+				vm.Hero.ScopeText = text.Plain(vm.Hero.SelectedModel)
+			} else {
+				vm.Hero.ScopeText = text.Msg(text.KeyUsageScopeAllModels, text.Int("count", int64(vm.Hero.TotalModelCount)))
+			}
+			vm.Hero.SublineText = buildUsageHeroSubline(vm, vm.Hero)
+		}
+		vm.ChartsA11YLabel = text.Msg(
+			text.KeyUsageChartsA11Y,
+			text.Str("name", name),
+			text.ArgText("total", vm.Hero.TotalTokensText),
+			text.Int("count", int64(len(vm.Rows))),
+		)
+	}
+}
+
+func buildUsageHeroSubline(vm *corev1.UsageViewModel, hero *corev1.UsageHeroView) *corev1.Text {
+	if hero == nil || hero.Scrubbing {
+		return nil
+	}
+	parts := []*corev1.Text{
+		text.Msg(
+			text.KeyUsageHeroReqs,
+			text.Int("count", int64(hero.RequestCount)),
+			text.Str("formatted", usage.FormatCommaUint(hero.RequestCount)),
+		),
+	}
+	if hero.HasSharePercent {
+		shareStr := "<1%"
+		if hero.ShareRatio >= 0.01 {
+			shareStr = strconv.Itoa(int(math.Round(hero.ShareRatio*100.0))) + "%"
+		}
+		parts = append(parts, text.Msg(text.KeyUsageHeroShare, text.Str("pct", shareStr)))
+	}
+	if hero.PreviousBackfilling {
+		parts = append(parts, text.Msg(text.KeyUsageBackfillingCell))
+	} else if hero.HasTokensDelta {
+		if math.IsNaN(hero.TokensDeltaPercent) || math.IsInf(hero.TokensDeltaPercent, 0) || math.Abs(hero.TokensDeltaPercent) < 0.5 {
+			parts = append(parts, text.Msg(text.KeyUsageFlat))
+		} else {
+			var period *corev1.Text
+			if vm.RangeDays <= 1 {
+				period = text.Msg(text.KeyUsageVsYesterday)
+			} else {
+				period = text.Msg(text.KeyUsageVsPrevDays, text.Int("days", int64(vm.RangeDays)))
+			}
+			parts = append(parts, text.JoinLiteral(" ", usage.FormatDeltaTriangle(hero.TokensDeltaPercent), period))
+		}
+	}
+	return text.JoinLiteral(" · ", parts...)
 }

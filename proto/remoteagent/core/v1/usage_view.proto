@@ -14,6 +14,32 @@ enum UsageSortColumn {
   USAGE_SORT_COLUMN_TTFT = 4;
 }
 
+enum UsageEmptyKind {
+  USAGE_EMPTY_KIND_UNSPECIFIED = 0;
+  USAGE_EMPTY_KIND_NONE = 1;
+  USAGE_EMPTY_KIND_LOADING = 2;
+  USAGE_EMPTY_KIND_NOT_FOUND = 3;
+  USAGE_EMPTY_KIND_UNSUPPORTED = 4;
+  USAGE_EMPTY_KIND_OFFLINE_EMPTY = 5;
+  USAGE_EMPTY_KIND_LOAD_ERROR = 6;
+  USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE = 7;
+  USAGE_EMPTY_KIND_NO_RECORDS = 8;
+}
+
+enum UsageBannerKind {
+  USAGE_BANNER_KIND_UNSPECIFIED = 0;
+  USAGE_BANNER_KIND_OFFLINE_CACHED = 1;
+  USAGE_BANNER_KIND_BACKFILLING = 2;
+  USAGE_BANNER_KIND_LOAD_ERROR = 3;
+}
+
+message UsageBannerView {
+  UsageBannerKind kind = 1;
+  bool is_error = 2;
+  bool can_retry = 3;
+  Text text = 4;
+}
+
 message UsageScreenRequest {
   string machine_id = 1;
   remoteagent.v1.Agent focus_agent = 2;
@@ -29,6 +55,11 @@ message UsageCompositionView {
   uint64 cache_write_tokens = 3;
   uint64 output_tokens = 4;
   uint64 reasoning_output_tokens = 5;
+  Text uncached_input_text = 6;
+  Text cache_read_text = 7;
+  Text cache_write_text = 8;
+  Text output_text = 9;
+  Text reasoning_output_text = 10;
 }
 
 message UsageHeroView {
@@ -51,6 +82,9 @@ message UsageHeroView {
   bool previous_backfilling = 17;
   UsageCompositionView composition = 18;
   int32 period_composition_rows = 19;
+  Text total_tokens_text = 20;
+  Text scope_text = 21;
+  Text subline_text = 22;
 }
 
 message UsageBarBucketView {
@@ -65,6 +99,8 @@ message UsageBarChartView {
   uint64 y_max = 1;
   uint64 y_mid = 2;
   repeated UsageBarBucketView buckets = 3;
+  Text y_max_text = 4;
+  Text y_mid_text = 5;
 }
 
 message UsageStripPointView {
@@ -83,6 +119,10 @@ message UsageMetricStripView {
   int32 last_valid_index = 8;
   repeated UsageStripPointView all_points = 9;
   repeated UsageStripPointView selected_points = 10;
+  Text current_value_text = 11;
+  Text min_value_text = 12;
+  Text max_value_text = 13;
+  bool show_range = 14;
 }
 
 message UsageModelRowView {
@@ -104,6 +144,11 @@ message UsageModelRowView {
   bool previous_backfilling = 16;
   uint64 usage_request_count = 17;
   uint64 speed_request_count = 18;
+  Text total_tokens_text = 19;
+  Text cache_hit_text = 20;
+  Text speed_text = 21;
+  Text ttft_text = 22;
+  Text delta_text = 23;
 }
 
 message UsageViewModel {
@@ -135,6 +180,13 @@ message UsageViewModel {
   UsageMetricStripView ttft_strip = 26;
   repeated UsageModelRowView rows = 27;
   Text unsupported_footnote = 28;
+  Text subtitle = 29;
+  UsageEmptyKind empty_kind = 30;
+  Text empty_title = 31;
+  Text empty_body = 32;
+  bool empty_can_retry = 33;
+  repeated UsageBannerView banners = 34;
+  Text charts_a11y_label = 35;
 }
 
 // ---- Events & Effects (Usage & Speed) ----

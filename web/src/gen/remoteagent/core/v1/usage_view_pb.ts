@@ -16,7 +16,39 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file remoteagent/core/v1/usage_view.proto.
  */
 export const file_remoteagent_core_v1_usage_view: GenFile = /*@__PURE__*/
-  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3VzYWdlX3ZpZXcucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEiywEKElVzYWdlU2NyZWVuUmVxdWVzdBISCgptYWNoaW5lX2lkGAEgASgJEioKC2ZvY3VzX2FnZW50GAIgASgOMhUucmVtb3RlYWdlbnQudjEuQWdlbnQSEwoLZm9jdXNfbW9kZWwYAyABKAkSMAoGcHJlc2V0GAQgASgOMiAucmVtb3RlYWdlbnQudjEuVXNhZ2VSYW5nZVByZXNldBIXCg9jdXN0b21fc3RhcnRfbXMYBSABKAMSFQoNY3VzdG9tX2VuZF9tcxgGIAEoAyKkAQoUVXNhZ2VDb21wb3NpdGlvblZpZXcSHQoVdW5jYWNoZWRfaW5wdXRfdG9rZW5zGAEgASgEEhkKEWNhY2hlX3JlYWRfdG9rZW5zGAIgASgEEhoKEmNhY2hlX3dyaXRlX3Rva2VucxgDIAEoBBIVCg1vdXRwdXRfdG9rZW5zGAQgASgEEh8KF3JlYXNvbmluZ19vdXRwdXRfdG9rZW5zGAUgASgEIrgECg1Vc2FnZUhlcm9WaWV3EhEKCXNjcnViYmluZxgBIAEoCBIaChJzY3J1Yl9idWNrZXRfaW5kZXgYAiABKAUSFgoOc2NydWJfc3RhcnRfbXMYAyABKAMSFAoMc2NydWJfZW5kX21zGAQgASgDEhoKEmhhc19zZWxlY3RlZF9tb2RlbBgFIAEoCBItCg5zZWxlY3RlZF9hZ2VudBgGIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50EhsKE3NlbGVjdGVkX2FnZW50X25hbWUYByABKAkSFgoOc2VsZWN0ZWRfbW9kZWwYCCABKAkSGwoTc2VsZWN0ZWRfc2VyaWVzX2tleRgJIAEoCRIZChF0b3RhbF9tb2RlbF9jb3VudBgKIAEoBRIUCgx0b3RhbF90b2tlbnMYCyABKAQSFQoNcmVxdWVzdF9jb3VudBgMIAEoBBIZChFoYXNfc2hhcmVfcGVyY2VudBgNIAEoCBITCgtzaGFyZV9yYXRpbxgOIAEoARIYChBoYXNfdG9rZW5zX2RlbHRhGA8gASgIEhwKFHRva2Vuc19kZWx0YV9wZXJjZW50GBAgASgBEhwKFHByZXZpb3VzX2JhY2tmaWxsaW5nGBEgASgIEj4KC2NvbXBvc2l0aW9uGBIgASgLMikucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUNvbXBvc2l0aW9uVmlldxIfChdwZXJpb2RfY29tcG9zaXRpb25fcm93cxgTIAEoBSJ1ChJVc2FnZUJhckJ1Y2tldFZpZXcSEAoIc3RhcnRfbXMYASABKAMSDgoGZW5kX21zGAIgASgDEhIKCmFsbF90b2tlbnMYAyABKAQSFwoPc2VsZWN0ZWRfdG9rZW5zGAQgASgEEhAKCGhhc19kYXRhGAUgASgIImsKEVVzYWdlQmFyQ2hhcnRWaWV3Eg0KBXlfbWF4GAEgASgEEg0KBXlfbWlkGAIgASgEEjgKB2J1Y2tldHMYAyADKAsyJy5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlQmFyQnVja2V0VmlldyI3ChNVc2FnZVN0cmlwUG9pbnRWaWV3EhEKCWhhc192YWx1ZRgBIAEoCBINCgV2YWx1ZRgCIAEoASK6AgoUVXNhZ2VNZXRyaWNTdHJpcFZpZXcSEQoJaGFzX3ZhbHVlGAEgASgIEhUKDWN1cnJlbnRfdmFsdWUYAiABKAESEQoJaGFzX3JhbmdlGAMgASgIEhEKCW1pbl92YWx1ZRgEIAEoARIRCgltYXhfdmFsdWUYBSABKAESEQoJc2NhbGVfbWluGAYgASgBEhEKCXNjYWxlX21heBgHIAEoARIYChBsYXN0X3ZhbGlkX2luZGV4GAggASgFEjwKCmFsbF9wb2ludHMYCSADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlU3RyaXBQb2ludFZpZXcSQQoPc2VsZWN0ZWRfcG9pbnRzGAogAygLMigucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZVN0cmlwUG9pbnRWaWV3IrkDChFVc2FnZU1vZGVsUm93VmlldxIkCgVhZ2VudBgBIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50EhIKCmFnZW50X25hbWUYAiABKAkSDQoFbW9kZWwYAyABKAkSEgoKc2VyaWVzX2tleRgEIAEoCRIQCghzZWxlY3RlZBgFIAEoCBITCgtzaGFyZV9yYXRpbxgGIAEoARIUCgx0b3RhbF90b2tlbnMYByABKAQSFQoNaGFzX2NhY2hlX2hpdBgIIAEoCBIWCg5jYWNoZV9oaXRfcmF0ZRgJIAEoARIRCgloYXNfc3BlZWQYCiABKAgSEQoJc3BlZWRfcDUwGAsgASgBEhAKCGhhc190dGZ0GAwgASgIEhMKC3R0ZnRfcDUwX21zGA0gASgBEhgKEGhhc190b2tlbnNfZGVsdGEYDiABKAgSHAoUdG9rZW5zX2RlbHRhX3BlcmNlbnQYDyABKAESHAoUcHJldmlvdXNfYmFja2ZpbGxpbmcYECABKAgSGwoTdXNhZ2VfcmVxdWVzdF9jb3VudBgRIAEoBBIbChNzcGVlZF9yZXF1ZXN0X2NvdW50GBIgASgEIpwICg5Vc2FnZVZpZXdNb2RlbBISCgptYWNoaW5lX2lkGAEgASgJEhQKDG1hY2hpbmVfbmFtZRgCIAEoCRINCgVmb3VuZBgDIAEoCBIRCglzdXBwb3J0ZWQYBCABKAgSDgoGb25saW5lGAUgASgIEg8KB2xvYWRpbmcYBiABKAgSLQoKZXJyb3JfdGV4dBgHIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIWCg5jYWNoZWRfb2ZmbGluZRgIIAEoCBIUCgxjYWNoZWRfYXRfbXMYCSABKAMSEwoLYmFja2ZpbGxpbmcYCiABKAgSHQoVYmFja2ZpbGxfc2Nhbm5lZF9kYXlzGAsgASgFEhsKE2JhY2tmaWxsX3RvdGFsX2RheXMYDCABKAUSIwobcHJldmlvdXNfcGVyaW9kX2JhY2tmaWxsaW5nGA0gASgIEjAKBnByZXNldBgOIAEoDjIgLnJlbW90ZWFnZW50LnYxLlVzYWdlUmFuZ2VQcmVzZXQSOwoLZ3JhbnVsYXJpdHkYDyABKA4yJi5yZW1vdGVhZ2VudC52MS5Vc2FnZUJ1Y2tldEdyYW51bGFyaXR5EhAKCHN0YXJ0X21zGBAgASgDEg4KBmVuZF9tcxgRIAEoAxISCgpyYW5nZV9kYXlzGBIgASgFEjUKB3NvcnRfYnkYEyABKA4yJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlU29ydENvbHVtbhIxCgdzb3VyY2VzGBQgAygLMiAucmVtb3RlYWdlbnQudjEuVXNhZ2VBZ2VudFNvdXJjZRIVCg1oYXNfYW55X3VzYWdlGBUgASgIEjAKBGhlcm8YFiABKAsyIi5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlSGVyb1ZpZXcSOQoJYmFyX2NoYXJ0GBcgASgLMiYucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUJhckNoYXJ0VmlldxJCCg9jYWNoZV9oaXRfc3RyaXAYGCABKAsyKS5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlTWV0cmljU3RyaXBWaWV3EkUKEm91dHB1dF9zcGVlZF9zdHJpcBgZIAEoCzIpLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VNZXRyaWNTdHJpcFZpZXcSPQoKdHRmdF9zdHJpcBgaIAEoCzIpLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VNZXRyaWNTdHJpcFZpZXcSNAoEcm93cxgbIAMoCzImLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VNb2RlbFJvd1ZpZXcSNwoUdW5zdXBwb3J0ZWRfZm9vdG5vdGUYHCABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQiwAIKFFVzYWdlU2NyZWVuT3BlbkV2ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSMAoGcHJlc2V0GAIgASgOMiAucmVtb3RlYWdlbnQudjEuVXNhZ2VSYW5nZVByZXNldBIXCg9jdXN0b21fc3RhcnRfbXMYAyABKAMSFQoNY3VzdG9tX2VuZF9tcxgEIAEoAxIQCgh0aW1lem9uZRgFIAEoCRIZChF0el9vZmZzZXRfbWludXRlcxgGIAEoBRIYChBidWNrZXRfYm91bmRzX21zGAcgAygDEhUKDXByZXZfc3RhcnRfbXMYCCABKAMSEwoLYXBwbHlfZm9jdXMYCSABKAgSKgoLZm9jdXNfYWdlbnQYCiABKA4yFS5yZW1vdGVhZ2VudC52MS5BZ2VudBITCgtmb2N1c19tb2RlbBgLIAEoCSIrChVVc2FnZVNjcmVlblJldHJ5RXZlbnQSEgoKbWFjaGluZV9pZBgBIAEoCSJnChpVc2FnZVNjcmVlblNlbGVjdFNvcnRFdmVudBISCgptYWNoaW5lX2lkGAEgASgJEjUKB3NvcnRfYnkYAiABKA4yJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlU29ydENvbHVtbiJWChxVc2FnZVNjcmVlblNlbGVjdFNlcmllc0V2ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSEgoKc2VyaWVzX2tleRgCIAEoCRIOCgZ0b2dnbGUYAyABKAgiUAoVVXNhZ2VTY3JlZW5TY3J1YkV2ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSFAoMYnVja2V0X2luZGV4GAIgASgFEg0KBWNsZWFyGAMgASgIImEKFVVzYWdlQ2FjaGVMb2FkZWRFdmVudBISCgptYWNoaW5lX2lkGAEgASgJEjQKCHNuYXBzaG90GAIgASgLMiIucmVtb3RlYWdlbnQudjEuVXNhZ2VTdGF0c1Jlc3BvbnNlImEKFVVzYWdlQ2FjaGVXcml0ZUVmZmVjdBISCgptYWNoaW5lX2lkGAEgASgJEjQKCHNuYXBzaG90GAIgASgLMiIucmVtb3RlYWdlbnQudjEuVXNhZ2VTdGF0c1Jlc3BvbnNlKqwBCg9Vc2FnZVNvcnRDb2x1bW4SIQodVVNBR0VfU09SVF9DT0xVTU5fVU5TUEVDSUZJRUQQABIcChhVU0FHRV9TT1JUX0NPTFVNTl9UT0tFTlMQARIfChtVU0FHRV9TT1JUX0NPTFVNTl9DQUNIRV9ISVQQAhIbChdVU0FHRV9TT1JUX0NPTFVNTl9TUEVFRBADEhoKFlVTQUdFX1NPUlRfQ09MVU1OX1RURlQQBGIGcHJvdG8z", [file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_local]);
+  fileDesc("CiRyZW1vdGVhZ2VudC9jb3JlL3YxL3VzYWdlX3ZpZXcucHJvdG8SE3JlbW90ZWFnZW50LmNvcmUudjEikwEKD1VzYWdlQmFubmVyVmlldxIyCgRraW5kGAEgASgOMiQucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUJhbm5lcktpbmQSEAoIaXNfZXJyb3IYAiABKAgSEQoJY2FuX3JldHJ5GAMgASgIEicKBHRleHQYBCABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQiywEKElVzYWdlU2NyZWVuUmVxdWVzdBISCgptYWNoaW5lX2lkGAEgASgJEioKC2ZvY3VzX2FnZW50GAIgASgOMhUucmVtb3RlYWdlbnQudjEuQWdlbnQSEwoLZm9jdXNfbW9kZWwYAyABKAkSMAoGcHJlc2V0GAQgASgOMiAucmVtb3RlYWdlbnQudjEuVXNhZ2VSYW5nZVByZXNldBIXCg9jdXN0b21fc3RhcnRfbXMYBSABKAMSFQoNY3VzdG9tX2VuZF9tcxgGIAEoAyKvAwoUVXNhZ2VDb21wb3NpdGlvblZpZXcSHQoVdW5jYWNoZWRfaW5wdXRfdG9rZW5zGAEgASgEEhkKEWNhY2hlX3JlYWRfdG9rZW5zGAIgASgEEhoKEmNhY2hlX3dyaXRlX3Rva2VucxgDIAEoBBIVCg1vdXRwdXRfdG9rZW5zGAQgASgEEh8KF3JlYXNvbmluZ19vdXRwdXRfdG9rZW5zGAUgASgEEjYKE3VuY2FjaGVkX2lucHV0X3RleHQYBiABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSMgoPY2FjaGVfcmVhZF90ZXh0GAcgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EjMKEGNhY2hlX3dyaXRlX3RleHQYCCABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSLgoLb3V0cHV0X3RleHQYCSABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSOAoVcmVhc29uaW5nX291dHB1dF90ZXh0GAogASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Is4FCg1Vc2FnZUhlcm9WaWV3EhEKCXNjcnViYmluZxgBIAEoCBIaChJzY3J1Yl9idWNrZXRfaW5kZXgYAiABKAUSFgoOc2NydWJfc3RhcnRfbXMYAyABKAMSFAoMc2NydWJfZW5kX21zGAQgASgDEhoKEmhhc19zZWxlY3RlZF9tb2RlbBgFIAEoCBItCg5zZWxlY3RlZF9hZ2VudBgGIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50EhsKE3NlbGVjdGVkX2FnZW50X25hbWUYByABKAkSFgoOc2VsZWN0ZWRfbW9kZWwYCCABKAkSGwoTc2VsZWN0ZWRfc2VyaWVzX2tleRgJIAEoCRIZChF0b3RhbF9tb2RlbF9jb3VudBgKIAEoBRIUCgx0b3RhbF90b2tlbnMYCyABKAQSFQoNcmVxdWVzdF9jb3VudBgMIAEoBBIZChFoYXNfc2hhcmVfcGVyY2VudBgNIAEoCBITCgtzaGFyZV9yYXRpbxgOIAEoARIYChBoYXNfdG9rZW5zX2RlbHRhGA8gASgIEhwKFHRva2Vuc19kZWx0YV9wZXJjZW50GBAgASgBEhwKFHByZXZpb3VzX2JhY2tmaWxsaW5nGBEgASgIEj4KC2NvbXBvc2l0aW9uGBIgASgLMikucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUNvbXBvc2l0aW9uVmlldxIfChdwZXJpb2RfY29tcG9zaXRpb25fcm93cxgTIAEoBRI0ChF0b3RhbF90b2tlbnNfdGV4dBgUIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBItCgpzY29wZV90ZXh0GBUgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Ei8KDHN1YmxpbmVfdGV4dBgWIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCJ1ChJVc2FnZUJhckJ1Y2tldFZpZXcSEAoIc3RhcnRfbXMYASABKAMSDgoGZW5kX21zGAIgASgDEhIKCmFsbF90b2tlbnMYAyABKAQSFwoPc2VsZWN0ZWRfdG9rZW5zGAQgASgEEhAKCGhhc19kYXRhGAUgASgIIskBChFVc2FnZUJhckNoYXJ0VmlldxINCgV5X21heBgBIAEoBBINCgV5X21pZBgCIAEoBBI4CgdidWNrZXRzGAMgAygLMicucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUJhckJ1Y2tldFZpZXcSLQoKeV9tYXhfdGV4dBgEIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBItCgp5X21pZF90ZXh0GAUgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0IjcKE1VzYWdlU3RyaXBQb2ludFZpZXcSEQoJaGFzX3ZhbHVlGAEgASgIEg0KBXZhbHVlGAIgASgBIusDChRVc2FnZU1ldHJpY1N0cmlwVmlldxIRCgloYXNfdmFsdWUYASABKAgSFQoNY3VycmVudF92YWx1ZRgCIAEoARIRCgloYXNfcmFuZ2UYAyABKAgSEQoJbWluX3ZhbHVlGAQgASgBEhEKCW1heF92YWx1ZRgFIAEoARIRCglzY2FsZV9taW4YBiABKAESEQoJc2NhbGVfbWF4GAcgASgBEhgKEGxhc3RfdmFsaWRfaW5kZXgYCCABKAUSPAoKYWxsX3BvaW50cxgJIAMoCzIoLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VTdHJpcFBvaW50VmlldxJBCg9zZWxlY3RlZF9wb2ludHMYCiADKAsyKC5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlU3RyaXBQb2ludFZpZXcSNQoSY3VycmVudF92YWx1ZV90ZXh0GAsgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EjEKDm1pbl92YWx1ZV90ZXh0GAwgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EjEKDm1heF92YWx1ZV90ZXh0GA0gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EhIKCnNob3dfcmFuZ2UYDiABKAgirgUKEVVzYWdlTW9kZWxSb3dWaWV3EiQKBWFnZW50GAEgASgOMhUucmVtb3RlYWdlbnQudjEuQWdlbnQSEgoKYWdlbnRfbmFtZRgCIAEoCRINCgVtb2RlbBgDIAEoCRISCgpzZXJpZXNfa2V5GAQgASgJEhAKCHNlbGVjdGVkGAUgASgIEhMKC3NoYXJlX3JhdGlvGAYgASgBEhQKDHRvdGFsX3Rva2VucxgHIAEoBBIVCg1oYXNfY2FjaGVfaGl0GAggASgIEhYKDmNhY2hlX2hpdF9yYXRlGAkgASgBEhEKCWhhc19zcGVlZBgKIAEoCBIRCglzcGVlZF9wNTAYCyABKAESEAoIaGFzX3R0ZnQYDCABKAgSEwoLdHRmdF9wNTBfbXMYDSABKAESGAoQaGFzX3Rva2Vuc19kZWx0YRgOIAEoCBIcChR0b2tlbnNfZGVsdGFfcGVyY2VudBgPIAEoARIcChRwcmV2aW91c19iYWNrZmlsbGluZxgQIAEoCBIbChN1c2FnZV9yZXF1ZXN0X2NvdW50GBEgASgEEhsKE3NwZWVkX3JlcXVlc3RfY291bnQYEiABKAQSNAoRdG90YWxfdG9rZW5zX3RleHQYEyABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSMQoOY2FjaGVfaGl0X3RleHQYFCABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSLQoKc3BlZWRfdGV4dBgVIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dBIsCgl0dGZ0X3RleHQYFiABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSLQoKZGVsdGFfdGV4dBgXIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCLnCgoOVXNhZ2VWaWV3TW9kZWwSEgoKbWFjaGluZV9pZBgBIAEoCRIUCgxtYWNoaW5lX25hbWUYAiABKAkSDQoFZm91bmQYAyABKAgSEQoJc3VwcG9ydGVkGAQgASgIEg4KBm9ubGluZRgFIAEoCBIPCgdsb2FkaW5nGAYgASgIEi0KCmVycm9yX3RleHQYByABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSFgoOY2FjaGVkX29mZmxpbmUYCCABKAgSFAoMY2FjaGVkX2F0X21zGAkgASgDEhMKC2JhY2tmaWxsaW5nGAogASgIEh0KFWJhY2tmaWxsX3NjYW5uZWRfZGF5cxgLIAEoBRIbChNiYWNrZmlsbF90b3RhbF9kYXlzGAwgASgFEiMKG3ByZXZpb3VzX3BlcmlvZF9iYWNrZmlsbGluZxgNIAEoCBIwCgZwcmVzZXQYDiABKA4yIC5yZW1vdGVhZ2VudC52MS5Vc2FnZVJhbmdlUHJlc2V0EjsKC2dyYW51bGFyaXR5GA8gASgOMiYucmVtb3RlYWdlbnQudjEuVXNhZ2VCdWNrZXRHcmFudWxhcml0eRIQCghzdGFydF9tcxgQIAEoAxIOCgZlbmRfbXMYESABKAMSEgoKcmFuZ2VfZGF5cxgSIAEoBRI1Cgdzb3J0X2J5GBMgASgOMiQucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZVNvcnRDb2x1bW4SMQoHc291cmNlcxgUIAMoCzIgLnJlbW90ZWFnZW50LnYxLlVzYWdlQWdlbnRTb3VyY2USFQoNaGFzX2FueV91c2FnZRgVIAEoCBIwCgRoZXJvGBYgASgLMiIucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZUhlcm9WaWV3EjkKCWJhcl9jaGFydBgXIAEoCzImLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VCYXJDaGFydFZpZXcSQgoPY2FjaGVfaGl0X3N0cmlwGBggASgLMikucmVtb3RlYWdlbnQuY29yZS52MS5Vc2FnZU1ldHJpY1N0cmlwVmlldxJFChJvdXRwdXRfc3BlZWRfc3RyaXAYGSABKAsyKS5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlTWV0cmljU3RyaXBWaWV3Ej0KCnR0ZnRfc3RyaXAYGiABKAsyKS5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlTWV0cmljU3RyaXBWaWV3EjQKBHJvd3MYGyADKAsyJi5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlTW9kZWxSb3dWaWV3EjcKFHVuc3VwcG9ydGVkX2Zvb3Rub3RlGBwgASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EisKCHN1YnRpdGxlGB0gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0EjcKCmVtcHR5X2tpbmQYHiABKA4yIy5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlRW1wdHlLaW5kEi4KC2VtcHR5X3RpdGxlGB8gASgLMhkucmVtb3RlYWdlbnQuY29yZS52MS5UZXh0Ei0KCmVtcHR5X2JvZHkYICABKAsyGS5yZW1vdGVhZ2VudC5jb3JlLnYxLlRleHQSFwoPZW1wdHlfY2FuX3JldHJ5GCEgASgIEjUKB2Jhbm5lcnMYIiADKAsyJC5yZW1vdGVhZ2VudC5jb3JlLnYxLlVzYWdlQmFubmVyVmlldxI0ChFjaGFydHNfYTExeV9sYWJlbBgjIAEoCzIZLnJlbW90ZWFnZW50LmNvcmUudjEuVGV4dCLAAgoUVXNhZ2VTY3JlZW5PcGVuRXZlbnQSEgoKbWFjaGluZV9pZBgBIAEoCRIwCgZwcmVzZXQYAiABKA4yIC5yZW1vdGVhZ2VudC52MS5Vc2FnZVJhbmdlUHJlc2V0EhcKD2N1c3RvbV9zdGFydF9tcxgDIAEoAxIVCg1jdXN0b21fZW5kX21zGAQgASgDEhAKCHRpbWV6b25lGAUgASgJEhkKEXR6X29mZnNldF9taW51dGVzGAYgASgFEhgKEGJ1Y2tldF9ib3VuZHNfbXMYByADKAMSFQoNcHJldl9zdGFydF9tcxgIIAEoAxITCgthcHBseV9mb2N1cxgJIAEoCBIqCgtmb2N1c19hZ2VudBgKIAEoDjIVLnJlbW90ZWFnZW50LnYxLkFnZW50EhMKC2ZvY3VzX21vZGVsGAsgASgJIisKFVVzYWdlU2NyZWVuUmV0cnlFdmVudBISCgptYWNoaW5lX2lkGAEgASgJImcKGlVzYWdlU2NyZWVuU2VsZWN0U29ydEV2ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSNQoHc29ydF9ieRgCIAEoDjIkLnJlbW90ZWFnZW50LmNvcmUudjEuVXNhZ2VTb3J0Q29sdW1uIlYKHFVzYWdlU2NyZWVuU2VsZWN0U2VyaWVzRXZlbnQSEgoKbWFjaGluZV9pZBgBIAEoCRISCgpzZXJpZXNfa2V5GAIgASgJEg4KBnRvZ2dsZRgDIAEoCCJQChVVc2FnZVNjcmVlblNjcnViRXZlbnQSEgoKbWFjaGluZV9pZBgBIAEoCRIUCgxidWNrZXRfaW5kZXgYAiABKAUSDQoFY2xlYXIYAyABKAgiYQoVVXNhZ2VDYWNoZUxvYWRlZEV2ZW50EhIKCm1hY2hpbmVfaWQYASABKAkSNAoIc25hcHNob3QYAiABKAsyIi5yZW1vdGVhZ2VudC52MS5Vc2FnZVN0YXRzUmVzcG9uc2UiYQoVVXNhZ2VDYWNoZVdyaXRlRWZmZWN0EhIKCm1hY2hpbmVfaWQYASABKAkSNAoIc25hcHNob3QYAiABKAsyIi5yZW1vdGVhZ2VudC52MS5Vc2FnZVN0YXRzUmVzcG9uc2UqrAEKD1VzYWdlU29ydENvbHVtbhIhCh1VU0FHRV9TT1JUX0NPTFVNTl9VTlNQRUNJRklFRBAAEhwKGFVTQUdFX1NPUlRfQ09MVU1OX1RPS0VOUxABEh8KG1VTQUdFX1NPUlRfQ09MVU1OX0NBQ0hFX0hJVBACEhsKF1VTQUdFX1NPUlRfQ09MVU1OX1NQRUVEEAMSGgoWVVNBR0VfU09SVF9DT0xVTU5fVFRGVBAEKsECCg5Vc2FnZUVtcHR5S2luZBIgChxVU0FHRV9FTVBUWV9LSU5EX1VOU1BFQ0lGSUVEEAASGQoVVVNBR0VfRU1QVFlfS0lORF9OT05FEAESHAoYVVNBR0VfRU1QVFlfS0lORF9MT0FESU5HEAISHgoaVVNBR0VfRU1QVFlfS0lORF9OT1RfRk9VTkQQAxIgChxVU0FHRV9FTVBUWV9LSU5EX1VOU1VQUE9SVEVEEAQSIgoeVVNBR0VfRU1QVFlfS0lORF9PRkZMSU5FX0VNUFRZEAUSHwobVVNBR0VfRU1QVFlfS0lORF9MT0FEX0VSUk9SEAYSLAooVVNBR0VfRU1QVFlfS0lORF9BTExfU09VUkNFU19VTkFWQUlMQUJMRRAHEh8KG1VTQUdFX0VNUFRZX0tJTkRfTk9fUkVDT1JEUxAIKp8BCg9Vc2FnZUJhbm5lcktpbmQSIQodVVNBR0VfQkFOTkVSX0tJTkRfVU5TUEVDSUZJRUQQABIkCiBVU0FHRV9CQU5ORVJfS0lORF9PRkZMSU5FX0NBQ0hFRBABEiEKHVVTQUdFX0JBTk5FUl9LSU5EX0JBQ0tGSUxMSU5HEAISIAocVVNBR0VfQkFOTkVSX0tJTkRfTE9BRF9FUlJPUhADYgZwcm90bzM", [file_remoteagent_core_v1_text, file_remoteagent_v1_event, file_remoteagent_v1_local]);
+
+/**
+ * @generated from message remoteagent.core.v1.UsageBannerView
+ */
+export type UsageBannerView = Message<"remoteagent.core.v1.UsageBannerView"> & {
+  /**
+   * @generated from field: remoteagent.core.v1.UsageBannerKind kind = 1;
+   */
+  kind: UsageBannerKind;
+
+  /**
+   * @generated from field: bool is_error = 2;
+   */
+  isError: boolean;
+
+  /**
+   * @generated from field: bool can_retry = 3;
+   */
+  canRetry: boolean;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text text = 4;
+   */
+  text?: Text | undefined;
+};
+
+/**
+ * Describes the message remoteagent.core.v1.UsageBannerView.
+ * Use `create(UsageBannerViewSchema)` to create a new message.
+ */
+export const UsageBannerViewSchema: GenMessage<UsageBannerView> = /*@__PURE__*/
+  messageDesc(file_remoteagent_core_v1_usage_view, 0);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenRequest
@@ -58,7 +90,7 @@ export type UsageScreenRequest = Message<"remoteagent.core.v1.UsageScreenRequest
  * Use `create(UsageScreenRequestSchema)` to create a new message.
  */
 export const UsageScreenRequestSchema: GenMessage<UsageScreenRequest> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 0);
+  messageDesc(file_remoteagent_core_v1_usage_view, 1);
 
 /**
  * @generated from message remoteagent.core.v1.UsageCompositionView
@@ -88,6 +120,31 @@ export type UsageCompositionView = Message<"remoteagent.core.v1.UsageComposition
    * @generated from field: uint64 reasoning_output_tokens = 5;
    */
   reasoningOutputTokens: bigint;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text uncached_input_text = 6;
+   */
+  uncachedInputText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text cache_read_text = 7;
+   */
+  cacheReadText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text cache_write_text = 8;
+   */
+  cacheWriteText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text output_text = 9;
+   */
+  outputText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text reasoning_output_text = 10;
+   */
+  reasoningOutputText?: Text | undefined;
 };
 
 /**
@@ -95,7 +152,7 @@ export type UsageCompositionView = Message<"remoteagent.core.v1.UsageComposition
  * Use `create(UsageCompositionViewSchema)` to create a new message.
  */
 export const UsageCompositionViewSchema: GenMessage<UsageCompositionView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 1);
+  messageDesc(file_remoteagent_core_v1_usage_view, 2);
 
 /**
  * @generated from message remoteagent.core.v1.UsageHeroView
@@ -195,6 +252,21 @@ export type UsageHeroView = Message<"remoteagent.core.v1.UsageHeroView"> & {
    * @generated from field: int32 period_composition_rows = 19;
    */
   periodCompositionRows: number;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text total_tokens_text = 20;
+   */
+  totalTokensText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text scope_text = 21;
+   */
+  scopeText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text subline_text = 22;
+   */
+  sublineText?: Text | undefined;
 };
 
 /**
@@ -202,7 +274,7 @@ export type UsageHeroView = Message<"remoteagent.core.v1.UsageHeroView"> & {
  * Use `create(UsageHeroViewSchema)` to create a new message.
  */
 export const UsageHeroViewSchema: GenMessage<UsageHeroView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 2);
+  messageDesc(file_remoteagent_core_v1_usage_view, 3);
 
 /**
  * @generated from message remoteagent.core.v1.UsageBarBucketView
@@ -239,7 +311,7 @@ export type UsageBarBucketView = Message<"remoteagent.core.v1.UsageBarBucketView
  * Use `create(UsageBarBucketViewSchema)` to create a new message.
  */
 export const UsageBarBucketViewSchema: GenMessage<UsageBarBucketView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 3);
+  messageDesc(file_remoteagent_core_v1_usage_view, 4);
 
 /**
  * @generated from message remoteagent.core.v1.UsageBarChartView
@@ -259,6 +331,16 @@ export type UsageBarChartView = Message<"remoteagent.core.v1.UsageBarChartView">
    * @generated from field: repeated remoteagent.core.v1.UsageBarBucketView buckets = 3;
    */
   buckets: UsageBarBucketView[];
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text y_max_text = 4;
+   */
+  yMaxText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text y_mid_text = 5;
+   */
+  yMidText?: Text | undefined;
 };
 
 /**
@@ -266,7 +348,7 @@ export type UsageBarChartView = Message<"remoteagent.core.v1.UsageBarChartView">
  * Use `create(UsageBarChartViewSchema)` to create a new message.
  */
 export const UsageBarChartViewSchema: GenMessage<UsageBarChartView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 4);
+  messageDesc(file_remoteagent_core_v1_usage_view, 5);
 
 /**
  * @generated from message remoteagent.core.v1.UsageStripPointView
@@ -288,7 +370,7 @@ export type UsageStripPointView = Message<"remoteagent.core.v1.UsageStripPointVi
  * Use `create(UsageStripPointViewSchema)` to create a new message.
  */
 export const UsageStripPointViewSchema: GenMessage<UsageStripPointView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 5);
+  messageDesc(file_remoteagent_core_v1_usage_view, 6);
 
 /**
  * @generated from message remoteagent.core.v1.UsageMetricStripView
@@ -343,6 +425,26 @@ export type UsageMetricStripView = Message<"remoteagent.core.v1.UsageMetricStrip
    * @generated from field: repeated remoteagent.core.v1.UsageStripPointView selected_points = 10;
    */
   selectedPoints: UsageStripPointView[];
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text current_value_text = 11;
+   */
+  currentValueText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text min_value_text = 12;
+   */
+  minValueText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text max_value_text = 13;
+   */
+  maxValueText?: Text | undefined;
+
+  /**
+   * @generated from field: bool show_range = 14;
+   */
+  showRange: boolean;
 };
 
 /**
@@ -350,7 +452,7 @@ export type UsageMetricStripView = Message<"remoteagent.core.v1.UsageMetricStrip
  * Use `create(UsageMetricStripViewSchema)` to create a new message.
  */
 export const UsageMetricStripViewSchema: GenMessage<UsageMetricStripView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 6);
+  messageDesc(file_remoteagent_core_v1_usage_view, 7);
 
 /**
  * @generated from message remoteagent.core.v1.UsageModelRowView
@@ -445,6 +547,31 @@ export type UsageModelRowView = Message<"remoteagent.core.v1.UsageModelRowView">
    * @generated from field: uint64 speed_request_count = 18;
    */
   speedRequestCount: bigint;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text total_tokens_text = 19;
+   */
+  totalTokensText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text cache_hit_text = 20;
+   */
+  cacheHitText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text speed_text = 21;
+   */
+  speedText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text ttft_text = 22;
+   */
+  ttftText?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text delta_text = 23;
+   */
+  deltaText?: Text | undefined;
 };
 
 /**
@@ -452,7 +579,7 @@ export type UsageModelRowView = Message<"remoteagent.core.v1.UsageModelRowView">
  * Use `create(UsageModelRowViewSchema)` to create a new message.
  */
 export const UsageModelRowViewSchema: GenMessage<UsageModelRowView> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 7);
+  messageDesc(file_remoteagent_core_v1_usage_view, 8);
 
 /**
  * @generated from message remoteagent.core.v1.UsageViewModel
@@ -597,6 +724,41 @@ export type UsageViewModel = Message<"remoteagent.core.v1.UsageViewModel"> & {
    * @generated from field: remoteagent.core.v1.Text unsupported_footnote = 28;
    */
   unsupportedFootnote?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text subtitle = 29;
+   */
+  subtitle?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.UsageEmptyKind empty_kind = 30;
+   */
+  emptyKind: UsageEmptyKind;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text empty_title = 31;
+   */
+  emptyTitle?: Text | undefined;
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text empty_body = 32;
+   */
+  emptyBody?: Text | undefined;
+
+  /**
+   * @generated from field: bool empty_can_retry = 33;
+   */
+  emptyCanRetry: boolean;
+
+  /**
+   * @generated from field: repeated remoteagent.core.v1.UsageBannerView banners = 34;
+   */
+  banners: UsageBannerView[];
+
+  /**
+   * @generated from field: remoteagent.core.v1.Text charts_a11y_label = 35;
+   */
+  chartsA11yLabel?: Text | undefined;
 };
 
 /**
@@ -604,7 +766,7 @@ export type UsageViewModel = Message<"remoteagent.core.v1.UsageViewModel"> & {
  * Use `create(UsageViewModelSchema)` to create a new message.
  */
 export const UsageViewModelSchema: GenMessage<UsageViewModel> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 8);
+  messageDesc(file_remoteagent_core_v1_usage_view, 9);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenOpenEvent
@@ -671,7 +833,7 @@ export type UsageScreenOpenEvent = Message<"remoteagent.core.v1.UsageScreenOpenE
  * Use `create(UsageScreenOpenEventSchema)` to create a new message.
  */
 export const UsageScreenOpenEventSchema: GenMessage<UsageScreenOpenEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 9);
+  messageDesc(file_remoteagent_core_v1_usage_view, 10);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenRetryEvent
@@ -688,7 +850,7 @@ export type UsageScreenRetryEvent = Message<"remoteagent.core.v1.UsageScreenRetr
  * Use `create(UsageScreenRetryEventSchema)` to create a new message.
  */
 export const UsageScreenRetryEventSchema: GenMessage<UsageScreenRetryEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 10);
+  messageDesc(file_remoteagent_core_v1_usage_view, 11);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenSelectSortEvent
@@ -710,7 +872,7 @@ export type UsageScreenSelectSortEvent = Message<"remoteagent.core.v1.UsageScree
  * Use `create(UsageScreenSelectSortEventSchema)` to create a new message.
  */
 export const UsageScreenSelectSortEventSchema: GenMessage<UsageScreenSelectSortEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 11);
+  messageDesc(file_remoteagent_core_v1_usage_view, 12);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenSelectSeriesEvent
@@ -737,7 +899,7 @@ export type UsageScreenSelectSeriesEvent = Message<"remoteagent.core.v1.UsageScr
  * Use `create(UsageScreenSelectSeriesEventSchema)` to create a new message.
  */
 export const UsageScreenSelectSeriesEventSchema: GenMessage<UsageScreenSelectSeriesEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 12);
+  messageDesc(file_remoteagent_core_v1_usage_view, 13);
 
 /**
  * @generated from message remoteagent.core.v1.UsageScreenScrubEvent
@@ -764,7 +926,7 @@ export type UsageScreenScrubEvent = Message<"remoteagent.core.v1.UsageScreenScru
  * Use `create(UsageScreenScrubEventSchema)` to create a new message.
  */
 export const UsageScreenScrubEventSchema: GenMessage<UsageScreenScrubEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 13);
+  messageDesc(file_remoteagent_core_v1_usage_view, 14);
 
 /**
  * @generated from message remoteagent.core.v1.UsageCacheLoadedEvent
@@ -786,7 +948,7 @@ export type UsageCacheLoadedEvent = Message<"remoteagent.core.v1.UsageCacheLoade
  * Use `create(UsageCacheLoadedEventSchema)` to create a new message.
  */
 export const UsageCacheLoadedEventSchema: GenMessage<UsageCacheLoadedEvent> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 14);
+  messageDesc(file_remoteagent_core_v1_usage_view, 15);
 
 /**
  * @generated from message remoteagent.core.v1.UsageCacheWriteEffect
@@ -808,7 +970,7 @@ export type UsageCacheWriteEffect = Message<"remoteagent.core.v1.UsageCacheWrite
  * Use `create(UsageCacheWriteEffectSchema)` to create a new message.
  */
 export const UsageCacheWriteEffectSchema: GenMessage<UsageCacheWriteEffect> = /*@__PURE__*/
-  messageDesc(file_remoteagent_core_v1_usage_view, 15);
+  messageDesc(file_remoteagent_core_v1_usage_view, 16);
 
 /**
  * @generated from enum remoteagent.core.v1.UsageSortColumn
@@ -845,4 +1007,91 @@ export enum UsageSortColumn {
  */
 export const UsageSortColumnSchema: GenEnum<UsageSortColumn> = /*@__PURE__*/
   enumDesc(file_remoteagent_core_v1_usage_view, 0);
+
+/**
+ * @generated from enum remoteagent.core.v1.UsageEmptyKind
+ */
+export enum UsageEmptyKind {
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_NONE = 1;
+   */
+  NONE = 1,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_LOADING = 2;
+   */
+  LOADING = 2,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_NOT_FOUND = 3;
+   */
+  NOT_FOUND = 3,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_UNSUPPORTED = 4;
+   */
+  UNSUPPORTED = 4,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_OFFLINE_EMPTY = 5;
+   */
+  OFFLINE_EMPTY = 5,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_LOAD_ERROR = 6;
+   */
+  LOAD_ERROR = 6,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_ALL_SOURCES_UNAVAILABLE = 7;
+   */
+  ALL_SOURCES_UNAVAILABLE = 7,
+
+  /**
+   * @generated from enum value: USAGE_EMPTY_KIND_NO_RECORDS = 8;
+   */
+  NO_RECORDS = 8,
+}
+
+/**
+ * Describes the enum remoteagent.core.v1.UsageEmptyKind.
+ */
+export const UsageEmptyKindSchema: GenEnum<UsageEmptyKind> = /*@__PURE__*/
+  enumDesc(file_remoteagent_core_v1_usage_view, 1);
+
+/**
+ * @generated from enum remoteagent.core.v1.UsageBannerKind
+ */
+export enum UsageBannerKind {
+  /**
+   * @generated from enum value: USAGE_BANNER_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: USAGE_BANNER_KIND_OFFLINE_CACHED = 1;
+   */
+  OFFLINE_CACHED = 1,
+
+  /**
+   * @generated from enum value: USAGE_BANNER_KIND_BACKFILLING = 2;
+   */
+  BACKFILLING = 2,
+
+  /**
+   * @generated from enum value: USAGE_BANNER_KIND_LOAD_ERROR = 3;
+   */
+  LOAD_ERROR = 3,
+}
+
+/**
+ * Describes the enum remoteagent.core.v1.UsageBannerKind.
+ */
+export const UsageBannerKindSchema: GenEnum<UsageBannerKind> = /*@__PURE__*/
+  enumDesc(file_remoteagent_core_v1_usage_view, 2);
 

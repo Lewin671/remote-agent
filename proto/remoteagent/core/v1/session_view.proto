@@ -223,6 +223,10 @@ message SessionUsageEntryView {
   Text subtitle = 15;
   Text value_text = 16;
   Text footnote = 17;
+  Text total_tokens_text = 18;
+  Text cache_hit_text = 19;
+  Text speed_text = 20;
+  Text formatted_subtitle = 21;
 }
 
 message SessionForkActionView {

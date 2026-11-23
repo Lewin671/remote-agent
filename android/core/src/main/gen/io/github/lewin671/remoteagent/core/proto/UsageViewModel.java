@@ -19,6 +19,7 @@ public  final class UsageViewModel extends
     machineName_ = "";
     sources_ = emptyProtobufList();
     rows_ = emptyProtobufList();
+    banners_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -1135,6 +1136,363 @@ public  final class UsageViewModel extends
   private void clearUnsupportedFootnote() {
     unsupportedFootnote_ = null;
     bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int SUBTITLE_FIELD_NUMBER = 29;
+  private io.github.lewin671.remoteagent.core.proto.Text subtitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSubtitle() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSubtitle() {
+    return subtitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : subtitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    subtitle_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (subtitle_ != null &&
+        subtitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      subtitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(subtitle_).mergeFrom(value).buildPartial();
+    } else {
+      subtitle_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+   */
+  private void clearSubtitle() {
+    subtitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
+  public static final int EMPTY_KIND_FIELD_NUMBER = 30;
+  private int emptyKind_;
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @return The enum numeric value on the wire for emptyKind.
+   */
+  @java.lang.Override
+  public int getEmptyKindValue() {
+    return emptyKind_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @return The emptyKind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageEmptyKind getEmptyKind() {
+    io.github.lewin671.remoteagent.core.proto.UsageEmptyKind result = io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.forNumber(emptyKind_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.UsageEmptyKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @param value The enum numeric value on the wire for emptyKind to set.
+   */
+  private void setEmptyKindValue(int value) {
+      emptyKind_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   * @param value The emptyKind to set.
+   */
+  private void setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind value) {
+    emptyKind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+   */
+  private void clearEmptyKind() {
+
+    emptyKind_ = 0;
+  }
+
+  public static final int EMPTY_TITLE_FIELD_NUMBER = 31;
+  private io.github.lewin671.remoteagent.core.proto.Text emptyTitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasEmptyTitle() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getEmptyTitle() {
+    return emptyTitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : emptyTitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEmptyTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    emptyTitle_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeEmptyTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (emptyTitle_ != null &&
+        emptyTitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      emptyTitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(emptyTitle_).mergeFrom(value).buildPartial();
+    } else {
+      emptyTitle_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+   */
+  private void clearEmptyTitle() {
+    emptyTitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
+  public static final int EMPTY_BODY_FIELD_NUMBER = 32;
+  private io.github.lewin671.remoteagent.core.proto.Text emptyBody_;
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   */
+  @java.lang.Override
+  public boolean hasEmptyBody() {
+    return ((bitField0_ & 0x00000200) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getEmptyBody() {
+    return emptyBody_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : emptyBody_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setEmptyBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    emptyBody_ = value;
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeEmptyBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (emptyBody_ != null &&
+        emptyBody_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      emptyBody_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(emptyBody_).mergeFrom(value).buildPartial();
+    } else {
+      emptyBody_ = value;
+    }
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+   */
+  private void clearEmptyBody() {
+    emptyBody_ = null;
+    bitField0_ = (bitField0_ & ~0x00000200);
+  }
+
+  public static final int EMPTY_CAN_RETRY_FIELD_NUMBER = 33;
+  private boolean emptyCanRetry_;
+  /**
+   * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+   * @return The emptyCanRetry.
+   */
+  @java.lang.Override
+  public boolean getEmptyCanRetry() {
+    return emptyCanRetry_;
+  }
+  /**
+   * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+   * @param value The emptyCanRetry to set.
+   */
+  private void setEmptyCanRetry(boolean value) {
+    
+    emptyCanRetry_ = value;
+  }
+  /**
+   * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+   */
+  private void clearEmptyCanRetry() {
+
+    emptyCanRetry_ = false;
+  }
+
+  public static final int BANNERS_FIELD_NUMBER = 34;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageBannerView> banners_;
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageBannerView> getBannersList() {
+    return banners_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.UsageBannerViewOrBuilder> 
+      getBannersOrBuilderList() {
+    return banners_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.Override
+  public int getBannersCount() {
+    return banners_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.UsageBannerView getBanners(int index) {
+    return banners_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.UsageBannerViewOrBuilder getBannersOrBuilder(
+      int index) {
+    return banners_.get(index);
+  }
+  private void ensureBannersIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.UsageBannerView> tmp = banners_;
+    if (!tmp.isModifiable()) {
+      banners_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBanners(
+      int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureBannersIsMutable();
+    banners_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addBanners(io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureBannersIsMutable();
+    banners_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addBanners(
+      int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureBannersIsMutable();
+    banners_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  private void addAllBanners(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageBannerView> values) {
+    ensureBannersIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, banners_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  private void clearBanners() {
+    banners_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+   */
+  private void removeBanners(int index) {
+    ensureBannersIsMutable();
+    banners_.remove(index);
+  }
+
+  public static final int CHARTS_A11Y_LABEL_FIELD_NUMBER = 35;
+  private io.github.lewin671.remoteagent.core.proto.Text chartsA11YLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasChartsA11YLabel() {
+    return ((bitField0_ & 0x00000400) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getChartsA11YLabel() {
+    return chartsA11YLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : chartsA11YLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setChartsA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    chartsA11YLabel_ = value;
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeChartsA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (chartsA11YLabel_ != null &&
+        chartsA11YLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      chartsA11YLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(chartsA11YLabel_).mergeFrom(value).buildPartial();
+    } else {
+      chartsA11YLabel_ = value;
+    }
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+   */
+  private void clearChartsA11YLabel() {
+    chartsA11YLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000400);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.UsageViewModel parseFrom(
@@ -2395,6 +2753,370 @@ public  final class UsageViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSubtitle() {
+      return instance.hasSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSubtitle() {
+      return instance.getSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    public Builder setSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSubtitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    public Builder setSubtitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSubtitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    public Builder mergeSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSubtitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 29 [json_name = "subtitle"];</code>
+     */
+    public Builder clearSubtitle() {  copyOnWrite();
+      instance.clearSubtitle();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+     * @return The enum numeric value on the wire for emptyKind.
+     */
+    @java.lang.Override
+    public int getEmptyKindValue() {
+      return instance.getEmptyKindValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+     * @param value The emptyKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEmptyKindValue(int value) {
+      copyOnWrite();
+      instance.setEmptyKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+     * @return The emptyKind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageEmptyKind getEmptyKind() {
+      return instance.getEmptyKind();
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+     * @param value The enum numeric value on the wire for emptyKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEmptyKind(io.github.lewin671.remoteagent.core.proto.UsageEmptyKind value) {
+      copyOnWrite();
+      instance.setEmptyKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.UsageEmptyKind empty_kind = 30 [json_name = "emptyKind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEmptyKind() {
+      copyOnWrite();
+      instance.clearEmptyKind();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasEmptyTitle() {
+      return instance.hasEmptyTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getEmptyTitle() {
+      return instance.getEmptyTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    public Builder setEmptyTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setEmptyTitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    public Builder setEmptyTitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setEmptyTitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    public Builder mergeEmptyTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeEmptyTitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_title = 31 [json_name = "emptyTitle"];</code>
+     */
+    public Builder clearEmptyTitle() {  copyOnWrite();
+      instance.clearEmptyTitle();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    @java.lang.Override
+    public boolean hasEmptyBody() {
+      return instance.hasEmptyBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getEmptyBody() {
+      return instance.getEmptyBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    public Builder setEmptyBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setEmptyBody(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    public Builder setEmptyBody(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setEmptyBody(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    public Builder mergeEmptyBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeEmptyBody(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text empty_body = 32 [json_name = "emptyBody"];</code>
+     */
+    public Builder clearEmptyBody() {  copyOnWrite();
+      instance.clearEmptyBody();
+      return this;
+    }
+
+    /**
+     * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+     * @return The emptyCanRetry.
+     */
+    @java.lang.Override
+    public boolean getEmptyCanRetry() {
+      return instance.getEmptyCanRetry();
+    }
+    /**
+     * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+     * @param value The emptyCanRetry to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEmptyCanRetry(boolean value) {
+      copyOnWrite();
+      instance.setEmptyCanRetry(value);
+      return this;
+    }
+    /**
+     * <code>bool empty_can_retry = 33 [json_name = "emptyCanRetry"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEmptyCanRetry() {
+      copyOnWrite();
+      instance.clearEmptyCanRetry();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.UsageBannerView> getBannersList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getBannersList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    @java.lang.Override
+    public int getBannersCount() {
+      return instance.getBannersCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.UsageBannerView getBanners(int index) {
+      return instance.getBanners(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder setBanners(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+      copyOnWrite();
+      instance.setBanners(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder setBanners(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setBanners(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder addBanners(io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+      copyOnWrite();
+      instance.addBanners(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder addBanners(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView value) {
+      copyOnWrite();
+      instance.addBanners(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder addBanners(
+        io.github.lewin671.remoteagent.core.proto.UsageBannerView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addBanners(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder addBanners(
+        int index, io.github.lewin671.remoteagent.core.proto.UsageBannerView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addBanners(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder addAllBanners(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.UsageBannerView> values) {
+      copyOnWrite();
+      instance.addAllBanners(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder clearBanners() {
+      copyOnWrite();
+      instance.clearBanners();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.UsageBannerView banners = 34 [json_name = "banners"];</code>
+     */
+    public Builder removeBanners(int index) {
+      copyOnWrite();
+      instance.removeBanners(index);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasChartsA11YLabel() {
+      return instance.hasChartsA11YLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getChartsA11YLabel() {
+      return instance.getChartsA11YLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    public Builder setChartsA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setChartsA11YLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    public Builder setChartsA11YLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setChartsA11YLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    public Builder mergeChartsA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeChartsA11YLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text charts_a11y_label = 35 [json_name = "chartsA11yLabel"];</code>
+     */
+    public Builder clearChartsA11YLabel() {  copyOnWrite();
+      instance.clearChartsA11YLabel();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageViewModel)
   }
   @java.lang.Override
@@ -2442,13 +3164,22 @@ public  final class UsageViewModel extends
             "rows_",
             io.github.lewin671.remoteagent.core.proto.UsageModelRowView.class,
             "unsupportedFootnote_",
+            "subtitle_",
+            "emptyKind_",
+            "emptyTitle_",
+            "emptyBody_",
+            "emptyCanRetry_",
+            "banners_",
+            io.github.lewin671.remoteagent.core.proto.UsageBannerView.class,
+            "chartsA11YLabel_",
           };
           java.lang.String info =
-              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u1009\u0000\b\u0007\t\u0002" +
-              "\n\u0007\u000b\u0004\f\u0004\r\u0007\u000e\f\u000f\f\u0010\u0002\u0011\u0002\u0012" +
-              "\u0004\u0013\f\u0014\u001b\u0015\u0007\u0016\u1009\u0001\u0017\u1009\u0002\u0018" +
-              "\u1009\u0003\u0019\u1009\u0004\u001a\u1009\u0005\u001b\u001b\u001c\u1009\u0006";
+              "\u0000#\u0000\u0001\u0001##\u0000\u0003\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u1009\u0000\b\u0007\t\u0002\n\u0007\u000b" +
+              "\u0004\f\u0004\r\u0007\u000e\f\u000f\f\u0010\u0002\u0011\u0002\u0012\u0004\u0013" +
+              "\f\u0014\u001b\u0015\u0007\u0016\u1009\u0001\u0017\u1009\u0002\u0018\u1009\u0003" +
+              "\u0019\u1009\u0004\u001a\u1009\u0005\u001b\u001b\u001c\u1009\u0006\u001d\u1009\u0007" +
+              "\u001e\f\u001f\u1009\b \u1009\t!\u0007\"\u001b#\u1009\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

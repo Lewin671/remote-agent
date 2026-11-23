@@ -85,4 +85,43 @@ public interface UsageMetricStripViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.UsageStripPointView selected_points = 10 [json_name = "selectedPoints"];</code>
    */
   int getSelectedPointsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   * @return Whether the currentValueText field is set.
+   */
+  boolean hasCurrentValueText();
+  /**
+   * <code>.remoteagent.core.v1.Text current_value_text = 11 [json_name = "currentValueText"];</code>
+   * @return The currentValueText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getCurrentValueText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   * @return Whether the minValueText field is set.
+   */
+  boolean hasMinValueText();
+  /**
+   * <code>.remoteagent.core.v1.Text min_value_text = 12 [json_name = "minValueText"];</code>
+   * @return The minValueText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMinValueText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   * @return Whether the maxValueText field is set.
+   */
+  boolean hasMaxValueText();
+  /**
+   * <code>.remoteagent.core.v1.Text max_value_text = 13 [json_name = "maxValueText"];</code>
+   * @return The maxValueText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMaxValueText();
+
+  /**
+   * <code>bool show_range = 14 [json_name = "showRange"];</code>
+   * @return The showRange.
+   */
+  boolean getShowRange();
 }

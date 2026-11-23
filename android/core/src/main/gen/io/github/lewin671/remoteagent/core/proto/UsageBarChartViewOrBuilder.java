@@ -35,4 +35,26 @@ public interface UsageBarChartViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.UsageBarBucketView buckets = 3 [json_name = "buckets"];</code>
    */
   int getBucketsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   * @return Whether the yMaxText field is set.
+   */
+  boolean hasYMaxText();
+  /**
+   * <code>.remoteagent.core.v1.Text y_max_text = 4 [json_name = "yMaxText"];</code>
+   * @return The yMaxText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getYMaxText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   * @return Whether the yMidText field is set.
+   */
+  boolean hasYMidText();
+  /**
+   * <code>.remoteagent.core.v1.Text y_mid_text = 5 [json_name = "yMidText"];</code>
+   * @return The yMidText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getYMidText();
 }

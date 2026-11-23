@@ -2535,6 +2535,15 @@ public struct PBMachineSettingsViewModel: @unchecked Sendable {
     set {_uniqueStorage()._isManager = newValue}
   }
 
+  public var usageTokensText: PBCoreText {
+    get {return _storage._usageTokensText ?? PBCoreText()}
+    set {_uniqueStorage()._usageTokensText = newValue}
+  }
+  /// Returns true if `usageTokensText` has been explicitly set.
+  public var hasUsageTokensText: Bool {return _storage._usageTokensText != nil}
+  /// Clears the value of `usageTokensText`. Subsequent reads from it will return its default value.
+  public mutating func clearUsageTokensText() {_uniqueStorage()._usageTokensText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2726,35 +2735,34 @@ public struct PBPlainDiagCheckView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBDiagRowView: Sendable {
+public struct PBDiagRowView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   public var labelText: PBCoreText {
-    get {return _labelText ?? PBCoreText()}
-    set {_labelText = newValue}
+    get {return _storage._labelText ?? PBCoreText()}
+    set {_uniqueStorage()._labelText = newValue}
   }
   /// Returns true if `labelText` has been explicitly set.
-  public var hasLabelText: Bool {return self._labelText != nil}
+  public var hasLabelText: Bool {return _storage._labelText != nil}
   /// Clears the value of `labelText`. Subsequent reads from it will return its default value.
-  public mutating func clearLabelText() {self._labelText = nil}
+  public mutating func clearLabelText() {_uniqueStorage()._labelText = nil}
 
   public var valueText: PBCoreText {
-    get {return _valueText ?? PBCoreText()}
-    set {_valueText = newValue}
+    get {return _storage._valueText ?? PBCoreText()}
+    set {_uniqueStorage()._valueText = newValue}
   }
   /// Returns true if `valueText` has been explicitly set.
-  public var hasValueText: Bool {return self._valueText != nil}
+  public var hasValueText: Bool {return _storage._valueText != nil}
   /// Clears the value of `valueText`. Subsequent reads from it will return its default value.
-  public mutating func clearValueText() {self._valueText = nil}
+  public mutating func clearValueText() {_uniqueStorage()._valueText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _labelText: PBCoreText? = nil
-  fileprivate var _valueText: PBCoreText? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBDiagGroupView: Sendable {
@@ -6266,7 +6274,7 @@ extension PBMachineManagementActionsView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineSettingsViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0\u{1}loading\0\u{3}show_cli_switches\0\u{3}cli_switches_editable\0\u{3}cli_switches_lease_expired\0\u{3}cli_switches_disabled_reason\0\u{3}cli_switches_conflict_banner\0\u{3}cli_switches_footer\0\u{3}header_dot\0\u{3}header_subtitle\0\u{3}status_card_dot\0\u{3}status_card_badge\0\u{3}status_card_warn\0\u{3}show_usage_entry\0\u{3}usage_total_tokens\0\u{3}usage_fallback_thirty_days\0\u{3}usage_cached_offline\0\u{3}usage_empty_text\0\u{3}project_count\0\u{3}project_count_text\0\u{3}short_id\0\u{3}app_online\0\u{3}is_manager\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}found\0\u{1}member\0\u{1}online\0\u{1}unlinked\0\u{3}protocol_mismatch\0\u{1}editable\0\u{3}offline_or_mismatch_banner\0\u{3}removed_banner\0\u{3}show_status_entry\0\u{3}status_rings\0\u{3}quota_rows\0\u{1}connection\0\u{3}cli_versions\0\u{3}has_unverified_cli\0\u{3}settings_loading\0\u{3}settings_error\0\u{3}save_pending\0\u{3}save_unknown\0\u{3}save_error\0\u{3}available_agents\0\u{3}selected_agent\0\u{3}agent_defaults\0\u{3}approval_timeout_choices\0\u{3}selected_approval_timeout_seconds\0\u{3}idle_close_choices\0\u{3}selected_idle_close_minutes\0\u{3}attachment_storage\0\u{1}projects\0\u{1}management\0\u{1}loading\0\u{3}show_cli_switches\0\u{3}cli_switches_editable\0\u{3}cli_switches_lease_expired\0\u{3}cli_switches_disabled_reason\0\u{3}cli_switches_conflict_banner\0\u{3}cli_switches_footer\0\u{3}header_dot\0\u{3}header_subtitle\0\u{3}status_card_dot\0\u{3}status_card_badge\0\u{3}status_card_warn\0\u{3}show_usage_entry\0\u{3}usage_total_tokens\0\u{3}usage_fallback_thirty_days\0\u{3}usage_cached_offline\0\u{3}usage_empty_text\0\u{3}project_count\0\u{3}project_count_text\0\u{3}short_id\0\u{3}app_online\0\u{3}is_manager\0\u{3}usage_tokens_text\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -6322,6 +6330,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _shortID: String = String()
     var _appOnline: Bool = false
     var _isManager: Bool = false
+    var _usageTokensText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6385,6 +6394,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _shortID = source._shortID
       _appOnline = source._appOnline
       _isManager = source._isManager
+      _usageTokensText = source._usageTokensText
     }
   }
 
@@ -6456,6 +6466,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 51: try { try decoder.decodeSingularStringField(value: &_storage._shortID) }()
         case 52: try { try decoder.decodeSingularBoolField(value: &_storage._appOnline) }()
         case 53: try { try decoder.decodeSingularBoolField(value: &_storage._isManager) }()
+        case 54: try { try decoder.decodeSingularMessageField(value: &_storage._usageTokensText) }()
         default: break
         }
       }
@@ -6627,6 +6638,9 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
       if _storage._isManager != false {
         try visitor.visitSingularBoolField(value: _storage._isManager, fieldNumber: 53)
       }
+      try { if let v = _storage._usageTokensText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 54)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6689,6 +6703,7 @@ extension PBMachineSettingsViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._shortID != rhs_storage._shortID {return false}
         if _storage._appOnline != rhs_storage._appOnline {return false}
         if _storage._isManager != rhs_storage._isManager {return false}
+        if _storage._usageTokensText != rhs_storage._usageTokensText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -7031,36 +7046,74 @@ extension PBDiagRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
   public static let protoMessageName: String = _protobuf_package + ".DiagRowView"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}label_text\0\u{3}value_text\0")
 
+  fileprivate class _StorageClass {
+    var _labelText: PBCoreText? = nil
+    var _valueText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _labelText = source._labelText
+      _valueText = source._valueText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularMessageField(value: &self._labelText) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._valueText) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularMessageField(value: &_storage._labelText) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._valueText) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    try { if let v = self._labelText {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
-    } }()
-    try { if let v = self._valueText {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      try { if let v = _storage._labelText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+      } }()
+      try { if let v = _storage._valueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBDiagRowView, rhs: PBDiagRowView) -> Bool {
-    if lhs._labelText != rhs._labelText {return false}
-    if lhs._valueText != rhs._valueText {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._labelText != rhs_storage._labelText {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -151,4 +151,37 @@ public interface UsageHeroViewOrBuilder extends
    * @return The periodCompositionRows.
    */
   int getPeriodCompositionRows();
+
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   * @return Whether the totalTokensText field is set.
+   */
+  boolean hasTotalTokensText();
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   * @return The totalTokensText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   * @return Whether the scopeText field is set.
+   */
+  boolean hasScopeText();
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   * @return The scopeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getScopeText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   * @return Whether the sublineText field is set.
+   */
+  boolean hasSublineText();
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   * @return The sublineText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSublineText();
 }

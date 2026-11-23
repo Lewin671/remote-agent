@@ -560,41 +560,65 @@ public struct PBCoreHomeHeadlineView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBCoreHomeEmptyView: Sendable {
+public struct PBCoreHomeEmptyView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var kind: PBCoreHomeEmptyKind = .unspecified
+  public var kind: PBCoreHomeEmptyKind {
+    get {return _storage._kind}
+    set {_uniqueStorage()._kind = newValue}
+  }
 
   public var message: PBCoreText {
-    get {return _message ?? PBCoreText()}
-    set {_message = newValue}
+    get {return _storage._message ?? PBCoreText()}
+    set {_uniqueStorage()._message = newValue}
   }
   /// Returns true if `message` has been explicitly set.
-  public var hasMessage: Bool {return self._message != nil}
+  public var hasMessage: Bool {return _storage._message != nil}
   /// Clears the value of `message`. Subsequent reads from it will return its default value.
-  public mutating func clearMessage() {self._message = nil}
+  public mutating func clearMessage() {_uniqueStorage()._message = nil}
 
-  public var command: String = String()
+  public var command: String {
+    get {return _storage._command}
+    set {_uniqueStorage()._command = newValue}
+  }
 
-  public var readyMachineID: String = String()
+  public var readyMachineID: String {
+    get {return _storage._readyMachineID}
+    set {_uniqueStorage()._readyMachineID = newValue}
+  }
 
-  public var readyMachineName: String = String()
+  public var readyMachineName: String {
+    get {return _storage._readyMachineName}
+    set {_uniqueStorage()._readyMachineName = newValue}
+  }
 
-  public var canAddDevice: Bool = false
+  public var canAddDevice: Bool {
+    get {return _storage._canAddDevice}
+    set {_uniqueStorage()._canAddDevice = newValue}
+  }
 
-  public var canStartFirst: Bool = false
+  public var canStartFirst: Bool {
+    get {return _storage._canStartFirst}
+    set {_uniqueStorage()._canStartFirst = newValue}
+  }
 
-  public var canRetry: Bool = false
+  public var canRetry: Bool {
+    get {return _storage._canRetry}
+    set {_uniqueStorage()._canRetry = newValue}
+  }
 
-  public var loading: Bool = false
+  public var loading: Bool {
+    get {return _storage._loading}
+    set {_uniqueStorage()._loading = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _message: PBCoreText? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBCoreAttentionCardView: @unchecked Sendable {
@@ -1771,71 +1795,123 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   public static let protoMessageName: String = _protobuf_package + ".HomeEmptyView"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}message\0\u{1}command\0\u{3}ready_machine_id\0\u{3}ready_machine_name\0\u{3}can_add_device\0\u{3}can_start_first\0\u{3}can_retry\0\u{1}loading\0")
 
+  fileprivate class _StorageClass {
+    var _kind: PBCoreHomeEmptyKind = .unspecified
+    var _message: PBCoreText? = nil
+    var _command: String = String()
+    var _readyMachineID: String = String()
+    var _readyMachineName: String = String()
+    var _canAddDevice: Bool = false
+    var _canStartFirst: Bool = false
+    var _canRetry: Bool = false
+    var _loading: Bool = false
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _kind = source._kind
+      _message = source._message
+      _command = source._command
+      _readyMachineID = source._readyMachineID
+      _readyMachineName = source._readyMachineName
+      _canAddDevice = source._canAddDevice
+      _canStartFirst = source._canStartFirst
+      _canRetry = source._canRetry
+      _loading = source._loading
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._message) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.command) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.readyMachineID) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.readyMachineName) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.canAddDevice) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.canStartFirst) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.canRetry) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.loading) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._message) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._command) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._readyMachineID) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._readyMachineName) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._canAddDevice) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._canStartFirst) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._canRetry) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._loading) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if self.kind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 1)
-    }
-    try { if let v = self._message {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    if !self.command.isEmpty {
-      try visitor.visitSingularStringField(value: self.command, fieldNumber: 3)
-    }
-    if !self.readyMachineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.readyMachineID, fieldNumber: 4)
-    }
-    if !self.readyMachineName.isEmpty {
-      try visitor.visitSingularStringField(value: self.readyMachineName, fieldNumber: 5)
-    }
-    if self.canAddDevice != false {
-      try visitor.visitSingularBoolField(value: self.canAddDevice, fieldNumber: 6)
-    }
-    if self.canStartFirst != false {
-      try visitor.visitSingularBoolField(value: self.canStartFirst, fieldNumber: 7)
-    }
-    if self.canRetry != false {
-      try visitor.visitSingularBoolField(value: self.canRetry, fieldNumber: 8)
-    }
-    if self.loading != false {
-      try visitor.visitSingularBoolField(value: self.loading, fieldNumber: 9)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._kind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 1)
+      }
+      try { if let v = _storage._message {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if !_storage._command.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._command, fieldNumber: 3)
+      }
+      if !_storage._readyMachineID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._readyMachineID, fieldNumber: 4)
+      }
+      if !_storage._readyMachineName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._readyMachineName, fieldNumber: 5)
+      }
+      if _storage._canAddDevice != false {
+        try visitor.visitSingularBoolField(value: _storage._canAddDevice, fieldNumber: 6)
+      }
+      if _storage._canStartFirst != false {
+        try visitor.visitSingularBoolField(value: _storage._canStartFirst, fieldNumber: 7)
+      }
+      if _storage._canRetry != false {
+        try visitor.visitSingularBoolField(value: _storage._canRetry, fieldNumber: 8)
+      }
+      if _storage._loading != false {
+        try visitor.visitSingularBoolField(value: _storage._loading, fieldNumber: 9)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreHomeEmptyView, rhs: PBCoreHomeEmptyView) -> Bool {
-    if lhs.kind != rhs.kind {return false}
-    if lhs._message != rhs._message {return false}
-    if lhs.command != rhs.command {return false}
-    if lhs.readyMachineID != rhs.readyMachineID {return false}
-    if lhs.readyMachineName != rhs.readyMachineName {return false}
-    if lhs.canAddDevice != rhs.canAddDevice {return false}
-    if lhs.canStartFirst != rhs.canStartFirst {return false}
-    if lhs.canRetry != rhs.canRetry {return false}
-    if lhs.loading != rhs.loading {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._kind != rhs_storage._kind {return false}
+        if _storage._message != rhs_storage._message {return false}
+        if _storage._command != rhs_storage._command {return false}
+        if _storage._readyMachineID != rhs_storage._readyMachineID {return false}
+        if _storage._readyMachineName != rhs_storage._readyMachineName {return false}
+        if _storage._canAddDevice != rhs_storage._canAddDevice {return false}
+        if _storage._canStartFirst != rhs_storage._canStartFirst {return false}
+        if _storage._canRetry != rhs_storage._canRetry {return false}
+        if _storage._loading != rhs_storage._loading {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

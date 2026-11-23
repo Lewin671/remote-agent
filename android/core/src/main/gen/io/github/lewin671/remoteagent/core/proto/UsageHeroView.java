@@ -618,6 +618,150 @@ public  final class UsageHeroView extends
     periodCompositionRows_ = 0;
   }
 
+  public static final int TOTAL_TOKENS_TEXT_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text totalTokensText_;
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTotalTokensText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+    return totalTokensText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : totalTokensText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    totalTokensText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (totalTokensText_ != null &&
+        totalTokensText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      totalTokensText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(totalTokensText_).mergeFrom(value).buildPartial();
+    } else {
+      totalTokensText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+   */
+  private void clearTotalTokensText() {
+    totalTokensText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int SCOPE_TEXT_FIELD_NUMBER = 21;
+  private io.github.lewin671.remoteagent.core.proto.Text scopeText_;
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScopeText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getScopeText() {
+    return scopeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : scopeText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScopeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    scopeText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeScopeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (scopeText_ != null &&
+        scopeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      scopeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(scopeText_).mergeFrom(value).buildPartial();
+    } else {
+      scopeText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+   */
+  private void clearScopeText() {
+    scopeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int SUBLINE_TEXT_FIELD_NUMBER = 22;
+  private io.github.lewin671.remoteagent.core.proto.Text sublineText_;
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSublineText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSublineText() {
+    return sublineText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sublineText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSublineText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    sublineText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSublineText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (sublineText_ != null &&
+        sublineText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      sublineText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sublineText_).mergeFrom(value).buildPartial();
+    } else {
+      sublineText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+   */
+  private void clearSublineText() {
+    sublineText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.UsageHeroView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1347,6 +1491,147 @@ public  final class UsageHeroView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTotalTokensText() {
+      return instance.hasTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+      return instance.getTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTotalTokensText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTotalTokensText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    public Builder mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTotalTokensText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 20 [json_name = "totalTokensText"];</code>
+     */
+    public Builder clearTotalTokensText() {  copyOnWrite();
+      instance.clearTotalTokensText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScopeText() {
+      return instance.hasScopeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getScopeText() {
+      return instance.getScopeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    public Builder setScopeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setScopeText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    public Builder setScopeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScopeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    public Builder mergeScopeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeScopeText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text scope_text = 21 [json_name = "scopeText"];</code>
+     */
+    public Builder clearScopeText() {  copyOnWrite();
+      instance.clearScopeText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSublineText() {
+      return instance.hasSublineText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSublineText() {
+      return instance.getSublineText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    public Builder setSublineText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSublineText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    public Builder setSublineText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSublineText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    public Builder mergeSublineText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSublineText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subline_text = 22 [json_name = "sublineText"];</code>
+     */
+    public Builder clearSublineText() {  copyOnWrite();
+      instance.clearSublineText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.UsageHeroView)
   }
   @java.lang.Override
@@ -1383,12 +1668,15 @@ public  final class UsageHeroView extends
             "previousBackfilling_",
             "composition_",
             "periodCompositionRows_",
+            "totalTokensText_",
+            "scopeText_",
+            "sublineText_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0007\u0002\u0004" +
+              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0000\u0000\u0001\u0007\u0002\u0004" +
               "\u0003\u0002\u0004\u0002\u0005\u0007\u0006\f\u0007\u0208\b\u0208\t\u0208\n\u0004" +
               "\u000b\u0003\f\u0003\r\u0007\u000e\u0000\u000f\u0007\u0010\u0000\u0011\u0007\u0012" +
-              "\u1009\u0000\u0013\u0004";
+              "\u1009\u0000\u0013\u0004\u0014\u1009\u0001\u0015\u1009\u0002\u0016\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

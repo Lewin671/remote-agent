@@ -506,4 +506,15 @@ public interface MachineSettingsViewModelOrBuilder extends
    * @return The isManager.
    */
   boolean getIsManager();
+
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   * @return Whether the usageTokensText field is set.
+   */
+  boolean hasUsageTokensText();
+  /**
+   * <code>.remoteagent.core.v1.Text usage_tokens_text = 54 [json_name = "usageTokensText"];</code>
+   * @return The usageTokensText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getUsageTokensText();
 }
