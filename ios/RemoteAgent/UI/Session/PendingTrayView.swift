@@ -209,7 +209,27 @@ struct PendingTrayView: View {
         .padding(.horizontal, 14)
     }
 
+    @ViewBuilder
     private func rowView(_ item: PBSessionTrayItemView) -> some View {
+        if item.isSkeleton {
+            HStack(alignment: .center, spacing: 8) {
+                Color.clear.frame(width: 18, height: 1)
+                Text(L10n.sessionSkeleton())
+                    .font(.subheadline)
+                    .foregroundStyle(DS.ink2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 14)
+            .padding(.vertical, 6)
+            .frame(minHeight: 38)
+            .accessibilityIdentifier("pending-tray-row-\(item.requestID)")
+        } else {
+            normalRowView(item)
+        }
+    }
+
+    private func normalRowView(_ item: PBSessionTrayItemView) -> some View {
         let expanded = openID == item.requestID
         let reasonText = item.hasReasonText ? item.reasonText.rendered() : ""
         let rColor = toneColor(item.tone)
