@@ -33,7 +33,7 @@ public func receiveMachineDiskNotification(
         return nil
     }
     let detailed = !locked && (showContent || display.showDetailedByDefault)
-    let title = detailed ? display.title.rendered(locale: locale) : "remote-agent"
+    let title = detailed ? display.title.rendered(locale: locale) : ""
     let body = detailed ? display.body.rendered(locale: locale) : display.genericBody.rendered(locale: locale)
     return MachineDiskNotice(machineID: display.machineID, tag: display.tag, title: title, body: body)
 }

@@ -212,7 +212,7 @@ extension ServerTests {
                     locked: true,
                     locale: "en"
                 )
-                #expect(lockedNotice?.title == "remote-agent")
+                #expect(lockedNotice?.title == "")
                 #expect(lockedNotice?.body == L10n.machineStatusHomeWarning(locale: "en"))
 
                 // Fail-closed when outer tag or machineID does not match.
