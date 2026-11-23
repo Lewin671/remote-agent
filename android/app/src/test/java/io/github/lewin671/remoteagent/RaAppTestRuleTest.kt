@@ -51,7 +51,7 @@ class RaAppTestRuleTest {
             processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
             state = PendingImage.State.Ready
         }
-        assertTrue(ImageDraft("session:fixture", files).attach(listOf(image), 6))
+        assertTrue(ImageDraft("session:fixture", files).attach(listOf(image)))
         assertEquals("0\na", files.get("session:fixture", "order")!!.toString(Charsets.UTF_8))
     }
 

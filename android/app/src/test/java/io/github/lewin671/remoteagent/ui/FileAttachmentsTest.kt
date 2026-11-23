@@ -21,7 +21,7 @@ class FileAttachmentsTest {
         val store = MemoryFiles()
         val original = file()
         val d = ImageDraft("session:s", store)
-        assertTrue(d.attach(listOf(original), 6))
+        assertTrue(d.attach(listOf(original)))
         assertTrue(store.data.keys.any { it.endsWith(".file") })
         assertFalse(store.data.keys.any { it.endsWith(".img") })
         assertTrue(store.data.values.sumOf { it.size } < 1024)
@@ -33,16 +33,6 @@ class FileAttachmentsTest {
         assertNull(restored.processed)
         assertTrue(needsUpload(restored, "computer"))
         assertTrue((restored.state as PendingImage.State.Failed).error.testText().contains("重新选择"))
-    }
-
-    @Test fun filesAndImagesHaveSeparateLimitsAndRestoringIsAtomic() {
-        val d = ImageDraft("session:s", MemoryFiles())
-        assertTrue(d.attach((1..6).map { PendingImage("image$it", null) }, 6))
-        assertTrue(d.attach((1..6).map { file("file$it") }, 6))
-        assertEquals(6, d.pictures.size)
-        assertEquals(6, d.documents.size)
-        assertFalse(d.attach(listOf(file("overflow")), 6))
-        assertEquals(12, d.images.size)
     }
 
     @Test fun expiresSwitchesAndRestoresForceAFileReupload() {
@@ -57,7 +47,7 @@ class FileAttachmentsTest {
         assertFalse(needsUpload(f, "computer"))
         assertTrue(needsUpload(f, "another"))
         val d = ImageDraft("session:s", MemoryFiles())
-        assertTrue(d.attach(listOf(f), 6))
+        assertTrue(d.attach(listOf(f)))
         assertNull(f.fileId)
         assertFalse(d.ready("computer"))
         assertTrue(needsUpload(f, "computer"))

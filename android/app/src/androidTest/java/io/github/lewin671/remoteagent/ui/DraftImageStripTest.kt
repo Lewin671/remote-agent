@@ -46,7 +46,7 @@ class DraftImageStripTest {
                 processed = Processed(bytes, io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 120, 90)
                 state = PendingImage.State.Ready
             }
-        }, 9)
+        })
         try {
             ui.setContent {
                 RaTheme(ThemeMode.LIGHT) {

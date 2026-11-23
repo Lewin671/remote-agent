@@ -45,15 +45,58 @@ class SendImagesTest {
     @Test
     fun takeBackAttachesRetainedImagesToDraftWithoutDuplicates() {
         val sid = "s-takeback"
-        val image = PendingImage("picked", null).apply {
-            processed = Processed(byteArrayOf(1, 2), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+        val remote = io.github.lewin671.remoteagent.core.Remote(
+            io.github.lewin671.remoteagent.core.Account("http://127.0.0.1:1", "test"),
+            okhttp3.OkHttpClient(),
+        )
+        try {
+            val caps = io.github.lewin671.remoteagent.proto.MachineCapabilities.newBuilder()
+                .setImageUpload(true)
+                .setFileUpload(true)
+                .setMaxImagesPerMessage(6)
+                .setMaxFilesPerMessage(6)
+                .build()
+            val meta = io.github.lewin671.remoteagent.proto.MachineMeta.newBuilder()
+                .setHostname("MacBook")
+                .setCapabilities(caps)
+                .build()
+            // Machine is offline: put_back=true in Core AttachmentEval must still accept valid attachments.
+            remote.showForTest(
+                io.github.lewin671.remoteagent.core.RemoteState(
+                    conn = io.github.lewin671.remoteagent.core.ConnState.ONLINE,
+                    machines = mapOf("mac" to io.github.lewin671.remoteagent.core.MachineView("mac", false, 0, meta)),
+                    sessions = mapOf(sid to io.github.lewin671.remoteagent.core.SessionView(sid, "mac")),
+                ),
+            )
+            val image = PendingImage("picked", null).apply {
+                processed = Processed(byteArrayOf(1, 2), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+            }
+            Outbox.of(sid) += Outgoing("same-request", listOf(image), original = true)
+            val draft = ImageDraft("session:recover", MemoryFiles())
+            assertTrue(Outbox.canTakeBack(sid, "same-request", draft, remote, "mac"))
+            assertTrue(Outbox.takeBack(sid, "same-request", draft, remote, "mac"))
+            assertSame(image, draft.images.single())
+            assertTrue(draft.original)
+            assertTrue(needsUpload(image, "mac"))
+
+            // When draft already has 6 images while offline, Core rejects put_back with its localized limit notice.
+            draft.attach((1..5).map { PendingImage("have$it", null) })
+            assertEquals(6, draft.pictures.size)
+            val extra = PendingImage("extra", null).apply {
+                processed = Processed(byteArrayOf(3, 4), io.github.lewin671.remoteagent.proto.ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
+            }
+            Outbox.of(sid) += Outgoing("over-limit", listOf(extra), original = false)
+            assertFalse(Outbox.canTakeBack(sid, "over-limit", draft, remote, "mac"))
+            assertTrue("got=${draft.notice}", draft.notice.contains("6"))
+            draft.notice = ""
+            assertFalse(Outbox.takeBack(sid, "over-limit", draft, remote, "mac"))
+            assertEquals(6, draft.pictures.size)
+            assertTrue("got=${draft.notice}", draft.notice.contains("6"))
+            assertNotNull(Outbox.find(sid, "over-limit"))
+        } finally {
+            Outbox.of(sid).clear()
+            remote.close()
         }
-        Outbox.of(sid) += Outgoing("same-request", listOf(image), original = true)
-        val draft = ImageDraft("session:recover", MemoryFiles())
-        assertTrue(Outbox.takeBack(sid, "same-request", draft, maxImages = 6, maxFiles = 6))
-        assertSame(image, draft.images.single())
-        assertTrue(draft.original)
-        assertTrue(needsUpload(image, "mac"))
     }
 
     @Test

@@ -59,12 +59,10 @@ class ComposerDraftTest {
         val remote = Remote(Account("http://127.0.0.1:1", "2222222222222222"), Api.defaultHttp())
         try {
             val draft = ImageDraft("session:tight", MemoryFiles(), scope = null)
-            assertTrue(draft.attach((1..6).map { PendingImage("img-$it", null) }, 6, fileMax = 6))
+            assertTrue(draft.attach((1..6).map { PendingImage("img-$it", null) }))
             assertTrue(
                 draft.attach(
                     (1..6).map { PendingImage("file-$it", "content://doc/$it", "ra-p3-f$it.txt", 1024L, retainSource = false) },
-                    6,
-                    fileMax = 6,
                 ),
             )
             // Pixel 3 keyboard-open chat viewport (~392dp x 240dp).

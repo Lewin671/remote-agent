@@ -321,6 +321,61 @@ internal fun evaluateDraftAttachmentsBlocked(
     return coreTextToMessageText(text).resolve(copy).ifEmpty { null }
 }
 
+/**
+ * Evaluates via Core (`Screen.attachment_eval` with `put_back = true`) whether putting [back] back
+ * into a draft that already holds [currentImages] pictures and [currentFiles] documents obeys the
+ * machine's capabilities and per-message limits, ignoring whether the computer is currently online.
+ * Returns Core's rejection [CoreText] (possibly empty default instance if rejected without text),
+ * or `null` when every candidate is accepted.
+ */
+internal fun evaluatePutBackBlockedText(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    currentImages: Int,
+    currentFiles: Int,
+    back: List<PendingImage>,
+): CoreText? {
+    if (back.isEmpty()) return null
+    val req = AttachmentEvalScreenRequest.newBuilder().apply {
+        if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+        if (sessionId.isNotEmpty()) setSessionId(sessionId)
+        setCurrentImages(currentImages)
+        setCurrentFiles(currentFiles)
+        setPutBack(true)
+        for (item in back) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(item.fileName.orEmpty())
+                    .setMimeType(if (item.isFile) "" else "image/jpeg")
+                    .setSizeBytes(if (item.isFile) item.fileBytes else 0L)
+                    .setForceFile(item.isFile),
+            )
+        }
+    }.build()
+    val eval = remote.evaluateAttachments(req)
+    if (eval.decisionsCount == back.size && eval.decisionsList.all { it.accepted }) return null
+    val rejected = eval.decisionsList.firstOrNull { !it.accepted }
+    return when {
+        eval.hasNotice() -> eval.notice
+        rejected != null && rejected.hasRejectReason() -> rejected.rejectReason
+        else -> CoreText.getDefaultInstance()
+    }
+}
+
+internal fun evaluatePutBackBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    currentImages: Int,
+    currentFiles: Int,
+    back: List<PendingImage>,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
+): String? {
+    val text = evaluatePutBackBlockedText(remote, machineId, sessionId, currentImages, currentFiles, back) ?: return null
+    return coreTextToMessageText(text).resolve(copy)
+}
+
 internal fun ImageDraft.refreshEvaluatedDocuments(remote: Remote, machineId: String?) {
     val docs = documents
     if (docs.isEmpty()) {

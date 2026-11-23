@@ -174,10 +174,9 @@ fun SessionScreen(sid: String) {
                 val cur = draft.text.value
                 draft.text.value = if (cur.isBlank()) eff.text else cur.trimEnd() + "\n" + eff.text
             }
-            val caps = remote.attachmentCapsFor(header.machineId, sid)
-            if (Outbox.takeBack(sid, eff.requestId, draft, caps.maxImages, caps.maxFiles)) {
+            if (Outbox.takeBack(sid, eff.requestId, draft, remote, header.machineId)) {
                 draft.images.forEach { draft.bindAbort(it, remote) }
-                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId, caps, sid)
+                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId, sessionId = sid)
             }
         }
     }
@@ -1112,7 +1111,11 @@ internal fun Composer(
                 onCancelItem = { remote.cancelTrayItem(sid, it) },
                 onIgnoreItem = { remote.ignoreTrayItem(sid, it) },
                 onPromoteItem = { remote.promoteTrayItem(sid, it) },
-                onRestoreItem = { remote.restoreTrayItem(sid, it) },
+                onRestoreItem = { reqId ->
+                    if (Outbox.canTakeBack(sid, reqId, images, remote, machineId)) {
+                        remote.restoreTrayItem(sid, reqId)
+                    }
+                },
                 onRetryItem = { remote.retryTrayItem(sid, it) },
                 onResumeItem = { remote.resumeTrayItem(sid, it) },
                 onCancelAllPaused = { remote.cancelAllPaused(sid) },

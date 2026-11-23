@@ -45,7 +45,7 @@ class RestoreImagesTest {
         val job = draft.restore(this) { reads.threads += Thread.currentThread(); thumbnails++; null }
         assertTrue(draft.restoring)
         assertTrue(draft.images.isEmpty())
-        assertFalse(draft.attach(listOf(image()), 6))
+        assertFalse(draft.attach(listOf(image())))
         job.join()
         assertFalse(draft.restoring)
         assertEquals(listOf("picked"), draft.images.map { it.id })

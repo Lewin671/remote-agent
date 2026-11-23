@@ -632,20 +632,22 @@ class ImageDraft(
 
     /**
      * Puts images back, e.g. from a message that was not submitted. Nothing
-     * is dropped: when they do not fit with what is here already, nothing
-     * is put back and [notice] says why. Returns whether they went in.
+     * is dropped: when [blockedReason] returns a non-null rejection from Core
+     * `AttachmentEval` (`put_back = true`), nothing is put back and [notice]
+     * shows Core's reason. Returns whether they went in.
      */
-    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = max): Boolean {
+    fun attach(
+        back: List<PendingImage>,
+        wereOriginal: Boolean = original,
+        blockedReason: (() -> String?)? = null,
+    ): Boolean {
         if (restoring) {
             notice = sessionText(UiMessages.imageAndroidRestoreWait())
             return false
         }
-        if (documents.size + back.count { it.isFile } > fileMax) {
-            notice = sessionText(UiMessages.attachmentAndroidRestoreLimit(count = fileMax))
-            return false
-        }
-        if (pictures.size + back.count { !it.isFile } > max) {
-            notice = sessionText(UiMessages.imageAndroidRestoreLimit(added = (back.count { !it.isFile }).toInt(), current = pictures.size, limit = max))
+        val blocked = blockedReason?.invoke()
+        if (blocked != null) {
+            if (blocked.isNotEmpty()) notice = blocked
             return false
         }
         if (pictures.isEmpty()) original = wereOriginal

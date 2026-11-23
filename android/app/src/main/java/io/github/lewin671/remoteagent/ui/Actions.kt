@@ -279,10 +279,53 @@ object Outbox {
         if (releaseImages) hit.images.forEach { it.release(abort = false) }
     }
 
-    fun takeBack(sid: String, requestId: String, draft: ImageDraft, maxImages: Int, maxFiles: Int): Boolean {
+    fun canTakeBack(
+        sid: String,
+        requestId: String,
+        draft: ImageDraft,
+        remote: Remote,
+        machineId: String?,
+    ): Boolean {
+        val hit = bySession[sid]?.firstOrNull { it.requestId == requestId } ?: return true
+        if (!hit.hasLocalAttachments) return true
+        if (draft.restoring) {
+            draft.notice = sessionText(UiMessages.imageAndroidRestoreWait())
+            return false
+        }
+        val blocked = evaluatePutBackBlocked(
+            remote = remote,
+            machineId = machineId,
+            sessionId = sid,
+            currentImages = draft.pictures.size,
+            currentFiles = draft.documents.size,
+            back = hit.images,
+        )
+        if (blocked != null) {
+            if (blocked.isNotEmpty()) draft.notice = blocked
+            return false
+        }
+        return true
+    }
+
+    fun takeBack(
+        sid: String,
+        requestId: String,
+        draft: ImageDraft,
+        remote: Remote,
+        machineId: String?,
+    ): Boolean {
         val hit = bySession[sid]?.firstOrNull { it.requestId == requestId } ?: return false
         if (!hit.hasLocalAttachments) return false
-        val attached = draft.attach(hit.images, maxImages, hit.original, fileMax = maxFiles)
+        val attached = draft.attach(hit.images, hit.original) {
+            evaluatePutBackBlocked(
+                remote = remote,
+                machineId = machineId,
+                sessionId = sid,
+                currentImages = draft.pictures.size,
+                currentFiles = draft.documents.size,
+                back = hit.images,
+            )
+        }
         if (!attached) return false
         bySession[sid]?.remove(hit)
         draft.whenKept(hit.images.map { it.id }) { runCatching { records.remove(sid, requestId) } }

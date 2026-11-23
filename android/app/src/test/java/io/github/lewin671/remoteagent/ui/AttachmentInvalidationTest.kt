@@ -180,7 +180,7 @@ class AttachmentInvalidationTest {
                 assertFalse(d.ready("A"))
                 called = true
             }
-            assertTrue(d.attach(listOf(restored), 6))
+            assertTrue(d.attach(listOf(restored)))
             assertTrue(called)
             assertFalse(d.ready("A"))
         }

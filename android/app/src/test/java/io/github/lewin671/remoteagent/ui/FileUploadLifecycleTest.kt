@@ -187,7 +187,7 @@ class FileUploadLifecycleTest {
         val channel = Channel()
         val d = draft("putback")
         d.bindAbort(restored, channel, this)
-        assertTrue(d.attach(listOf(restored), 6))
+        assertTrue(d.attach(listOf(restored)))
         yield()
         assertEquals(listOf("old-transfer"), channel.aborted)
         assertNull(restored.fileId)

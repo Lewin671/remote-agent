@@ -169,7 +169,7 @@ class AttachmentsTest {
         val files = MemoryFiles()
         val d = ImageDraft("new:/p", files)
         val sent = listOf(img("a"), img("b"))
-        d.attach(sent, 6, wereOriginal = true)
+        d.attach(sent, wereOriginal = true)
         assertTrue(d.original)
         val later = img("c")
         d.images += later
@@ -178,18 +178,6 @@ class AttachmentsTest {
         // Still one image: 原图 stays for it; once the tray is empty it goes back to unticked.
         d.detach(listOf(later))
         assertFalse(d.original)
-    }
-
-    @Test
-    fun puttingBackNeverGoesPastTheLimitNorDropsImages() {
-        val d = ImageDraft("session:s", MemoryFiles())
-        d.attach((1..4).map { img("have$it") }, 6)
-        val back = (1..3).map { img("back$it") }
-        assertFalse(d.attach(back, 6))
-        assertEquals(4, d.images.size)
-        assertTrue(d.notice.contains("超过 6 张"))
-        assertTrue(d.attach(back.take(2), 6))
-        assertEquals(6, d.images.size)
     }
 
     @Test
@@ -212,7 +200,7 @@ class AttachmentsTest {
         val d = ImageDraft("session:s", files, kotlinx.coroutines.Dispatchers.Unconfined)
         val ready = img("a")
         val preparing = PendingImage("b", "content://picker/b")
-        d.attach(listOf(ready), 6)
+        d.attach(listOf(ready))
         d.images += preparing
         // A save that runs while b is still being prepared keeps b in the selection.
         d.detach(emptyList())
@@ -224,7 +212,7 @@ class AttachmentsTest {
     fun everyOrderWrittenListsTheImagesAlreadyKept() {
         val files = MemoryFiles()
         val d = ImageDraft("session:s", files)
-        d.attach(listOf(img("a")), 6)
+        d.attach(listOf(img("a")))
         // A second image is prepared: only it is written, and the order still names the first at every moment.
         d.images += img("b")
         d.detach(emptyList())
@@ -237,7 +225,7 @@ class AttachmentsTest {
         val files = MemoryFiles()
         val d = ImageDraft("session:s", files)
         val (a, b) = img("a") to img("b")
-        d.attach(listOf(a, b), 6)
+        d.attach(listOf(a, b))
         fun again(i: PendingImage) = Processed(byteArrayOf(9, 9, i.id[0].code.toByte()), ImageFormat.IMAGE_FORMAT_PNG, 4000, 20)
         // 原图: both are read again; the first is ready and saved while the second still is.
         d.invalidate(a)
@@ -263,14 +251,14 @@ class AttachmentsTest {
         thread.execute { held.await() }
         val d = ImageDraft("session:s", files, saves, kotlinx.coroutines.CoroutineScope(saves))
         val a = img("a")
-        d.attach(listOf(a, img("b")), 6)
+        d.attach(listOf(a, img("b")))
         d.remove(a)
         held.countDown()
         thread.submit {}.get()
         assertEquals(setOf("session:s/b.img", "session:s/b.meta", "session:s/b.upload", "session:s/order"), files.data.keys.toSet())
         assertEquals("0\nb", String(files.get("session:s", "order")!!))
         // The same for a draft dropped whole.
-        d.attach(listOf(img("c")), 6)
+        d.attach(listOf(img("c")))
         d.clear()
         thread.submit {}.get()
         assertTrue(files.data.isEmpty())
@@ -306,7 +294,7 @@ class AttachmentsTest {
         val twoHeard = java.util.concurrent.CountDownLatch(2)
         // The save has not run: the images are in the draft but not on disk, so their copy elsewhere must stay.
         val (a, b) = img("a") to img("b")
-        d.attach(listOf(a, b), 6)
+        d.attach(listOf(a, b))
         d.whenKept(listOf("a", "b")) { heard += "both"; twoHeard.countDown() }
         d.whenKept(listOf("a")) { heard += "a"; twoHeard.countDown() }
         assertTrue(heard.isEmpty())

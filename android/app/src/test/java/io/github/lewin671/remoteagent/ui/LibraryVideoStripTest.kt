@@ -32,7 +32,7 @@ class LibraryVideoStripTest {
 
     @Test fun removeTargetOnlyCoversTheCornerAndFitsBeforeTheNextThumbnail() {
         val draft = ImageDraft("session:geometry", MemoryFiles())
-        assertTrue(draft.attach((1..3).map { PendingImage("image-$it", null) }, 9))
+        assertTrue(draft.attach((1..3).map { PendingImage("image-$it", null) }))
         ui.setContent { RaTheme(ThemeMode.LIGHT) { ImageStrip(draft, remote, null, 9) } }
         val body = ui.onNodeWithContentDescription("第 1 张，共 3 张").getUnclippedBoundsInRoot()
         val remove = ui.onNodeWithContentDescription("移除图片 1").getUnclippedBoundsInRoot()
@@ -53,7 +53,7 @@ class LibraryVideoStripTest {
 
     @Test fun aVideoIsAThumbnailBesideTheImagesAndADocumentAChip() {
         val draft = ImageDraft("session:s", MemoryFiles())
-        assertTrue(draft.attach(listOf(PendingImage("v", null, "clip.mp4", 2048, retainSource = false), PendingImage("d", null, "report.pdf", 1024, retainSource = false)), 9, fileMax = 6))
+        assertTrue(draft.attach(listOf(PendingImage("v", null, "clip.mp4", 2048, retainSource = false), PendingImage("d", null, "report.pdf", 1024, retainSource = false))))
         ui.setContent { RaTheme(ThemeMode.LIGHT) { ImageStrip(draft, remote, null, 9) } }
         ui.onNodeWithContentDescription("移除视频 clip.mp4").assertIsDisplayed()
         ui.onNodeWithContentDescription("移除文件 report.pdf").assertIsDisplayed()

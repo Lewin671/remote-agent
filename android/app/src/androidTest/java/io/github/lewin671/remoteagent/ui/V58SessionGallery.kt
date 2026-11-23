@@ -226,7 +226,6 @@ class V58SessionGallery {
                 PendingImage("v", if (clip.exists()) android.net.Uri.fromFile(clip).toString() else null, "clip.mp4", clip.length(), retainSource = false),
                 PendingImage("d", null, "季度分析-完整版-含补充说明.pdf", 8_600_000, retainSource = false),
             ),
-            9,
         )
         // Not connected to the server, so nothing tries to upload them.
         shoot("11-video", state(session("整理季度资料"), files = true, conn = ConnState.OFFLINE), events(turn(), user("把季度资料整理成一页摘要")))
