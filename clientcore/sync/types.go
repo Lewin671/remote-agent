@@ -456,7 +456,7 @@ func NewEngine() *Engine {
 		foreground:          true,
 		networkAvailable:    true,
 		entropy:             pool,
-		secEngine:           security.NewEngine(pool),
+		secEngine:           security.NewEngine(pool, RelayVersion),
 		timers:              make(map[timerKey]timerEntry),
 		listBackoffMs:       ListRetryInitialMs,
 		prefsBackoffMs:      PrefsRetryInitialMs,

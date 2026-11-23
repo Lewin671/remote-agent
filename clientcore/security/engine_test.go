@@ -351,7 +351,7 @@ func TestEngineUnlockSealOpenAndBatchThresholds(t *testing.T) {
 	for _, inlineCrypto := range []bool{false, true} {
 		pool := &entropy.Pool{}
 		pool.Append(bytes.Repeat([]byte{0x9a}, 4096))
-		eng := NewEngine(pool)
+		eng := NewEngine(pool, 0)
 		eng.Configure(&corev1.SecurityConfigEvent{
 			Account:      acct,
 			DeviceId:     phone.id,
@@ -508,7 +508,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	acct, dom, gen, phone, machine, rec, _, sec2, rawStates, leaseRaw, states := makeGenesisAndTwoStateRecord(t, uint64(nowMs))
 
 	pool := &entropy.Pool{}
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{
 		Account:      acct,
 		DeviceId:     phone.id,
@@ -536,7 +536,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	if err := eng.CanSeal(nowMs + 10 + devicesec.Lease + 1); !errors.Is(err, ErrLeaseExpired) || ErrorCode(err) != "stale" {
 		t.Fatalf("expected ErrLeaseExpired/stale, got %v (%s)", err, ErrorCode(err))
 	}
-	skewEng := NewEngine(pool)
+	skewEng := NewEngine(pool, 0)
 	skewEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 	executeHostEffects(t, skewEng, phone, nowMs-int64(devicesec.MaxClockSkew)-100, skewEng.ApplyRecord(nowMs-int64(devicesec.MaxClockSkew)-100, RecordUpdate{
 		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,
@@ -631,7 +631,7 @@ func TestEngineGatesErrorsUnknownFieldsAndRecoveryBoundary(t *testing.T) {
 	recLease.Signature = ed25519.Sign(newPhone.ed, rlb)
 	recLeaseRaw, _ := recLease.MarshalBinary()
 
-	recEng := NewEngine(pool)
+	recEng := NewEngine(pool, 0)
 	recEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: newPhone.id, InlineCrypto: true})
 	executeHostEffects(t, recEng, newPhone, nowMs+100, recEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
@@ -751,7 +751,7 @@ func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
 	pool := &entropy.Pool{}
 
 	// (b) Without ContentKeys, pre-recovery historical Prefs/DeviceMeta also report ErrRecoveryHistoryUnavailable.
-	noKeysEng := NewEngine(pool)
+	noKeysEng := NewEngine(pool, 0)
 	noKeysEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: newPhone.id, InlineCrypto: true})
 	executeHostEffects(t, noKeysEng, newPhone, nowMs+100, noKeysEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
@@ -771,7 +771,7 @@ func TestEngineRecoveryContentKeysAndNonEventUnavailable(t *testing.T) {
 
 	// (a) With pre-recovery ContentKeys in RecordUpdate (plus a bogus attempt to inject head epoch),
 	// head epoch still requires real KeyAgree while retained epoch unlocks pre-recovery Event and Prefs.
-	retEng := NewEngine(pool)
+	retEng := NewEngine(pool, 0)
 	retEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: retained.id, InlineCrypto: true})
 	effs := retEng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account:        acct,
@@ -844,7 +844,7 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 	remLeaseRaw, _ := remLease.MarshalBinary()
 
 	pool := &entropy.Pool{}
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 
 	// Zero-op with PushSeq 2 advances, PushSeq 1 and unsequenced PushSeq 0 are ignored.
@@ -882,7 +882,7 @@ func TestEngineApplyRecordGuardsTransientErrorAndRemovedHistory(t *testing.T) {
 	}
 
 	// Removed client's engine: live sealing/opening rejected (ErrNotMember), historical read unlocks s2 via startUnlockForState.
-	remEng := NewEngine(pool)
+	remEng := NewEngine(pool, 0)
 	remEng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: removedClient.id, InlineCrypto: true})
 	applyEffs := remEng.ApplyRecord(nowMs+110, RecordUpdate{
 		PushSeq: 5,
@@ -921,7 +921,7 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 	entropyBytes := bytes.Repeat([]byte{0x23}, 256)
 	pool := &entropy.Pool{}
 	pool.Append(entropyBytes)
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 	executeHostEffects(t, eng, phone, nowMs+100, eng.ApplyRecord(nowMs+100, RecordUpdate{
 		Account: acct,
@@ -1081,7 +1081,7 @@ func TestDevicesecVerifyTransitionAndSecurityGates(t *testing.T) {
 	pool := &entropy.Pool{}
 	pool.Append(bytes.Repeat([]byte{0x55}, 256))
 	skewedNow := nowMs - int64(devicesec.MaxClockSkew) - 100
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: acct, DeviceId: phone.id, InlineCrypto: true})
 	executeHostEffects(t, eng, phone, skewedNow, eng.ApplyRecord(skewedNow, RecordUpdate{
 		Account: acct, Domain: dom[:], Genesis: gen[:], States: rawStates, Lease: leaseRaw,

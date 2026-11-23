@@ -212,7 +212,7 @@ func (t *prepareCreationTask) buildDraft(e *Engine, xBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	regReqBytes, err := (&v1.RegisterDeviceRequest{Registration: regBody, Signature: regSig, ProtocolVersion: protocolVersion}).Marshal()
+	regReqBytes, err := (&v1.RegisterDeviceRequest{Registration: regBody, Signature: regSig, ProtocolVersion: e.relayVersion}).Marshal()
 	if err != nil {
 		return err
 	}

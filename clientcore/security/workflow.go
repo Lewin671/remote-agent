@@ -13,8 +13,6 @@ import (
 )
 
 const (
-	protocolVersion uint32 = 17
-
 	loginContext        = "remote-agent/v1/login\x00"
 	registerContext     = "remote-agent/v1/register\x00"
 	deleteAccountPrefix = "remote-agent/v1/delete-account\x00"
@@ -942,7 +940,7 @@ func (t *loginTokenTask) step(e *Engine, ev *secEvent) error {
 		}
 		t.stage = loginStageLogin
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_LOGIN, t.server, "", &v1.LoginRequest{
-			DeviceId: t.deviceID, Challenge: t.challenge, Signature: ev.bytes, ProtocolVersion: protocolVersion,
+			DeviceId: t.deviceID, Challenge: t.challenge, Signature: ev.bytes, ProtocolVersion: e.relayVersion,
 		}, t)
 	case loginStageLogin:
 		var lr v1.LoginResponse

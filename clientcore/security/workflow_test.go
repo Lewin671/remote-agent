@@ -60,10 +60,12 @@ type fakeClientHarness struct {
 	nextActionID    uint64
 }
 
+const testRelayVersion uint32 = 17
+
 func newFakeClientHarness(t *testing.T, relay *fakeRelay, tag byte) *fakeClientHarness {
 	t.Helper()
 	pool := &entropy.Pool{}
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, testRelayVersion)
 	h := &fakeClientHarness{
 		t:             t,
 		relay:         relay,
@@ -85,7 +87,7 @@ func newFakeClientHarness(t *testing.T, relay *fakeRelay, tag byte) *fakeClientH
 func (h *fakeClientHarness) restart(server string, legacyCleared bool) {
 	h.t.Helper()
 	pool := &entropy.Pool{}
-	eng := NewEngine(pool)
+	eng := NewEngine(pool, testRelayVersion)
 	h.pool = pool
 	h.eng = eng
 	h.legacyCleared = legacyCleared
@@ -1044,7 +1046,7 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		JoinerKind:          v1.DeviceKind_DEVICE_KIND_MACHINE,
 		DevicePublicKey:     machMem.EdPublic[:],
 		DeviceHpkePublicKey: machMem.XPublic[:],
-		ProtocolVersion:     protocolVersion,
+		ProtocolVersion:     testRelayVersion,
 	}).Marshal()
 	_, _ = relay.call(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, "", joinBytes)
 	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{

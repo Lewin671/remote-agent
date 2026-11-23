@@ -152,18 +152,21 @@ type Engine struct {
 	nextOpID     uint64
 	tasks        map[uint64]taskWait
 
-	wf *workflowState
+	wf           *workflowState
+	relayVersion uint32
 
 	out []*corev1.Effect
 }
 
-// NewEngine constructs a security Engine sharing the host's OS entropy pool.
-func NewEngine(pool *entropy.Pool) *Engine {
+// NewEngine constructs a security Engine sharing the host's OS entropy pool and
+// configured with the relay protocol version sent on relay entry-point RPCs.
+func NewEngine(pool *entropy.Pool, relayVersion uint32) *Engine {
 	if pool == nil {
 		pool = &entropy.Pool{}
 	}
 	return &Engine{
 		entropy:      pool,
+		relayVersion: relayVersion,
 		byHash:       make(map[devicesec.Hash]devicesec.State),
 		epochSecrets: make(map[uint64][32]byte),
 		sessionSeeds: make(map[string][32]byte),

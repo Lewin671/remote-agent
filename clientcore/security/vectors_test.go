@@ -467,7 +467,7 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eng := NewEngine(&entropy.Pool{})
+	eng := NewEngine(&entropy.Pool{}, 0)
 	eng.Configure(&corev1.SecurityConfigEvent{Account: phone.id, DeviceId: phone.id, InlineCrypto: true})
 	_ = leaseRaw
 	openEffs := eng.HandleOpenNotify(int64(nowMs+20), &corev1.SecurityOpenNotifyEvent{

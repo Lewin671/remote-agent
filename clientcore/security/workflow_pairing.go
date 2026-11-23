@@ -641,7 +641,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		e.waitKeyGen(keyEphemX, t.ephemSlot, false, t, 0)
 	case joinStartKeyEphem:
 		t.ephemPub, t.cleanLevel, t.stage = ev.bytes, 3, joinStartPeek
-		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING, t.server, "", &v1.PeekPairingRequest{Code: t.code, ProtocolVersion: protocolVersion}, t)
+		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PEEK_PAIRING, t.server, "", &v1.PeekPairingRequest{Code: t.code, ProtocolVersion: e.relayVersion}, t)
 	case joinStartPeek:
 		var pr v1.PeekPairingResponse
 		if pr.Unmarshal(ev.bytes) != nil || pr.PairingId == "" || len(pr.Commit) != 32 {
@@ -663,7 +663,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		t.cleanLevel, t.stage = 4, joinStartRPC
 		e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, t.server, "", &v1.JoinPairingRequest{
 			Code: t.code, JoinerPublic: slices.Clone(t.ephemPub), JoinerKind: v1.DeviceKind_DEVICE_KIND_CLIENT,
-			DevicePublicKey: slices.Clone(t.edPub), DeviceHpkePublicKey: slices.Clone(t.xPub), ProtocolVersion: protocolVersion,
+			DevicePublicKey: slices.Clone(t.edPub), DeviceHpkePublicKey: slices.Clone(t.xPub), ProtocolVersion: e.relayVersion,
 		}, t)
 	case joinStartRPC:
 		var jr v1.JoinPairingResponse
@@ -942,7 +942,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 	case pollJoinSignReg:
 		regReqBytes, err := (&v1.RegisterDeviceRequest{
 			Registration: t.regBody, Signature: ev.bytes, Approval: slices.Clone(t.payload.Approval),
-			ApprovalSignature: slices.Clone(t.payload.ApprovalSignature), ProtocolVersion: protocolVersion,
+			ApprovalSignature: slices.Clone(t.payload.ApprovalSignature), ProtocolVersion: e.relayVersion,
 		}).Marshal()
 		if err != nil {
 			return err
