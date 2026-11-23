@@ -24,6 +24,7 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -68,7 +69,13 @@ class SharedFileIoExecutor(
         scope.launch {
             for (task in queue) {
                 if (closed.get()) break
-                task()
+                try {
+                    task()
+                } catch (e: CancellationException) {
+                    if (closed.get()) break
+                } catch (_: Throwable) {
+                    // Isolate task errors so the global FIFO queue never dies or crashes the app.
+                }
             }
         }
     }
@@ -76,16 +83,68 @@ class SharedFileIoExecutor(
     /** Wires all 8 shared-file storage Effect callbacks on [coreHost] onto the single global FIFO queue. */
     fun attach(coreHost: CoreHost) {
         coreHost.onSharedFileScanLocal = { eff ->
-            enqueue { coreHost.deliverSharedFileLocalScanned(executeScanLocal(eff)) }
+            enqueue {
+                val res = try {
+                    executeScanLocal(eff)
+                } catch (e: Throwable) {
+                    SharedFileLocalScannedEvent.newBuilder()
+                        .setOpId(eff.opId)
+                        .setError(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+                        .build()
+                }
+                coreHost.deliverSharedFileLocalScanned(res)
+            }
         }
         coreHost.onSharedFileInspectDisk = { eff ->
-            enqueue { coreHost.deliverSharedFileDiskInspected(executeInspectDisk(eff)) }
+            enqueue {
+                val res = try {
+                    executeInspectDisk(eff)
+                } catch (e: Throwable) {
+                    SharedFileDiskInspectedEvent.newBuilder()
+                        .setOpId(eff.opId)
+                        .setSessionId(eff.sessionId)
+                        .setFileId(eff.fileId)
+                        .setKnown(false)
+                        .setErrorKind(classifyIoError(e))
+                        .setErrorDetail(e.message.orEmpty())
+                        .build()
+                }
+                coreHost.deliverSharedFileDiskInspected(res)
+            }
         }
         coreHost.onSharedFileWriteChunk = { eff ->
-            enqueue { coreHost.deliverSharedFileWriteChunkResult(executeWriteChunk(eff)) }
+            enqueue {
+                val res = try {
+                    executeWriteChunk(eff)
+                } catch (e: Throwable) {
+                    SharedFileWriteChunkResultEvent.newBuilder()
+                        .setOpId(eff.opId)
+                        .setSessionId(eff.sessionId)
+                        .setFileId(eff.fileId)
+                        .setOk(false)
+                        .setErrorKind(classifyIoError(e))
+                        .setErrorDetail(e.message.orEmpty())
+                        .build()
+                }
+                coreHost.deliverSharedFileWriteChunkResult(res)
+            }
         }
         coreHost.onSharedFileVerifyAndCommit = { eff ->
-            enqueue { coreHost.deliverSharedFileVerifyAndCommitResult(executeVerifyAndCommit(eff)) }
+            enqueue {
+                val res = try {
+                    executeVerifyAndCommit(eff)
+                } catch (e: Throwable) {
+                    SharedFileVerifyAndCommitResultEvent.newBuilder()
+                        .setOpId(eff.opId)
+                        .setSessionId(eff.sessionId)
+                        .setFileId(eff.fileId)
+                        .setOk(false)
+                        .setErrorKind(classifyIoError(e))
+                        .setErrorDetail(e.message.orEmpty())
+                        .build()
+                }
+                coreHost.deliverSharedFileVerifyAndCommitResult(res)
+            }
         }
         coreHost.onSharedFileDeletePartial = { eff ->
             enqueue { executeDeletePartial(eff) }
@@ -225,10 +284,10 @@ class SharedFileIoExecutor(
                 }
             }
             builder.build()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             SharedFileLocalScannedEvent.newBuilder()
                 .setOpId(eff.opId)
-                .setError(e.message ?: e.javaClass.simpleName)
+                .setError(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
                 .build()
         }
     }

@@ -390,4 +390,48 @@ class SharedFilesTest {
             root.deleteRecursively()
         }
     }
+
+    @Test
+    fun fifoQueueSurvivesTaskThrowableAndContinuesProcessing() {
+        val root = tempRoot()
+        val calls = CopyOnWriteArrayList<String>()
+        val executor = SharedFileIoExecutor(
+            rootDir = root,
+            availableBytesProvider = {
+                calls += "inspect"
+                throw AssertionError("simulated unexpected error")
+            },
+            onLocalDeleted = { sid, fid ->
+                calls += "delete:$sid:$fid"
+                if (sid == "s-boom") throw IllegalStateException("callback exploded")
+            },
+        )
+        val host = CoreHost()
+        try {
+            executor.attach(host)
+            // 1. DeleteLocal whose callback throws IllegalStateException must NOT kill the queue.
+            host.onSharedFileDeleteLocal(
+                SharedFileDeleteLocalEffect.newBuilder().setSessionId("s-boom").setFileId("f1").build(),
+            )
+            // 2. InspectDisk whose provider throws AssertionError must report back and keep the queue alive.
+            host.onSharedFileInspectDisk(
+                SharedFileInspectDiskEffect.newBuilder()
+                    .setOpId(42L).setSessionId("s-ok").setFileId("f2").setRequiredBytes(10L).build(),
+            )
+            // 3. Subsequent DeleteSession must still execute on the surviving FIFO worker.
+            val survivor = executor.seedCommittedFileForTest("s-after", "f3", "keep.bin", ByteArray(16))
+            assertTrue(survivor.isFile)
+            host.onSharedFileDeleteSession(
+                SharedFileDeleteSessionEffect.newBuilder().setSessionId("s-after").build(),
+            )
+
+            kotlinx.coroutines.runBlocking { executor.awaitIdle() }
+            assertEquals(listOf("delete:s-boom:f1", "inspect", "delete:s-after:null"), calls.toList())
+            assertFalse("subsequent task must still run after earlier task threw", survivor.exists())
+        } finally {
+            host.close()
+            executor.close()
+            root.deleteRecursively()
+        }
+    }
 }
