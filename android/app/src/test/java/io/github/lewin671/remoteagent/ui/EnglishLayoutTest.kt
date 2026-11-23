@@ -54,7 +54,7 @@ class EnglishLayoutTest(private val locale: String, private val width: Int) {
         }
     }
     @Test fun cardTitlesMetadataAndActionsStayReadable() {
-        val kinds = listOf(UiMessages.listStateAndroidRequestCommand(), UiMessages.listStatePlan(), UiMessages.listStateAgentAsking("Claude Code"))
+        val kinds = listOf(UiMessages.listStateRequestCommandPlain(), UiMessages.listStatePlan(), UiMessages.listStateAgentAsking("Claude Code"))
         var kind by mutableStateOf(kinds.first())
         val details = text(UiMessages.dockMore(2))
         val collapse = text(UiMessages.markdownCollapse())

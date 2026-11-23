@@ -31,7 +31,7 @@ class ClientV56Test {
 
     @Test
     fun modeSheetLocksAllModesWhenModeLockedIsTrue() {
-        val lockNote = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("modes.locked").build()
+        val lockNote = io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("本会话以完全放行启动，不能切换审批模式").build()
         fun choice(m: ApprovalMode, key: String, sel: Boolean = false) = io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.newBuilder()
             .setMode(m)
             .setLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey(key))
@@ -45,6 +45,7 @@ class ClientV56Test {
             .setActions(
                 io.github.lewin671.remoteagent.core.proto.SessionActionsView.newBuilder()
                     .setCanSwitchMode(false)
+                    .setModeLocked(true)
                     .setModeSwitchBlockedReason(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"))
                     .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_ASK, "modes.ask"))
                     .addModeChoices(choice(ApprovalMode.APPROVAL_MODE_AUTO, "modes.auto"))

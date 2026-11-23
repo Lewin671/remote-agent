@@ -41,7 +41,7 @@ it("shows safe approval text without mutating the approval or decision command",
     kind: SessionDockKind.APPROVAL,
     itemId: a.approvalId,
     observedSeq: 5n,
-    title: create(TextSchema, { key: "list_state.android_request_command" }),
+    title: create(TextSchema, { key: "list_state.request_command_plain" }),
     command: create(SessionCommandStateSchema, {
       slotKey: "approval:s-appr:" + a.approvalId,
       status: SessionCommandStatus.IDLE,
