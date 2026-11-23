@@ -440,6 +440,7 @@ export interface MessageArgs {
   "machine_status.live": { [name: string]: never };
   "machine_status.load": { load: string };
   "machine_status.loading": { [name: string]: never };
+  "machine_status.mb_available": { [name: string]: never };
   "machine_status.memory": { [name: string]: never };
   "machine_status.model_usage_empty": { [name: string]: never };
   "machine_status.model_usage_mixed_unavailable": { agents: string };
@@ -2382,6 +2383,7 @@ export const messages = {
     "machine_status.live": "Live",
     "machine_status.load": "{load} load",
     "machine_status.loading": "Loading",
+    "machine_status.mb_available": "MB free",
     "machine_status.memory": "Memory",
     "machine_status.model_usage_empty": "No usage or speed records yet",
     "machine_status.model_usage_mixed_unavailable": "{agents} usage and speed telemetry unavailable",
@@ -4702,6 +4704,7 @@ export const messages = {
     "machine_status.live": "实时",
     "machine_status.load": "{load} 负载",
     "machine_status.loading": "正在读取",
+    "machine_status.mb_available": "MB 可用",
     "machine_status.memory": "内存",
     "machine_status.model_usage_empty": "还没有用量与速度记录",
     "machine_status.model_usage_mixed_unavailable": "{agents} 暂不支持统计用量与速度",

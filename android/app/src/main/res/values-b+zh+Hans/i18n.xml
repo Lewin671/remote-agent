@@ -585,6 +585,7 @@
     <string name="machine_status_live" formatted="false">"实时"</string>
     <string name="machine_status_load">"%1$s 负载"</string>
     <string name="machine_status_loading" formatted="false">"正在读取"</string>
+    <string name="machine_status_mb_available" formatted="false">"MB 可用"</string>
     <string name="machine_status_memory" formatted="false">"内存"</string>
     <string name="machine_status_model_usage_empty" formatted="false">"还没有用量与速度记录"</string>
     <string name="machine_status_model_usage_mixed_unavailable">"%1$s 暂不支持统计用量与速度"</string>

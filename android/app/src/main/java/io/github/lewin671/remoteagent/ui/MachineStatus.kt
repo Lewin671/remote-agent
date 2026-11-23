@@ -533,7 +533,7 @@ private fun DiskTile(
     val p = pal
     val copy = uiText()
     val disk = view.disk
-    val diskUnit = if (disk.unit.isNotEmpty() && disk.unit != "GB") disk.unit else uiText(disk.caption).ifEmpty { disk.unit }.takeIf { it.isNotEmpty() }
+    val diskUnit = uiText(disk.caption).ifEmpty { disk.unit }.takeIf { it.isNotEmpty() }
     val ink = if (dim) p.ink3 else p.diskToneInk(disk.state, p.ink)
     val ink2 = if (dim) p.ink3 else p.ink2
     val bad = disk.state == DiskPressureState.DISK_PRESSURE_STATE_CRITICAL

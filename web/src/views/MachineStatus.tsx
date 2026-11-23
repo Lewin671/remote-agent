@@ -296,7 +296,7 @@ function DiskTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => vo
   return (
     <button type="button" className="ms-card ms-tile" aria-label={renderText(disk.a11yLabel) || t("machine_status.disk")} onClick={onOpen}>
       <span className="ms-kick"><DiskIcon />{t("machine_status.disk")}</span>
-      <span className={`ms-lg${tone ? ` ${tone}` : ""}`}><Roll text={disk.valueText || "—"} />{disk.hasValue && <small>{disk.unit === "GB" ? renderText(disk.caption) : disk.unit}</small>}</span>
+      <span className={`ms-lg${tone ? ` ${tone}` : ""}`}><Roll text={disk.valueText || "—"} />{disk.hasValue && <small>{renderText(disk.caption) || disk.unit}</small>}</span>
       <span className="ms-say"><b className={tone}>{renderText(disk.stateBadge)}</b>{renderText(disk.detail)}{d2 && <><br />{d2}</>}</span>
       {disk.hasUsedFraction && <span className={`ms-stor${tone ? ` ${tone}` : ""}`} aria-hidden="true">{usedPct > 0 && <i className="a" style={{ width: `${usedPct}%` }} />}</span>}
     </button>

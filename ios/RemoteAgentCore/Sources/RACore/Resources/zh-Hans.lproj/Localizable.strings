@@ -499,6 +499,7 @@
 "machine_status_live" = "实时";
 "machine_status_load" = "%1$@ 负载";
 "machine_status_loading" = "正在读取";
+"machine_status_mb_available" = "MB 可用";
 "machine_status_memory" = "内存";
 "machine_status_model_usage_empty" = "还没有用量与速度记录";
 "machine_status_model_usage_mixed_unavailable" = "%1$@ 暂不支持统计用量与速度";

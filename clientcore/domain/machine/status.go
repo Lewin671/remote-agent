@@ -380,9 +380,14 @@ func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 		agentVal = FormatDecimalSize(*status.AgentBytes)
 	}
 
+	caption := text.Msg(text.KeyMachineStatusGbAvailable)
+	if diskUnit == "MB" {
+		caption = text.Msg(text.KeyMachineStatusMbAvailable)
+	}
+
 	return &corev1.MachineDiskSection{
 		HasValue:           true,
-		Caption:            text.Msg(text.KeyMachineStatusGbAvailable),
+		Caption:            caption,
 		State:              state,
 		StateBadge:         badge,
 		HasUsedFraction:    hasFrac,

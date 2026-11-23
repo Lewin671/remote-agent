@@ -470,6 +470,22 @@
     }
   },
   {
+    "key": "machine_status.mb_available",
+    "zh-CN": "MB 可用",
+    "en": "MB free",
+    "notes": "磁盘可用空间不足 1 GB 时主数值右侧的单位与状态说明，与 machine_status.gb_available 成对。空间：卡片内固定文案允许换行，不截断。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "machine_status.pressure_normal",
     "zh-CN": "压力正常",
     "en": "Pressure normal",

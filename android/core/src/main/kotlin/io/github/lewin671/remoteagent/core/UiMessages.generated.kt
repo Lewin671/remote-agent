@@ -512,6 +512,7 @@ object UiMessages {
     fun machineStatusLive(): UiMessage = UiMessage("machine_status.live", emptyMap())
     fun machineStatusLoad(load: String): UiMessage = UiMessage("machine_status.load", mapOf("load" to load))
     fun machineStatusLoading(): UiMessage = UiMessage("machine_status.loading", emptyMap())
+    fun machineStatusMbAvailable(): UiMessage = UiMessage("machine_status.mb_available", emptyMap())
     fun machineStatusMemory(): UiMessage = UiMessage("machine_status.memory", emptyMap())
     fun machineStatusModelUsageEmpty(): UiMessage = UiMessage("machine_status.model_usage_empty", emptyMap())
     fun machineStatusModelUsageMixedUnavailable(agents: String): UiMessage = UiMessage("machine_status.model_usage_mixed_unavailable", mapOf("agents" to agents))

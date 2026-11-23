@@ -1716,6 +1716,9 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "machine_status.loading" -> {
             resources.getString(R.string.machine_status_loading)
         }
+        "machine_status.mb_available" -> {
+            resources.getString(R.string.machine_status_mb_available)
+        }
         "machine_status.memory" -> {
             resources.getString(R.string.machine_status_memory)
         }
@@ -2024,15 +2027,15 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "new_session.android_choose_project" -> {
             resources.getString(R.string.new_session_android_choose_project)
         }
-        "new_session.android_new_session" -> {
-            resources.getString(R.string.new_session_android_new_session)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "new_session.android_new_session" -> {
+            resources.getString(R.string.new_session_android_new_session)
+        }
         "new_session.android_start" -> {
             resources.getString(R.string.new_session_android_start)
         }
@@ -2533,16 +2536,16 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "queue.group_wait_answer" -> {
             resources.getString(R.string.queue_group_wait_answer)
         }
-        "queue.group_wait_ready" -> {
-            val agent = message.args.getValue("agent") as String
-            resources.getString(R.string.queue_group_wait_ready, agent)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "queue.group_wait_ready" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.queue_group_wait_ready, agent)
+        }
         "queue.ignore" -> {
             resources.getString(R.string.queue_ignore)
         }
@@ -3065,16 +3068,16 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
             val value = message.args.getValue("value") as String
             resources.getString(R.string.schedule_if_blank_uses, value)
         }
-        "schedule.in" -> {
-            val value = message.args.getValue("value") as String
-            resources.getString(R.string.schedule_in, value)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "schedule.in" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_in, value)
+        }
         "schedule.in_conversation" -> {
             resources.getString(R.string.schedule_in_conversation)
         }
@@ -3566,16 +3569,16 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "schedule.when" -> {
             resources.getString(R.string.schedule_when)
         }
-        "schedule.workdays_at" -> {
-            val time = message.args.getValue("time") as String
-            resources.getString(R.string.schedule_workdays_at, time)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "schedule.workdays_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_workdays_at, time)
+        }
         "schedule.zone_time" -> {
             val city = message.args.getValue("city") as String
             resources.getString(R.string.schedule_zone_time, city)
@@ -4033,15 +4036,15 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "security.join" -> {
             resources.getString(R.string.security_join)
         }
-        "security.join_account" -> {
-            resources.getString(R.string.security_join_account)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "security.join_account" -> {
+            resources.getString(R.string.security_join_account)
+        }
         "security.join_an_existing_account" -> {
             resources.getString(R.string.security_join_an_existing_account)
         }
@@ -4509,15 +4512,15 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
             val time = message.args.getValue("time") as String
             resources.getString(R.string.session_ended_at, time)
         }
-        "session.ended_message_failed" -> {
-            resources.getString(R.string.session_ended_message_failed)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "session.ended_message_failed" -> {
+            resources.getString(R.string.session_ended_message_failed)
+        }
         "session.ended_send_failed" -> {
             resources.getString(R.string.session_ended_send_failed)
         }
@@ -5015,15 +5018,15 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         "settings.android_the_system_could_not_install_this_package" -> {
             resources.getString(R.string.settings_android_the_system_could_not_install_this_package)
         }
-        "settings.android_the_system_will_confirm_installation_after_downloading_the_first_time" -> {
-            resources.getString(R.string.settings_android_the_system_will_confirm_installation_after_downloading_the_first_time)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.android_the_system_will_confirm_installation_after_downloading_the_first_time" -> {
+            resources.getString(R.string.settings_android_the_system_will_confirm_installation_after_downloading_the_first_time)
+        }
         "settings.android_this_computer_is_outside_the_current_trusted_directory_check_the" -> {
             resources.getString(R.string.settings_android_this_computer_is_outside_the_current_trusted_directory_check_the)
         }
@@ -5505,15 +5508,15 @@ private fun resolveUiMessage10(resources: android.content.res.Resources, message
         "settings.section_runtime_and_storage" -> {
             resources.getString(R.string.settings_section_runtime_and_storage)
         }
-        "settings.section_this_device" -> {
-            resources.getString(R.string.settings_section_this_device)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "settings.section_this_device" -> {
+            resources.getString(R.string.settings_section_this_device)
+        }
         "settings.security_notifications" -> {
             resources.getString(R.string.settings_security_notifications)
         }
@@ -6005,15 +6008,15 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "terminal.right" -> {
             resources.getString(R.string.terminal_right)
         }
-        "terminal.size_changed" -> {
-            resources.getString(R.string.terminal_size_changed)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "terminal.size_changed" -> {
+            resources.getString(R.string.terminal_size_changed)
+        }
         "terminal.size_note" -> {
             resources.getString(R.string.terminal_size_note)
         }
@@ -6527,15 +6530,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_title_no_reply" -> {
             resources.getString(R.string.transport_diag_title_no_reply)
         }
-        "transport.diag_title_probe_blocked" -> {
-            resources.getString(R.string.transport_diag_title_probe_blocked)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "transport.diag_title_probe_blocked" -> {
+            resources.getString(R.string.transport_diag_title_probe_blocked)
+        }
         "transport.diag_type_host" -> {
             resources.getString(R.string.transport_diag_type_host)
         }

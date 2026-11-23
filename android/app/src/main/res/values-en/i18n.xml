@@ -623,6 +623,7 @@
     <string name="machine_status_live" formatted="false">"Live"</string>
     <string name="machine_status_load">"%1$s load"</string>
     <string name="machine_status_loading" formatted="false">"Loading"</string>
+    <string name="machine_status_mb_available" formatted="false">"MB free"</string>
     <string name="machine_status_memory" formatted="false">"Memory"</string>
     <string name="machine_status_model_usage_empty" formatted="false">"No usage or speed records yet"</string>
     <string name="machine_status_model_usage_mixed_unavailable">"%1$s usage and speed telemetry unavailable"</string>

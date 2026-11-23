@@ -1063,7 +1063,7 @@ private struct DiskTile: View {
         let fig = (
             value: disk.valueText.or("—"),
             number: disk.value,
-            unit: disk.unit == "GB" ? disk.caption.rendered().or("GB") : disk.unit
+            unit: disk.caption.rendered().or(disk.unit)
         )
 
         Button(action: onTap) {

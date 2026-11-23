@@ -499,6 +499,7 @@
 "machine_status_live" = "Live";
 "machine_status_load" = "%1$@ load";
 "machine_status_loading" = "Loading";
+"machine_status_mb_available" = "MB free";
 "machine_status_memory" = "Memory";
 "machine_status_model_usage_empty" = "No usage or speed records yet";
 "machine_status_model_usage_mixed_unavailable" = "%1$@ usage and speed telemetry unavailable";

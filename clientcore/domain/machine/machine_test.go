@@ -347,22 +347,22 @@ func TestMachineStatusRawValuesUnitsAndTopUsageBars(t *testing.T) {
 		t.Fatalf("unexpected Memory section raw values: %+v", mem)
 	}
 	disk := BuildDiskSection(status)
-	if disk.ValueText != "512" || disk.Unit != "MB" || disk.AvailableBytes != 512_000_000 {
+	if disk.ValueText != "512" || disk.Unit != "MB" || disk.AvailableBytes != 512_000_000 || disk.Caption.GetKey() != text.KeyMachineStatusMbAvailable {
 		t.Fatalf("unexpected sub-GB Disk section raw values: %+v", disk)
 	}
 	status.Disk.AvailableBytes = 999_600_000 // rounds to 1000 MB -> must carry over to 1 GB
 	diskCarry := BuildDiskSection(status)
-	if diskCarry.ValueText != "1" || diskCarry.Unit != "GB" || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeGb {
-		t.Fatalf("expected 999.6 MB disk to carry over to 1 GB, got value=%q unit=%q", diskCarry.ValueText, diskCarry.Unit)
+	if diskCarry.ValueText != "1" || diskCarry.Unit != "GB" || diskCarry.Caption.GetKey() != text.KeyMachineStatusGbAvailable || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeGb {
+		t.Fatalf("expected 999.6 MB disk to carry over to 1 GB, got value=%q unit=%q caption=%+v", diskCarry.ValueText, diskCarry.Unit, diskCarry.Caption)
 	}
 	status.Disk.AvailableBytes = 999_400_000 // rounds to 999 MB -> stays MB
 	disk999 := BuildDiskSection(status)
-	if disk999.ValueText != "999" || disk999.Unit != "MB" || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeMb {
-		t.Fatalf("expected 999.4 MB disk to stay 999 MB, got value=%q unit=%q", disk999.ValueText, disk999.Unit)
+	if disk999.ValueText != "999" || disk999.Unit != "MB" || disk999.Caption.GetKey() != text.KeyMachineStatusMbAvailable || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeMb {
+		t.Fatalf("expected 999.4 MB disk to stay 999 MB, got value=%q unit=%q caption=%+v", disk999.ValueText, disk999.Unit, disk999.Caption)
 	}
 	status.Disk.AvailableBytes = 24_000_000_000
 	diskGB := BuildDiskSection(status)
-	if diskGB.ValueText != "24" || diskGB.Unit != "GB" {
+	if diskGB.ValueText != "24" || diskGB.Unit != "GB" || diskGB.Caption.GetKey() != text.KeyMachineStatusGbAvailable {
 		t.Fatalf("unexpected GB Disk section raw values: %+v", diskGB)
 	}
 
