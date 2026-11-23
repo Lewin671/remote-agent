@@ -210,7 +210,7 @@ fun SessionScreen(sid: String) {
                     color = p.ink,
                     textAlign = TextAlign.Center,
                 )
-                PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                PillButton(uiText(UiMessages.commonRetry()), { remote.retrySessionLoad(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
                 TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else if (header.missing || (header.sessionsListed && header.hasMissingText())) {
                 Text(
@@ -219,7 +219,7 @@ fun SessionScreen(sid: String) {
                     color = p.ink,
                     textAlign = TextAlign.Center,
                 )
-                PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                PillButton(uiText(UiMessages.commonRetry()), { remote.retrySessionLoad(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
                 TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else {
                 var showSpinner by remember(sid) { mutableStateOf(false) }

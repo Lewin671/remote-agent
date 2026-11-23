@@ -1123,6 +1123,9 @@ class CoreHost(
     fun retrySessionEvents(sessionId: String) =
         send { setRetrySessionEvents(RetrySessionEventsAction.newBuilder().setSessionId(sessionId)) }
 
+    fun retrySessionLoad(sessionId: String) =
+        send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
+
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
 

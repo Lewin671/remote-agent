@@ -594,6 +594,9 @@ object ScreenGoldenLoader {
         o.obj("a11ySummary")?.let { setA11YSummary(parseText(it)) }
         setCanStepPrev(o.bool("canStepPrev"))
         setCanStepNext(o.bool("canStepNext"))
+        setScrubNumericValue(o.f64("scrubNumericValue"))
+        setScrubValueText(o.str("scrubValueText"))
+        setScrubUnit(o.str("scrubUnit"))
     }.build()
 
     private fun parseMachineStatus(o: JsonObject): MachineStatusViewModel = MachineStatusViewModel.newBuilder().apply {

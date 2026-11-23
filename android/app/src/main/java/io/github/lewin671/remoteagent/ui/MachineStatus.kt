@@ -354,19 +354,9 @@ private fun HeroCard(
         ) {
             val memCaption = uiText(view.memory.caption)
             if (chart.hasScrub) {
-                val pt = chart.pointsList.getOrNull(chart.scrubIndex)
-                if (pt != null) {
-                    if (metric == StatusMetric.CPU) {
-                        val pct = pt.value
-                        BigNumber(kotlin.math.round(pct).toInt().toString(), pct, "%", ink, ink2)
-                    } else {
-                        val gib = pt.value / (1024.0 * 1024.0 * 1024.0)
-                        val text = String.format(java.util.Locale.US, "%.1f", gib)
-                        BigNumber(text, gib, memCaption.ifEmpty { view.memory.unit.takeIf { it.isNotEmpty() } }, ink, ink2)
-                    }
-                } else {
-                    BigNumber(uiText(chart.scrubValue).ifEmpty { "—" }, 0.0, if (metric == StatusMetric.MEMORY) memCaption.ifEmpty { null } else null, ink, ink2)
-                }
+                val text = chart.scrubValueText.ifEmpty { "—" }
+                val unit = chart.scrubUnit.takeIf { it.isNotEmpty() }
+                BigNumber(text, chart.scrubNumericValue, unit, ink, ink2)
             } else if (metric == StatusMetric.CPU) {
                 val cpu = view.cpu
                 BigNumber(cpu.valueText.ifEmpty { "—" }, cpu.value, cpu.unit.takeIf { it.isNotEmpty() }, ink, ink2)

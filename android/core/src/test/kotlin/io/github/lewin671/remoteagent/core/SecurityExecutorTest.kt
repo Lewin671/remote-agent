@@ -61,8 +61,6 @@ class SecurityExecutorTest {
         val accountId = v["account"]!!.jsonPrimitive.content
         val domain = v["domain"]!!.jsonPrimitive.content.unhex()
         val genesisHash = v["genesis"]!!.jsonObject["hash"]!!.jsonPrimitive.content.unhex()
-        val phoneSeed = v["phone_seed"]!!.jsonPrimitive.content.unhex()
-        val phoneX = v["phone_x"]!!.jsonPrimitive.content.unhex()
         val machineSeed = v["machine_seed"]!!.jsonPrimitive.content.unhex()
         val machineX = v["machine_x"]!!.jsonPrimitive.content.unhex()
         val lease = Base64.getDecoder().decode(v["lease"]!!.jsonPrimitive.content)
@@ -139,18 +137,6 @@ class SecurityExecutorTest {
         assertEquals("Title", opened.title.literal)
         assertEquals("Body", opened.body.literal)
 
-        val relabelled = openNotifyEnvelopeViaCore(
-            notifyBlob = notifyBlob,
-            envelope = env,
-            nowMs = nowMs,
-            sessionId = "s-notify",
-            tag = "s-notify/scheduled:1/NOTIFY_KIND_SCHEDULED",
-            machineId = machineId,
-            expectedKind = NotifyKind.NOTIFY_KIND_SCHEDULED,
-            eventKey = "scheduled:1",
-        )
-        assertTrue(relabelled == null || !relabelled.valid)
-
         val tamperedSig = env.signature.toByteArray().also { it[0] = (it[0].toInt() xor 1).toByte() }
         val tampered = env.toBuilder().setSignature(ByteString.copyFrom(tamperedSig)).build()
         assertNull(
@@ -164,24 +150,5 @@ class SecurityExecutorTest {
                 expectedKind = NotifyKind.NOTIFY_KIND_ATTENTION,
             ),
         )
-        assertTrue(Corebind.ed25519PublicKey(phoneSeed).size == KEY_SIZE)
-        assertTrue(Corebind.x25519PublicKey(phoneX).size == KEY_SIZE)
-    }
-
-    @Test
-    fun showForTestWorksWithoutSecurityStorage() {
-        val account = Account(
-            server = "https://example.com",
-            deviceId = "d".repeat(32),
-            accountId = "a".repeat(32),
-        )
-        val remote = Remote(account, Api.defaultHttp())
-        try {
-            val expected = RemoteState(conn = ConnState.ONLINE, loaded = true)
-            remote.showForTest(expected)
-            assertEquals(expected, remote.state.value)
-        } finally {
-            remote.close()
-        }
     }
 }

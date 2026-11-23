@@ -1608,6 +1608,8 @@ class Remote(
 
     fun retryEvents(sid: String) = coreHost.retrySessionEvents(sid)
 
+    fun retrySessionLoad(sid: String) = coreHost.retrySessionLoad(sid)
+
     suspend fun fetchSession(sid: String): Boolean {
         if (state.value.sessions[sid] != null) return true
         val deferred = CompletableDeferred<Boolean>()
