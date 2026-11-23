@@ -67,6 +67,7 @@ async function openNotifyViaCore(
   machineId: string,
   tag: string,
   eventKey: string,
+  fallbackBody: string,
 ): Promise<SecurityNotifyOpenedEffect> {
   const appCore = core.newAppCore();
   try {
@@ -87,6 +88,7 @@ async function openNotifyViaCore(
             machineId,
             expectedKind,
             eventKey,
+            fallbackBody,
           }),
         },
       }),
@@ -181,11 +183,12 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
       d.machine ?? "",
       d.tag,
       eventKey,
+      generic.body,
     );
     const display = opened.display;
     if (opened.error || !display?.valid) {
-      if (expectedKind !== NotifyKind.TURN_ENDED && display?.genericBody) {
-        return { ...generic, body: renderText(display.genericBody) };
+      if (expectedKind !== NotifyKind.TURN_ENDED && display?.fullGenericBody) {
+        return { ...generic, body: renderText(display.fullGenericBody) };
       }
       return generic;
     }
@@ -203,11 +206,7 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
       };
     }
     if (display.kind === NotifyKind.TURN_ENDED) {
-      if (display.sharedFileCount > 0 && display.sharedFilesSuffix) {
-        const suffix = renderText(display.sharedFilesSuffix);
-        return { ...generic, body: generic.body ? `${generic.body} ${suffix}` : suffix };
-      }
-      return generic;
+      return { ...generic, body: renderText(display.fullGenericBody) };
     }
     if (display.kind === NotifyKind.SCHEDULED) {
       return { title: renderText(display.title), body: renderText(display.body) };

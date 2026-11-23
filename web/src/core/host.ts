@@ -89,7 +89,6 @@ import {
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
   ProjectSetSearchActionSchema,
-  RetrySessionEventsActionSchema,
   ScreenSchema,
   ScreenTarget,
   type Screen,
@@ -219,6 +218,7 @@ import {
   SessionOpenActionSchema,
   SessionQuestionStepActionSchema,
   SessionRefreshHistoryActionSchema,
+  SessionRetryLoadActionSchema,
   SessionScreenRequestSchema,
   SessionSlotActionSchema,
   SessionSubmitCommandActionSchema,
@@ -1161,13 +1161,11 @@ export class CoreHost {
   }
 
   retrySession(sessionId: string) {
-    if (!sessionId) return;
-    this.ensureSession(sessionId);
-    this.retryEvents(sessionId);
+    if (sessionId) this.emit({ case: "sessionRetryLoad", value: create(SessionRetryLoadActionSchema, { sessionId }) });
   }
 
   retryEvents(sessionId: string) {
-    if (sessionId) this.emit({ case: "retrySessionEvents", value: create(RetrySessionEventsActionSchema, { sessionId }) });
+    this.retrySession(sessionId);
   }
 
   // --- Screen Intents ---
