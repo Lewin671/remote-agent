@@ -100,7 +100,7 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
         val draft = ImageDraft("locale-failure", MemoryFiles(), scope = null)
         draft.images += PendingImage("image", null, retainSource = false).apply { state = PendingImage.State.Failed(cause) }
         try {
-            ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalMessageLocale provides locale) { DraftImageViewer(draft, remote, "computer", 0) {} } } }
+            ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalMessageLocale provides locale) { DraftImageViewer(draft, remote, "computer", 0, originalMaxBytes = 20L * 1024 * 1024) {} } } }
             ui.onNodeWithText(text(expectedMessage)).assertIsDisplayed()
             if (expectRetry) ui.onNodeWithText(text(UiMessages.commonRetry())).assertIsDisplayed()
             else ui.onNodeWithText(text(UiMessages.commonRetry())).assertDoesNotExist()

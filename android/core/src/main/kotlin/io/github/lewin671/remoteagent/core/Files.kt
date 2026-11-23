@@ -59,9 +59,9 @@ suspend fun uploadFile(
     open: () -> InputStream,
     maxChunk: Int = DEFAULT_CHUNK_BYTES,
     retries: Int = 3,
-    maxBytes: Long = 100L * 1024 * 1024,
-    maxNameBytes: Int = 255,
-    maxSizeText: String = "100.0 MB",
+    maxBytes: Long,
+    maxNameBytes: Int,
+    maxSizeText: String,
     onPrepared: (Long) -> Unit = {},
     onProgress: (Long, Long) -> Unit = { _, _ -> },
 ): UploadedFile {

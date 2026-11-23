@@ -446,7 +446,16 @@ class RemoteTest {
             }
         }
         val error = runCatching {
-            uploadFile(r.uploadChannel(daemon.id), "file-transfer-id", "empty.bin", 0, { java.io.ByteArrayInputStream(byteArrayOf()) })
+            uploadFile(
+                r.uploadChannel(daemon.id),
+                "file-transfer-id",
+                "empty.bin",
+                0,
+                { java.io.ByteArrayInputStream(byteArrayOf()) },
+                maxBytes = 100L * 1024 * 1024,
+                maxNameBytes = 255,
+                maxSizeText = "100.0 MB",
+            )
         }.exceptionOrNull() as CommandException
         assertTrue(error.fromDaemon)
         assertEquals("generation_conflict", error.code)

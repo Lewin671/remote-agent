@@ -69,7 +69,6 @@ internal fun rememberImagePicker(
     draft: ImageDraft,
     remote: Remote,
     machineId: String?,
-    blocked: String?,
     caps: AttachmentCaps,
     sessionId: String = "",
 ): () -> Unit {
@@ -103,41 +102,22 @@ internal fun rememberImagePicker(
                     setCurrentFiles(draft.documents.size)
                 }.build(),
             )
-            if (eval.capabilitiesLoaded || !caps.capabilitiesLoaded) {
-                if (!eval.canPickGallery) {
-                    val reason = if (eval.hasGalleryBlockedReason()) {
-                        coreTextToMessageText(eval.galleryBlockedReason).resolve(copy)
-                    } else {
-                        blocked ?: copy(UiMessages.attachmentMaxImages(count = eval.maxImages.takeIf { it > 0 } ?: caps.maxImages))
-                    }
-                    if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
-                } else {
-                    val type = when {
-                        !eval.canPickImages -> ActivityResultContracts.PickVisualMedia.VideoOnly
-                        eval.galleryAllowsVideo && eval.canPickFiles -> ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                        else -> ActivityResultContracts.PickVisualMedia.ImageOnly
-                    }
-                    val req = PickVisualMediaRequest(type)
-                    if (eval.libraryRoom == 1) one.launch(req) else many.launch(req)
+            if (!eval.canPickGallery) {
+                val reasonText = when {
+                    eval.hasGalleryBlockedReason() -> eval.galleryBlockedReason
+                    eval.hasImagesPickBlockedReason() -> eval.imagesPickBlockedReason
+                    else -> null
                 }
+                val reason = reasonText?.let { coreTextToMessageText(it).resolve(copy) }.orEmpty()
+                if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
             } else {
-                val imagesOk = blocked == null && caps.supportsImages
-                val videosOk = caps.galleryAllowsVideo
-                val room = (if (imagesOk) (caps.maxImages - draft.pictures.size).coerceAtLeast(0) else 0) +
-                    if (videosOk) (caps.maxFiles - draft.documents.size).coerceAtLeast(0) else 0
-                when {
-                    !imagesOk && !videosOk -> ImageNotices.show(draft.key, blocked ?: copy(UiMessages.attachmentUpdateRequired()))
-                    room == 0 -> ImageNotices.show(draft.key, if (imagesOk) copy(UiMessages.attachmentMaxImages(count = caps.maxImages)) else copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
-                    else -> {
-                        val type = when {
-                            !imagesOk -> ActivityResultContracts.PickVisualMedia.VideoOnly
-                            videosOk -> ActivityResultContracts.PickVisualMedia.ImageAndVideo
-                            else -> ActivityResultContracts.PickVisualMedia.ImageOnly
-                        }
-                        val req = PickVisualMediaRequest(type)
-                        if (room == 1) one.launch(req) else many.launch(req)
-                    }
+                val type = when {
+                    !eval.canPickImages -> ActivityResultContracts.PickVisualMedia.VideoOnly
+                    eval.galleryAllowsVideo && eval.canPickFiles -> ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    else -> ActivityResultContracts.PickVisualMedia.ImageOnly
                 }
+                val req = PickVisualMediaRequest(type)
+                if (eval.libraryRoom == 1) one.launch(req) else many.launch(req)
             }
         }
     }
@@ -198,6 +178,28 @@ internal fun rememberEvaluatedDocuments(
 }
 
 /**
+ * Evaluates current draft attachments once when the draft contents or machine capabilities change,
+ * returning Core's localized block reason (or null when all current attachments are allowed).
+ */
+@Composable
+internal fun rememberDraftAttachmentsBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    documents: List<PendingImage>,
+    pictures: List<PendingImage>,
+    caps: AttachmentCaps,
+): String? {
+    val copy = uiText()
+    val docKey = documents.map { Triple(it.id, it.fileName.orEmpty(), it.fileBytes) }
+    val picKey = pictures.size
+    return remember(remote, machineId, sessionId, docKey, picKey, caps) {
+        if (documents.isEmpty() && pictures.isEmpty()) null
+        else evaluateDraftAttachmentsBlocked(remote, machineId, sessionId, documents, pictures, copy = copy)
+    }
+}
+
+/**
  * The picked images and videos above the text, in one row: each removable,
  * a spinner or progress while it goes to the computer, a retry when it
  * failed; a video has its length in a corner. 原图 for the whole message
@@ -205,7 +207,14 @@ internal fun rememberEvaluatedDocuments(
  * computer.
  */
 @Composable
-internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int, caps: AttachmentCaps? = null) {
+internal fun ImageStrip(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    max: Int,
+    caps: AttachmentCaps? = null,
+    sessionId: String = "",
+) {
     val copy = uiText()
     val p = pal
     val context = LocalContext.current
@@ -232,8 +241,9 @@ internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, m
         }
         return
     }
+    val effectiveCaps = caps ?: remember(remote, machineId, sessionId) { remote.attachmentCapsFor(machineId, sessionId) }
     val docMetaById = rememberEvaluatedDocuments(remote, machineId, draft.documents)
-    FileStrip(draft, remote, machineId, caps, docMetaById)
+    FileStrip(draft, remote, machineId, effectiveCaps, docMetaById, sessionId = sessionId)
 
     val failedPictures = draft.pictures.mapNotNull { img ->
         (img.state as? PendingImage.State.Failed)?.failure?.input?.let { img.id to it }
@@ -332,7 +342,7 @@ internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, m
         if (draft.pictures.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier.heightIn(min = 44.dp).clickable {
-                    draft.setOriginal(context, !draft.original, remote, caps?.originalImageMaxBytes ?: (20L * 1024 * 1024)) { machineId }
+                    draft.setOriginal(context, !draft.original, remote, effectiveCaps.originalImageMaxBytes) { machineId }
                 },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -352,8 +362,8 @@ internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, m
         if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && draft.pictures.isNotEmpty()) {
-            val hint = caps?.originalImageHint?.let { uiText(it) }?.ifEmpty { null } ?: copy(UiMessages.imageOriginalHint())
-            Text(hint, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+            val hint = effectiveCaps.originalImageHint?.let { uiText(it) }.orEmpty()
+            if (hint.isNotEmpty()) Text(hint, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         }
     }
     viewing?.let {
@@ -362,7 +372,7 @@ internal fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, m
             remote = remote,
             machineId = machineId,
             start = it,
-            originalMaxBytes = caps?.originalImageMaxBytes ?: (20L * 1024 * 1024),
+            originalMaxBytes = effectiveCaps.originalImageMaxBytes,
         ) { viewing = null }
     }
 }
@@ -417,20 +427,26 @@ private object VideoFrames {
 
 /** Upload again when an unused image expires, including after the page returns from the background. */
 @Composable
-internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, caps: AttachmentCaps) {
-    val copy = uiText()
+internal fun RefreshDraftUploads(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    blocked: String?,
+    caps: AttachmentCaps,
+    sessionId: String = "",
+) {
     draft.bindRemote(remote)
-    val fileBlocked = fileDraftBlocked(draft, caps, copy = copy)
+    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sessionId, draft.documents, draft.pictures, caps)
     val deadlines = draft.images.map { it.expiresMs }
-    LaunchedEffect(draft, machineId, blocked, fileBlocked, caps, deadlines, draft.images.size, draft.restoring) {
+    LaunchedEffect(draft, machineId, blocked, draftBlocked, caps, deadlines, draft.images.size, draft.restoring) {
         if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)
         if (draft.restoring || machineId == null || !caps.machineOnline) return@LaunchedEffect
         if (blocked != null && !caps.supportsFiles) return@LaunchedEffect
-        draft.sendAllTo(remote, machineId, caps)
+        draft.sendAllTo(remote, machineId, caps, sessionId)
         val next = draft.images.filter { it.readyFor(machineId) }.minOfOrNull { it.expiresMs }
         if (next != null) {
             kotlinx.coroutines.delay((next - System.currentTimeMillis()).coerceAtLeast(1))
-            draft.sendAllTo(remote, machineId, caps)
+            draft.sendAllTo(remote, machineId, caps, sessionId)
         }
     }
 }

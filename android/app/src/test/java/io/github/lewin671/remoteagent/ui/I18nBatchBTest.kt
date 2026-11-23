@@ -358,7 +358,7 @@ class I18nBatchBTest(private val locale: String) {
             state = PendingImage.State.Uploading(.42f)
         }
         draft.images += image
-        show { DraftImageViewer(draft, remote, "m", 0) {} }; shot("draft-viewer")
+        show { DraftImageViewer(draft, remote, "m", 0, originalMaxBytes = 20L * 1024 * 1024) {} }; shot("draft-viewer")
     }
     @Test fun terminalView() { show { TerminalPane(remote, "s", true) }; shot("terminal") }
     @Test fun terminalReader() {

@@ -11,6 +11,26 @@ import java.security.MessageDigest
 class FilesTest {
     @get:org.junit.Rule val hangGuard = hangGuard()
     private val hundredMiB = 100L * 1024 * 1024
+    private suspend fun testUploadFile(
+        ch: UploadChannel,
+        transferId: String,
+        name: String,
+        total: Long,
+        open: () -> InputStream,
+        onPrepared: (Long) -> Unit = {},
+        onProgress: (Long, Long) -> Unit = { _, _ -> },
+    ) = uploadFile(
+        ch = ch,
+        transferId = transferId,
+        name = name,
+        total = total,
+        open = open,
+        maxBytes = hundredMiB,
+        maxNameBytes = 255,
+        maxSizeText = "100.0 MB",
+        onPrepared = onPrepared,
+        onProgress = onProgress,
+    )
 
     private class Channel(val expected: ByteArray, val lost: Boolean = false) : UploadChannel {
         var bytes = java.io.ByteArrayOutputStream()
@@ -46,7 +66,7 @@ class FilesTest {
         val ch = Channel(expected, lost = true)
         var opened = 0
         val progress = mutableListOf<Long>()
-        val result = uploadFile(ch, "transfer", "data.zip", expected.size.toLong(), {
+        val result = testUploadFile(ch, "transfer", "data.zip", expected.size.toLong(), {
             opened++
             object : ByteArrayInputStream(expected) {
                 override fun read(b: ByteArray, off: Int, len: Int): Int {
@@ -76,22 +96,22 @@ class FilesTest {
                 return daemon.complete(transferId)
             }
         }
-        val result = uploadFile(ch, "same-transfer", "data.zip", data.size.toLong(), { ByteArrayInputStream(data) })
+        val result = testUploadFile(ch, "same-transfer", "data.zip", data.size.toLong(), { ByteArrayInputStream(data) })
         assertEquals("file-id", result.fileId)
         assertEquals(4, puts)
         assertEquals(4, completes)
     }
 
     @Test fun acceptsEmptyFilesAndRejectsAChangedSource() = runBlocking {
-        assertEquals("file-id", uploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
+        assertEquals("file-id", testUploadFile(Channel(byteArrayOf()), "t", "data.zip", 0, { ByteArrayInputStream(byteArrayOf()) }).fileId)
         val bytes = byteArrayOf(1, 2)
         for (hint in listOf(0L, 1L, 999L)) {
             var actual = -1L
-            uploadFile(Channel(bytes), "t", "data.zip", hint, { ByteArrayInputStream(bytes) }, onPrepared = { actual = it })
+            testUploadFile(Channel(bytes), "t", "data.zip", hint, { ByteArrayInputStream(bytes) }, onPrepared = { actual = it })
             assertEquals(2L, actual)
         }
         var opens = 0
-        val changed = runCatching { uploadFile(Channel(bytes), "t", "data.zip", 2, { ByteArrayInputStream(if (opens++ == 0) bytes else byteArrayOf(2, 1)) }) }
+        val changed = runCatching { testUploadFile(Channel(bytes), "t", "data.zip", 2, { ByteArrayInputStream(if (opens++ == 0) bytes else byteArrayOf(2, 1)) }) }
         assertTrue(changed.exceptionOrNull() is FileContentChanged)
     }
 
@@ -126,7 +146,7 @@ class FilesTest {
         }
         var opens = 0
         var closes = 0
-        uploadFile(channel, "large", "large.bin", hundredMiB, {
+        testUploadFile(channel, "large", "large.bin", hundredMiB, {
             opens++
             object : InputStream() {
                 var remaining = hundredMiB

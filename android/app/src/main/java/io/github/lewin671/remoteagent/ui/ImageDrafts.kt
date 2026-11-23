@@ -319,7 +319,7 @@ class ImageDraft(
         context: Context,
         taken: List<Uri>,
         remote: Remote,
-        originalMaxBytes: Long = 20L * 1024 * 1024,
+        originalMaxBytes: Long,
         machine: () -> String?,
     ) {
         if (restoring || taken.isEmpty()) return
@@ -429,7 +429,7 @@ class ImageDraft(
         context: Context,
         img: PendingImage,
         remote: Remote,
-        originalMaxBytes: Long = 20L * 1024 * 1024,
+        originalMaxBytes: Long,
         machine: () -> String?,
     ) {
         val turn = img.stopUpload(staleBytes = true)
@@ -539,12 +539,14 @@ class ImageDraft(
     }
 
     /** Makes sure every image is on [machineId], e.g. after the new-session card changed machines. */
-    internal fun sendAllTo(remote: Remote, machineId: String, caps: AttachmentCaps? = null) {
+    internal fun sendAllTo(remote: Remote, machineId: String, caps: AttachmentCaps? = null, sessionId: String = "") {
         retarget(remote, machineId)
         if (selectedMachine != machineId) return
-        val effective = caps ?: remote.attachmentCapsFor(machineId)
+        val effective = caps ?: remote.attachmentCapsFor(machineId, sessionId)
+        val filesBlocked = documents.isNotEmpty() &&
+            evaluateDraftAttachmentsBlocked(remote, machineId, sessionId, documents = documents) != null
         for (img in images) {
-            if (img.isFile && fileDraftBlocked(this, effective, copy = ::sessionText) != null) continue
+            if (img.isFile && filesBlocked) continue
             if (!img.isFile && !effective.supportsImages) continue
             if (img.hasSource() && !img.needsProcessing && !img.readyFor(machineId)) upload(remote, img, machineId, caps = effective)
         }
@@ -557,7 +559,7 @@ class ImageDraft(
         img.state = PendingImage.State.Failed(AppImageFailure.REPROCESS_SOURCE_MISSING)
     }
 
-    fun retry(context: Context, img: PendingImage, remote: Remote, originalMaxBytes: Long = 20L * 1024 * 1024, machine: () -> String?) {
+    fun retry(context: Context, img: PendingImage, remote: Remote, originalMaxBytes: Long, machine: () -> String?) {
         if (img.needsProcessing) {
             if (!img.uri.isNullOrEmpty()) process(context, img, remote, originalMaxBytes, machine)
             else { missingImageSource(img); persistOrder() }
@@ -574,7 +576,7 @@ class ImageDraft(
         persistOrder()
     }
 
-    fun setOriginal(context: Context, v: Boolean, remote: Remote, originalMaxBytes: Long = 20L * 1024 * 1024, machine: () -> String?) =
+    fun setOriginal(context: Context, v: Boolean, remote: Remote, originalMaxBytes: Long, machine: () -> String?) =
         changeOriginal(v) { process(context, it, remote, originalMaxBytes, machine) }
 
     fun remove(img: PendingImage) {
@@ -628,7 +630,7 @@ class ImageDraft(
      * is dropped: when they do not fit with what is here already, nothing
      * is put back and [notice] says why. Returns whether they went in.
      */
-    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = 6): Boolean {
+    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = max): Boolean {
         if (restoring) {
             notice = sessionText(UiMessages.imageAndroidRestoreWait())
             return false

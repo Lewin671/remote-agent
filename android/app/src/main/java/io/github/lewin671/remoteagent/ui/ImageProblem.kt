@@ -23,8 +23,7 @@ enum class AppImageFailure(val kind: ImageProblemKind, val message: UiMessage) {
     REPROCESS_MODE(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED, UiMessages.imageAndroidReprocessUsingTheCurrentMode()),
     UPLOAD_AGAIN(ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, UiMessages.imageAndroidUploadToTheComputerAgain()),
     CHOOSE_COMPUTER(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED, UiMessages.attachmentAndroidChooseComputer()),
-    REPROCESS_SOURCE_MISSING(ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING, UiMessages.imageAndroidThisImageHasNoLocalCopyAvailableForReprocessingRemove()),
-    UPDATE_REQUIRED(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED, UiMessages.attachmentUpdateRequired());
+    REPROCESS_SOURCE_MISSING(ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING, UiMessages.imageAndroidThisImageHasNoLocalCopyAvailableForReprocessingRemove());
 
     fun failure(): AttachmentFailure = AttachmentFailure(
         input = ImageProblemInput.newBuilder().setExplicitKind(kind).build(),

@@ -279,7 +279,7 @@ object Outbox {
         if (releaseImages) hit.images.forEach { it.release(abort = false) }
     }
 
-    fun takeBack(sid: String, requestId: String, draft: ImageDraft, maxImages: Int = 6, maxFiles: Int = 6): Boolean {
+    fun takeBack(sid: String, requestId: String, draft: ImageDraft, maxImages: Int, maxFiles: Int): Boolean {
         val hit = bySession[sid]?.firstOrNull { it.requestId == requestId } ?: return false
         if (!hit.hasLocalAttachments) return false
         val attached = draft.attach(hit.images, maxImages, hit.original, fileMax = maxFiles)
@@ -345,7 +345,7 @@ object Outbox {
                                 clone.state = PendingImage.State.Ready
                                 uploadedFiles += res.fileId
                             } else {
-                                val p = orig.processed ?: orig.uri?.let { processImage(RaApp.instance, Uri.parse(it), source.original) }
+                                val p = orig.processed ?: orig.uri?.let { processImage(RaApp.instance, Uri.parse(it), source.original, caps.originalImageMaxBytes) }
                                     ?: throw java.io.FileNotFoundException()
                                 val res = uploadImage(channel, newRequestId(), p.bytes)
                                 clone.processed = p

@@ -174,9 +174,10 @@ fun SessionScreen(sid: String) {
                 val cur = draft.text.value
                 draft.text.value = if (cur.isBlank()) eff.text else cur.trimEnd() + "\n" + eff.text
             }
-            if (Outbox.takeBack(sid, eff.requestId, draft, header.capabilities.maxImages.takeIf { it > 0 } ?: 6, header.capabilities.maxFiles.takeIf { it > 0 } ?: 6)) {
+            val caps = remote.attachmentCapsFor(header.machineId, sid)
+            if (Outbox.takeBack(sid, eff.requestId, draft, caps.maxImages, caps.maxFiles)) {
                 draft.images.forEach { draft.bindAbort(it, remote) }
-                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId)
+                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId, caps, sid)
             }
         }
     }
@@ -1015,14 +1016,20 @@ internal fun Composer(
     val keeping = Outbox.keeping(sid)
     val maxImg = attachCaps.maxImages
     val blocked = if (caps.hasImageUploadBlockedReason()) uiText(caps.imageUploadBlockedReason).ifEmpty { null } else null
-    RefreshDraftUploads(images, remote, machineId, blocked, attachCaps)
-    val pick = rememberImagePicker(images, remote, machineId, blocked, attachCaps, sessionId = sid)
+    RefreshDraftUploads(images, remote, machineId, blocked, attachCaps, sessionId = sid)
+    val pick = rememberImagePicker(images, remote, machineId, attachCaps, sessionId = sid)
+    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, attachCaps)
 
     fun send(requestedMode: SendMode? = null) {
         val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER
         val msg = text.trim()
-        if (images.restoring || images.readingFiles || fileDraftBlocked(images, attachCaps, copy = copy) != null || (msg.isEmpty() && images.images.isEmpty())) return
-        images.sendAllTo(remote, machineId, attachCaps)
+        if (images.restoring || images.readingFiles || (msg.isEmpty() && images.images.isEmpty())) return
+        val currentBlocked = evaluateDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, copy = copy)
+        if (currentBlocked != null) {
+            images.notice = currentBlocked
+            return
+        }
+        images.sendAllTo(remote, machineId, attachCaps, sid)
         if (!images.ready(machineId) && images.images.isNotEmpty()) return
         val picked = images.images.toList()
         Motion.tap(view)
@@ -1055,7 +1062,7 @@ internal fun Composer(
                 onSent()
             }.onFailure {
                 images.notice = copy(UiMessages.composerAndroidNotSent(reason = displayError(it)))
-                images.sendAllTo(remote, machineId, attachCaps)
+                images.sendAllTo(remote, machineId, attachCaps, sid)
             }
         }
     }
@@ -1072,14 +1079,14 @@ internal fun Composer(
         onText = { text = it },
         placeholder = placeholder,
         canSend = composer.enabled &&
-            !images.restoring && !images.readingFiles && fileDraftBlocked(images, attachCaps, copy = copy) == null &&
+            !images.restoring && !images.readingFiles && draftBlocked == null &&
             !keeping && online &&
             (text.isNotBlank() || images.images.isNotEmpty()) &&
             (images.images.isEmpty() || images.ready(machineId)),
         onSend = { send() },
         onPlus = pick,
         onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
-        fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }?.ifEmpty { null } ?: copy(UiMessages.attachmentMetadata()),
+        fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
         plusEnabled = composer.canAttachImages && !images.restoring && (blocked == null || (attachCaps.supportsFiles && online && header.computerOnline)),
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
@@ -1109,7 +1116,7 @@ internal fun Composer(
                 onUndo = { remote.undoCancel(sid) },
             )
         }) else null,
-        top = { ImageStrip(images, remote, machineId, maxImg, attachCaps) },
+        top = { ImageStrip(images, remote, machineId, maxImg, attachCaps, sessionId = sid) },
     )
     if (interruptSlot.hasErrorText()) {
         Notice(copy(UiMessages.sessionAndroidInterruptFailed(reason = uiText(interruptSlot.errorText))), Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)

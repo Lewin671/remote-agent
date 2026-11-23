@@ -60,22 +60,15 @@ internal fun rememberDocumentPicker(
                     setCurrentFiles(draft.documents.size)
                 }.build(),
             )
-            if (eval.capabilitiesLoaded || !caps.capabilitiesLoaded) {
-                if (!eval.canPickFiles) {
-                    val reason = when {
-                        eval.hasFileUploadBlockedReason() -> coreTextToMessageText(eval.fileUploadBlockedReason).resolve(copy)
-                        draft.documents.size >= eval.maxFiles && eval.maxFiles > 0 -> copy(UiMessages.attachmentMaxFiles(count = eval.maxFiles))
-                        else -> copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles))
-                    }
-                    if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
+            if (!eval.canPickFiles) {
+                val reason = if (eval.hasFilesPickBlockedReason()) {
+                    coreTextToMessageText(eval.filesPickBlockedReason).resolve(copy)
                 } else {
-                    picker.launch(arrayOf("*/*"))
+                    ""
                 }
+                if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
             } else {
-                when {
-                    draft.documents.size >= caps.maxFiles -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
-                    else -> picker.launch(arrayOf("*/*"))
-                }
+                picker.launch(arrayOf("*/*"))
             }
         }
     }
@@ -167,16 +160,17 @@ internal fun FileStrip(
     machineId: String?,
     caps: AttachmentCaps? = null,
     docMetaById: Map<String, EvaluatedDocumentMeta>? = null,
+    sessionId: String = "",
 ) {
     val copy = uiText()
     if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     val metaById = docMetaById ?: rememberEvaluatedDocuments(remote, machineId, draft.documents)
     val files = draft.documents.filterNot { metaById[it.id]?.isVideo == true }
-    val effectiveCaps = caps ?: remember(remote, machineId) { remote.attachmentCapsFor(machineId) }
-    val blocked = fileDraftBlocked(draft, effectiveCaps, copy = copy)
+    val effectiveCaps = caps ?: remember(remote, machineId, sessionId) { remote.attachmentCapsFor(machineId, sessionId) }
+    val checkedPictures = if (machineId.isNullOrEmpty()) emptyList() else draft.pictures
+    val blocked = rememberDraftAttachmentsBlocked(remote, machineId, sessionId, draft.documents, checkedPictures, effectiveCaps)
     if (files.isEmpty() && blocked == null) return
-    val metadataNotice = effectiveCaps.fileMetadataNotice?.let { uiText(it) }?.ifEmpty { null }
-        ?: copy(UiMessages.attachmentMetadata())
+    val metadataNotice = effectiveCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty()
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         files.forEach { file ->
             FileChip(
@@ -188,6 +182,6 @@ internal fun FileStrip(
             )
         }
         blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
-        if (files.isNotEmpty()) Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        if (files.isNotEmpty() && metadataNotice.isNotEmpty()) Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
     }
 }

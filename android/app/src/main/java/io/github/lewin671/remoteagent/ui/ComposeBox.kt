@@ -90,7 +90,7 @@ fun ComposeBox(
     modifier: Modifier = Modifier,
     plusEnabled: Boolean = true,
     onFile: (() -> Unit)? = null,
-    fileMetadataNotice: String = uiText(UiMessages.attachmentMetadata()),
+    fileMetadataNotice: String = "",
     sendLabel: String = uiText(UiMessages.composerSend()),
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
@@ -390,6 +390,8 @@ private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit, fileMetadataNoti
                 Text(label, style = T.s17, color = p.ink)
             }
         }
-        Text(fileMetadataNotice, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
+        if (fileMetadataNotice.isNotEmpty()) {
+            Text(fileMetadataNotice, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
+        }
     }
 }

@@ -36,10 +36,9 @@ private fun imageFormatError(message: io.github.lewin671.remoteagent.core.UiMess
 
 /** A compressed image aims at this size, so it goes in one command. */
 private const val COMPRESSED_TARGET = 900 * 1024
-private const val FALLBACK_ORIGINAL_MAX_BYTES = 20L * 1024 * 1024
 
 /** Reads what the picker gave, up to [limit] bytes. */
-fun readUri(context: Context, uri: Uri, limit: Long, originalLimit: Long = FALLBACK_ORIGINAL_MAX_BYTES): ByteArray {
+fun readUri(context: Context, uri: Uri, limit: Long, originalLimit: Long): ByteArray {
     val out = ByteArrayOutputStream()
     context.contentResolver.openInputStream(uri)?.use { input ->
         val buf = ByteArray(64 * 1024)
@@ -121,10 +120,9 @@ private val preparing = Any()
 private fun encode(b: Bitmap, png: Boolean, quality: Int): ByteArray =
     ByteArrayOutputStream().also { b.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
 
-fun processImage(context: Context, uri: Uri, original: Boolean, originalMaxBytes: Long = FALLBACK_ORIGINAL_MAX_BYTES): Processed = synchronized(preparing) {
-    val maxOriginal = if (originalMaxBytes > 0L) originalMaxBytes else FALLBACK_ORIGINAL_MAX_BYTES
+fun processImage(context: Context, uri: Uri, original: Boolean, originalMaxBytes: Long): Processed = synchronized(preparing) {
     try {
-        prepare(context, uri, original, maxOriginal)
+        prepare(context, uri, original, originalMaxBytes)
     } catch (e: OutOfMemoryError) {
         throw ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS)
     }

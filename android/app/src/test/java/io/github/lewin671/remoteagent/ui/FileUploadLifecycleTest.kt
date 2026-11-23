@@ -32,6 +32,14 @@ class FileUploadLifecycleTest {
     private fun file(id: String) = PendingImage(id, "content://documents/$id", "$id.txt", 999)
     private fun draft(id: String, store: MemoryFiles = MemoryFiles()) = ImageDraft("session:$id", store)
 
+    private fun ImageDraft.testStartUpload(
+        entry: PendingImage,
+        target: String,
+        owner: CoroutineScope,
+        channel: UploadChannel,
+        open: () -> java.io.InputStream,
+    ) = startDocumentUpload(entry, target, owner, channel, 100, Dispatchers.Unconfined, maxNameBytes = 255, maxSizeText = "100 B", open = open)
+
     @Test fun actualSizeAndTransferStateSurviveRestartAndReceivingFullCompletesAgain() = runBlocking {
         val store = MemoryFiles()
         val d = draft("resume", store)
@@ -47,7 +55,7 @@ class FileUploadLifecycleTest {
                 return ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_COMPLETE).setFileId("ready").setExpiresMs(Long.MAX_VALUE).build()
             }
         }
-        d.startDocumentUpload(f, "m", this, ch, 100, Dispatchers.Unconfined) { ByteArrayInputStream(byteArrayOf(1, 2, 3)) }
+        d.testStartUpload(f, "m", this, ch) { ByteArrayInputStream(byteArrayOf(1, 2, 3)) }
         f.job!!.join()
         assertEquals(3L, f.fileBytes)
         assertEquals(listOf("same-transfer"), ch.begins)
@@ -71,11 +79,11 @@ class FileUploadLifecycleTest {
                 started.complete(Unit); release.await(); super.complete(transferId)
             }
         }
-        d.startDocumentUpload(f, "old", this, old, 100, Dispatchers.Unconfined) { ByteArrayInputStream(byteArrayOf(1)) }
+        d.testStartUpload(f, "old", this, old) { ByteArrayInputStream(byteArrayOf(1)) }
         started.await()
         val oldId = f.transferId
         val newer = Channel()
-        d.startDocumentUpload(f, "new", this, newer, 100, Dispatchers.Unconfined) { ByteArrayInputStream(byteArrayOf(2, 3)) }
+        d.testStartUpload(f, "new", this, newer) { ByteArrayInputStream(byteArrayOf(2, 3)) }
         yield()
         assertEquals(PendingImage.State.Processing, f.state)
         release.complete(Unit)
@@ -99,7 +107,7 @@ class FileUploadLifecycleTest {
                     return super.complete(transferId)
                 }
             }
-            d.startDocumentUpload(f, "m", this, ch, 100, Dispatchers.Unconfined) { ByteArrayInputStream(byteArrayOf(1)) }
+            d.testStartUpload(f, "m", this, ch) { ByteArrayInputStream(byteArrayOf(1)) }
             f.job!!.join()
             assertEquals(2, ch.begins.size)
             assertNotEquals(ch.begins[0], ch.begins[1])
@@ -118,13 +126,13 @@ class FileUploadLifecycleTest {
             }
         }
         var preparingObserved = false
-        d1.startDocumentUpload(a, "m", this, ch1, 100, Dispatchers.Unconfined) {
+        d1.testStartUpload(a, "m", this, ch1) {
             preparingObserved = a.state == PendingImage.State.Processing
             ByteArrayInputStream(byteArrayOf(1))
         }
         start.await()
         var secondOpened = false
-        d2.startDocumentUpload(b, "m", this, Channel(), 100, Dispatchers.Unconfined) { secondOpened = true; ByteArrayInputStream(byteArrayOf(2)) }
+        d2.testStartUpload(b, "m", this, Channel()) { secondOpened = true; ByteArrayInputStream(byteArrayOf(2)) }
         yield()
         assertTrue(preparingObserved)
         assertFalse(secondOpened)

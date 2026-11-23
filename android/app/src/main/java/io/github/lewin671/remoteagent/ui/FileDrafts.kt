@@ -10,6 +10,8 @@ import io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput
 import io.github.lewin671.remoteagent.core.proto.AttachmentCandidateRoute
 import io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest
 import io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel
+import io.github.lewin671.remoteagent.core.proto.ImageProblemInput
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.core.proto.NewSessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionHeaderView
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
@@ -18,22 +20,22 @@ import kotlinx.coroutines.*
 
 /** Attachment capabilities projected by Core for the current session or new-session target. */
 data class AttachmentCaps(
-    val supportsImages: Boolean = false,
-    val supportsFiles: Boolean = false,
-    val maxImages: Int = 6,
-    val maxFiles: Int = 6,
-    val maxFileBytes: Long = 100L * 1024 * 1024,
-    val maxFileNameBytes: Int = 255,
-    val maxFileSizeText: String = "100.0 MB",
-    val originalImageMaxBytes: Long = 20L * 1024 * 1024,
-    val galleryAllowsVideo: Boolean = false,
-    val galleryAcceptMime: String = "image/*",
-    val capabilitiesLoaded: Boolean = false,
-    val machineOnline: Boolean = false,
-    val imageUploadBlockedReason: CoreText? = null,
-    val fileUploadBlockedReason: CoreText? = null,
-    val originalImageHint: CoreText? = null,
-    val fileMetadataNotice: CoreText? = null,
+    val supportsImages: Boolean,
+    val supportsFiles: Boolean,
+    val maxImages: Int,
+    val maxFiles: Int,
+    val maxFileBytes: Long,
+    val maxFileNameBytes: Int,
+    val maxFileSizeText: String,
+    val originalImageMaxBytes: Long,
+    val galleryAllowsVideo: Boolean,
+    val galleryAcceptMime: String,
+    val capabilitiesLoaded: Boolean,
+    val machineOnline: Boolean,
+    val imageUploadBlockedReason: CoreText?,
+    val fileUploadBlockedReason: CoreText?,
+    val originalImageHint: CoreText?,
+    val fileMetadataNotice: CoreText?,
 )
 
 internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
@@ -41,14 +43,14 @@ internal fun SessionHeaderView.attachmentCaps(): AttachmentCaps {
     return AttachmentCaps(
         supportsImages = caps.supportsImages,
         supportsFiles = caps.supportsFiles,
-        maxImages = caps.maxImages.takeIf { it > 0 } ?: 6,
-        maxFiles = caps.maxFiles.takeIf { it > 0 } ?: 6,
-        maxFileBytes = caps.maxFileBytes.takeIf { it > 0L } ?: (100L * 1024 * 1024),
-        maxFileNameBytes = caps.maxFileNameBytes.takeIf { it > 0 } ?: 255,
-        maxFileSizeText = caps.maxFileSizeText.ifEmpty { "100.0 MB" },
-        originalImageMaxBytes = caps.originalImageMaxBytes.takeIf { it > 0L } ?: (20L * 1024 * 1024),
+        maxImages = caps.maxImages,
+        maxFiles = caps.maxFiles,
+        maxFileBytes = caps.maxFileBytes,
+        maxFileNameBytes = caps.maxFileNameBytes,
+        maxFileSizeText = caps.maxFileSizeText,
+        originalImageMaxBytes = caps.originalImageMaxBytes,
         galleryAllowsVideo = caps.galleryAllowsVideo,
-        galleryAcceptMime = caps.galleryAcceptMime.ifEmpty { if (caps.galleryAllowsVideo) "image/*,video/*" else "image/*" },
+        galleryAcceptMime = caps.galleryAcceptMime,
         capabilitiesLoaded = caps.capabilitiesLoaded,
         machineOnline = computerOnline && !computerUnlinked,
         imageUploadBlockedReason = if (caps.hasImageUploadBlockedReason()) caps.imageUploadBlockedReason else null,
@@ -65,14 +67,14 @@ internal fun NewSessionViewModel.attachmentCaps(fallbackOnline: Boolean = false)
     return AttachmentCaps(
         supportsImages = supportsImages,
         supportsFiles = supportsFiles,
-        maxImages = maxImages.takeIf { it > 0 } ?: 6,
-        maxFiles = maxFiles.takeIf { it > 0 } ?: 6,
-        maxFileBytes = maxFileBytes.takeIf { it > 0L } ?: (100L * 1024 * 1024),
-        maxFileNameBytes = maxFileNameBytes.takeIf { it > 0 } ?: 255,
-        maxFileSizeText = maxFileSizeText.ifEmpty { "100.0 MB" },
-        originalImageMaxBytes = originalImageMaxBytes.takeIf { it > 0L } ?: (20L * 1024 * 1024),
+        maxImages = maxImages,
+        maxFiles = maxFiles,
+        maxFileBytes = maxFileBytes,
+        maxFileNameBytes = maxFileNameBytes,
+        maxFileSizeText = maxFileSizeText,
+        originalImageMaxBytes = originalImageMaxBytes,
         galleryAllowsVideo = galleryAllowsVideo,
-        galleryAcceptMime = galleryAcceptMime.ifEmpty { if (galleryAllowsVideo) "image/*,video/*" else "image/*" },
+        galleryAcceptMime = galleryAcceptMime,
         capabilitiesLoaded = capabilitiesLoaded,
         machineOnline = online,
         imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
@@ -85,14 +87,14 @@ internal fun NewSessionViewModel.attachmentCaps(fallbackOnline: Boolean = false)
 internal fun AttachmentEvalViewModel.toAttachmentCaps(online: Boolean = true): AttachmentCaps = AttachmentCaps(
     supportsImages = supportsImages,
     supportsFiles = supportsFiles,
-    maxImages = maxImages.takeIf { it > 0 } ?: 6,
-    maxFiles = maxFiles.takeIf { it > 0 } ?: 6,
-    maxFileBytes = maxFileBytes.takeIf { it > 0L } ?: (100L * 1024 * 1024),
-    maxFileNameBytes = maxFileNameBytes.takeIf { it > 0 } ?: 255,
-    maxFileSizeText = maxFileSizeText.ifEmpty { "100.0 MB" },
-    originalImageMaxBytes = originalImageMaxBytes.takeIf { it > 0L } ?: (20L * 1024 * 1024),
+    maxImages = maxImages,
+    maxFiles = maxFiles,
+    maxFileBytes = maxFileBytes,
+    maxFileNameBytes = maxFileNameBytes,
+    maxFileSizeText = maxFileSizeText,
+    originalImageMaxBytes = originalImageMaxBytes,
     galleryAllowsVideo = galleryAllowsVideo,
-    galleryAcceptMime = galleryAcceptMime.ifEmpty { if (galleryAllowsVideo) "image/*,video/*" else "image/*" },
+    galleryAcceptMime = galleryAcceptMime,
     capabilitiesLoaded = capabilitiesLoaded,
     machineOnline = online,
     imageUploadBlockedReason = if (hasImageUploadBlockedReason()) imageUploadBlockedReason else null,
@@ -243,23 +245,50 @@ internal fun ImageDraft.addPickedCandidates(
     }
 }
 
-internal fun fileDraftBlocked(
-    draft: ImageDraft,
-    caps: AttachmentCaps,
+/**
+ * Evaluates the draft's current attachments against Core (`Screen.attachment_eval`) to detect
+ * machine-capability or limit violations (e.g., after capabilities drop or switching computers).
+ * Returns Core's localized block reason, or null when all current attachments are accepted.
+ */
+internal fun evaluateDraftAttachmentsBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    documents: List<PendingImage>,
+    pictures: List<PendingImage> = emptyList(),
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
-    resolveText: (CoreText) -> String = { t -> coreTextToMessageText(t).resolve(copy) },
 ): String? {
-    if (draft.documents.isEmpty()) return null
-    if (!caps.supportsFiles) {
-        return caps.fileUploadBlockedReason?.let(resolveText)?.ifEmpty { null }
-            ?: copy(UiMessages.attachmentUpdateRequired())
+    if (documents.isEmpty() && pictures.isEmpty()) return null
+    val req = AttachmentEvalScreenRequest.newBuilder().apply {
+        if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+        if (sessionId.isNotEmpty()) setSessionId(sessionId)
+        setCurrentImages(0)
+        setCurrentFiles(0)
+        for (doc in documents) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(doc.fileName.orEmpty())
+                    .setSizeBytes(doc.fileBytes)
+                    .setForceFile(true),
+            )
+        }
+        for (pic in pictures) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(pic.fileName ?: "image.jpg")
+                    .setMimeType("image/jpeg")
+                    .setForceFile(false),
+            )
+        }
+    }.build()
+    val eval = remote.evaluateAttachments(req)
+    val rejected = eval.decisionsList.firstOrNull { !it.accepted } ?: return null
+    val reason = when {
+        eval.hasNotice() -> coreTextToMessageText(eval.notice).resolve(copy)
+        rejected.hasRejectReason() -> coreTextToMessageText(rejected.rejectReason).resolve(copy)
+        else -> ""
     }
-    if (draft.documents.size > caps.maxFiles) return copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles))
-    val oversized = draft.documents.firstOrNull { it.sizeVerified && it.fileBytes > caps.maxFileBytes }
-    if (oversized != null) {
-        return copy(UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1(caps.maxFileSizeText))
-    }
-    return null
+    return reason.ifEmpty { null }
 }
 
 internal fun ImageDraft.uploadDocument(
@@ -273,7 +302,18 @@ internal fun ImageDraft.uploadDocument(
     val effective = caps ?: remote.attachmentCapsFor(target)
     if (!effective.supportsFiles) {
         val turn = entry.stopUpload()
-        if (entry.valid(turn)) entry.state = PendingImage.State.Failed(AppImageFailure.UPDATE_REQUIRED)
+        if (entry.valid(turn)) {
+            val detail = effective.fileUploadBlockedReason?.let { coreTextToMessageText(it) }
+                ?: MessageText.Raw("")
+            entry.state = PendingImage.State.Failed(
+                AttachmentFailure(
+                    input = ImageProblemInput.newBuilder()
+                        .setExplicitKind(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED)
+                        .build(),
+                    detail = detail,
+                ),
+            )
+        }
         return
     }
     startDocumentUpload(
@@ -299,8 +339,8 @@ internal fun ImageDraft.startDocumentUpload(
     limit: Long,
     io: CoroutineDispatcher = Dispatchers.IO,
     forceFresh: Boolean = false,
-    maxNameBytes: Int = 255,
-    maxSizeText: String = "100.0 MB",
+    maxNameBytes: Int,
+    maxSizeText: String,
     open: () -> InputStream,
 ) {
     if (!forceFresh && !needsUpload(entry, target)) return

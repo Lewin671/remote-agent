@@ -32,7 +32,7 @@ internal fun DraftImageViewer(
     remote: Remote,
     machineId: String?,
     start: Int,
-    originalMaxBytes: Long = 20L * 1024 * 1024,
+    originalMaxBytes: Long,
     onClose: () -> Unit,
 ) {
     val copy = uiText()
