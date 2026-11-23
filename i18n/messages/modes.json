@@ -399,22 +399,6 @@
     }
   },
   {
-    "key": "modes.model_unsupported",
-    "zh-CN": "当前模型不支持",
-    "en": "Not supported by this model",
-    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "modes.permission_notice",
     "zh-CN": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
     "en": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
@@ -447,57 +431,9 @@
     }
   },
   {
-    "key": "modes.plan_desc",
-    "zh-CN": "只读和出计划，你批准后才开始改",
-    "en": "Read and plan only; changes start after your approval",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "modes.plan_edit",
-    "zh-CN": "修改计划…",
-    "en": "Revise plan…",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "modes.plan_propose_desc",
     "zh-CN": "先出方案，再批准执行",
     "en": "Propose a plan, then approve execution",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "modes.skip_all",
-    "zh-CN": "所有操作都不审批",
-    "en": "No approval for any operation",
     "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
     "platforms": [

@@ -14,7 +14,6 @@
     <string name="approval_android_reply_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发"</string>
     <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
-    <string name="approval_approve_execute" formatted="false">"批准执行"</string>
     <string name="approval_delivery_failed">"没送到电脑：%1$s"</string>
     <string name="approval_denial_reason" formatted="false">"拒绝的理由"</string>
     <string name="approval_denied" formatted="false">"已拒绝"</string>
@@ -86,18 +85,12 @@
     <string name="attachment_zip_folder" formatted="false">"不能直接发送文件夹，请先压缩成 ZIP 再选择文件"</string>
     <string name="common_all_projects_avatar" formatted="false">"全"</string>
     <string name="common_android_account_signed_out" formatted="false">"账户已退出"</string>
-    <string name="common_android_after_switching_machines_each_cli_starts_with_that_machine_s" formatted="false">"换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。"</string>
     <string name="common_android_allow_camera_access" formatted="false">"允许使用相机"</string>
     <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"需要相机权限才能扫码；也可以返回手动输入配对码。"</string>
     <string name="common_android_cannot_find_this_session" formatted="false">"找不到这个会话"</string>
-    <string name="common_android_cli_s_own_mode" formatted="false">"CLI 自己的模式"</string>
     <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"没能清除这台手机上的账户和缓存，请重试"</string>
-    <string name="common_android_could_not_read_this_session_value1">"没能读取这个会话：%1$s"</string>
     <string name="common_android_could_not_save_pending_images" formatted="false">"没能保存待发图片"</string>
-    <string name="common_android_each_cli_saves_its_own_settings_only_future_sessions_are" formatted="false">"各 CLI 独立保存一套。只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
     <string name="common_android_more" formatted="false">"更多"</string>
-    <string name="common_android_new_full_access_sessions_start_directly_with_these_settings" formatted="false">"完全放行的新会话直接按此设置启动。"</string>
-    <string name="common_android_project_settings_may_differ" formatted="false">"（项目设置可能不同）"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">"。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"这个 App 版本较旧，请更新后再试"</string>
     <string name="common_back" formatted="false">"返回"</string>
@@ -201,7 +194,6 @@
     <string name="dock_android_answer_expired">"不确定「%1$s」有没有提交，它已过期，不会再重发。请去终端看看"</string>
     <string name="dock_android_answer_unknown">"上次的回答「%1$s」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答"</string>
     <string name="dock_android_plan_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择"</string>
-    <string name="dock_android_plan_keep" formatted="false">"继续规划"</string>
     <string name="dock_android_plan_unknown">"「%1$s」的结果不确定。重试会重发同一个请求，电脑收到过就不会再执行一次"</string>
     <string name="dock_android_question_answered" formatted="false">"这个问题已经回答了。"</string>
     <string name="dock_android_question_changed">"没能提交，终端里的问题可能已经变了：%1$s"</string>
@@ -286,7 +278,6 @@
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
     <string name="errors_not_connected" formatted="false">"连不上服务器"</string>
     <string name="errors_other_clients_kept_changing_the_project_list_changes_could" formatted="false">"项目列表一直在被别的客户端修改，没能保存"</string>
-    <string name="errors_project_preferences_format_is_not_supported" formatted="false">"项目偏好格式不受支持"</string>
     <string name="errors_push_backlog_reconnecting" formatted="false">"推送积压，正在重连"</string>
     <string name="errors_reading_local_state" formatted="false">"读取本机状态"</string>
     <string name="errors_remote_agent_on_is_out_of_date_update_it">"%1$s 上的 remote-agent 版本较旧，请在电脑上更新后再试"</string>
@@ -312,7 +303,6 @@
     <string name="errors_the_draft_could_not_be_saved_locally_keep_the" formatted="false">"草稿没能保存到本机，关闭页面前请保留原图和文字"</string>
     <string name="errors_the_plan_display_changed_review_it_again" formatted="false">"计划画面已变化，请重新核对"</string>
     <string name="errors_the_previous_operation_s_outcome_is_still_unknown_reload" formatted="false">"上次操作的结果仍未知，请重新读取任务核实后再操作"</string>
-    <string name="errors_the_recovery_object_was_updated_concurrently_retrying_on_the" formatted="false">"恢复对象同时更新，将在下次同步重试"</string>
     <string name="errors_the_relay_did_not_provide_a_verifiable_execution_result" formatted="false">"未收到可验证的执行结果，请重试同一请求"</string>
     <string name="errors_the_request_on_the_computer_changed_review_it_again" formatted="false">"电脑上的请求已变化，请重新核对"</string>
     <string name="errors_the_server_address_cannot_include_a_username_or_password" formatted="false">"server 地址不能包含用户名或密码"</string>
@@ -333,9 +323,6 @@
     <string name="home_all_projects" formatted="false">"全部项目"</string>
     <string name="home_android_change_scope" formatted="false">"换范围"</string>
     <string name="home_android_current_scope" formatted="false">"当前范围"</string>
-    <string name="home_android_earlier_failed_retry">"没能读取更早的会话：%1$s · 点这里重试"</string>
-    <string name="home_android_earlier_offline" formatted="false">"连上服务器后读取更早的会话"</string>
-    <string name="home_android_list_failed_retry">"没能读取会话列表：%1$s · 点这里重试"</string>
     <string name="home_android_schedules_new" formatted="false">"定时，有新结果"</string>
     <plurals name="home_android_schedules_pending">
         <item quantity="other">"定时，%1$d 件需要处理"</item>
@@ -535,7 +522,6 @@
     <string name="image_verification_failed" formatted="false">"图片校验失败，没有显示"</string>
     <string name="image_view" formatted="false">"查看图片"</string>
     <string name="list_state_agent_asking">"%1$s 在问你"</string>
-    <string name="list_state_android_loading" formatted="false">"读取中"</string>
     <string name="list_state_android_request_command" formatted="false">"请求执行"</string>
     <string name="list_state_android_request_permission" formatted="false">"请求权限"</string>
     <string name="list_state_approval" formatted="false">"等待审批"</string>
@@ -646,10 +632,8 @@
         <item quantity="other">"共 %1$d 行"</item>
     </plurals>
     <string name="models_all" formatted="false">"全部模型"</string>
-    <string name="models_android_load_failed_default">"没能读取模型列表，会用 %1$s 自己的默认模型：%2$s"</string>
     <string name="models_android_reading_machine">"读取 %1$s 的设置…"</string>
     <string name="models_back" formatted="false">"返回模型"</string>
-    <string name="models_context_size">"%1$s 上下文"</string>
     <string name="models_context_window" formatted="false">"上下文窗口"</string>
     <string name="models_default" formatted="false">"默认"</string>
     <string name="models_default_named">"默认（%1$s）"</string>
@@ -688,13 +672,9 @@
     <string name="modes_locked" formatted="false">"本会话以完全放行启动，不能切换审批模式"</string>
     <string name="modes_locked_note" formatted="false">"以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"</string>
     <string name="modes_model_no_auto" formatted="false">"这个模型没有自动模式，换一种审批模式再开始"</string>
-    <string name="modes_model_unsupported" formatted="false">"当前模型不支持"</string>
     <string name="modes_permission_notice" formatted="false">"照实显示终端中的模式；不提供切到 accept edits 的按钮。"</string>
     <string name="modes_plan" formatted="false">"计划"</string>
-    <string name="modes_plan_desc" formatted="false">"只读和出计划，你批准后才开始改"</string>
-    <string name="modes_plan_edit" formatted="false">"修改计划…"</string>
     <string name="modes_plan_propose_desc" formatted="false">"先出方案，再批准执行"</string>
-    <string name="modes_skip_all" formatted="false">"所有操作都不审批"</string>
     <string name="modes_switch" formatted="false">"切换"</string>
     <string name="modes_switch_failed">"没能切换：%1$s"</string>
     <string name="modes_switching" formatted="false">"正在切换…"</string>
@@ -707,8 +687,6 @@
     <string name="new_session_android_change_project" formatted="false">"换项目"</string>
     <string name="new_session_android_choose_project" formatted="false">"新会话 · 选项目"</string>
     <string name="new_session_android_new_session" formatted="false">"新会话"</string>
-    <string name="new_session_android_offline_no_start" formatted="false">"不在线，现在不能新建"</string>
-    <string name="new_session_android_reading_cli">"正在读取 %1$s 上次的设置…"</string>
     <string name="new_session_android_start" formatted="false">"开始"</string>
     <string name="new_session_attachments_moved">"已换到 %1$s，附件正在重新上传"</string>
     <string name="new_session_change_defaults" formatted="false">"去改默认"</string>
@@ -726,9 +704,6 @@
     <string name="new_session_expired_start_prompt">"不确定「%1$s」有没有启动，它已过期，不会再重发。请先看看进行中的会话"</string>
     <string name="new_session_first_message" formatted="false">"新会话的第一句话"</string>
     <string name="new_session_follow_cli" formatted="false">"跟随 CLI 设置"</string>
-    <string name="new_session_follow_s_configuration">"跟随 %1$s 自己的配置"</string>
-    <string name="new_session_installed">"已装 %1$s"</string>
-    <string name="new_session_installed_fallback">"已装 %2$s；这台电脑没有 %3$s，会改用 %1$s"</string>
     <string name="new_session_ios_attach" formatted="false">"添加附件"</string>
     <string name="new_session_location">"在%1$s"</string>
     <string name="new_session_location_cli">"在%2$s用%1$s"</string>
@@ -740,8 +715,6 @@
     <string name="new_session_offline_draft">"%1$s 已离线，任务尚未开始"</string>
     <string name="new_session_offline_no_start_named">"%1$s 不在线，现在不能新建"</string>
     <string name="new_session_offline_with_draft">"%1$s 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。"</string>
-    <string name="new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" formatted="false">"只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
-    <string name="new_session_only_changes_this_task_existing_conversations_keep_their_settings" formatted="false">"只修改这个任务；已开出的对话保留原来的设置。"</string>
     <string name="new_session_others_offline">"%1$s 用过的其他电脑也都不在线。"</string>
     <string name="new_session_permissions" formatted="false">"权限"</string>
     <string name="new_session_project_label">"项目：%1$s"</string>
@@ -758,7 +731,6 @@
     <string name="new_session_start_shortcut">"%1$s 开始"</string>
     <string name="new_session_start_unknown">"不确定是否已经启动：%1$s。重试会发送同一个请求，不会重复启动"</string>
     <string name="new_session_starting_on">"正在 %1$s 上启动…"</string>
-    <string name="new_session_task_settings" formatted="false">"任务设置"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
     <string name="new_session_unknown_start_retry" formatted="false">"上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>
@@ -896,7 +868,6 @@
     <string name="queue_unconfirmed_reason" formatted="false">"已送到终端，但没确认"</string>
     <string name="queue_undo" formatted="false">"撤销"</string>
     <string name="quota_agy_waiting" formatted="false">"尚未收到 Antigravity 的额度。Antigravity 在这台电脑上运行后会自动查询额度。"</string>
-    <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
     <string name="quota_awaiting_update" formatted="false">"等待更新"</string>
     <plurals name="quota_days">
         <item quantity="other">"%1$d 天"</item>

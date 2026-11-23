@@ -100,20 +100,6 @@
     "zh-CN": "不确定「{choice}」有没有送到，它已过期，不会再重发。请先去终端确认，放弃后可以重新选择"
   },
   {
-    "en": "Continue planning…",
-    "key": "dock.android_plan_keep",
-    "notes": "Android 会话与聊天显示边界使用；保留当前中文标点。无变量。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "继续规划"
-  },
-  {
     "en": "The result of “{choice}” is unknown. Retry resends the same request; the computer will not execute it twice",
     "key": "dock.android_plan_unknown",
     "notes": "Android 批次 B：Plans.kt 的现有显示文案，保留原中文措辞与标点。参数：choice 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
@@ -251,20 +237,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "去终端处理"
-  },
-  {
-    "en": "Keep planning…",
-    "key": "dock.ios_keep_planning",
-    "notes": "Agents.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "继续规划"
   },
   {
     "en": "This question has already been answered.",

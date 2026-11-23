@@ -1147,22 +1147,6 @@
     "zh-CN": "终端连接断开"
   },
   {
-    "en": "The recovery object was updated concurrently. Retrying on the next sync.",
-    "key": "errors.the_recovery_object_was_updated_concurrently_retrying_on_the",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "恢复对象同时更新，将在下次同步重试"
-  },
-  {
     "en": "Names can only be changed on that device",
     "key": "errors.names_can_only_be_changed_on_that_device",
     "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -1177,22 +1161,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "名称只能在那台设备上修改"
-  },
-  {
-    "en": "Project preferences format is not supported",
-    "key": "errors.project_preferences_format_is_not_supported",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "项目偏好格式不受支持"
   },
   {
     "en": "The computer is still verifying attachments. Retry shortly.",
@@ -1407,20 +1375,6 @@
     "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
   },
   {
-    "en": "CLI’s own mode",
-    "key": "errors.ios_cli_s_own_mode",
-    "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "CLI 自己的模式"
-  },
-  {
     "en": "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.",
     "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
     "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
@@ -1510,25 +1464,6 @@
     "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码"
   },
   {
-    "en": "{value}k context",
-    "key": "errors.ios_k_context",
-    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 (tokens + 500) / 1000；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{value}k 上下文"
-  },
-  {
     "en": "Login expired: {value}",
     "key": "errors.ios_login_expired",
     "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 ce.message ?? \"\"；用户内容和系统/CLI 原文不翻译。",
@@ -1548,25 +1483,6 @@
     "zh-CN": "登录失效：{value}"
   },
   {
-    "en": "{value}M context",
-    "key": "errors.ios_m_context",
-    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 \"\\(Double(tokens / 100_000) / 10.0)\".removingSuffix(\".0\")；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{value}M 上下文"
-  },
-  {
     "en": "Only the device itself can change its name",
     "key": "errors.ios_only_the_device_itself_can_change_its_name",
     "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
@@ -1579,34 +1495,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "名称只能在那台设备上修改"
-  },
-  {
-    "en": "Other clients kept changing project preferences. Changes could not be saved.",
-    "key": "errors.ios_other_clients_kept_changing_project_preferences_changes_could_not",
-    "notes": "iOS Prefs.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存"
-  },
-  {
-    "en": " (project settings may differ)",
-    "key": "errors.ios_project_settings_may_differ",
-    "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "（项目设置可能不同）"
   },
   {
     "en": "Recovery request state may be out of date. Connect to the server and verify again.",

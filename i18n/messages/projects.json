@@ -363,44 +363,11 @@
     }
   },
   {
-    "key": "projects.ios_machine_defaults",
-    "zh-CN": "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。",
-    "en": "After switching computers, each CLI uses that computer’s default model settings.",
-    "notes": "项目设置机器列表底部说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "projects.ios_no_online",
     "zh-CN": "没有在线的电脑",
     "en": "No computers online",
     "notes": "目录浏览无在线电脑提示。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "projects.ios_reading_cli",
-    "zh-CN": "正在读取 {agent} 上次的设置…",
-    "en": "Reading the previous settings for {agent}…",
-    "notes": "项目设置模型尚未继承。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {
-      "agent": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
     "platforms": [
       "ios"
     ],

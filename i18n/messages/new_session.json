@@ -122,39 +122,6 @@
     }
   },
   {
-    "key": "new_session.android_offline_no_start",
-    "zh-CN": "不在线，现在不能新建",
-    "en": "Offline; cannot start a session now",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.android_reading_cli",
-    "zh-CN": "正在读取 {agent} 上次的设置…",
-    "en": "Reading previous settings for {agent}…",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {
-      "agent": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.android_start",
     "zh-CN": "开始",
     "en": "Start",
@@ -384,56 +351,6 @@
     }
   },
   {
-    "key": "new_session.installed",
-    "zh-CN": "已装 {agents}",
-    "en": "Installed: {agents}",
-    "notes": "机器选择行下说明；agents 为 CLI 品牌名列表 空间：短标签/列表行保持紧凑，正文可多行。 变量：agents，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "agents": {
-        "type": "string",
-        "example": "Codex, Claude Code"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.installed_fallback",
-    "zh-CN": "已装 {agents}；这台电脑没有 {missing}，会改用 {agent}",
-    "en": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
-    "notes": "机器选择行下说明；agents 为列表，missing 为缺少的 CLI，agent 为替代 CLI 空间：短标签/列表行保持紧凑，正文可多行。 变量：agents, missing, agent，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "agents": {
-        "type": "string",
-        "example": "Codex"
-      },
-      "missing": {
-        "type": "string",
-        "example": "Claude Code"
-      },
-      "agent": {
-        "type": "string",
-        "example": "Codex"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.ios_abandon",
     "zh-CN": "放弃",
     "en": "Abandon",
@@ -562,20 +479,6 @@
     "zh-CN": "描述任务…",
     "en": "Describe the task…",
     "notes": "项目内紧凑输入框占位及读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.ios_machine_unavailable",
-    "zh-CN": "不在线，现在不能新建",
-    "en": "Offline. Cannot start a session now",
-    "notes": "项目设置机器行说明。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
     "platforms": [
       "ios"
@@ -1106,79 +1009,10 @@
     }
   },
   {
-    "key": "new_session.follow_s_configuration",
-    "zh-CN": "跟随 {value} 自己的配置",
-    "en": "Follow {value}’s configuration",
-    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = agentName(cfg.agent)；名称、日期和诊断原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.task_settings",
-    "zh-CN": "任务设置",
-    "en": "Task settings",
-    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "new_session.permissions",
     "zh-CN": "权限",
     "en": "Permissions",
     "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.only_changes_this_task_existing_conversations_keep_their_settings",
-    "zh-CN": "只修改这个任务；已开出的对话保留原来的设置。",
-    "en": "Only changes this task. Existing conversations keep their settings.",
-    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced",
-    "zh-CN": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
-    "en": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
-    "notes": "NewSession 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
     "params": {},
     "platforms": [
       "web",

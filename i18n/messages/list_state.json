@@ -21,20 +21,6 @@
     "zh-CN": "{agent} 在问你"
   },
   {
-    "en": "Loading",
-    "key": "list_state.android_loading",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "读取中"
-  },
-  {
     "en": "Command approval",
     "key": "list_state.android_request_command",
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
@@ -129,21 +115,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "命令：{command}"
-  },
-  {
-    "en": "New session",
-    "key": "list_state.ios_new_session",
-    "notes": "未拿到会话信息时的缺省标题。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
-    "params": {},
-    "platforms": [
-      "ios",
-      "web"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "新会话"
   },
   {
     "en": "No messages yet",

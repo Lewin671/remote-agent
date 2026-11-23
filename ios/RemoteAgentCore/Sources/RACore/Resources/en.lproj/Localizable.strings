@@ -8,7 +8,6 @@
 "approval_android_reply_expired" = "It is unclear whether “%1$@” arrived. It has expired and will not be resent";
 "approval_android_unknown_result" = "Result unknown";
 "approval_approve" = "Approve";
-"approval_approve_execute" = "Approve execution";
 "approval_delivery_failed" = "Did not reach the computer: %1$@";
 "approval_denial_reason" = "Reason for denial";
 "approval_denied" = "Denied";
@@ -196,7 +195,6 @@
 "dock_claude_plan_note" = "Use Ask mode after approval";
 "dock_handle" = "Handle";
 "dock_handle_terminal" = "Handle in terminal";
-"dock_ios_keep_planning" = "Keep planning…";
 "dock_ios_question_answered" = "This question has already been answered.";
 "dock_ios_question_expired" = "It is unclear whether “%1$@” was submitted. It has expired and will not be resent. Check the terminal.";
 "dock_ios_question_failed" = "Could not submit; the terminal question may have changed: %1$@";
@@ -233,19 +231,14 @@
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "Cannot open the computer’s reply. Command execution is unconfirmed.";
-"errors_ios_cli_s_own_mode" = "CLI’s own mode";
 "errors_ios_could_not_read_this_phone_s_account_state_management" = "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.";
 "errors_ios_expired_control_renewal" = "Remote control expired. Control and new uploads are paused; %1$@";
 "errors_ios_image_content_does_not_match_its_format" = "Image content does not match its format";
 "errors_ios_image_content_or_origin_could_not_be_verified" = "Image content or origin could not be verified";
 "errors_ios_invalid_server_address" = "Invalid server address";
 "errors_ios_joining_canceled_the_old_request_may_still_occupy_the" = "Joining canceled. The old request may still occupy the code: reject it on the managing client, then generate a new pairing code.";
-"errors_ios_k_context" = "%1$@k context";
 "errors_ios_login_expired" = "Login expired: %1$@";
-"errors_ios_m_context" = "%1$@M context";
 "errors_ios_only_the_device_itself_can_change_its_name" = "Only the device itself can change its name";
-"errors_ios_other_clients_kept_changing_project_preferences_changes_could_not" = "Other clients kept changing project preferences. Changes could not be saved.";
-"errors_ios_project_settings_may_differ" = " (project settings may differ)";
 "errors_ios_recovery_request_state_may_be_out_of_date_connect" = "Recovery request state may be out of date. Connect to the server and verify again.";
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.";
 "errors_ios_secure_connection_failed" = "Secure connection failed: %1$@";
@@ -266,7 +259,6 @@
 "errors_names_can_only_be_changed_on_that_device" = "Names can only be changed on that device";
 "errors_not_connected" = "Not connected to the server";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "Other clients kept changing the project list. Changes could not be saved.";
-"errors_project_preferences_format_is_not_supported" = "Project preferences format is not supported";
 "errors_push_backlog_reconnecting" = "Push backlog. Reconnecting.";
 "errors_reading_local_state" = "Reading local state";
 "errors_remote_agent_on_is_out_of_date_update_it" = "remote-agent on %1$@ is out of date. Update it on the computer and retry.";
@@ -292,7 +284,6 @@
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "The draft could not be saved locally. Keep the original images and text before closing the page.";
 "errors_the_plan_display_changed_review_it_again" = "The plan display changed. Review it again.";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.";
-"errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "The recovery object was updated concurrently. Retrying on the next sync.";
 "errors_the_relay_did_not_provide_a_verifiable_execution_result" = "The relay did not provide a verifiable execution result. Retry the same request.";
 "errors_the_request_on_the_computer_changed_review_it_again" = "The request on the computer changed. Review it again.";
 "errors_the_server_address_cannot_include_a_username_or_password" = "The server address cannot include a username or password";
@@ -456,7 +447,6 @@
 "list_state_ended" = "Ended";
 "list_state_idle" = "Idle";
 "list_state_ios_command_label" = "Command: %1$@";
-"list_state_ios_new_session" = "New session";
 "list_state_new_session" = "New session";
 "list_state_no_message" = "No messages yet";
 "list_state_offline" = "Computer offline";
@@ -544,7 +534,6 @@
 "markdown_ios_task_todo" = "Not completed";
 "models_all" = "All models";
 "models_back" = "Back to models";
-"models_context_size" = "%1$@ context";
 "models_context_window" = "Context window";
 "models_default" = "Default";
 "models_default_named" = "Default (%1$@)";
@@ -587,13 +576,9 @@
 "modes_locked" = "This session started with Full access; its approval mode cannot be changed";
 "modes_locked_note" = "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.";
 "modes_model_no_auto" = "This model does not support Auto mode. Choose another approval mode before starting.";
-"modes_model_unsupported" = "Not supported by this model";
 "modes_permission_notice" = "Shows the mode reported by the terminal; switching to accept edits is not offered.";
 "modes_plan" = "Plan";
-"modes_plan_desc" = "Read and plan only; changes start after your approval";
-"modes_plan_edit" = "Revise plan…";
 "modes_plan_propose_desc" = "Propose a plan, then approve execution";
-"modes_skip_all" = "No approval for any operation";
 "modes_switch" = "Switch";
 "modes_switch_failed" = "Could not switch: %1$@";
 "modes_switching" = "Switching…";
@@ -616,9 +601,6 @@
 "new_session_expired_start_prompt" = "It is unclear whether “%1$@” started. The request has expired and will not be resent. Check active sessions first.";
 "new_session_first_message" = "First message of the new session";
 "new_session_follow_cli" = "Follow CLI settings";
-"new_session_follow_s_configuration" = "Follow %1$@’s configuration";
-"new_session_installed" = "Installed: %1$@";
-"new_session_installed_fallback" = "Installed: %2$@; this computer does not have %3$@, so %1$@ will be used";
 "new_session_ios_abandon" = "Abandon";
 "new_session_ios_attach" = "Add attachment";
 "new_session_ios_change_computer" = "Change computer";
@@ -628,7 +610,6 @@
 "new_session_ios_cli_named" = "CLI: %1$@";
 "new_session_ios_computer_label" = "Computer: %1$@";
 "new_session_ios_describe" = "Describe the task…";
-"new_session_ios_machine_unavailable" = "Offline. Cannot start a session now";
 "new_session_ios_prompt_label" = "What would you like to do";
 "new_session_ios_settings_label" = "New session settings: %1$@";
 "new_session_ios_start" = "Start";
@@ -643,8 +624,6 @@
 "new_session_offline_draft" = "%1$@ is offline. The task has not started.";
 "new_session_offline_no_start_named" = "%1$@ is offline. Cannot start a session now.";
 "new_session_offline_with_draft" = "%1$@ is offline. The task has not started. Your draft is saved. Choose an online computer.";
-"new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" = "Only affects future sessions. Active sessions stay unchanged; synced across your devices.";
-"new_session_only_changes_this_task_existing_conversations_keep_their_settings" = "Only changes this task. Existing conversations keep their settings.";
 "new_session_others_offline" = "The other computers used by %1$@ are also offline.";
 "new_session_permissions" = "Permissions";
 "new_session_project_label" = "Project: %1$@";
@@ -661,7 +640,6 @@
 "new_session_start_shortcut" = "%1$@ Start";
 "new_session_start_unknown" = "Start unconfirmed: %1$@. Retrying sends the same request and will not start another session.";
 "new_session_starting_on" = "Starting on %1$@…";
-"new_session_task_settings" = "Task settings";
 "new_session_unexpected_reply" = "Unexpected response";
 "new_session_unknown_start_retry" = "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.";
 "new_session_use_machine" = "Use %1$@";
@@ -681,9 +659,7 @@
 "projects_ios_collapsed" = "Collapsed";
 "projects_ios_current_directory" = "Current folder %1$@";
 "projects_ios_expanded" = "Expanded";
-"projects_ios_machine_defaults" = "After switching computers, each CLI uses that computer’s default model settings.";
 "projects_ios_no_online" = "No computers online";
-"projects_ios_reading_cli" = "Reading the previous settings for %1$@…";
 "projects_ios_recent_ended" = "Recently ended";
 "projects_ios_saving_settings" = "Saving project settings…";
 "projects_ios_settings" = "Project settings";
@@ -752,7 +728,6 @@
 "quota_failure" = "Could not read %2$@ quota: %1$@";
 "quota_failure_no_reason" = "Could not read %1$@ quota";
 "quota_ios_this_computer_was_removed" = "This computer was removed";
-"quota_ios_view_usage_in_local_claude_code" = " View /usage in local Claude Code.";
 "quota_last_reading" = " · Last reading";
 "quota_left" = "%1$@%% left";
 "quota_no_data_received_for_this_quota" = "No data received for this quota";
@@ -1733,7 +1708,6 @@
 "time_day_clock" = "%2$@ %1$@";
 "time_duration_hours_minutes" = "%1$lld hr %2$lld min";
 "time_duration_minutes_seconds" = "%1$lld min %2$lld sec";
-"time_ios_date_time" = "%2$lld/%1$lld %3$@";
 "time_just_now" = "Just now";
 "time_month_day" = "%2$lld/%1$lld";
 "time_month_group" = "Month %1$lld";

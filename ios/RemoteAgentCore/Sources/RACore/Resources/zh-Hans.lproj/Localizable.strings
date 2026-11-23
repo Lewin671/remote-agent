@@ -8,7 +8,6 @@
 "approval_android_reply_expired" = "不确定「%1$@」有没有送到，它已过期，不会再重发";
 "approval_android_unknown_result" = "结果未知";
 "approval_approve" = "批准";
-"approval_approve_execute" = "批准执行";
 "approval_delivery_failed" = "没送到电脑：%1$@";
 "approval_denial_reason" = "拒绝的理由";
 "approval_denied" = "已拒绝";
@@ -196,7 +195,6 @@
 "dock_claude_plan_note" = "批准后使用询问模式";
 "dock_handle" = "处理";
 "dock_handle_terminal" = "去终端处理";
-"dock_ios_keep_planning" = "继续规划";
 "dock_ios_question_answered" = "这个问题已经回答了。";
 "dock_ios_question_expired" = "不确定「%1$@」有没有提交，它已过期，不会再重发。请去终端看看";
 "dock_ios_question_failed" = "没能提交，终端里的问题可能已经变了：%1$@";
@@ -233,19 +231,14 @@
 "errors_ios_already_registering_wait_for_the_result" = "已经在登记%1$@，稍等结果";
 "errors_ios_cannot_find_the_server_check_your_network" = "找不到服务器，检查一下网络";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "电脑的回复打不开，不确定指令有没有执行";
-"errors_ios_cli_s_own_mode" = "CLI 自己的模式";
 "errors_ios_could_not_read_this_phone_s_account_state_management" = "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。";
 "errors_ios_expired_control_renewal" = "远程控制有效期已过，控制和新内容上传已暂停；%1$@";
 "errors_ios_image_content_does_not_match_its_format" = "图片内容和格式对不上";
 "errors_ios_image_content_or_origin_could_not_be_verified" = "图片的内容或来源无法核实";
 "errors_ios_invalid_server_address" = "server 地址无效";
 "errors_ios_joining_canceled_the_old_request_may_still_occupy_the" = "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码";
-"errors_ios_k_context" = "%1$@k 上下文";
 "errors_ios_login_expired" = "登录失效：%1$@";
-"errors_ios_m_context" = "%1$@M 上下文";
 "errors_ios_only_the_device_itself_can_change_its_name" = "名称只能在那台设备上修改";
-"errors_ios_other_clients_kept_changing_project_preferences_changes_could_not" = "项目偏好一直在被其他客户端修改，没能保存";
-"errors_ios_project_settings_may_differ" = "（项目设置可能不同）";
 "errors_ios_recovery_request_state_may_be_out_of_date_connect" = "恢复申请状态可能过期，请连接服务器后重新核实。";
 "errors_ios_remote_control_expired_saving_changes_session_control_and_new" = "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看";
 "errors_ios_secure_connection_failed" = "安全连接失败：%1$@";
@@ -266,7 +259,6 @@
 "errors_names_can_only_be_changed_on_that_device" = "名称只能在那台设备上修改";
 "errors_not_connected" = "连不上服务器";
 "errors_other_clients_kept_changing_the_project_list_changes_could" = "项目列表一直在被别的客户端修改，没能保存";
-"errors_project_preferences_format_is_not_supported" = "项目偏好格式不受支持";
 "errors_push_backlog_reconnecting" = "推送积压，正在重连";
 "errors_reading_local_state" = "读取本机状态";
 "errors_remote_agent_on_is_out_of_date_update_it" = "%1$@ 上的 remote-agent 版本较旧，请在电脑上更新后再试";
@@ -292,7 +284,6 @@
 "errors_the_draft_could_not_be_saved_locally_keep_the" = "草稿没能保存到本机，关闭页面前请保留原图和文字";
 "errors_the_plan_display_changed_review_it_again" = "计划画面已变化，请重新核对";
 "errors_the_previous_operation_s_outcome_is_still_unknown_reload" = "上次操作的结果仍未知，请重新读取任务核实后再操作";
-"errors_the_recovery_object_was_updated_concurrently_retrying_on_the" = "恢复对象同时更新，将在下次同步重试";
 "errors_the_relay_did_not_provide_a_verifiable_execution_result" = "未收到可验证的执行结果，请重试同一请求";
 "errors_the_request_on_the_computer_changed_review_it_again" = "电脑上的请求已变化，请重新核对";
 "errors_the_server_address_cannot_include_a_username_or_password" = "server 地址不能包含用户名或密码";
@@ -456,7 +447,6 @@
 "list_state_ended" = "已结束";
 "list_state_idle" = "空闲";
 "list_state_ios_command_label" = "命令：%1$@";
-"list_state_ios_new_session" = "新会话";
 "list_state_new_session" = "新会话";
 "list_state_no_message" = "还没发消息";
 "list_state_offline" = "电脑离线";
@@ -544,7 +534,6 @@
 "markdown_ios_task_todo" = "未完成";
 "models_all" = "全部模型";
 "models_back" = "返回模型";
-"models_context_size" = "%1$@ 上下文";
 "models_context_window" = "上下文窗口";
 "models_default" = "默认";
 "models_default_named" = "默认（%1$@）";
@@ -587,13 +576,9 @@
 "modes_locked" = "本会话以完全放行启动，不能切换审批模式";
 "modes_locked_note" = "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。";
 "modes_model_no_auto" = "这个模型没有自动模式，换一种审批模式再开始";
-"modes_model_unsupported" = "当前模型不支持";
 "modes_permission_notice" = "照实显示终端中的模式；不提供切到 accept edits 的按钮。";
 "modes_plan" = "计划";
-"modes_plan_desc" = "只读和出计划，你批准后才开始改";
-"modes_plan_edit" = "修改计划…";
 "modes_plan_propose_desc" = "先出方案，再批准执行";
-"modes_skip_all" = "所有操作都不审批";
 "modes_switch" = "切换";
 "modes_switch_failed" = "没能切换：%1$@";
 "modes_switching" = "正在切换…";
@@ -616,9 +601,6 @@
 "new_session_expired_start_prompt" = "不确定「%1$@」有没有启动，它已过期，不会再重发。请先看看进行中的会话";
 "new_session_first_message" = "新会话的第一句话";
 "new_session_follow_cli" = "跟随 CLI 设置";
-"new_session_follow_s_configuration" = "跟随 %1$@ 自己的配置";
-"new_session_installed" = "已装 %1$@";
-"new_session_installed_fallback" = "已装 %2$@；这台电脑没有 %3$@，会改用 %1$@";
 "new_session_ios_abandon" = "放弃";
 "new_session_ios_attach" = "添加附件";
 "new_session_ios_change_computer" = "换电脑";
@@ -628,7 +610,6 @@
 "new_session_ios_cli_named" = "CLI：%1$@";
 "new_session_ios_computer_label" = "电脑：%1$@";
 "new_session_ios_describe" = "描述任务…";
-"new_session_ios_machine_unavailable" = "不在线，现在不能新建";
 "new_session_ios_prompt_label" = "要做什么";
 "new_session_ios_settings_label" = "新会话的设置：%1$@";
 "new_session_ios_start" = "开始";
@@ -643,8 +624,6 @@
 "new_session_offline_draft" = "%1$@ 已离线，任务尚未开始";
 "new_session_offline_no_start_named" = "%1$@ 不在线，现在不能新建";
 "new_session_offline_with_draft" = "%1$@ 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。";
-"new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced" = "只影响之后新建的会话，进行中的不变；在你的设备之间同步。";
-"new_session_only_changes_this_task_existing_conversations_keep_their_settings" = "只修改这个任务；已开出的对话保留原来的设置。";
 "new_session_others_offline" = "%1$@ 用过的其他电脑也都不在线。";
 "new_session_permissions" = "权限";
 "new_session_project_label" = "项目：%1$@";
@@ -661,7 +640,6 @@
 "new_session_start_shortcut" = "%1$@ 开始";
 "new_session_start_unknown" = "不确定是否已经启动：%1$@。重试会发送同一个请求，不会重复启动";
 "new_session_starting_on" = "正在 %1$@ 上启动…";
-"new_session_task_settings" = "任务设置";
 "new_session_unexpected_reply" = "意外的回复";
 "new_session_unknown_start_retry" = "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次";
 "new_session_use_machine" = "改用 %1$@";
@@ -681,9 +659,7 @@
 "projects_ios_collapsed" = "已收起";
 "projects_ios_current_directory" = "当前目录 %1$@";
 "projects_ios_expanded" = "已展开";
-"projects_ios_machine_defaults" = "换电脑后，各 CLI 的模型从那台电脑的默认设置开始。";
 "projects_ios_no_online" = "没有在线的电脑";
-"projects_ios_reading_cli" = "正在读取 %1$@ 上次的设置…";
 "projects_ios_recent_ended" = "最近结束";
 "projects_ios_saving_settings" = "正在保存项目设置…";
 "projects_ios_settings" = "项目设置";
@@ -752,7 +728,6 @@
 "quota_failure" = "没能读取 %2$@ 额度：%1$@";
 "quota_failure_no_reason" = "没能读取 %1$@ 额度";
 "quota_ios_this_computer_was_removed" = "这台电脑已经移除了";
-"quota_ios_view_usage_in_local_claude_code" = " 可在本机 Claude Code 中查看 /usage。";
 "quota_last_reading" = " · 上次记录";
 "quota_left" = "剩 %1$@%%";
 "quota_no_data_received_for_this_quota" = "没有收到这项额度数据";
@@ -1733,7 +1708,6 @@
 "time_day_clock" = "%2$@ %1$@";
 "time_duration_hours_minutes" = "%1$lld 小时 %2$lld 分";
 "time_duration_minutes_seconds" = "%1$lld 分 %2$lld 秒";
-"time_ios_date_time" = "%2$lld月%1$lld日 %3$@";
 "time_just_now" = "刚刚";
 "time_month_day" = "%2$lld月%1$lld日";
 "time_month_group" = "%1$lld 月";

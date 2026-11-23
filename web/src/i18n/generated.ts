@@ -47,7 +47,6 @@ export interface MessageArgs {
   "approval.android_reply_expired": { decision: string };
   "approval.android_unknown_result": { [name: string]: never };
   "approval.approve": { [name: string]: never };
-  "approval.approve_execute": { [name: string]: never };
   "approval.delivery_failed": { reason: string };
   "approval.denial_reason": { [name: string]: never };
   "approval.denied": { [name: string]: never };
@@ -236,7 +235,6 @@ export interface MessageArgs {
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
   "errors.not_connected": { [name: string]: never };
   "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
-  "errors.project_preferences_format_is_not_supported": { [name: string]: never };
   "errors.push_backlog_reconnecting": { [name: string]: never };
   "errors.reading_local_state": { [name: string]: never };
   "errors.remote_agent_on_is_out_of_date_update_it": { value: string };
@@ -262,7 +260,6 @@ export interface MessageArgs {
   "errors.the_draft_could_not_be_saved_locally_keep_the": { [name: string]: never };
   "errors.the_plan_display_changed_review_it_again": { [name: string]: never };
   "errors.the_previous_operation_s_outcome_is_still_unknown_reload": { [name: string]: never };
-  "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": { [name: string]: never };
   "errors.the_relay_did_not_provide_a_verifiable_execution_result": { [name: string]: never };
   "errors.the_request_on_the_computer_changed_review_it_again": { [name: string]: never };
   "errors.the_server_address_cannot_include_a_username_or_password": { [name: string]: never };
@@ -389,7 +386,6 @@ export interface MessageArgs {
   "list_state.approval": { [name: string]: never };
   "list_state.ended": { [name: string]: never };
   "list_state.idle": { [name: string]: never };
-  "list_state.ios_new_session": { [name: string]: never };
   "list_state.new_session": { [name: string]: never };
   "list_state.no_message": { [name: string]: never };
   "list_state.offline": { [name: string]: never };
@@ -483,7 +479,6 @@ export interface MessageArgs {
   "models.all": { [name: string]: never };
   "models.android_reading_machine": { name: string };
   "models.back": { [name: string]: never };
-  "models.context_size": { size: string };
   "models.context_window": { [name: string]: never };
   "models.default": { [name: string]: never };
   "models.default_named": { model: string };
@@ -521,13 +516,9 @@ export interface MessageArgs {
   "modes.locked": { [name: string]: never };
   "modes.locked_note": { [name: string]: never };
   "modes.model_no_auto": { [name: string]: never };
-  "modes.model_unsupported": { [name: string]: never };
   "modes.permission_notice": { [name: string]: never };
   "modes.plan": { [name: string]: never };
-  "modes.plan_desc": { [name: string]: never };
-  "modes.plan_edit": { [name: string]: never };
   "modes.plan_propose_desc": { [name: string]: never };
-  "modes.skip_all": { [name: string]: never };
   "modes.switch": { [name: string]: never };
   "modes.switch_failed": { reason: string };
   "modes.switching": { [name: string]: never };
@@ -551,9 +542,6 @@ export interface MessageArgs {
   "new_session.expired_start_prompt": { prompt: string };
   "new_session.first_message": { [name: string]: never };
   "new_session.follow_cli": { [name: string]: never };
-  "new_session.follow_s_configuration": { value: string };
-  "new_session.installed": { agents: string };
-  "new_session.installed_fallback": { agent: string; agents: string; missing: string };
   "new_session.ios_attach": { [name: string]: never };
   "new_session.location": { project: string };
   "new_session.location_cli": { cli: string; project: string };
@@ -565,8 +553,6 @@ export interface MessageArgs {
   "new_session.offline_draft": { name: string };
   "new_session.offline_no_start_named": { name: string };
   "new_session.offline_with_draft": { name: string };
-  "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": { [name: string]: never };
-  "new_session.only_changes_this_task_existing_conversations_keep_their_settings": { [name: string]: never };
   "new_session.others_offline": { name: string };
   "new_session.permissions": { [name: string]: never };
   "new_session.project_label": { name: string };
@@ -583,7 +569,6 @@ export interface MessageArgs {
   "new_session.start_shortcut": { keys: string };
   "new_session.start_unknown": { reason: string };
   "new_session.starting_on": { name: string };
-  "new_session.task_settings": { [name: string]: never };
   "new_session.unexpected_reply": { [name: string]: never };
   "new_session.unknown_start_retry": { [name: string]: never };
   "new_session.use_machine": { name: string };
@@ -1508,7 +1493,6 @@ export interface MessageArgs {
   "time.duration_minutes_seconds": { minutes: number; seconds: number };
   "time.duration_seconds": { count: number };
   "time.hours_ago": { count: number };
-  "time.ios_date_time": { day: number; month: number; time: string };
   "time.just_now": { [name: string]: never };
   "time.minutes_ago": { count: number };
   "time.month_day": { day: number; month: number };
@@ -1805,7 +1789,6 @@ export const messages = {
     "approval.android_reply_expired": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",
     "approval.android_unknown_result": "Result unknown",
     "approval.approve": "Approve",
-    "approval.approve_execute": "Approve execution",
     "approval.delivery_failed": "Did not reach the computer: {reason}",
     "approval.denial_reason": "Reason for denial",
     "approval.denied": "Denied",
@@ -2060,7 +2043,6 @@ export const messages = {
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
     "errors.not_connected": "Not connected to the server",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
-    "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
     "errors.push_backlog_reconnecting": "Push backlog. Reconnecting.",
     "errors.reading_local_state": "Reading local state",
     "errors.remote_agent_on_is_out_of_date_update_it": "remote-agent on {value} is out of date. Update it on the computer and retry.",
@@ -2086,7 +2068,6 @@ export const messages = {
     "errors.the_draft_could_not_be_saved_locally_keep_the": "The draft could not be saved locally. Keep the original images and text before closing the page.",
     "errors.the_plan_display_changed_review_it_again": "The plan display changed. Review it again.",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
-    "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "The recovery object was updated concurrently. Retrying on the next sync.",
     "errors.the_relay_did_not_provide_a_verifiable_execution_result": "The relay did not provide a verifiable execution result. Retry the same request.",
     "errors.the_request_on_the_computer_changed_review_it_again": "The request on the computer changed. Review it again.",
     "errors.the_server_address_cannot_include_a_username_or_password": "The server address cannot include a username or password",
@@ -2333,7 +2314,6 @@ export const messages = {
     "list_state.approval": "Awaiting approval",
     "list_state.ended": "Ended",
     "list_state.idle": "Idle",
-    "list_state.ios_new_session": "New session",
     "list_state.new_session": "New session",
     "list_state.no_message": "No messages yet",
     "list_state.offline": "Computer offline",
@@ -2469,7 +2449,6 @@ export const messages = {
     "models.all": "All models",
     "models.android_reading_machine": "Reading settings from {name}…",
     "models.back": "Back to models",
-    "models.context_size": "{size} context",
     "models.context_window": "Context window",
     "models.default": "Default",
     "models.default_named": "Default ({model})",
@@ -2507,13 +2486,9 @@ export const messages = {
     "modes.locked": "This session started with Full access; its approval mode cannot be changed",
     "modes.locked_note": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",
     "modes.model_no_auto": "This model does not support Auto mode. Choose another approval mode before starting.",
-    "modes.model_unsupported": "Not supported by this model",
     "modes.permission_notice": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
     "modes.plan": "Plan",
-    "modes.plan_desc": "Read and plan only; changes start after your approval",
-    "modes.plan_edit": "Revise plan…",
     "modes.plan_propose_desc": "Propose a plan, then approve execution",
-    "modes.skip_all": "No approval for any operation",
     "modes.switch": "Switch",
     "modes.switch_failed": "Could not switch: {reason}",
     "modes.switching": "Switching…",
@@ -2537,9 +2512,6 @@ export const messages = {
     "new_session.expired_start_prompt": "It is unclear whether “{prompt}” started. The request has expired and will not be resent. Check active sessions first.",
     "new_session.first_message": "First message of the new session",
     "new_session.follow_cli": "Follow CLI settings",
-    "new_session.follow_s_configuration": "Follow {value}’s configuration",
-    "new_session.installed": "Installed: {agents}",
-    "new_session.installed_fallback": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
     "new_session.ios_attach": "Add attachment",
     "new_session.location": "In {project}",
     "new_session.location_cli": "In {project} using {cli}",
@@ -2551,8 +2523,6 @@ export const messages = {
     "new_session.offline_draft": "{name} is offline. The task has not started.",
     "new_session.offline_no_start_named": "{name} is offline. Cannot start a session now.",
     "new_session.offline_with_draft": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
-    "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
-    "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "Only changes this task. Existing conversations keep their settings.",
     "new_session.others_offline": "The other computers used by {name} are also offline.",
     "new_session.permissions": "Permissions",
     "new_session.project_label": "Project: {name}",
@@ -2569,7 +2539,6 @@ export const messages = {
     "new_session.start_shortcut": "{keys} Start",
     "new_session.start_unknown": "Start unconfirmed: {reason}. Retrying sends the same request and will not start another session.",
     "new_session.starting_on": "Starting on {name}…",
-    "new_session.task_settings": "Task settings",
     "new_session.unexpected_reply": "Unexpected response",
     "new_session.unknown_start_retry": "The last start has an unknown result. Send again to retry the same request; the computer will not start it twice.",
     "new_session.use_machine": "Use {name}",
@@ -3818,7 +3787,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "time.ios_date_time": "{month}/{day} {time}",
     "time.just_now": "Just now",
     "time.minutes_ago": {
       "forms": {
@@ -4172,7 +4140,6 @@ export const messages = {
     "approval.android_reply_expired": "不确定「{decision}」有没有送到，它已过期，不会再重发",
     "approval.android_unknown_result": "结果未知",
     "approval.approve": "批准",
-    "approval.approve_execute": "批准执行",
     "approval.delivery_failed": "没送到电脑：{reason}",
     "approval.denial_reason": "拒绝的理由",
     "approval.denied": "已拒绝",
@@ -4416,7 +4383,6 @@ export const messages = {
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
     "errors.not_connected": "连不上服务器",
     "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
-    "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
     "errors.push_backlog_reconnecting": "推送积压，正在重连",
     "errors.reading_local_state": "读取本机状态",
     "errors.remote_agent_on_is_out_of_date_update_it": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试",
@@ -4442,7 +4408,6 @@ export const messages = {
     "errors.the_draft_could_not_be_saved_locally_keep_the": "草稿没能保存到本机，关闭页面前请保留原图和文字",
     "errors.the_plan_display_changed_review_it_again": "计划画面已变化，请重新核对",
     "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "上次操作的结果仍未知，请重新读取任务核实后再操作",
-    "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "恢复对象同时更新，将在下次同步重试",
     "errors.the_relay_did_not_provide_a_verifiable_execution_result": "未收到可验证的执行结果，请重试同一请求",
     "errors.the_request_on_the_computer_changed_review_it_again": "电脑上的请求已变化，请重新核对",
     "errors.the_server_address_cannot_include_a_username_or_password": "server 地址不能包含用户名或密码",
@@ -4669,7 +4634,6 @@ export const messages = {
     "list_state.approval": "等待审批",
     "list_state.ended": "已结束",
     "list_state.idle": "空闲",
-    "list_state.ios_new_session": "新会话",
     "list_state.new_session": "新会话",
     "list_state.no_message": "还没发消息",
     "list_state.offline": "电脑离线",
@@ -4798,7 +4762,6 @@ export const messages = {
     "models.all": "全部模型",
     "models.android_reading_machine": "读取 {name} 的设置…",
     "models.back": "返回模型",
-    "models.context_size": "{size} 上下文",
     "models.context_window": "上下文窗口",
     "models.default": "默认",
     "models.default_named": "默认（{model}）",
@@ -4836,13 +4799,9 @@ export const messages = {
     "modes.locked": "本会话以完全放行启动，不能切换审批模式",
     "modes.locked_note": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
     "modes.model_no_auto": "这个模型没有自动模式，换一种审批模式再开始",
-    "modes.model_unsupported": "当前模型不支持",
     "modes.permission_notice": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
     "modes.plan": "计划",
-    "modes.plan_desc": "只读和出计划，你批准后才开始改",
-    "modes.plan_edit": "修改计划…",
     "modes.plan_propose_desc": "先出方案，再批准执行",
-    "modes.skip_all": "所有操作都不审批",
     "modes.switch": "切换",
     "modes.switch_failed": "没能切换：{reason}",
     "modes.switching": "正在切换…",
@@ -4866,9 +4825,6 @@ export const messages = {
     "new_session.expired_start_prompt": "不确定「{prompt}」有没有启动，它已过期，不会再重发。请先看看进行中的会话",
     "new_session.first_message": "新会话的第一句话",
     "new_session.follow_cli": "跟随 CLI 设置",
-    "new_session.follow_s_configuration": "跟随 {value} 自己的配置",
-    "new_session.installed": "已装 {agents}",
-    "new_session.installed_fallback": "已装 {agents}；这台电脑没有 {missing}，会改用 {agent}",
     "new_session.ios_attach": "添加附件",
     "new_session.location": "在{project}",
     "new_session.location_cli": "在{project}用{cli}",
@@ -4880,8 +4836,6 @@ export const messages = {
     "new_session.offline_draft": "{name} 已离线，任务尚未开始",
     "new_session.offline_no_start_named": "{name} 不在线，现在不能新建",
     "new_session.offline_with_draft": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
-    "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
-    "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "只修改这个任务；已开出的对话保留原来的设置。",
     "new_session.others_offline": "{name} 用过的其他电脑也都不在线。",
     "new_session.permissions": "权限",
     "new_session.project_label": "项目：{name}",
@@ -4898,7 +4852,6 @@ export const messages = {
     "new_session.start_shortcut": "{keys} 开始",
     "new_session.start_unknown": "不确定是否已经启动：{reason}。重试会发送同一个请求，不会重复启动",
     "new_session.starting_on": "正在 {name} 上启动…",
-    "new_session.task_settings": "任务设置",
     "new_session.unexpected_reply": "意外的回复",
     "new_session.unknown_start_retry": "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
     "new_session.use_machine": "改用 {name}",
@@ -6093,7 +6046,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "time.ios_date_time": "{month}月{day}日 {time}",
     "time.just_now": "刚刚",
     "time.minutes_ago": {
       "forms": {

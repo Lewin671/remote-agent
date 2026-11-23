@@ -81,58 +81,6 @@
     }
   },
   {
-    "key": "home.android_earlier_failed_retry",
-    "zh-CN": "没能读取更早的会话：{reason} · 点这里重试",
-    "en": "Could not load earlier sessions: {reason} · Tap to retry",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "home.android_earlier_offline",
-    "zh-CN": "连上服务器后读取更早的会话",
-    "en": "Earlier sessions will load when connected to the server",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "home.android_list_failed_retry",
-    "zh-CN": "没能读取会话列表：{reason} · 点这里重试",
-    "en": "Could not load sessions: {reason} · Tap to retry",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "home.android_schedules_new",
     "zh-CN": "定时，有新结果",
     "en": "Schedules, new results",
