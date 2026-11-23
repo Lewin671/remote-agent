@@ -95,8 +95,6 @@ import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
-import io.github.lewin671.remoteagent.core.sendModeFor
-import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
@@ -205,7 +203,16 @@ fun SessionScreen(sid: String) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (header.missing || (header.sessionsListed && header.hasMissingText())) {
+            if (header.lookupFailed) {
+                Text(
+                    uiText(header.lookupErrorText).ifEmpty { copy(UiMessages.sessionAndroidUnknown()) },
+                    style = T.s17b,
+                    color = p.ink,
+                    textAlign = TextAlign.Center,
+                )
+                PillButton(uiText(UiMessages.commonRetry()), { remote.openSession(sid) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                TextLink(uiText(UiMessages.commonBack()), nav.back)
+            } else if (header.missing || (header.sessionsListed && header.hasMissingText())) {
                 Text(
                     uiText(header.missingText).ifEmpty { copy(UiMessages.sessionAndroidUnknown()) },
                     style = T.s17b,
@@ -255,7 +262,7 @@ fun SessionScreen(sid: String) {
     LightSystemBarIcons(term && !p.dark)
 
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper).windowInsetsPadding(WindowInsets.safeDrawing)) {
-        if (!compactTerminal) SessionTopBar(sid, manyMachines = syncView.machinesCount > 1, vm = vm, dark = term)
+        if (!compactTerminal) SessionTopBar(sid, vm = vm, dark = term)
         if (!compactTerminal) Segmented(
             if (wide) listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal()), copy(UiMessages.sessionSplit()))
             else listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal())),
@@ -348,7 +355,6 @@ private fun displayMarkKind(status: SessionDisplayStatus): MarkKind? = when (sta
 @Composable
 private fun SessionTopBar(
     sid: String,
-    manyMachines: Boolean,
     vm: SessionViewModel,
     dark: Boolean,
 ) {
@@ -366,23 +372,11 @@ private fun SessionTopBar(
     var sheet by remember { mutableStateOf(0) } // 1 mode, 2 model, 3 project settings
 
     val forkSlot = actions.fork
-    val forking = forkSlot.busy || forkSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
-    val forkRow = forkAction(
-        blocked = if (actions.hasForkBlockedReason()) uiText(actions.forkBlockedReason).ifEmpty { null } else null,
-        running = forking,
-        error = if (forkSlot.hasErrorText()) uiText(forkSlot.errorText) else "",
-        frozen = forkSlot.frozen,
-        expired = forkSlot.expired,
-        copy = copy,
-    )
+    val forkAct = actions.forkAction
+    val forking = forkAct.busy
     val high = header.hasContext && header.highContextWarning
     val statusStr = uiText(header.statusText)
-    val modeStr = when {
-        header.exited || !header.hasApprovalModeLabel() -> ""
-        header.approvalModeLabel.key == UiMessages.modesAgentOwn("").key && header.approvalModeLabel.argsCount == 0 ->
-            copy(UiMessages.modesAgentOwn(agent = header.agentName.ifEmpty { io.github.lewin671.remoteagent.core.agentName(header.agent, copy = copy) }))
-        else -> uiText(header.approvalModeLabel)
-    }
+    val modeStr = if (header.exited || !header.hasApprovalModeLabel()) "" else uiText(header.approvalModeLabel)
     val subtitleText = listOf(statusStr, modeStr).filter { it.isNotEmpty() }.joinToString(" · ")
     val rich = if (!header.exited && header.approvalMode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS && modeStr.isNotEmpty()) {
         buildAnnotatedString {
@@ -393,7 +387,7 @@ private fun SessionTopBar(
         }
     } else null
 
-    val taskOwned = header.isScheduled && header.scheduledTaskId.isNotEmpty()
+    val taskOwned = header.taskOwned
     BackHandler(enabled = taskOwned && !dark) { nav.task(header.machineId, header.scheduledTaskId) }
     val back = { if (taskOwned) nav.task(header.machineId, header.scheduledTaskId) else nav.back() }
 
@@ -532,7 +526,7 @@ private fun SessionTopBar(
         val menuTitle = listOfNotNull(
             header.agentName.ifEmpty { null },
             if (header.hasProjectName()) uiText(header.projectName).ifEmpty { null } else null,
-            computer.takeIf { it.isNotEmpty() && manyMachines },
+            computer.takeIf { it.isNotEmpty() && header.multipleMachines },
         ).joinToString(" · ")
         val modelLabel = header.modelLabel.ifEmpty { header.model }
         val effortStr = if (header.hasEffortLabel()) uiText(header.effortLabel) else header.effort
@@ -542,7 +536,7 @@ private fun SessionTopBar(
             info = {
                 SheetInfo(
                     menuTitle,
-                    shortPath(header.cwd),
+                    header.shortPath.ifEmpty { header.cwd },
                     mono = true,
                     lead = { AgentMarkLead(header.agent.takeIf { it != Agent.AGENT_UNSPECIFIED } ?: DEFAULT_AGENT, T.s17b, p.ink) },
                 )
@@ -584,17 +578,17 @@ private fun SessionTopBar(
                     if (actions.canRename) {
                         add(SheetAction(copy(UiMessages.sessionRename()), enabled = !forking) { rename = true })
                     }
-                    if (caps.supportsFork) {
+                    if (forkAct.visible) {
                         add(
                             SheetAction(
-                                forkRow.text,
-                                enabled = forkRow.enabled && (actions.canFork || forkRow.abandons),
-                                busy = forkRow.busy,
+                                uiText(forkAct.label).ifEmpty { copy(UiMessages.sessionFork()) },
+                                enabled = forkAct.enabled,
+                                busy = forkAct.busy,
                                 keepOpen = true,
-                                note = forkRow.note,
-                                noteError = forkRow.noteError,
+                                note = uiText(forkAct.note),
+                                noteError = forkAct.noteError,
                             ) {
-                                if (forkRow.abandons && forkSlot.canAbandon) {
+                                if (forkAct.abandons && forkAct.canAbandon) {
                                     remote.abandonSessionCommand(sid, forkSlot.slotKey)
                                 } else {
                                     remote.submitSessionCommand(
@@ -862,7 +856,7 @@ internal fun ChatPane(
             }
         }
         CompositionLocalProvider(LocalDockMax provides dockMax) {
-            if (header.isScheduled && header.scheduledTaskId.isNotEmpty()) {
+            if (header.taskOwned) {
                 Hint(copy(UiMessages.sessionReplyMoves()), Modifier.padding(horizontal = ChatSide), inset = 0.dp)
             }
             BottomArea(
@@ -1008,19 +1002,17 @@ internal fun Composer(
     val machineId = header.machineId
     val machine = state.machines[machineId]
     val online = header.computerOnline && !header.computerUnlinked
-    val agent = header.agent.takeIf { it != Agent.AGENT_UNSPECIFIED } ?: DEFAULT_AGENT
 
     val images = ImageDrafts.forSession(sid)
     var text by images.text
     val keeping = Outbox.keeping(sid)
     val maxImg = caps.maxImages.takeIf { it > 0 } ?: MAX_IMAGES
-    val machineName = if (header.hasComputerName()) uiText(header.computerName) else machineId.take(8)
-    val blocked = uploadBlocked(machine, online, machineName, copy = copy)
+    val blocked = if (caps.hasImageUploadBlockedReason()) uiText(caps.imageUploadBlockedReason).ifEmpty { null } else null
     RefreshDraftUploads(images, remote, machineId, blocked)
     val pick = rememberImagePicker(images, remote, machineId, blocked, maxImg, videos = caps.supportsFiles)
 
-    fun send(requestedMode: SendMode = SendMode.SEND_MODE_STEER) {
-        val mode = sendModeFor(agent, requestedMode, composer.hasActiveTurn)
+    fun send(requestedMode: SendMode? = null) {
+        val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER
         val msg = text.trim()
         if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine, copy = copy) != null || (msg.isEmpty() && images.images.isEmpty())) return
         images.sendAllTo(remote, machineId)
@@ -1118,7 +1110,10 @@ internal fun Composer(
         Hint(uiText(composer.disabledReason), Modifier.padding(horizontal = ChatSide), inset = 0.dp)
     }
     if (text.trimStart().startsWith("/")) {
-        Text(copy(UiMessages.composerSlashNote()), Modifier.padding(horizontal = ChatSide).padding(bottom = 8.dp), style = T.s13, color = p.orangeInk)
+        val warn = if (composer.hasSlashWarningText()) uiText(composer.slashWarningText) else copy(UiMessages.composerSlashNote())
+        if (warn.isNotEmpty()) {
+            Text(warn, Modifier.padding(horizontal = ChatSide).padding(bottom = 8.dp), style = T.s13, color = p.orangeInk)
+        }
     }
 }
 
@@ -1173,28 +1168,4 @@ fun LazyListState.keepPlace(before: List<Any>, after: List<Any>, joined: Int) {
     val was = if (key == null) -1 else before.indexOf(key)
     val now = if (was < 0) -1 else after.indexOf(key)
     requestScrollToItem(index + if (now >= 0) now - was else joined, firstVisibleItemScrollOffset)
-}
-
-data class ForkAction(
-    val text: String = sessionText(UiMessages.sessionFork()),
-    val note: String = "",
-    val noteError: Boolean = false,
-    val enabled: Boolean = true,
-    val busy: Boolean = false,
-    val abandons: Boolean = false,
-)
-
-fun forkAction(
-    blocked: String?,
-    running: Boolean,
-    error: String,
-    frozen: Boolean,
-    expired: Boolean,
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
-): ForkAction = when {
-    running -> ForkAction(text = copy(UiMessages.sessionForking()), busy = true)
-    blocked != null -> ForkAction(text = copy(UiMessages.sessionFork()), note = blocked, enabled = false)
-    expired -> ForkAction(text = copy(UiMessages.sessionAbandonFork()), note = copy(UiMessages.sessionForkExpired()), noteError = true, abandons = true)
-    frozen -> ForkAction(text = copy(UiMessages.sessionFork()), note = copy(UiMessages.sessionForkUnknown()), noteError = true)
-    else -> ForkAction(text = copy(UiMessages.sessionFork()), note = if (error.isNotEmpty()) copy(UiMessages.sessionForkFailed(reason = error)) else "", noteError = true)
 }

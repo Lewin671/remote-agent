@@ -1220,19 +1220,26 @@ object ScreenGoldenLoader {
                     setFound(h.bool("found"))
                     setSessionsListed(h.bool("sessionsListed"))
                     setLiveLoaded(h.bool("liveLoaded"))
+                    setMissing(h.bool("missing"))
+                    h.obj("missingText")?.let { setMissingText(parseText(it)) }
                     h.obj("title")?.let { setTitle(parseText(it)) }
                     h.obj("projectName")?.let { setProjectName(parseText(it)) }
                     setProjectKey(h.str("projectKey"))
                     setCwd(h.str("cwd"))
+                    setShortPath(h.str("shortPath"))
                     setAgent(h.enum("agent", Agent.AGENT_UNSPECIFIED))
                     setAgentName(h.str("agentName"))
                     setStatus(h.enum("status", SessionDisplayStatus.SESSION_DISPLAY_STATUS_UNSPECIFIED))
                     setTone(h.enum("tone", SessionTone.SESSION_TONE_UNSPECIFIED))
                     h.obj("statusText")?.let { setStatusText(parseText(it)) }
                     setApprovalMode(h.enum("approvalMode", ApprovalMode.APPROVAL_MODE_UNSPECIFIED))
+                    setApprovalModeRaw(h.str("approvalModeRaw"))
                     h.obj("approvalModeLabel")?.let { setApprovalModeLabel(parseText(it)) }
+                    setTerminalModeOverride(h.bool("terminalModeOverride"))
                     setModel(h.str("model"))
                     setModelLabel(h.str("modelLabel"))
+                    setEffort(h.str("effort"))
+                    h.obj("effortLabel")?.let { setEffortLabel(parseText(it)) }
                     setModelUnknown(h.bool("modelUnknown"))
                     setContextPercent(h.i32("contextPercent"))
                     setHasContext(h.bool("hasContext") || "contextPercent" in h)
@@ -1240,11 +1247,15 @@ object ScreenGoldenLoader {
                     setMachineId(h.str("machineId"))
                     h.obj("computerName")?.let { setComputerName(parseText(it)) }
                     setComputerOnline(h.bool("computerOnline"))
+                    setMultipleMachines(h.bool("multipleMachines"))
                     setConnState(h.enum("connState", ConnState.CONN_STATE_UNSPECIFIED))
                     setDaemonProtocolVersion(h.i32("daemonProtocolVersion"))
                     setClientProtocolVersion(h.i32("clientProtocolVersion"))
                     setForkedFromId(h.str("forkedFromId"))
                     setIsScheduled(h.bool("isScheduled"))
+                    setTaskOwned(h.bool("taskOwned"))
+                    setLookupFailed(h.bool("lookupFailed"))
+                    h.obj("lookupErrorText")?.let { setLookupErrorText(parseText(it)) }
                     setScheduledTitle(h.str("scheduledTitle"))
                     setScheduledTaskId(h.str("scheduledTaskId"))
                     setExited(h.bool("exited"))
@@ -1268,7 +1279,13 @@ object ScreenGoldenLoader {
                                 .setSupportsModelSwitch(cp.bool("supportsModelSwitch"))
                                 .setSupportsSchedule(cp.bool("supportsSchedule"))
                                 .setTerminalAvailable(cp.bool("terminalAvailable"))
-                                .setMaxImages(cp.i32("maxImages")),
+                                .setMaxImages(cp.i32("maxImages"))
+                                .setMaxFiles(cp.i32("maxFiles"))
+                                .setMaxFileBytes(cp.i64("maxFileBytes"))
+                                .setCapabilitiesLoaded(cp.bool("capabilitiesLoaded"))
+                                .apply {
+                                    cp.obj("imageUploadBlockedReason")?.let { setImageUploadBlockedReason(parseText(it)) }
+                                },
                         )
                     }
                 },
@@ -1298,6 +1315,51 @@ object ScreenGoldenLoader {
                     a.obj("setModel")?.let { setSetModel(parseCommandState(it)) }
                     setModelsLoading(a.bool("modelsLoading"))
                     a.obj("modelsError")?.let { setModelsError(parseText(it)) }
+                    setModeLocked(a.bool("modeLocked"))
+                    a.obj("modePermissionNotice")?.let { setModePermissionNotice(parseText(it)) }
+                    a.obj("forkAction")?.let { fa ->
+                        setForkAction(
+                            SessionForkActionView.newBuilder()
+                                .setVisible(fa.bool("visible"))
+                                .setEnabled(fa.bool("enabled"))
+                                .setBusy(fa.bool("busy"))
+                                .setAbandons(fa.bool("abandons"))
+                                .setCanAbandon(fa.bool("canAbandon"))
+                                .setNoteError(fa.bool("noteError"))
+                                .apply {
+                                    fa.obj("label")?.let { setLabel(parseText(it)) }
+                                    fa.obj("note")?.let { setNote(parseText(it)) }
+                                },
+                        )
+                    }
+                    a.obj("usageEntry")?.let { ue ->
+                        setUsageEntry(
+                            SessionUsageEntryView.newBuilder()
+                                .setVisible(ue.bool("visible"))
+                                .setSupported(ue.bool("supported"))
+                                .setLoading(ue.bool("loading"))
+                                .setSourceUnavailable(ue.bool("sourceUnavailable"))
+                                .setHasData(ue.bool("hasData"))
+                                .setFallbackThirtyDays(ue.bool("fallbackThirtyDays"))
+                                .setFewSpeedSamples(ue.bool("fewSpeedSamples"))
+                                .setBackfilling(ue.bool("backfilling"))
+                                .setTotalTokens(ue.i64("totalTokens"))
+                                .setHasCacheHit(ue.bool("hasCacheHit"))
+                                .setCacheHitRate(ue.f64("cacheHitRate"))
+                                .setHasSpeed(ue.bool("hasSpeed"))
+                                .setRecent10SpeedP50(ue.f64("recent10SpeedP50"))
+                                .setRecent10SpeedCount(ue.i64("recent10SpeedCount"))
+                                .apply {
+                                    ue.obj("subtitle")?.let { setSubtitle(parseText(it)) }
+                                    ue.obj("valueText")?.let { setValueText(parseText(it)) }
+                                    ue.obj("footnote")?.let { setFootnote(parseText(it)) }
+                                    ue.obj("totalTokensText")?.let { setTotalTokensText(parseText(it)) }
+                                    ue.obj("cacheHitText")?.let { setCacheHitText(parseText(it)) }
+                                    ue.obj("speedText")?.let { setSpeedText(parseText(it)) }
+                                    ue.obj("formattedSubtitle")?.let { setFormattedSubtitle(parseText(it)) }
+                                },
+                        )
+                    }
                     a.arr("modeChoices").forEach { mce ->
                         val mc = mce.jsonObject
                         addModeChoices(
@@ -1320,9 +1382,12 @@ object ScreenGoldenLoader {
                     setKind(d.enum("kind", SessionDockKind.SESSION_DOCK_KIND_UNSPECIFIED))
                     setItemId(d.str("itemId"))
                     setObservedSeq(d.i64("observedSeq"))
+                    setIsSkeleton(d.bool("isSkeleton"))
                     d.obj("title")?.let { setTitle(parseText(it)) }
                     d.obj("summary")?.let { setSummary(parseText(it)) }
                     d.obj("meta")?.let { setMeta(parseText(it)) }
+                    d.obj("timeLeft")?.let { setTimeLeft(parseText(it)) }
+                    d.obj("timeLeftPlain")?.let { setTimeLeftPlain(parseText(it)) }
                     d.obj("command")?.let { setCommand(parseCommandState(it)) }
                     d.obj("approval")?.let { ap ->
                         setApproval(
@@ -1376,6 +1441,7 @@ object ScreenGoldenLoader {
                         setTerminalPopup(
                             SessionTerminalPopupDockView.newBuilder()
                                 .setCanGoTerminal(tp.bool("canGoTerminal"))
+                                .setIsTrustFolder(tp.bool("isTrustFolder"))
                                 .apply {
                                     tp.obj("popupTitle")?.let { setPopupTitle(parseText(it)) }
                                     tp.obj("hint")?.let { setHint(parseText(it)) }
@@ -1412,6 +1478,7 @@ object ScreenGoldenLoader {
                     .setCanRestore(itemObj.bool("canRestore"))
                     .setNetworkActionsDisabled(itemObj.bool("networkActionsDisabled"))
                     .setServerBacked(itemObj.bool("serverBacked"))
+                    .setIsSkeleton(itemObj.bool("isSkeleton"))
                     .apply {
                         itemObj.obj("sourceLabel")?.let { setSourceLabel(parseText(it)) }
                         itemObj.obj("reasonText")?.let { setReasonText(parseText(it)) }
@@ -1424,6 +1491,10 @@ object ScreenGoldenLoader {
                     cp.obj("placeholder")?.let { setPlaceholder(parseText(it)) }
                     cp.obj("disabledReason")?.let { setDisabledReason(parseText(it)) }
                     setSupportsQueueMode(cp.bool("supportsQueueMode"))
+                    setDefaultSendMode(cp.enum("defaultSendMode", SendMode.SEND_MODE_UNSPECIFIED))
+                    setIsDefaultPlaceholder(cp.bool("isDefaultPlaceholder"))
+                    cp.obj("slashWarningTitle")?.let { setSlashWarningTitle(parseText(it)) }
+                    cp.obj("slashWarningText")?.let { setSlashWarningText(parseText(it)) }
                     setCanAttachImages(cp.bool("canAttachImages"))
                     setCanAttachFiles(cp.bool("canAttachFiles"))
                     setHasActiveTurn(cp.bool("hasActiveTurn"))

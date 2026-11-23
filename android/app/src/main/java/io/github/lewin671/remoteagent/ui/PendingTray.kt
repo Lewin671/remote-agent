@@ -54,6 +54,7 @@ private fun trayToneColor(tone: SessionTrayTone, p: Palette): Color = when (tone
 
 @Composable
 private fun trayRowBodyText(it: SessionTrayItemView): String {
+    if (it.isSkeleton) return uiText(UiMessages.sessionSkeleton())
     if (it.text.isNotEmpty()) return it.text
     if (it.foreignDimmed) return uiText(UiMessages.queueOtherMessage())
     if (it.imageCount > 0) return uiText(UiMessages.imageCount(count = it.imageCount))

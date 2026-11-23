@@ -101,7 +101,7 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
                     uiText(c.label),
                     reason ?: uiText(c.note),
                     checked = c.selected,
-                    enabled = c.available && !busy,
+                    enabled = c.available && !busy && !vm.actions.modeLocked,
                     danger = c.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS && c.available,
                     last = i == choices.size - 1,
                     onClick = {
@@ -115,6 +115,7 @@ fun ModeSheet(sid: String, vm: SessionViewModel, onClose: () -> Unit) {
             vm.actions.hasModeSwitchBlockedReason() -> uiText(vm.actions.modeSwitchBlockedReason)
             vm.header.terminalModeOverride && raw.isNotEmpty() ->
                 copy(UiMessages.modesAndroidPermissionNotice(mode = if (raw == "acceptEdits") "accept edits" else raw))
+            vm.actions.hasModePermissionNotice() -> uiText(vm.actions.modePermissionNotice)
             else -> copy(UiMessages.sessionOnlyCurrent())
         }
         Hint(notice)
@@ -456,7 +457,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val act = rememberAction()
     val subtitle = listOfNotNull(
         uiText(vm.header.title).ifEmpty { null },
-        if (a != null && dock.hasTimeLeft()) uiText(dock.timeLeft).ifEmpty { null } else null,
+        if (a != null && dock.hasTimeLeftPlain()) uiText(dock.timeLeftPlain).ifEmpty { null } else null,
     ).joinToString(" · ").ifEmpty { null }
 
     PageScaffold(copy(UiMessages.approvalDetails()), subtitle = subtitle) {
@@ -488,8 +489,8 @@ fun ApprovalPage(sid: String, aid: String) {
         var denying by androidx.compose.runtime.saveable.rememberSaveable(aid) { mutableStateOf(false) }
         val locked = vm.header.computerUnlinked || (dock.deadlineMs > 0 && t >= dock.deadlineMs)
         DarkCard(Modifier.weight(1f, fill = false).then(card)) {
-            DarkCardHead(uiText(dock.title), uiText(dock.timeLeft))
-            if (a.isSkeleton) {
+            DarkCardHead(uiText(dock.title), uiText(dock.timeLeftPlain))
+            if (dock.isSkeleton || a.isSkeleton) {
                 Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
                 return@DarkCard
             }
@@ -528,7 +529,7 @@ fun PlanPage(sid: String) {
             return@PageScaffold
         }
         val md = vm.dock.plan.markdown
-        if (md.isEmpty()) {
+        if (vm.dock.isSkeleton || md.isEmpty()) {
             Text(copy(UiMessages.sessionSkeleton()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(16.dp))
             return@PageScaffold
         }

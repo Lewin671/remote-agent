@@ -285,7 +285,7 @@ private fun PendingCoreDock(
     val label = uiText(dock.title)
     val summary = uiText(dock.summary)
     val meta = uiText(dock.meta)
-    val left = uiText(dock.timeLeft)
+    val left = uiText(dock.timeLeftPlain)
     val moreStr = if (dock.moreCount > 0) copy(UiMessages.dockMore(count = dock.moreCount)) else ""
     val rest = if (open) {
         listOf(meta, moreStr, left).filter { it.isNotEmpty() }.joinToString(" · ")
@@ -345,7 +345,7 @@ internal fun ApprovalDock(
     val copy = uiText()
     val dock = vm.dock
     val a = dock.approval
-    if (a.isSkeleton) return DockSkeleton()
+    if (dock.isSkeleton || a.isSkeleton) return DockSkeleton()
     val d = rememberApprovalReply(vm.header.machineId, sid, a.approvalId, dock.observedSeq, dock.command, a.isSkeleton)
     val t = now(15_000)
     val locked = vm.header.computerUnlinked || (dock.deadlineMs > 0 && t >= dock.deadlineMs)
@@ -430,7 +430,7 @@ internal fun QuestionBody(
     val remote = LocalRemote.current
     val dock = vm.dock
     val q = dock.question
-    if (dock.summary.key == UiMessages.sessionSkeleton().key && q.question.questionText.isEmpty()) {
+    if (dock.isSkeleton && q.question.questionText.isEmpty()) {
         if (part != 2) Text(copy(UiMessages.sessionSkeleton()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
         return
     }
@@ -621,7 +621,7 @@ internal fun PlanDock(sid: String, vm: SessionViewModel, onOpenChange: (Boolean)
     val copy = uiText()
     val dock = vm.dock
     val plan = dock.plan
-    if (plan.markdown.isEmpty() && dock.summary.key == UiMessages.sessionSkeleton().key) return DockSkeleton()
+    if (dock.isSkeleton && plan.markdown.isEmpty()) return DockSkeleton()
     PendingCoreDock(
         sid,
         dock,
