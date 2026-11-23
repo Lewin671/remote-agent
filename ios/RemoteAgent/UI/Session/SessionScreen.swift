@@ -134,11 +134,7 @@ struct SessionScreen: View {
         .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
             let matching = restores.filter { $0.effect.sessionID == id }
             guard !matching.isEmpty else { return }
-            let caps = AttachmentCapabilities(
-                header.capabilities,
-                hasMachine: !header.machineID.isEmpty,
-                online: header.computerOnline && !header.computerUnlinked && header.connState == .connected
-            )
+            let caps = AttachmentCapabilities(header.capabilities)
             for item in matching {
                 SessionImages.applyRestore(
                     item.effect, session: id, caps: caps, remote: context.remote, store: context.sessionStore

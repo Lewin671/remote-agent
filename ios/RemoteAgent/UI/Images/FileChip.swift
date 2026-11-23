@@ -32,16 +32,6 @@ struct FileChip: View {
         self.remove = remove
     }
 
-    init(
-        name: String,
-        size: Int64,
-        state: PendingImage.State? = nil,
-        retry: (() -> Void)? = nil,
-        remove: (() -> Void)? = nil
-    ) {
-        self.init(name: name, sizeText: fileSize(size), state: state, retry: retry, remove: remove)
-    }
-
     private var status: String {
         switch state {
         case .processing: return L10n.attachmentIosPreparing()

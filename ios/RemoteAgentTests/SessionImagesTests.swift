@@ -291,7 +291,7 @@ import UIKit
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
         #expect(draft.images.map(\.id) == ["a", "b"])
-        #expect(draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .offline)) && $0.processed != nil })
+        #expect(draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .uploadFailed)) && $0.processed != nil })
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
@@ -419,14 +419,38 @@ import UIKit
         #expect(!other.ready)
     }
 
-    @Test func plusSaysWhyItAddsNothing() {
-        let c = center()
+    #if DEBUG
+    @Test func plusSaysWhyItAddsNothing() async throws {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-plus-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let demoRemote = Demo.remote()
+        var state = Demo.state(.everyday)
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = false
+        })
+        state.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        let initial = state
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: demoRemote, initial: initial) {
+            await demoRemote.showForTest(state: initial)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        for _ in 0..<100 {
+            if (await host.evaluateAttachments(.with { $0.machineID = "mac" })).supportsImages { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let c = ImageCenter.of(demoRemote)
         let key = ImageCenter.sessionKey(sid)
-        c.plus(key, blocked: "MacBook 离线，连上后才能添加图片", max: 6)
+        c.plus(key, machineId: "mac", caps: AttachmentCapabilities(imageUploadBlocked: L10n.attachmentComputerOffline(name: "MacBook")))
         #expect(c.notices[key]?.text == L10n.attachmentComputerOffline(name: "MacBook") && c.picking[key] == nil)
         c.draft(key).append((1...6).map { ready("i\($0)") })
-        c.plus(key, blocked: nil, max: 6)
-        #expect(c.notices[key]?.text == L10n.attachmentMaxImages(count: 6) && c.picking[key] == nil)
+        c.plus(key, machineId: "mac", caps: AttachmentCapabilities(supportsFiles: false))
+        await eventually("max images notice from Core") {
+            c.notices[key]?.text == L10n.attachmentMaxImages(count: 6) && c.picking[key] == nil
+        }
         let noticeID = c.notices[key]!.id
         c.clearNotice(key, id: UUID())
         #expect(c.notices[key] != nil)
@@ -435,17 +459,44 @@ import UIKit
     }
 
     @Test func pickedFilesArePreparedAndTheExtraOnesAreLeftOut() async throws {
-        let c = center()
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-pick-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let demoRemote = Demo.remote()
+        var state = Demo.state(.everyday)
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+        })
+        state.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        let initial = state
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: demoRemote, initial: initial) {
+            await demoRemote.showForTest(state: initial)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        for _ in 0..<100 {
+            if (await host.evaluateAttachments(.with { $0.machineID = "mac" })).supportsImages { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let c = ImageCenter.of(demoRemote)
         let key = ImageCenter.sessionKey(sid)
         _ = c.draft(key)
         await c.restoredDraft(key)
-        // Not pictures: what matters here is how many go in, and what is said of the rest and of each.
-        c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, max: 6)
+        // Not pictures: Core admits 6 and sets notice for the extra 2; preparing fails with structured .decode.
+        c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, machineId: "mac")
         let draft = c.draft(key)
-        #expect(draft.images.count == 6)
-        #expect(draft.notice == "一条消息最多 6 张，多选的 2 张没有加入")
-        await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .unreadable)) } }
+        await eventually("6 admitted with Core notice") {
+            draft.images.count == 6 && draft.notice == "一条消息最多 6 张，多选的 2 张没有加入"
+        }
+        await eventually("each says it could not be read") {
+            draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .decode)) }
+        }
+        await c.refreshProblems(key, machineId: "mac")
+        #expect(c.failureSummaries[key] == L10n.imageCannotReadThisImageTryJpegOrPngInstead())
+        #expect(draft.photos.allSatisfy { c.evaluatedProblems[$0.id]?.kind == .decode })
     }
+    #endif
 
     /// What the photo picker hands over is a file: it is read whole unless it is too large, and then not at all.
     @Test func aPickedPhotoIsReadFromItsFileUnlessItIsTooLarge() async throws {
@@ -468,7 +519,7 @@ import UIKit
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
         try handle.close()
-        #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))))
+        #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)))
     }
 
     @Test func theSealedStoreKeepsADraftWithoutItsPixelsInTheClear() async throws {

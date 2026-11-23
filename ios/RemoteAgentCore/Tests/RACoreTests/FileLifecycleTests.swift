@@ -133,7 +133,7 @@ private struct FileMachineChannel: UploadChannel {
         try Data(repeating: 65, count: 8192).write(to: url)
         let img = PendingImage(id: "picked", uri: nil)
         img.file = try PickedFile(url: url)
-        img.state = .failed(error: AttachmentFailure(kind: .offline))
+        img.state = .failed(error: AttachmentFailure(kind: .uploadFailed))
         return (url, img)
     }
     private func driver(_ server: FileMachine, _ draft: ImageDraft) -> ImageUploads {
@@ -381,10 +381,11 @@ private struct FileMachineChannel: UploadChannel {
         #expect(!emptyDisk.keys.contains { $0.hasSuffix(".file") })
     }
 
-    @Test func foldersAndChangedLengthsHaveSpecificMessages() throws {
+    @Test func foldersAreMarkedDirectoryAndChangedLengthsHaveSpecificMessages() throws {
         let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url) }
-        do { _ = try PickedFile(url: url.deletingLastPathComponent()); Issue.record("folder accepted") }
-        catch { #expect(errorText(error) == L10n.attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd()) }
+        let inspected = try PickedFile.inspect(url: url.deletingLastPathComponent())
+        #expect(inspected.isDirectory && inspected.bookmark == nil)
+        #expect(throws: (any Error).self) { _ = try PickedFile(url: url.deletingLastPathComponent()) }
         try Data([1]).write(to: url)
         do { _ = try img.file?.digest(); Issue.record("changed length accepted") }
         catch { #expect(errorText(error) == L10n.attachmentIosTheFileChangedAfterSelectionSelectItAgain()) }

@@ -39,9 +39,9 @@ import UIKit
         for locale in ["zh-CN", "en"] {
             try MessageLocale.$overrideForTesting.withValue(locale) {
                 let content = VStack(alignment: .leading, spacing: 16) {
-                    FileChip(name: "report.pdf", size: 2048, state: .processing, remove: {})
-                    FileChip(name: "source.zip", size: 4096, state: .uploading(progress: 0.42), remove: {})
-                    FileChip(name: "notes.txt", size: 256, state: .failed(error: AttachmentFailure(kind: .failed, detail: LocalizedMessage(raw: "fixture detail"))), retry: {}, remove: {})
+                    FileChip(name: "report.pdf", sizeText: "2.0 KB", state: .processing, remove: {})
+                    FileChip(name: "source.zip", sizeText: "4.0 KB", state: .uploading(progress: 0.42), remove: {})
+                    FileChip(name: "notes.txt", sizeText: "256 B", state: .failed(error: AttachmentFailure(kind: .processingFailed, detail: LocalizedMessage(raw: "fixture detail"))), retry: {}, remove: {})
                 }
                 .padding(16).frame(width: 375).background(Color.white)
                 .environment(\.locale, Locale(identifier: locale))

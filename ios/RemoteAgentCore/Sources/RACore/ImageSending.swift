@@ -55,7 +55,7 @@ public final class ImageUploads {
                 draft.prepared(img)
                 img.job = nil
                 if let m = machine() { upload(img, machineId: m) }
-                else { img.state = .failed(error: AttachmentFailure(kind: .failed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil)) }
+                else { img.state = .failed(error: AttachmentFailure(kind: .processingFailed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil)) }
             } catch {
                 if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
                 img.state = .failed(error: AttachmentFailure(catching: error))
@@ -102,7 +102,7 @@ public final class ImageUploads {
                             try await keep()
                         }, onProgress: progress)
                     }
-                    guard let p = img.processed else { throw UserError(L10nMessage.imageIosCannotReadThisImage()) }
+                    guard let p = img.processed else { throw UserError(L10nMessage.imageIosCannotReadThisImage(), problemKind: .decode) }
                     return try await uploadImage(ch, transferId: transfer, data: p.bytes, onProgress: progress)
                 }
                 let uploaded: UploadedImage
@@ -193,7 +193,7 @@ public final class ImageUploads {
         } else if let m = machine() { upload(img, machineId: m) }
         else {
             _ = abort(img.takeRetired())
-            img.state = .failed(error: AttachmentFailure(kind: .failed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil))
+            img.state = .failed(error: AttachmentFailure(kind: .processingFailed, detail: img.isFile ? L10nMessage.attachmentIosChooseMachine() : nil))
         }
     }
 

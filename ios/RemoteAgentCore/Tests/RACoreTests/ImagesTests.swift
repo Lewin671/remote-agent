@@ -225,14 +225,6 @@ private let exifHeader = Data("Exif\0\0".utf8)
         #expect(try stripOriginal(heic) == nil)
     }
 
-    @Test func aMessageTakesSixAtMostInPickOrder() {
-        let (taken, left) = takePicked(have: 4, picked: ["a", "b", "c", "d"])
-        #expect(taken == ["a", "b"])
-        #expect(left == 2)
-        let none = takePicked(have: 6, picked: ["x"])
-        #expect(none.taken == [] && none.left == 1)
-    }
-
     @Test func compressionShrinksTheLongSideOnly() {
         #expect(fitLongSide(w: 4032, h: 3024) == (2048, 1536))
         #expect(fitLongSide(w: 3024, h: 4032) == (1536, 2048))

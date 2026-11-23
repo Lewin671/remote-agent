@@ -87,10 +87,53 @@ import Testing
         let (remote, center) = try center()
         defer { ImageCenter.remove(remote) }
         let (copy, _) = try video()
-        let offline = AttachmentCapabilities(supportsFiles: true, online: false)
+        let offline = AttachmentCapabilities(supportsFiles: true, fileUploadBlocked: L10n.attachmentComputerOfflineFiles(name: "Mac"))
         center.addFiles("session:video", [copy], caps: offline)
         #expect(!FileManager.default.fileExists(atPath: copy.path))
     }
+
+    #if DEBUG
+    @Test func filePickerRoutesImageAsFileUnchangedViaCoreEval() async throws {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-files-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let demoRemote = Demo.remote()
+        var state = Demo.state(.everyday)
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = true
+            $0.capabilities.maxFilesPerMessage = 6
+            $0.capabilities.maxFileUploadBytes = 100 * 1024 * 1024
+        })
+        state.sessions["s-file"] = SessionView(id: "s-file", machineId: "mac")
+        let initial = state
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: demoRemote, initial: initial) {
+            await demoRemote.showForTest(state: initial)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        let key = ImageCenter.sessionKey("s-file")
+        let center = ImageCenter.of(demoRemote)
+        for _ in 0..<100 {
+            if (await host.evaluateAttachments(.with { $0.machineID = "mac" })).supportsFiles { break }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        let pngURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        try Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: pngURL)
+        defer { try? FileManager.default.removeItem(at: pngURL) }
+
+        center.addFiles(key, [pngURL], machineId: "mac", caps: AttachmentCapabilities(supportsFiles: true))
+        let draft = center.draft(key)
+        await eventually("image picked from Files added as document unchanged") {
+            draft.documents.count == 1
+        }
+        #expect(draft.photos.isEmpty)
+        #expect(draft.documents[0].file?.displayName == pngURL.lastPathComponent)
+        #expect(draft.documents[0].file?.formattedSize == "8 B")
+    }
+    #endif
 
     @Test func losingFileSupportCancelsEvenAnAlreadyReadyFilesRefresh() async throws {
         let (url, p) = try document()

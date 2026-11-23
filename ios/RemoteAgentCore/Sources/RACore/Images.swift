@@ -40,14 +40,6 @@ private func detect(_ b: Bytes) -> PBImageFormat? {
 /// The format of encoded image bytes, by their signature; nil for anything else (HEIC and the like).
 public func detectFormat(_ data: Data) -> PBImageFormat? { detect(Bytes(data.prefix(12))) }
 
-/// Which images of a pick are taken: the first ones up to `max` in all, in
-/// the order picked, and how many were left out. The system picker may not
-/// enforce a count (its fallback does not), so the app does.
-public func takePicked<T>(have: Int, picked: [T], max: Int = maxImages) -> (taken: [T], left: Int) {
-    let room = Swift.max(max - have, 0)
-    return (Array(picked.prefix(room)), Swift.max(picked.count - room, 0))
-}
-
 private func u16(_ b: Bytes, _ i: Int, le: Bool) -> Int? {
     guard i >= 0, i + 2 <= b.count else { return nil }
     return le ? Int(b[i]) | Int(b[i + 1]) << 8 : Int(b[i]) << 8 | Int(b[i + 1])
@@ -140,7 +132,7 @@ private func keepJpegSegment(_ b: Bytes, marker: Int, start: Int, end: Int) -> B
 }
 
 private func stripJpeg(_ b: Bytes) throws -> Bytes {
-    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg())
+    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg(), problemKind: .decode)
     if detect(b) != .jpeg { throw bad }
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -231,7 +223,7 @@ private func pngOrientation(_ b: Bytes) -> Int {
 public func pngOrientation(_ data: Data) -> Int { pngOrientation(Bytes(data)) }
 
 private func stripPng(_ b: Bytes) throws -> Bytes {
-    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng()) }
+    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng(), problemKind: .decode) }
     let drop: Set<String> = ["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -270,7 +262,7 @@ private func webpOrientation(_ b: Bytes) -> Int {
 public func webpOrientation(_ data: Data) -> Int { webpOrientation(Bytes(data)) }
 
 private func stripWebp(_ b: Bytes) throws -> Bytes {
-    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp()) }
+    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp(), problemKind: .decode) }
     var out = Bytes()
     out.reserveCapacity(b.count)
     out.append(contentsOf: b[0..<12])
@@ -297,8 +289,8 @@ private func stripWebp(_ b: Bytes) throws -> Bytes {
 public func stripWebp(_ data: Data) throws -> Data { Data(try stripWebp(Bytes(data))) }
 
 private func stripGif(_ b: Bytes) throws -> Bytes {
-    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif()) }
-    let cut = UserError(L10nMessage.imageIosGifIsTruncated())
+    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode) }
+    let cut = UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
     var out = Bytes()
     out.reserveCapacity(b.count)
     var i = 13
@@ -342,7 +334,7 @@ private func stripGif(_ b: Bytes) throws -> Bytes {
             if keep { out.append(contentsOf: b[i..<j]) }
             i = j
         default:
-            throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock())
+            throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock(), problemKind: .decode)
         }
     }
     throw cut
@@ -461,7 +453,7 @@ public func uploadImage(
     retries: Int = 3,
     onProgress: (Int64, Int64) -> Void = { _, _ in }
 ) async throws -> UploadedImage {
-    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat()) }
+    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat(), problemKind: .decode) }
     let bytes = Data(data)
     let total = Int64(bytes.count)
     var tries = 0
@@ -519,7 +511,7 @@ public let maxDecodePixels: Int64 = 40_000_000
 /// than needed for a long side of `minLong` (0: as large as the budget
 /// allows).
 public func decodeSample(w: Int, h: Int, minLong: Int, pixelBudget: Int64) throws -> Int {
-    guard w > 0 && h > 0 else { throw UserError(L10nMessage.imageIosImageHasNoDimensions()) }
+    guard w > 0 && h > 0 else { throw UserError(L10nMessage.imageIosImageHasNoDimensions(), problemKind: .dimensions) }
     var s = 1
     if minLong > 0 { while max(w, h) / (s * 2) >= minLong { s *= 2 } }
     // A budget below one pixel can never be met; the smallest picture is what is left.

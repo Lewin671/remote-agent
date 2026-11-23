@@ -24,11 +24,18 @@ import UniformTypeIdentifiers
 /// A picked image that is too large to read or to send.
 public struct ImageTooLarge: Error, LocalizedError, Equatable {
     let localized: LocalizedMessage
+    public let kind: PBImageProblemKind
     public var message: String { localized.resolve() }
-    public init(_ message: String) { localized = LocalizedMessage(raw: message) }
-    public init(_ message: LocalizedMessage) { localized = message }
+    public init(_ message: String, kind: PBImageProblemKind = .originalTooLarge) {
+        localized = LocalizedMessage(raw: message)
+        self.kind = kind
+    }
+    public init(_ message: LocalizedMessage, kind: PBImageProblemKind = .originalTooLarge) {
+        localized = message
+        self.kind = kind
+    }
 
-    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.localized == rhs.localized }
+    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.localized == rhs.localized && lhs.kind == rhs.kind }
     public var errorDescription: String? { message }
 }
 
@@ -42,7 +49,7 @@ public func pickedReadLimit(original: Bool) -> Int64 { original ? maxOriginalByt
 /// Refuses a picked file larger than what is read of one.
 public func checkPicked(bytes: Int64, original: Bool) throws {
     let limit = pickedReadLimit(original: original)
-    if bytes > limit { throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024))) }
+    if bytes > limit { throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024)), kind: .dimensions) }
 }
 
 /// Reads a picked file, unless it is larger than the most that is ever read
@@ -86,7 +93,7 @@ func pixelBudget(physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory
     min(maxDecodePixels, Int64(clamping: physicalMemory / 64))
 }
 
-private let undecodable = UserError(L10nMessage.imageIosCannotDecodeThisImage())
+private let undecodable = UserError(L10nMessage.imageIosCannotDecodeThisImage(), problemKind: .decode)
 
 private func hasAlpha(_ image: CGImage) -> Bool {
     switch image.alphaInfo {
@@ -198,7 +205,7 @@ func decodeUpright(_ data: Data, maxLong: Int, budget: Int64? = nil) throws -> D
 
 /// Encodes as PNG or as JPEG at `quality` (1 to 100), with nothing but the pixels and their color profile.
 func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
-    let failed = UserError(L10nMessage.imageIosCouldNotEncodeThisImage())
+    let failed = UserError(L10nMessage.imageIosCouldNotEncodeThisImage(), problemKind: .decode)
     let out = NSMutableData()
     let type = (png ? UTType.png : UTType.jpeg).identifier as CFString
     guard let dest = CGImageDestinationCreateWithData(out, type, 1, nil) else { throw failed }
@@ -218,7 +225,7 @@ func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
 /// phone's own when nil.
 public func prepareImageNow(_ data: Data, original: Bool, budget: Int64? = nil) throws -> Processed {
     try checkPicked(bytes: Int64(data.count), original: original)
-    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(maxOriginalBytes / 1024 / 1024)))
+    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(maxOriginalBytes / 1024 / 1024)), kind: .originalTooLarge)
     if original {
         if let clean = try stripOriginal(data), let format = detectFormat(clean) {
             if Int64(clean.count) > maxOriginalBytes { throw tooLarge }

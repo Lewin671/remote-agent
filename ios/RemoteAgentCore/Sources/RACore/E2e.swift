@@ -27,9 +27,16 @@ public func loginMessage(_ challenge: Data) -> Data { Data(loginContext.utf8) + 
 /// A message for the person using the app, in their language.
 public struct UserError: Error, LocalizedError, Equatable, CustomStringConvertible {
     let localized: LocalizedMessage
+    public let problemKind: PBImageProblemKind?
     public var message: String { localized.resolve() }
-    public init(_ message: String) { localized = LocalizedMessage(raw: message) }
-    public init(_ message: LocalizedMessage) { localized = message }
+    public init(_ message: String, problemKind: PBImageProblemKind? = nil) {
+        localized = LocalizedMessage(raw: message)
+        self.problemKind = problemKind
+    }
+    public init(_ message: LocalizedMessage, problemKind: PBImageProblemKind? = nil) {
+        localized = message
+        self.problemKind = problemKind
+    }
     public static func == (lhs: UserError, rhs: UserError) -> Bool { lhs.localized == rhs.localized }
     public var errorDescription: String? { message }
     public var description: String { message }

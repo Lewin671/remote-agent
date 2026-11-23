@@ -76,6 +76,8 @@ public enum ImageDiskPolicy {
 
     /// Throws when `incoming` bytes in place of `replacing` would take the store past `limit`.
     public static func requireRoom(_ dir: URL, replacing: URL, incoming: Int64, limit: Int64) throws {
-        if bytes(dir) - length(replacing) + incoming > limit { throw UserError(L10nMessage.attachmentIosThisPhoneSPendingImageStorageIsFullSend()) }
+        if bytes(dir) - length(replacing) + incoming > limit {
+            throw UserError(L10nMessage.attachmentIosThisPhoneSPendingImageStorageIsFullSend(), problemKind: .storageFull)
+        }
     }
 }

@@ -259,7 +259,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
-        img.state = .failed(error: AttachmentFailure(kind: .offline, detail: img.isFile ? L10nMessage.attachmentIosVerifyTheFileOnTheComputer() : nil))
+        img.state = .failed(error: AttachmentFailure(kind: .uploadFailed, detail: img.isFile ? L10nMessage.attachmentIosVerifyTheFileOnTheComputer() : nil))
         return img
     }
 }
@@ -267,8 +267,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
 /// Product-owned notices retain structured arguments until their display boundary.
 public enum AttachmentNotice: Equatable, Sendable {
     case raw(String)
-    case maxImages(Int), maxFiles(Int), filesDropped(Int), clipboardEmpty
-    case maxImagesDropped(limit: Int, count: Int)
+    case maxImages(Int), maxFiles(Int), clipboardEmpty
     case restoreUnavailable, restoreImages(have: Int, count: Int, limit: Int), restoreFiles(Int), notSaved
 
     public var text: String {
@@ -276,9 +275,7 @@ public enum AttachmentNotice: Equatable, Sendable {
         case .raw(let text): return text
         case .maxImages(let count): return L10n.attachmentMaxImages(count: count)
         case .maxFiles(let count): return L10n.attachmentMaxFiles(count: count)
-        case .filesDropped(let count): return L10n.attachmentIosFilesLimitNotice(limit: count)
         case .clipboardEmpty: return L10n.attachmentIosClipboardEmpty()
-        case .maxImagesDropped(let limit, let count): return L10n.attachmentImagesLimit(count: count, limit: limit)
         case .restoreUnavailable: return L10n.attachmentIosRestoreUnavailable()
         case .restoreImages(let have, let count, let limit): return L10n.attachmentIosRestoreImagesLimit(count: count, have: have, limit: limit)
         case .restoreFiles(let count): return L10n.attachmentIosRestoreFilesLimit(count: count)
@@ -326,14 +323,6 @@ public final class ImageDraft {
         self.key = key
         self.files = files
         self.saves = saves
-    }
-
-    /// Which of a pick go in, in the order picked: as many as fit under
-    /// `max`, with `notice` saying how many did not.
-    public func admit<T>(_ picked: [T], max: Int) -> [T] {
-        let (taken, left) = takePicked(have: photos.count, picked: picked, max: max)
-        noticeMessage = left > 0 ? .maxImagesDropped(limit: max, count: left) : .raw("")
-        return taken
     }
 
     /// Adds images just picked, still to be prepared, and keeps their order.
@@ -552,7 +541,10 @@ public final class ImageDraft {
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
             img.invalidate(retiring: !img.isFile)
-            img.state = .failed(error: AttachmentFailure(kind: img.isFile && !img.hasSource ? .sourceMissing : .offline, detail: img.isFile && !img.hasSource ? L10nMessage.attachmentFileMissing() : nil))
+            let fileDetail: LocalizedMessage? = img.isFile
+                ? (img.hasSource ? L10nMessage.imageIosNeedsUploadingToTheComputerAgain() : L10nMessage.attachmentFileMissing())
+                : nil
+            img.state = .failed(error: AttachmentFailure(kind: img.isFile && !img.hasSource ? .sourceMissing : .uploadFailed, detail: fileDetail))
             images.append(img)
         }
         persist()

@@ -2,6 +2,7 @@
 import CryptoKit
 import Foundation
 import RAProto
+import UniformTypeIdentifiers
 
 public let maxFiles = 6
 public let maxFileBytes: Int64 = 100 * 1024 * 1024
@@ -16,9 +17,14 @@ public struct AttachmentCapabilities: Equatable, Sendable {
     public var maxImages: Int
     public var maxFiles: Int
     public var maxFileBytes: Int64
+    public var maxFileNameBytes: Int
+    public var maxFileSizeText: String
+    public var originalImageMaxBytes: Int64
+    public var galleryAllowsVideo: Bool
     public var imageUploadBlocked: String?
-    public var online: Bool
-    public var hasMachine: Bool
+    public var fileUploadBlocked: String?
+    public var originalImageHint: String
+    public var fileMetadataNotice: String
 
     public init(
         capabilitiesLoaded: Bool = true,
@@ -27,9 +33,14 @@ public struct AttachmentCapabilities: Equatable, Sendable {
         maxImages: Int = RACore.maxImages,
         maxFiles: Int = RACore.maxFiles,
         maxFileBytes: Int64 = RACore.maxFileBytes,
+        maxFileNameBytes: Int = 255,
+        maxFileSizeText: String = "",
+        originalImageMaxBytes: Int64 = RACore.maxOriginalBytes,
+        galleryAllowsVideo: Bool? = nil,
         imageUploadBlocked: String? = nil,
-        online: Bool = true,
-        hasMachine: Bool = true
+        fileUploadBlocked: String? = nil,
+        originalImageHint: String = "",
+        fileMetadataNotice: String = ""
     ) {
         self.capabilitiesLoaded = capabilitiesLoaded
         self.supportsImages = supportsImages
@@ -37,13 +48,19 @@ public struct AttachmentCapabilities: Equatable, Sendable {
         self.maxImages = maxImages > 0 ? maxImages : RACore.maxImages
         self.maxFiles = maxFiles > 0 ? maxFiles : RACore.maxFiles
         self.maxFileBytes = maxFileBytes > 0 ? maxFileBytes : RACore.maxFileBytes
+        self.maxFileNameBytes = maxFileNameBytes > 0 ? maxFileNameBytes : 255
+        self.maxFileSizeText = maxFileSizeText
+        self.originalImageMaxBytes = originalImageMaxBytes > 0 ? originalImageMaxBytes : RACore.maxOriginalBytes
+        self.galleryAllowsVideo = galleryAllowsVideo ?? supportsFiles
         self.imageUploadBlocked = imageUploadBlocked
-        self.online = online
-        self.hasMachine = hasMachine
+        self.fileUploadBlocked = fileUploadBlocked
+        self.originalImageHint = originalImageHint
+        self.fileMetadataNotice = fileMetadataNotice
     }
 
-    public init(_ caps: PBSessionCapabilitiesView, hasMachine: Bool = true, online: Bool = true) {
-        let reason = caps.hasImageUploadBlockedReason ? caps.imageUploadBlockedReason.rendered() : ""
+    public init(_ caps: PBSessionCapabilitiesView) {
+        let imgBlocked = caps.hasImageUploadBlockedReason ? caps.imageUploadBlockedReason.rendered() : ""
+        let fileBlocked = caps.hasFileUploadBlockedReason ? caps.fileUploadBlockedReason.rendered() : ""
         self.init(
             capabilitiesLoaded: caps.capabilitiesLoaded,
             supportsImages: caps.supportsImages,
@@ -51,17 +68,20 @@ public struct AttachmentCapabilities: Equatable, Sendable {
             maxImages: Int(caps.maxImages),
             maxFiles: Int(caps.maxFiles),
             maxFileBytes: caps.maxFileBytes,
-            imageUploadBlocked: reason.isEmpty ? nil : reason,
-            online: online,
-            hasMachine: hasMachine
+            maxFileNameBytes: Int(caps.maxFileNameBytes),
+            maxFileSizeText: caps.maxFileSizeText,
+            originalImageMaxBytes: caps.originalImageMaxBytes,
+            galleryAllowsVideo: caps.galleryAllowsVideo,
+            imageUploadBlocked: imgBlocked.isEmpty ? nil : imgBlocked,
+            fileUploadBlocked: fileBlocked.isEmpty ? nil : fileBlocked,
+            originalImageHint: caps.hasOriginalImageHint ? caps.originalImageHint.rendered() : "",
+            fileMetadataNotice: caps.hasFileMetadataNotice ? caps.fileMetadataNotice.rendered() : ""
         )
     }
 
     public init(_ vm: PBCoreNewSessionViewModel) {
-        let reason = vm.hasImageUploadBlockedReason ? vm.imageUploadBlockedReason.rendered() : ""
-        let hasMachine = !vm.config.machineID.isEmpty
-        let selectedOnline = vm.modelPanel.machineChoices.first(where: \.selected)?.online ?? true
-        let offlineNotice = vm.notices.contains { $0.kind == .machineOffline || $0.kind == .noOnlineMachines }
+        let imgBlocked = vm.hasImageUploadBlockedReason ? vm.imageUploadBlockedReason.rendered() : ""
+        let fileBlocked = vm.hasFileUploadBlockedReason ? vm.fileUploadBlockedReason.rendered() : ""
         self.init(
             capabilitiesLoaded: vm.capabilitiesLoaded,
             supportsImages: vm.supportsImages,
@@ -69,16 +89,15 @@ public struct AttachmentCapabilities: Equatable, Sendable {
             maxImages: Int(vm.maxImages),
             maxFiles: Int(vm.maxFiles),
             maxFileBytes: vm.maxFileBytes,
-            imageUploadBlocked: reason.isEmpty ? nil : reason,
-            online: hasMachine && selectedOnline && !offlineNotice,
-            hasMachine: hasMachine
+            maxFileNameBytes: Int(vm.maxFileNameBytes),
+            maxFileSizeText: vm.maxFileSizeText,
+            originalImageMaxBytes: vm.originalImageMaxBytes,
+            galleryAllowsVideo: vm.galleryAllowsVideo,
+            imageUploadBlocked: imgBlocked.isEmpty ? nil : imgBlocked,
+            fileUploadBlocked: fileBlocked.isEmpty ? nil : fileBlocked,
+            originalImageHint: vm.hasOriginalImageHint ? vm.originalImageHint.rendered() : "",
+            fileMetadataNotice: vm.hasFileMetadataNotice ? vm.fileMetadataNotice.rendered() : ""
         )
-    }
-
-    public var fileUploadBlocked: String? {
-        guard hasMachine else { return L10n.attachmentIosChooseMachine() }
-        guard supportsFiles else { return L10n.imageIosThisComputerDoesNotSupportFileUploads() }
-        return online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
     }
 }
 
@@ -101,9 +120,38 @@ extension Remote {
         }
     }
 }
-public func fileSize(_ bytes: Int64) -> String {
-    if bytes < 1024 { return "\(bytes) B" }
-    return String(format: "%.1f %@", Double(bytes) / (bytes < 1024 * 1024 ? 1024 : 1024 * 1024), bytes < 1024 * 1024 ? "KB" : "MB")
+
+/// Metadata inspected from a picked OS URL before sending it to Core's `AttachmentEval`.
+public struct PickedFileInspection: Sendable {
+    public let url: URL
+    public let name: String
+    public let mimeType: String
+    public let sizeBytes: Int64
+    public let sizeUnknown: Bool
+    public let isDirectory: Bool
+    public let bookmark: Data?
+
+    public func candidate(forceFile: Bool) -> PBAttachmentCandidateInput {
+        .with {
+            $0.name = name
+            $0.mimeType = mimeType
+            $0.sizeBytes = sizeBytes
+            $0.sizeUnknown = sizeUnknown
+            $0.isDirectory = isDirectory
+            $0.forceFile = forceFile
+        }
+    }
+
+    public func makePickedFile(displayName: String? = nil, formattedSize: String? = nil) throws -> PickedFile {
+        guard let bookmark, !isDirectory, !sizeUnknown, sizeBytes >= 0 else { throw PickedFile.unreadable }
+        return PickedFile(
+            bookmark: bookmark,
+            name: name,
+            size: sizeBytes,
+            displayName: displayName,
+            formattedSize: formattedSize
+        )
+    }
 }
 
 /// Durable metadata for resuming a current transfer and retiring superseded reservations.
@@ -120,6 +168,8 @@ public struct PickedFile: Codable, Equatable, Sendable {
     public var bookmark: Data
     public var name: String
     public var size: Int64
+    public var displayName: String?
+    public var formattedSize: String?
     public var machineId: String?
     public var transfers: [String: FileTransfer] = [:]
     public var hasSource: Bool { !bookmark.isEmpty }
@@ -158,30 +208,48 @@ public struct PickedFile: Codable, Equatable, Sendable {
         }
         throw unreadable
     }
-    public init(url: URL, maxBytes: Int64 = maxFileBytes) throws {
-        self = try Self.coordinated(url) { readable in
-            let values = try readable.resourceValues(forKeys: [.isRegularFileKey, .isDirectoryKey, .isPackageKey])
+    /// Reads metadata and byte length (via seekToEnd, without loading contents) for Core `AttachmentEval`.
+    public static func inspect(url: URL) throws -> PickedFileInspection {
+        try Self.coordinated(url) { readable in
+            let values = try readable.resourceValues(forKeys: [.isRegularFileKey, .isDirectoryKey, .isPackageKey, .contentTypeKey])
+            let mime = values.contentType?.preferredMIMEType ?? ""
             if values.isDirectory == true || values.isPackage == true {
-                throw UserError(L10nMessage.attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd())
+                return PickedFileInspection(
+                    url: url, name: url.lastPathComponent, mimeType: mime,
+                    sizeBytes: 0, sizeUnknown: false, isDirectory: true, bookmark: nil
+                )
             }
             guard values.isRegularFile == true else { throw Self.unreadable }
             let handle = try FileHandle(forReadingFrom: readable)
             defer { try? handle.close() }
             let size = try handle.seekToEnd()
-            guard maxBytes >= 0, size <= UInt64(maxBytes) else { throw UserError(L10nMessage.attachmentIosFileTooLargeEachFileMayBeAtMost(value: String(describing: fileSize(maxBytes)))) }
-            guard !url.lastPathComponent.isEmpty, url.lastPathComponent.utf8.count <= 255 else {
-                throw UserError(L10nMessage.attachmentFilenameLimit())
-            }
-            return PickedFile(bookmark: try Self.bookmark(for: url), name: url.lastPathComponent, size: Int64(size))
+            let bookmark = try Self.bookmark(for: url)
+            return PickedFileInspection(
+                url: url, name: url.lastPathComponent, mimeType: mime,
+                sizeBytes: Int64(size), sizeUnknown: false, isDirectory: false, bookmark: bookmark
+            )
         }
     }
-    init(bookmark: Data, name: String, size: Int64) {
-        self.bookmark = bookmark; self.name = name; self.size = size
+    public init(url: URL, displayName: String? = nil, formattedSize: String? = nil) throws {
+        self = try Self.inspect(url: url).makePickedFile(displayName: displayName, formattedSize: formattedSize)
     }
-    public init(remote file: PBSentFile) {
-        bookmark = Data(); name = file.name; size = file.sizeBytes
+    init(bookmark: Data, name: String, size: Int64, displayName: String? = nil, formattedSize: String? = nil) {
+        self.bookmark = bookmark
+        self.name = name
+        self.size = size
+        self.displayName = displayName
+        self.formattedSize = formattedSize
     }
-    public static var unreadable: UserError { UserError(L10nMessage.attachmentIosCannotReadTheSourceFileRemoveItAndSelect()) }
+    public init(remote file: PBSentFile, displayName: String? = nil, formattedSize: String? = nil) {
+        bookmark = Data()
+        name = file.name
+        size = file.sizeBytes
+        self.displayName = displayName
+        self.formattedSize = formattedSize
+    }
+    public static var unreadable: UserError {
+        UserError(L10nMessage.attachmentIosCannotReadTheSourceFileRemoveItAndSelect(), problemKind: .sourceMissing)
+    }
     public static var modified: UserError { UserError(L10nMessage.attachmentIosTheFileChangedAfterSelectionSelectItAgain()) }
 
     /// The refreshed grant is returned to the draft and persisted before starting network work.

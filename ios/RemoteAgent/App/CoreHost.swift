@@ -1376,6 +1376,13 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) -> PBAttachmentEvalViewModel {
+        guard !closed else { return PBAttachmentEvalViewModel() }
+        return (try? client.view(PBCoreScreen.with {
+            $0.attachmentEval = request
+        }).attachmentEval) ?? PBAttachmentEvalViewModel()
+    }
+
     func submitSessionCommand(
         sessionID: String,
         command: PBCommand,

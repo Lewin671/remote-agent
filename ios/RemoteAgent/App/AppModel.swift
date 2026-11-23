@@ -551,7 +551,7 @@ final class AppModel {
         await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
         await ctx.coreHost.reportNotificationPref(supported: false)
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
-        ImageCenter.install(remote: made.remote, files: parts.storage.pending.scoped())
+        ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, files: parts.storage.pending.scoped())
         // What the agent shared is kept in the cache, per session, and counts in 附件存储.
         SharedFileCenter.install(remote: made.remote, coreHost: made.coreHost, root: SharedFileCenter.defaultRoot)
         stage = .ready
@@ -786,7 +786,7 @@ final class AppModel {
                 demoModels: models,
                 demoMode: true
             )
-            ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
+            ImageCenter.install(remote: remote, coreHost: context?.coreHost, files: VolatileFiles(), live: false)
             let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
             SharedFileCenter.install(remote: remote, coreHost: context?.coreHost, root: demoSharedRoot)
             stage = .ready

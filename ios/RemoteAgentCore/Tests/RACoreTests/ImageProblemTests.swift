@@ -4,12 +4,28 @@ import Testing
 @testable import RACore
 
 @Suite(.timeLimit(.minutes(2))) struct ImageProblemTests {
-    @Test func permanentRefusalsAndRecoverableUploadsHaveSafeExplanations() {
-        #expect(rawImageProblem("原图超过20 MB").message == L10n.imageImageExceeds20MbTurnOffOriginalAndSend())
-        #expect(!rawImageProblem("the image does not decode").retryable)
-        #expect(rawImageProblem("unavailable: machine offline").retryable)
-        #expect(rawImageProblem("opaque internal exception").message == L10n.imageThisImageCouldNotBeProcessed())
-        #expect(imageFailureLine(["pixels", "decode failed"].map(rawImageProblem)) == "2 张图没加上，点图片看原因")
+    @Test func coreClassifiesStructuredProblemsAndSummarizesMixedKinds() throws {
+        let client = try CoreClient()
+        defer { client.close() }
+        _ = try client.dispatch(.with { $0.localeChanged.uiLocale = "zh-CN" })
+
+        let req = PBAttachmentEvalScreenRequest.with {
+            $0.problems = [
+                imageProblemInput(for: ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: 20), kind: .originalTooLarge)),
+                imageProblemInput(for: CommandError("generation_conflict", "stale", fromDaemon: true)),
+                imageProblemInput(for: CommandError("internal", "upload png: network timeout", fromDaemon: true)),
+                imageProblemInput(for: UserError(L10nMessage.imageIosCannotDecodeThisImage(), problemKind: .decode)),
+            ]
+        }
+        #expect(req.problems.allSatisfy { $0.localKey.isEmpty })
+
+        let vm = try client.view(.with { $0.attachmentEval = req }).attachmentEval
+        #expect(vm.problems.count == 4)
+        #expect(vm.problems[0].kind == .originalTooLarge && !vm.problems[0].retryable)
+        #expect(vm.problems[1].kind == .uploadFailed && vm.problems[1].retryable)
+        #expect(vm.problems[2].kind == .uploadFailed && vm.problems[2].retryable)
+        #expect(vm.problems[3].kind == .decode && !vm.problems[3].retryable)
+        #expect(vm.failureSummary.rendered() == L10n.imageAttachFailed(count: 4, locale: "zh-CN"))
     }
 
     @MainActor @Test func uncertainImagesRemainRecoverableWhileTheSourceSurvives() {

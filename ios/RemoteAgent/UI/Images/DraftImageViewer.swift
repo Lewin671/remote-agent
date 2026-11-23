@@ -1,5 +1,6 @@
 import ImageIO
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
@@ -17,8 +18,23 @@ struct DraftImageViewer: View {
         _page = State(initialValue: start)
     }
 
+    private struct FailureEvalKey: Equatable {
+        var locale: String
+        var failed: [FailedEntry]
+        struct FailedEntry: Equatable {
+            var id: String
+            var input: PBImageProblemInput
+        }
+    }
+
     var body: some View {
         let images = center.draft(key).photos
+        let failedEntries: [FailureEvalKey.FailedEntry] = images.compactMap { img in
+            if case .failed(let why) = img.state {
+                return FailureEvalKey.FailedEntry(id: img.id, input: why.input)
+            }
+            return nil
+        }
         PagedImageViewer(count: images.count, selection: $page, empty: L10n.imageIosEmpty(), onClose: onClose,
             picture: { i, drag in
                 DraftViewerPage(center: center, image: images[i], current: i == page, pokes: pokes,
@@ -26,10 +42,14 @@ struct DraftImageViewer: View {
                     .id(images[i].id)
             }, info: { i in
                 let img = images[i]
-                let failure: ImageProblem? = { if case .failed(let error) = img.state { return error.problem }; return nil }()
+                let failure: PBImageProblemView? = {
+                    if case .failed = img.state { return center.evaluatedProblems[img.id] }
+                    return nil
+                }()
+                let caption = failure.flatMap { $0.hasMessage ? $0.message.rendered() : nil } ?? draftImageState(img, problem: failure)
                 return VStack(alignment: .leading, spacing: 8) {
                     Text(L10n.imagePosition(count: Int(images.count), index: Int(i + 1))).font(.subheadline.weight(.semibold))
-                    Text(failure?.message ?? draftImageState(img)).font(.body)
+                    Text(caption).font(.body)
                     HStack(spacing: 24) {
                         if failure?.retryable == true { action(L10n.commonRetry()) { center.retry(key, img) } }
                         action(L10n.commonRemove()) { center.remove(key, img); if center.draft(key).photos.isEmpty { onClose() } }
@@ -38,11 +58,17 @@ struct DraftImageViewer: View {
                 .foregroundStyle(ViewerInk.text).frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16).background(ViewerInk.panel, ignoresSafeAreaEdges: .bottom)
             })
+            .task(id: FailureEvalKey(locale: MessageLocale.current, failed: failedEntries)) {
+                await center.refreshProblems(key)
+            }
             .debugSignal("viewer.close", onClose)
             .debugSignal("viewer.next") { if page + 1 < images.count { page += 1 } }
             .debugSignal("viewer.zoom") { pokes.zoom += 1 }
             .debugSignal("viewer.retry") {
-                guard images.indices.contains(page), case .failed(let why) = images[page].state, why.problem.retryable else { return }
+                guard images.indices.contains(page),
+                      case .failed = images[page].state,
+                      center.evaluatedProblems[images[page].id]?.retryable == true
+                else { return }
                 center.retry(key, images[page])
             }
             .onChange(of: images.count) { _, count in if count == 0 { onClose() } }
@@ -54,12 +80,14 @@ struct DraftImageViewer: View {
     }
 }
 
-@MainActor func draftImageState(_ image: PendingImage) -> String {
+@MainActor func draftImageState(_ image: PendingImage, problem: PBImageProblemView? = nil) -> String {
     switch image.state {
-    case .processing: L10n.imagePreparing()
-    case .uploading(let progress): L10n.imageIosUploadProgress(percent: Int(Int(progress * 100)))
-    case .ready: L10n.imageUploaded()
-    case .failed(let error): L10n.attachmentFailure(reason: error.problem.message)
+    case .processing: return L10n.imagePreparing()
+    case .uploading(let progress): return L10n.imageIosUploadProgress(percent: Int(Int(progress * 100)))
+    case .ready: return L10n.imageUploaded()
+    case .failed:
+        let reason = problem.flatMap { $0.hasMessage ? $0.message.rendered() : nil } ?? L10n.attachmentFailed()
+        return L10n.attachmentFailure(reason: reason)
     }
 }
 

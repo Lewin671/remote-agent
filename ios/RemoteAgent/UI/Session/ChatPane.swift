@@ -499,11 +499,7 @@ struct ChatPane: View {
                 image: { seq, index in nav.open(.image(session: sessionID, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
                 putBack: { requestId, text, files in
-                    let caps = AttachmentCapabilities(
-                        header.capabilities,
-                        hasMachine: !header.machineID.isEmpty,
-                        online: header.computerOnline && !header.computerUnlinked && header.connState == .connected
-                    )
+                    let caps = AttachmentCapabilities(header.capabilities)
                     if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
                         SessionImages.putBack(o, session: sessionID, caps: caps, remote: context.remote, store: context.sessionStore)
                     } else {
