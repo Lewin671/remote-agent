@@ -264,7 +264,9 @@ extension View {
             machineID _: String,
             now: Int64
         ) -> PBUsageStatsResponse {
-            let bounds = req.bucketBoundsMs
+            let bounds: [Int64] = req.bucketBoundsMs.count >= 2
+                ? req.bucketBoundsMs
+                : (0...7).map { now - Int64(7 - $0) * 86_400_000 }
             let avgSpan = bounds.count >= 2 ? Double(bounds.last! - bounds.first!) / Double(bounds.count - 1) : 86_400_000
             let gran: PBUsageBucketGranularity = avgSpan <= 7_200_000 ? .hour : (avgSpan <= 43_200_000 ? .sixHours : .day)
             let startMs = bounds.first ?? (now - 7 * 86_400_000)
@@ -375,8 +377,8 @@ extension View {
                     $0.cacheReadTokens = UInt64(Double(readSum) * 0.82)
                     $0.cacheWriteTokens = UInt64(Double(writeSum) * 0.88)
                     $0.outputTokens = UInt64(Double(outSum) * 0.84)
-                    $0.usageRequestCount = max(3, reqSum - 2)
-                    $0.speedRequestCount = max(3, speedReqSum - 2)
+                    $0.usageRequestCount = reqSum > 5 ? reqSum - 2 : 3
+                    $0.speedRequestCount = speedReqSum > 5 ? speedReqSum - 2 : 3
                     if inDenom > 0 {
                         $0.hasCacheHitRate_p = true
                         $0.cacheHitRate = max(0, (Double(readSum) / inDenom) - 0.04)
