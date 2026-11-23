@@ -95,6 +95,7 @@ export function NewBoxView(p: {
   useEffect(() => { if (p.autoFocus) input.current?.focus(); }, [p.autoFocus]);
 
   const attachWhy = renderText(vm.imageUploadBlockedReason);
+  const fileWhy = renderText(vm.fileUploadBlockedReason);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const tray = remote
     ? useTray(remote, "new:" + projectKey, machineId, {
@@ -102,7 +103,11 @@ export function NewBoxView(p: {
         maxFiles: vm.maxFiles,
         maxFileBytes: vm.maxFileBytes,
         supportsFiles: vm.supportsFiles,
+        galleryAcceptMime: vm.galleryAcceptMime || undefined,
+        originalImageHint: renderText(vm.originalImageHint),
+        fileMetadataNotice: renderText(vm.fileMetadataNotice),
         blocked: attachWhy,
+        fileBlocked: fileWhy,
       })
     : undefined;
   // eslint-disable-next-line react-hooks/rules-of-hooks

@@ -987,7 +987,8 @@ describe("golden SessionScreenView layout and interaction", () => {
     const openVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_en_viewer_open");
     expect(openVm.view.case).toBe("session");
     if (openVm.view.case !== "session") return;
-    act(() => root!.render(renderSession(openVm.view.value)));
+    const openView = openVm.view.value;
+    act(() => root!.render(renderSession(openView)));
     const viewer = host.querySelector<HTMLElement>(".viewer")!;
     expect(viewer).toBeTruthy();
     expect(viewer.textContent).toContain("3 / 4");
@@ -1002,7 +1003,8 @@ describe("golden SessionScreenView layout and interaction", () => {
     const closedVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_viewer_closed");
     expect(closedVm.view.case).toBe("session");
     if (closedVm.view.case !== "session") return;
-    act(() => root!.render(renderSession(closedVm.view.value)));
+    const closedView = closedVm.view.value;
+    act(() => root!.render(renderSession(closedView)));
     expect(host.querySelector(".viewer")).toBeNull();
   });
 });

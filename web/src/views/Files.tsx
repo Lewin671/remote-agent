@@ -10,12 +10,6 @@ export interface FileChipInfo {
   nameHead?: string;
   nameTail?: string;
   sizeText?: string;
-  sizeBytes?: bigint | number;
-}
-
-function fallbackSize(n: number | bigint): string {
-  const bytes = Number(n);
-  return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 /** One chip in drafts, pending messages and recorded user messages. */
@@ -30,7 +24,7 @@ export function FileChip({ file, state, progress = 0, error, onRetry, onRemove }
   const label = file.displayName || file.name;
   const head = file.nameHead || label;
   const tail = file.nameTail ?? "";
-  const size = file.sizeText || (file.sizeBytes !== undefined ? fallbackSize(file.sizeBytes) : "");
+  const size = file.sizeText ?? "";
   const busy = state === "preparing" || state === "uploading";
   return <span className={"file-chip" + (state === "failed" ? " failed" : "")} title={error || label}>
     <FileIcon />

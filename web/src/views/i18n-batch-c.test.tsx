@@ -14,7 +14,9 @@ import { SecurityErrorCode } from "../gen/remoteagent/core/v1/security_pb";
 import { joinBanner } from "./Pairing";
 import { ImageError } from "../imagecodec/error";
 import { Tray } from "../attach";
-import { imageProblem, imageProblemKind } from "../image-problem";
+import { renderText } from "../core/text";
+import { ImageProblemKind } from "../gen/remoteagent/core/v1/attachments_view_pb";
+import { createTestAttachmentEval } from "../test/attachment-eval";
 import { pushContent } from "../sw-notify";
 import { t as launchText } from "../i18n/startup";
 
@@ -72,13 +74,24 @@ it.each(["zh-CN", "en"] as const)("uses schedule codes and closes a conflicted e
 
 it("keeps local image categories after an English codec error, without exposing its detail", async () => {
   localeStore.overrideForTesting("en");
-  const tray = new Tray(async () => { throw new ImageError("too_large", "private codec diagnostic", t("image.image_dimensions_are_too_large"), "dimensions"); }, async () => { throw new Error("unexpected upload"); }, () => {});
-  tray.retarget("example-computer");
-  tray.add([new Blob(["image"])]);
-  await vi.waitFor(() => expect(tray.items[0]?.state).toBe("failed"));
-  expect(tray.items[0].error).toBe("dimensions");
-  expect(imageProblemKind(tray.items[0].error!)).toBe("dimensions");
-  expect(imageProblem(tray.items[0].error!)).toEqual({ message: "Image dimensions are too large. Resize it and retry.", retryable: false });
+  const evalHost = createTestAttachmentEval();
+  try {
+    const tray = new Tray(
+      async () => { throw new ImageError("too_large", "private codec diagnostic", t("image.image_dimensions_are_too_large"), "dimensions"); },
+      async () => { throw new Error("unexpected upload"); },
+      () => {},
+      6,
+      evalHost.evaluate,
+    );
+    tray.retarget("example-computer");
+    tray.add([new Blob(["image"])]);
+    await vi.waitFor(() => expect(tray.items[0]?.state).toBe("failed"));
+    expect(tray.items[0].problem?.kind).toBe(ImageProblemKind.DIMENSIONS);
+    expect(tray.items[0].problem?.retryable).toBe(false);
+    expect(renderText(tray.items[0].problem?.message)).toBe("Image dimensions are too large. Resize it and retry.");
+  } finally {
+    evalHost.close();
+  }
 });
 
 it("localizes safe error and notification shells while preserving external content", async () => {

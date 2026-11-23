@@ -1,4 +1,4 @@
-import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID, UnsupportedHistoryError } from "../crypto";
@@ -122,6 +122,10 @@ import {
   type TokenResultEvent,
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
+import {
+  AttachmentEvalScreenRequestSchema,
+  type AttachmentEvalViewModel,
+} from "../gen/remoteagent/core/v1/attachments_view_pb";
 import {
   SecurityConfigEventSchema,
   SecurityErrorCode,
@@ -2052,6 +2056,15 @@ export class CoreHost {
     const value = this.queryView<NewSessionViewModel>({ case: "newSession", value: create(NewSessionScreenRequestSchema, { projectKey }) }, "newSession");
     this.newSessionCache = { version: ver, key: projectKey, vm: value };
     return value;
+  }
+
+  evalAttachments(
+    req: MessageInitShape<typeof AttachmentEvalScreenRequestSchema>,
+  ): AttachmentEvalViewModel {
+    return this.queryView<AttachmentEvalViewModel>(
+      { case: "attachmentEval", value: create(AttachmentEvalScreenRequestSchema, req) },
+      "attachmentEval",
+    );
   }
 
   viewSyncState(): SyncStateView {

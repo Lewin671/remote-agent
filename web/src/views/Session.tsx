@@ -1414,12 +1414,18 @@ export function SessionPage({
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const attachWhy = renderText(caps?.imageUploadBlockedReason);
+  const fileWhy = renderText(caps?.fileUploadBlockedReason);
   const tray = useTray(remote, sessionId, machineId, {
+    sessionId,
     maxImages: caps?.maxImages ?? 0,
     maxFiles: caps?.maxFiles ?? 0,
     maxFileBytes: caps?.maxFileBytes ?? 0n,
     supportsFiles: !!caps?.supportsFiles,
+    galleryAcceptMime: caps?.galleryAcceptMime || undefined,
+    originalImageHint: renderText(caps?.originalImageHint),
+    fileMetadataNotice: renderText(caps?.fileMetadataNotice),
     blocked: attachWhy,
+    fileBlocked: fileWhy,
   });
   const drop = useDropPaste(tray, attachWhy, toastRef.current);
   const stash = getSendAttachments(remote);
@@ -1441,9 +1447,8 @@ export function SessionPage({
         eff.fileIds.map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
       pendingRestoreFiles.current.delete(eff.requestId);
       if (files.length) {
-        const fileIssue = remote.fileUploadIssue(machineId);
-        if (fileIssue) {
-          toastRef.current(fileIssue);
+        if (fileWhy) {
+          toastRef.current(fileWhy);
           return;
         }
       }
@@ -1476,7 +1481,7 @@ export function SessionPage({
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
     });
-  }, [host, remote, sessionId, machineId, tray, stash]);
+  }, [host, remote, sessionId, machineId, fileWhy, tray, stash]);
 
   useEffect(() => {
     return host.onResendAttachments(sessionId, async (eff: SessionResendAttachmentsEffect) => {
@@ -1645,9 +1650,8 @@ export function SessionPage({
     }
     if (!mountedSession.current) return;
     if (files.length) {
-      const fileIssue = remote.fileUploadIssue(machineId);
-      if (fileIssue) {
-        toastRef.current(fileIssue);
+      if (fileWhy) {
+        toastRef.current(fileWhy);
         return;
       }
       if (tray.files().length + files.length > tray.maxFiles) {

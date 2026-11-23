@@ -23,7 +23,6 @@ import type {
 import type { ImageRef } from "../gen/remoteagent/v1/event_pb";
 import { ImageFormat, ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { ChevronLeft, ChevronRight, X } from "../icons";
-import { imageProblem } from "../image-problem";
 import { matchesFormat, mimeOf } from "../imageview";
 import { hhmm } from "../model";
 import { errorText, type ImageResult, type Remote } from "../remote";
@@ -364,7 +363,7 @@ export function ImageViewer({
   const draftImages = draft?.images() ?? [];
   const draftIndex = draftImages.length > 0 ? Math.min(draftIdx, draftImages.length - 1) : 0;
   const local = draft ? draftImages[draftIndex] : undefined;
-  const problem = local?.state === "failed" ? imageProblem(local.error ?? "") : undefined;
+  const problem = local?.state === "failed" ? local.problem : undefined;
 
   const img = !sharedFile && !draft ? viewer?.currentImage : undefined;
   const hasPrev = draft ? draftIndex > 0 : !!viewer?.hasPrev;
@@ -571,7 +570,7 @@ export function ImageViewer({
         <>
           <b>{i18n.t("image.position", { index: draftIndex + 1, count: draftImages.length })}</b>
           {local.file instanceof File && <div>{local.file.name}</div>}
-          <div>{problem?.message ?? (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
+          <div>{(problem && renderText(problem.message)) || (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
         </>
       );
     }

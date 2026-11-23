@@ -175,7 +175,8 @@ const todoList = (r: DemoRemote) => {
 };
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionPage } from "./Session";
-import { ImageStrip, LocalThumbs } from "./Images";
+import { ImageStrip, LocalThumbs, ViewerImagesMeta, viewerImageKey } from "./Images";
+import { SessionViewerImageViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ImageFormat, ImageRefSchema, ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { useRemote } from "../ui";
 
@@ -2671,7 +2672,7 @@ describe("sending images (v2)", () => {
   it("opens each failed picture in the shared viewer and offers only useful actions", async () => {
     const t = await setup(() => false, async f => {
       if ((f as File).name === "bad.heic") throw new Error("unsupported image format");
-      if ((f as File).name === "large.png") throw new Error("图片尺寸太大");
+      if ((f as File).name === "large.png") throw new Error("image dimensions too large");
       return { bytes: new Uint8Array(4), format: "png", width: 900, height: 600 };
     });
     await t.pick("ok.png", "bad.heic", "large.png");
@@ -2965,7 +2966,24 @@ it("keeps the same proportions, height and four-picture fold before and after co
   expect(before).toHaveLength(4);
   expect(host.querySelector(".more")!.textContent).toBe("+2");
   const refs = sizes.map(size => create(ImageRefSchema, { ...size, sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]) }));
-  await act(async () => root!.render(<ImageStrip refs={refs} />));
+  const metaMap = new Map(
+    sizes.map((size, i) => [
+      viewerImageKey(0n, i),
+      create(SessionViewerImageViewSchema, {
+        seq: 0n,
+        eventImageIndex: i,
+        aspectRatio: size.width / size.height,
+        clampedAspectRatio: size.width / size.height,
+      }),
+    ]),
+  );
+  await act(async () =>
+    root!.render(
+      <ViewerImagesMeta.Provider value={metaMap}>
+        <ImageStrip refs={refs} />
+      </ViewerImagesMeta.Provider>,
+    ),
+  );
   expect([...host.querySelectorAll<HTMLElement>(".pic")].map(p => [p.style.width, p.style.height])).toEqual(before);
   expect(host.querySelector(".more")!.textContent).toBe("+2");
 });
@@ -4598,6 +4616,11 @@ it("requires reselecting a failed outgoing file when its local source has been r
 
 it("shows a folder-only rejection in an empty new-session tray", async () => {
   const r = demo();
+  for (const id of r.machines.keys()) {
+    updateDemoMachine(r, id, (m) => {
+      m.meta!.capabilities!.fileUpload = true;
+    });
+  }
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   const input = host.querySelector("textarea")!;
   const folder = new File([], "folder");
