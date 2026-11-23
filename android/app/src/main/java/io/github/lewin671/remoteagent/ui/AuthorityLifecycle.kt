@@ -8,7 +8,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.withStarted
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
@@ -54,15 +53,6 @@ private class AuthorityScope(private val parent: CoroutineContext, lifecycle: Li
 
     fun stop() {
         job.cancel()
-    }
-}
-
-/** Startup replay may refresh an expired certificate, so it has the same foreground lifetime. */
-@Composable
-internal fun AuthorityEffect(key: Any?, block: suspend CoroutineScope.() -> Unit) {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle, key) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED, block)
     }
 }
 

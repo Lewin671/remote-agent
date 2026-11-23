@@ -27,26 +27,9 @@ class PagedList<T> private constructor(private val pages: List<List<T>>, overrid
         return PagedList(next, size + values.size)
     }
 
-    /** Also checks partial pages, so a sibling snapshot with a replaced tail
-     * cannot masquerade as an append. Full shared pages need one comparison. */
-    fun extends(previous: PagedList<T>): Boolean {
-        if (size < previous.size) return false
-        for (i in previous.pages.indices) {
-            val before = previous.pages[i]
-            val after = pages[i]
-            if (before === after) continue
-            if (before.indices.any { before[it] !== after[it] }) return false
-        }
-        return true
-    }
-
     companion object {
         private const val PAGE_SIZE = 256
         fun <T> empty(): PagedList<T> = PagedList(emptyList(), 0)
         fun <T> from(values: List<T>): PagedList<T> = empty<T>().append(values)
     }
 }
-
-fun <T> unchangedPrefix(events: List<T>, previous: List<T>): Boolean =
-    if (events is PagedList<T> && previous is PagedList<T>) events.extends(previous)
-    else events.size >= previous.size && previous.indices.all { events[it] === previous[it] }

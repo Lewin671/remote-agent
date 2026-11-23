@@ -62,7 +62,6 @@ import io.github.lewin671.remoteagent.core.SessionImage
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.core.sessionImages
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import io.github.lewin671.remoteagent.proto.ImageSource
 import io.github.lewin671.remoteagent.proto.ImageSync

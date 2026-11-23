@@ -7,17 +7,15 @@ import org.junit.Test
 import java.time.ZoneId
 
 class ListMessagesTest {
-    @Test fun chineseTimeMatchesExistingThresholdsAcrossCalendarsAndDst() {
-        for (name in listOf("Asia/Shanghai", "America/Los_Angeles", "UTC")) {
-            val zone = ZoneId.of(name)
-            for (date in listOf("2026-01-01T00:30:00", "2026-03-08T03:30:00", "2026-11-01T02:30:00")) {
-                val now = java.time.LocalDateTime.parse(date).atZone(zone).toInstant().toEpochMilli()
-                for (elapsed in listOf(0L, 59_999L, 60_000L, 3_599_999L, 3_600_000L, 86_400_000L, 7 * 86_400_000L, 365 * 86_400_000L)) {
-                    assertEquals(whenText(now - elapsed, now, zone, copy = ::messageTextForTest), listWhen(now - elapsed, now, zone).testText())
-                }
-                assertEquals("", listWhen(0, now, zone).testText())
-            }
-        }
+    @Test fun chineseTimeFormatsThresholdsAcrossCalendars() {
+        val zone = ZoneId.of("Asia/Shanghai")
+        val now = java.time.LocalDateTime.parse("2026-09-29T14:00:00").atZone(zone).toInstant().toEpochMilli()
+        assertEquals(messageTextForTest(UiMessages.timeJustNow()), listWhen(now - 10_000L, now, zone).testText())
+        assertEquals("3 分钟前", listWhen(now - 180_000L, now, zone).testText())
+        assertEquals("9:05", listWhen(now - (4 * 3600 + 55 * 60) * 1000L, now, zone).testText())
+        assertEquals(messageTextForTest(UiMessages.timeYesterday()), listWhen(now - 24 * 3600_000L, now, zone).testText())
+        assertEquals("9月27日", listWhen(now - 48 * 3600_000L, now, zone).testText())
+        assertEquals("", listWhen(0, now, zone).testText())
     }
 
     @Test fun theSameDeferredValueRendersInBothLanguagesWithoutChangingRawContent() {

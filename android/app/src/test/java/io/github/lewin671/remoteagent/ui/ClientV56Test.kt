@@ -140,13 +140,6 @@ class ClientV56Test {
     }
 
     @Test
-    fun antigravityDoesNotSupportForking() {
-        assertFalse(agentInfo(Agent.AGENT_ANTIGRAVITY).forks)
-        assertTrue(agentInfo(Agent.AGENT_CODEX).forks)
-        assertTrue(agentInfo(Agent.AGENT_CLAUDE).forks)
-    }
-
-    @Test
     fun machineQuotaGoldenViewRendersCodexAndAntigravitySections() {
         val allQuotas = ScreenGoldenLoader.quotaView("machine_quota", "allQuotas")
         val codexOnly = ScreenGoldenLoader.quotaView("machine_quota", "codexOnly")

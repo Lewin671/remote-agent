@@ -57,7 +57,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.core.projectName
 
 /*
  * The buttons, notices and titles of design-system §6, for every screen of

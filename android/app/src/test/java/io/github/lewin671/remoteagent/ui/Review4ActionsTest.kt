@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse.Phase
 import org.junit.Assert.*
 import org.junit.Test
@@ -16,13 +15,6 @@ class Review4ActionsTest {
                 Phase.PHASE_READY,
                 Phase.PHASE_PUBLISHED,
             )) assertEquals(RecoveryNextAction.COMPLETE, recoveryNextAction(phase))
-    }
-
-    @Test
-    fun bothClientNameActionsRequireThisClientsOwnership() {
-        assertFalse(clientCanRename("other-client", "this-client", ConnState.ONLINE))
-        assertTrue(clientCanRename("this-client", "this-client", ConnState.ONLINE))
-        assertFalse(clientCanRename("this-client", "this-client", ConnState.OFFLINE))
     }
 }
 

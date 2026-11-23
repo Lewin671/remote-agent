@@ -124,9 +124,6 @@ fun interface SharedFileChunkFetcher {
     suspend fun fetchChunk(sessionId: String, fileId: String, offset: Long): GetSharedFileChunkResponse
 }
 
-/** Whether the connected daemon advertises chunked shared-file downloads. */
-fun sharedFilesSupported(machine: MachineView?): Boolean = capabilities(machine)?.sharedFiles == true
-
 /** Negotiated chunk size from daemon capabilities, falling back to the protocol default. */
 fun sharedFileBlockBytes(machine: MachineView?): Int =
     capabilities(machine)?.sharedFileChunkBytes?.takeIf { it > 0 } ?: SHARED_FILE_BLOCK_BYTES
@@ -270,15 +267,6 @@ fun planSharedFileBlocks(
         offsets = offsets,
         lastBlockFileBytes = if (rem == 0) blockBytes else rem,
     )
-}
-
-fun isValidSharedFileOffset(
-    offset: Long,
-    sizeBytes: Long,
-    blockBytes: Int = SHARED_FILE_BLOCK_BYTES,
-): Boolean {
-    if (blockBytes <= 0 || offset < 0L || offset % blockBytes != 0L) return false
-    return if (sizeBytes == 0L) offset == 0L else offset < sizeBytes
 }
 
 /** Combines persisted/active transfer state with live machine and session liveness. */

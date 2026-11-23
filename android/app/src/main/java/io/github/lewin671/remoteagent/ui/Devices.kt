@@ -34,7 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.proto.ClientDetailViewModel
 import io.github.lewin671.remoteagent.core.proto.ClientRowView
 import io.github.lewin671.remoteagent.core.proto.DevicesViewModel
@@ -254,7 +253,7 @@ private fun DeviceClientRow(c: ClientRowView, unfinished: Boolean, onClick: () -
 fun ClientScreen(id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote, id) { remote.coreHost.snapshotClientDetailView(id) }
     val rawVm by remote.clientDetailView.collectAsState()
     val vm = if (rawVm.deviceId == id) rawVm else initialVm
@@ -267,7 +266,7 @@ fun ClientScreen(id: String) {
     ClientScreenContent(
         vm = vm,
         rename = rename,
-        canRemoveNow = vm.canRemove && state.conn == ConnState.ONLINE && !remove.running,
+        canRemoveNow = vm.canRemove && syncView.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED && !remove.running,
         removeError = remove.error,
         onSettings = { nav.settings() },
         onRename = { name ->
@@ -436,7 +435,3 @@ internal fun removalDialog(name: String, machine: Boolean, copy: io.github.lewin
     copy(UiMessages.projectsRemoveTitle((name).toString())) to
         if (machine) copy(UiMessages.securityAndroidThisImmediatelyDisconnectsItAndRevokesAccessKeepingSessionsAnd())
         else copy(UiMessages.securityAndroidThisDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions())
-
-/** Both name actions follow the same client ownership/connection policy. */
-internal fun clientCanRename(id: String, me: String, connection: ConnState): Boolean =
-    id == me && connection == ConnState.ONLINE

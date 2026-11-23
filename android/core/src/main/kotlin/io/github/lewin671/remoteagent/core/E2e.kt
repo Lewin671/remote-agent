@@ -113,6 +113,3 @@ fun newRequestId(): String = randomBytes(16).hex()
 
 val RETIRED_HISTORY_ERROR = UiMessages.errorsThisHistoryUsesAnOldEncryptionFormatAndCan().messageText()
 class UnsupportedHistoryException : Exception("retired_history"), MessageFailure { override val display = RETIRED_HISTORY_ERROR }
-internal fun rejectRetiredHistory(env: Envelope) {
-    if (Header.parseFrom(env.header).version == 1) throw UnsupportedHistoryException()
-}

@@ -2,15 +2,7 @@ package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
-import io.github.lewin671.remoteagent.proto.Agent
 import org.junit.Test
-
-class QueueTest {
-    @Test
-    fun failureTextNamesTheAgentForUnrecognizedImages() {
-        assertEquals("Claude Code 没认出图片", failureText("image_not_recognized", Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
-    }
-}
 
 class OriginTest {
     @Test

@@ -38,22 +38,6 @@ class FilesTest {
         assertFalse(shown.contains('\uFFFD'))
     }
 
-    @Test fun hidesOnlyWholeAttestedLinesAndTheirBlankSeparator() {
-        val file = SentFile.newBuilder().setPath("/uploads/session/files/id/data.csv").build()
-        val path = file.path
-        assertEquals("Read this", withoutFileLines("Read this\n\n@$path", listOf(file)))
-        assertEquals("", withoutFileLines(path, listOf(file)))
-        assertEquals("", withoutFileLines("File: $path", listOf(file)))
-        assertEquals("File: @$path (file)", withoutFileLines("File: @$path (file)", listOf(file)))
-        assertEquals("", withoutFileLines("File: @\"$path\" (file)", listOf(file)))
-        assertEquals("File: @\"$path\" (file) trailing", withoutFileLines("File: @\"$path\" (file) trailing", listOf(file)))
-        assertEquals("File: $path trailing", withoutFileLines("File: $path trailing", listOf(file)))
-        assertEquals("keep $path here\n$path ", withoutFileLines("keep $path here\n$path ", listOf(file)))
-        assertEquals("/other\n", withoutFileLines("/other\n", listOf(file)))
-        assertEquals("a\nb", withoutFileLines("a\n\n$path\nb", listOf(file)))
-        assertEquals("a\n\n", withoutFileLines("a\n\n", emptyList()))
-    }
-
     private class Channel(val expected: ByteArray, val lost: Boolean = false) : UploadChannel {
         var bytes = java.io.ByteArrayOutputStream()
         var maxSeen = 0

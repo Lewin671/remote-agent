@@ -55,14 +55,6 @@ class ImagesTest {
     private fun contains(hay: ByteArray, needle: String) = String(hay, Charsets.ISO_8859_1).contains(needle)
 
     @Test
-    fun oversizedImageNumbersStayAsText() {
-        val refs = listOf(io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setCliIndex(1).build())
-        val huge = "[Image #999999999999999999999]"
-        assertEquals("$huge text", imageText("$huge text", refs))
-        assertEquals("text $huge 图 1", imageText("text $huge [Image #1]", refs))
-    }
-
-    @Test
     fun readsTheOrientationOfAJpeg() {
         assertEquals(6, jpegOrientation(exifJpeg(6)))
         assertEquals(1, jpegOrientation(picture("jpg")))
@@ -73,8 +65,6 @@ class ImagesTest {
     fun aTurnedPhotoIsNotSentAsIs() {
         // Stripping Exif from it would send it sideways: pixels must turn first.
         assertNull(stripOriginal(exifJpeg(6)))
-        assertTrue(swapsSides(6))
-        assertFalse(swapsSides(3))
     }
 
     @Test
@@ -279,51 +269,6 @@ class UploadTest {
         }
         val e = runCatching { kotlinx.coroutines.runBlocking { uploadImage(d, "t", png) } }.exceptionOrNull()
         assertTrue(e is CommandException)
-    }
-}
-
-class SessionImagesTest {
-    private fun ref(n: Int, id: String = "i$n") = io.github.lewin671.remoteagent.proto.ImageRef.newBuilder().setImageId(id).setCliIndex(n).build()
-
-    @Test
-    fun oversizedPlaceholderNumbersStayAsWritten() {
-        val refs = listOf(ref(1))
-        for (number in listOf("2147483648", "4294967297", "9".repeat(100))) {
-            val large = "[Image #$number]"
-            assertEquals("$large text", imageText("$large text", refs))
-            assertEquals("see $large", imageText("see $large", refs))
-            assertEquals("$large and 图 1", imageText("$large and [Image #1]", refs))
-            assertEquals("$large text", imageText("[Image #1] $large text", refs))
-        }
-    }
-
-    @Test
-    fun placeholdersBecomeNumbersAndLeadingOnesGo() {
-        val refs = listOf(ref(1), ref(2))
-        assertEquals("这两个页面底部的按钮都点不到", imageText("[Image #1] [Image #2]这两个页面底部的按钮都点不到", refs))
-        assertEquals("图 1 电脑上，图 2 手机上", imageText("图 1 电脑上，[Image #2] 手机上".replace("图 1", "[Image #1]"), refs))
-        // A placeholder without its image is left as typed.
-        assertEquals("see [Image #9]", imageText("see [Image #9]", refs))
-        assertEquals("[Image #1] text", imageText("[Image #1] text", emptyList()))
-    }
-
-    @Test
-    fun theViewerPagesThroughEveryImageInOrder() {
-        val events = listOf(
-            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(1).setUserMessage(io.github.lewin671.remoteagent.proto.UserMessage.newBuilder().addImages(ref(1)).addImages(ref(2))).build(),
-            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(2).setToolCall(io.github.lewin671.remoteagent.proto.ToolCall.newBuilder().setTitle("Read a.png").addImages(ref(0, "t"))).build(),
-            io.github.lewin671.remoteagent.proto.Event.newBuilder().setSeq(3).setImageGenerated(io.github.lewin671.remoteagent.proto.ImageGenerated.newBuilder().addImages(ref(0, "g"))).build(),
-        )
-        assertEquals(listOf("i1", "i2", "t", "g"), sessionImages(events).map { it.ref.imageId })
-    }
-}
-
-class TitleTest {
-    @Test
-    fun titlesAndPreviewsLeaveOutImagePlaceholders() {
-        val s = SessionView("s", "m", io.github.lewin671.remoteagent.proto.Session.newBuilder().setTitle("[Image #1]Which half is red?").setPreview("[Image #1] [Image #2] look").build())
-        assertEquals("Which half is red?", titleOf(s, copy = ::messageTextForTest))
-        assertEquals("look", previewOf(s, Status.IDLE, copy = ::messageTextForTest))
     }
 }
 

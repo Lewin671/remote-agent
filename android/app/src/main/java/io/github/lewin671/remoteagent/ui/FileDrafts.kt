@@ -144,11 +144,3 @@ internal fun ImageDraft.startDocumentUpload(
         }
     }
 }
-
-/** History references without local sources remain visible and block partial/text-only resends. */
-internal fun ImageDraft.restoreReferences(files: List<io.github.lewin671.remoteagent.proto.SentFile>, imageIds: List<String>, maxImages: Int, maxFiles: Int): Boolean {
-    if (files.isEmpty() && imageIds.isEmpty()) return true
-    val missing = files.map { PendingImage(newRequestId(), null, it.name, it.sizeBytes, retainSource = false) } +
-        imageIds.map { PendingImage(newRequestId(), null, retainSource = false) }
-    return attach(missing, maxImages, fileMax = maxFiles)
-}

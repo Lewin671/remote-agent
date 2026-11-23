@@ -191,9 +191,5 @@ class FileUploadLifecycleTest {
         assertTrue(uploadErrorText(FileSourceException(java.io.IOException())).resolve(::messageTextForTest).contains("源文件"))
         assertTrue(uploadErrorText(CommandException("generation_conflict", "the transfer changed",outcome=io.github.lewin671.remoteagent.core.Outcome.CONFLICT,conflictKind="business")).resolve(::messageTextForTest).contains("发生变化"))
         assertTrue(uploadErrorText(CommandException("invalid_argument", "the bytes do not match the hash")).resolve(::messageTextForTest).contains("校验失败"))
-        assertEquals(emptySet<String>(), unusedUriPermissions(setOf("u"), setOf("u"), emptySet()))
-        assertEquals(emptySet<String>(), unusedUriPermissions(setOf("u"), emptySet(), setOf("u")))
-        assertEquals(setOf("u"), unusedUriPermissions(setOf("u"), emptySet(), emptySet()))
-        assertEquals(emptySet<String>(), unusedUriPermissions(setOf("u"), emptySet(), null))
     }
 }

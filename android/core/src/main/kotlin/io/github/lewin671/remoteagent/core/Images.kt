@@ -340,9 +340,6 @@ fun fitLongSide(w: Int, h: Int, max: Int = COMPRESSED_LONG_SIDE): Pair<Int, Int>
     return maxOf(1, Math.round(w * scale).toInt()) to maxOf(1, Math.round(h * scale).toInt())
 }
 
-/** Orientations 5 to 8 swap width and height. */
-fun swapsSides(orientation: Int): Boolean = orientation in 5..8
-
 // --- uploading ---
 
 /** Chunks start at this size when the daemon names none: an encrypted command stays well under 1 MiB. */
@@ -413,49 +410,6 @@ suspend fun uploadImage(
 
 /** One image as it appears in a session: the ref, the event it is in, and what shows it. */
 data class SessionImage(val ref: io.github.lewin671.remoteagent.proto.ImageRef, val seq: Long, val kind: io.github.lewin671.remoteagent.proto.Event.KindCase, val toolTitle: String = "")
-
-/** Every image of a session in the order they appeared, for the viewer to page through. */
-fun sessionImages(events: List<io.github.lewin671.remoteagent.proto.Event>): List<SessionImage> = buildList {
-    for (e in events) when (e.kindCase) {
-        io.github.lewin671.remoteagent.proto.Event.KindCase.USER_MESSAGE -> e.userMessage.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase)) }
-        io.github.lewin671.remoteagent.proto.Event.KindCase.TOOL_CALL -> e.toolCall.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase, e.toolCall.title)) }
-        io.github.lewin671.remoteagent.proto.Event.KindCase.IMAGE_GENERATED -> e.imageGenerated.imagesList.forEach { add(SessionImage(it, e.seq, e.kindCase)) }
-        else -> {}
-    }
-}
-
-private val placeholder = Regex("\\[Image #(\\d+)]")
-
-/**
- * A user message's text as shown next to its images. When the message is
- * its images followed by text, the leading "[Image #N]" placeholders are
- * dropped: the numbered previews stand for them. When the text refers to
- * images further in, every placeholder reads "图 N" so the references keep
- * their meaning. Placeholders the message has no image for, e.g. typed as
- * text, stay as written.
- */
-fun imageText(text: String, refs: List<io.github.lewin671.remoteagent.proto.ImageRef>): MessageText {
-    val known = refs.map { it.cliIndex }.filter { it > 0 }.toSet()
-    if (known.isEmpty()) return text.messageText()
-    var t = text
-    while (true) {
-        val m = Regex("^\\s*\\[Image #(\\d+)]").find(t) ?: break
-        if (m.groupValues[1].toIntOrNull() !in known) break
-        t = t.substring(m.range.last + 1)
-    }
-    val laterRefs = placeholder.findAll(t).any { it.groupValues[1].toIntOrNull() in known }
-    val base = if (laterRefs) text else t.trimStart()
-    val pieces = mutableListOf<MessageText>()
-    var at = 0
-    for (match in placeholder.findAll(base)) {
-        pieces += base.substring(at, match.range.first).messageText()
-        val index = match.groupValues[1].toIntOrNull()
-        pieces += if (index in known) UiMessages.imagePlaceholder(index!!).messageText() else match.value.messageText()
-        at = match.range.last + 1
-    }
-    pieces += base.substring(at).messageText()
-    return pieces.joinMessages("")
-}
 
 /** Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB. */
 const val MAX_DECODE_PIXELS = 40_000_000L

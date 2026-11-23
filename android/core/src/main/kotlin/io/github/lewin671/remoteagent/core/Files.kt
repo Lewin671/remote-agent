@@ -64,25 +64,6 @@ fun fileChipName(name: String, max: Int = 32): String {
     return String(chars, 0, max - 1 - tail) + "…" + String(chars, chars.size - tail, tail)
 }
 
-/** Only attested complete reference lines and their preceding blank separator are hidden. */
-fun withoutFileLines(text: String, files: List<SentFile>): String {
-    val paths = files.map { it.path }.filter { it.isNotEmpty() }.toSet()
-    val lines = text.split('\n')
-    val hidden = HashSet<Int>()
-    lines.forEachIndexed { i, line ->
-        val path = when {
-            line.startsWith("File: @\"") && line.endsWith("\" (file)") -> "@" + line.substring(8, line.length - 8)
-            line.startsWith("File: ") -> line.drop(6)
-            else -> line
-        }
-        if (path in paths || path.startsWith('@') && path.drop(1) in paths) {
-            hidden += i
-            if (i > 0 && lines[i - 1].isEmpty()) hidden += i - 1
-        }
-    }
-    return lines.filterIndexed { i, _ -> i !in hidden }.joinToString("\n")
-}
-
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
 /** IO from the provider is distinguished from network IO by where it happened. */

@@ -73,7 +73,7 @@ class ScheduleLocalE2ETest {
         remote.coreHost.selectNewSessionAgent(Agent.AGENT_CLAUDE)
         remote.coreHost.selectNewSessionModel("haiku", "", mode = ApprovalMode.APPROVAL_MODE_AUTO)
         remote.coreHost.toggleProjectPin(project)
-        ui.waitUntil(10_000) { isPinned(remote.state.value, project) }
+        ui.waitUntil(10_000) { remote.coreHost.syncStateView.value.prefs.pinnedList.any { it.path == project } }
         ui.onNodeWithText("定时",useUnmergedTree=true).performClick()
         waitText("定时任务")
         ui.onNodeWithContentDescription("新任务").performClick()

@@ -10,28 +10,6 @@ fun listMachineName(m: MachineView?, id: String = ""): MessageText =
     (m?.meta?.hostname?.removeSuffix(".local")?.takeIf { it.isNotEmpty() } ?: m?.id?.take(8) ?: id.take(8).takeIf { it.isNotEmpty() })?.messageText()
         ?: UiMessages.commonUnknownComputer().messageText()
 
-fun listStatus(st: Status): UiMessage = when (st) {
-    Status.LOADING -> UiMessages.listStateAndroidLoading()
-    Status.EXITED -> UiMessages.listStateEnded()
-    Status.OFFLINE -> UiMessages.listStateOffline()
-    Status.UNLINKED -> UiMessages.listStateUnlinked()
-    Status.APPROVAL -> UiMessages.listStateApproval()
-    Status.QUESTION -> UiMessages.listStateQuestion()
-    Status.PLAN -> UiMessages.listStatePlan()
-    Status.POPUP -> UiMessages.listStatePopup()
-    Status.RUNNING -> UiMessages.listStateRunning()
-    Status.STARTING -> UiMessages.listStateStarting()
-    Status.IDLE -> UiMessages.listStateIdle()
-}
-
-fun listTitle(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): MessageText {
-    val title = plain(s.info?.title.orEmpty()).trim()
-    if (title.isNotEmpty()) return title.messageText()
-    val info = s.info ?: return UiMessages.newSessionAndroidNewSession().messageText()
-    val created = if (info.hasCreatedAt()) info.createdAt.seconds * 1000 else 0
-    return listOfNotNull(listProjectName(info.cwd), hhmm(created, zone).messageText().takeIf { created > 0 }).joinMessages(" · ")
-}
-
 fun listWhen(ms: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): MessageText {
     if (ms <= 0) return "".messageText()
     val elapsed = now - ms

@@ -186,20 +186,6 @@ class AttachmentInvalidationTest {
         }
     }
 
-    @Test fun restoringOnlyHistoryReferencesShowsFailedEntriesAndBlocksSendingAcrossRestart() = runBlocking {
-        val disk = MemoryFiles(); val d = draft("history", disk)
-        val remoteFile = SentFile.newBuilder().setFileId("remote-id").setName("report.csv").setSizeBytes(42).build()
-        assertTrue(d.restoreReferences(listOf(remoteFile), listOf("remote-image"), 6, 6))
-        assertEquals(2, d.images.size)
-        assertEquals("report.csv", d.documents.single().fileName)
-        d.images.forEach { assertTrue(it.state is PendingImage.State.Failed); assertNull(it.imageId); assertNull(it.fileId) }
-        assertFalse(d.ready("A"))
-        val restored = draft("history", disk)
-        restored.restore(this) { null }.join()
-        assertEquals(2, restored.images.size)
-        assertFalse(restored.ready("A"))
-    }
-
     @Test fun aRejectedNewStartDoesNotUnprotectAnEarlierUnknownRequestUsingTheSameTransfer() {
         val entry = ready(); val d = draft().apply { images += entry }
         var aborts = 0; entry.abortTransfer = { aborts++ }

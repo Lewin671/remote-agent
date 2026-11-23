@@ -213,35 +213,6 @@ fun errorText(e: Throwable, state: RemoteState? = null): MessageText = localized
 
 private const val LOGIN_FAILED = "login failed"
 
-/** Remove redundant raw diagnostics before rendering, without resolving or comparing UI text. */
-fun connectionErrorDetail(error: Throwable): String {
-    fun explainedNetwork(cause: Throwable?) = cause is java.net.UnknownHostException || cause is java.net.ConnectException ||
-        cause is java.net.SocketTimeoutException || cause is javax.net.ssl.SSLException
-    val rawPrimary: String? = when (error) {
-        is MessageFailure -> (error.display as? MessageText.Raw)?.value
-        is SecurityFailure -> if (error.code in setOf("unavailable", "invalid", "untrusted", "conflict", "lease", "clock")) null else error.message
-        is ConnectException -> when {
-            explainedNetwork(error.exception) -> null
-            error.code in setOf(Code.UNAVAILABLE, Code.UNAUTHENTICATED) -> null
-            error.code == Code.PERMISSION_DENIED && error.message == LOGIN_FAILED -> null
-            else -> error.message ?: error.code.codeName
-        }
-        else -> if (explainedNetwork(error)) null else error.message ?: error.javaClass.simpleName
-    }
-    val detail = detailText(error)
-    return if (rawPrimary != null && detail == rawPrimary) "" else detail
-}
-
-/** The failure as the system worded it, for the details of a lost connection; without content. */
-fun detailText(e: Throwable): String {
-    val cause = (e as? ConnectException)?.exception ?: e
-    return listOfNotNull(
-            cause.javaClass.simpleName.takeIf { cause.javaClass != Exception::class.java },
-            cause.message,
-        )
-        .joinToString(": ")
-}
-
 /**
  * The server's address did not resolve: on a phone, the network is down whatever the status bar
  * shows.

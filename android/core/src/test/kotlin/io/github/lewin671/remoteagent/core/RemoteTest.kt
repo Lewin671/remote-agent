@@ -329,8 +329,8 @@ class RemoteTest {
             assertEquals("fake-mac", machineName(st.machines[daemon.id], copy = ::messageTextForTest))
             assertTrue(st.machines[daemon.id]!!.online)
             val s = st.sessions.getValue("s1")
-            assertEquals("修复登录超时", titleOf(s, copy = ::messageTextForTest))
-            assertEquals("foo", projects(st, copy = ::messageTextForTest).single().name)
+            assertEquals("修复登录超时", s.info?.title)
+            assertEquals("/Users/me/Code/foo", s.info?.cwd)
 
             val vm = r.awaitSessionTimeline("s1", 3)
             assertEquals(listOf(1L, 2L, 3L), vm.timeline.itemsList.map { it.seq })

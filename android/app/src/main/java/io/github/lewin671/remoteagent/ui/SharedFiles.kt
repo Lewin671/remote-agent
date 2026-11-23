@@ -182,7 +182,6 @@ internal object SharedFileSpec {
 internal const val SharedFileCardTag = "shared-file-card"
 internal const val SharedFileOverlayTag = "shared-file-overlay"
 internal const val SharedFileMenuTag = "shared-file-menu"
-internal val SharedCardWidth = SharedFileSpec.CardWidth
 internal val SharedTileSize = SharedFileSpec.TileSize
 private val SharedSubtitleStyle = T.s13.copy(fontFeatureSettings = "tnum")
 

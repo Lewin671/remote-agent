@@ -3,39 +3,11 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
 
 import io.github.lewin671.remoteagent.proto.Agent
-import io.github.lewin671.remoteagent.proto.AgentInfo
-import io.github.lewin671.remoteagent.proto.ApprovalRequested
-import io.github.lewin671.remoteagent.proto.ApprovalResolved
-import io.github.lewin671.remoteagent.proto.Event
-import io.github.lewin671.remoteagent.proto.InputState
-import io.github.lewin671.remoteagent.proto.InputStatus
 import io.github.lewin671.remoteagent.proto.MachineMeta
-import io.github.lewin671.remoteagent.proto.Origin
-import io.github.lewin671.remoteagent.proto.OriginKind
-import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SendMode
-import io.github.lewin671.remoteagent.proto.SessionStatus
-import io.github.lewin671.remoteagent.proto.SettingsChanged
-import io.github.lewin671.remoteagent.proto.ToolCall
-import io.github.lewin671.remoteagent.proto.ToolStarted
-import io.github.lewin671.remoteagent.proto.TurnContext
-import io.github.lewin671.remoteagent.proto.TurnStarted
-import io.github.lewin671.remoteagent.proto.UserMessage
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.ZoneId
-import java.time.ZonedDateTime
 
 class ModelTest {
-    @Test fun unconfirmedStartupModeIsHidden() {
-        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        for (permission in listOf("", "未知审批模式", "default")) {
-            assertTrue(modeLabel(s { status = SessionStatus.SESSION_STATUS_STARTING; permissionMode = permission }, copy = ::messageTextForTest) == null)
-        }
-        assertEquals("未知审批模式", modeLabel(s { permissionMode = "未知审批模式" }, copy = ::messageTextForTest)?.text)
-    }
-
     @Test fun nativeSendCapabilityControlsOperationAndCaption() {
         for (agent in listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)) {
             assertEquals(SendMode.SEND_MODE_STEER, sendModeFor(agent, running = true))
@@ -54,33 +26,7 @@ class ModelTest {
             fun value(key: String) = (fields.getValue(key) as kotlinx.serialization.json.JsonPrimitive).content
             org.junit.Assert.assertEquals(value("input"), value("expected"), plain(value("input")))
         }
-    }
-
-    private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
-
-    @Test
-    fun statusFollowsThePriorityList() {
-        val online = MachineView("m", online = true, lastSeenMs = 0)
-        val offline = online.copy(online = false)
-        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals(Status.EXITED, statusOf(s { status = SessionStatus.SESSION_STATUS_EXITED; pendingApprovals = 1 }, offline))
-        assertEquals(Status.OFFLINE, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING; pendingApprovals = 1 }, offline))
-        assertEquals(Status.APPROVAL, statusOf(s { pendingApprovals = 1; pendingQuestions = 1; planOpen = true }, online))
-        assertEquals(Status.QUESTION, statusOf(s { pendingQuestions = 1; planOpen = true }, online))
-        assertEquals(Status.PLAN, statusOf(s { planOpen = true; status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
-        assertEquals(Status.POPUP, statusOf(s { status = SessionStatus.SESSION_STATUS_BLOCKED }, online))
-        assertEquals(Status.RUNNING, statusOf(s { status = SessionStatus.SESSION_STATUS_RUNNING }, online))
-        assertEquals(Status.IDLE, statusOf(s { status = SessionStatus.SESSION_STATUS_IDLE }, online))
-        assertEquals(Status.LOADING, statusOf(SessionView("s", "m"), online))
-    }
-
-    @Test
-    fun aModelIsTheOneChosenBySlugOrAlias() {
-        assertTrue(modelIs("gpt-6-sol", "gpt-6-sol"))
-        assertTrue(modelIs("claude-Sonnet-5-5", "sonnet"))
-        assertFalse(modelIs("claude-opus-5-5", "sonnet"))
-        assertFalse(modelIs("", "sonnet"))
-        assertFalse(modelIs("sonnet", ""))
+        assertEquals("修 bug", plain("修 `bug`"))
     }
 
     @Test
@@ -92,89 +38,5 @@ class ModelTest {
         // Not read yet: the daemon answers for itself.
         assertEquals(null, protocolMismatch(MachineView("m", true, 0)))
         assertEquals(null, protocolMismatch(null))
-    }
-
-    @Test
-    fun namesAgentsAndTimes() {
-        assertEquals("Codex", agentName(Agent.AGENT_UNSPECIFIED, copy = ::messageTextForTest))
-        assertEquals("Claude Code", agentName(Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
-        assertEquals(listOf(Agent.AGENT_CODEX), machineAgents(MachineView("m", true, 0, MachineMeta.getDefaultInstance())))
-        val both = MachineMeta.newBuilder()
-            .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX))
-            .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build()
-        assertEquals(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE), machineAgents(MachineView("m", true, 0, both)))
-        val zone = ZoneId.of("Asia/Shanghai")
-        val now = ZonedDateTime.of(2026, 9, 29, 14, 0, 0, 0, zone).toInstant().toEpochMilli()
-        assertEquals("2 小时前", ago(now - 2 * 3600_000L, now, zone, copy = ::messageTextForTest))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeYesterday()), ago(now - 24 * 3600_000L, now, zone, copy = ::messageTextForTest))
-        assertEquals("", ago(0, now, zone, copy = ::messageTextForTest))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeJustNow()), whenText(now - 10_000, now, zone, copy = ::messageTextForTest))
-        assertEquals("3 分钟前", whenText(now - 180_000, now, zone, copy = ::messageTextForTest))
-        assertEquals("9:05", whenText(now - (4 * 3600 + 55 * 60) * 1000L, now, zone, copy = ::messageTextForTest))
-        assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.timeYesterday()), whenText(now - 24 * 3600_000L, now, zone, copy = ::messageTextForTest))
-        assertEquals("9月27日", whenText(now - 48 * 3600_000L, now, zone, copy = ::messageTextForTest))
-        assertEquals("foo", projectName("/Users/me/Code/foo/", copy = ::messageTextForTest))
-        assertEquals("修 bug", plain("修 `bug`"))
-    }
-
-    @Test
-    fun followsClaudeCodeModes() {
-        fun s(b: Session.Builder.() -> Unit) = SessionView("s", "m", Session.newBuilder().apply(b).build())
-        assertEquals(Mode.AUTO, modeLabel(s { mode = io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO }, copy = ::messageTextForTest)?.mode)
-        val own = modeLabel(s { permissionMode = "acceptEdits" }, copy = ::messageTextForTest)!!
-        assertEquals("acceptEdits", own.text)
-        assertEquals(null, own.mode)
-        assertEquals(Mode.PLAN, modeLabel(s { collaborationMode = "plan"; approvalPolicy = "on-request" }, copy = ::messageTextForTest)?.mode)
-        // The list says which models come without the auto mode; a model it
-        // does not know gives no answer.
-        val list = listOf(
-            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("claude-haiku-4-5-20251001").setAutoUnavailable(true).build(),
-            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("claude-sonnet-5-5").build(),
-        )
-        assertTrue(autoUnavailable(list, "claude-haiku-4-5-20251001"))
-        assertFalse(autoUnavailable(list, "claude-sonnet-5-5"))
-        assertFalse(autoUnavailable(list, "haiku"))
-        assertFalse(autoUnavailable(null, "claude-haiku-4-5-20251001"))
-
-        val allNoAutoList = listOf(
-            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("gemini-3.1-pro-high").setAutoUnavailable(true).build(),
-            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("gemini-3.8-flash").setAutoUnavailable(true).build(),
-        )
-        assertTrue(allAutoUnavailable(allNoAutoList))
-        assertTrue(autoUnavailable(allNoAutoList, "gemini-3.1-pro-high"))
-        assertTrue(autoUnavailable(allNoAutoList, "other-model"))
-        assertFalse(allAutoUnavailable(list))
-        assertFalse(allAutoUnavailable(emptyList()))
-        assertFalse(allAutoUnavailable(null))
-
-        assertEquals("GPT-6-Sol", modelLabel(emptyList(), "gpt-6-sol", Agent.AGENT_CODEX))
-        assertEquals("gpt-6-sol", modelLabel(null, "gpt-6-sol", Agent.AGENT_CODEX))
-        assertEquals("claude-sonnet-5-5", modelLabel(list, "claude-sonnet-5-5", Agent.AGENT_CLAUDE))
-        val models = listOf("opus", "sonnet", "haiku")
-        assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
-        assertEquals("sonnet", findModel(models, "sonnet") { it })
-        assertEquals(null, findModel(models, "gpt-6-luna") { it })
-    }
-
-    @Test
-    fun aLongModelListShowsThreeAndThePickedOne() {
-        val few = listOf("a", "b", "c", "d", "e")
-        assertEquals(few, shownModels(few, null, false))
-        val many = few + listOf("f", "g")
-        assertEquals(listOf("a", "b", "c"), shownModels(many, "b", false))
-        assertEquals(listOf("a", "b", "c", "g"), shownModels(many, "g", false))
-        assertEquals(many, shownModels(many, "g", true))
-    }
-
-    @Test
-    fun readsTheDaemonsDefaultModePerCli() {
-        val s = io.github.lewin671.remoteagent.proto.DaemonSettings.newBuilder()
-            .setDefaultMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_FULL_ACCESS)
-            .setClaude(io.github.lewin671.remoteagent.proto.AgentDefaults.newBuilder().setMode(io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_AUTO))
-            .build()
-        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_CODEX))
-        assertEquals(Mode.FULL, defaultMode(s, Agent.AGENT_UNSPECIFIED))
-        assertEquals(Mode.AUTO, defaultMode(s, Agent.AGENT_CLAUDE))
-        assertEquals(null, defaultMode(io.github.lewin671.remoteagent.proto.DaemonSettings.getDefaultInstance(), Agent.AGENT_CODEX))
     }
 }

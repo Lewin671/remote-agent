@@ -39,8 +39,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.Tone
 import kotlinx.coroutines.delay
 
 /**
@@ -61,17 +59,6 @@ enum class MarkKind {
     UNREAD,
     /** 在线: a green dot. */
     ONLINE,
-}
-
-/** The graphic of a session's status; an ended one has none (its date group says it). */
-fun markOf(status: Status): MarkKind? = when {
-    status == Status.EXITED -> null
-    else -> when (status.tone) {
-        Tone.RUN -> MarkKind.RUNNING
-        Tone.IDLE -> MarkKind.IDLE
-        Tone.WAIT -> MarkKind.WAITING
-        Tone.OFF -> MarkKind.OFF
-    }
 }
 
 /**

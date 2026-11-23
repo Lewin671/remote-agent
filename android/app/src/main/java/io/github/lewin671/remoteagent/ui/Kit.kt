@@ -67,8 +67,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.projectName
 
 /*
  * The shared pieces of docs/design/client-v7.html, sized as the mockup's CSS

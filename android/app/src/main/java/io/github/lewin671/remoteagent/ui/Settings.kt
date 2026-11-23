@@ -145,12 +145,6 @@ private fun Ico(icon: ImageVector) {
     Ic(icon, 22.dp, pal.ink2)
 }
 
-internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): ImageVector = when {
-    meta?.platform == "web" -> Lucide.Globe
-    meta?.description?.contains("iPad") == true -> Lucide.Tablet
-    else -> Lucide.Smartphone
-}
-
 internal fun clientIconForDescription(desc: String): ImageVector = when {
     desc.contains("iPad", ignoreCase = true) -> Lucide.Tablet
     desc.contains("Web", ignoreCase = true) ||
@@ -822,7 +816,7 @@ fun DeviceScreen(
         directDiagnostics = diagVm,
         openDirect = openDirect,
         initialAgent = initialAgent,
-        isAuthority = vm.management.isAuthorityDevice,
+        isAuthority = syncView.isManager,
         appOnline = syncView.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED,
         removeRunning = remove.running,
         removeError = remove.error,

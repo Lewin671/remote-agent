@@ -24,8 +24,6 @@ import java.time.ZoneId
 const val PROJECT_PREFS = "project-prefs"
 const val LOGIN_REFRESH_MARGIN_MS = 86_400_000L
 const val CACHE_EVENT_PAGE = 128
-const val SESSION_PAGE = 50
-val settingsAgents: List<Agent> get() = AGENTS.map { it.agent }
 
 data class LoginToken(val value: String, val expiresMs: Long) {
     val token: String get() = value

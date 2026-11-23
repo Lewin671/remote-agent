@@ -127,16 +127,9 @@ class SharedFilesTest {
                 val caseSize = case.sizeBytes
                 val caseOffsets = case.offsets
                 val caseLastBlockBytes = case.lastBlockFileBytes
-                val caseInvalidOffsets = case.invalidOffsets
                 val plan = planSharedFileBlocks(caseSize, blockBytes)
                 assertEquals("offsets for ${case.name}", caseOffsets, plan.offsets)
                 assertEquals("lastBlockFileBytes for ${case.name}", caseLastBlockBytes, plan.lastBlockFileBytes)
-                for (validOffset in caseOffsets) {
-                    assertTrue("valid $validOffset for ${case.name}", isValidSharedFileOffset(validOffset, caseSize, blockBytes))
-                }
-                for (badOffset in caseInvalidOffsets) {
-                    assertFalse("invalid $badOffset for ${case.name}", isValidSharedFileOffset(badOffset, caseSize, blockBytes))
-                }
 
                 // Run end-to-end chunk assembly for all non-largest cases (up to 2 blocks).
                 if (caseSize <= blockBytes * 2L) {

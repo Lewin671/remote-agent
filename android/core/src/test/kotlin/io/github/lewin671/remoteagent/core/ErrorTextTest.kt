@@ -16,7 +16,6 @@ class ErrorTextTest {
         assertEquals(messageTextForTest(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork()), errorText(e))
         assertEquals(messageTextForTest(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork()), errorText(cause))
         assertTrue(unresolvedHost(e))
-        assertTrue(detailText(e).startsWith("UnknownHostException: Unable to resolve host"))
         assertFalse(unresolvedHost(java.net.SocketTimeoutException("timeout")))
     }
 

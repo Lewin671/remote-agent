@@ -12,6 +12,3 @@ internal object PendingUris {
     }
     @Synchronized fun clear() { live.clear() }
 }
-
-internal fun unusedUriPermissions(grants: Set<String>, live: Set<String>, recorded: Set<String>?): Set<String> =
-    if (recorded == null) emptySet() else grants - live - recorded

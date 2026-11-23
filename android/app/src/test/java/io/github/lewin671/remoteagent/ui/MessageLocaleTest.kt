@@ -42,10 +42,6 @@ class MessageLocaleTest {
             assertEquals("$count 张图没加上，点图片看原因", resolveUiMessage(context, UiMessages.imageAttachFailed(count)))
             assertEquals("$count images could not be attached. Tap an image for details.", resolveUiMessage(context, UiMessages.imageAttachFailed(count), "en"))
         }
-        val preferences = MessagePreferences(context)
-        preferences.preference = "en"
-        assertEquals("en", MessagePreferences(context).preference)
-        assertEquals("zh-CN", preferences.current())
     }
     @Test fun pilotResourceSnapshots() {
         val directory = System.getenv("RA_I18N_SCREENSHOT_DIR") ?: return

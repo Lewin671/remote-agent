@@ -30,8 +30,6 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
     fun rendered(value: Any?): Any? = when (value) {
         is UiMessage -> messageTextForTest(value)
         is MessageText -> value.testText()
-        is SessionLookup.Failed -> listOf("failed", rendered(value.reason))
-        is QuotaWindowDescriptor -> listOf(rendered(value.label), rendered(value.group), value.groupId)
         is List<*> -> value.map { rendered(it) }
         else -> value
     }

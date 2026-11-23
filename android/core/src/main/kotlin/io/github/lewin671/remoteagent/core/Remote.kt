@@ -66,7 +66,6 @@ class TermConn internal constructor(
 }
 
 internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
-internal fun umax(a: Long, b: Long): Long = if (ucmp(a, b) >= 0) a else b
 
 const val COMMAND_TTL_MS = 60_000L
 
