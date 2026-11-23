@@ -33,44 +33,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
-import io.github.lewin671.remoteagent.core.ConnState
-import io.github.lewin671.remoteagent.core.Link
-import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.SessionLookup
-import io.github.lewin671.remoteagent.core.SessionView
-import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.lookUpSession
+import io.github.lewin671.remoteagent.core.coreTextToMessageText
 import io.github.lewin671.remoteagent.core.machineName
-import io.github.lewin671.remoteagent.core.shownStatus
-import io.github.lewin671.remoteagent.core.whenText
+import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
+import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 val LocalRemote = staticCompositionLocalOf<Remote> { error("no remote") }
-
-/**
- * Asks for a session that is not held here by its ID: the listing comes a page at a time, so one
- * opened from a notification, a link or a fork's source may not have been fetched (architecture §8
- * 「按 ID 取」). Null once it is held; else how the lookup stands ([lookUpSession]): still reading,
- * missing, or why the server could not be asked. It waits for the connection, and [attempt]
- * changing asks again at once.
- */
-@Composable
-fun sessionLookup(sid: String, attempt: Int = 0): SessionLookup? {
-    val remote = LocalRemote.current
-    val state by remote.state.collectAsState()
-    val held = state.sessions[sid] != null
-    val online = state.conn == ConnState.ONLINE
-    var lookup by remember(sid) { mutableStateOf<SessionLookup>(SessionLookup.Reading) }
-    LaunchedEffect(sid, held, online, attempt) {
-        if (held) lookup = SessionLookup.Reading
-        if (held || !online) return@LaunchedEffect
-        lookUpSession({ remote.fetchSession(sid) }) { lookup = it }
-    }
-    return if (held) null else lookup
-}
 
 /** Navigation actions shared by the screens. */
 data class Nav(
@@ -166,9 +137,9 @@ fun Card(
  * the server, whose details open from the bar.
  */
 @Composable
-fun ConnBanner(state: RemoteState) {
+fun ConnBanner(sync: SyncStateView) {
     val p = pal
-    val line = connLine(state, copy = uiText()) ?: return
+    val line = connLine(sync, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     val color = if (line.failed) p.red else p.ink2
     Row(
@@ -183,13 +154,13 @@ fun ConnBanner(state: RemoteState) {
         Text(uiText(line.text), Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (line.details) Text(uiText(UiMessages.commonDetails()), Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
     }
-    if (details && line.details) ServerDetails(state) { details = false }
+    if (details && line.details) ServerDetails(sync) { details = false }
 }
 
 /** The same sentence in a session, as the glass strip under its segmented control (design-system §6 连接状态). */
 @Composable
-fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
-    val line = connLine(state, copy = uiText()) ?: return
+fun ConnStrip(sync: SyncStateView, modifier: Modifier = Modifier) {
+    val line = connLine(sync, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     Strip(
         line.icon, uiText(line.text), modifier,
@@ -198,37 +169,42 @@ fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
         error = line.failed,
         spin = line.icon == Lucide.LoaderCircle,
     )
-    if (details && line.details) ServerDetails(state) { details = false }
+    if (details && line.details) ServerDetails(sync) { details = false }
 }
 
 /** What the connection bar or strip says: the icon, the sentence, whether it is a failure in red, and whether 详情 opens. */
 class ConnLine(val icon: ImageVector, val text: io.github.lewin671.remoteagent.core.UiMessage, val failed: Boolean, val details: Boolean)
 
 /** Nothing when online or inside core display grace; otherwise the nearest stretch that is down (client-v30 「断线」). */
-fun connLine(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): ConnLine? {
-    if (state.link == Link.ONLINE || state.displayGrace) return null
+fun connLine(sync: SyncStateView, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): ConnLine? {
+    if (sync.connection == CoreConnState.CONN_STATE_CONNECTED || sync.displayGrace) return null
+    val loaded = sync.machinesListed || sync.sessionsListed || sync.prefsLoaded
+    val reason = if (sync.hasConnectionReason()) coreTextToMessageText(sync.connectionReason).resolve(copy) else ""
+    val noServer = sync.connection == CoreConnState.CONN_STATE_OFFLINE
+    val noNetwork = sync.connection == CoreConnState.CONN_STATE_NO_NETWORK
     // Nothing kept from before to show: the bar says what the connection is needed for.
-    val failed = state.link == Link.NO_SERVER && !state.loaded && state.error.isNotEmpty()
+    val failed = noServer && !loaded && reason.isNotEmpty()
     val icon =
-        when (state.link) {
-            Link.NO_NETWORK -> Lucide.WifiOff
-            Link.NO_SERVER -> if (failed) Lucide.X else Lucide.CloudOff
+        when {
+            noNetwork -> Lucide.WifiOff
+            noServer -> if (failed) Lucide.X else Lucide.CloudOff
             else -> Lucide.LoaderCircle
         }
     val text =
-        when (state.link) {
-            Link.NO_NETWORK -> if (state.loaded) UiMessages.connectionNoNetworkPrevious() else UiMessages.connectionNoNetworkEmpty()
-            Link.NO_SERVER -> if (failed) UiMessages.connectionAndroidServerFailed(reason = state.error.resolve(copy)) else UiMessages.connectionServerRetrying()
-            else -> if (state.synced) UiMessages.connectionReconnecting() else UiMessages.connectionConnecting()
+        when {
+            noNetwork -> if (loaded) UiMessages.connectionNoNetworkPrevious() else UiMessages.connectionNoNetworkEmpty()
+            noServer -> if (failed) UiMessages.connectionAndroidServerFailed(reason = reason) else UiMessages.connectionServerRetrying()
+            else -> if (sync.securityLoaded) UiMessages.connectionReconnecting() else UiMessages.connectionConnecting()
         }
-    return ConnLine(icon, text, failed, state.link == Link.NO_SERVER)
+    return ConnLine(icon, text, failed, noServer)
 }
 
 /** Why the server is out of reach: the judgement first, the failure in the system's words last. */
 @Composable
-internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
+internal fun ServerDetails(sync: SyncStateView, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
+    val reason = if (sync.hasConnectionReason()) uiText(sync.connectionReason) else ""
     Sheet(onClose) {
         SheetHead(uiText(UiMessages.connectionNoServer()))
         Text(
@@ -243,22 +219,20 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
             modifier = Modifier.padding(top = 10.dp),
         )
         // Since start nothing was reached: when it was last is not known here.
-        if (state.synced)
+        if (sync.securityLoaded)
             Text(
-                uiText(UiMessages.connectionAndroidDisconnectedAt(time = uiText(io.github.lewin671.remoteagent.core.listWhen(state.offlineSinceMs, now())))),
+                uiText(UiMessages.connectionAndroidDisconnectedAt(time = uiText(io.github.lewin671.remoteagent.core.listWhen(sync.disconnectedAtMs, now())))),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
-        if (state.error.isNotEmpty())
+        if (reason.isNotEmpty())
             Text(
-                uiText(UiMessages.connectionAndroidReason(reason = uiText(state.error))),
+                uiText(UiMessages.connectionAndroidReason(reason = reason)),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
-        if (state.errorDetail.isNotEmpty())
-            Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
         PillButton(
             uiText(UiMessages.connectionAndroidRetryNow()),
             {
@@ -279,8 +253,6 @@ fun Confirm(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) = Alert(title = title, text = text, confirm = confirm, danger = danger, onDismiss = onDismiss, onConfirm = onConfirm)
-
-fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id, copy = ::sessionText)
 

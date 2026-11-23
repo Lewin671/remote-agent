@@ -154,7 +154,7 @@ class DirectTransportUiTest {
             RaTheme(ThemeMode.LIGHT) {
                 DirectConnectionSheet(
                     machineId = "m1",
-                    state = RemoteState(),
+                    computerName = "m1",
                     view = viewState.value,
                     diagVm = DirectDiagnosticsViewModel.getDefaultInstance(),
                     onToggle = { toggledTo = it },
@@ -408,7 +408,7 @@ class DirectTransportUiTest {
             RaTheme(ThemeMode.LIGHT) {
                 DirectConnectionSheet(
                     machineId = "m1",
-                    state = state,
+                    computerName = "m1",
                     view = vm.connection,
                     diagVm = diagVm,
                     onToggle = {},
@@ -468,7 +468,7 @@ class DirectTransportUiTest {
             RaTheme(ThemeMode.LIGHT) {
                 DirectConnectionSheet(
                     machineId = "m1",
-                    state = state,
+                    computerName = "m1",
                     view = diagView,
                     diagVm = diagVm,
                     onToggle = {},

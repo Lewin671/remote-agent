@@ -48,7 +48,7 @@ fun DevicesScreen() {
     val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotDevicesView() }
     val rawVm by remote.devicesView.collectAsState()
     val vm = if (rawVm != DevicesViewModel.getDefaultInstance()) rawVm else initialVm
@@ -57,13 +57,13 @@ fun DevicesScreen() {
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         remote.coreHost.openDevices()
-        if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices()
+        if (remote.coreHost.syncStateView.value.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED) remote.refreshDevices()
     }
     DevicesScreenContent(
         vm = vm,
-        clockWarning = state.clockWarning,
-        recoveryPending = state.isAuthority && state.recoveryPending,
-        leaseEndMs = state.leaseEndMs,
+        clockWarning = syncView.accountClockSkewed,
+        recoveryPending = syncView.isManager && syncView.recoveryPending,
+        leaseEndMs = syncView.leaseEndMs,
         nowMs = t,
         onRecovery = { nav.recovery() },
         onClientClick = { nav.client(it) },

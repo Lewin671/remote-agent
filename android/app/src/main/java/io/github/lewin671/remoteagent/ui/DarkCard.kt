@@ -31,9 +31,7 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessage
-import io.github.lewin671.remoteagent.core.capabilities
 import io.github.lewin671.remoteagent.core.proto.AlwaysAllowKind
 import io.github.lewin671.remoteagent.core.proto.AttentionCardView
 import io.github.lewin671.remoteagent.core.proto.HomeQuestionCardView
@@ -386,7 +384,7 @@ fun ApprovalButtons(
 @Composable
 fun ApprovalCard(
     card: AttentionCardView,
-    state: RemoteState,
+    locked: Boolean = false,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -409,7 +407,6 @@ fun ApprovalCard(
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
     val always = card.alwaysKind != AlwaysAllowKind.ALWAYS_ALLOW_KIND_UNSPECIFIED
-    val locked = state.peer(card.machineId).unlinked
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
         DarkCardHead(kind, time, card.hot)
         Row(

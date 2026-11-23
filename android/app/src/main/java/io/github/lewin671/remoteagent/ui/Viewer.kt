@@ -55,16 +55,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.RETIRED_HISTORY_ERROR
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.SessionImage
-import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
+import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.sessionImages
-import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import io.github.lewin671.remoteagent.proto.ImageSource
 import io.github.lewin671.remoteagent.proto.ImageSync
@@ -106,9 +104,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
     val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
-    val s = state.sessions[sid]
-    val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
+    LaunchedEffect(remote, sid) { remote.openSession(sid) }
     val win = remember(seq) {
         io.github.lewin671.remoteagent.core.proto.SessionWindowRequest.newBuilder()
             .setLimit(200)
@@ -126,13 +122,18 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             if (first >= 0) n = first + index
             n.coerceIn(0, (all.size - 1).coerceAtLeast(0))
         }
+    val emptyNote = if (!vm.header.found && (vm.header.missing || (vm.header.sessionsListed && vm.header.hasMissingText()))) {
+        uiText(vm.header.missingText).ifEmpty { copy(UiMessages.commonAndroidCannotFindThisSession()) }
+    } else {
+        copy(UiMessages.projectsReadingDirectory())
+    }
     BackHandler { nav.back() }
-    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy) ?: copy(UiMessages.projectsReadingDirectory()),
-        picture = { page -> ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE) },
+    PagedImageViewer(all.size, start, nav.back, emptyNote,
+        picture = { page -> ViewerPage(remote, sid, all[page], vm.header.connState == CoreConnState.CONN_STATE_CONNECTED) },
         info = { page ->
             val cur = all[page]
             val agentValue = vm.header.agent.takeIf { it != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED }
-                ?: s?.agent() ?: DEFAULT_AGENT
+                ?: DEFAULT_AGENT
             val agent = agentName(agentValue, copy = copy)
             val from = when (cur.ref.source) {
                 ImageSource.IMAGE_SOURCE_TOOL -> copy(UiMessages.imageAndroidViewedBy(agent = agent))
@@ -142,7 +143,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
             val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
             val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
-            val title = uiText(vm.header.title).ifEmpty { s?.let { titleOf(it, copy = copy) }.orEmpty() }
+            val title = uiText(vm.header.title)
             Text(listOfNotNull(if (w > 0) "$w × $h" else null, title.ifEmpty { null }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
             ViewerActions(remote, sid, cur)
         })

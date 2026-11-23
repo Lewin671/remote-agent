@@ -83,9 +83,9 @@ import kotlin.math.roundToInt
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
+import io.github.lewin671.remoteagent.core.MAX_IMAGES
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.filesSupported
 import io.github.lewin671.remoteagent.core.listWhen
 import io.github.lewin671.remoteagent.core.maxFiles
 import io.github.lewin671.remoteagent.core.newRequestId
@@ -141,6 +141,7 @@ fun SessionScreen(sid: String) {
     val nav = LocalNav.current
     val p = pal
     val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
 
     var windowLimit by rememberSaveable(sid) { mutableIntStateOf(CORE_SESSION_WINDOW_LIMIT) }
     val pendingJump = ScheduleJump.requested[sid] ?: 0L
@@ -254,7 +255,7 @@ fun SessionScreen(sid: String) {
     LightSystemBarIcons(term && !p.dark)
 
     Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper).windowInsetsPadding(WindowInsets.safeDrawing)) {
-        if (!compactTerminal) SessionTopBar(sid, state, vm, dark = term)
+        if (!compactTerminal) SessionTopBar(sid, manyMachines = syncView.machinesCount > 1, vm = vm, dark = term)
         if (!compactTerminal) Segmented(
             if (wide) listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal()), copy(UiMessages.sessionSplit()))
             else listOf(copy(UiMessages.sessionChat()), copy(UiMessages.sessionTerminal())),
@@ -268,7 +269,7 @@ fun SessionScreen(sid: String) {
             dot = if (header.status == SessionDisplayStatus.SESSION_DISPLAY_STATUS_POPUP) 1 else -1,
             dark = term,
         )
-        ConnStrip(state, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
+        ConnStrip(syncView, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
         if (!term) SessionScheduleStrip(sid, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
         if (term) {
             TerminalPane(
@@ -347,7 +348,7 @@ private fun displayMarkKind(status: SessionDisplayStatus): MarkKind? = when (sta
 @Composable
 private fun SessionTopBar(
     sid: String,
-    state: RemoteState,
+    manyMachines: Boolean,
     vm: SessionViewModel,
     dark: Boolean,
 ) {
@@ -404,7 +405,7 @@ private fun SessionTopBar(
         if (header.exited || !online) directOpen = false
     }
     val showDirectBadge = !dark && ((!header.exited && online && chip?.visible == true) || directOpen)
-    val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
+    val computer = if (header.hasComputerName()) uiText(header.computerName) else header.machineId.take(8)
 
     Box(Modifier.fillMaxWidth()) {
         Row(
@@ -531,7 +532,7 @@ private fun SessionTopBar(
         val menuTitle = listOfNotNull(
             header.agentName.ifEmpty { null },
             if (header.hasProjectName()) uiText(header.projectName).ifEmpty { null } else null,
-            computer.takeIf { it.isNotEmpty() && state.machines.size > 1 },
+            computer.takeIf { it.isNotEmpty() && manyMachines },
         ).joinToString(" · ")
         val modelLabel = header.modelLabel.ifEmpty { header.model }
         val effortStr = if (header.hasEffortLabel()) uiText(header.effortLabel) else header.effort
@@ -686,7 +687,7 @@ internal fun ChatPane(
     val remote = LocalRemote.current
     val header = vm.header
     val tl = vm.timeline
-    val machineName = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
+    val machineName = if (header.hasComputerName()) uiText(header.computerName) else header.machineId.take(8)
     val list = rememberLazyListState()
     val followState = remember { Follow() }
     val unseen = remember { NewMessages() }
@@ -929,7 +930,7 @@ private fun BottomArea(
     }
 
     if (header.computerUnlinked && header.computerReachability != ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN) {
-        val computer = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, header.machineId)
+        val computer = if (header.hasComputerName()) uiText(header.computerName) else header.machineId.take(8)
         val offlineNote = if (header.hasOfflineText()) uiText(header.offlineText)
         else copy(UiMessages.projectsComputerOffline())
         EndCard(copy(UiMessages.newSessionMachineOffline(name = computer)), offlineNote) {}
@@ -1012,11 +1013,11 @@ internal fun Composer(
     val images = ImageDrafts.forSession(sid)
     var text by images.text
     val keeping = Outbox.keeping(sid)
-    val maxImg = caps.maxImages.takeIf { it > 0 } ?: maxImages(machine)
-    val machineName = if (header.hasComputerName()) uiText(header.computerName) else machineLabel(state, machineId)
+    val maxImg = caps.maxImages.takeIf { it > 0 } ?: MAX_IMAGES
+    val machineName = if (header.hasComputerName()) uiText(header.computerName) else machineId.take(8)
     val blocked = uploadBlocked(machine, online, machineName, copy = copy)
     RefreshDraftUploads(images, remote, machineId, blocked)
-    val pick = rememberImagePicker(images, remote, machineId, blocked, maxImg, videos = caps.supportsFiles || filesSupported(machine))
+    val pick = rememberImagePicker(images, remote, machineId, blocked, maxImg, videos = caps.supportsFiles)
 
     fun send(requestedMode: SendMode = SendMode.SEND_MODE_STEER) {
         val mode = sendModeFor(agent, requestedMode, composer.hasActiveTurn)

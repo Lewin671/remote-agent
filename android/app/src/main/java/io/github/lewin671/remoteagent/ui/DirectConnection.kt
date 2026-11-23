@@ -50,7 +50,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.DisposableEffect
-import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupStage
 import io.github.lewin671.remoteagent.core.proto.ConnectionGroupTone
@@ -78,7 +77,7 @@ private enum class CopyFeedback { IDLE, OK, FAIL }
 @Composable
 internal fun DirectConnectionSheet(
     machineId: String,
-    state: RemoteState,
+    computerName: String = "",
     view: ConnectionGroupView,
     diagVm: DirectDiagnosticsViewModel,
     onToggle: (Boolean) -> Unit,
@@ -183,9 +182,9 @@ internal fun DirectConnectionSheet(
 
     val canRetryVm = !matchingDiag || diagVm.machineId.isEmpty() || (diagVm.supported && diagVm.canRetry)
     val retryDisabled = running || cooldown || connected || peerOutdated || !supported || !canRetryVm
-    val computerName = machineLabel(state, machineId)
+    val displayComputerName = computerName.ifEmpty { machineId.take(8) }
     val diagLines = if (matchingDiag) diagVm.reportLinesList.map { uiText(it) } else emptyList()
-    val reportPayload = remember(title, diagLines, computerName) {
+    val reportPayload = remember(title, diagLines, displayComputerName) {
         buildString {
             if (diagLines.any { it.isNotEmpty() }) {
                 for (line in diagLines) appendLine(line)
@@ -195,7 +194,7 @@ internal fun DirectConnectionSheet(
                 appendLine("Client: Android ${android.os.Build.VERSION.RELEASE}")
                 appendLine(copy(UiMessages.transportDiagVerdictNone()))
             }
-            if (computerName.isNotEmpty()) appendLine("Computer: $computerName")
+            if (displayComputerName.isNotEmpty()) appendLine("Computer: $displayComputerName")
             appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())}")
         }.trim()
     }

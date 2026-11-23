@@ -172,6 +172,7 @@ fun SettingsScreen() {
     val nav = LocalNav.current
     val copy = uiText()
     val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
     val rawVm by remote.settingsView.collectAsState()
     val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
@@ -210,6 +211,7 @@ fun SettingsScreen() {
     SettingsScreenContent(
         vm = vm,
         state = state,
+        syncView = syncView,
         push = push,
         serverDisplay = remote.account.server.removePrefix("https://").removePrefix("http://"),
         localCacheText = localCacheBytes?.let { imageBytes(it, copy) }.orEmpty(),
@@ -246,6 +248,7 @@ private fun connDotFor(vm: SettingsViewModel): MachineStatusDot = when {
 internal fun SettingsScreenContent(
     vm: SettingsViewModel,
     state: RemoteState = RemoteState(),
+    syncView: io.github.lewin671.remoteagent.core.proto.SyncStateView = io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance(),
     push: PushStatus = PushStatus(),
     serverDisplay: String = "",
     localCacheText: String = "",
@@ -278,7 +281,7 @@ internal fun SettingsScreenContent(
         ) {
             BackRow(onBack)
             LargeTitle(copy(UiMessages.commonSettings()))
-            ConnBanner(state)
+            ConnBanner(syncView)
             if (vm.recoveryPending) {
                 val recMsg = uiText(vm.recoveryBannerText).ifEmpty {
                     if (vm.isManager) copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto())
@@ -784,7 +787,7 @@ fun DeviceScreen(
 ) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val scope = rememberCoroutineScope()
     val initialVm = remember(remote, id) { remote.coreHost.snapshotMachineSettingsView(id) }
     val rawVm by remote.machineSettingsView.collectAsState()
@@ -816,12 +819,11 @@ fun DeviceScreen(
     }
     DeviceScreenContent(
         vm = vm,
-        state = state,
         directDiagnostics = diagVm,
         openDirect = openDirect,
         initialAgent = initialAgent,
-        isAuthority = state.isAuthority,
-        appOnline = state.conn == ConnState.ONLINE,
+        isAuthority = vm.management.isAuthorityDevice,
+        appOnline = syncView.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED,
         removeRunning = remove.running,
         removeError = remove.error,
         onOpenStatus = { nav.machineStatus(id) },
@@ -864,7 +866,6 @@ fun DeviceScreen(
 @Composable
 internal fun DeviceScreenContent(
     vm: MachineSettingsViewModel,
-    state: RemoteState = RemoteState(),
     directDiagnostics: DirectDiagnosticsViewModel = DirectDiagnosticsViewModel.getDefaultInstance(),
     openDirect: Boolean = false,
     initialAgent: Agent? = null,
@@ -1409,7 +1410,7 @@ internal fun DeviceScreenContent(
     if (showDirectSheet && vm.hasConnection()) {
         DirectConnectionSheet(
             machineId = vm.machineId,
-            state = state,
+            computerName = vm.name,
             view = vm.connection,
             diagVm = directDiagnostics,
             onToggle = onToggleDirect,

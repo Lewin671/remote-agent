@@ -221,7 +221,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         // Say what this client is, sealed, so other clients can tell it apart.
-        val devices by remote.state.collectAsState()
+        val syncView by remote.coreHost.syncStateView.collectAsState()
         // The phone's own name where the system has one (小米 14), else its model number.
         val phone = remember {
             android.provider.Settings.Global.getString(
@@ -234,7 +234,7 @@ class MainActivity : ComponentActivity() {
         }
         val description = "Android ${Build.VERSION.RELEASE} · $phone"
         io.github.lewin671.remoteagent.ui.DeviceDescription(
-            devices,
+            syncView,
             remote.account.deviceId,
             description,
         ) {
@@ -443,7 +443,9 @@ class MainActivity : ComponentActivity() {
             task = { machine, id ->
                 val current = nav.currentBackStackEntry
                 val sid = current?.arguments?.getString("id")
-                if (current?.destination?.route == "session/{id}" && remote.state.value.sessions[sid]?.info?.taskOwned == true) {
+                if (current?.destination?.route == "session/{id}" &&
+                    remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.info?.taskOwned == true
+                ) {
                     leave()
                     nav.popBackStack()
                 }

@@ -68,7 +68,8 @@ private fun schedItemKey(prefix: String, item: ScheduleTaskItemView): String =
 fun SchedulesScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val loaded = syncView.machinesListed || syncView.sessionsListed || syncView.prefsLoaded
     val vm by remote.schedulesView.collectAsState()
     val prefs = LocalContext.current.let {
         remember(it) { it.getSharedPreferences("schedule-display", Context.MODE_PRIVATE) }
@@ -92,7 +93,7 @@ fun SchedulesScreen() {
                 nav.newTask("")
             }
         },
-        connBanner = { if (!state.loaded) ConnStrip(state) },
+        connBanner = { if (!loaded) ConnStrip(syncView) },
         onEvent = { block ->
             val ev = CoreEvent.newBuilder().apply(block).build()
             if (ev.hasScheduleToggleEnded()) prefs.edit().putBoolean("ended-open", ev.scheduleToggleEnded.value).apply()
@@ -336,7 +337,8 @@ internal fun ScheduleResultDot(color: Color = pal.blue, description: String? = n
 fun ScheduleDetailScreen(machine: String, id: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val loaded = syncView.machinesListed || syncView.sessionsListed || syncView.prefsLoaded
     val initialVm = remember(remote, machine, id) { remote.coreHost.snapshotScheduleDetailView(machine, id) }
     val rawVm by remote.scheduleDetailView.collectAsState()
     val vm = if (rawVm.machineId == machine && rawVm.taskId == id) rawVm else initialVm
@@ -357,7 +359,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     ScheduleDetailScreenContent(
         vm = vm,
         editForm = activeEdit,
-        connBanner = { if (!state.loaded) ConnBanner(state) },
+        connBanner = { if (!loaded) ConnBanner(syncView) },
         onBack = nav.back,
         onEvent = remote.coreHost::sendEvent,
         onOpenSession = { sid, seq -> if (seq > 0L) nav.scheduledSession(sid, seq) else nav.session(sid) },
@@ -754,7 +756,7 @@ internal fun ScheduleAgentSetting(agents: List<AgentOptionView>, selected: io.gi
 fun NewScheduleScreen(session: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val home by remote.homeView.collectAsState()
     val projectView by remote.projectView.collectAsState()
     val vm by remote.scheduleFormView.collectAsState()
@@ -766,7 +768,7 @@ fun NewScheduleScreen(session: String) {
     }
     val content: @Composable () -> Unit = {
         ScheduleEditorContent(
-            vm, home.sidebarProjects, projectView.manage.dirPicker, { ConnBanner(state) }, ::close,
+            vm, home.sidebarProjects, projectView.manage.dirPicker, { ConnBanner(syncView) }, ::close,
             { remote.coreHost.openDirPicker(forNewTask = false) }, { remote.coreHost.closeDirPicker() }, remote.coreHost::sendEvent,
         )
     }

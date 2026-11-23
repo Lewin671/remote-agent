@@ -344,7 +344,7 @@ class LayoutTest {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").width(360.dp).background(pal.paper).padding(16.dp)) {
-                        ApprovalCard(card, st, onOpen = {})
+                        ApprovalCard(card, locked = unlinked, onOpen = {})
                     }
                 }
             }

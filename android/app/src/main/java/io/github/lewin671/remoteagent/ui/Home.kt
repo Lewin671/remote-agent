@@ -69,7 +69,7 @@ fun HomeScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val vm by remote.homeView.collectAsState()
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
 
     var filterText by remember(vm.scopeKey) { mutableStateOf(vm.filterQuery) }
     LaunchedEffect(vm.filterQuery) {
@@ -180,9 +180,12 @@ fun HomeScreen() {
                     val anim = if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec()) else Modifier
                     Box(anim) {
                         androidx.compose.runtime.key(vm.topAttentionCard.approvalId) {
+                            val cardLocked = syncView.machinesList
+                                .firstOrNull { it.machineId == vm.topAttentionCard.machineId }
+                                ?.let { !it.reachable && it.unlinked } ?: vm.headline.unlinked
                             ApprovalCard(
                                 vm.topAttentionCard,
-                                state,
+                                locked = cardLocked,
                                 onOpen = { nav.session(vm.topAttentionCard.sessionId) },
                                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp),
                             )
@@ -282,7 +285,7 @@ fun HomeScreen() {
     }
 
     if (updating) UpdateSheet { updating = false }
-    if (details) ServerDetails(state) { details = false }
+    if (details) ServerDetails(syncView) { details = false }
     if (pick) PickProjectSheet(vm.sidebarProjects, onClose = { pick = false })
     if (menu) ScopeSheet(vm, onPick = { remote.coreHost.setHomeScope(it) }) { menu = false }
 }
