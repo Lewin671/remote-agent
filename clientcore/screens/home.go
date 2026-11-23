@@ -281,8 +281,7 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 	v := &corev1.HomeEmptyView{}
 	switch e.Kind {
 	case lists.HomeEmptyLoading:
-		v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NONE
-		v.Loading = true
+		v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_LOADING
 		v.Message = text.Msg(text.KeyCommonLoading)
 	case lists.HomeEmptyNoMachines:
 		if !st.World.IsManager && hasReason(st.ManagerNameText, st.World.ManagerName) {

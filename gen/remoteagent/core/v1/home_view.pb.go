@@ -278,6 +278,7 @@ const (
 	HomeEmptyKind_HOME_EMPTY_KIND_SCOPED_PROJECT     HomeEmptyKind = 6
 	HomeEmptyKind_HOME_EMPTY_KIND_NO_NETWORK         HomeEmptyKind = 7
 	HomeEmptyKind_HOME_EMPTY_KIND_LIST_FAILED        HomeEmptyKind = 8
+	HomeEmptyKind_HOME_EMPTY_KIND_LOADING            HomeEmptyKind = 9
 )
 
 // Enum value maps for HomeEmptyKind.
@@ -292,6 +293,7 @@ var (
 		6: "HOME_EMPTY_KIND_SCOPED_PROJECT",
 		7: "HOME_EMPTY_KIND_NO_NETWORK",
 		8: "HOME_EMPTY_KIND_LIST_FAILED",
+		9: "HOME_EMPTY_KIND_LOADING",
 	}
 	HomeEmptyKind_value = map[string]int32{
 		"HOME_EMPTY_KIND_UNSPECIFIED":        0,
@@ -303,6 +305,7 @@ var (
 		"HOME_EMPTY_KIND_SCOPED_PROJECT":     6,
 		"HOME_EMPTY_KIND_NO_NETWORK":         7,
 		"HOME_EMPTY_KIND_LIST_FAILED":        8,
+		"HOME_EMPTY_KIND_LOADING":            9,
 	}
 )
 
@@ -711,7 +714,6 @@ type HomeEmptyView struct {
 	CanAddDevice     bool                   `protobuf:"varint,6,opt,name=can_add_device,json=canAddDevice,proto3" json:"can_add_device,omitempty"`
 	CanStartFirst    bool                   `protobuf:"varint,7,opt,name=can_start_first,json=canStartFirst,proto3" json:"can_start_first,omitempty"`
 	CanRetry         bool                   `protobuf:"varint,8,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
-	Loading          bool                   `protobuf:"varint,9,opt,name=loading,proto3" json:"loading,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -798,13 +800,6 @@ func (x *HomeEmptyView) GetCanStartFirst() bool {
 func (x *HomeEmptyView) GetCanRetry() bool {
 	if x != nil {
 		return x.CanRetry
-	}
-	return false
-}
-
-func (x *HomeEmptyView) GetLoading() bool {
-	if x != nil {
-		return x.Loading
 	}
 	return false
 }
@@ -2266,7 +2261,7 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\bunlinked\x18\b \x01(\bR\bunlinked\x12#\n" +
 	"\rhighlight_arg\x18\t \x01(\tR\fhighlightArg\x12#\n" +
 	"\ris_connecting\x18\n" +
-	" \x01(\bR\fisConnecting\"\xf3\x02\n" +
+	" \x01(\bR\fisConnecting\"\xe8\x02\n" +
 	"\rHomeEmptyView\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".remoteagent.core.v1.HomeEmptyKindR\x04kind\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12\x18\n" +
@@ -2275,8 +2270,8 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x12ready_machine_name\x18\x05 \x01(\tR\x10readyMachineName\x12$\n" +
 	"\x0ecan_add_device\x18\x06 \x01(\bR\fcanAddDevice\x12&\n" +
 	"\x0fcan_start_first\x18\a \x01(\bR\rcanStartFirst\x12\x1b\n" +
-	"\tcan_retry\x18\b \x01(\bR\bcanRetry\x12\x18\n" +
-	"\aloading\x18\t \x01(\bR\aloading\"\xf7\x04\n" +
+	"\tcan_retry\x18\b \x01(\bR\bcanRetryJ\x04\b\t\x10\n" +
+	"R\aloading\"\xf7\x04\n" +
 	"\x11AttentionCardView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -2492,7 +2487,7 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x15HEADLINE_KIND_RUNNING\x10\x02\x12\x17\n" +
 	"\x13HEADLINE_KIND_EMPTY\x10\x03\x12\x18\n" +
 	"\x14HEADLINE_KIND_FILTER\x10\x04\x12\x17\n" +
-	"\x13HEADLINE_KIND_ERROR\x10\x05*\xbb\x02\n" +
+	"\x13HEADLINE_KIND_ERROR\x10\x05*\xd8\x02\n" +
 	"\rHomeEmptyKind\x12\x1f\n" +
 	"\x1bHOME_EMPTY_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14HOME_EMPTY_KIND_NONE\x10\x01\x12\x1f\n" +
@@ -2502,7 +2497,8 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x1eHOME_EMPTY_KIND_READY_TO_START\x10\x05\x12\"\n" +
 	"\x1eHOME_EMPTY_KIND_SCOPED_PROJECT\x10\x06\x12\x1e\n" +
 	"\x1aHOME_EMPTY_KIND_NO_NETWORK\x10\a\x12\x1f\n" +
-	"\x1bHOME_EMPTY_KIND_LIST_FAILED\x10\b*\xcb\x01\n" +
+	"\x1bHOME_EMPTY_KIND_LIST_FAILED\x10\b\x12\x1b\n" +
+	"\x17HOME_EMPTY_KIND_LOADING\x10\t*\xcb\x01\n" +
 	"\x0eEndedGroupKind\x12 \n" +
 	"\x1cENDED_GROUP_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16ENDED_GROUP_KIND_TODAY\x10\x01\x12\x1e\n" +

@@ -247,6 +247,7 @@ public enum PBCoreHomeEmptyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case scopedProject // = 6
   case noNetwork // = 7
   case listFailed // = 8
+  case loading // = 9
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -264,6 +265,7 @@ public enum PBCoreHomeEmptyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 6: self = .scopedProject
     case 7: self = .noNetwork
     case 8: self = .listFailed
+    case 9: self = .loading
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -279,6 +281,7 @@ public enum PBCoreHomeEmptyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .scopedProject: return 6
     case .noNetwork: return 7
     case .listFailed: return 8
+    case .loading: return 9
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -294,6 +297,7 @@ public enum PBCoreHomeEmptyKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .scopedProject,
     .noNetwork,
     .listFailed,
+    .loading,
   ]
 
 }
@@ -587,8 +591,6 @@ public struct PBCoreHomeEmptyView: Sendable {
   public var canStartFirst: Bool = false
 
   public var canRetry: Bool = false
-
-  public var loading: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1514,7 +1516,7 @@ extension PBCoreHeadlineKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreHomeEmptyKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0HOME_EMPTY_KIND_UNSPECIFIED\0\u{1}HOME_EMPTY_KIND_NONE\0\u{1}HOME_EMPTY_KIND_NO_MACHINES\0\u{1}HOME_EMPTY_KIND_NO_MACHINES_MEMBER\0\u{1}HOME_EMPTY_KIND_NO_ONLINE\0\u{1}HOME_EMPTY_KIND_READY_TO_START\0\u{1}HOME_EMPTY_KIND_SCOPED_PROJECT\0\u{1}HOME_EMPTY_KIND_NO_NETWORK\0\u{1}HOME_EMPTY_KIND_LIST_FAILED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0HOME_EMPTY_KIND_UNSPECIFIED\0\u{1}HOME_EMPTY_KIND_NONE\0\u{1}HOME_EMPTY_KIND_NO_MACHINES\0\u{1}HOME_EMPTY_KIND_NO_MACHINES_MEMBER\0\u{1}HOME_EMPTY_KIND_NO_ONLINE\0\u{1}HOME_EMPTY_KIND_READY_TO_START\0\u{1}HOME_EMPTY_KIND_SCOPED_PROJECT\0\u{1}HOME_EMPTY_KIND_NO_NETWORK\0\u{1}HOME_EMPTY_KIND_LIST_FAILED\0\u{1}HOME_EMPTY_KIND_LOADING\0")
 }
 
 extension PBCoreEndedGroupKind: SwiftProtobuf._ProtoNameProviding {
@@ -1769,7 +1771,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeEmptyView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}message\0\u{1}command\0\u{3}ready_machine_id\0\u{3}ready_machine_name\0\u{3}can_add_device\0\u{3}can_start_first\0\u{3}can_retry\0\u{1}loading\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}message\0\u{1}command\0\u{3}ready_machine_id\0\u{3}ready_machine_name\0\u{3}can_add_device\0\u{3}can_start_first\0\u{3}can_retry\0\u{b}loading\0\u{c}\u{9}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1785,7 +1787,6 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 6: try { try decoder.decodeSingularBoolField(value: &self.canAddDevice) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.canStartFirst) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.canRetry) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.loading) }()
       default: break
       }
     }
@@ -1820,9 +1821,6 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.canRetry != false {
       try visitor.visitSingularBoolField(value: self.canRetry, fieldNumber: 8)
     }
-    if self.loading != false {
-      try visitor.visitSingularBoolField(value: self.loading, fieldNumber: 9)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1835,7 +1833,6 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs.canAddDevice != rhs.canAddDevice {return false}
     if lhs.canStartFirst != rhs.canStartFirst {return false}
     if lhs.canRetry != rhs.canRetry {return false}
-    if lhs.loading != rhs.loading {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

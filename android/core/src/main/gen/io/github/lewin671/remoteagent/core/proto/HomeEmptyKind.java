@@ -47,6 +47,10 @@ public enum HomeEmptyKind
    * <code>HOME_EMPTY_KIND_LIST_FAILED = 8;</code>
    */
   HOME_EMPTY_KIND_LIST_FAILED(8),
+  /**
+   * <code>HOME_EMPTY_KIND_LOADING = 9;</code>
+   */
+  HOME_EMPTY_KIND_LOADING(9),
   UNRECOGNIZED(-1),
   ;
 
@@ -86,6 +90,10 @@ public enum HomeEmptyKind
    * <code>HOME_EMPTY_KIND_LIST_FAILED = 8;</code>
    */
   public static final int HOME_EMPTY_KIND_LIST_FAILED_VALUE = 8;
+  /**
+   * <code>HOME_EMPTY_KIND_LOADING = 9;</code>
+   */
+  public static final int HOME_EMPTY_KIND_LOADING_VALUE = 9;
 
 
   @java.lang.Override
@@ -118,6 +126,7 @@ public enum HomeEmptyKind
       case 6: return HOME_EMPTY_KIND_SCOPED_PROJECT;
       case 7: return HOME_EMPTY_KIND_NO_NETWORK;
       case 8: return HOME_EMPTY_KIND_LIST_FAILED;
+      case 9: return HOME_EMPTY_KIND_LOADING;
       default: return null;
     }
   }

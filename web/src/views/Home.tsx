@@ -122,7 +122,7 @@ function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => 
 }
 
 function HomeEmpty({ empty, onAddDevice, onStartFirst, onRetry }: { empty?: HomeEmptyView; onAddDevice: () => void; onStartFirst: (machineId: string) => void; onRetry: () => void }) {
-  if (!empty || empty.loading || empty.kind === HomeEmptyKind.UNSPECIFIED || empty.kind === HomeEmptyKind.NONE) return null;
+  if (!empty || empty.kind === HomeEmptyKind.UNSPECIFIED || empty.kind === HomeEmptyKind.NONE || empty.kind === HomeEmptyKind.LOADING) return null;
   const msg = renderText(empty.message);
   return (
     <div className="home-note">
@@ -869,7 +869,7 @@ export function SidebarView(p: {
             </>
           )}
           {!vm.filterQuery && vm.attention.length === 0 && vm.running.length === 0 && vm.endedGroups.length === 0 && vm.empty?.message && (
-            <div className={vm.empty.kind === HomeEmptyKind.NONE ? "home-note late" : "home-note"}>{renderText(vm.empty.message)}</div>
+            <div className={vm.empty.kind === HomeEmptyKind.LOADING ? "home-note late" : "home-note"}>{renderText(vm.empty.message)}</div>
           )}
           <EndedGroups groups={vm.endedGroups} onOpenSession={p.onSelectSession} />
           <TailRow tail={vm.endedTail} onLoadMore={p.onLoadMoreEnded} onRetry={p.onRetryLoad} />
@@ -950,7 +950,7 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
   }, [draftKey, scopedProject, newVm.drafting, hiddenNotice?.active]);
 
   if (!homeVm.canStart) {
-    if (homeVm.empty?.kind === HomeEmptyKind.NONE) {
+    if (homeVm.empty?.kind === HomeEmptyKind.LOADING || homeVm.empty?.kind === HomeEmptyKind.NONE) {
       return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
     }
     return (

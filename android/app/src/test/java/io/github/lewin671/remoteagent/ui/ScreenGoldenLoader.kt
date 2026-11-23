@@ -199,8 +199,7 @@ object ScreenGoldenLoader {
                     .setReadyMachineName(e.str("readyMachineName"))
                     .setCanAddDevice(e.bool("canAddDevice"))
                     .setCanStartFirst(e.bool("canStartFirst"))
-                    .setCanRetry(e.bool("canRetry"))
-                    .setLoading(e.bool("loading")),
+                    .setCanRetry(e.bool("canRetry")),
             )
         }
         setCanFilter(o.bool("canFilter"))

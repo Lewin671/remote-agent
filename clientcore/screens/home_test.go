@@ -452,3 +452,24 @@ func TestBuildHomePopupRowLocalizesDiagnosticPreview(t *testing.T) {
 		t.Fatalf("expected popup row preview key list_state.popup without leaking diagnostic, got %+v", active[0])
 	}
 }
+
+func TestBuildHomeEmptyLoadingKind(t *testing.T) {
+	st := NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	loadingVM := BuildHome(st, 0)
+	if loadingVM.GetEmpty().GetKind() != corev1.HomeEmptyKind_HOME_EMPTY_KIND_LOADING {
+		t.Fatalf("expected HOME_EMPTY_KIND_LOADING while lists are unloaded, got %v", loadingVM.GetEmpty().GetKind())
+	}
+	st.World.MachinesListed = true
+	st.World.SessionsListed = true
+	st.World.LiveLoaded = true
+	st.World.Machines = []*lists.Machine{{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "dev-box"}}}
+	st.World.Sessions = []*lists.Session{{
+		ID: "s1", MachineID: "m1", UpdatedMs: 1_700_000_000_000,
+		Info: &v1.Session{Id: "s1", Cwd: "/work/app", Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+	}}
+	readyVM := BuildHome(st, 0)
+	if readyVM.GetEmpty().GetKind() != corev1.HomeEmptyKind_HOME_EMPTY_KIND_NONE {
+		t.Fatalf("expected HOME_EMPTY_KIND_NONE with active sessions, got %v", readyVM.GetEmpty().GetKind())
+	}
+}

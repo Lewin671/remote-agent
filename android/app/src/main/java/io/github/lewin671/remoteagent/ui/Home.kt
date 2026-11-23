@@ -162,7 +162,7 @@ fun HomeScreen() {
                 DiskReminderCards(settingsView.diskRemindersList)
             }
             val emptyKind = if (vm.hasEmpty()) vm.empty.kind else HomeEmptyKind.HOME_EMPTY_KIND_UNSPECIFIED
-            if (vm.hasEmpty() && vm.empty.loading) {
+            if (emptyKind == HomeEmptyKind.HOME_EMPTY_KIND_LOADING) {
                 item(key = "loading") {
                     var showLoading by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {

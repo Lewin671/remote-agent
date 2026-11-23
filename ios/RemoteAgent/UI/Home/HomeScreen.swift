@@ -169,10 +169,10 @@ struct HomeContent: View {
                     .padding(.horizontal, DS.Space.page)
                     .padding(.top, 4)
             }
+        case .loading:
+            ProgressView().frame(maxWidth: .infinity).padding(.vertical, 48)
         case .none, .unspecified, .UNRECOGNIZED:
-            if empty.loading {
-                ProgressView().frame(maxWidth: .infinity).padding(.vertical, 48)
-            }
+            EmptyView()
         }
     }
 

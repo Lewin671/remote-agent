@@ -69,6 +69,7 @@ const (
 	HomeEmptyKind_HOME_EMPTY_KIND_SCOPED_PROJECT     HomeEmptyKind = 6
 	HomeEmptyKind_HOME_EMPTY_KIND_NO_NETWORK         HomeEmptyKind = 7
 	HomeEmptyKind_HOME_EMPTY_KIND_LIST_FAILED        HomeEmptyKind = 8
+	HomeEmptyKind_HOME_EMPTY_KIND_LOADING            HomeEmptyKind = 9
 )
 
 type EndedGroupKind int32
@@ -276,7 +277,6 @@ type HomeEmptyView struct {
 	CanAddDevice     bool
 	CanStartFirst    bool
 	CanRetry         bool
-	Loading          bool
 }
 
 func (m *HomeEmptyView) GetKind() HomeEmptyKind {
@@ -327,12 +327,6 @@ func (m *HomeEmptyView) GetCanRetry() bool {
 	}
 	return false
 }
-func (m *HomeEmptyView) GetLoading() bool {
-	if m != nil {
-		return m.Loading
-	}
-	return false
-}
 
 var LitewireDesc_HomeEmptyView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -344,7 +338,6 @@ var LitewireDesc_HomeEmptyView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(HomeEmptyView{}.CanAddDevice), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(HomeEmptyView{}.CanStartFirst), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(HomeEmptyView{}.CanRetry), Kind: litewire.KindBool},
-		{Num: 9, Offset: unsafe.Offsetof(HomeEmptyView{}.Loading), Kind: litewire.KindBool},
 	},
 }
 

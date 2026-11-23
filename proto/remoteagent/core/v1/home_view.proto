@@ -77,9 +77,12 @@ enum HomeEmptyKind {
   HOME_EMPTY_KIND_SCOPED_PROJECT = 6;
   HOME_EMPTY_KIND_NO_NETWORK = 7;
   HOME_EMPTY_KIND_LIST_FAILED = 8;
+  HOME_EMPTY_KIND_LOADING = 9;
 }
 
 message HomeEmptyView {
+  reserved 9;
+  reserved "loading";
   HomeEmptyKind kind = 1;
   Text message = 2;
   string command = 3;
@@ -88,7 +91,6 @@ message HomeEmptyView {
   bool can_add_device = 6;
   bool can_start_first = 7;
   bool can_retry = 8;
-  bool loading = 9;
 }
 
 enum EndedGroupKind {
