@@ -40,13 +40,13 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 - 规则测试只在 Go；三端检查总耗时不比上一版明显变长（不超过 10%）；wasm 和原生库体积在预算内
 - 隔离环境用真实 CLI 走完该步涉及的界面，三端各一遍；发版并上线
 
-第一次全局架构审查（2026-11-17）的整理项，在会话、定时、设置三个界面的核心合入后集中做：`sync` 只出结构化原因、文案由 `screens` 生成；草稿和目录选择按 key 区分（宽屏双栏和多弹层会串状态）；金样导出二进制并改用真实 daemon 产出的夹具；壳里按显示文字做逻辑的地方改成结构化字段。lite 生成器已改为写完再补长度（2026-11-20），按客户端白名单裁字段评估后不做（上限约 3～4 KB brotli）；S4 收口后 `core.wasm` brotli 为 `1,840,351 B`，网页首屏合计 brotli 为 `2,170,267 B`（门限 `2,400,000 B`），见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
+第一次全局架构审查（2026-11-17）的整理项，在会话、定时、设置三个界面的核心合入后集中做：`sync` 只出结构化原因、文案由 `screens` 生成；草稿和目录选择按 key 区分（宽屏双栏和多弹层会串状态）；金样导出二进制并改用真实 daemon 产出的夹具；壳里按显示文字做逻辑的地方改成结构化字段。lite 生成器已改为写完再补长度（2026-11-20），按客户端白名单裁字段评估后不做（上限约 3～4 KB brotli）；S4 收口后 `core.wasm` brotli 为 `1,840,351 B`，网页首屏合计 brotli 为 `2,170,267 B`，见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
 
 **直连传输、终端恢复、安全原语与安全流程已迁入共享核心并完成三端接线（S4 / S5 / S6）**：
 - S4：Go 共享包（`shared/linkcore`、`shared/peerwire`）、`clientcore/transport`（直连状态机、退避/选路、诊断、终端重连恢复，退避熵改用壳通过 Effect 注入的操作系统 CSPRNG 字节池）与三端（S4a 网页、S4b Android、S4c iOS）均已完成接线并拆除过渡桥接。WebRTC、socket、计时器执行和私钥留在各端，签名、密钥协商、HPKE 封装走 Effect 由壳执行；核心里不自写加密原语。
 - S5（安全原语与安全门，已完成于独立分支，尚未合并/发布）：`shared/devicesec` 与 `clientcore/security` 承接信封封解、成员链验证、租约检查与内容密钥解密，三端安全门改为调用共享核心，`CryptoBatch` 对称批量加解密与 `Key*` 私钥操作走 Effect 由各端原生 WebCrypto / Keystore+Bouncy Castle / Keychain+CryptoKit 执行，保留「核心里不自写加密原语」原则。
 - S6（安全流程与统一安全存储，已完成于独立分支，尚未合并/发布）：持久化安全操作状态机、建号/配对/移除/X 轮换/恢复码轮换与否决/管理权交接/紧急恢复与独立 CLI/App 安全门控均已迁入 `clientcore/security`，彻底移除 `SecCall` 过渡桥；经第 1 轮审查修复与显式状态机/代码生成/三端壳去重瘦身（`86f20dc98`）。协议仍保持 `17`（daemon 状态格式不变），三端升级后的本地安全记录改由核心定义统一 `v4` 格式，不写数据迁移：遇到升级前旧格式记录时清掉本地安全记录并提示重新配对，详见[S5+S6 验收记录](acceptance-notes.md#s5s6-安全原语安全门与安全流程进核心验收2026-11-22)与 [architecture §5](architecture.md#迁移顺序)。
-- 体积预算与当前状态（`86f20dc98`）：网页首屏 JS + CSS + wasm 合计 brotli 上限维持 **`2,400,000 B`** 不变（2026-11-21 定，由 `pnpm build` 门禁校验；大块加解密继续由各端原生执行）；首轮瘦身后网页实测 **`fpTotal = 2,389,575 B`**（`fpWasm=2,095,457 B`），重新通过门禁；Android release APK 仅打包 `arm64-v8a`（`.so` 在 APK 内为 Stored 不压缩；debug / `.dev` 保留 `x86_64`），`arm64-v8a` 已从 `9,204,672 B` 降至 **`8,442,016 B`**，iOS `ios-arm64` 非零填充 `__TEXT+__DATA_CONST+__DATA` 从 `8,022,675 B` 降至 **`7,261,725 B`**（两项原生二进制及 `clients total` 行数仍待确认，见「待确认」）。
+- 体积：2026-11-22 用户决定这个阶段不设体积上限，`pnpm build` 只报告首屏体积（见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)）。合入 v0.98.1 后网页首屏实测 `2,383,185 B`，Android release `arm64-v8a` `.so` 约 `8.35 MB`，iOS `ios-arm64` 非零段 `7,261,725 B`。
 - 三端直连行为已按 [transport.md](transport.md) 在 `clientcore/transport` 统一：就绪即优先 + `1.5× + 20 ms` + `60 s` 起指数等待；一轮最后一条路径关闭即退役；换安全 head 不记为失败；主连接恢复、网络换代、打开开关使现有轮次整体失效；后台关闭全部直连；不支持 WebRTC 不发起；状态带「确有重试排定」；退避熵不足时取满上限；STUN 列表由核心随 Effect 给出；「重新尝试」2 秒冷却、不清失败计数、证明过期先授权；信令步骤在 20 秒新鲜期内不再重复同步；并移除 `clientcore/sync/recovery.go` 中与 `shared/linkcore` 重复的退避与活性逻辑。
 
 下面的事项在迁移间隙照常推进。
@@ -104,7 +104,6 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 所有还没定的问题和待实测的行为都列在这里，有了结论就写进对应的文档，再从这里删掉。
 
 - **官方网页在 `PeerVersion` 升级后兼容未升级电脑**：官方网页由公共中继所有账户共用，`PeerVersion` 升级后其他账户尚未升级的电脑在网页上只能查看、不能操作；是否按 `PeerVersion` 保留上一版网页未定（见 [architecture §4](architecture.md#4-协议设计要点)）。
-- **原生核心体积与代码总行数后续阈值待定**：网页首屏 brotli 在首轮状态机瘦身后已回到 **`2,389,575 B`**（低于 `2,400,000 B` 门限，`pnpm build` 通过）；Android release APK 内 `lib/arm64-v8a/libgojni.so`（Stored）降至 **`8,442,016 B`**，iOS `ios-arm64` 非零填充 `__TEXT+__DATA_CONST+__DATA` 降至 **`7,261,725 B`**，仍高于 `6 MB` 参考门槛，且 `code_size.py --ref HEAD --base aa509660e` 客户端合计产品行 `+511`（`clientcore +11,876`、三端壳合计 `-11,365`；测试行 `-2,354`）。待确认是继续按模块瘦身原生体积/收敛 `clientcore` 还是调整原生门槛与行端口径，数字见 [architecture · 体积与性能预算](architecture.md#体积与性能预算)。
 - Codex 命令中心在进程内新建会话也会使用 StartupDraftPump；此入口的完整真实消息链路尚未验收。本次有界等待仅保护托管 CLI 进程的首次确认阶段，后续内部切换仍依靠逐条提交证据和图片失败清理，见 [codex-notes](codex-notes.md#10-屏幕和输入) 和[本轮验收](acceptance-notes.md#codex-loading-有界等待与清理2026-11-06)。
 
 

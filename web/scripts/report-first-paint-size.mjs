@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { brotliCompressSync, constants as zlibConstants } from "node:zlib";
 
-// 2026-11-21 user decision: Web first-paint JS + CSS + wasm (brotli) upper bound set to 2,400,000 B
-// (pre-S4 main measured 1,899,024 B; post-S4 S4-wiring ~2,159,175 B; see docs/architecture.md).
-const BUDGET_BYTES = 2_400_000;
+// Reports the Web first-paint JS + CSS + wasm size (brotli). There is no size
+// limit while client logic is still moving into the shared core (user decision,
+// 2026-11-22); the build only fails when the first-paint asset list is incomplete.
 
 const distDir = resolve(import.meta.dirname, "../dist");
 const indexHtml = readFileSync(resolve(distDir, "index.html"), "utf8");
@@ -50,14 +50,10 @@ for (const u of [...urls].sort()) {
 
 const fpTotal = fpJs + fpCss + fpWasm;
 console.log(
-  `web first-paint brotli: fpJs=${fpJs} B, fpCss=${fpCss} B, fpWasm=${fpWasm} B, fpTotal=${fpTotal} B, budget=${BUDGET_BYTES} B`,
+  `web first-paint brotli: fpJs=${fpJs} B, fpCss=${fpCss} B, fpWasm=${fpWasm} B, fpTotal=${fpTotal} B`,
 );
 
 if (fpWasm === 0 || fpJs === 0) {
   console.error("error: first-paint asset list in dist/index.html is incomplete");
-  process.exit(1);
-}
-if (fpTotal > BUDGET_BYTES) {
-  console.error(`error: first-paint brotli total ${fpTotal} B exceeds budget ${BUDGET_BYTES} B`);
   process.exit(1);
 }

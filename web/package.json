@@ -5,7 +5,7 @@
   "scripts": {
     "core": "../scripts/core/build.sh web",
     "dev": "pnpm core && vite",
-    "build": "pnpm core && tsc -b && vite build && node scripts/check-first-paint-budget.mjs",
+    "build": "pnpm core && tsc -b && vite build && node scripts/report-first-paint-size.mjs",
     "preview": "vite preview",
     "gen": "buf generate --template buf.gen.yaml",
     "test": "pnpm core && vitest run",

@@ -104,9 +104,9 @@ core_output_current() {
 }
 
 # Measure core.wasm after brotli (quality 11, 24-bit window).
-# Web's release gate enforces first-paint JS+CSS+wasm brotli total via
-# web/scripts/check-first-paint-budget.mjs so single-file logic moves into Core
-# are measured against net Web bundle reduction.
+# web/scripts/report-first-paint-size.mjs reports the first-paint JS+CSS+wasm
+# brotli total on every Web build, so moves into Core can be compared with the
+# Web bundle reduction they bring.
 check_wasm_size() {
   local wasm="$1" size
   if ! command -v node >/dev/null 2>&1; then
