@@ -267,14 +267,17 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const terminalIdRef = useRef("");
   if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
   const terminalId = terminalIdRef.current;
-  const allowOpenRef = useRef(false);
+  const nextAttemptRef = useRef(0);
+  const allowedAttemptRef = useRef(0);
   useEffect(() => {
     const offReopen = hostBridge.onTerminalReopen(terminalId, () => {
-      allowOpenRef.current = true;
-      setAttempt((n) => n + 1);
+      const next = ++nextAttemptRef.current;
+      allowedAttemptRef.current = next;
+      setAttempt(next);
     });
     return () => {
       offReopen();
+      allowedAttemptRef.current = 0;
       hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.DISPOSED, false);
     };
   }, [hostBridge, terminalId, session.id]);
@@ -282,7 +285,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     if (heldForWaitingRef.current) {
       if (online) {
         heldForWaitingRef.current = false;
-        setAttempt((n) => n + 1);
+        setAttempt(++nextAttemptRef.current);
         return;
       }
       if (!waitingPeer) {
@@ -294,12 +297,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         return;
       }
     }
-    if (!online && stateRef.current === "closed") {
-      hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, false);
-    }
   }, [online, waitingPeer, hostBridge, terminalId, session.id]);
   useEffect(() => {
-    if (!onlineRef.current && !allowOpenRef.current) {
+    const allowOpen = attempt !== 0 && allowedAttemptRef.current >= attempt;
+    if (attempt === allowedAttemptRef.current) allowedAttemptRef.current = 0;
+    if (!onlineRef.current && !allowOpen) {
       if (waitingPeerRef.current) {
         heldForWaitingRef.current = true;
         setTerminalState("connecting");
@@ -315,7 +317,6 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       return;
     }
     heldForWaitingRef.current = false;
-    allowOpenRef.current = false;
     let alive = true, opened = false, ended = false;
     const opening = new AbortController();
     history.close();
@@ -515,7 +516,6 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
             <p>{running ? i18n.t("terminal.closed_running_note") : i18n.t("terminal.closed_ended_note")}</p>
             <div className="btns">
               <button className="btn pri" onClick={() => {
-                allowOpenRef.current = true;
                 hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.MANUAL_RECONNECT, false);
               }}>
                 {i18n.t("terminal.reconnect")}</button>

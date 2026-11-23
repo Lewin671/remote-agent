@@ -28,7 +28,23 @@ afterEach(async () => {
   for (const r of remotes.splice(0)) r.dispose();
   vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers();
 });
+function stubCoreEntropy(byte7: number) {
+  const orig = crypto.getRandomValues.bind(crypto);
+  return vi.spyOn(crypto, "getRandomValues").mockImplementation(<T extends ArrayBufferView<ArrayBuffer>>(arr: T): T => {
+    orig(arr);
+    if (arr instanceof Uint8Array && arr.length >= 8) {
+      arr.fill(0);
+      for (let i = 7; i < arr.length; i += 8) arr[i] = byte7;
+    }
+    return arr;
+  });
+}
+function setMainOnline(remote: DemoRemote, online: boolean) {
+  remote.setDemoMainOnline(online);
+  patchSyncState(remote, { conn: online ? "online" : "offline" });
+}
 async function mount() {
+  vi.useFakeTimers();
   let hidden = false, width = 600;
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
@@ -50,7 +66,7 @@ async function mount() {
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
   await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
-  send.mockClear(); vi.useFakeTimers();
+  send.mockClear();
   const layout = (value: number, paneHeight = 480, screenHeight = 480) => {
     width = value;
     for (const o of observers) o.callback(o.elements.map(el => {
@@ -66,15 +82,9 @@ it("keeps the healthy independent terminal through hiding and main reconnects", 
   expect(close).not.toHaveBeenCalled(); expect(open).toHaveBeenCalledTimes(1);
   await act(async () => { await frame({ kind: { case: "output", value: new Uint8Array([66]) } } as never); });
   expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
-  await act(async () => {
-    const { patchSyncState } = await import("../test/remote-fixture");
-    patchSyncState(remote, { conn: "offline" });
-  });
+  await act(async () => { setMainOnline(remote, false); });
   expect(close).not.toHaveBeenCalled();
-  await act(async () => {
-    const { patchSyncState } = await import("../test/remote-fixture");
-    patchSyncState(remote, { conn: "online" });
-  });
+  await act(async () => { setMainOnline(remote, true); });
   expect(open).toHaveBeenCalledTimes(1);
   expect(terminal.writes).toHaveBeenLastCalledWith(new Uint8Array([66]));
 });
@@ -95,14 +105,28 @@ it("defers the first fit of a terminal reopened in the background until visible"
   const state = await mount();
   await act(async () => { state.hide(true); document.dispatchEvent(new Event("visibilitychange")); });
   await act(async () => {
-    const { patchSyncState } = await import("../test/remote-fixture");
+    setMainOnline(state.remote, false);
+    state.end("closed");
+  });
+  expect(state.open).toHaveBeenCalledTimes(1);
+  await act(async () => { setMainOnline(state.remote, true); });
+  expect(state.open).toHaveBeenCalledTimes(2);
+  await act(async () => { await state.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
+  expect(state.send).not.toHaveBeenCalled();
+  await act(async () => { state.hide(false); document.dispatchEvent(new Event("visibilitychange")); });
+  expect(state.send).toHaveBeenCalledTimes(1);
+});
+
+it("does not drop a queued reopen when offline arrives in the same turn as terminal close", async () => {
+  stubCoreEntropy(0);
+  const state = await mount();
+  await act(async () => { state.hide(true); document.dispatchEvent(new Event("visibilitychange")); });
+  await act(async () => {
     state.end("closed");
     patchSyncState(state.remote, { conn: "offline" });
   });
-  await act(async () => {
-    const { patchSyncState } = await import("../test/remote-fixture");
-    patchSyncState(state.remote, { conn: "online" });
-  });
+  expect(state.open).toHaveBeenCalledTimes(2);
+  await act(async () => { patchSyncState(state.remote, { conn: "online" }); });
   await act(async () => { await state.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   expect(state.send).not.toHaveBeenCalled();
   await act(async () => { state.hide(false); document.dispatchEvent(new Event("visibilitychange")); });
@@ -111,6 +135,7 @@ it("defers the first fit of a terminal reopened in the background until visible"
 
 it("keeps the first screen out of sight until it is fitted to the pane, or for a moment at most", async () => {
   const vm = vi;
+  vm.useFakeTimers();
   vm.spyOn(document, "hidden", "get").mockReturnValue(false);
   vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
@@ -122,7 +147,6 @@ it("keeps the first screen out of sight until it is fitted to the pane, or for a
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
   const pane = () => host.querySelector(".tpan")!;
   expect(pane().classList.contains("unfit")).toBe(true);
-  vi.useFakeTimers();
   await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   expect(pane().classList.contains("unfit")).toBe(true);
   await act(async () => vi.advanceTimersByTimeAsync(899));
@@ -133,6 +157,7 @@ it("keeps the first screen out of sight until it is fitted to the pane, or for a
 
 it("shows the first screen as soon as the fitted one is in", async () => {
   const vm = vi;
+  vm.useFakeTimers();
   vm.spyOn(document, "hidden", "get").mockReturnValue(false);
   vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
   vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
@@ -143,7 +168,6 @@ it("shows the first screen as soon as the fitted one is in", async () => {
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
   const pane = () => host.querySelector(".tpan")!;
-  vi.useFakeTimers();
   const snapshot = (cols: number) => act(async () => { await frame({ kind: { case: "snapshot", value: { cols, rows: 24, data: new Uint8Array([65]) } } } as never); });
   await snapshot(80);
   expect(pane().classList.contains("unfit")).toBe(true);
@@ -164,40 +188,33 @@ it("keeps the terminal prompt at the bottom when its pane shrinks, without resiz
 });
 
 it("recovers a terminal leg that closes after the main path is already online", async () => {
- const vm=await mount();
- const { patchSyncState } = await import("../test/remote-fixture");
- await act(async()=>{patchSyncState(vm.remote,{conn:"offline"});});
- await act(async()=>{patchSyncState(vm.remote,{conn:"online"});});
- expect(vm.open).toHaveBeenCalledTimes(1);
- await act(async()=>{vm.end("late loss");});
- expect(vm.open).toHaveBeenCalledTimes(2);
- expect(terminal.writes).toHaveBeenCalledTimes(1);
- expect(vm.send.mock.calls.filter(([f])=>f.kind.case==="input")).toHaveLength(0);
+  const vm = await mount();
+  await act(async () => { setMainOnline(vm.remote, false); });
+  await act(async () => { setMainOnline(vm.remote, true); });
+  expect(vm.open).toHaveBeenCalledTimes(1);
+  await act(async () => { vm.end("late loss"); });
+  expect(vm.open).toHaveBeenCalledTimes(2);
+  expect(terminal.writes).toHaveBeenCalledTimes(1);
+  expect(vm.send.mock.calls.filter(([f]) => f.kind.case === "input")).toHaveLength(0);
 });
 
 it("reopens after an opening failure when main transitions from offline to online", async () => {
- vi.spyOn(document, "hidden", "get").mockReturnValue(false);
- vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
- vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
- vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
- const open = vi.spyOn(remote, "openTerminal")
-   .mockRejectedValueOnce(Error("initial opening failure"))
-   .mockResolvedValueOnce({ close: vi.fn(), send: vi.fn() } as never);
- host = document.createElement("div"); document.body.append(host); root = createRoot(host);
- const session = remote.sessions.get("s-run")!;
- await act(async () => root!.render(<TerminalView remote={remote} session={session} running />));
- expect(open).toHaveBeenCalledTimes(1);
-  // Transitions offline -> online should reopen even though the first attempt never opened.
-  await act(async () => {
-    remote.setDemoMainOnline(false);
-    patchSyncState(remote, { conn: "offline" });
-  });
+  vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
+  const open = vi.spyOn(remote, "openTerminal")
+    .mockRejectedValueOnce(Error("initial opening failure"))
+    .mockResolvedValueOnce({ close: vi.fn(), send: vi.fn() } as never);
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const session = remote.sessions.get("s-run")!;
+  await act(async () => root!.render(<TerminalView remote={remote} session={session} running />));
   expect(open).toHaveBeenCalledTimes(1);
-  await act(async () => {
-    remote.setDemoMainOnline(true);
-    patchSyncState(remote, { conn: "online" });
-  });
+  // Transitions offline -> online should reopen even though the first attempt never opened.
+  await act(async () => { setMainOnline(remote, false); });
+  expect(open).toHaveBeenCalledTimes(1);
+  await act(async () => { setMainOnline(remote, true); });
   expect(open).toHaveBeenCalledTimes(2);
 });
 
@@ -208,8 +225,7 @@ it("does not open a newly selected session while offline, and opens it once onli
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   const remote = track(DemoRemote.create(new URLSearchParams()));
   await act(async () => { remote.start(); });
-  remote.setDemoMainOnline(false);
-  patchSyncState(remote, { conn: "offline" });
+  setMainOnline(remote, false);
   const openedSids: string[] = [];
   vi.spyOn(remote, "openTerminal").mockImplementation(async (sid) => {
     openedSids.push(sid);
@@ -224,61 +240,64 @@ it("does not open a newly selected session while offline, and opens it once onli
   await act(async () => root!.render(<TerminalView remote={remote} session={s2} running />));
   expect(openedSids).toEqual([]);
   // Once main becomes online, only the newly selected session opens.
-  await act(async () => {
-    remote.setDemoMainOnline(true);
-    patchSyncState(remote, { conn: "online" });
-  });
+  await act(async () => { setMainOnline(remote, true); });
   expect(openedSids).toEqual(["s-next"]);
 });
 
 it("applies backoff before re-stabilizing when reopened terminal keeps failing", async () => {
- vi.useFakeTimers();
- const vm = await mount();
- expect(vm.open).toHaveBeenCalledTimes(1);
- await act(async () => { vm.end("loss 1"); });
- // First reopen after initial connect uses a token immediately.
- expect(vm.open).toHaveBeenCalledTimes(2);
- // Second failure before 5s stability must back off rather than spinning immediately.
- await act(async () => { vm.end("loss 2"); });
- expect(vm.open).toHaveBeenCalledTimes(2);
- await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
- expect(vm.open).toHaveBeenCalledTimes(3);
+  // Deterministic 0.5 jitter unit (0x80 in MSB of uint64 -> (1<<52)/(1<<53) = 0.5 -> 500ms).
+  stubCoreEntropy(0x80);
+  const vm = await mount();
+  expect(vm.open).toHaveBeenCalledTimes(1);
+  await act(async () => { vm.end("loss 1"); });
+  // First reopen after initial connect uses a token immediately.
+  expect(vm.open).toHaveBeenCalledTimes(2);
+  // Second failure before 5s stability must back off rather than spinning immediately.
+  await act(async () => { vm.end("loss 2"); });
+  expect(vm.open).toHaveBeenCalledTimes(2);
+  await act(async () => { await vi.advanceTimersByTimeAsync(499); });
+  expect(vm.open).toHaveBeenCalledTimes(2);
+  await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+  expect(vm.open).toHaveBeenCalledTimes(3);
 });
 
 it("keeps terminal in connecting state during cold-start reachability unknown, opens when ready, and closes when grace expires offline", async () => {
- vi.spyOn(document, "hidden", "get").mockReturnValue(false);
- vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
- vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
- vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
- const remote = track(DemoRemote.create(new URLSearchParams()));
- await act(async () => { remote.start(); });
- patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: true });
- const open = vi.spyOn(remote, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
- host = document.createElement("div"); document.body.append(host); root = createRoot(host);
- const s1 = remote.sessions.get("s-run")!;
- await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
+  vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const remote = track(DemoRemote.create(new URLSearchParams("conn=connecting")));
+  await act(async () => { remote.start(); });
+  patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: true });
+  const open = vi.spyOn(remote, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const s1 = remote.sessions.get("s-run")!;
+  await act(async () => root!.render(<TerminalView remote={remote} session={s1} running />));
 
- // Neutral connecting capsule, no "terminal closed" card while grace is active.
- expect(open).toHaveBeenCalledTimes(0);
- expect(host.querySelector(".tstate")).toBeNull();
- expect(host.querySelector(".tchip")?.textContent).not.toContain("断开");
- expect(host.querySelector(".tchip")?.textContent).not.toContain("Disconnected");
+  // Neutral connecting capsule, no "terminal closed" card while grace is active.
+  expect(open).toHaveBeenCalledTimes(0);
+  expect(host.querySelector(".tstate")).toBeNull();
+  expect(host.querySelector(".tchip")?.textContent).not.toContain("断开");
+  expect(host.querySelector(".tchip")?.textContent).not.toContain("Disconnected");
 
- // Grace expires while still offline -> transitions to closed card.
- await act(async () => { patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: false }); });
- expect(open).toHaveBeenCalledTimes(0);
- expect(host.querySelector(".tstate")).not.toBeNull();
+  // Grace expires while still offline -> transitions to closed card.
+  await act(async () => { patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: false }); });
+  expect(open).toHaveBeenCalledTimes(0);
+  expect(host.querySelector(".tstate")).not.toBeNull();
 
- // Cold-start connecting -> main comes online -> automatically opens terminal.
- act(() => root!.unmount());
- const remote2 = track(DemoRemote.create(new URLSearchParams()));
- await act(async () => { remote2.start(); });
- patchSyncState(remote2, { conn: "connecting", listed: false, reachabilityUnknown: true });
- const open2 = vi.spyOn(remote2, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
- root = createRoot(host);
- await act(async () => root!.render(<TerminalView remote={remote2} session={remote2.sessions.get("s-run")!} running />));
- expect(open2).toHaveBeenCalledTimes(0);
- expect(host.querySelector(".tstate")).toBeNull();
- await act(async () => { patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false }); });
- expect(open2).toHaveBeenCalledTimes(1);
+  // Cold-start connecting -> main comes online -> automatically opens terminal.
+  act(() => root!.unmount());
+  const remote2 = track(DemoRemote.create(new URLSearchParams("conn=connecting")));
+  await act(async () => { remote2.start(); });
+  patchSyncState(remote2, { conn: "connecting", listed: false, reachabilityUnknown: true });
+  const open2 = vi.spyOn(remote2, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
+  root = createRoot(host);
+  await act(async () => root!.render(<TerminalView remote={remote2} session={remote2.sessions.get("s-run")!} running />));
+  expect(open2).toHaveBeenCalledTimes(0);
+  expect(host.querySelector(".tstate")).toBeNull();
+  await act(async () => {
+    remote2.setDemoMainOnline(true);
+    patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false });
+  });
+  expect(open2).toHaveBeenCalledTimes(1);
 });
