@@ -1,5 +1,5 @@
 // The parts of the image viewer (design mock 「会话里的图片 · 查看大图」;
-// Android's ui/Viewer.kt): one page per image of the session, fetching and
+// Android's ui/Viewer.kt): one page per Core `PBSessionViewerImageView`, fetching and
 // decrypting its display copy, and what leaves the app by the user's
 // choice. The screen that puts them together is ImageViewerScreen.swift.
 //
@@ -39,14 +39,15 @@ struct ViewerLoader {
     /// Holds an image's display copy; whoever asked `held` for it is drawn again.
     func keep(_ ref: PBImageRef, _ image: ViewedImage) { center.keepViewed(key(ref), image) }
 
-    /// Where the image's display copy stands, fetching it if the event says there is one.
-    func load(_ ref: PBImageRef, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
+    /// Where the image's display copy stands, fetching it if Core says there is one.
+    func load(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, online: Bool) async -> (state: BigImage, image: ViewedImage?) {
         #if DEBUG
-            if let sample = await ImageDebug.viewerSample(ref, center: center, online: online) {
+            if let sample = await ImageDebug.viewerSample(image, previewRef: previewRef, center: center, online: online) {
                 return sample
             }
         #endif
-        guard hasDisplayCopy(ref) else { return (.notSynced, nil) }
+        let ref = image.ref
+        guard image.hasDisplayCopy_p else { return (.notSynced, nil) }
         if let held = held(ref) {
             return (.ready, held)
         }
@@ -75,7 +76,9 @@ struct ViewerLoader {
 /// One image of the session: its preview until the display copy is here, and what is said meanwhile.
 struct ViewerPage: View {
     let loader: ViewerLoader
-    let image: SessionImage
+    let image: PBSessionViewerImageView
+    /// Optional timeline ref that still carries 320px preview bytes (stripped from `viewer_images[].ref`).
+    var previewRef: PBImageRef? = nil
     let online: Bool
     /// The page is the one on screen: only then does it follow `pokes`.
     let current: Bool
@@ -98,9 +101,11 @@ struct ViewerPage: View {
 
     var body: some View {
         let ref = image.ref
-        let shown = sharp ?? loader.center.preview(ref)
+        let previewSource = previewRef ?? ref
+        let shown = sharp ?? loader.center.preview(previewSource)
         let note = viewerNote(big, sync: ref.sync)
         let retry = viewerCanRetry(big)
+        let label = image.displayName.isEmpty ? L10n.imageTitle() : image.displayName
         ZStack {
             if let shown {
                 ZoomableImage(
@@ -109,13 +114,13 @@ struct ViewerPage: View {
                 )
                 .ignoresSafeArea()
                 .accessibilityElement()
-                .accessibilityLabel(ref.path.isEmpty ? L10n.imageTitle() : fileName(ref.path))
+                .accessibilityLabel(label)
                 .accessibilityValue(big == .loading ? L10n.imageIosDownloading() : note ?? "")
                 .accessibilityAddTraits(.isImage)
                 .accessibilityAction(named: L10n.imageIosZoom()) { zoomToggles += 1 }
             } else {
                 // Not even a preview: the file's name is all there is.
-                Text(fileName(ref.path)).font(.footnote.monospaced()).ink(ViewerInk.text).multilineTextAlignment(
+                Text(label).font(.footnote.monospaced()).ink(ViewerInk.text).multilineTextAlignment(
                     .center
                 ).padding(24)
             }
@@ -146,7 +151,7 @@ struct ViewerPage: View {
                 .padding(.top, 56)
             }
         }
-        .task(id: Ask(id: ref.imageID, attempt: attempt, online: online)) {
+        .task(id: Ask(id: "\(image.seq)/\(image.eventImageIndex)/\(ref.imageID)", attempt: attempt, online: online)) {
             // A copy already here is not asked for again when the connection comes and goes.
             if sharp != nil, big == .ready { return }
             if let held = loader.held(ref) {
@@ -154,7 +159,7 @@ struct ViewerPage: View {
                 return
             }
             big = .loading
-            let got = await loader.load(ref, online: online)
+            let got = await loader.load(image, previewRef: previewRef, online: online)
             if Task.isCancelled { return }
             sharp = got.image?.image
             big = got.state
@@ -201,16 +206,18 @@ struct PhotoAccessDenied: Error {}
 enum ImageLeaving {
     /// What would leave for an image now: the display copy if it was loaded, else the preview; nil without either.
     @MainActor
-    static func picture(_ ref: PBImageRef, loader: ViewerLoader) -> LeavingImage? {
-        if let held = loader.held(ref) {
+    static func picture(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, loader: ViewerLoader) -> LeavingImage? {
+        if let held = loader.held(image.ref) {
             return LeavingImage(
                 bytes: held.bytes, format: held.format,
-                name: savedImageName(path: ref.path, format: held.format))
+                name: savedImageName(displayName: image.displayName, ext: imageExtension(held.format)))
         }
-        if ref.preview.isEmpty { return nil }
+        let previewSource = previewRef ?? image.ref
+        if previewSource.preview.isEmpty { return nil }
+        let ext = image.fileExtension.isEmpty ? imageExtension(previewSource.previewFormat) : image.fileExtension
         return LeavingImage(
-            bytes: ref.preview, format: ref.previewFormat,
-            name: savedImageName(path: ref.path, format: ref.previewFormat))
+            bytes: previewSource.preview, format: previewSource.previewFormat,
+            name: savedImageName(displayName: image.displayName, ext: ext))
     }
 
     /// Adds the picture to the photo library, with the access that only adds: the app never reads the library.

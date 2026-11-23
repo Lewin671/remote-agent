@@ -1343,6 +1343,39 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func openSessionImageViewer(sessionID: String, seq: UInt64, imageIndex: Int32 = 0, viewerIndex: Int32 = 0) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerOpen = .with {
+                $0.sessionID = sessionID
+                $0.seq = seq
+                $0.imageIndex = imageIndex
+                $0.viewerIndex = viewerIndex
+            }
+        }
+    }
+
+    func navigateSessionImageViewer(sessionID: String, delta: Int32 = 0, setIndex: Bool = false, index: Int32 = 0) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerNavigate = .with {
+                $0.sessionID = sessionID
+                $0.delta = delta
+                $0.setIndex = setIndex
+                $0.index = index
+            }
+        }
+    }
+
+    func closeSessionImageViewer(sessionID: String) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerClose = .with {
+                $0.sessionID = sessionID
+            }
+        }
+    }
+
     func submitSessionCommand(
         sessionID: String,
         command: PBCommand,

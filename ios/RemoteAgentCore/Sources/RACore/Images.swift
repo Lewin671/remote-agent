@@ -510,49 +510,6 @@ public func uploadImage(
     return UploadedImage(imageId: st.imageID, expiresMs: st.expiresMs)
 }
 
-// --- images in a session ---
-
-/// What kind of event shows an image.
-public enum SessionImageKind: Sendable { case userMessage, toolCall, imageGenerated }
-
-/// One image as it appears in a session: the ref, the event it is in, and what shows it.
-public struct SessionImage: Equatable, Sendable {
-    public var ref: PBImageRef
-    public var seq: UInt64
-    public var kind: SessionImageKind
-    public var toolTitle: String
-
-    public init(ref: PBImageRef, seq: UInt64, kind: SessionImageKind, toolTitle: String = "") {
-        self.ref = ref
-        self.seq = seq
-        self.kind = kind
-        self.toolTitle = toolTitle
-    }
-}
-
-private let placeholder = Rx("\\[Image #(\(Jre.digit)+)\\]")
-private let leadingPlaceholder = Rx("\\A\(Jre.space)*\\[Image #(\(Jre.digit)+)\\]")
-
-/// A user message's text as shown next to its images. When the message is
-/// its images followed by text, the leading "[Image #N]" placeholders are
-/// dropped: the numbered previews stand for them. When the text refers to
-/// images further in, every placeholder reads "图 N" so the references keep
-/// their meaning. Placeholders the message has no image for, e.g. typed as
-/// text, stay as written.
-public func imageText(_ text: String, refs: [PBImageRef]) -> String {
-    let known = Set(refs.map { Int($0.cliIndex) }.filter { $0 > 0 })
-    if known.isEmpty { return text }
-    // A number too large to be an image's index is no image's (Kotlin's toInt throws on one).
-    func isKnown(_ m: Rx.Match) -> Bool { Int(m.text(1)).map(known.contains) ?? false }
-    var t = text
-    while let m = leadingPlaceholder.find(t), isKnown(m) {
-        t = (t as NSString).substring(from: m.range.location + m.range.length)
-    }
-    let laterRefs = placeholder.findAll(t).contains(where: isKnown)
-    let base = laterRefs ? text : t.jvmTrimStart()
-    return placeholder.replace(base) { m in isKnown(m) ? L10n.imageIosPlaceholderIndex(index: m.text(1)) : m.value }
-}
-
 /// Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB.
 public let maxDecodePixels: Int64 = 40_000_000
 

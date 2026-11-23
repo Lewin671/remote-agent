@@ -487,31 +487,6 @@ private let exifHeader = Data("Exif\0\0".utf8)
     }
 }
 
-/// Android's SessionImagesTest (in ImagesTest.kt).
-@Suite(.timeLimit(.minutes(2))) struct SessionImagesTests {
-    private func ref(_ n: Int32, _ id: String? = nil) -> PBImageRef { .with { $0.imageID = id ?? "i\(n)"; $0.cliIndex = n } }
-
-    @Test func placeholdersBecomeNumbersAndLeadingOnesGo() {
-        let refs = [ref(1), ref(2)]
-        #expect(imageText("[Image #1] [Image #2]这两个页面底部的按钮都点不到", refs: refs) == "这两个页面底部的按钮都点不到")
-        #expect(imageText("[Image #1] 电脑上，[Image #2] 手机上", refs: refs) == "图 1 电脑上，图 2 手机上")
-        // A placeholder without its image is left as typed.
-        #expect(imageText("see [Image #9]", refs: refs) == "see [Image #9]")
-        #expect(imageText("[Image #1] text", refs: []) == "[Image #1] text")
-    }
-
-    // --- not in Android's tests ---
-
-    @Test func aNumberNoImageCouldHaveIsLeftAsTyped() {
-        // Kotlin's toInt throws on this one; here it is simply not an image of the message.
-        #expect(imageText("[Image #99999999999999999999] x", refs: [ref(1)]) == "[Image #99999999999999999999] x")
-        // \d is ASCII: a full-width digit is no placeholder.
-        #expect(imageText("[Image #１] x", refs: [ref(1)]) == "[Image #１] x")
-        // What follows a dropped placeholder is cut by UTF-16 units, emoji and all.
-        #expect(imageText(" [Image #1]😀 [Image #2] 好", refs: [ref(1)]) == "😀 [Image #2] 好")
-    }
-}
-
 /// Android's JpegAfterScanTest (in ImagesTest.kt).
 @Suite(.timeLimit(.minutes(2))) struct JpegAfterScanTests {
     /// The bytes with `extra` put right before EOI.

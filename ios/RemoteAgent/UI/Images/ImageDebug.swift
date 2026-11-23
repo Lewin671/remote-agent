@@ -127,10 +127,10 @@ enum ImageDebug {
         center.debugShow(sid, message("img-out-2", "", .failed, images: [3, 4, 5, 6, 7], error: "电脑不在线，指令没有发出"))
     }
 
-    /// With sample data there is no server to fetch a display copy from: the state asked for, or what the event's sync says.
-    static func viewerSample(_ ref: PBImageRef, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
+    /// With sample data there is no server to fetch a display copy from: the state asked for, or what Core's `hasDisplayCopy_p` says.
+    static func viewerSample(_ image: PBSessionViewerImageView, previewRef: PBImageRef?, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
         guard !center.live else { return nil }
-        switch value("-viewerState") ?? (hasDisplayCopy(ref) ? "ready" : "notSynced") {
+        switch value("-viewerState") ?? (image.hasDisplayCopy_p ? "ready" : "notSynced") {
         case "loading":
             try? await Task.sleep(for: .seconds(3600))
             return (.loading, nil)
@@ -141,7 +141,7 @@ enum ImageDebug {
         case "corrupt": return (.corrupt(why: "图片内容和格式对不上"), nil)
         default:
             try? await Task.sleep(for: .milliseconds(300))
-            return (.ready, sharp(ref))
+            return (.ready, sharp(previewRef ?? image.ref))
         }
     }
 
