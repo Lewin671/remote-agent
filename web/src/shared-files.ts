@@ -153,7 +153,7 @@ export class SharedFileExecutor {
           }),
         };
       } catch (err) {
-        const detail = classifyIOError(err).errorDetail || (err instanceof Error && err.name ? err.name : "scan_local_failed");
+        const detail = classifyIOError(err).errorDetail || (err instanceof Error && err.name ? err.name : "StorageError");
         ev = {
           case: "sharedFileLocalScanned",
           value: create(SharedFileLocalScannedEventSchema, { opId: eff.opId, error: detail }),

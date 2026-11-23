@@ -5658,5 +5658,10 @@
     "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
     "literal": "shared_file.subtitle_offline",
     "reason": "Message key referenced by a demo sample, not display text."
+  },
+  {
+    "path": "web/src/shared-files.ts",
+    "literal": "StorageError",
+    "reason": "Internal non-empty error sentinel in SharedFileLocalScannedEvent.error; Core only checks error != \"\" to preserve state on scan failure and never renders it."
   }
 ]
