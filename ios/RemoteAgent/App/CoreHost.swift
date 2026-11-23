@@ -561,7 +561,15 @@ actor CoreHost: SyncEngine {
                 $0.scopeHmacKey = scopeHmacKey
             }
         }
+        await setUILocale(MessageLocale.current)
         await dispatchClockUpdated()
+    }
+
+    func setUILocale(_ uiLocale: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.localeChanged = .with { $0.uiLocale = uiLocale }
+        }
     }
 
     func stopAsync() async {
@@ -2747,6 +2755,7 @@ actor CoreHost: SyncEngine {
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
         scanPre(await stepDemo { $0.clockUpdated = Self.makeLocalCalendar(nowMs: clock()) })
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
+        scanPre(await stepDemo { $0.localeChanged = .with { $0.uiLocale = MessageLocale.current } })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
         _ = await stepDemo {
             $0.seedDemoWorld.security = .with {

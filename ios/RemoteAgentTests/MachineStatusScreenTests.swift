@@ -67,5 +67,33 @@ import Testing
         #expect(machineID.isEmpty || machineID == "mac")
         await host.releaseMachineStatusWatch(live)
     }
+
+    @Test func localeChangedEventUpdatesCoreFormattedNumbers() async throws {
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-locale-\(UUID())")!)
+        let model = AppModel(settings: settings)
+        let remote = Demo.remote()
+        let initial = Demo.state(.everyday)
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
+            await remote.showForTest(state: initial)
+        }
+        defer { model.closeSyncForTest() }
+        let host = try #require(model.context?.coreHost)
+        for _ in 0..<200 where !(model.context?.core.machineSettings.found ?? false) {
+            await host.openMachineSettings(machineID: "mac")
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        await host.openUsageScreen(machineID: "mac")
+        for _ in 0..<200 where (model.context?.core.usage.hero.totalTokensText ?? "").isEmpty {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        await host.setUILocale("zh-CN")
+        let zhText = model.context!.core.usage.hero.totalTokensText
+        await host.setUILocale("en")
+        let enText = model.context!.core.usage.hero.totalTokensText
+        #expect(zhText != enText)
+        #expect(zhText.contains("万") || zhText.contains("亿"))
+        #expect(enText.contains("k") || enText.contains("M") || enText.contains("B"))
+    }
 }
 #endif

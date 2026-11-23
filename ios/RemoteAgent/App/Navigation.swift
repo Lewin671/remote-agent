@@ -368,6 +368,7 @@ struct MainView: View {
         }
         .debugSignal("app.back") { nav.back() }
         .task {
+            await context.coreHost.setUILocale(MessageLocale.current)
             await context.coreHost.setNavigateHandler { effect in
                 switch effect.route {
                 case .session:
@@ -412,6 +413,9 @@ struct MainView: View {
                     break
                 }
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            Task { await context.coreHost.setUILocale(MessageLocale.current) }
         }
         .onChange(of: nav.path.last, initial: true) { _, page in
             let viewingOther = switch page {
