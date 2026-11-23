@@ -120,7 +120,9 @@ class RemoteTest {
             .setHeader(Header.newBuilder().setVersion(1).setKind(PayloadKind.PAYLOAD_KIND_EVENT).build().toByteString())).build()))
         val r = client(cache = cache)
         r.start()
-        r.awaitState("retired session error") { it.sessions["retired"]?.historyError == RETIRED_HISTORY_ERROR }
+        kotlinx.coroutines.withTimeout(10_000) {
+            r.coreHost.syncStateView.first { it.sessionsList.any { s -> s.sessionId == "retired" && s.retiredHistory } }
+        }
         val retiredVm = r.watchSession("retired").first { it.timeline.retired }
         assertTrue(retiredVm.timeline.retired)
         assertTrue(retiredVm.timeline.hasHistoryNotice())

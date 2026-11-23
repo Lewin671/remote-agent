@@ -12,13 +12,12 @@ import java.time.Instant
 import java.time.ZoneId
 
 // ---------------------------------------------------------------------------
-// Transitional Step 3/4 view models & adapter
+// Transitional Core view adapter
 //
-// Legacy screens (`Session`, `Schedules`, `Settings`, `Devices`, `Handoff`,
-// `Recovery`, `ConnCheck`, `Files`, `Terminal`) still read `RemoteState` and
-// `SessionEvents` until Step 3/4 migrates them to Go Core view models.
-// This file projects Go Core's `SyncStateView` / `SessionDataView` into those
-// structures and should be deleted when Step 3/4 completes.
+// Remaining shell helpers (`Handoff`, `Recovery`, `ConnCheck`, `Terminal`,
+// attachment/shared-file managers, and `showForTest` harnesses) still read
+// `RemoteState` until Core absorbs those domains. This file projects Go Core's
+// `SyncStateView` into `RemoteState`.
 // ---------------------------------------------------------------------------
 
 const val PROJECT_PREFS = "project-prefs"
@@ -69,19 +68,10 @@ data class SessionView(
     val machineId: String,
     val info: Session? = null,
     val checkpoint: io.github.lewin671.remoteagent.proto.LiveSnapshot? = null,
-    val checkpointStatus: String = "waiting",
     val metaRev: Long = 0,
     val lastSeq: Long = 0,
     val updatedMs: Long = 0,
-    val listedEndedMs: Long = 0,
-    val historyError: MessageText? = null,
 )
-
-data class SessionPlace(val endedMs: Long, val sessionId: String)
-
-fun afterPlace(endedMs: Long, sessionId: String, place: SessionPlace): Boolean =
-    endedMs != 0L &&
-        (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
 
 data class DeviceView(
     val id: String,
@@ -98,14 +88,9 @@ data class RemoteState(
     val conn: ConnState = ConnState.CONNECTING,
     val error: MessageText = "".messageText(),
     val loaded: Boolean = false,
-    val offlineSinceMs: Long = 0,
     val prefs: PrefsObject? = null,
     val devices: Map<String, DeviceView> = emptyMap(),
     val removed: Boolean = false,
-    val sessionsNext: SessionPlace? = null,
-    val loadingSessions: Boolean = false,
-    val sessionsError: MessageText = "".messageText(),
-    val sessionsListed: Boolean = true,
     val link: Link = Link.WAITING,
     val synced: Boolean = false,
     val authorityDeviceId: String = "",
@@ -116,7 +101,6 @@ data class RemoteState(
     val clockWarning: Boolean = false,
     val displayGrace: Boolean = false,
     val reachabilityUnknown: Boolean = false,
-    val errorDetail: String = "",
     val connStep: MessageText = "".messageText(),
     val connStartedAtMs: Long? = null,
     val connError: MessageText = "".messageText(),
@@ -135,9 +119,6 @@ data class RemoteState(
 
     val unlinked: Boolean
         get() = link == Link.NO_NETWORK || link == Link.NO_SERVER || (link == Link.WAITING && !synced)
-
-    val moreSessions: Boolean
-        get() = !sessionsListed || sessionsNext != null
 }
 
 fun formatTimestampToMessageText(
@@ -230,12 +211,9 @@ internal fun SyncStateView.toRemoteState(
             machineId = s.machineId,
             info = s.info.takeIf { s.hasInfo() },
             checkpoint = s.checkpoint.takeIf { s.hasCheckpoint() },
-            checkpointStatus = if (s.checkpointInvalid) "invalid" else if (s.hasCheckpoint()) "ok" else "waiting",
             metaRev = s.metaRev,
             lastSeq = s.lastSeq,
             updatedMs = s.updatedMs,
-            listedEndedMs = s.listedEndedMs,
-            historyError = RETIRED_HISTORY_ERROR.takeIf { s.retiredHistory },
         )
     }
     val deviceMap = devicesList.associate { d ->
@@ -249,14 +227,9 @@ internal fun SyncStateView.toRemoteState(
         conn = conn,
         error = reasonText,
         loaded = machinesListed || sessionsListed || prefsLoaded,
-        offlineSinceMs = disconnectedAtMs,
         prefs = if (hasPrefs()) PrefsObject(prefsRevision, prefs) else null,
         devices = deviceMap,
         removed = removed,
-        sessionsNext = if (hasMoreSessions && hasNextCursor()) SessionPlace(nextCursor.endedMs, nextCursor.sessionId) else null,
-        loadingSessions = loadingMoreSessions,
-        sessionsError = if (sessionListFailed && hasSessionListError()) coreTextToMessageText(sessionListError) else "".messageText(),
-        sessionsListed = sessionsListed,
         link = link,
         synced = securityLoaded,
         authorityDeviceId = authorityDeviceId,
@@ -288,7 +261,7 @@ internal fun seedCoreForTest(
     }
     val plainSessions = state.sessions.values.map { s ->
         PlainSession.newBuilder().setSessionId(s.id).setMachineId(s.machineId).setLastSeq(s.lastSeq)
-            .setUpdatedMs(s.updatedMs).setListedEndedMs(s.listedEndedMs).setMetaRev(s.metaRev)
+            .setUpdatedMs(s.updatedMs).setMetaRev(s.metaRev)
             .apply { s.info?.let { setMeta(it) }; s.checkpoint?.let { setCheckpoint(it) } }.build()
     }
     val plainPrefs = PlainAccountPrefs.newBuilder()
@@ -378,9 +351,7 @@ internal fun seedCoreForTest(
             RpcEffect.KindCase.FETCH_LISTS -> send {
                 setListsFetched(
                     ListsFetchedEvent.newBuilder().setOpId(rpc.opId).addAllMachines(plainMachines)
-                        .addAllSessions(plainSessions).addAllDevices(plainDevices).apply {
-                            state.sessionsNext?.let { setNext(SessionCursor.newBuilder().setEndedMs(it.endedMs).setSessionId(it.sessionId)) }
-                        },
+                        .addAllSessions(plainSessions).addAllDevices(plainDevices),
                 )
             }
             RpcEffect.KindCase.GET_ACCOUNT_PREFS -> send {
