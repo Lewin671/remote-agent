@@ -185,7 +185,7 @@ export async function pushContent(d: PushData): Promise<{ title: string; body: s
     const display = opened.display;
     if (opened.error || !display?.valid) {
       if (expectedKind !== NotifyKind.TURN_ENDED && display?.genericBody) {
-        return { title: "remote-agent", body: renderText(display.genericBody) };
+        return { ...generic, body: renderText(display.genericBody) };
       }
       return generic;
     }

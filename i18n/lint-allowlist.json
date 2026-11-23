@@ -5428,5 +5428,115 @@
     "path": "web/src/core/security-store-v4.ts",
     "literal": "missing promote ${label} slot",
     "reason": "Internal IndexedDB three-phase key promotion transaction invariant error; caught by security workflow."
+  },
+  {
+    "path": "web/src/sw-notify.ts",
+    "literal": "${generic.body} ${suffix}",
+    "reason": "Template expression joining two already-localized notification strings; contains no hardcoded UI prose."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "Promise",
+    "reason": "Lexical JSX scanner false positive: TypeScript return type syntax `=> Promise<number>`, not rendered text."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "remote.reconnectNow(true), [remote]); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript callback code between `=>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "off",
+    "reason": "Internal CSS status tone identifier ('off'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "btns",
+    "reason": "CSS class name ('btns'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "0; if (dock.isSkeleton || !hasContent) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between `>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "(undefined); const cmd = dock.command; const slotKey = cmd?.slotKey ?? \"\"; const busy = !!cmd?.busy; const hasError = !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN); const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText); if (dock.isSkeleton || plan.choices.length === 0) return",
+    "reason": "Lexical JSX scanner false positive: TypeScript statements between generic `>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "ms-sec",
+    "reason": "CSS class name ('ms-sec'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "${cpu.valueText}${cpu.unit}",
+    "reason": "Template expression combining numeric value and unit symbol from Core; contains no hardcoded prose."
+  },
+  {
+    "path": "web/src/views/MachineStatus.tsx",
+    "literal": "0; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript comparison `> 0;` before JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "big",
+    "reason": "CSS class name ('big'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const interruptCmd = actions?.interrupt; const endCmd = actions?.end; const forkUi = actions?.forkAction; const chatCol = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript statements between JSX `/>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "write",
+    "reason": "Internal composition bucket key ('write'), never displayed; adjacent label uses usage.* i18n message."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "read",
+    "reason": "Internal composition bucket key ('read'), never displayed; adjacent label uses usage.* i18n message."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "out",
+    "reason": "Internal composition bucket key ('out'), never displayed; adjacent label uses usage.* i18n message."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "reas",
+    "reason": "Internal composition bucket key ('reas'), never displayed; adjacent label uses usage.* i18n message."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "na",
+    "reason": "CSS class name ('na') for empty metric cells, never displayed to users."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "26 ? 2 : 3; const barInnerH = barH - topPad; const a11yLabel = renderText(vm.chartsA11yLabel, locale); const noSampleA11y = t(\"usage.no_sample_a11y\", undefined, locale); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript statements between `>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "u-scope",
+    "reason": "CSS class name ('u-scope'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "u-yl",
+    "reason": "CSS class name ('u-yl') on SVG chart axis label, never displayed to users."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "button",
+    "reason": "HTML button type attribute ('button'), never displayed to users."
+  },
+  {
+    "path": "web/src/views/Usage.tsx",
+    "literal": "u-base",
+    "reason": "CSS class name ('u-base') on SVG chart baseline, never displayed to users."
   }
 ]
