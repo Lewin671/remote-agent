@@ -703,29 +703,35 @@ final class AppModel {
         follower = nil
         closeTerminals()
         let leavingHost = context?.coreHost
+        let leavingRemote = remote
+        let store = cache
         if let leavingEngine = engine, (leavingEngine as AnyObject) !== (leavingHost as AnyObject) {
             leavingEngine.close()
         }
         engine = nil
-        // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
-        if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
-        LibraryVideos.discardAll()
+        // Detach the UI from the old account synchronously before any await so
+        // SwiftUI unmounts screens (and cannot call ImageCenter.of) while async
+        // shared-file cleanup drains on the shared FIFO queue.
+        context = nil
+        state = RemoteState()
+        described = nil
+        cache = nil
+        stage = .loading
+        if !isDemo {
+            erasing = true
+        }
         if let leavingHost {
             await leavingHost.clearAllSharedFiles()
             await leavingHost.closeAsync()
         }
-        context = nil
-        state = RemoteState()
-        described = nil
-        let store = cache
-        cache = nil
+        // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
+        if let leavingRemote { ImageCenter.remove(leavingRemote); SharedFileCenter.remove(leavingRemote) }
+        LibraryVideos.discardAll()
         if isDemo {
             // Sample data: nothing was stored, and the real account is not this one's to erase.
             stage = .join
             return
         }
-        stage = .loading
-        erasing = true
         parts.clearNotifications()
         let storage = parts.storage
         let erase = parts.erase
