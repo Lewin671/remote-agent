@@ -371,7 +371,7 @@ export function Settings({ remote, go, onBack }: { remote: Remote; go: Go; onBac
   const host = useCoreHost(remote);
   const vm = useSettingsView(host);
   const update = useUpdate();
-  const conn = connWord(remote);
+  const conn = connWord(vm.connCheck);
   const [checking, setChecking] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -580,7 +580,6 @@ export function ClientsScreenView({
   go,
   onBack,
   onRetry,
-  devicesLoadError = false,
   unfinishedSlot,
   managementStandaloneSlot,
 }: {
@@ -588,7 +587,6 @@ export function ClientsScreenView({
   go: Go;
   onBack: () => void;
   onRetry: () => void;
-  devicesLoadError?: boolean;
   unfinishedSlot?: ReactNode;
   managementInGroupSlot?: ReactNode;
   managementStandaloneSlot?: ReactNode;
@@ -612,7 +610,7 @@ export function ClientsScreenView({
             <div className="grp">
               {vm.unfinishedPairings.map((d) => (
                 <div key={d.deviceId} className="row has-ic">
-                  <span className="lead"><Smartphone /></span>
+                  <span className="lead">{d.kind === DeviceKind.MACHINE ? <Laptop /> : <Smartphone />}</span>
                   <span className="row-name">
                     <b>{d.displayName || d.description || d.shortId || d.deviceId}</b>
                     <small>
@@ -632,7 +630,7 @@ export function ClientsScreenView({
           {clientCountText && <span className="lbl-meta">{clientCountText}</span>}
         </div>
         <div className="grp">
-          {(hintText || devicesLoadError) && (
+          {(hintText || vm.loadFailed) && (
             <div className="row help">
               {hintText || l10n.t("settings.could_not_read_the_device_list")}
               <button type="button" className="link" onClick={onRetry}>
@@ -704,7 +702,7 @@ export function ClientsPage({
       <div className="label">{l10n.t("settings.unfinished_pairing")}</div>
       <p className="gf">{l10n.t("settings.the_new_device_has_not_finished_joining_if_it")}</p>
       {vm.unfinishedPairings.map((d) => {
-        const kind = remote.deviceKind(d.deviceId);
+        const kind = d.kind;
         return (
           <div key={d.deviceId}>
             <div className="grp">
@@ -732,7 +730,6 @@ export function ClientsPage({
       go={go}
       onBack={onBack}
       onRetry={() => void remote.loadDevices()}
-      devicesLoadError={remote.devicesStatus === "error"}
       unfinishedSlot={unfinishedSlot}
     />
   );

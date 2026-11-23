@@ -86,7 +86,7 @@ function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: bo
 
 function suppressWaitingHeadline(remote?: Remote, vm?: HomeHeadlineView): boolean {
   if (!remote || !vm || remote.conn === "online" || remote.link !== "waiting" || remote.showWaiting) return false;
-  return vm.title?.key === "connection.connecting" || vm.title?.key === "connection.reconnecting";
+  return vm.isConnecting;
 }
 
 function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => void }) {
@@ -122,7 +122,7 @@ function Headline({ vm, onDetails }: { vm?: HomeHeadlineView; onDetails?: () => 
 }
 
 function HomeEmpty({ empty, onAddDevice, onStartFirst, onRetry }: { empty?: HomeEmptyView; onAddDevice: () => void; onStartFirst: (machineId: string) => void; onRetry: () => void }) {
-  if (!empty || empty.kind === HomeEmptyKind.UNSPECIFIED || empty.kind === HomeEmptyKind.NONE) return null;
+  if (!empty || empty.loading || empty.kind === HomeEmptyKind.UNSPECIFIED || empty.kind === HomeEmptyKind.NONE) return null;
   const msg = renderText(empty.message);
   return (
     <div className="home-note">
@@ -520,7 +520,7 @@ function TopApprovalLive({ card, remote, onOpen }: { card: AttentionCardView; re
       denyReasonPlaceholder={renderText(dockApproval?.denyReasonPlaceholder)}
       timeText={renderText(card.time)}
       hot={card.hot}
-      locked={!!vm.header?.computerUnlinked || !(vm.header?.capabilities?.canSend ?? true)}
+      locked={card.locked || (vm.header?.found ? !vm.header.capabilities?.canSend : false)}
       command={command}
       reason={reason}
       onReasonChange={(v) => {

@@ -4,7 +4,7 @@ import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
-import { useCoreHost, useDevicesView } from "../core/host";
+import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
 import { renderText } from "../core/text";
 import type { SecurityPairingInfo } from "../gen/remoteagent/core/v1/security_pb";
 import { errorText, type Remote } from "../remote";
@@ -48,11 +48,15 @@ export function DeviceActions({
   onRemoved?: () => void;
   incomplete?: boolean;
 }) {
-  const vm = useDevicesView(useCoreHost(remote));
+  const host = useCoreHost(remote);
+  const vm = useDevicesView(host);
+  const settingsVm = useSettingsView(host);
   const [confirm, setConfirm] = useState<"remove" | "delete" | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const active = remote.devices.has(id);
+  const active = machine
+    ? (settingsVm.machines.find((m) => m.machineId === id)?.inDeviceDirectory ?? false)
+    : vm.clients.some((c) => c.deviceId === id);
   const managerName = vm.authorityName || l10n.t("security.client");
   if (!vm.isManager) {
     return (

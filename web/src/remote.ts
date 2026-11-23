@@ -2333,8 +2333,20 @@ export class Remote implements CoreExecutor {
       await synced;
       this.devicesStatus = "ready";
       this.changed();
-    } catch {
+    } catch (e) {
       this.devicesStatus = "error";
+      this.ensureHost().dispatchEvent(
+        create(CoreEventSchema, {
+          event: {
+            case: "devicesFetched",
+            value: create(DevicesFetchedEventSchema, {
+              opId: 0n,
+              pushSeq: devPushSeq,
+              error: errorText(e) || l10n.t("settings.could_not_read_the_device_list"),
+            }),
+          },
+        }),
+      );
       this.changed();
     }
   }

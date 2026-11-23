@@ -7,7 +7,12 @@ import * as l10n from "../i18n";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ConnProbeState, useCoreHost, useSettingsView } from "../core/host";
 import { renderText } from "../core/text";
-import { ConnectionGroupStage } from "../gen/remoteagent/core/v1/settings_view_pb";
+import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
+import {
+  ConnectionGroupStage,
+  type ConnCheckSummaryView,
+  type MachineListCardView,
+} from "../gen/remoteagent/core/v1/settings_view_pb";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
@@ -28,11 +33,18 @@ export function median(samples: number[]): number {
 
 /** The link to the server in a word, with its dot: what the sidebar's foot
  * and 设置 say before anything is measured. */
-export function connWord(remote: Remote, showWaiting = remote.showWaiting): { tone: Mark; text: string } {
-  if (remote.conn === "online") return { tone: "online", text: l10n.t("connection.connected") };
-  if (remote.link === "waiting" && !showWaiting) return { tone: "off", text: "" };
-  if (remote.everOnline) return { tone: "run", text: l10n.t("connection.reconnecting_conn_check") };
-  return { tone: "off", text: remote.failures >= 2 ? l10n.t("connection.unreachable") : l10n.t("connection.connecting_conn_check") };
+export function connWord(
+  cc?: ConnCheckSummaryView,
+  showWaiting = !(cc?.displayGrace ?? false),
+): { tone: Mark; text: string } {
+  if (!cc) return { tone: "off", text: "" };
+  if (cc.connState === ConnState.CONNECTED) return { tone: "online", text: l10n.t("connection.connected") };
+  if (cc.isConnecting && !showWaiting) return { tone: "off", text: "" };
+  if (cc.everOnline) return { tone: "run", text: l10n.t("connection.reconnecting_conn_check") };
+  return {
+    tone: "off",
+    text: cc.failures >= 2 ? l10n.t("connection.unreachable") : l10n.t("connection.connecting_conn_check"),
+  };
 }
 
 function Result({ p, slow }: { p?: Ping; slow: number }) {
@@ -47,64 +59,87 @@ function Result({ p, slow }: { p?: Ping; slow: number }) {
   );
 }
 
-export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => void }) {
-  useRemote(remote);
-  const host = useCoreHost(remote);
-  const settingsVm = useSettingsView(host);
+export function ConnCheckScreenView({
+  cc,
+  machines: machineCards,
+  serverHost,
+  pingServer,
+  pingMachine,
+  onReportProbe,
+  onReconnect,
+  onClose,
+}: {
+  cc?: ConnCheckSummaryView;
+  machines: MachineListCardView[];
+  serverHost: string;
+  pingServer: () => Promise<number>;
+  pingMachine: (id: string) => Promise<number>;
+  onReportProbe?: (state: ConnProbeState, latencyMs?: number, lastFailure?: string) => void;
+  onReconnect: () => void;
+  onClose: () => void;
+}) {
   const [server, setServer] = useState<Ping>();
   const [machines, setMachines] = useState(new Map<string, Ping>());
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now);
-  const startedAt = remote.connStartedAt;
-  const connecting = remote.conn !== "online" && !!remote.connStep && startedAt !== undefined;
+  const down = cc?.connState !== ConnState.CONNECTED;
+  const connStep = renderText(cc?.connStep);
+  const connError = renderText(cc?.lastFailureText);
+  const startedAt = cc && cc.connStartedAtMs > 0n ? Number(cc.connStartedAtMs) : undefined;
+  const connecting = down && !!connStep && startedAt !== undefined;
+  const network = cc?.networkAvailable ?? true;
+  const everOnline = cc?.everOnline ?? false;
   useEffect(() => {
     if (!connecting) return;
     setNow(Date.now());
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [connecting, startedAt]);
-  const stream = connWord(remote, true);
+  const stream = connWord(cc, true);
   const run = useRef(0);
-  const list = [...settingsVm.machines].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+  const cardsRef = useRef(machineCards);
+  cardsRef.current = machineCards;
+  const list = [...machineCards].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   const check = useCallback(async () => {
     const mine = ++run.current;
-    const online = host.viewSettings().machines.filter((m) => m.online).map((m) => m.machineId);
+    const onlineCards = cardsRef.current.filter((m) => m.online);
+    const online = onlineCards.map((m) => m.machineId);
+    const directReadyById = new Map(onlineCards.map((m) => [m.machineId, m.directReady]));
     setBusy(true);
     setServer({ state: "wait" });
     setMachines(new Map(online.map((id) => [id, { state: "wait" }])));
-    host.reportConnCheckStatus(ConnProbeState.CHECKING);
+    onReportProbe?.(ConnProbeState.CHECKING);
     let reached = true;
     try {
       const samples: number[] = [];
-      for (let i = 0; i < 3; i++) samples.push(await remote.pingServer());
+      for (let i = 0; i < 3; i++) samples.push(await pingServer());
       if (mine !== run.current) return;
       const ms = median(samples);
       setServer({ state: "ok", ms });
-      host.reportConnCheckStatus(ms >= SLOW_SERVER_MS ? ConnProbeState.SLOW : ConnProbeState.WORKING, ms);
+      onReportProbe?.(ms >= SLOW_SERVER_MS ? ConnProbeState.SLOW : ConnProbeState.WORKING, ms);
     } catch (e) {
       if (mine !== run.current) return;
       reached = false;
       const msg = errorText(e) || l10n.t("connection.no_response");
       setServer({ state: "fail", error: msg });
-      host.reportConnCheckStatus(ConnProbeState.UNAVAILABLE, 0, msg);
-      setMachines(new Map(online.map((id) => [id, { state: remote.peer(id).canProbe(false) ? "wait" : "skip" }])));
+      onReportProbe?.(ConnProbeState.UNAVAILABLE, 0, msg);
+      setMachines(new Map(online.map((id) => [id, { state: directReadyById.get(id) ? "wait" : "skip" }])));
     }
     await Promise.all(
-        online.filter(id => remote.peer(id).canProbe(reached)).map(async (id) => {
-          const p: Ping = await remote.pingMachine(id).then(
-            (ms) => ({ state: "ok", ms }),
-            (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
-          );
-          if (mine === run.current) setMachines((m) => new Map(m).set(id, p));
-        }),
-      );
+      online.filter((id) => reached || directReadyById.get(id)).map(async (id) => {
+        const p: Ping = await pingMachine(id).then(
+          (ms) => ({ state: "ok", ms }),
+          (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
+        );
+        if (mine === run.current) setMachines((m) => new Map(m).set(id, p));
+      }),
+    );
     if (mine === run.current) setBusy(false);
-  }, [remote, host]);
+  }, [pingServer, pingMachine, onReportProbe]);
   useEffect(() => {
     void check();
     return () => void run.current++;
   }, [check]);
-  const down = remote.conn !== "online";
   return (
     <Sheet onClose={onClose} title={l10n.t("settings.server_and_connection")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
       {down && (
@@ -112,10 +147,10 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           <Banner>
             {connecting && <LoaderCircle />}
             {connecting
-              ? l10n.t("connection.sec_elapsed", { value: String(remote.everOnline ? l10n.t("connection.reconnecting_conn_check_label") : l10n.t("connection.connecting_conn_check_label")), detail: String(remote.connStep), count: Math.max(0, Math.floor((now - startedAt!) / 1000)), previousFailure: String(remote.connError && l10n.t("connection.last_failure", { value: String(remote.connError) })) })
-              : remote.connError
-                ? l10n.t("connection.live_push_is_not_connected_session_changes_may_be", { value: String(remote.connError) })
-                : remote.network ? l10n.t("connection.live_push_is_not_connected") : l10n.t("connection.this_device_has_no_network_it_will_reconnect_when")}
+              ? l10n.t("connection.sec_elapsed", { value: String(everOnline ? l10n.t("connection.reconnecting_conn_check_label") : l10n.t("connection.connecting_conn_check_label")), detail: String(connStep), count: Math.max(0, Math.floor((now - startedAt!) / 1000)), previousFailure: String(connError && l10n.t("connection.last_failure", { value: String(connError) })) })
+              : connError
+                ? l10n.t("connection.live_push_is_not_connected_session_changes_may_be", { value: String(connError) })
+                : network ? l10n.t("connection.live_push_is_not_connected") : l10n.t("connection.this_device_has_no_network_it_will_reconnect_when")}
           </Banner>
         </div>
       )}
@@ -127,13 +162,13 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         <div className="mi">
           <span className="mt">{l10n.t("connection.local_network")}</span>
           <span className="mv">
-            <StateMark kind={remote.network ? "online" : "off"} />
-            <em>{remote.network ? l10n.t("connection.working") : l10n.t("connection.unavailable")}</em>
+            <StateMark kind={network ? "online" : "off"} />
+            <em>{network ? l10n.t("connection.working") : l10n.t("connection.unavailable")}</em>
           </span>
         </div>
         <div className="mi">
           <span className="mt">
-            {l10n.t("security.server")}<small>{new URL(remote.account.server).host}</small>
+            {l10n.t("security.server")}<small>{serverHost}</small>
           </span>
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
@@ -157,12 +192,38 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
           );
         })}
       </div>
-      <p className="gf">{connFooter(settingsVm.machines.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
+      <p className="gf">{connFooter(machineCards.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
       <div className="btns conn-again">
-        {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>{l10n.t("connection.reconnect_now")}</button>}
+        {down && <button className="btn pri" onClick={onReconnect}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>
           {l10n.t("connection.test_again")}</button>
       </div>
     </Sheet>
+  );
+}
+
+export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => void }) {
+  useRemote(remote);
+  const host = useCoreHost(remote);
+  const settingsVm = useSettingsView(host);
+  const pingServer = useCallback(() => remote.pingServer(), [remote]);
+  const pingMachine = useCallback((id: string) => remote.pingMachine(id), [remote]);
+  const onReportProbe = useCallback(
+    (state: ConnProbeState, latencyMs?: number, lastFailure?: string) =>
+      host.reportConnCheckStatus(state, latencyMs, lastFailure),
+    [host],
+  );
+  const onReconnect = useCallback(() => remote.reconnectNow(true), [remote]);
+  return (
+    <ConnCheckScreenView
+      cc={settingsVm.connCheck}
+      machines={settingsVm.machines}
+      serverHost={new URL(remote.account.server).host}
+      pingServer={pingServer}
+      pingMachine={pingMachine}
+      onReportProbe={onReportProbe}
+      onReconnect={onReconnect}
+      onClose={onClose}
+    />
   );
 }

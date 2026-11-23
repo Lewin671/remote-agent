@@ -11,7 +11,7 @@ import {
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
-  routeForMachineSettings, routeForSession, routeForTask, useCoreHost, useProjectView, useScheduleDetailView,
+  routeForMachineCli, routeForMachineSettings, routeForSession, routeForTask, useCoreHost, useProjectView, useScheduleDetailView,
   useScheduleFormView, useScheduleSessionStripView, useSchedulesView, type CoreHost, type Go,
 } from "../core/host";
 import { renderText } from "../core/text";
@@ -785,11 +785,10 @@ export interface ScheduleDetailActions {
   onOpenEdit(mode: ScheduleFormMode): void;
   onRetryMutation(): void;
   onAbandonMutation(): void;
-  onOpenMachineSettings?(): void;
+  onOpenMachineSettings?(agent?: Agent): void;
 }
 
 const ATTN_BANNER_CLS = "schedule-attention";
-const AGENT_DISABLED_PRE_RUN_KEY = "schedule.agent_disabled_pre_run";
 
 export function ScheduleDetailView({ vm, actions }: { vm: ScheduleDetailViewModel; actions: ScheduleDetailActions }) {
   const [menuOpen, setMenuOpen] = useState(false), moreRef = useRef<HTMLButtonElement>(null);
@@ -835,8 +834,12 @@ export function ScheduleDetailView({ vm, actions }: { vm: ScheduleDetailViewMode
               <div className={ATTN_BANNER_CLS}>
                 <Banner
                   kind="warn"
-                  action={vm.attention?.message?.key === AGENT_DISABLED_PRE_RUN_KEY && actions.onOpenMachineSettings ? t("schedule.enable_cli") : undefined}
-                  onAction={vm.attention?.message?.key === AGENT_DISABLED_PRE_RUN_KEY ? actions.onOpenMachineSettings : undefined}
+                  action={vm.attention?.showEnableCliAction && actions.onOpenMachineSettings ? t("schedule.enable_cli") : undefined}
+                  onAction={
+                    vm.attention?.showEnableCliAction && actions.onOpenMachineSettings
+                      ? () => actions.onOpenMachineSettings!(vm.attention?.disabledAgent || undefined)
+                      : undefined
+                  }
                 >
                   <Info className="lead" />{renderText(vm.attention?.message)}
                 </Banner>
@@ -956,7 +959,7 @@ export function ScheduleDetail({ remote, machineId, id, go, onBack }: { remote: 
     onOpenEdit: (mode) => { setEditFormKey(host.scheduleFormOpen(mode, { machineId, taskId: id })); setEditMode(mode); },
     onRetryMutation: () => host.scheduleRetryMutation(machineId, id, ""),
     onAbandonMutation: () => host.scheduleAbandonMutation(machineId, id, ""),
-    onOpenMachineSettings: () => go(routeForMachineSettings(machineId)),
+    onOpenMachineSettings: (agent) => go(agent ? routeForMachineCli(machineId, agent) : routeForMachineSettings(machineId)),
   };
   return (
     <>

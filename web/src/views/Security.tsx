@@ -80,9 +80,10 @@ export function SecurityPage({
   const managerName = settingsVm.authorityName || l10n.t("security.client");
   const recoveryPending = settingsVm.recoveryPending;
   const recoveryReadyMs = settingsVm.recoveryReadyMs;
-  const candidateName = (id: string) => {
-    const match = devicesVm.clients.find((c) => { return c.deviceId === id; });
-    return match?.displayName || l10n.t("security.client");
+  const candidateName = (c: Pick<SecurityHandoffCandidate, "deviceId" | "displayName"> | string) => {
+    if (typeof c !== "string") return c.displayName || l10n.t("security.client");
+    const offer = offers.find((o) => o.deviceId === c);
+    return offer?.displayName || devicesVm.clients.find((cl) => cl.deviceId === c)?.displayName || l10n.t("security.client");
   };
   const visible = usePageVisible();
   const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
@@ -148,10 +149,8 @@ export function SecurityPage({
       setBusy(false);
     }
   };
-  const offered =
-    offeredState ||
-    remote.devices.get(remote.account.deviceId)?.meta?.handoffRecoveryEd
-      .length === 32;
+  const offered = offeredState || !!settingsVm.security?.hasHandoffOffer;
+  const effectiveLease = lease !== undefined ? lease : (settingsVm.security?.leaseEndMs ? settingsVm.security.leaseEndMs : undefined);
   const draft =
     pending?.kind === "offer" ||
     (pending?.kind === "state" && pending.action === "recovery");
@@ -172,7 +171,7 @@ export function SecurityPage({
             {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(recoveryReadyMs > 0n ? futureTime(recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
           </Banner>
         )}
-        {remote.recoveryStatusStale && (
+        {settingsVm.security?.recoveryStatusStale && (
           <Banner kind="warn">{l10n.t("security.security_state_may_be_out_of_date_connect_and")}</Banner>
         )}
         {takingOver && (
@@ -194,7 +193,7 @@ export function SecurityPage({
         <div className="grp">
           <div className="row">{l10n.t("security.current_managing_client")}<span className="v">{isAuthority ? l10n.t("security.this_device") : managerName}</span></div>
           <div className="row">
-            {l10n.t("security.remote_control_expiry")}<span className="v">{lease === undefined ? l10n.t("security.reading") : lease === null ? l10n.t("security.remote_control_expiry_not_received_yet") : futureTime(lease, now)}</span>
+            {l10n.t("security.remote_control_expiry")}<span className="v">{effectiveLease === undefined ? l10n.t("security.reading") : effectiveLease === null ? l10n.t("security.remote_control_expiry_not_received_yet") : futureTime(effectiveLease, now)}</span>
           </div>
           {isAuthority && (
             <button
@@ -331,7 +330,7 @@ export function SecurityPage({
                   onClick={() => setTarget(o.deviceId)}
                 >
                   {l10n.t("security.transfer_to")}{" "}
-                  {candidateName(o.deviceId)}
+                  {candidateName(o)}
                   <ChevronRight className="chev" />
                 </button>
               ))}

@@ -216,6 +216,7 @@ describe("Per-machine CLI switches and entry points", () => {
     act(() => root?.unmount());
     hostEl.remove();
 
+    let schedOpenedAgent: Agent | undefined;
     let schedOpened = false;
     const schedVm = create(ScheduleDetailViewModelSchema, {
       found: true,
@@ -224,6 +225,8 @@ describe("Per-machine CLI switches and entry points", () => {
       title: "nightly",
       attention: {
         show: false,
+        showEnableCliAction: true,
+        disabledAgent: Agent.CLAUDE,
         message: create(TextSchema, {
           key: "schedule.agent_disabled_pre_run",
           args: [
@@ -248,8 +251,9 @@ describe("Per-machine CLI switches and entry points", () => {
       onOpenEdit: () => undefined,
       onRetryMutation: () => undefined,
       onAbandonMutation: () => undefined,
-      onOpenMachineSettings: () => {
+      onOpenMachineSettings: (agent) => {
         schedOpened = true;
+        schedOpenedAgent = agent;
       },
     };
     await mountAsync(<ScheduleDetailView vm={schedVm} actions={actions} />);
@@ -257,6 +261,7 @@ describe("Per-machine CLI switches and entry points", () => {
     expect(enableCliBtn).toBeTruthy();
     enableCliBtn!.click();
     expect(schedOpened).toBe(true);
+    expect(schedOpenedAgent).toBe(Agent.CLAUDE);
   });
 
   it("renders usage entries on MachineStatusPage and SessionSheet and navigates to u/<machineId>", async () => {
