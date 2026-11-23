@@ -334,7 +334,9 @@
     "notes": "长按菜单、应用内播放器「⋯」菜单和播放失败页的按钮：总是弹出系统应用选择器，让用户自己选用哪个应用打开这个文件。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -349,7 +351,8 @@
     "params": {},
     "platforms": [
       "android",
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -514,7 +517,8 @@
     "params": {},
     "platforms": [
       "android",
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -908,6 +912,8 @@
       }
     },
     "platforms": [
+      "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -922,6 +928,8 @@
     "notes": "Menu action to trigger browser file download to local disk.",
     "params": {},
     "platforms": [
+      "android",
+      "ios",
       "web"
     ],
     "status": {
@@ -955,6 +963,7 @@
     "notes": "Fallback error text when the computer returned a failure without details.",
     "params": {},
     "platforms": [
+      "android",
       "ios",
       "web"
     ],
@@ -970,6 +979,8 @@
     "notes": "下载失败原因：浏览器 OPFS 或存储配额不足。用于网页的 subtitle_failed 参数。",
     "params": {},
     "platforms": [
+      "android",
+      "ios",
       "web"
     ],
     "status": {

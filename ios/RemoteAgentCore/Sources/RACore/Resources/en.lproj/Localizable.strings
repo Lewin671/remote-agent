@@ -1625,9 +1625,12 @@
 "shared_file_action_retry" = "Retry";
 "shared_file_menu_delete_local" = "Delete local copy";
 "shared_file_menu_from_machine" = "From %1$@";
+"shared_file_menu_open_with" = "Open in another app";
 "shared_file_menu_save_to_album" = "Save to Photos";
+"shared_file_menu_save_to_device" = "Save to device";
 "shared_file_menu_save_to_files" = "Save to Files";
 "shared_file_menu_share" = "Share…";
+"shared_file_reason_browser_storage_full" = "browser storage is full";
 "shared_file_reason_checksum_mismatch" = "file verification failed";
 "shared_file_reason_disconnected" = "connection dropped";
 "shared_file_reason_disk_full" = "phone storage is full";

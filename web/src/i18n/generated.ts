@@ -1425,6 +1425,8 @@ export interface MessageArgs {
   "shared_file.menu_a11y_label": { [name: string]: never };
   "shared_file.menu_delete_local": { [name: string]: never };
   "shared_file.menu_from_machine": { machine: string };
+  "shared_file.menu_open_with": { [name: string]: never };
+  "shared_file.menu_save_to_album": { [name: string]: never };
   "shared_file.menu_save_to_device": { [name: string]: never };
   "shared_file.menu_share": { [name: string]: never };
   "shared_file.notification_files": { count: number };
@@ -1432,6 +1434,7 @@ export interface MessageArgs {
   "shared_file.reason_browser_storage_full": { [name: string]: never };
   "shared_file.reason_checksum_mismatch": { [name: string]: never };
   "shared_file.reason_disconnected": { [name: string]: never };
+  "shared_file.reason_disk_full": { [name: string]: never };
   "shared_file.reason_unknown": { [name: string]: never };
   "shared_file.subtitle_cleaned": { [name: string]: never };
   "shared_file.subtitle_downloading": { downloaded: string; total: string };
@@ -3693,6 +3696,8 @@ export const messages = {
     "shared_file.menu_a11y_label": "File actions menu",
     "shared_file.menu_delete_local": "Delete local copy",
     "shared_file.menu_from_machine": "From {machine}",
+    "shared_file.menu_open_with": "Open in another app",
+    "shared_file.menu_save_to_album": "Save to Photos",
     "shared_file.menu_save_to_device": "Save to device",
     "shared_file.menu_share": "Share…",
     "shared_file.notification_files": {
@@ -3706,6 +3711,7 @@ export const messages = {
     "shared_file.reason_browser_storage_full": "browser storage is full",
     "shared_file.reason_checksum_mismatch": "file verification failed",
     "shared_file.reason_disconnected": "connection dropped",
+    "shared_file.reason_disk_full": "phone storage is full",
     "shared_file.reason_unknown": "Unknown error",
     "shared_file.subtitle_cleaned": "Session ended, file cleaned up",
     "shared_file.subtitle_downloading": "{downloaded} / {total}",
@@ -5948,6 +5954,8 @@ export const messages = {
     "shared_file.menu_a11y_label": "文件操作菜单",
     "shared_file.menu_delete_local": "删除本机副本",
     "shared_file.menu_from_machine": "来自 {machine}",
+    "shared_file.menu_open_with": "用其他应用打开",
+    "shared_file.menu_save_to_album": "存到相册",
     "shared_file.menu_save_to_device": "保存到本机",
     "shared_file.menu_share": "分享…",
     "shared_file.notification_files": {
@@ -5960,6 +5968,7 @@ export const messages = {
     "shared_file.reason_browser_storage_full": "浏览器空间不足",
     "shared_file.reason_checksum_mismatch": "文件校验不一致",
     "shared_file.reason_disconnected": "连接断了",
+    "shared_file.reason_disk_full": "手机空间不足",
     "shared_file.reason_unknown": "未知原因",
     "shared_file.subtitle_cleaned": "会话已结束，文件已清理",
     "shared_file.subtitle_downloading": "{downloaded} / {total}",

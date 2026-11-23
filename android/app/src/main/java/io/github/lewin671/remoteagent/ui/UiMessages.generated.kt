@@ -5722,6 +5722,10 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "shared_file.action_save_to_phone" -> {
             resources.getString(R.string.shared_file_action_save_to_phone)
         }
+        "shared_file.eta_hours" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.shared_file_eta_hours, count, count)
+        }
         "shared_file.eta_minutes" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.shared_file_eta_minutes, count, count)
@@ -5742,6 +5746,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         }
         "shared_file.menu_save_to_album" -> {
             resources.getString(R.string.shared_file_menu_save_to_album)
+        }
+        "shared_file.menu_save_to_device" -> {
+            resources.getString(R.string.shared_file_menu_save_to_device)
         }
         "shared_file.menu_save_to_downloads" -> {
             resources.getString(R.string.shared_file_menu_save_to_downloads)
@@ -5770,6 +5777,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "shared_file.player_play" -> {
             resources.getString(R.string.shared_file_player_play)
         }
+        "shared_file.reason_browser_storage_full" -> {
+            resources.getString(R.string.shared_file_reason_browser_storage_full)
+        }
         "shared_file.reason_checksum_mismatch" -> {
             resources.getString(R.string.shared_file_reason_checksum_mismatch)
         }
@@ -5778,6 +5788,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         }
         "shared_file.reason_disk_full" -> {
             resources.getString(R.string.shared_file_reason_disk_full)
+        }
+        "shared_file.reason_unknown" -> {
+            resources.getString(R.string.shared_file_reason_unknown)
         }
         "shared_file.storage_received_files" -> {
             resources.getString(R.string.shared_file_storage_received_files)
@@ -5995,6 +6008,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "terminal.right" -> {
             resources.getString(R.string.terminal_right)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "terminal.size_changed" -> {
             resources.getString(R.string.terminal_size_changed)
         }
@@ -6007,12 +6026,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "terminal.view_details" -> {
             resources.getString(R.string.terminal_view_details)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "time.android_day_clock" -> {
             val clock = message.args.getValue("clock") as String
             val day = message.args.getValue("day") as String
@@ -6517,6 +6530,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_title_no_reply" -> {
             resources.getString(R.string.transport_diag_title_no_reply)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.diag_title_probe_blocked" -> {
             resources.getString(R.string.transport_diag_title_probe_blocked)
         }
@@ -6529,12 +6548,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.diag_type_prflx" -> {
             resources.getString(R.string.transport_diag_type_prflx)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.diag_type_relay" -> {
             resources.getString(R.string.transport_diag_type_relay)
         }

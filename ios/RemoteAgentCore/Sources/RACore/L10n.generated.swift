@@ -6893,6 +6893,10 @@ public enum L10n {
         let key = "shared_file_action_retry"
         return format(key, locale: locale, args: [])
     }
+    public static func sharedFileEtaHours(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_eta_hours"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
     public static func sharedFileEtaMinutes(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "shared_file_eta_minutes"
         return format(key, locale: locale, args: [Int64(count)])
@@ -6909,8 +6913,16 @@ public enum L10n {
         let key = "shared_file_menu_from_machine"
         return format(key, locale: locale, args: [machine])
     }
+    public static func sharedFileMenuOpenWith(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_open_with"
+        return format(key, locale: locale, args: [])
+    }
     public static func sharedFileMenuSaveToAlbum(locale: String = MessageLocale.current) -> String {
         let key = "shared_file_menu_save_to_album"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sharedFileMenuSaveToDevice(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_menu_save_to_device"
         return format(key, locale: locale, args: [])
     }
     public static func sharedFileMenuSaveToFiles(locale: String = MessageLocale.current) -> String {
@@ -6924,6 +6936,10 @@ public enum L10n {
     public static func sharedFileNotificationFiles(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "shared_file_notification_files"
         return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sharedFileReasonBrowserStorageFull(locale: String = MessageLocale.current) -> String {
+        let key = "shared_file_reason_browser_storage_full"
+        return format(key, locale: locale, args: [])
     }
     public static func sharedFileReasonChecksumMismatch(locale: String = MessageLocale.current) -> String {
         let key = "shared_file_reason_checksum_mismatch"
@@ -15257,6 +15273,10 @@ public enum L10nMessage {
         let key = "shared_file_action_retry"
         return LocalizedMessage(key: key, arguments: [])
     }
+    public static func sharedFileEtaHours(count: Int) -> LocalizedMessage {
+        let key = "shared_file_eta_hours"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
     public static func sharedFileEtaMinutes(count: Int) -> LocalizedMessage {
         let key = "shared_file_eta_minutes"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
@@ -15273,8 +15293,16 @@ public enum L10nMessage {
         let key = "shared_file_menu_from_machine"
         return LocalizedMessage(key: key, arguments: [.string(machine)])
     }
+    public static func sharedFileMenuOpenWith() -> LocalizedMessage {
+        let key = "shared_file_menu_open_with"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func sharedFileMenuSaveToAlbum() -> LocalizedMessage {
         let key = "shared_file_menu_save_to_album"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sharedFileMenuSaveToDevice() -> LocalizedMessage {
+        let key = "shared_file_menu_save_to_device"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func sharedFileMenuSaveToFiles() -> LocalizedMessage {
@@ -15288,6 +15316,10 @@ public enum L10nMessage {
     public static func sharedFileNotificationFiles(count: Int) -> LocalizedMessage {
         let key = "shared_file_notification_files"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sharedFileReasonBrowserStorageFull() -> LocalizedMessage {
+        let key = "shared_file_reason_browser_storage_full"
+        return LocalizedMessage(key: key, arguments: [])
     }
     public static func sharedFileReasonChecksumMismatch() -> LocalizedMessage {
         let key = "shared_file_reason_checksum_mismatch"
@@ -18589,14 +18621,18 @@ public enum L10nText {
         case "shared_file.action_pause": return L10n.format("shared_file_action_pause", locale: locale, args: [])
         case "shared_file.action_resume": return L10n.format("shared_file_action_resume", locale: locale, args: [])
         case "shared_file.action_retry": return L10n.format("shared_file_action_retry", locale: locale, args: [])
+        case "shared_file.eta_hours": return L10n.format("shared_file_eta_hours", locale: locale, args: [intArg(args["count"])])
         case "shared_file.eta_minutes": return L10n.format("shared_file_eta_minutes", locale: locale, args: [intArg(args["count"])])
         case "shared_file.eta_seconds": return L10n.format("shared_file_eta_seconds", locale: locale, args: [intArg(args["count"])])
         case "shared_file.menu_delete_local": return L10n.format("shared_file_menu_delete_local", locale: locale, args: [])
         case "shared_file.menu_from_machine": return L10n.format("shared_file_menu_from_machine", locale: locale, args: [strArg(args["machine"])])
+        case "shared_file.menu_open_with": return L10n.format("shared_file_menu_open_with", locale: locale, args: [])
         case "shared_file.menu_save_to_album": return L10n.format("shared_file_menu_save_to_album", locale: locale, args: [])
+        case "shared_file.menu_save_to_device": return L10n.format("shared_file_menu_save_to_device", locale: locale, args: [])
         case "shared_file.menu_save_to_files": return L10n.format("shared_file_menu_save_to_files", locale: locale, args: [])
         case "shared_file.menu_share": return L10n.format("shared_file_menu_share", locale: locale, args: [])
         case "shared_file.notification_files": return L10n.format("shared_file_notification_files", locale: locale, args: [intArg(args["count"])])
+        case "shared_file.reason_browser_storage_full": return L10n.format("shared_file_reason_browser_storage_full", locale: locale, args: [])
         case "shared_file.reason_checksum_mismatch": return L10n.format("shared_file_reason_checksum_mismatch", locale: locale, args: [])
         case "shared_file.reason_disconnected": return L10n.format("shared_file_reason_disconnected", locale: locale, args: [])
         case "shared_file.reason_disk_full": return L10n.format("shared_file_reason_disk_full", locale: locale, args: [])
@@ -18665,15 +18701,15 @@ public enum L10nText {
         case "terminal.left": return L10n.format("terminal_left", locale: locale, args: [])
         case "terminal.live": return L10n.format("terminal_live", locale: locale, args: [])
         case "terminal.read_failed": return L10n.format("terminal_read_failed", locale: locale, args: [])
-        case "terminal.reading": return L10n.format("terminal_reading", locale: locale, args: [])
-        case "terminal.readonly": return L10n.format("terminal_readonly", locale: locale, args: [])
-        case "terminal.reconnect": return L10n.format("terminal_reconnect", locale: locale, args: [])
-        case "terminal.remote_dimensions": return L10n.format("terminal_remote_dimensions", locale: locale, args: [intArg(args["cols"]), intArg(args["rows"])])
         default: return nil
         }
     }
     private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "terminal.reading": return L10n.format("terminal_reading", locale: locale, args: [])
+        case "terminal.readonly": return L10n.format("terminal_readonly", locale: locale, args: [])
+        case "terminal.reconnect": return L10n.format("terminal_reconnect", locale: locale, args: [])
+        case "terminal.remote_dimensions": return L10n.format("terminal_remote_dimensions", locale: locale, args: [intArg(args["cols"]), intArg(args["rows"])])
         case "terminal.restore": return L10n.format("terminal_restore", locale: locale, args: [])
         case "terminal.right": return L10n.format("terminal_right", locale: locale, args: [])
         case "terminal.size_changed": return L10n.format("terminal_size_changed", locale: locale, args: [])
@@ -18832,15 +18868,15 @@ public enum L10nText {
         case "transport.diag_status_ok": return L10n.format("transport_diag_status_ok", locale: locale, args: [])
         case "transport.diag_status_peer_old": return L10n.format("transport_diag_status_peer_old", locale: locale, args: [])
         case "transport.diag_status_wait_update": return L10n.format("transport_diag_status_wait_update", locale: locale, args: [])
-        case "transport.diag_stun_error": return L10n.format("transport_diag_stun_error", locale: locale, args: [intArg(args["code"]), intArg(args["count"]), strArg(args["family"])])
-        case "transport.diag_stun_errors": return L10n.format("transport_diag_stun_errors", locale: locale, args: [])
-        case "transport.diag_title_generic": return L10n.format("transport_diag_title_generic", locale: locale, args: [])
-        case "transport.diag_title_no_reply": return L10n.format("transport_diag_title_no_reply", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.diag_stun_error": return L10n.format("transport_diag_stun_error", locale: locale, args: [intArg(args["code"]), intArg(args["count"]), strArg(args["family"])])
+        case "transport.diag_stun_errors": return L10n.format("transport_diag_stun_errors", locale: locale, args: [])
+        case "transport.diag_title_generic": return L10n.format("transport_diag_title_generic", locale: locale, args: [])
+        case "transport.diag_title_no_reply": return L10n.format("transport_diag_title_no_reply", locale: locale, args: [])
         case "transport.diag_title_probe_blocked": return L10n.format("transport_diag_title_probe_blocked", locale: locale, args: [])
         case "transport.diag_type_host": return L10n.format("transport_diag_type_host", locale: locale, args: [])
         case "transport.diag_type_other": return L10n.format("transport_diag_type_other", locale: locale, args: [])

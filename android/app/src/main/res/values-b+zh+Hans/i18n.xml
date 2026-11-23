@@ -1895,6 +1895,9 @@
     <string name="shared_file_action_resume" formatted="false">"继续下载"</string>
     <string name="shared_file_action_retry" formatted="false">"重试"</string>
     <string name="shared_file_action_save_to_phone" formatted="false">"存到手机"</string>
+    <plurals name="shared_file_eta_hours">
+        <item quantity="other">"%1$d 小时"</item>
+    </plurals>
     <plurals name="shared_file_eta_minutes">
         <item quantity="other">"%1$d 分钟"</item>
     </plurals>
@@ -1905,6 +1908,7 @@
     <string name="shared_file_menu_from_machine">"来自 %1$s"</string>
     <string name="shared_file_menu_open_with" formatted="false">"用其他应用打开"</string>
     <string name="shared_file_menu_save_to_album" formatted="false">"存到相册"</string>
+    <string name="shared_file_menu_save_to_device" formatted="false">"保存到本机"</string>
     <string name="shared_file_menu_save_to_downloads" formatted="false">"存到「下载」"</string>
     <string name="shared_file_menu_share" formatted="false">"分享…"</string>
     <plurals name="shared_file_notification_files">
@@ -1915,9 +1919,11 @@
     <string name="shared_file_player_error" formatted="false">"播放不了这个文件"</string>
     <string name="shared_file_player_pause" formatted="false">"暂停"</string>
     <string name="shared_file_player_play" formatted="false">"播放"</string>
+    <string name="shared_file_reason_browser_storage_full" formatted="false">"浏览器空间不足"</string>
     <string name="shared_file_reason_checksum_mismatch" formatted="false">"文件校验不一致"</string>
     <string name="shared_file_reason_disconnected" formatted="false">"连接断了"</string>
     <string name="shared_file_reason_disk_full" formatted="false">"手机空间不足"</string>
+    <string name="shared_file_reason_unknown" formatted="false">"未知原因"</string>
     <string name="shared_file_storage_received_files" formatted="false">"收到的文件"</string>
     <string name="shared_file_subtitle_cleaned" formatted="false">"会话已结束，文件已清理"</string>
     <string name="shared_file_subtitle_downloading">"%1$s / %2$s"</string>

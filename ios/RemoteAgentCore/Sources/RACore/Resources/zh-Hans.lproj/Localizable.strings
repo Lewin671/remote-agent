@@ -1625,9 +1625,12 @@
 "shared_file_action_retry" = "重试";
 "shared_file_menu_delete_local" = "删除本机副本";
 "shared_file_menu_from_machine" = "来自 %1$@";
+"shared_file_menu_open_with" = "用其他应用打开";
 "shared_file_menu_save_to_album" = "存到相册";
+"shared_file_menu_save_to_device" = "保存到本机";
 "shared_file_menu_save_to_files" = "存到「文件」";
 "shared_file_menu_share" = "分享…";
+"shared_file_reason_browser_storage_full" = "浏览器空间不足";
 "shared_file_reason_checksum_mismatch" = "文件校验不一致";
 "shared_file_reason_disconnected" = "连接断了";
 "shared_file_reason_disk_full" = "手机空间不足";

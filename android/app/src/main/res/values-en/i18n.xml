@@ -1985,6 +1985,10 @@
     <string name="shared_file_action_resume" formatted="false">"Resume download"</string>
     <string name="shared_file_action_retry" formatted="false">"Retry"</string>
     <string name="shared_file_action_save_to_phone" formatted="false">"Save to phone"</string>
+    <plurals name="shared_file_eta_hours">
+        <item quantity="one">"%1$dh"</item>
+        <item quantity="other">"%1$dh"</item>
+    </plurals>
     <plurals name="shared_file_eta_minutes">
         <item quantity="one">"%1$d min"</item>
         <item quantity="other">"%1$d mins"</item>
@@ -1997,6 +2001,7 @@
     <string name="shared_file_menu_from_machine">"From %1$s"</string>
     <string name="shared_file_menu_open_with" formatted="false">"Open in another app"</string>
     <string name="shared_file_menu_save_to_album" formatted="false">"Save to Photos"</string>
+    <string name="shared_file_menu_save_to_device" formatted="false">"Save to device"</string>
     <string name="shared_file_menu_save_to_downloads" formatted="false">"Save to Downloads"</string>
     <string name="shared_file_menu_share" formatted="false">"Share…"</string>
     <plurals name="shared_file_notification_files">
@@ -2008,9 +2013,11 @@
     <string name="shared_file_player_error" formatted="false">"Can\'t play this file"</string>
     <string name="shared_file_player_pause" formatted="false">"Pause"</string>
     <string name="shared_file_player_play" formatted="false">"Play"</string>
+    <string name="shared_file_reason_browser_storage_full" formatted="false">"browser storage is full"</string>
     <string name="shared_file_reason_checksum_mismatch" formatted="false">"file verification failed"</string>
     <string name="shared_file_reason_disconnected" formatted="false">"connection dropped"</string>
     <string name="shared_file_reason_disk_full" formatted="false">"phone storage is full"</string>
+    <string name="shared_file_reason_unknown" formatted="false">"Unknown error"</string>
     <string name="shared_file_storage_received_files" formatted="false">"Received files"</string>
     <string name="shared_file_subtitle_cleaned" formatted="false">"Session ended, file cleaned up"</string>
     <string name="shared_file_subtitle_downloading">"%1$s / %2$s"</string>
