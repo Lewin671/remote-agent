@@ -266,6 +266,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			effects = append(effects, c.onUsageStatsSettled(sc, meta, &dirty)...)
 
 		case cmdKindListDirs:
+			if meta.pickerKey == "" {
+				continue
+			}
 			var dp *screens.DirPickerState
 			if c.m.state.DirPickers != nil {
 				dp = c.m.state.DirPickers[meta.pickerKey]
@@ -540,18 +543,23 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 
 	case *corev1.Event_ProjectAdd:
 		if k.ProjectAdd != nil && k.ProjectAdd.Path != "" {
-			dp := st.EnsureDirPicker(k.ProjectAdd.PickerKey)
-			machID := dp.MachineID
-			forNewTask := dp.ForNewTask
+			var machID string
+			var forNewTask bool
+			if pickerKey := k.ProjectAdd.PickerKey; pickerKey != "" && st.DirPickers != nil {
+				if dp := st.DirPickers[pickerKey]; dp != nil {
+					machID = dp.MachineID
+					forNewTask = dp.ForNewTask
+					dp.Open = false
+					dp.ForNewTask = false
+					dp.Loading = false
+					dp.Error = ""
+					dp.ErrorText = nil
+					dp.ActiveRequestID = ""
+				}
+			}
 			if op := lists.PlanAddProject(&st.World, machID, k.ProjectAdd.Path); op != nil {
 				c.m.sync.EnqueuePrefsOp(ctx, op, false, "")
 			}
-			dp.Open = false
-			dp.ForNewTask = false
-			dp.Loading = false
-			dp.Error = ""
-			dp.ErrorText = nil
-			dp.ActiveRequestID = ""
 			if forNewTask {
 				d := c.m.ensureDraft(k.ProjectAdd.Path)
 				d.MachineChosen = machID != ""
@@ -592,7 +600,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		c.m.sync.RequestMoreSessions(ctx)
 
 	case *corev1.Event_ProjectOpenDirPicker:
-		if k.ProjectOpenDirPicker != nil {
+		if k.ProjectOpenDirPicker != nil && k.ProjectOpenDirPicker.PickerKey != "" {
 			pickerKey := k.ProjectOpenDirPicker.PickerKey
 			dp := st.EnsureDirPicker(pickerKey)
 			machID := k.ProjectOpenDirPicker.MachineId
@@ -620,7 +628,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		}
 
 	case *corev1.Event_ProjectDirNavigate:
-		if k.ProjectDirNavigate != nil {
+		if k.ProjectDirNavigate != nil && k.ProjectDirNavigate.PickerKey != "" {
 			pickerKey := k.ProjectDirNavigate.PickerKey
 			dp := st.EnsureDirPicker(pickerKey)
 			machID := k.ProjectDirNavigate.MachineId
@@ -637,14 +645,12 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		}
 
 	case *corev1.Event_ProjectCloseDirPicker:
-		var pickerKey string
-		if k.ProjectCloseDirPicker != nil {
-			pickerKey = k.ProjectCloseDirPicker.PickerKey
+		if k.ProjectCloseDirPicker != nil && k.ProjectCloseDirPicker.PickerKey != "" {
+			if st.DirPickers != nil {
+				delete(st.DirPickers, k.ProjectCloseDirPicker.PickerKey)
+			}
+			ctx.Dirty.Add(false, true, true)
 		}
-		if st.DirPickers != nil {
-			delete(st.DirPickers, pickerKey)
-		}
-		ctx.Dirty.Add(false, true, true)
 
 	case *corev1.Event_NewSessionOpen:
 		if k.NewSessionOpen != nil {
@@ -870,6 +876,9 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 }
 
 func (c *Core) submitListDirs(ctx *sync.StepContext, pickerKey, machineID, dirPath string) {
+	if pickerKey == "" {
+		return
+	}
 	reqID, ok := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
 		MachineID: machineID,
 		Command: &v1.Command{

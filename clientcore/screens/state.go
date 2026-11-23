@@ -151,8 +151,11 @@ func NewState(w *world.State) *State {
 	}
 }
 
-// EnsureDirPicker returns the mutable DirPickerState for pickerKey ("" for the default slot).
+// EnsureDirPicker returns the mutable DirPickerState for a non-empty pickerKey, or nil when pickerKey is empty.
 func (st *State) EnsureDirPicker(pickerKey string) *DirPickerState {
+	if pickerKey == "" {
+		return nil
+	}
 	if st.DirPickers == nil {
 		st.DirPickers = make(map[string]*DirPickerState)
 	}
@@ -164,9 +167,9 @@ func (st *State) EnsureDirPicker(pickerKey string) *DirPickerState {
 	return dp
 }
 
-// DirPickerFor returns a copy of the DirPickerState for pickerKey (or zero value if absent).
+// DirPickerFor returns a copy of the DirPickerState for a non-empty pickerKey (or zero value if absent/empty).
 func (st *State) DirPickerFor(pickerKey string) DirPickerState {
-	if st == nil || st.DirPickers == nil {
+	if st == nil || pickerKey == "" || st.DirPickers == nil {
 		return DirPickerState{}
 	}
 	if dp := st.DirPickers[pickerKey]; dp != nil {

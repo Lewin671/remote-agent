@@ -134,13 +134,13 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_043,
 		Event: &corev1.Event_ProjectOpenDirPicker{
-			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "new-task", MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
 		},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_044,
 		Event: &corev1.Event_ProjectAdd{
-			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj"},
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj", PickerKey: "new-task"},
 		},
 	})
 	// Start a new session via NewSession flow and capture PendingStartPrompt.
@@ -1142,13 +1142,13 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_043,
 		Event: &corev1.Event_ProjectOpenDirPicker{
-			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "new-task", MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
 		},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_044,
 		Event: &corev1.Event_ProjectAdd{
-			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj"},
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj", PickerKey: "new-task"},
 		},
 	})
 	c.Dispatch(&corev1.Event{
@@ -1552,13 +1552,13 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_043,
 		Event: &corev1.Event_ProjectOpenDirPicker{
-			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "new-task", MachineId: "m-on", Path: "/Users/me/proj", ForNewTask: true},
 		},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_044,
 		Event: &corev1.Event_ProjectAdd{
-			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj"},
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/me/proj", PickerKey: "new-task"},
 		},
 	})
 	c.Dispatch(&corev1.Event{

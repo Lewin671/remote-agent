@@ -18,13 +18,13 @@ func TestNewSessionProjectAddAndLatePrefsReloadModels(t *testing.T) {
 	c.Dispatch(&corev1.Event{
 		NowMs: 1050,
 		Event: &corev1.Event_ProjectOpenDirPicker{
-			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-1", Path: "/Users/alice", ForNewTask: true},
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "new-task", MachineId: "m-1", Path: "/Users/alice", ForNewTask: true},
 		},
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1060,
 		Event: &corev1.Event_ProjectAdd{
-			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/alice"},
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/alice", PickerKey: "new-task"},
 		},
 	})
 	vm, err := c.View(&corev1.Screen{
@@ -313,5 +313,30 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 	}
 	if p := viewPicker("schedule"); p.GetOpen() || len(p.GetDirs()) != 0 {
 		t.Fatalf("closed schedule picker should stay empty after late ListDirectories, got %+v", p)
+	}
+
+	// Empty picker_key actions must be ignored and never allocate an implicit "" slot.
+	emptyOpen := c.Dispatch(&corev1.Event{
+		NowMs: 1140,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{MachineId: "m-1", Path: "/Users/alice/bad", ForNewTask: true},
+		},
+	})
+	for _, eff := range emptyOpen.GetEffects() {
+		if eff.GetDispatchCommand() != nil {
+			t.Fatalf("empty picker_key open must not dispatch ListDirectories: %+v", eff)
+		}
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1145,
+		Event: &corev1.Event_ProjectDirNavigate{
+			ProjectDirNavigate: &corev1.DirNavigateAction{MachineId: "m-1", Path: "/Users/alice/bad2"},
+		},
+	})
+	if c.m.state.DirPickers[""] != nil {
+		t.Fatalf("empty picker_key allocated an implicit default slot: %+v", c.m.state.DirPickers[""])
+	}
+	if p := viewPicker(""); p.GetOpen() || p.GetCurrentPath() != "" {
+		t.Fatalf("empty picker_key view must stay closed/empty, got %+v", p)
 	}
 }

@@ -1181,11 +1181,11 @@ export class CoreHost {
   projectSetSearch = (query: string) => this.emit({ case: "projectSetSearch", value: create(ProjectSetSearchActionSchema, { query }) });
   projectTogglePin = (projectKey: string) => this.emit({ case: "projectTogglePin", value: create(ProjectKeyActionSchema, { projectKey }) });
   projectToggleHide = (projectKey: string) => this.emit({ case: "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey }) });
-  projectOpenDirPicker = (forNewTask: boolean, machineId = "", path = "", pickerKey = "") =>
+  projectOpenDirPicker = (forNewTask: boolean, machineId: string, path: string, pickerKey: string) =>
     this.emit({ case: "projectOpenDirPicker", value: create(DirPickerOpenActionSchema, { forNewTask, machineId, path, pickerKey }) });
-  projectDirNavigate = (machineId: string, path: string, pickerKey = "") =>
+  projectDirNavigate = (machineId: string, path: string, pickerKey: string) =>
     this.emit({ case: "projectDirNavigate", value: create(DirNavigateActionSchema, { machineId, path, pickerKey }) });
-  projectCloseDirPicker = (pickerKey = "") =>
+  projectCloseDirPicker = (pickerKey: string) =>
     this.emit({ case: "projectCloseDirPicker", value: create(DirPickerCloseActionSchema, { pickerKey }) });
   projectAdd = (path: string, pickerKey = "") =>
     this.emit({ case: "projectAdd", value: create(ProjectAddActionSchema, { path, pickerKey }) });

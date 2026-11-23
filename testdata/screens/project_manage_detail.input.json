@@ -232,6 +232,7 @@
       "event": {
         "nowMs": "1791078060090",
         "projectOpenDirPicker": {
+          "pickerKey": "manage",
           "machineId": "m1",
           "path": "/Users/me/Code"
         }
@@ -272,7 +273,8 @@
             "project": {
               "projectKey": "",
               "manage": true,
-              "endedLimit": 50
+              "endedLimit": 50,
+              "pickerKey": "manage"
             }
           }
         }
@@ -282,7 +284,8 @@
       "event": {
         "nowMs": "1791078060110",
         "projectAdd": {
-          "path": "/Users/me/Code/delta"
+          "path": "/Users/me/Code/delta",
+          "pickerKey": "manage"
         }
       }
     },
@@ -360,6 +363,7 @@
       "event": {
         "nowMs": "1791078060140",
         "projectOpenDirPicker": {
+          "pickerKey": "manage",
           "machineId": "m1",
           "path": "/"
         }
@@ -400,7 +404,8 @@
             "project": {
               "projectKey": "",
               "manage": true,
-              "endedLimit": 50
+              "endedLimit": 50,
+              "pickerKey": "manage"
             }
           }
         }

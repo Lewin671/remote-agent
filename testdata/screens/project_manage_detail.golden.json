@@ -531,7 +531,8 @@
                     }
                   ]
                 },
-                "canConfirm": true
+                "canConfirm": true,
+                "pickerKey": "manage"
               },
               "projectCount": 2
             }
@@ -817,7 +818,8 @@
                     }
                   ]
                 },
-                "canConfirm": true
+                "canConfirm": true,
+                "pickerKey": "manage"
               },
               "projectCount": 3
             }
