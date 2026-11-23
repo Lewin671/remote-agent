@@ -129,4 +129,10 @@ message AttachmentEvalViewModel {
 
   repeated ImageProblemView problems = 23;
   Text failure_summary = 24;
+
+  // Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+  // per-message limit is reached); unset when picking is allowed. Shells show this
+  // instead of composing their own limit text.
+  Text images_pick_blocked_reason = 25;
+  Text files_pick_blocked_reason = 26;
 }

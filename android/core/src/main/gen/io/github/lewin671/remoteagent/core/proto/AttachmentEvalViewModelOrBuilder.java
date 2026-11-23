@@ -216,4 +216,38 @@ public interface AttachmentEvalViewModelOrBuilder extends
    * @return The failureSummary.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFailureSummary();
+
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   * @return Whether the imagesPickBlockedReason field is set.
+   */
+  boolean hasImagesPickBlockedReason();
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   * @return The imagesPickBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getImagesPickBlockedReason();
+
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   * @return Whether the filesPickBlockedReason field is set.
+   */
+  boolean hasFilesPickBlockedReason();
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   * @return The filesPickBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getFilesPickBlockedReason();
 }

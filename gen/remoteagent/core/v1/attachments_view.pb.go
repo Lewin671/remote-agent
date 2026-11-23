@@ -652,8 +652,13 @@ type AttachmentEvalViewModel struct {
 	Notice                   *Text                          `protobuf:"bytes,22,opt,name=notice,proto3" json:"notice,omitempty"`
 	Problems                 []*ImageProblemView            `protobuf:"bytes,23,rep,name=problems,proto3" json:"problems,omitempty"`
 	FailureSummary           *Text                          `protobuf:"bytes,24,opt,name=failure_summary,json=failureSummary,proto3" json:"failure_summary,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+	// per-message limit is reached); unset when picking is allowed. Shells show this
+	// instead of composing their own limit text.
+	ImagesPickBlockedReason *Text `protobuf:"bytes,25,opt,name=images_pick_blocked_reason,json=imagesPickBlockedReason,proto3" json:"images_pick_blocked_reason,omitempty"`
+	FilesPickBlockedReason  *Text `protobuf:"bytes,26,opt,name=files_pick_blocked_reason,json=filesPickBlockedReason,proto3" json:"files_pick_blocked_reason,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AttachmentEvalViewModel) Reset() {
@@ -854,6 +859,20 @@ func (x *AttachmentEvalViewModel) GetFailureSummary() *Text {
 	return nil
 }
 
+func (x *AttachmentEvalViewModel) GetImagesPickBlockedReason() *Text {
+	if x != nil {
+		return x.ImagesPickBlockedReason
+	}
+	return nil
+}
+
+func (x *AttachmentEvalViewModel) GetFilesPickBlockedReason() *Text {
+	if x != nil {
+		return x.FilesPickBlockedReason
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_attachments_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
@@ -898,8 +917,7 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\n" +
 	"candidates\x18\x05 \x03(\v2-.remoteagent.core.v1.AttachmentCandidateInputR\n" +
 	"candidates\x12B\n" +
-	"\bproblems\x18\x06 \x03(\v2&.remoteagent.core.v1.ImageProblemInputR\bproblems\"\xb3\n" +
-	"\n" +
+	"\bproblems\x18\x06 \x03(\v2&.remoteagent.core.v1.ImageProblemInputR\bproblems\"\xe1\v\n" +
 	"\x17AttachmentEvalViewModel\x12/\n" +
 	"\x13capabilities_loaded\x18\x01 \x01(\bR\x12capabilitiesLoaded\x12'\n" +
 	"\x0fsupports_images\x18\x02 \x01(\bR\x0esupportsImages\x12%\n" +
@@ -926,7 +944,9 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\tdecisions\x18\x15 \x03(\v20.remoteagent.core.v1.AttachmentCandidateDecisionR\tdecisions\x121\n" +
 	"\x06notice\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\x06notice\x12A\n" +
 	"\bproblems\x18\x17 \x03(\v2%.remoteagent.core.v1.ImageProblemViewR\bproblems\x12B\n" +
-	"\x0ffailure_summary\x18\x18 \x01(\v2\x19.remoteagent.core.v1.TextR\x0efailureSummary*\xbf\x02\n" +
+	"\x0ffailure_summary\x18\x18 \x01(\v2\x19.remoteagent.core.v1.TextR\x0efailureSummary\x12V\n" +
+	"\x1aimages_pick_blocked_reason\x18\x19 \x01(\v2\x19.remoteagent.core.v1.TextR\x17imagesPickBlockedReason\x12T\n" +
+	"\x19files_pick_blocked_reason\x18\x1a \x01(\v2\x19.remoteagent.core.v1.TextR\x16filesPickBlockedReason*\xbf\x02\n" +
 	"\x10ImageProblemKind\x12\"\n" +
 	"\x1eIMAGE_PROBLEM_KIND_UNSPECIFIED\x10\x00\x12)\n" +
 	"%IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE\x10\x01\x12!\n" +
@@ -998,11 +1018,13 @@ var file_remoteagent_core_v1_attachments_view_proto_depIdxs = []int32{
 	9,  // 14: remoteagent.core.v1.AttachmentEvalViewModel.notice:type_name -> remoteagent.core.v1.Text
 	4,  // 15: remoteagent.core.v1.AttachmentEvalViewModel.problems:type_name -> remoteagent.core.v1.ImageProblemView
 	9,  // 16: remoteagent.core.v1.AttachmentEvalViewModel.failure_summary:type_name -> remoteagent.core.v1.Text
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	9,  // 17: remoteagent.core.v1.AttachmentEvalViewModel.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	9,  // 18: remoteagent.core.v1.AttachmentEvalViewModel.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_attachments_view_proto_init() }
