@@ -1,0 +1,380 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "clockUpdated": {
+          "nowMs": "1791078060000",
+          "todayStartMs": "1791043200000",
+          "yesterdayStartMs": "1790956800000",
+          "weekStartMs": "1790524800000",
+          "nowYear": 2026,
+          "months": [
+            {
+              "year": 2026,
+              "month": 10,
+              "startMs": "1790812800000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "1000",
+        "randomIds": ["r-1", "r-2", "r-3", "r-4", "r-5"],
+        "unitFloats": [0.5, 0.5, 0.5, 0.5],
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060010",
+        "tokenResult": {
+          "opId": "1",
+          "token": "tok-1",
+          "expiresMs": "1791164460000"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060020",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060020"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060030",
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": ["m1"],
+            "trustedClientIds": ["dev-1"]
+          },
+          "machines": [
+            {
+              "machineId": "m1",
+              "online": true,
+              "meta": {
+                "hostname": "Studio",
+                "home": "/Users/me",
+                "protocolVersion": 17,
+                "capabilities": {
+                  "imageUpload": true,
+                  "fileUpload": true,
+                  "sharedFiles": true,
+                  "maxImagesPerMessage": 8,
+                  "maxFilesPerMessage": 10,
+                  "maxFileUploadBytes": "209715200"
+                }
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-media",
+              "machineId": "m1",
+              "lastSeq": "4",
+              "meta": {
+                "id": "s-media",
+                "cwd": "/Users/me/proj",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING",
+                "title": "Media & Shared Files"
+              }
+            }
+          ],
+          "sessionEvents": [
+            {
+              "sessionId": "s-media",
+              "events": [
+                {
+                  "seq": "1",
+                  "sessionId": "s-media",
+                  "time": "2026-10-03T12:00:01Z",
+                  "userMessage": {
+                    "text": "[Image #1]电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800,
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png"
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200,
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg"
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "seq": "2",
+                  "sessionId": "s-media",
+                  "time": "2026-10-03T12:00:02Z",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "kind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ]
+                  }
+                },
+                {
+                  "seq": "3",
+                  "sessionId": "s-media",
+                  "time": "2026-10-03T12:00:03Z",
+                  "imageGenerated": {
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ],
+                    "revisedPrompt": "clean vector diagram"
+                  }
+                },
+                {
+                  "seq": "4",
+                  "sessionId": "s-media",
+                  "time": "2026-10-03T12:00:04Z",
+                  "toolCall": {
+                    "callId": "tc-share",
+                    "kind": "TOOL_KIND_OTHER",
+                    "title": "send_file",
+                    "sharedFiles": [
+                      {
+                        "fileId": "sf-video",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sha256": "AQIDBA=="
+                      },
+                      {
+                        "fileId": "sf-doc",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "sha256": "BQYHCA=="
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "views": [
+        {
+          "name": "session_initial",
+          "screen": {
+            "session": {
+              "sessionId": "s-media"
+            }
+          }
+        },
+        {
+          "name": "attachment_eval",
+          "screen": {
+            "attachmentEval": {
+              "sessionId": "s-media",
+              "currentImages": 7,
+              "currentFiles": 5,
+              "candidates": [
+                {
+                  "name": "ok.jpg",
+                  "mimeType": "image/jpeg",
+                  "sizeBytes": "2048",
+                  "fromGallery": true
+                },
+                {
+                  "name": "overflow.jpg",
+                  "mimeType": "image/jpeg",
+                  "sizeBytes": "2048",
+                  "fromGallery": true
+                },
+                {
+                  "name": "huge.mov",
+                  "sizeBytes": "125829120",
+                  "fromGallery": true
+                },
+                {
+                  "name": "clip.mp4",
+                  "mimeType": "video/mp4",
+                  "sizeBytes": "5242880",
+                  "fromGallery": true
+                }
+              ],
+              "problems": [
+                {
+                  "errorCode": "resource_exhausted"
+                },
+                {
+                  "rawDiagnostic": "fetch timeout"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060100",
+        "sharedFileLocalState": {
+          "updates": [
+            {
+              "sessionId": "s-media",
+              "fileId": "sf-video",
+              "status": "SHARED_FILE_TRANSFER_STATUS_DOWNLOADING",
+              "downloadedBytes": "2621440",
+              "hasEta": true,
+              "etaSeconds": 75
+            },
+            {
+              "sessionId": "s-media",
+              "fileId": "sf-doc",
+              "status": "SHARED_FILE_TRANSFER_STATUS_DOWNLOADED",
+              "downloadedBytes": "262144"
+            }
+          ]
+        }
+      },
+      "views": [
+        {
+          "name": "session_downloading",
+          "screen": {
+            "session": {
+              "sessionId": "s-media"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060200",
+        "sharedFileLocalState": {
+          "updates": [
+            {
+              "sessionId": "s-media",
+              "fileId": "sf-video",
+              "status": "SHARED_FILE_TRANSFER_STATUS_DOWNLOADED",
+              "downloadedBytes": "10485760",
+              "hasDuration": true,
+              "durationMs": "125400"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060250",
+        "localeChanged": {
+          "uiLocale": "en"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060300",
+        "sessionImageViewerOpen": {
+          "sessionId": "s-media",
+          "seq": "2",
+          "imageIndex": 0
+        }
+      },
+      "views": [
+        {
+          "name": "session_en_viewer_open",
+          "screen": {
+            "session": {
+              "sessionId": "s-media"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060350",
+        "sessionImageViewerNavigate": {
+          "sessionId": "s-media",
+          "delta": 1
+        }
+      },
+      "views": [
+        {
+          "name": "session_viewer_next",
+          "screen": {
+            "session": {
+              "sessionId": "s-media"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060400",
+        "sessionImageViewerClose": {
+          "sessionId": "s-media"
+        }
+      },
+      "views": [
+        {
+          "name": "session_viewer_closed",
+          "screen": {
+            "session": {
+              "sessionId": "s-media"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060500",
+        "sessionRetryLoad": {
+          "sessionId": "s-media"
+        }
+      }
+    }
+  ]
+}

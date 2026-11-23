@@ -1,0 +1,3823 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start",
+              "delayMs": "1500"
+            }
+          },
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "attachment_eval": {
+          "attachmentEval": {
+            "capabilitiesLoaded": true,
+            "supportsImages": true,
+            "supportsFiles": true,
+            "maxImages": 8,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "galleryAllowsVideo": true,
+            "galleryAcceptMime": "image/*,video/*",
+            "imageUploadBlockedReason": {
+              "key": "attachment.disconnected"
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.disconnected_files"
+            },
+            "galleryBlockedReason": {
+              "key": "attachment.disconnected"
+            },
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
+            },
+            "decisions": [
+              {
+                "route": "ATTACHMENT_CANDIDATE_ROUTE_REJECTED",
+                "rejectKind": "ATTACHMENT_REJECT_KIND_IMAGES_UNSUPPORTED",
+                "rejectReason": {
+                  "key": "attachment.disconnected"
+                },
+                "displayName": "ok.jpg",
+                "formattedSize": "2.0 KB"
+              },
+              {
+                "route": "ATTACHMENT_CANDIDATE_ROUTE_REJECTED",
+                "rejectKind": "ATTACHMENT_REJECT_KIND_IMAGES_UNSUPPORTED",
+                "rejectReason": {
+                  "key": "attachment.disconnected"
+                },
+                "displayName": "overflow.jpg",
+                "formattedSize": "2.0 KB"
+              },
+              {
+                "route": "ATTACHMENT_CANDIDATE_ROUTE_REJECTED",
+                "rejectKind": "ATTACHMENT_REJECT_KIND_FILES_UNSUPPORTED",
+                "rejectReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "displayName": "huge.mov",
+                "formattedSize": "120.0 MB",
+                "isVideo": true
+              },
+              {
+                "route": "ATTACHMENT_CANDIDATE_ROUTE_REJECTED",
+                "rejectKind": "ATTACHMENT_REJECT_KIND_FILES_UNSUPPORTED",
+                "rejectReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "displayName": "clip.mp4",
+                "formattedSize": "5.0 MB",
+                "isVideo": true
+              }
+            ],
+            "notice": {
+              "join": [
+                {
+                  "key": "attachment.disconnected"
+                },
+                {
+                  "key": "attachment.disconnected_files"
+                }
+              ],
+              "separatorKey": "common.note_separator"
+            },
+            "problems": [
+              {
+                "kind": "IMAGE_PROBLEM_KIND_STORAGE_FULL",
+                "message": {
+                  "key": "image.the_computer_s_attachment_storage_is_full_clear_space"
+                },
+                "retryable": true
+              },
+              {
+                "kind": "IMAGE_PROBLEM_KIND_UPLOAD_FAILED",
+                "message": {
+                  "key": "image.the_image_could_not_reach_the_computer_retry_when"
+                },
+                "retryable": true
+              }
+            ],
+            "failureSummary": {
+              "key": "image.attach_failed",
+              "args": [
+                {
+                  "name": "count",
+                  "intValue": "2"
+                }
+              ]
+            }
+          }
+        },
+        "session_initial": {
+          "session": {
+            "sessionId": "s-media",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Media \u0026 Shared Files"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTING",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 8,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.disconnected"
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "end": {
+                "slotKey": "stop:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "rename": {
+                "slotKey": "rename:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.android_fork_connected"
+              },
+              "fork": {
+                "slotKey": "fork:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_connected"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "setMode": {
+                "slotKey": "set_mode:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.android_fork_connected"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "disabledReason": {
+                "key": "composer.ios_connect_send"
+              },
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {
+                "offline": true
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "userMessage": {
+                    "text": "电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864",
+                        "displayName": "very-long-architecture-specification-2026.pdf",
+                        "nameHead": "very-long-architecture-specification-2",
+                        "nameTail": "026.pdf",
+                        "sizeText": {
+                          "literal": "1.5 MB"
+                        }
+                      }
+                    ],
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Studio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "imageIndex": 1,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "1"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "电脑上，"
+                      },
+                      {
+                        "imageIndex": 2,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "2"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "手机上"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "seq": "2",
+                  "endSeq": "2",
+                  "timestampMs": "1791028802000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ],
+                    "seq": "2"
+                  }
+                },
+                {
+                  "id": "e3",
+                  "seq": "3",
+                  "endSeq": "3",
+                  "timestampMs": "1791028803000",
+                  "generatedImages": {
+                    "revisedPrompt": "clean vector diagram",
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791028804000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "fileId": "sf-video",
+                        "available": true,
+                        "sha256": "AQIDBA==",
+                        "displayName": "product-walkthrough-recording-2026.mp4",
+                        "nameHead": "product-walkthrough-recording-2",
+                        "nameTail": "026.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "10.0 MB"
+                        },
+                        "displayPath": "~/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_OFFLINE",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_offline"
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "product-walkthrough-recording-2026.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.subtitle_offline"
+                              }
+                            }
+                          ]
+                        },
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_DOWNLOAD",
+                        "primaryLabel": {
+                          "key": "shared_file.action_download"
+                        },
+                        "primaryDisabledReason": {
+                          "key": "shared_file.subtitle_offline"
+                        },
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      },
+                      {
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "fileId": "sf-doc",
+                        "available": true,
+                        "sha256": "BQYHCA==",
+                        "displayName": "design-notes.docx",
+                        "nameHead": "design-no",
+                        "nameTail": "tes.docx",
+                        "kind": "SHARED_FILE_KIND_DOC",
+                        "kindLabel": {
+                          "key": "shared_file.type_other"
+                        },
+                        "sizeText": {
+                          "literal": "256.0 KB"
+                        },
+                        "displayPath": "~/proj/docs/design-notes.docx",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_OFFLINE",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_offline"
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "design-notes.docx"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.subtitle_offline"
+                              }
+                            }
+                          ]
+                        },
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_DOWNLOAD",
+                        "primaryLabel": {
+                          "key": "shared_file.action_download"
+                        },
+                        "primaryDisabledReason": {
+                          "key": "shared_file.subtitle_offline"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 4,
+              "loaded": true,
+              "viewerImages": [
+                {
+                  "seq": "1",
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 1,
+                    "path": "/Users/me/proj/desktop.png",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1200,
+                    "height": 800
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "1200 × 800",
+                  "aspectRatio": 1.5,
+                  "clampedAspectRatio": 1.5,
+                  "hasDisplayCopy": true,
+                  "displayName": "desktop.png",
+                  "displayPath": "~/proj/desktop.png",
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                },
+                {
+                  "viewerIndex": 1,
+                  "seq": "1",
+                  "eventImageIndex": 1,
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u2",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 2,
+                    "path": "/Users/me/proj/phone.jpg",
+                    "format": "IMAGE_FORMAT_JPEG",
+                    "width": 400,
+                    "height": 1200
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "400 × 1200",
+                  "aspectRatio": 0.3333333333333333,
+                  "clampedAspectRatio": 0.4,
+                  "hasDisplayCopy": true,
+                  "displayName": "phone.jpg",
+                  "displayPath": "~/proj/phone.jpg",
+                  "fileExtension": "jpg",
+                  "mimeType": "image/jpeg"
+                },
+                {
+                  "viewerIndex": 2,
+                  "seq": "2",
+                  "timestampMs": "1791028802000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                  "ref": {
+                    "imageId": "img-t1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_WEBP",
+                    "width": 800,
+                    "height": 600
+                  },
+                  "toolTitle": "inspect_screenshot",
+                  "sourceLabel": {
+                    "key": "image.tool_source",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "800 × 600",
+                  "aspectRatio": 1.3333333333333333,
+                  "clampedAspectRatio": 1.3333333333333333,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "webp",
+                  "mimeType": "image/webp"
+                },
+                {
+                  "viewerIndex": 3,
+                  "seq": "3",
+                  "timestampMs": "1791028803000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                  "ref": {
+                    "imageId": "img-g1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "revisedPrompt": "clean vector diagram",
+                  "sourceLabel": {
+                    "key": "image.generated_by",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "1024 × 1024",
+                  "aspectRatio": 1,
+                  "clampedAspectRatio": 1,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                }
+              ]
+            },
+            "imageViewer": {
+              "totalCount": 4,
+              "hasNext": true,
+              "positionText": {
+                "literal": "1 / 4"
+              },
+              "currentImage": {
+                "seq": "1",
+                "timestampMs": "1791028801000",
+                "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                "ref": {
+                  "imageId": "img-u1",
+                  "sync": "IMAGE_SYNC_SYNCED",
+                  "cliIndex": 1,
+                  "path": "/Users/me/proj/desktop.png",
+                  "format": "IMAGE_FORMAT_PNG",
+                  "width": 1200,
+                  "height": 800
+                },
+                "sourceLabel": {
+                  "key": "image.user_source"
+                },
+                "sizeText": "1200 × 800",
+                "aspectRatio": 1.5,
+                "clampedAspectRatio": 1.5,
+                "hasDisplayCopy": true,
+                "displayName": "desktop.png",
+                "displayPath": "~/proj/desktop.png",
+                "fileExtension": "png",
+                "mimeType": "image/png"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_downloading": {
+          "session": {
+            "sessionId": "s-media",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Media \u0026 Shared Files"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTING",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 8,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.disconnected"
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "end": {
+                "slotKey": "stop:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "rename": {
+                "slotKey": "rename:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.android_fork_connected"
+              },
+              "fork": {
+                "slotKey": "fork:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_connected"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "setMode": {
+                "slotKey": "set_mode:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.android_fork_connected"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "disabledReason": {
+                "key": "composer.ios_connect_send"
+              },
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {
+                "offline": true
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "userMessage": {
+                    "text": "电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864",
+                        "displayName": "very-long-architecture-specification-2026.pdf",
+                        "nameHead": "very-long-architecture-specification-2",
+                        "nameTail": "026.pdf",
+                        "sizeText": {
+                          "literal": "1.5 MB"
+                        }
+                      }
+                    ],
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Studio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "imageIndex": 1,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "1"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "电脑上，"
+                      },
+                      {
+                        "imageIndex": 2,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "2"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "手机上"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "seq": "2",
+                  "endSeq": "2",
+                  "timestampMs": "1791028802000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ],
+                    "seq": "2"
+                  }
+                },
+                {
+                  "id": "e3",
+                  "seq": "3",
+                  "endSeq": "3",
+                  "timestampMs": "1791028803000",
+                  "generatedImages": {
+                    "revisedPrompt": "clean vector diagram",
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791028804000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "fileId": "sf-video",
+                        "available": true,
+                        "sha256": "AQIDBA==",
+                        "displayName": "product-walkthrough-recording-2026.mp4",
+                        "nameHead": "product-walkthrough-recording-2",
+                        "nameTail": "026.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "10.0 MB"
+                        },
+                        "displayPath": "~/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADING",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_downloading_eta",
+                          "args": [
+                            {
+                              "name": "downloaded",
+                              "strValue": "2.5"
+                            },
+                            {
+                              "name": "total",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "eta",
+                              "textValue": {
+                                "key": "shared_file.eta_minutes",
+                                "args": [
+                                  {
+                                    "name": "count",
+                                    "intValue": "2"
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "product-walkthrough-recording-2026.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloading"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "2621440",
+                        "progress": 0.25,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_PAUSE",
+                        "primaryLabel": {
+                          "key": "shared_file.action_pause"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_PAUSE",
+                            "label": {
+                              "key": "shared_file.action_pause"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD",
+                            "label": {
+                              "key": "shared_file.action_cancel_download"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      },
+                      {
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "fileId": "sf-doc",
+                        "available": true,
+                        "sha256": "BQYHCA==",
+                        "displayName": "design-notes.docx",
+                        "nameHead": "design-no",
+                        "nameTail": "tes.docx",
+                        "kind": "SHARED_FILE_KIND_DOC",
+                        "kindLabel": {
+                          "key": "shared_file.type_other"
+                        },
+                        "sizeText": {
+                          "literal": "256.0 KB"
+                        },
+                        "displayPath": "~/proj/docs/design-notes.docx",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_kind_size",
+                          "args": [
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "design-notes.docx"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "262144",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 4,
+              "loaded": true,
+              "viewerImages": [
+                {
+                  "seq": "1",
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 1,
+                    "path": "/Users/me/proj/desktop.png",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1200,
+                    "height": 800
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "1200 × 800",
+                  "aspectRatio": 1.5,
+                  "clampedAspectRatio": 1.5,
+                  "hasDisplayCopy": true,
+                  "displayName": "desktop.png",
+                  "displayPath": "~/proj/desktop.png",
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                },
+                {
+                  "viewerIndex": 1,
+                  "seq": "1",
+                  "eventImageIndex": 1,
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u2",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 2,
+                    "path": "/Users/me/proj/phone.jpg",
+                    "format": "IMAGE_FORMAT_JPEG",
+                    "width": 400,
+                    "height": 1200
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "400 × 1200",
+                  "aspectRatio": 0.3333333333333333,
+                  "clampedAspectRatio": 0.4,
+                  "hasDisplayCopy": true,
+                  "displayName": "phone.jpg",
+                  "displayPath": "~/proj/phone.jpg",
+                  "fileExtension": "jpg",
+                  "mimeType": "image/jpeg"
+                },
+                {
+                  "viewerIndex": 2,
+                  "seq": "2",
+                  "timestampMs": "1791028802000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                  "ref": {
+                    "imageId": "img-t1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_WEBP",
+                    "width": 800,
+                    "height": 600
+                  },
+                  "toolTitle": "inspect_screenshot",
+                  "sourceLabel": {
+                    "key": "image.tool_source",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "800 × 600",
+                  "aspectRatio": 1.3333333333333333,
+                  "clampedAspectRatio": 1.3333333333333333,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "webp",
+                  "mimeType": "image/webp"
+                },
+                {
+                  "viewerIndex": 3,
+                  "seq": "3",
+                  "timestampMs": "1791028803000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                  "ref": {
+                    "imageId": "img-g1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "revisedPrompt": "clean vector diagram",
+                  "sourceLabel": {
+                    "key": "image.generated_by",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "1024 × 1024",
+                  "aspectRatio": 1,
+                  "clampedAspectRatio": 1,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                }
+              ]
+            },
+            "imageViewer": {
+              "totalCount": 4,
+              "hasNext": true,
+              "positionText": {
+                "literal": "1 / 4"
+              },
+              "currentImage": {
+                "seq": "1",
+                "timestampMs": "1791028801000",
+                "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                "ref": {
+                  "imageId": "img-u1",
+                  "sync": "IMAGE_SYNC_SYNCED",
+                  "cliIndex": 1,
+                  "path": "/Users/me/proj/desktop.png",
+                  "format": "IMAGE_FORMAT_PNG",
+                  "width": 1200,
+                  "height": 800
+                },
+                "sourceLabel": {
+                  "key": "image.user_source"
+                },
+                "sizeText": "1200 × 800",
+                "aspectRatio": 1.5,
+                "clampedAspectRatio": 1.5,
+                "hasDisplayCopy": true,
+                "displayName": "desktop.png",
+                "displayPath": "~/proj/desktop.png",
+                "fileExtension": "png",
+                "mimeType": "image/png"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_MACHINE_STATUS",
+                "SCREEN_TARGET_MACHINE_SETTINGS",
+                "SCREEN_TARGET_USAGE",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_en_viewer_open": {
+          "session": {
+            "sessionId": "s-media",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Media \u0026 Shared Files"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTING",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 8,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.disconnected"
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "end": {
+                "slotKey": "stop:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "rename": {
+                "slotKey": "rename:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.android_fork_connected"
+              },
+              "fork": {
+                "slotKey": "fork:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_connected"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "setMode": {
+                "slotKey": "set_mode:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.android_fork_connected"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "disabledReason": {
+                "key": "composer.ios_connect_send"
+              },
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {
+                "offline": true
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "userMessage": {
+                    "text": "电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864",
+                        "displayName": "very-long-architecture-specification-2026.pdf",
+                        "nameHead": "very-long-architecture-specification-2",
+                        "nameTail": "026.pdf",
+                        "sizeText": {
+                          "literal": "1.5 MB"
+                        }
+                      }
+                    ],
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Studio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "imageIndex": 1,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "1"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "电脑上，"
+                      },
+                      {
+                        "imageIndex": 2,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "2"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "手机上"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "seq": "2",
+                  "endSeq": "2",
+                  "timestampMs": "1791028802000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ],
+                    "seq": "2"
+                  }
+                },
+                {
+                  "id": "e3",
+                  "seq": "3",
+                  "endSeq": "3",
+                  "timestampMs": "1791028803000",
+                  "generatedImages": {
+                    "revisedPrompt": "clean vector diagram",
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791028804000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "fileId": "sf-video",
+                        "available": true,
+                        "sha256": "AQIDBA==",
+                        "displayName": "product-walkthrough-recording-2026.mp4",
+                        "nameHead": "product-walkthrough-recording-2",
+                        "nameTail": "026.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "10.0 MB"
+                        },
+                        "displayPath": "~/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_media_size",
+                          "args": [
+                            {
+                              "name": "duration",
+                              "strValue": "2:05"
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "product-walkthrough-recording-2026.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "10485760",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM",
+                            "label": {
+                              "key": "shared_file.menu_save_to_album"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "durationText": "2:05",
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      },
+                      {
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "fileId": "sf-doc",
+                        "available": true,
+                        "sha256": "BQYHCA==",
+                        "displayName": "design-notes.docx",
+                        "nameHead": "design-no",
+                        "nameTail": "tes.docx",
+                        "kind": "SHARED_FILE_KIND_DOC",
+                        "kindLabel": {
+                          "key": "shared_file.type_other"
+                        },
+                        "sizeText": {
+                          "literal": "256.0 KB"
+                        },
+                        "displayPath": "~/proj/docs/design-notes.docx",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_kind_size",
+                          "args": [
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "design-notes.docx"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "262144",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 4,
+              "loaded": true,
+              "viewerImages": [
+                {
+                  "seq": "1",
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 1,
+                    "path": "/Users/me/proj/desktop.png",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1200,
+                    "height": 800
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "1200 × 800",
+                  "aspectRatio": 1.5,
+                  "clampedAspectRatio": 1.5,
+                  "hasDisplayCopy": true,
+                  "displayName": "desktop.png",
+                  "displayPath": "~/proj/desktop.png",
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                },
+                {
+                  "viewerIndex": 1,
+                  "seq": "1",
+                  "eventImageIndex": 1,
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u2",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 2,
+                    "path": "/Users/me/proj/phone.jpg",
+                    "format": "IMAGE_FORMAT_JPEG",
+                    "width": 400,
+                    "height": 1200
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "400 × 1200",
+                  "aspectRatio": 0.3333333333333333,
+                  "clampedAspectRatio": 0.4,
+                  "hasDisplayCopy": true,
+                  "displayName": "phone.jpg",
+                  "displayPath": "~/proj/phone.jpg",
+                  "fileExtension": "jpg",
+                  "mimeType": "image/jpeg"
+                },
+                {
+                  "viewerIndex": 2,
+                  "seq": "2",
+                  "timestampMs": "1791028802000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                  "ref": {
+                    "imageId": "img-t1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_WEBP",
+                    "width": 800,
+                    "height": 600
+                  },
+                  "toolTitle": "inspect_screenshot",
+                  "sourceLabel": {
+                    "key": "image.tool_source",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "800 × 600",
+                  "aspectRatio": 1.3333333333333333,
+                  "clampedAspectRatio": 1.3333333333333333,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "webp",
+                  "mimeType": "image/webp"
+                },
+                {
+                  "viewerIndex": 3,
+                  "seq": "3",
+                  "timestampMs": "1791028803000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                  "ref": {
+                    "imageId": "img-g1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "revisedPrompt": "clean vector diagram",
+                  "sourceLabel": {
+                    "key": "image.generated_by",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "1024 × 1024",
+                  "aspectRatio": 1,
+                  "clampedAspectRatio": 1,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                }
+              ]
+            },
+            "imageViewer": {
+              "open": true,
+              "currentIndex": 2,
+              "totalCount": 4,
+              "hasPrev": true,
+              "hasNext": true,
+              "positionText": {
+                "literal": "3 / 4"
+              },
+              "currentImage": {
+                "viewerIndex": 2,
+                "seq": "2",
+                "timestampMs": "1791028802000",
+                "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                "ref": {
+                  "imageId": "img-t1",
+                  "sync": "IMAGE_SYNC_SYNCED",
+                  "format": "IMAGE_FORMAT_WEBP",
+                  "width": 800,
+                  "height": 600
+                },
+                "toolTitle": "inspect_screenshot",
+                "sourceLabel": {
+                  "key": "image.tool_source",
+                  "args": [
+                    {
+                      "name": "agent",
+                      "strValue": "Codex"
+                    }
+                  ]
+                },
+                "sizeText": "800 × 600",
+                "aspectRatio": 1.3333333333333333,
+                "clampedAspectRatio": 1.3333333333333333,
+                "hasDisplayCopy": true,
+                "fileExtension": "webp",
+                "mimeType": "image/webp"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_viewer_next": {
+          "session": {
+            "sessionId": "s-media",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Media \u0026 Shared Files"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTING",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 8,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.disconnected"
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "end": {
+                "slotKey": "stop:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "rename": {
+                "slotKey": "rename:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.android_fork_connected"
+              },
+              "fork": {
+                "slotKey": "fork:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_connected"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "setMode": {
+                "slotKey": "set_mode:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.android_fork_connected"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "disabledReason": {
+                "key": "composer.ios_connect_send"
+              },
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {
+                "offline": true
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "userMessage": {
+                    "text": "电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864",
+                        "displayName": "very-long-architecture-specification-2026.pdf",
+                        "nameHead": "very-long-architecture-specification-2",
+                        "nameTail": "026.pdf",
+                        "sizeText": {
+                          "literal": "1.5 MB"
+                        }
+                      }
+                    ],
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Studio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "imageIndex": 1,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "1"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "电脑上，"
+                      },
+                      {
+                        "imageIndex": 2,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "2"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "手机上"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "seq": "2",
+                  "endSeq": "2",
+                  "timestampMs": "1791028802000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ],
+                    "seq": "2"
+                  }
+                },
+                {
+                  "id": "e3",
+                  "seq": "3",
+                  "endSeq": "3",
+                  "timestampMs": "1791028803000",
+                  "generatedImages": {
+                    "revisedPrompt": "clean vector diagram",
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791028804000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "fileId": "sf-video",
+                        "available": true,
+                        "sha256": "AQIDBA==",
+                        "displayName": "product-walkthrough-recording-2026.mp4",
+                        "nameHead": "product-walkthrough-recording-2",
+                        "nameTail": "026.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "10.0 MB"
+                        },
+                        "displayPath": "~/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_media_size",
+                          "args": [
+                            {
+                              "name": "duration",
+                              "strValue": "2:05"
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "product-walkthrough-recording-2026.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "10485760",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM",
+                            "label": {
+                              "key": "shared_file.menu_save_to_album"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "durationText": "2:05",
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      },
+                      {
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "fileId": "sf-doc",
+                        "available": true,
+                        "sha256": "BQYHCA==",
+                        "displayName": "design-notes.docx",
+                        "nameHead": "design-no",
+                        "nameTail": "tes.docx",
+                        "kind": "SHARED_FILE_KIND_DOC",
+                        "kindLabel": {
+                          "key": "shared_file.type_other"
+                        },
+                        "sizeText": {
+                          "literal": "256.0 KB"
+                        },
+                        "displayPath": "~/proj/docs/design-notes.docx",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_kind_size",
+                          "args": [
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "design-notes.docx"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "262144",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 4,
+              "loaded": true,
+              "viewerImages": [
+                {
+                  "seq": "1",
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 1,
+                    "path": "/Users/me/proj/desktop.png",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1200,
+                    "height": 800
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "1200 × 800",
+                  "aspectRatio": 1.5,
+                  "clampedAspectRatio": 1.5,
+                  "hasDisplayCopy": true,
+                  "displayName": "desktop.png",
+                  "displayPath": "~/proj/desktop.png",
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                },
+                {
+                  "viewerIndex": 1,
+                  "seq": "1",
+                  "eventImageIndex": 1,
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u2",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 2,
+                    "path": "/Users/me/proj/phone.jpg",
+                    "format": "IMAGE_FORMAT_JPEG",
+                    "width": 400,
+                    "height": 1200
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "400 × 1200",
+                  "aspectRatio": 0.3333333333333333,
+                  "clampedAspectRatio": 0.4,
+                  "hasDisplayCopy": true,
+                  "displayName": "phone.jpg",
+                  "displayPath": "~/proj/phone.jpg",
+                  "fileExtension": "jpg",
+                  "mimeType": "image/jpeg"
+                },
+                {
+                  "viewerIndex": 2,
+                  "seq": "2",
+                  "timestampMs": "1791028802000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                  "ref": {
+                    "imageId": "img-t1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_WEBP",
+                    "width": 800,
+                    "height": 600
+                  },
+                  "toolTitle": "inspect_screenshot",
+                  "sourceLabel": {
+                    "key": "image.tool_source",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "800 × 600",
+                  "aspectRatio": 1.3333333333333333,
+                  "clampedAspectRatio": 1.3333333333333333,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "webp",
+                  "mimeType": "image/webp"
+                },
+                {
+                  "viewerIndex": 3,
+                  "seq": "3",
+                  "timestampMs": "1791028803000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                  "ref": {
+                    "imageId": "img-g1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "revisedPrompt": "clean vector diagram",
+                  "sourceLabel": {
+                    "key": "image.generated_by",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "1024 × 1024",
+                  "aspectRatio": 1,
+                  "clampedAspectRatio": 1,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                }
+              ]
+            },
+            "imageViewer": {
+              "open": true,
+              "currentIndex": 3,
+              "totalCount": 4,
+              "hasPrev": true,
+              "positionText": {
+                "literal": "4 / 4"
+              },
+              "currentImage": {
+                "viewerIndex": 3,
+                "seq": "3",
+                "timestampMs": "1791028803000",
+                "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                "ref": {
+                  "imageId": "img-g1",
+                  "sync": "IMAGE_SYNC_SYNCED",
+                  "format": "IMAGE_FORMAT_PNG",
+                  "width": 1024,
+                  "height": 1024
+                },
+                "revisedPrompt": "clean vector diagram",
+                "sourceLabel": {
+                  "key": "image.generated_by",
+                  "args": [
+                    {
+                      "name": "agent",
+                      "strValue": "Codex"
+                    }
+                  ]
+                },
+                "sizeText": "1024 × 1024",
+                "aspectRatio": 1,
+                "clampedAspectRatio": 1,
+                "hasDisplayCopy": true,
+                "fileExtension": "png",
+                "mimeType": "image/png"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_viewer_closed": {
+          "session": {
+            "sessionId": "s-media",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Media \u0026 Shared Files"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTING",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "supportsImages": true,
+                "supportsFiles": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 8,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.disconnected"
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.disconnected_files"
+                },
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "end": {
+                "slotKey": "stop:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "rename": {
+                "slotKey": "rename:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "forkBlockedReason": {
+                "key": "session.android_fork_connected"
+              },
+              "fork": {
+                "slotKey": "fork:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "compact": {
+                "slotKey": "compact:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modelSwitchBlockedReason": {
+                "key": "session.switch_connected"
+              },
+              "setModel": {
+                "slotKey": "set_model:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "setMode": {
+                "slotKey": "set_mode:s-media",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  }
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.android_fork_connected"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "disabledReason": {
+                "key": "composer.ios_connect_send"
+              },
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {
+                "offline": true
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "userMessage": {
+                    "text": "电脑上，[Image #2]手机上",
+                    "images": [
+                      {
+                        "imageId": "img-u1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 1,
+                        "path": "/Users/me/proj/desktop.png",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1200,
+                        "height": 800
+                      },
+                      {
+                        "imageId": "img-u2",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "cliIndex": 2,
+                        "path": "/Users/me/proj/phone.jpg",
+                        "format": "IMAGE_FORMAT_JPEG",
+                        "width": 400,
+                        "height": 1200
+                      }
+                    ],
+                    "files": [
+                      {
+                        "name": "very-long-architecture-specification-2026.pdf",
+                        "sizeBytes": "1572864",
+                        "displayName": "very-long-architecture-specification-2026.pdf",
+                        "nameHead": "very-long-architecture-specification-2",
+                        "nameTail": "026.pdf",
+                        "sizeText": {
+                          "literal": "1.5 MB"
+                        }
+                      }
+                    ],
+                    "originCaption": {
+                      "key": "session.origin_terminal",
+                      "args": [
+                        {
+                          "name": "name",
+                          "strValue": "Studio"
+                        }
+                      ]
+                    },
+                    "typedLocally": true,
+                    "textSegments": [
+                      {
+                        "imageIndex": 1,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "1"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "电脑上，"
+                      },
+                      {
+                        "imageIndex": 2,
+                        "imageLabel": {
+                          "key": "image.placeholder",
+                          "args": [
+                            {
+                              "name": "index",
+                              "intValue": "2"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "text": "手机上"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e2",
+                  "seq": "2",
+                  "endSeq": "2",
+                  "timestampMs": "1791028802000",
+                  "toolCall": {
+                    "callId": "tc-1",
+                    "toolKind": "TOOL_KIND_OTHER",
+                    "title": "inspect_screenshot",
+                    "status": "SESSION_TOOL_STATUS_OK",
+                    "images": [
+                      {
+                        "imageId": "img-t1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_WEBP",
+                        "width": 800,
+                        "height": 600
+                      }
+                    ],
+                    "seq": "2"
+                  }
+                },
+                {
+                  "id": "e3",
+                  "seq": "3",
+                  "endSeq": "3",
+                  "timestampMs": "1791028803000",
+                  "generatedImages": {
+                    "revisedPrompt": "clean vector diagram",
+                    "images": [
+                      {
+                        "imageId": "img-g1",
+                        "sync": "IMAGE_SYNC_SYNCED",
+                        "format": "IMAGE_FORMAT_PNG",
+                        "width": 1024,
+                        "height": 1024
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "e4",
+                  "seq": "4",
+                  "endSeq": "4",
+                  "timestampMs": "1791028804000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
+                        "name": "product-walkthrough-recording-2026.mp4",
+                        "sizeBytes": "10485760",
+                        "fileId": "sf-video",
+                        "available": true,
+                        "sha256": "AQIDBA==",
+                        "displayName": "product-walkthrough-recording-2026.mp4",
+                        "nameHead": "product-walkthrough-recording-2",
+                        "nameTail": "026.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "10.0 MB"
+                        },
+                        "displayPath": "~/proj/out/product-walkthrough-recording-2026.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_media_size",
+                          "args": [
+                            {
+                              "name": "duration",
+                              "strValue": "2:05"
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "product-walkthrough-recording-2026.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "10.0 MB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "10485760",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM",
+                            "label": {
+                              "key": "shared_file.menu_save_to_album"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "durationText": "2:05",
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      },
+                      {
+                        "path": "/Users/me/proj/docs/design-notes.docx",
+                        "name": "design-notes.docx",
+                        "sizeBytes": "262144",
+                        "fileId": "sf-doc",
+                        "available": true,
+                        "sha256": "BQYHCA==",
+                        "displayName": "design-notes.docx",
+                        "nameHead": "design-no",
+                        "nameTail": "tes.docx",
+                        "kind": "SHARED_FILE_KIND_DOC",
+                        "kindLabel": {
+                          "key": "shared_file.type_other"
+                        },
+                        "sizeText": {
+                          "literal": "256.0 KB"
+                        },
+                        "displayPath": "~/proj/docs/design-notes.docx",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_kind_size",
+                          "args": [
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "design-notes.docx"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_other"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "256.0 KB"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "262144",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "4",
+              "totalItems": 4,
+              "loaded": true,
+              "viewerImages": [
+                {
+                  "seq": "1",
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 1,
+                    "path": "/Users/me/proj/desktop.png",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1200,
+                    "height": 800
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "1200 × 800",
+                  "aspectRatio": 1.5,
+                  "clampedAspectRatio": 1.5,
+                  "hasDisplayCopy": true,
+                  "displayName": "desktop.png",
+                  "displayPath": "~/proj/desktop.png",
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                },
+                {
+                  "viewerIndex": 1,
+                  "seq": "1",
+                  "eventImageIndex": 1,
+                  "timestampMs": "1791028801000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                  "ref": {
+                    "imageId": "img-u2",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "cliIndex": 2,
+                    "path": "/Users/me/proj/phone.jpg",
+                    "format": "IMAGE_FORMAT_JPEG",
+                    "width": 400,
+                    "height": 1200
+                  },
+                  "sourceLabel": {
+                    "key": "image.user_source"
+                  },
+                  "sizeText": "400 × 1200",
+                  "aspectRatio": 0.3333333333333333,
+                  "clampedAspectRatio": 0.4,
+                  "hasDisplayCopy": true,
+                  "displayName": "phone.jpg",
+                  "displayPath": "~/proj/phone.jpg",
+                  "fileExtension": "jpg",
+                  "mimeType": "image/jpeg"
+                },
+                {
+                  "viewerIndex": 2,
+                  "seq": "2",
+                  "timestampMs": "1791028802000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_TOOL",
+                  "ref": {
+                    "imageId": "img-t1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_WEBP",
+                    "width": 800,
+                    "height": 600
+                  },
+                  "toolTitle": "inspect_screenshot",
+                  "sourceLabel": {
+                    "key": "image.tool_source",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "800 × 600",
+                  "aspectRatio": 1.3333333333333333,
+                  "clampedAspectRatio": 1.3333333333333333,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "webp",
+                  "mimeType": "image/webp"
+                },
+                {
+                  "viewerIndex": 3,
+                  "seq": "3",
+                  "timestampMs": "1791028803000",
+                  "kind": "SESSION_IMAGE_SOURCE_KIND_GENERATED",
+                  "ref": {
+                    "imageId": "img-g1",
+                    "sync": "IMAGE_SYNC_SYNCED",
+                    "format": "IMAGE_FORMAT_PNG",
+                    "width": 1024,
+                    "height": 1024
+                  },
+                  "revisedPrompt": "clean vector diagram",
+                  "sourceLabel": {
+                    "key": "image.generated_by",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "sizeText": "1024 × 1024",
+                  "aspectRatio": 1,
+                  "clampedAspectRatio": 1,
+                  "hasDisplayCopy": true,
+                  "fileExtension": "png",
+                  "mimeType": "image/png"
+                }
+              ]
+            },
+            "imageViewer": {
+              "totalCount": 4,
+              "hasNext": true,
+              "positionText": {
+                "literal": "1 / 4"
+              },
+              "currentImage": {
+                "seq": "1",
+                "timestampMs": "1791028801000",
+                "kind": "SESSION_IMAGE_SOURCE_KIND_USER",
+                "ref": {
+                  "imageId": "img-u1",
+                  "sync": "IMAGE_SYNC_SYNCED",
+                  "cliIndex": 1,
+                  "path": "/Users/me/proj/desktop.png",
+                  "format": "IMAGE_FORMAT_PNG",
+                  "width": 1200,
+                  "height": 800
+                },
+                "sourceLabel": {
+                  "key": "image.user_source"
+                },
+                "sizeText": "1200 × 800",
+                "aspectRatio": 1.5,
+                "clampedAspectRatio": 1.5,
+                "hasDisplayCopy": true,
+                "displayName": "desktop.png",
+                "displayPath": "~/proj/desktop.png",
+                "fileExtension": "png",
+                "mimeType": "image/png"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA",
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
