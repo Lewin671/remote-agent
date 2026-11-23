@@ -128,6 +128,9 @@ message MachineChartView {
   Text a11y_summary = 11;
   bool can_step_prev = 12;
   bool can_step_next = 13;
+  double scrub_numeric_value = 14;
+  string scrub_value_text = 15;
+  string scrub_unit = 16;
 }
 
 message MachineCpuSection {

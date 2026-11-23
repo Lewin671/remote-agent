@@ -4717,6 +4717,7 @@ type SecurityOpenNotifyEvent struct {
 	MachineId    string
 	ExpectedKind v1.NotifyKind
 	EventKey     string
+	FallbackBody *string
 }
 
 func (m *SecurityOpenNotifyEvent) GetOpId() uint64 {
@@ -4779,6 +4780,12 @@ func (m *SecurityOpenNotifyEvent) GetEventKey() string {
 	}
 	return ""
 }
+func (m *SecurityOpenNotifyEvent) GetFallbackBody() string {
+	if m != nil && m.FallbackBody != nil {
+		return *m.FallbackBody
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityOpenNotifyEvent{}) },
@@ -4793,6 +4800,7 @@ var LitewireDesc_SecurityOpenNotifyEvent = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.MachineId), Kind: litewire.KindString},
 		{Num: 9, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.ExpectedKind), Kind: litewire.KindInt32},
 		{Num: 10, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.EventKey), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityOpenNotifyEvent{}.FallbackBody), Kind: litewire.KindString, Flags: litewire.FlagOptional},
 	},
 }
 
@@ -4820,6 +4828,7 @@ type SecurityNotifyDisplay struct {
 	BigText               *Text
 	SharedFilesSuffix     *Text
 	SharedFileCount       int32
+	FullGenericBody       *Text
 }
 
 func (m *SecurityNotifyDisplay) GetValid() bool {
@@ -4930,6 +4939,12 @@ func (m *SecurityNotifyDisplay) GetSharedFileCount() int32 {
 	}
 	return 0
 }
+func (m *SecurityNotifyDisplay) GetFullGenericBody() *Text {
+	if m != nil {
+		return m.FullGenericBody
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityNotifyDisplay = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4951,6 +4966,7 @@ var LitewireDesc_SecurityNotifyDisplay = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.BigText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 17, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFilesSuffix), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 18, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFileCount), Kind: litewire.KindInt32},
+		{Num: 19, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.FullGenericBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

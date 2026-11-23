@@ -957,6 +957,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction getSessionUndoCancel();
 
   /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   * @return Whether the sessionRetryLoad field is set.
+   */
+  boolean hasSessionRetryLoad();
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   * @return The sessionRetryLoad.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction getSessionRetryLoad();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
    * @return Whether the scheduleCacheLoaded field is set.
    */

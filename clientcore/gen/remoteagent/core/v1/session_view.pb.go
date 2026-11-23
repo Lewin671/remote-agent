@@ -4975,6 +4975,29 @@ func (m *SessionRefreshHistoryAction) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRefreshHistoryAction)
 }
 
+type SessionRetryLoadAction struct {
+	_         [0]func()
+	SessionId string
+}
+
+func (m *SessionRetryLoadAction) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+
+var LitewireDesc_SessionRetryLoadAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SessionRetryLoadAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionRetryLoadAction{}.SessionId), Kind: litewire.KindString},
+	},
+}
+
+func (m *SessionRetryLoadAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRetryLoadAction)
+}
+
 type SessionRestoreComposerEffect struct {
 	_         [0]func()
 	SessionId string

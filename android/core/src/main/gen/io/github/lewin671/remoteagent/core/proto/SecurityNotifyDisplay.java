@@ -725,6 +725,54 @@ public  final class SecurityNotifyDisplay extends
     sharedFileCount_ = 0;
   }
 
+  public static final int FULL_GENERIC_BODY_FIELD_NUMBER = 19;
+  private io.github.lewin671.remoteagent.core.proto.Text fullGenericBody_;
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFullGenericBody() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFullGenericBody() {
+    return fullGenericBody_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : fullGenericBody_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFullGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    fullGenericBody_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFullGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (fullGenericBody_ != null &&
+        fullGenericBody_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      fullGenericBody_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(fullGenericBody_).mergeFrom(value).buildPartial();
+    } else {
+      fullGenericBody_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   */
+  private void clearFullGenericBody() {
+    fullGenericBody_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1542,6 +1590,53 @@ public  final class SecurityNotifyDisplay extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFullGenericBody() {
+      return instance.hasFullGenericBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFullGenericBody() {
+      return instance.getFullGenericBody();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    public Builder setFullGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFullGenericBody(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    public Builder setFullGenericBody(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFullGenericBody(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    public Builder mergeFullGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFullGenericBody(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+     */
+    public Builder clearFullGenericBody() {  copyOnWrite();
+      instance.clearFullGenericBody();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityNotifyDisplay)
   }
   @java.lang.Override
@@ -1577,12 +1672,13 @@ public  final class SecurityNotifyDisplay extends
             "bigText_",
             "sharedFilesSuffix_",
             "sharedFileCount_",
+            "fullGenericBody_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0000\u0000\u0001\u0007\u0002\f" +
+              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0007\u0002\f" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0003\b\u0002\t\u0007\n\u0007" +
               "\u000b\u0007\f\u1009\u0000\r\u1009\u0001\u000e\u1009\u0002\u000f\u1009\u0003\u0010" +
-              "\u1009\u0004\u0011\u1009\u0005\u0012\u0004";
+              "\u1009\u0004\u0011\u1009\u0005\u0012\u0004\u0013\u1009\u0006";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

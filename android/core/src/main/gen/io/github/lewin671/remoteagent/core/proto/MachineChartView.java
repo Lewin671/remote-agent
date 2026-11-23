@@ -16,6 +16,8 @@ public  final class MachineChartView extends
     MachineChartViewOrBuilder {
   private MachineChartView() {
     points_ = emptyProtobufList();
+    scrubValueText_ = "";
+    scrubUnit_ = "";
   }
   private int bitField0_;
   public static final int VISIBLE_FIELD_NUMBER = 1;
@@ -491,6 +493,128 @@ public  final class MachineChartView extends
   private void clearCanStepNext() {
 
     canStepNext_ = false;
+  }
+
+  public static final int SCRUB_NUMERIC_VALUE_FIELD_NUMBER = 14;
+  private double scrubNumericValue_;
+  /**
+   * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+   * @return The scrubNumericValue.
+   */
+  @java.lang.Override
+  public double getScrubNumericValue() {
+    return scrubNumericValue_;
+  }
+  /**
+   * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+   * @param value The scrubNumericValue to set.
+   */
+  private void setScrubNumericValue(double value) {
+    
+    scrubNumericValue_ = value;
+  }
+  /**
+   * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+   */
+  private void clearScrubNumericValue() {
+
+    scrubNumericValue_ = 0D;
+  }
+
+  public static final int SCRUB_VALUE_TEXT_FIELD_NUMBER = 15;
+  private java.lang.String scrubValueText_;
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @return The scrubValueText.
+   */
+  @java.lang.Override
+  public java.lang.String getScrubValueText() {
+    return scrubValueText_;
+  }
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @return The bytes for scrubValueText.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScrubValueTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scrubValueText_);
+  }
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @param value The scrubValueText to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScrubValueText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scrubValueText_ = value;
+  }
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   */
+  private void clearScrubValueText() {
+
+    scrubValueText_ = getDefaultInstance().getScrubValueText();
+  }
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @param value The bytes for scrubValueText to set.
+   */
+  private void setScrubValueTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scrubValueText_ = value.toStringUtf8();
+
+  }
+
+  public static final int SCRUB_UNIT_FIELD_NUMBER = 16;
+  private java.lang.String scrubUnit_;
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @return The scrubUnit.
+   */
+  @java.lang.Override
+  public java.lang.String getScrubUnit() {
+    return scrubUnit_;
+  }
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @return The bytes for scrubUnit.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getScrubUnitBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(scrubUnit_);
+  }
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @param value The scrubUnit to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScrubUnit(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    scrubUnit_ = value;
+  }
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   */
+  private void clearScrubUnit() {
+
+    scrubUnit_ = getDefaultInstance().getScrubUnit();
+  }
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @param value The bytes for scrubUnit to set.
+   */
+  private void setScrubUnitBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    scrubUnit_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineChartView parseFrom(
@@ -1085,6 +1209,132 @@ public  final class MachineChartView extends
       return this;
     }
 
+    /**
+     * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+     * @return The scrubNumericValue.
+     */
+    @java.lang.Override
+    public double getScrubNumericValue() {
+      return instance.getScrubNumericValue();
+    }
+    /**
+     * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+     * @param value The scrubNumericValue to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScrubNumericValue(double value) {
+      copyOnWrite();
+      instance.setScrubNumericValue(value);
+      return this;
+    }
+    /**
+     * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScrubNumericValue() {
+      copyOnWrite();
+      instance.clearScrubNumericValue();
+      return this;
+    }
+
+    /**
+     * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+     * @return The scrubValueText.
+     */
+    @java.lang.Override
+    public java.lang.String getScrubValueText() {
+      return instance.getScrubValueText();
+    }
+    /**
+     * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+     * @return The bytes for scrubValueText.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScrubValueTextBytes() {
+      return instance.getScrubValueTextBytes();
+    }
+    /**
+     * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+     * @param value The scrubValueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScrubValueText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScrubValueText(value);
+      return this;
+    }
+    /**
+     * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScrubValueText() {
+      copyOnWrite();
+      instance.clearScrubValueText();
+      return this;
+    }
+    /**
+     * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+     * @param value The bytes for scrubValueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScrubValueTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScrubValueTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+     * @return The scrubUnit.
+     */
+    @java.lang.Override
+    public java.lang.String getScrubUnit() {
+      return instance.getScrubUnit();
+    }
+    /**
+     * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+     * @return The bytes for scrubUnit.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getScrubUnitBytes() {
+      return instance.getScrubUnitBytes();
+    }
+    /**
+     * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+     * @param value The scrubUnit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScrubUnit(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setScrubUnit(value);
+      return this;
+    }
+    /**
+     * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearScrubUnit() {
+      copyOnWrite();
+      instance.clearScrubUnit();
+      return this;
+    }
+    /**
+     * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+     * @param value The bytes for scrubUnit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setScrubUnitBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setScrubUnitBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineChartView)
   }
   @java.lang.Override
@@ -1116,11 +1366,15 @@ public  final class MachineChartView extends
             "a11YSummary_",
             "canStepPrev_",
             "canStepNext_",
+            "scrubNumericValue_",
+            "scrubValueText_",
+            "scrubUnit_",
           };
           java.lang.String info =
-              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0001\u0000\u0001\u0007\u0002\u001b\u0003\u0002" +
-              "\u0004\u0002\u0005\u0002\u0006\u0000\u0007\u0007\b\u0004\t\u1009\u0000\n\u1009\u0001" +
-              "\u000b\u1009\u0002\f\u0007\r\u0007";
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0001\u0000\u0001\u0007\u0002\u001b" +
+              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u0000\u0007\u0007\b\u0004\t\u1009\u0000" +
+              "\n\u1009\u0001\u000b\u1009\u0002\f\u0007\r\u0007\u000e\u0000\u000f\u0208\u0010\u0208" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -1073,7 +1073,10 @@
                     }
                   ]
                 },
-                "canStepNext": true
+                "canStepNext": true,
+                "scrubNumericValue": 18,
+                "scrubValueText": "18",
+                "scrubUnit": "%"
               },
               "value": 24.4,
               "valueText": "24",
@@ -2181,7 +2184,10 @@
                       }
                     }
                   ]
-                }
+                },
+                "scrubNumericValue": 11,
+                "scrubValueText": "11",
+                "scrubUnit": "%"
               },
               "value": 11,
               "valueText": "11",

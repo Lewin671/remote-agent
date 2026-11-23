@@ -107,6 +107,7 @@ public  final class Event extends
     SESSION_RESUME_TRAY_ITEM(212),
     SESSION_CANCEL_ALL_PAUSED(213),
     SESSION_UNDO_CANCEL(214),
+    SESSION_RETRY_LOAD(215),
     SCHEDULE_CACHE_LOADED(300),
     SCHEDULE_SEEN_LOADED(301),
     SCHEDULE_LOCAL_CONTEXT(302),
@@ -275,6 +276,7 @@ public  final class Event extends
         case 212: return SESSION_RESUME_TRAY_ITEM;
         case 213: return SESSION_CANCEL_ALL_PAUSED;
         case 214: return SESSION_UNDO_CANCEL;
+        case 215: return SESSION_RETRY_LOAD;
         case 300: return SCHEDULE_CACHE_LOADED;
         case 301: return SCHEDULE_SEEN_LOADED;
         case 302: return SCHEDULE_LOCAL_CONTEXT;
@@ -4830,6 +4832,58 @@ public  final class Event extends
    */
   private void clearSessionUndoCancel() {
     if (eventCase_ == 214) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int SESSION_RETRY_LOAD_FIELD_NUMBER = 215;
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSessionRetryLoad() {
+    return eventCase_ == 215;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction getSessionRetryLoad() {
+    if (eventCase_ == 215) {
+       return (io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSessionRetryLoad(io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 215;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeSessionRetryLoad(io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 215 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction.newBuilder((io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 215;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+   */
+  private void clearSessionRetryLoad() {
+    if (eventCase_ == 215) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -12795,6 +12849,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSessionRetryLoad() {
+      return instance.hasSessionRetryLoad();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction getSessionRetryLoad() {
+      return instance.getSessionRetryLoad();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    public Builder setSessionRetryLoad(io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction value) {
+      copyOnWrite();
+      instance.setSessionRetryLoad(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    public Builder setSessionRetryLoad(
+        io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSessionRetryLoad(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    public Builder mergeSessionRetryLoad(io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction value) {
+      copyOnWrite();
+      instance.mergeSessionRetryLoad(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionRetryLoadAction session_retry_load = 215 [json_name = "sessionRetryLoad"];</code>
+     */
+    public Builder clearSessionRetryLoad() {
+      copyOnWrite();
+      instance.clearSessionRetryLoad();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
      */
     @java.lang.Override
@@ -16335,6 +16437,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SessionTrayItemAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.class,
             io.github.lewin671.remoteagent.core.proto.SessionTraySessionAction.class,
+            io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
@@ -16428,7 +16531,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u009d\u0001\u0000\u0001\u01d1\u009d\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u009e\u0001\u0000\u0001\u01d1\u009e\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -16437,21 +16540,21 @@ public  final class Event extends
               "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
               "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
               "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
-              "<\u0000\u00d5<\u0000\u00d6<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
-              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
-              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
-              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
-              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
-              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
-              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
-              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178" +
-              "<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000" +
-              "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196" +
-              "<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000" +
-              "\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3" +
-              "<\u0000\u01a4<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000" +
-              "\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf" +
-              "<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000" +
+              "\u012f<\u0000\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a" +
+              "<\u0000\u0140<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000" +
+              "\u0146<\u0000\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f" +
+              "<\u0000\u0152<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000" +
+              "\u0158<\u0000\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e" +
+              "<\u0000\u015f<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000" +
+              "\u0169<\u0000\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177" +
+              "<\u0000\u0178<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000" +
+              "\u017e<\u0000\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193" +
+              "<\u0000\u0196<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000" +
+              "\u019c<\u0000\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2" +
+              "<\u0000\u01a3<\u0000\u01a4<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000" +
+              "\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce" +
+              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

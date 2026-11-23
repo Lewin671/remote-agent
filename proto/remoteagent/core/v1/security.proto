@@ -670,6 +670,7 @@ message SecurityOpenNotifyEvent {
   string machine_id = 8;
   remoteagent.v1.NotifyKind expected_kind = 9;
   string event_key = 10;
+  optional string fallback_body = 11;
 }
 
 message SecurityNotifyDisplay {
@@ -691,6 +692,7 @@ message SecurityNotifyDisplay {
   Text big_text = 16;
   Text shared_files_suffix = 17;
   int32 shared_file_count = 18;
+  Text full_generic_body = 19;
 }
 
 message SecurityNotifyOpenedEffect {

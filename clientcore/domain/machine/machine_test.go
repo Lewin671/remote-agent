@@ -381,3 +381,46 @@ func TestMachineStatusRawValuesUnitsAndTopUsageBars(t *testing.T) {
 		t.Fatalf("expected formatted cpu/memory values on usage row: %+v", rows[0])
 	}
 }
+
+func TestBuildChartScrubFormattedParts(t *testing.T) {
+	status := &v1.MachineStatus{
+		MemoryTotalBytes: 32 * gibBytes,
+		Samples: []*v1.MachineSample{
+			{TimeMs: 10_000, CpuPercent: 42.4, MemoryUsedBytes: 512 * mibBytes},
+			{TimeMs: 12_000, CpuPercent: 99.6, MemoryUsedBytes: 1024*mibBytes - 100*1024}, // 1023.9 MiB -> carries to 1 GB
+			{TimeMs: 14_000, CpuPercent: 0, MemoryUsedBytes: 8*gibBytes + 410*mibBytes},
+			{TimeMs: 16_000, CpuPercent: 15.0, MemoryUsedBytes: 12 * gibBytes},
+		},
+	}
+
+	cases := []struct {
+		name     string
+		memory   bool
+		scrubIdx int32
+		hasScrub bool
+		wantText string
+		wantUnit string
+		wantNum  float64
+	}{
+		{name: "no scrub clears fields", memory: false, scrubIdx: 0, hasScrub: false, wantText: "", wantUnit: "", wantNum: 0},
+		{name: "cpu rounds to integer percent", memory: false, scrubIdx: 0, hasScrub: true, wantText: "42", wantUnit: "%", wantNum: 42.4},
+		{name: "cpu rounds up", memory: false, scrubIdx: 1, hasScrub: true, wantText: "100", wantUnit: "%", wantNum: 99.6},
+		{name: "memory sub-GB in MB", memory: true, scrubIdx: 0, hasScrub: true, wantText: "512", wantUnit: "MB", wantNum: 512},
+		{name: "memory near 1 GiB carries to 1 GB", memory: true, scrubIdx: 1, hasScrub: true, wantText: "1", wantUnit: "GB", wantNum: 1},
+		{name: "memory under 10 GB uses 1 decimal", memory: true, scrubIdx: 2, hasScrub: true, wantText: "8.4", wantUnit: "GB", wantNum: 8.4},
+		{name: "memory 10+ GB uses integer", memory: true, scrubIdx: 3, hasScrub: true, wantText: "12", wantUnit: "GB", wantNum: 12},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ch := BuildChart(status, true, 0, tc.memory, tc.scrubIdx, tc.hasScrub)
+			if ch.ScrubValueText != tc.wantText || ch.ScrubUnit != tc.wantUnit {
+				t.Fatalf("got (%q, %q), want (%q, %q)", ch.ScrubValueText, ch.ScrubUnit, tc.wantText, tc.wantUnit)
+			}
+			diff := ch.ScrubNumericValue - tc.wantNum
+			if diff < -0.05 || diff > 0.05 {
+				t.Fatalf("ScrubNumericValue = %v, want ~%v", ch.ScrubNumericValue, tc.wantNum)
+			}
+		})
+	}
+}

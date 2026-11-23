@@ -1792,3 +1792,175 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 			claimedVM.GetHeader().GetIsScheduled(), claimedVM.GetHeader().GetTaskOwned())
 	}
 }
+
+func TestSessionRetryLoadAction(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	// Start sync and connect stream so FetchSessionById and GetEvents RPCs can be issued.
+	effStart := c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var tokOp uint64
+	for _, ef := range effStart.GetEffects() {
+		if et := ef.GetEnsureToken(); et != nil {
+			tokOp = et.GetOpId()
+		}
+	}
+	effTok := c.Dispatch(&corev1.Event{
+		NowMs: 1010,
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok", ExpiresMs: 60_000},
+		},
+	})
+	var legID uint64
+	for _, ef := range effTok.GetEffects() {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.GetLegId()
+		}
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1020,
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 1020},
+		},
+	})
+
+	// 1. Open an unknown session -> issues FetchSessionById RPC.
+	eff1 := c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_SessionOpen{
+			SessionOpen: &corev1.SessionOpenAction{SessionId: "s-retry"},
+		},
+	})
+	var op1 uint64
+	for _, ef := range eff1.GetEffects() {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().GetSessionId() == "s-retry" {
+			op1 = rpc.GetOpId()
+		}
+	}
+	if op1 == 0 {
+		t.Fatalf("expected FetchSessionById RPC on SessionOpen")
+	}
+
+	// 2. Fail the lookup -> header reports LookupFailed + LookupErrorText.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1200,
+		Event: &corev1.Event_SessionByIdFetched{
+			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+				OpId:  op1,
+				Error: "rpc unavailable",
+			},
+		},
+	})
+	vmFailW, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-retry"}}})
+	if err != nil {
+		t.Fatalf("View failed: %v", err)
+	}
+	vmFail := vmFailW.GetSession()
+	if !vmFail.GetHeader().GetLookupFailed() || vmFail.GetHeader().GetLookupErrorText().GetLiteral() != "rpc unavailable" {
+		t.Fatalf("expected LookupFailed with rpc unavailable, got %+v", vmFail.GetHeader())
+	}
+
+	// 3. Dispatch unified SessionRetryLoadAction -> clears failure, re-issues FetchSessionById RPC, marks SESSION dirty.
+	effRetry := c.Dispatch(&corev1.Event{
+		NowMs: 1300,
+		Event: &corev1.Event_SessionRetryLoad{
+			SessionRetryLoad: &corev1.SessionRetryLoadAction{SessionId: "s-retry"},
+		},
+	})
+	var op2 uint64
+	var renderedSession bool
+	for _, ef := range effRetry.GetEffects() {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().GetSessionId() == "s-retry" {
+			op2 = rpc.GetOpId()
+		}
+		if r := ef.GetRender(); r != nil {
+			for _, sc := range r.GetScreens() {
+				if sc == corev1.ScreenTarget_SCREEN_TARGET_SESSION {
+					renderedSession = true
+				}
+			}
+		}
+	}
+	if op2 == 0 || op2 == op1 {
+		t.Fatalf("expected fresh FetchSessionById RPC on SessionRetryLoadAction, op1=%d op2=%d", op1, op2)
+	}
+	if !renderedSession {
+		t.Fatalf("expected SCREEN_TARGET_SESSION render effect on SessionRetryLoadAction")
+	}
+	vmLoadingW, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-retry"}}})
+	if err != nil {
+		t.Fatalf("View loading failed: %v", err)
+	}
+	vmLoading := vmLoadingW.GetSession()
+	if vmLoading.GetHeader().GetLookupFailed() {
+		t.Fatalf("expected LookupFailed=false while retry lookup is in flight")
+	}
+
+	// 4. Succeed lookup with a session that has lastSeq=5, complete cache read, fail initial GetEvents, then retry via SessionRetryLoadAction.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1400,
+		Event: &corev1.Event_SessionByIdFetched{
+			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+				OpId: op2,
+				Session: &corev1.PlainSession{
+					SessionId: "s-retry",
+					MachineId: "m1",
+					LastSeq:   5,
+					Meta:      &v1.Session{Id: "s-retry", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+				},
+			},
+		},
+	})
+	effWatch := c.Dispatch(&corev1.Event{
+		NowMs: 1450,
+		Event: &corev1.Event_SessionWatch{
+			SessionWatch: &corev1.SessionWatchEvent{SessionId: "s-retry", Watched: true},
+		},
+	})
+	var cacheOp uint64
+	for _, ef := range effWatch.GetEffects() {
+		if cr := ef.GetCacheRead(); cr != nil && cr.GetEvents() != nil {
+			cacheOp = cr.GetEvents().GetOpId()
+		}
+	}
+	effCache := c.Dispatch(&corev1.Event{
+		NowMs: 1460,
+		Event: &corev1.Event_CacheEventsLoaded{
+			CacheEventsLoaded: &corev1.CacheEventsLoadedEvent{OpId: cacheOp, SessionId: "s-retry"},
+		},
+	})
+	var fetchEvOp uint64
+	for _, ef := range effCache.GetEffects() {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil {
+			fetchEvOp = rpc.GetOpId()
+		}
+	}
+	if fetchEvOp > 0 {
+		c.Dispatch(&corev1.Event{
+			NowMs: 1470,
+			Event: &corev1.Event_EventsPageFetched{
+				EventsPageFetched: &corev1.EventsPageFetchedEvent{OpId: fetchEvOp, SessionId: "s-retry", Error: "timeout"},
+			},
+		})
+	}
+	effRetry2 := c.Dispatch(&corev1.Event{
+		NowMs: 1500,
+		Event: &corev1.Event_SessionRetryLoad{
+			SessionRetryLoad: &corev1.SessionRetryLoadAction{SessionId: "s-retry"},
+		},
+	})
+	var gotEventsRPC bool
+	for _, ef := range effRetry2.GetEffects() {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetEvents() != nil && rpc.GetGetEvents().GetSessionId() == "s-retry" {
+			gotEventsRPC = true
+		}
+	}
+	if !gotEventsRPC {
+		t.Fatalf("expected GetEvents RPC when retrying an already-loaded session with failed event load")
+	}
+}

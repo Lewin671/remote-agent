@@ -478,7 +478,11 @@ func BuildChart(
 			out.HasScrub = true
 			out.ScrubIndex = scrubIndex
 			p := pts[scrubIndex]
-			out.ScrubValue = formatChartValue(p.Value, memory)
+			full, num, valText, unit := formatChartParts(p.Value, memory)
+			out.ScrubValue = full
+			out.ScrubNumericValue = num
+			out.ScrubValueText = valText
+			out.ScrubUnit = unit
 			secs := int64(math.Round(float64(endMs-p.TimeMs)/2000.0)) * 2
 			if secs <= 0 {
 				out.ScrubAge = text.Msg(text.KeyMachineStatusAxisNow)
@@ -495,13 +499,30 @@ func BuildChart(
 }
 
 func formatChartValue(v float64, memory bool) *corev1.Text {
+	full, _, _, _ := formatChartParts(v, memory)
+	return full
+}
+
+func formatChartParts(v float64, memory bool) (full *corev1.Text, numeric float64, valueText string, unit string) {
 	if !memory {
-		return text.Plain(pctText(v))
+		pct := int(math.Round(v))
+		valueText = strconv.Itoa(pct)
+		return text.Plain(valueText + "%"), v, valueText, "%"
 	}
-	if v < 0 {
+	if v < 0 || math.IsNaN(v) {
 		v = 0
 	}
-	return FormatBinarySize(uint64(math.Round(v)))
+	bytes := uint64(math.Round(v))
+	if bytes >= gibBytes {
+		valueText = gbNumber(bytes, true)
+		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", valueText)), float64(bytes) / float64(gibBytes), valueText, "GB"
+	}
+	mb := math.Round(float64(bytes) / float64(mibBytes))
+	if mb >= 1024 {
+		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", "1")), 1, "1", "GB"
+	}
+	valueText = strconv.FormatFloat(mb, 'f', 0, 64)
+	return text.Msg(text.KeyMachineStatusSizeMb, text.Str("size", valueText)), mb, valueText, "MB"
 }
 
 // StableUsage orders rows preserving previous IDs unless a neighbor leads by > threshold

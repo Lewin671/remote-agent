@@ -2430,11 +2430,21 @@ public struct PBSecurityOpenNotifyEvent: Sendable {
 
   public var eventKey: String = String()
 
+  public var fallbackBody: String {
+    get {return _fallbackBody ?? String()}
+    set {_fallbackBody = newValue}
+  }
+  /// Returns true if `fallbackBody` has been explicitly set.
+  public var hasFallbackBody: Bool {return self._fallbackBody != nil}
+  /// Clears the value of `fallbackBody`. Subsequent reads from it will return its default value.
+  public mutating func clearFallbackBody() {self._fallbackBody = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _envelope: PBEnvelope? = nil
+  fileprivate var _fallbackBody: String? = nil
 }
 
 public struct PBSecurityNotifyDisplay: @unchecked Sendable {
@@ -2555,6 +2565,15 @@ public struct PBSecurityNotifyDisplay: @unchecked Sendable {
     get {return _storage._sharedFileCount}
     set {_uniqueStorage()._sharedFileCount = newValue}
   }
+
+  public var fullGenericBody: PBCoreText {
+    get {return _storage._fullGenericBody ?? PBCoreText()}
+    set {_uniqueStorage()._fullGenericBody = newValue}
+  }
+  /// Returns true if `fullGenericBody` has been explicitly set.
+  public var hasFullGenericBody: Bool {return _storage._fullGenericBody != nil}
+  /// Clears the value of `fullGenericBody`. Subsequent reads from it will return its default value.
+  public mutating func clearFullGenericBody() {_uniqueStorage()._fullGenericBody = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -6753,7 +6772,7 @@ extension PBSecurityStatusChangedEffect: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityOpenNotifyEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}notify_blob\0\u{3}record_blob\0\u{1}envelope\0\u{3}now_ms\0\u{3}session_id\0\u{1}tag\0\u{3}machine_id\0\u{3}expected_kind\0\u{3}event_key\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}notify_blob\0\u{3}record_blob\0\u{1}envelope\0\u{3}now_ms\0\u{3}session_id\0\u{1}tag\0\u{3}machine_id\0\u{3}expected_kind\0\u{3}event_key\0\u{3}fallback_body\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -6771,6 +6790,7 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 8: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 9: try { try decoder.decodeSingularEnumField(value: &self.expectedKind) }()
       case 10: try { try decoder.decodeSingularStringField(value: &self.eventKey) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self._fallbackBody) }()
       default: break
       }
     }
@@ -6811,6 +6831,9 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.eventKey.isEmpty {
       try visitor.visitSingularStringField(value: self.eventKey, fieldNumber: 10)
     }
+    try { if let v = self._fallbackBody {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 11)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -6825,6 +6848,7 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.machineID != rhs.machineID {return false}
     if lhs.expectedKind != rhs.expectedKind {return false}
     if lhs.eventKey != rhs.eventKey {return false}
+    if lhs._fallbackBody != rhs._fallbackBody {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6832,7 +6856,7 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityNotifyDisplay"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}valid\0\u{1}kind\0\u{1}tag\0\u{3}machine_id\0\u{3}session_id\0\u{3}approval_id\0\u{3}source_event_seq\0\u{3}deadline_ms\0\u{1}truncated\0\u{1}critical\0\u{3}show_detailed_by_default\0\u{1}title\0\u{1}body\0\u{3}generic_body\0\u{3}sub_text\0\u{3}big_text\0\u{3}shared_files_suffix\0\u{3}shared_file_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}valid\0\u{1}kind\0\u{1}tag\0\u{3}machine_id\0\u{3}session_id\0\u{3}approval_id\0\u{3}source_event_seq\0\u{3}deadline_ms\0\u{1}truncated\0\u{1}critical\0\u{3}show_detailed_by_default\0\u{1}title\0\u{1}body\0\u{3}generic_body\0\u{3}sub_text\0\u{3}big_text\0\u{3}shared_files_suffix\0\u{3}shared_file_count\0\u{3}full_generic_body\0")
 
   fileprivate class _StorageClass {
     var _valid: Bool = false
@@ -6853,6 +6877,7 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _bigText: PBCoreText? = nil
     var _sharedFilesSuffix: PBCoreText? = nil
     var _sharedFileCount: Int32 = 0
+    var _fullGenericBody: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6881,6 +6906,7 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
       _bigText = source._bigText
       _sharedFilesSuffix = source._sharedFilesSuffix
       _sharedFileCount = source._sharedFileCount
+      _fullGenericBody = source._fullGenericBody
     }
   }
 
@@ -6917,6 +6943,7 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._bigText) }()
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._sharedFilesSuffix) }()
         case 18: try { try decoder.decodeSingularInt32Field(value: &_storage._sharedFileCount) }()
+        case 19: try { try decoder.decodeSingularMessageField(value: &_storage._fullGenericBody) }()
         default: break
         }
       }
@@ -6983,6 +7010,9 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
       if _storage._sharedFileCount != 0 {
         try visitor.visitSingularInt32Field(value: _storage._sharedFileCount, fieldNumber: 18)
       }
+      try { if let v = _storage._fullGenericBody {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -7010,6 +7040,7 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._bigText != rhs_storage._bigText {return false}
         if _storage._sharedFilesSuffix != rhs_storage._sharedFilesSuffix {return false}
         if _storage._sharedFileCount != rhs_storage._sharedFileCount {return false}
+        if _storage._fullGenericBody != rhs_storage._fullGenericBody {return false}
         return true
       }
       if !storagesAreEqual {return false}

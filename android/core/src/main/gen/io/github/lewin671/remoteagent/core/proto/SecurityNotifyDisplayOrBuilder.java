@@ -176,4 +176,15 @@ public interface SecurityNotifyDisplayOrBuilder extends
    * @return The sharedFileCount.
    */
   int getSharedFileCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   * @return Whether the fullGenericBody field is set.
+   */
+  boolean hasFullGenericBody();
+  /**
+   * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
+   * @return The fullGenericBody.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getFullGenericBody();
 }

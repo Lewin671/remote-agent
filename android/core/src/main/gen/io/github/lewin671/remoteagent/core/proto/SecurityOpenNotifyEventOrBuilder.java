@@ -103,4 +103,21 @@ public interface SecurityOpenNotifyEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getEventKeyBytes();
+
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return Whether the fallbackBody field is set.
+   */
+  boolean hasFallbackBody();
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return The fallbackBody.
+   */
+  java.lang.String getFallbackBody();
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return The bytes for fallbackBody.
+   */
+  com.google.protobuf.ByteString
+      getFallbackBodyBytes();
 }

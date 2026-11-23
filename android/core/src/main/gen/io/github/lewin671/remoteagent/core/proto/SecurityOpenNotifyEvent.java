@@ -21,6 +21,7 @@ public  final class SecurityOpenNotifyEvent extends
     tag_ = "";
     machineId_ = "";
     eventKey_ = "";
+    fallbackBody_ = "";
   }
   private int bitField0_;
   public static final int OP_ID_FIELD_NUMBER = 1;
@@ -409,6 +410,62 @@ public  final class SecurityOpenNotifyEvent extends
     checkByteStringIsUtf8(value);
     eventKey_ = value.toStringUtf8();
 
+  }
+
+  public static final int FALLBACK_BODY_FIELD_NUMBER = 11;
+  private java.lang.String fallbackBody_;
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return Whether the fallbackBody field is set.
+   */
+  @java.lang.Override
+  public boolean hasFallbackBody() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return The fallbackBody.
+   */
+  @java.lang.Override
+  public java.lang.String getFallbackBody() {
+    return fallbackBody_;
+  }
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @return The bytes for fallbackBody.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getFallbackBodyBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(fallbackBody_);
+  }
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @param value The fallbackBody to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFallbackBody(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    bitField0_ |= 0x00000002;
+    fallbackBody_ = value;
+  }
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   */
+  private void clearFallbackBody() {
+    bitField0_ = (bitField0_ & ~0x00000002);
+    fallbackBody_ = getDefaultInstance().getFallbackBody();
+  }
+  /**
+   * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+   * @param value The bytes for fallbackBody to set.
+   */
+  private void setFallbackBodyBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    fallbackBody_ = value.toStringUtf8();
+    bitField0_ |= 0x00000002;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent parseFrom(
@@ -909,6 +966,63 @@ public  final class SecurityOpenNotifyEvent extends
       return this;
     }
 
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @return Whether the fallbackBody field is set.
+     */
+    @java.lang.Override
+    public boolean hasFallbackBody() {
+      return instance.hasFallbackBody();
+    }
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @return The fallbackBody.
+     */
+    @java.lang.Override
+    public java.lang.String getFallbackBody() {
+      return instance.getFallbackBody();
+    }
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @return The bytes for fallbackBody.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getFallbackBodyBytes() {
+      return instance.getFallbackBodyBytes();
+    }
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @param value The fallbackBody to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFallbackBody(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setFallbackBody(value);
+      return this;
+    }
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFallbackBody() {
+      copyOnWrite();
+      instance.clearFallbackBody();
+      return this;
+    }
+    /**
+     * <code>optional string fallback_body = 11 [json_name = "fallbackBody"];</code>
+     * @param value The bytes for fallbackBody to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFallbackBodyBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setFallbackBodyBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityOpenNotifyEvent)
   }
   @java.lang.Override
@@ -936,10 +1050,12 @@ public  final class SecurityOpenNotifyEvent extends
             "machineId_",
             "expectedKind_",
             "eventKey_",
+            "fallbackBody_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\u0003\u0002\n\u0003\n\u0004" +
-              "\u1009\u0000\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\f\n\u0208";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0003\u0002\n" +
+              "\u0003\n\u0004\u1009\u0000\u0005\u0002\u0006\u0208\u0007\u0208\b\u0208\t\f\n\u0208" +
+              "\u000b\u1208\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

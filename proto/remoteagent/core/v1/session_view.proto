@@ -773,6 +773,11 @@ message SessionRefreshHistoryAction {
   string session_id = 1;
 }
 
+// SessionRetryLoadAction retries loading a session that failed lookup or event sync.
+message SessionRetryLoadAction {
+  string session_id = 1;
+}
+
 // SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
 message SessionRestoreComposerEffect {
   string session_id = 1;

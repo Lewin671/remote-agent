@@ -5940,6 +5940,7 @@ type SecurityOpenNotifyEvent struct {
 	MachineId     string                 `protobuf:"bytes,8,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
 	ExpectedKind  v1.NotifyKind          `protobuf:"varint,9,opt,name=expected_kind,json=expectedKind,proto3,enum=remoteagent.v1.NotifyKind" json:"expected_kind,omitempty"`
 	EventKey      string                 `protobuf:"bytes,10,opt,name=event_key,json=eventKey,proto3" json:"event_key,omitempty"`
+	FallbackBody  *string                `protobuf:"bytes,11,opt,name=fallback_body,json=fallbackBody,proto3,oneof" json:"fallback_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6044,6 +6045,13 @@ func (x *SecurityOpenNotifyEvent) GetEventKey() string {
 	return ""
 }
 
+func (x *SecurityOpenNotifyEvent) GetFallbackBody() string {
+	if x != nil && x.FallbackBody != nil {
+		return *x.FallbackBody
+	}
+	return ""
+}
+
 type SecurityNotifyDisplay struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	Valid                 bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
@@ -6064,6 +6072,7 @@ type SecurityNotifyDisplay struct {
 	BigText               *Text                  `protobuf:"bytes,16,opt,name=big_text,json=bigText,proto3" json:"big_text,omitempty"`
 	SharedFilesSuffix     *Text                  `protobuf:"bytes,17,opt,name=shared_files_suffix,json=sharedFilesSuffix,proto3" json:"shared_files_suffix,omitempty"`
 	SharedFileCount       int32                  `protobuf:"varint,18,opt,name=shared_file_count,json=sharedFileCount,proto3" json:"shared_file_count,omitempty"`
+	FullGenericBody       *Text                  `protobuf:"bytes,19,opt,name=full_generic_body,json=fullGenericBody,proto3" json:"full_generic_body,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -6222,6 +6231,13 @@ func (x *SecurityNotifyDisplay) GetSharedFileCount() int32 {
 		return x.SharedFileCount
 	}
 	return 0
+}
+
+func (x *SecurityNotifyDisplay) GetFullGenericBody() *Text {
+	if x != nil {
+		return x.FullGenericBody
+	}
+	return nil
 }
 
 type SecurityNotifyOpenedEffect struct {
@@ -6780,7 +6796,7 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\x15structured_error_code\x18\x13 \x01(\x0e2&.remoteagent.core.v1.SecurityErrorCodeR\x13structuredErrorCodeJ\x04\b\x04\x10\x05R\n" +
 	"error_code\"b\n" +
 	"\x1bSecurityStatusChangedEffect\x12C\n" +
-	"\x06status\x18\x01 \x01(\v2+.remoteagent.core.v1.SecurityWorkflowStatusR\x06status\"\xeb\x02\n" +
+	"\x06status\x18\x01 \x01(\v2+.remoteagent.core.v1.SecurityWorkflowStatusR\x06status\"\xa7\x03\n" +
 	"\x17SecurityOpenNotifyEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1f\n" +
 	"\vnotify_blob\x18\x02 \x01(\fR\n" +
@@ -6796,7 +6812,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"machine_id\x18\b \x01(\tR\tmachineId\x12?\n" +
 	"\rexpected_kind\x18\t \x01(\x0e2\x1a.remoteagent.v1.NotifyKindR\fexpectedKind\x12\x1b\n" +
 	"\tevent_key\x18\n" +
-	" \x01(\tR\beventKey\"\x8d\x06\n" +
+	" \x01(\tR\beventKey\x12(\n" +
+	"\rfallback_body\x18\v \x01(\tH\x00R\ffallbackBody\x88\x01\x01B\x10\n" +
+	"\x0e_fallback_body\"\xd4\x06\n" +
 	"\x15SecurityNotifyDisplay\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.NotifyKindR\x04kind\x12\x10\n" +
@@ -6820,7 +6838,8 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\bsub_text\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\asubText\x124\n" +
 	"\bbig_text\x18\x10 \x01(\v2\x19.remoteagent.core.v1.TextR\abigText\x12I\n" +
 	"\x13shared_files_suffix\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x11sharedFilesSuffix\x12*\n" +
-	"\x11shared_file_count\x18\x12 \x01(\x05R\x0fsharedFileCount\"\x9e\x02\n" +
+	"\x11shared_file_count\x18\x12 \x01(\x05R\x0fsharedFileCount\x12E\n" +
+	"\x11full_generic_body\x18\x13 \x01(\v2\x19.remoteagent.core.v1.TextR\x0ffullGenericBody\"\x9e\x02\n" +
 	"\x1aSecurityNotifyOpenedEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x126\n" +
 	"\x17verify_record_unchanged\x18\a \x01(\bR\x15verifyRecordUnchanged\x12\x14\n" +
@@ -7115,12 +7134,13 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	83,  // 99: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
 	83,  // 100: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
 	83,  // 101: remoteagent.core.v1.SecurityNotifyDisplay.shared_files_suffix:type_name -> remoteagent.core.v1.Text
-	70,  // 102: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
-	103, // [103:103] is the sub-list for method output_type
-	103, // [103:103] is the sub-list for method input_type
-	103, // [103:103] is the sub-list for extension type_name
-	103, // [103:103] is the sub-list for extension extendee
-	0,   // [0:103] is the sub-list for field type_name
+	83,  // 102: remoteagent.core.v1.SecurityNotifyDisplay.full_generic_body:type_name -> remoteagent.core.v1.Text
+	70,  // 103: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
+	104, // [104:104] is the sub-list for method output_type
+	104, // [104:104] is the sub-list for method input_type
+	104, // [104:104] is the sub-list for extension type_name
+	104, // [104:104] is the sub-list for extension extendee
+	0,   // [0:104] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }
@@ -7188,6 +7208,7 @@ func file_remoteagent_core_v1_security_proto_init() {
 		(*SecurityWorkflowActionEvent_CheckRetainedDenied)(nil),
 		(*SecurityWorkflowActionEvent_RepublishRecoveryObjects)(nil),
 	}
+	file_remoteagent_core_v1_security_proto_msgTypes[63].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

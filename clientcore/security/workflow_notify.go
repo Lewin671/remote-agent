@@ -75,10 +75,12 @@ func genericBodyForNotifyKind(kind v1.NotifyKind) *corev1.Text {
 }
 
 func invalidNotifyDisplay(kind v1.NotifyKind) *corev1.SecurityNotifyDisplay {
+	generic := genericBodyForNotifyKind(kind)
 	return &corev1.SecurityNotifyDisplay{
-		Valid:       false,
-		Kind:        kind,
-		GenericBody: genericBodyForNotifyKind(kind),
+		Valid:           false,
+		Kind:            kind,
+		GenericBody:     generic,
+		FullGenericBody: generic,
 	}
 }
 
@@ -99,9 +101,10 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 	genericBody := genericBodyForNotifyKind(expectedKind)
 	if nc.Kind != expectedKind {
 		return &corev1.SecurityNotifyDisplay{
-			Valid:       false,
-			Kind:        expectedKind,
-			GenericBody: genericBody,
+			Valid:           false,
+			Kind:            expectedKind,
+			GenericBody:     genericBody,
+			FullGenericBody: genericBody,
 		}
 	}
 	if nc.MachineId == "" || h.Machine == "" || nc.MachineId != h.Machine {
@@ -149,6 +152,7 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			Critical:              critical,
 			ShowDetailedByDefault: true,
 			GenericBody:           genericBody,
+			FullGenericBody:       genericBody,
 		}
 		if critical {
 			out.Title = text.Msg(text.KeyMachineStatusNotifyCritical, text.Str("computer", nc.MachineName), text.ArgText("size", sizeTxt))
@@ -190,6 +194,7 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			Title:                 text.Plain(nc.Title),
 			Body:                  text.Plain(nc.Text),
 			GenericBody:           genericBody,
+			FullGenericBody:       genericBody,
 		}
 
 	case v1.NotifyKind_NOTIFY_KIND_TURN_ENDED:
@@ -220,18 +225,26 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 		} else {
 			out.Title = text.Plain("remote-agent")
 		}
+		baseGeneric := genericBody
+		if ev.FallbackBody != nil {
+			baseGeneric = text.Plain(*ev.FallbackBody)
+		}
 		if nc.SharedFileCount > 0 {
 			suffix := text.Msg(text.KeySharedFileNotificationFiles, text.Int("count", int64(nc.SharedFileCount)))
 			out.SharedFilesSuffix = suffix
+			out.FullGenericBody = text.JoinLiteral(" ", baseGeneric, suffix)
 			if nc.Text != "" {
 				out.Body = text.JoinLiteral(" ", text.Plain(nc.Text), suffix)
 			} else {
 				out.Body = suffix
 			}
-		} else if nc.Text != "" {
-			out.Body = text.Plain(nc.Text)
 		} else {
-			out.Body = genericBody
+			out.FullGenericBody = baseGeneric
+			if nc.Text != "" {
+				out.Body = text.Plain(nc.Text)
+			} else {
+				out.Body = genericBody
+			}
 		}
 		return out
 
@@ -250,13 +263,14 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			return invalidNotifyDisplay(expectedKind)
 		}
 		out := &corev1.SecurityNotifyDisplay{
-			Valid:          true,
-			Kind:           expectedKind,
-			Tag:            expectedTag,
-			MachineId:      nc.MachineId,
-			SessionId:      nc.SessionId,
-			SourceEventSeq: nc.SourceEventSeq,
-			GenericBody:    genericBody,
+			Valid:           true,
+			Kind:            expectedKind,
+			Tag:             expectedTag,
+			MachineId:       nc.MachineId,
+			SessionId:       nc.SessionId,
+			SourceEventSeq:  nc.SourceEventSeq,
+			GenericBody:     genericBody,
+			FullGenericBody: genericBody,
 		}
 		if a := nc.Approval; a != nil {
 			out.ApprovalId = a.ApprovalId

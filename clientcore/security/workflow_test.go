@@ -1648,6 +1648,103 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	if !tOK.Valid || tOK.ShowDetailedByDefault || tOK.SharedFileCount != 2 || tOK.SharedFilesSuffix.GetKey() != text.KeySharedFileNotificationFiles {
 		t.Fatalf("expected valid turn ended display with shared files suffix, got %+v", tOK)
 	}
+	if got := tOK.FullGenericBody; got == nil || len(got.Join) != 2 || got.SeparatorLiteral != " " ||
+		got.Join[0].GetKey() != text.KeyNotificationsAndroidAConversationTurnFinished ||
+		got.Join[1].GetKey() != text.KeySharedFileNotificationFiles {
+		t.Fatalf("expected FullGenericBody to join default generic body and shared files suffix, got %+v", got)
+	}
+
+	// Table-driven check for FullGenericBody with/without FallbackBody and SharedFileCount.
+	strPtr := func(s string) *string { return &s }
+	turnBodyCases := []struct {
+		name      string
+		fallback  *string
+		files     uint32
+		wantNil   bool
+		wantLit   string
+		wantKey   string
+		wantJoin0 string
+		wantJoin1 string
+	}{
+		{
+			name:      "web fallback body with files",
+			fallback:  strPtr("A turn ended"),
+			files:     2,
+			wantJoin0: "lit:A turn ended",
+			wantJoin1: "key:" + text.KeySharedFileNotificationFiles,
+		},
+		{
+			name:     "empty web fallback body with files yields suffix only",
+			fallback: strPtr(""),
+			files:    3,
+			wantKey:  text.KeySharedFileNotificationFiles,
+		},
+		{
+			name:     "web fallback body without files",
+			fallback: strPtr("A turn ended"),
+			files:    0,
+			wantLit:  "A turn ended",
+		},
+		{
+			name:     "empty web fallback body without files is empty",
+			fallback: strPtr(""),
+			files:    0,
+			wantNil:  true,
+		},
+		{
+			name:    "omitted fallback body without files uses default generic body",
+			files:   0,
+			wantKey: text.KeyNotificationsAndroidAConversationTurnFinished,
+		},
+	}
+	for _, tc := range turnBodyCases {
+		t.Run(tc.name, func(t *testing.T) {
+			evCopy := &corev1.SecurityOpenNotifyEvent{
+				SessionId:    turnEv.SessionId,
+				Tag:          turnEv.Tag,
+				ExpectedKind: turnEv.ExpectedKind,
+				FallbackBody: tc.fallback,
+			}
+			ncCopy := &v1.NotifyContent{
+				Kind:            turnNC.Kind,
+				SessionId:       turnNC.SessionId,
+				MachineId:       turnNC.MachineId,
+				SourceEventSeq:  turnNC.SourceEventSeq,
+				Text:            turnNC.Text,
+				SharedFileCount: tc.files,
+			}
+			got := buildNotifyDisplay(evCopy, turnHdr, ncCopy).FullGenericBody
+			if tc.wantNil {
+				if got != nil {
+					t.Fatalf("expected nil FullGenericBody, got %+v", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatalf("expected non-nil FullGenericBody")
+			}
+			if tc.wantLit != "" && got.GetLiteral() != tc.wantLit {
+				t.Fatalf("FullGenericBody literal = %q, want %q", got.GetLiteral(), tc.wantLit)
+			}
+			if tc.wantKey != "" && got.GetKey() != tc.wantKey {
+				t.Fatalf("FullGenericBody key = %q, want %q", got.GetKey(), tc.wantKey)
+			}
+			if tc.wantJoin0 != "" {
+				if len(got.Join) != 2 || got.SeparatorLiteral != " " {
+					t.Fatalf("expected 2-part space-joined FullGenericBody, got %+v", got)
+				}
+				part := func(p *corev1.Text) string {
+					if p.GetKey() != "" {
+						return "key:" + p.GetKey()
+					}
+					return "lit:" + p.GetLiteral()
+				}
+				if part(got.Join[0]) != tc.wantJoin0 || part(got.Join[1]) != tc.wantJoin1 {
+					t.Fatalf("FullGenericBody join = [%s, %s], want [%s, %s]", part(got.Join[0]), part(got.Join[1]), tc.wantJoin0, tc.wantJoin1)
+				}
+			}
+		})
+	}
 
 	// Approval attention notification.
 	appNC := &v1.NotifyContent{

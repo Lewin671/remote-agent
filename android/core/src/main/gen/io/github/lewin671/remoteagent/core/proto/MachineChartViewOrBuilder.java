@@ -110,4 +110,34 @@ public interface MachineChartViewOrBuilder extends
    * @return The canStepNext.
    */
   boolean getCanStepNext();
+
+  /**
+   * <code>double scrub_numeric_value = 14 [json_name = "scrubNumericValue"];</code>
+   * @return The scrubNumericValue.
+   */
+  double getScrubNumericValue();
+
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @return The scrubValueText.
+   */
+  java.lang.String getScrubValueText();
+  /**
+   * <code>string scrub_value_text = 15 [json_name = "scrubValueText"];</code>
+   * @return The bytes for scrubValueText.
+   */
+  com.google.protobuf.ByteString
+      getScrubValueTextBytes();
+
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @return The scrubUnit.
+   */
+  java.lang.String getScrubUnit();
+  /**
+   * <code>string scrub_unit = 16 [json_name = "scrubUnit"];</code>
+   * @return The bytes for scrubUnit.
+   */
+  com.google.protobuf.ByteString
+      getScrubUnitBytes();
 }

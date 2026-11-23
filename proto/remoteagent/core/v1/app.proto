@@ -594,6 +594,7 @@ message Event {
     SessionTrayItemAction session_resume_tray_item = 212;
     SessionTraySessionAction session_cancel_all_paused = 213;
     SessionTraySessionAction session_undo_cancel = 214;
+    SessionRetryLoadAction session_retry_load = 215;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;

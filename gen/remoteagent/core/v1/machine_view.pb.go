@@ -841,22 +841,25 @@ func (x *MachineChartPoint) GetValue() float64 {
 }
 
 type MachineChartView struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Visible        bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
-	Points         []*MachineChartPoint   `protobuf:"bytes,2,rep,name=points,proto3" json:"points,omitempty"`
-	WindowStartMs  int64                  `protobuf:"varint,3,opt,name=window_start_ms,json=windowStartMs,proto3" json:"window_start_ms,omitempty"`
-	WindowEndMs    int64                  `protobuf:"varint,4,opt,name=window_end_ms,json=windowEndMs,proto3" json:"window_end_ms,omitempty"`
-	GapThresholdMs int64                  `protobuf:"varint,5,opt,name=gap_threshold_ms,json=gapThresholdMs,proto3" json:"gap_threshold_ms,omitempty"`
-	Ceiling        float64                `protobuf:"fixed64,6,opt,name=ceiling,proto3" json:"ceiling,omitempty"`
-	HasScrub       bool                   `protobuf:"varint,7,opt,name=has_scrub,json=hasScrub,proto3" json:"has_scrub,omitempty"`
-	ScrubIndex     int32                  `protobuf:"varint,8,opt,name=scrub_index,json=scrubIndex,proto3" json:"scrub_index,omitempty"`
-	ScrubValue     *Text                  `protobuf:"bytes,9,opt,name=scrub_value,json=scrubValue,proto3" json:"scrub_value,omitempty"`
-	ScrubAge       *Text                  `protobuf:"bytes,10,opt,name=scrub_age,json=scrubAge,proto3" json:"scrub_age,omitempty"`
-	A11YSummary    *Text                  `protobuf:"bytes,11,opt,name=a11y_summary,json=a11ySummary,proto3" json:"a11y_summary,omitempty"`
-	CanStepPrev    bool                   `protobuf:"varint,12,opt,name=can_step_prev,json=canStepPrev,proto3" json:"can_step_prev,omitempty"`
-	CanStepNext    bool                   `protobuf:"varint,13,opt,name=can_step_next,json=canStepNext,proto3" json:"can_step_next,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Visible           bool                   `protobuf:"varint,1,opt,name=visible,proto3" json:"visible,omitempty"`
+	Points            []*MachineChartPoint   `protobuf:"bytes,2,rep,name=points,proto3" json:"points,omitempty"`
+	WindowStartMs     int64                  `protobuf:"varint,3,opt,name=window_start_ms,json=windowStartMs,proto3" json:"window_start_ms,omitempty"`
+	WindowEndMs       int64                  `protobuf:"varint,4,opt,name=window_end_ms,json=windowEndMs,proto3" json:"window_end_ms,omitempty"`
+	GapThresholdMs    int64                  `protobuf:"varint,5,opt,name=gap_threshold_ms,json=gapThresholdMs,proto3" json:"gap_threshold_ms,omitempty"`
+	Ceiling           float64                `protobuf:"fixed64,6,opt,name=ceiling,proto3" json:"ceiling,omitempty"`
+	HasScrub          bool                   `protobuf:"varint,7,opt,name=has_scrub,json=hasScrub,proto3" json:"has_scrub,omitempty"`
+	ScrubIndex        int32                  `protobuf:"varint,8,opt,name=scrub_index,json=scrubIndex,proto3" json:"scrub_index,omitempty"`
+	ScrubValue        *Text                  `protobuf:"bytes,9,opt,name=scrub_value,json=scrubValue,proto3" json:"scrub_value,omitempty"`
+	ScrubAge          *Text                  `protobuf:"bytes,10,opt,name=scrub_age,json=scrubAge,proto3" json:"scrub_age,omitempty"`
+	A11YSummary       *Text                  `protobuf:"bytes,11,opt,name=a11y_summary,json=a11ySummary,proto3" json:"a11y_summary,omitempty"`
+	CanStepPrev       bool                   `protobuf:"varint,12,opt,name=can_step_prev,json=canStepPrev,proto3" json:"can_step_prev,omitempty"`
+	CanStepNext       bool                   `protobuf:"varint,13,opt,name=can_step_next,json=canStepNext,proto3" json:"can_step_next,omitempty"`
+	ScrubNumericValue float64                `protobuf:"fixed64,14,opt,name=scrub_numeric_value,json=scrubNumericValue,proto3" json:"scrub_numeric_value,omitempty"`
+	ScrubValueText    string                 `protobuf:"bytes,15,opt,name=scrub_value_text,json=scrubValueText,proto3" json:"scrub_value_text,omitempty"`
+	ScrubUnit         string                 `protobuf:"bytes,16,opt,name=scrub_unit,json=scrubUnit,proto3" json:"scrub_unit,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *MachineChartView) Reset() {
@@ -978,6 +981,27 @@ func (x *MachineChartView) GetCanStepNext() bool {
 		return x.CanStepNext
 	}
 	return false
+}
+
+func (x *MachineChartView) GetScrubNumericValue() float64 {
+	if x != nil {
+		return x.ScrubNumericValue
+	}
+	return 0
+}
+
+func (x *MachineChartView) GetScrubValueText() string {
+	if x != nil {
+		return x.ScrubValueText
+	}
+	return ""
+}
+
+func (x *MachineChartView) GetScrubUnit() string {
+	if x != nil {
+		return x.ScrubUnit
+	}
+	return ""
 }
 
 type MachineCpuSection struct {
@@ -3368,7 +3392,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"a11y_label\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\"B\n" +
 	"\x11MachineChartPoint\x12\x17\n" +
 	"\atime_ms\x18\x01 \x01(\x03R\x06timeMs\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value\"\xb4\x04\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value\"\xad\x05\n" +
 	"\x10MachineChartView\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12>\n" +
 	"\x06points\x18\x02 \x03(\v2&.remoteagent.core.v1.MachineChartPointR\x06points\x12&\n" +
@@ -3385,7 +3409,11 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\bscrubAge\x12<\n" +
 	"\fa11y_summary\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\va11ySummary\x12\"\n" +
 	"\rcan_step_prev\x18\f \x01(\bR\vcanStepPrev\x12\"\n" +
-	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\"\xe8\x02\n" +
+	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\x12.\n" +
+	"\x13scrub_numeric_value\x18\x0e \x01(\x01R\x11scrubNumericValue\x12(\n" +
+	"\x10scrub_value_text\x18\x0f \x01(\tR\x0escrubValueText\x12\x1d\n" +
+	"\n" +
+	"scrub_unit\x18\x10 \x01(\tR\tscrubUnit\"\xe8\x02\n" +
 	"\x11MachineCpuSection\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x121\n" +
 	"\x06detail\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x06detail\x123\n" +

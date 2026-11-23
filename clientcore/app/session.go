@@ -647,6 +647,28 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		store.pendingDirty = true
 		return nil
 
+	case *corev1.Event_SessionRetryLoad:
+		if k.SessionRetryLoad == nil || k.SessionRetryLoad.SessionId == "" {
+			return nil
+		}
+		sid := k.SessionRetryLoad.SessionId
+		store.opened[sid] = true
+		if sess := c.m.sync.SessionEntry(sid); sess == nil {
+			c.m.sync.LookupSessionIfMissing(ctx, sid)
+		} else {
+			c.m.sync.RetrySessionHistory(ctx, sid)
+			if sess.MachineID != "" {
+				agent := lists.DefaultAgent
+				if sess.Info != nil && sess.Info.Agent != v1.Agent_AGENT_UNSPECIFIED {
+					agent = sess.Info.Agent
+				}
+				c.m.maybeFetchMachineConfig(ctx, sess.MachineID, agent)
+				c.maybeFetchUsage(ctx, sess.MachineID, v1.UsageRangePreset_USAGE_RANGE_PRESET_SEVEN_DAYS, nil)
+			}
+		}
+		store.pendingDirty = true
+		return nil
+
 	case *corev1.Event_SessionSubmitCommand:
 		if k.SessionSubmitCommand == nil || k.SessionSubmitCommand.Command == nil {
 			return nil

@@ -699,6 +699,21 @@ public struct PBMachineChartView: @unchecked Sendable {
     set {_uniqueStorage()._canStepNext = newValue}
   }
 
+  public var scrubNumericValue: Double {
+    get {return _storage._scrubNumericValue}
+    set {_uniqueStorage()._scrubNumericValue = newValue}
+  }
+
+  public var scrubValueText: String {
+    get {return _storage._scrubValueText}
+    set {_uniqueStorage()._scrubValueText = newValue}
+  }
+
+  public var scrubUnit: String {
+    get {return _storage._scrubUnit}
+    set {_uniqueStorage()._scrubUnit = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2310,7 +2325,7 @@ extension PBMachineChartPoint: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineChartView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}points\0\u{3}window_start_ms\0\u{3}window_end_ms\0\u{3}gap_threshold_ms\0\u{1}ceiling\0\u{3}has_scrub\0\u{3}scrub_index\0\u{3}scrub_value\0\u{3}scrub_age\0\u{3}a11y_summary\0\u{3}can_step_prev\0\u{3}can_step_next\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}points\0\u{3}window_start_ms\0\u{3}window_end_ms\0\u{3}gap_threshold_ms\0\u{1}ceiling\0\u{3}has_scrub\0\u{3}scrub_index\0\u{3}scrub_value\0\u{3}scrub_age\0\u{3}a11y_summary\0\u{3}can_step_prev\0\u{3}can_step_next\0\u{3}scrub_numeric_value\0\u{3}scrub_value_text\0\u{3}scrub_unit\0")
 
   fileprivate class _StorageClass {
     var _visible: Bool = false
@@ -2326,6 +2341,9 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     var _a11YSummary: PBCoreText? = nil
     var _canStepPrev: Bool = false
     var _canStepNext: Bool = false
+    var _scrubNumericValue: Double = 0
+    var _scrubValueText: String = String()
+    var _scrubUnit: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2349,6 +2367,9 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       _a11YSummary = source._a11YSummary
       _canStepPrev = source._canStepPrev
       _canStepNext = source._canStepNext
+      _scrubNumericValue = source._scrubNumericValue
+      _scrubValueText = source._scrubValueText
+      _scrubUnit = source._scrubUnit
     }
   }
 
@@ -2380,6 +2401,9 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._a11YSummary) }()
         case 12: try { try decoder.decodeSingularBoolField(value: &_storage._canStepPrev) }()
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._canStepNext) }()
+        case 14: try { try decoder.decodeSingularDoubleField(value: &_storage._scrubNumericValue) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._scrubValueText) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._scrubUnit) }()
         default: break
         }
       }
@@ -2431,6 +2455,15 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       if _storage._canStepNext != false {
         try visitor.visitSingularBoolField(value: _storage._canStepNext, fieldNumber: 13)
       }
+      if _storage._scrubNumericValue.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._scrubNumericValue, fieldNumber: 14)
+      }
+      if !_storage._scrubValueText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._scrubValueText, fieldNumber: 15)
+      }
+      if !_storage._scrubUnit.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._scrubUnit, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2453,6 +2486,9 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._a11YSummary != rhs_storage._a11YSummary {return false}
         if _storage._canStepPrev != rhs_storage._canStepPrev {return false}
         if _storage._canStepNext != rhs_storage._canStepNext {return false}
+        if _storage._scrubNumericValue != rhs_storage._scrubNumericValue {return false}
+        if _storage._scrubValueText != rhs_storage._scrubValueText {return false}
+        if _storage._scrubUnit != rhs_storage._scrubUnit {return false}
         return true
       }
       if !storagesAreEqual {return false}
