@@ -27,6 +27,7 @@ type agyProtoUsage struct {
 type agyGenMeta struct {
 	modelEnum uint64
 	model     string
+	cascadeID string
 	ttftMs    int64
 	hasTTFT   bool
 	genMs     int64
@@ -104,7 +105,7 @@ func scanAntigravityDB(path string) ([]requestSample, int64, error) {
 	}
 	_ = rows.Close()
 
-	stepRows, err := db.Query(`SELECT idx, metadata FROM steps WHERE step_type = 15 ORDER BY idx`)
+	stepRows, err := db.Query(`SELECT idx, step_type, metadata FROM steps WHERE step_type IN (15, 23) ORDER BY idx`)
 	if err != nil {
 		if isMissingTableErr(err) {
 			return nil, 0, nil
@@ -116,15 +117,16 @@ func scanAntigravityDB(path string) ([]requestSample, int64, error) {
 	var out []requestSample
 	for stepRows.Next() {
 		var stepIdx int64
+		var stepType int64
 		var meta []byte
-		if scanErr := stepRows.Scan(&stepIdx, &meta); scanErr != nil {
+		if scanErr := stepRows.Scan(&stepIdx, &stepType, &meta); scanErr != nil {
 			return nil, 0, scanErr
 		}
 		if len(meta) == 0 {
 			continue
 		}
 		sm := parseAgyStepMetadata(meta)
-		if sample, ok := buildAntigravityDBSample(convID, path, stepIdx, sm, byBot, byResp, byEnum); ok {
+		if sample, ok := buildAntigravityDBSample(convID, path, stepIdx, stepType, sm, byBot, byResp, byEnum); ok {
 			out = append(out, sample)
 		}
 	}
@@ -134,9 +136,21 @@ func scanAntigravityDB(path string) ([]requestSample, int64, error) {
 	return out, 0, nil
 }
 
+func isAgySpeedPlausible(speedTokPerSec float64, genMs, ttftMs int64) bool {
+	if speedTokPerSec <= 0 || speedTokPerSec > 1000 {
+		return false
+	}
+	// Reject buffered tool-call bursts where generation time was absorbed into TTFT,
+	// leaving a tiny trailing genMs that inflates tok/s and TTFT simultaneously.
+	if ttftMs > 4*genMs && genMs < 1000 && speedTokPerSec > 500 {
+		return false
+	}
+	return true
+}
+
 func buildAntigravityDBSample(
 	convID, sourcePath string,
-	stepIdx int64,
+	stepIdx, stepType int64,
 	sm agyStepMeta,
 	byBot, byResp map[string]agyGenMeta,
 	byEnum map[uint64]string,
@@ -177,8 +191,13 @@ func buildAntigravityDBSample(
 	}
 	reasoning := min(output, nonNegU64(sm.usage.thinkingTokens))
 
+	dedupConvID := convID
+	if hasGM && gm.cascadeID != "" {
+		dedupConvID = gm.cascadeID
+	}
+
 	rs := requestSample{
-		dedupKey:            fmt.Sprintf("agy:%s:%d", convID, stepIdx),
+		dedupKey:            fmt.Sprintf("agy:%s:%d", dedupConvID, stepIdx),
 		sourcePath:          sourcePath,
 		agent:               pb.Agent_AGENT_ANTIGRAVITY,
 		model:               model,
@@ -189,6 +208,12 @@ func buildAntigravityDBSample(
 		output:              output,
 		reasoningOutput:     reasoning,
 		cacheWriteSupported: false,
+	}
+
+	// Only PLANNER_RESPONSE (step_type=15) carries interactive generation timing;
+	// CHECKPOINT (step_type=23, compaction) is counted for token/cache totals only.
+	if stepType != 15 {
+		return rs, true
 	}
 
 	genMs := int64(0)
@@ -206,10 +231,13 @@ func buildAntigravityDBSample(
 	}
 
 	if output >= 16 && genMs >= 200 && ttftMs >= 0 {
-		rs.speedValid = true
-		rs.generationMs = genMs
-		rs.speedTokPerSec = float64(output) * 1000.0 / float64(genMs)
-		rs.ttftMs = float64(ttftMs)
+		speed := float64(output) * 1000.0 / float64(genMs)
+		if isAgySpeedPlausible(speed, genMs, ttftMs) {
+			rs.speedValid = true
+			rs.generationMs = genMs
+			rs.speedTokPerSec = speed
+			rs.ttftMs = float64(ttftMs)
+		}
 	}
 	return rs, true
 }
@@ -425,6 +453,15 @@ func parseAgyGenMetadata(b []byte) (agyGenMeta, bool) {
 			}
 			gm.model = string(v)
 			outer = outer[vn:]
+		case num == 20 && typ == protowire.BytesType:
+			v, vn := protowire.ConsumeBytes(outer)
+			if vn < 0 {
+				return gm, false
+			}
+			if k, val := parseProtoStringEntry(v); k == "cascade_id" && val != "" {
+				gm.cascadeID = val
+			}
+			outer = outer[vn:]
 		default:
 			vn := protowire.ConsumeFieldValue(num, typ, outer)
 			if vn < 0 {
@@ -434,6 +471,37 @@ func parseAgyGenMetadata(b []byte) (agyGenMeta, bool) {
 		}
 	}
 	return gm, gm.model != "" || gm.usage.botID != "" || gm.usage.respID != ""
+}
+
+func parseProtoStringEntry(b []byte) (string, string) {
+	var k, val string
+	for len(b) > 0 {
+		num, typ, n := protowire.ConsumeTag(b)
+		if n < 0 {
+			return k, val
+		}
+		b = b[n:]
+		if typ == protowire.BytesType {
+			v, vn := protowire.ConsumeBytes(b)
+			if vn < 0 {
+				return k, val
+			}
+			b = b[vn:]
+			switch num {
+			case 1:
+				k = string(v)
+			case 2:
+				val = string(v)
+			}
+			continue
+		}
+		vn := protowire.ConsumeFieldValue(num, typ, b)
+		if vn < 0 {
+			return k, val
+		}
+		b = b[vn:]
+	}
+	return k, val
 }
 
 func parseAgyStepMetadata(b []byte) agyStepMeta {

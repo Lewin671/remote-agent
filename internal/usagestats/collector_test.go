@@ -391,6 +391,10 @@ func encodeTestAgyUsage(modelEnum, inTok, outTok, cacheReadTok, thinkingTok uint
 }
 
 func encodeTestAgyGenMeta(modelEnum uint64, model string, ttft, genDur time.Duration, usage []byte) []byte {
+	return encodeTestAgyGenMetaWithCascade(modelEnum, model, "", ttft, genDur, usage)
+}
+
+func encodeTestAgyGenMetaWithCascade(modelEnum uint64, model, cascadeID string, ttft, genDur time.Duration, usage []byte) []byte {
 	var inner []byte
 	inner = protowire.AppendTag(inner, 3, protowire.VarintType)
 	inner = protowire.AppendVarint(inner, modelEnum)
@@ -402,6 +406,15 @@ func encodeTestAgyGenMeta(modelEnum uint64, model string, ttft, genDur time.Dura
 	inner = protowire.AppendBytes(inner, encodeTestProtoDuration(genDur))
 	inner = protowire.AppendTag(inner, 19, protowire.BytesType)
 	inner = protowire.AppendString(inner, model)
+	if cascadeID != "" {
+		var entry []byte
+		entry = protowire.AppendTag(entry, 1, protowire.BytesType)
+		entry = protowire.AppendString(entry, "cascade_id")
+		entry = protowire.AppendTag(entry, 2, protowire.BytesType)
+		entry = protowire.AppendString(entry, cascadeID)
+		inner = protowire.AppendTag(inner, 20, protowire.BytesType)
+		inner = protowire.AppendBytes(inner, entry)
+	}
 
 	var outer []byte
 	outer = protowire.AppendTag(outer, 1, protowire.BytesType)
@@ -557,5 +570,132 @@ func TestAntigravityDBThinkingSpeedTTFTAndUpgradeFromTranscript(t *testing.T) {
 	cl := byModel["claude-opus-5-5"]
 	if cl == nil || cl.Current.UsageRequestCount != 1 || cl.Current.SpeedRequestCount != 0 || cl.Current.HasSpeed {
 		t.Fatalf("expected claude-opus-5-5 (suffix stripped) with usage=1 speed=0, got %+v", cl)
+	}
+}
+
+func TestAntigravityDBCheckpointForkDedupAndSpeedGuard(t *testing.T) {
+	dir := t.TempDir()
+	agyHome := filepath.Join(dir, "agy")
+	convDir := filepath.Join(agyHome, "conversations")
+	if err := os.MkdirAll(convDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	initDB := func(name string) *sql.DB {
+		db, err := sql.Open("sqlite", filepath.Join(convDir, name+".db"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(`
+			CREATE TABLE steps(idx INTEGER PRIMARY KEY, step_type INTEGER NOT NULL, status INTEGER NOT NULL, metadata BLOB);
+			CREATE TABLE gen_metadata(idx INTEGER PRIMARY KEY, data BLOB, size INTEGER NOT NULL DEFAULT 0);
+		`); err != nil {
+			t.Fatal(err)
+		}
+		return db
+	}
+
+	origID := "orig-conv"
+	forkID := "fork-conv"
+	t0 := time.Date(2026, 11, 22, 10, 0, 0, 0, time.UTC)
+
+	origDB := initDB(origID)
+	defer origDB.Close()
+	// Normal step 1: 150 tok/s (300 tok / 2s), ttft=2s
+	u1 := encodeTestAgyUsage(1533, 1000, 300, 4000, 100, "bot-1", "")
+	gm1 := encodeTestAgyGenMetaWithCascade(1533, "gemini-4-neon", origID, 2*time.Second, 2*time.Second, u1)
+	sm1 := encodeTestAgyStepMeta(t0, t0.Add(2*time.Second), t0.Add(4*time.Second), u1)
+	if _, err := origDB.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(0, ?, 0)`, gm1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := origDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(1, 15, 5, ?)`, sm1); err != nil {
+		t.Fatal(err)
+	}
+	// Buffered tool-call outlier step 2: ttft=60s, gen=250ms, out=15000 (60000 tok/s) -> usage counted, speed dropped
+	u2 := encodeTestAgyUsage(1533, 500, 15000, 5000, 50, "bot-2", "")
+	gm2 := encodeTestAgyGenMetaWithCascade(1533, "gemini-4-neon", origID, 60*time.Second, 250*time.Millisecond, u2)
+	sm2 := encodeTestAgyStepMeta(t0.Add(time.Minute), t0.Add(2*time.Minute), t0.Add(2*time.Minute+250*time.Millisecond), u2)
+	if _, err := origDB.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(1, ?, 0)`, gm2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := origDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(2, 15, 5, ?)`, sm2); err != nil {
+		t.Fatal(err)
+	}
+	// Buffered burst step 3: ttft=10s, gen=400ms, out=240 (600 tok/s, ttft > 4*gen & gen < 1000 & speed > 500) -> speed dropped
+	u3 := encodeTestAgyUsage(1533, 200, 240, 2000, 40, "bot-3", "")
+	gm3 := encodeTestAgyGenMetaWithCascade(1533, "gemini-4-neon", origID, 10*time.Second, 400*time.Millisecond, u3)
+	sm3 := encodeTestAgyStepMeta(t0.Add(3*time.Minute), t0.Add(3*time.Minute+10*time.Second), t0.Add(3*time.Minute+10*time.Second+400*time.Millisecond), u3)
+	if _, err := origDB.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(2, ?, 0)`, gm3); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := origDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(3, 15, 5, ?)`, sm3); err != nil {
+		t.Fatal(err)
+	}
+	// CHECKPOINT compaction step 4 (step_type=23, no gen_metadata row, resolves via modelEnum=1533)
+	u4 := encodeTestAgyUsage(1533, 10000, 1000, 90000, 200, "bot-4", "")
+	sm4 := encodeTestAgyStepMeta(t0.Add(4*time.Minute), t0.Add(4*time.Minute+time.Second), t0.Add(4*time.Minute+5*time.Second), u4)
+	if _, err := origDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(4, 23, 5, ?)`, sm4); err != nil {
+		t.Fatal(err)
+	}
+
+	// Forked DB clones step 1 with origID as cascade_id (must NOT double count) plus a new step 5
+	forkDB := initDB(forkID)
+	defer forkDB.Close()
+	if _, err := forkDB.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(0, ?, 0)`, gm1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forkDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(1, 15, 5, ?)`, sm1); err != nil {
+		t.Fatal(err)
+	}
+	u5 := encodeTestAgyUsage(1533, 300, 200, 1000, 50, "bot-5", "")
+	gm5 := encodeTestAgyGenMetaWithCascade(1533, "gemini-4-neon", forkID, time.Second, time.Second, u5)
+	sm5 := encodeTestAgyStepMeta(t0.Add(5*time.Minute), t0.Add(5*time.Minute+time.Second), t0.Add(5*time.Minute+2*time.Second), u5)
+	if _, err := forkDB.Exec(`INSERT INTO gen_metadata(idx, data, size) VALUES(1, ?, 0)`, gm5); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forkDB.Exec(`INSERT INTO steps(idx, step_type, status, metadata) VALUES(5, 15, 5, ?)`, sm5); err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
+	c, err := New(Config{
+		StateDir:        filepath.Join(dir, "state"),
+		AntigravityHome: agyHome,
+		HasAntigravity:  true,
+		Now:             func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	c.scanOnce(context.Background())
+
+	resp, err := c.Query(context.Background(), &pb.GetUsageStatsRequest{
+		Preset:   pb.UsageRangePreset_USAGE_RANGE_PRESET_TODAY,
+		Timezone: "UTC",
+	}, QueryOptions{
+		Installed: []pb.Agent{pb.Agent_AGENT_ANTIGRAVITY},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Series) != 1 || resp.Series[0].Model != "gemini-4-neon" {
+		t.Fatalf("unexpected series: %+v", resp.Series)
+	}
+	cur := resp.Series[0].Current
+	// 5 unique requests (steps 1..4 from orig + step 5 from fork; forked step 1 deduplicated).
+	if cur.UsageRequestCount != 5 {
+		t.Fatalf("expected 5 unique requests, got %d", cur.UsageRequestCount)
+	}
+	if cur.UncachedInputTokens != 12000 || cur.CacheReadTokens != 102000 || cur.OutputTokens != 16740 {
+		t.Fatalf("unexpected token totals: uncached=%d cacheRead=%d out=%d", cur.UncachedInputTokens, cur.CacheReadTokens, cur.OutputTokens)
+	}
+	// Only step 1 (150 tok/s) and step 5 (200 tok/s) pass speed guard; steps 2, 3 (outliers) and 4 (checkpoint) excluded.
+	if cur.SpeedRequestCount != 2 {
+		t.Fatalf("expected 2 valid speed samples, got %d", cur.SpeedRequestCount)
+	}
+	if cur.SpeedP50 < 174.9 || cur.SpeedP50 > 175.1 {
+		t.Fatalf("expected speed P50=175, got %v", cur.SpeedP50)
 	}
 }

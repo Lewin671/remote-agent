@@ -160,7 +160,7 @@ func scanAntigravityTranscriptFile(path string) (samples []requestSample, offset
 }
 
 func buildAntigravitySample(convID, sourcePath string, lineIdx int64, rec agyTranscriptLine) (requestSample, bool) {
-	if rec.Type != "PLANNER_RESPONSE" || strings.EqualFold(strings.TrimSpace(rec.Status), "RUNNING") {
+	if (rec.Type != "PLANNER_RESPONSE" && rec.Type != "CHECKPOINT") || strings.EqualFold(strings.TrimSpace(rec.Status), "RUNNING") {
 		return requestSample{}, false
 	}
 	model := normalizeAntigravityModel(rec.Model)
