@@ -20,7 +20,7 @@ import {
   type SessionTimelineItem,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import { SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
+import { ConnState, SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, ApprovalMode, SendMode, SharedFileSchema, type ImageRef, type SharedFile } from "../gen/remoteagent/v1/event_pb";
 import {
   CommandSchema,
@@ -88,7 +88,6 @@ const TerminalView = lazy(() =>
 );
 
 const DEFAULT_WINDOW_LIMIT = 80;
-const CONTEXT_WARN = 70;
 const EMPTY_ITEMS: SessionTimelineItem[] = [];
 const EMPTY_REASONS: Array<{ id: string; reason: string }> = [];
 const LOCAL_SCROLL = new WeakMap<object, Map<string, { top: number; stick: boolean }>>();
@@ -767,7 +766,7 @@ export function SessionScreenView({
   );
 
   const pct = header?.hasContext ? header.contextPercent : undefined;
-  const high = !!header?.highContextWarning || (pct !== undefined && pct > CONTEXT_WARN);
+  const high = !!header?.highContextWarning;
   const modelText = [header?.modelLabel, header?.effort].filter(Boolean).join(" · ");
   const moreLabel = high && pct !== undefined ? i18n.t("session.more_context", { percent: pct }) : i18n.t("common.android_more");
   const tabs: [Tab, string][] = canSplit
@@ -1052,7 +1051,7 @@ export function SessionScreenView({
           {
             label: i18n.t("session.schedule_send"),
             group: 1,
-            disabled: !header?.capabilities?.supportsSchedule || !remote.peer(header?.machineId).reachable || !remote.peer(header?.machineId).ready,
+            disabled: !header?.capabilities?.supportsSchedule || !header?.computerOnline || !!header?.computerUnlinked,
             note: !header?.capabilities?.supportsSchedule ? i18n.t("session.update_computer") : undefined,
             onClick: () => setScheduling(true),
           },
@@ -2089,7 +2088,7 @@ const ChatBody = memo(function ChatBody({
       {remote && (
         <HistoryOpening
           waiting={!ready && rows.length === 0}
-          connected={remote.conn === "online"}
+          connected={header?.connState === ConnState.CONNECTED}
           scroller={scroller}
           error={historyError || undefined}
           onRetry={onRetryEvents}

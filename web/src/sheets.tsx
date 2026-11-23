@@ -21,8 +21,6 @@ import { Check, ChevronRight, LoaderCircle } from "./icons";
 import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
 import { formatCacheHit, formatSpeedValue, formatTokens } from "./usageFormat";
 
-const CONTEXT_WARN = 70;
-
 /** A session sheet's head: what it sets in bold, and whose session. */
 function SheetHead({ name, header }: { name: string; header?: SessionHeaderView }) {
   return (
@@ -443,7 +441,7 @@ export function SessionSheet({
       {pct !== undefined && header && (
         <div className="ctxbox">
           <div className="ctxn">
-            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{i18n.t("session.context_used", { percent: pct })}</div>
+            <div className={"num" + (header.highContextWarning ? " warn-text" : "")}>{i18n.t("session.context_used", { percent: pct })}</div>
             <div className="muted small">
               {compactBusy ? (
                 <>
@@ -453,7 +451,7 @@ export function SessionSheet({
                 renderText(header.contextText) || i18n.t("session.context_tokens", { used: tokens(header.contextTokens), total: tokens(header.contextWindow) })
               )}
             </div>
-            <div className={"bar" + (pct > CONTEXT_WARN ? " warn" : "")}>
+            <div className={"bar" + (header.highContextWarning ? " warn" : "")}>
               <i style={{ width: `${Math.min(100, pct)}%` }} />
             </div>
           </div>
