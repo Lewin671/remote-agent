@@ -162,22 +162,39 @@ class SharedFilesTest {
         }
     }
 
+    private class FakeNoSpaceCause : IOException("simulated errno")
+
     @Test
     fun verifyHandlesZeroByteFileAndChecksumMismatchAndStorageFull() = runTest {
         val root = tempRoot()
         val executor = SharedFileIoExecutor(
             rootDir = root,
+            availableBytesProvider = { throw IOException("outer write error", FakeNoSpaceCause()) },
+            isStorageFullError = { it is FakeNoSpaceCause },
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+        )
+        val noSubstringExecutor = SharedFileIoExecutor(
+            rootDir = root,
             availableBytesProvider = { throw IOException("ENOSPC (No space left on device)") },
+            isStorageFullError = { false },
             ioDispatcher = StandardTestDispatcher(testScheduler),
         )
         try {
-            // InspectDisk maps ENOSPC to STORAGE_FULL.
+            // InspectDisk maps typed storage-full cause to STORAGE_FULL.
             val fullInspect = executor.executeInspectDisk(
                 SharedFileInspectDiskEffect.newBuilder()
                     .setOpId(1L).setSessionId("s1").setFileId("f0").setRequiredBytes(100L).build(),
             )
             assertFalse(fullInspect.known)
             assertEquals(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL, fullInspect.errorKind)
+
+            // Untyped IOException with "ENOSPC" message must NOT be matched by substring sniffing.
+            val untypedInspect = noSubstringExecutor.executeInspectDisk(
+                SharedFileInspectDiskEffect.newBuilder()
+                    .setOpId(11L).setSessionId("s1").setFileId("f0").setRequiredBytes(100L).build(),
+            )
+            assertFalse(untypedInspect.known)
+            assertEquals(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_UNSPECIFIED, untypedInspect.errorKind)
 
             // 0-byte file round-trip.
             val emptyDigest = sha256(ByteArray(0))
@@ -245,6 +262,7 @@ class SharedFilesTest {
             assertFalse(File(root, "s1/f-bad/download.part").exists())
             assertFalse(File(root, "s1/f-bad/partial.meta").exists())
         } finally {
+            noSubstringExecutor.close()
             executor.close()
             root.deleteRecursively()
         }

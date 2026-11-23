@@ -21,7 +21,6 @@ import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
-import java.util.Locale
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
@@ -650,20 +649,19 @@ class SharedFileIoExecutor(
         }
     }
 
+    /**
+     * Classifies local storage errors strictly by exception type via [isStorageFullError] across
+     * the cause chain — never by error-message substring matching.
+     *
+     * On Android (ART/libcore), POSIX write/sync failures wrap `android.system.ErrnoException`
+     * (`ENOSPC` / `EDQUOT`) as a cause of `IOException`, which `SharedFileManager` checks in
+     * [isStorageFullError]. Plain JDK `IOException`s that expose no typed errno cause intentionally
+     * map to `OTHER` (with `StatFs` preflight catching full volumes before writing).
+     */
     private fun classifyIoError(t: Throwable): SharedFileIOErrorKind {
         var cur: Throwable? = t
         while (cur != null) {
             if (isStorageFullError(cur)) return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL
-            val msg = cur.message?.lowercase(Locale.ROOT).orEmpty()
-            if (
-                "enospc" in msg ||
-                "no space" in msg ||
-                "disk full" in msg ||
-                "edquot" in msg ||
-                "quota exceeded" in msg
-            ) {
-                return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL
-            }
             cur = cur.cause
         }
         return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_OTHER
