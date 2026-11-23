@@ -61,7 +61,7 @@ it.each(["approval", "question", "empty-question", "plan"])("a %s skeleton offer
     })();
     act(() => root.render(view));
     expect(host.textContent).toContain(skeletonMessage());
-    for (const label of [message("approval.allow"), message("approval.deny"), message("approval.approve_execute"), message("dock.plan_keep"), "unsafe choice", message("dock.plan_clear")]) expect([...host.querySelectorAll("button")].some(b => b.textContent === label)).toBe(false);
+    for (const label of [message("approval.allow"), message("approval.deny"), message("dock.plan_keep"), "unsafe choice", message("dock.plan_clear")]) expect([...host.querySelectorAll("button")].some(b => b.textContent === label)).toBe(false);
     expect(onSubmitCommand).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); host.remove(); }
 });

@@ -275,7 +275,7 @@ function HostPlanPage({ r, sid, text = "1. do it" }: { r: DemoRemote; sid: strin
           choices: [
             ...(isClaude ? [] : [{ choice: PlanChoice.CLEAR_AND_IMPLEMENT, label: create(TextSchema, { literal: message("dock.plan_clear") }) }]),
             { choice: PlanChoice.IMPLEMENT, label: create(TextSchema, { literal: message("approval.approve") }) },
-            { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("modes.plan_edit") }) },
+            { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("dock.plan_keep") }) },
           ],
         });
   return (
@@ -677,7 +677,7 @@ it("offers no clear-and-implement on a Claude Code plan", async () => {
   const r = demo();
   await mountAsync(<HostPlanPage r={r} sid="s-claude" />);
   expect(button(message("approval.approve"))).toBeTruthy();
-  expect(button(message("modes.plan_edit"))).toBeTruthy();
+  expect(button(message("dock.plan_keep"))).toBeTruthy();
   expect(button(message("dock.plan_clear"))).toBeUndefined();
   await act(async () => root!.render(<HostPlanPage r={r} sid="s-plan" />));
   expect(button(message("dock.plan_clear_record"))).toBeTruthy();
@@ -751,7 +751,7 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
         markdown: "1. do it",
         choices: [
           { choice: PlanChoice.IMPLEMENT, label: create(TextSchema, { literal: message("approval.approve") }) },
-          { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("modes.plan_edit") }) },
+          { choice: PlanChoice.KEEP_PLANNING, label: create(TextSchema, { literal: message("dock.plan_keep") }) },
         ],
         note: create(TextSchema, { literal: message("dock.agy_plan_note") }),
       }),

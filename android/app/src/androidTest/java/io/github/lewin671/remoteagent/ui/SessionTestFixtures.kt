@@ -335,8 +335,8 @@ internal fun sessionFixtureVm(
                 .setCanSwitchModel(!exited && !running)
                 .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_ASK).setLabel(Text.newBuilder().setKey(UiMessages.modesAsk().key)).setNote(Text.newBuilder().setKey(UiMessages.modesAskDesc().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_ASK))
                 .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_AUTO).setLabel(Text.newBuilder().setKey(UiMessages.modesAuto().key)).setNote(Text.newBuilder().setKey(UiMessages.modesAutoDesc(agent = "").key).addArgs(TextArg.newBuilder().setName("agent").setStrValue("CLI"))).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_AUTO))
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).setLabel(Text.newBuilder().setKey(UiMessages.modesPlan().key)).setNote(Text.newBuilder().setKey(UiMessages.modesPlanDesc().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_PLAN))
-                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS).setLabel(Text.newBuilder().setKey(UiMessages.modesFullAccess().key)).setNote(Text.newBuilder().setKey(UiMessages.modesSkipAll().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS)),
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).setLabel(Text.newBuilder().setKey(UiMessages.modesPlan().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_PLAN))
+                .addModeChoices(SessionModeChoiceView.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_FULL_ACCESS).setLabel(Text.newBuilder().setKey(UiMessages.modesFullAccess().key)).setAvailable(true).setSelected(info?.mode == ApprovalMode.APPROVAL_MODE_FULL_ACCESS)),
         )
         .setDock(dockBuilder)
         .setComposer(
