@@ -677,20 +677,18 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		}
 		evSF := k.SharedFileLocalState
 		changed := false
-		if evSF.ReplaceAll {
-			if evSF.ClearSessionId != "" {
-				if ui := store.uiBySession[evSF.ClearSessionId]; ui != nil && len(ui.SharedFiles) > 0 {
+		if evSF.ClearSessionId != "" {
+			if ui := store.uiBySession[evSF.ClearSessionId]; ui != nil && len(ui.SharedFiles) > 0 {
+				ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
+				ui.SharedFilesRev++
+				changed = true
+			}
+		} else if evSF.ReplaceAll {
+			for _, ui := range store.uiBySession {
+				if ui != nil && len(ui.SharedFiles) > 0 {
 					ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
 					ui.SharedFilesRev++
 					changed = true
-				}
-			} else {
-				for _, ui := range store.uiBySession {
-					if ui != nil && len(ui.SharedFiles) > 0 {
-						ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
-						ui.SharedFilesRev++
-						changed = true
-					}
 				}
 			}
 		}
@@ -704,11 +702,20 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			}
 			prev := ui.SharedFiles[u.FileId]
 			if u.MetadataOnly {
-				if prev != nil && u.HasDuration && (!prev.HasDuration || prev.DurationMs != u.DurationMs) {
-					prev.HasDuration = true
-					prev.DurationMs = u.DurationMs
-					ui.SharedFilesRev++
-					changed = true
+				if u.HasDuration {
+					if prev == nil {
+						ui.SharedFiles[u.FileId] = &sharedfiles.LocalState{
+							HasDuration: true,
+							DurationMs:  u.DurationMs,
+						}
+						ui.SharedFilesRev++
+						changed = true
+					} else if !prev.HasDuration || prev.DurationMs != u.DurationMs {
+						prev.HasDuration = true
+						prev.DurationMs = u.DurationMs
+						ui.SharedFilesRev++
+						changed = true
+					}
 				}
 				continue
 			}
@@ -731,10 +738,7 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 				FailureKind:      u.FailureKind,
 				FailureDetail:    u.FailureDetail,
 			}
-			if next.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED &&
-				!next.HasDuration && prev != nil &&
-				prev.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED &&
-				prev.HasDuration {
+			if !next.HasDuration && prev != nil && prev.HasDuration {
 				next.HasDuration = true
 				next.DurationMs = prev.DurationMs
 			}

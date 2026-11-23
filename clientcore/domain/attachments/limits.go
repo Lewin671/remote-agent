@@ -197,7 +197,7 @@ func ResolveCaps(lm *lists.Machine, machineID string, computerOnline, onlineRead
 		MaxImages:                MaxImages(mc),
 		MaxFiles:                 MaxFiles(mc),
 		MaxFileBytes:             maxBytes,
-		MaxFileSizeText:          sharedfiles.FormatFileSize(maxBytes, uiLocale),
+		MaxFileSizeText:          sharedfiles.FormatFileSize(maxBytes),
 		ImageUploadBlockedReason: ImageUploadBlockedReason(lm, machineID, computerOnline, onlineReady),
 		FileUploadBlockedReason:  FileUploadBlockedReason(lm, machineID, computerOnline, onlineReady),
 	}
@@ -255,7 +255,7 @@ func EvaluateCandidates(
 		}
 		var formattedSize string
 		if !c.SizeUnknown && c.SizeBytes >= 0 {
-			formattedSize = sharedfiles.FormatFileSize(c.SizeBytes, uiLocale)
+			formattedSize = sharedfiles.FormatFileSize(c.SizeBytes)
 		}
 
 		// Determine whether this candidate should be validated as an image or as a file.

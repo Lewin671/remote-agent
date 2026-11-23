@@ -219,4 +219,10 @@ func TestAspectSizeAndFormatHelpers(t *testing.T) {
 	if FormatExtension(v1.ImageFormat_IMAGE_FORMAT_UNSPECIFIED) != "jpg" || FormatMime(v1.ImageFormat_IMAGE_FORMAT_UNSPECIFIED) != "image/jpeg" {
 		t.Fatalf("unexpected default ext/mime")
 	}
+	if DisplayName("") != "" || DisplayName("   ") != "" {
+		t.Fatalf("empty DisplayName should stay empty")
+	}
+	if got := DisplayName("/tmp/\u202e\u200b\u2028shot.png"); got != "shot.png" {
+		t.Fatalf("DisplayName sanitized = %q, want shot.png", got)
+	}
 }

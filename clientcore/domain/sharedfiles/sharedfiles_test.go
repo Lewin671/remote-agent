@@ -52,9 +52,10 @@ func TestClassify(t *testing.T) {
 }
 
 func TestSanitizeAndSplitFileName(t *testing.T) {
-	longBase := strings.Repeat("a", 210)
-	longWithExt := longBase + ".tar.gz" // ext ".gz" is 3 runes
-	longUnicode := strings.Repeat("文", 205) + ".pdf"
+	longASCII := strings.Repeat("a", 270) + ".tar.gz" // ext ".gz" is 3 bytes -> 252 + 3 = 255 bytes
+	// "文" is 3 UTF-8 bytes; ".pdf" is 4 bytes -> max stem is 251 bytes -> floor(251/3)=83 runes = 249 bytes + 4 = 253 bytes
+	longCJK := strings.Repeat("文", 90) + ".pdf"
+	longNoExt := strings.Repeat("x", 260) + ".verylongextensionname"
 
 	sanCases := []struct {
 		in   string
@@ -66,14 +67,18 @@ func TestSanitizeAndSplitFileName(t *testing.T) {
 		{"   ", "file"},
 		{".", "file"},
 		{"..", "file"},
-		{"bad\x00\x1f\x7f\u0085\u202e\u200f\u061c\u2066name.png", "badname.png"},
-		{longWithExt, strings.Repeat("a", 197) + ".gz"},
-		{longUnicode, strings.Repeat("文", 196) + ".pdf"},
-		{strings.Repeat("x", 205) + ".verylongextensionname", strings.Repeat("x", 200)},
+		{"bad\x00\x1f\x7f\u0085\u202e\u200f\u061c\u2066\u200b\ufeff\u2028\u2029\u00adname.png", "badname.png"},
+		{longASCII, strings.Repeat("a", 252) + ".gz"},
+		{longCJK, strings.Repeat("文", 83) + ".pdf"},
+		{longNoExt, strings.Repeat("x", 255)},
 	}
 	for _, tc := range sanCases {
-		if got := SanitizeFileName(tc.in); got != tc.want {
-			t.Fatalf("SanitizeFileName(%q) = %q (runes=%d), want %q", tc.in, got, len([]rune(got)), tc.want)
+		got := SanitizeFileName(tc.in)
+		if got != tc.want {
+			t.Fatalf("SanitizeFileName(%q) = %q (bytes=%d), want %q (bytes=%d)", tc.in, got, len(got), tc.want, len(tc.want))
+		}
+		if len(got) > MaxFileNameBytes {
+			t.Fatalf("SanitizeFileName(%q) exceeded %d bytes: %d", tc.in, MaxFileNameBytes, len(got))
 		}
 	}
 
@@ -118,10 +123,8 @@ func TestFormatFileSizeAndProgress(t *testing.T) {
 		{2*gibBytes + 512*mibBytes, "2.50 GB"},
 	}
 	for _, tc := range sizeCases {
-		for _, loc := range []string{"zh-CN", "en"} {
-			if got := FormatFileSize(tc.bytes, loc); got != tc.want {
-				t.Fatalf("FormatFileSize(%d, %q) = %q, want %q", tc.bytes, loc, got, tc.want)
-			}
+		if got := FormatFileSize(tc.bytes); got != tc.want {
+			t.Fatalf("FormatFileSize(%d) = %q, want %q", tc.bytes, got, tc.want)
 		}
 	}
 
@@ -135,7 +138,7 @@ func TestFormatFileSizeAndProgress(t *testing.T) {
 		{30 * mibBytes, 24 * mibBytes, "24.0", "24.0 MB"},
 	}
 	for _, tc := range progCases {
-		d, tot := FormatFileProgress(tc.done, tc.total, "zh-CN")
+		d, tot := FormatFileProgress(tc.done, tc.total)
 		if d != tc.wantD || tot != tc.wantT {
 			t.Fatalf("FormatFileProgress(%d, %d) = (%q, %q), want (%q, %q)", tc.done, tc.total, d, tot, tc.wantD, tc.wantT)
 		}

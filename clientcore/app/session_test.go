@@ -2153,6 +2153,72 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 	if c3.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
 		t.Fatalf("expected AVAILABLE after clearing local copy, got %v", c3.GetStatus())
 	}
+
+	// Out-of-order metadata_only arriving BEFORE transfer state must be retained and merged when DOWNLOADED arrives.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1350,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", MetadataOnly: true, HasDuration: true, DurationMs: 61_000},
+				},
+			},
+		},
+	})
+	if cPre := getCard(); cPre.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+		t.Fatalf("metadata_only alone should leave status AVAILABLE, got %v", cPre.GetStatus())
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1400,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
+				},
+			},
+		},
+	})
+	if cMerged := getCard(); cMerged.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED ||
+		cMerged.GetDurationText() != "1:01" ||
+		cMerged.GetSubtitle().GetKey() != text.KeySharedFileSubtitleMediaSize {
+		t.Fatalf("expected pre-arrived duration merged into DOWNLOADED card: %+v", cMerged)
+	}
+
+	// Standalone clear_session_id (without replace_all) clears that session's local shared file state.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1450,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				ClearSessionId: "s-sf",
+			},
+		},
+	})
+	if cCleared := getCard(); cCleared.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+		t.Fatalf("expected AVAILABLE after standalone clear_session_id, got %v", cCleared.GetStatus())
+	}
+
+	// replace_all without clear_session_id clears all sessions then applies updates.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1500,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
+				},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1550,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				ReplaceAll: true,
+			},
+		},
+	})
+	if cReplaced := getCard(); cReplaced.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+		t.Fatalf("expected AVAILABLE after global replace_all, got %v", cReplaced.GetStatus())
+	}
 }
 
 func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {

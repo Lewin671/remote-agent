@@ -629,7 +629,7 @@ func buildSessionTimeline(
 					DisplayName: disp,
 					NameHead:    head,
 					NameTail:    tail,
-					SizeText:    text.Plain(sharedfiles.FormatFileSize(sf.SizeBytes, uiLocale)),
+					SizeText:    text.Plain(sharedfiles.FormatFileSize(sf.SizeBytes)),
 				})
 			}
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{

@@ -8,22 +8,18 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
-	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 const (
-	MaxFileNameRunes      = 200
-	MaxPreservedExtRunes  = 16
-	MaxSplitExtRunes      = 12
-	SplitTailLeadRunes    = 3
-	DefaultChunkBytes     = 786_432
-	ReconnectWaitMs       = 30_000
-	EtaDelayMs            = 3_000
-	WebLocalCacheMaxBytes = 50 * 1024 * 1024
+	MaxFileNameBytes     = 255
+	MaxPreservedExtRunes = 16
+	MaxSplitExtRunes     = 12
+	SplitTailLeadRunes   = 3
 
 	kibBytes = 1024
 	mibBytes = 1024 * 1024
@@ -65,8 +61,9 @@ type CardInput struct {
 }
 
 // SanitizeFileName takes the basename after the last '/' or '\', strips C0/DEL/C1
-// control characters and Unicode bidirectional controls, trims whitespace, falls back
-// to "file" when empty/./.., and caps length at 200 Unicode runes while keeping extensions
+// control characters, Unicode Cf format characters (including bidi controls, U+200B, U+FEFF),
+// and U+2028/U+2029 line/paragraph separators, trims whitespace, falls back to "file" when
+// empty/./.., and caps length at 255 UTF-8 bytes on a rune boundary while preserving extensions
 // up to 16 runes (including leading dot).
 func SanitizeFileName(raw string) string {
 	tail := raw
@@ -79,8 +76,7 @@ func SanitizeFileName(raw string) string {
 		if r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f) {
 			continue
 		}
-		if r == 0x061c || r == 0x200e || r == 0x200f ||
-			(r >= 0x202a && r <= 0x202e) || (r >= 0x2066 && r <= 0x2069) {
+		if unicode.Is(unicode.Cf, r) || r == 0x2028 || r == 0x2029 {
 			continue
 		}
 		b.WriteRune(r)
@@ -89,19 +85,41 @@ func SanitizeFileName(raw string) string {
 	if name == "" || name == "." || name == ".." {
 		return "file"
 	}
-	runes := []rune(name)
-	if len(runes) <= MaxFileNameRunes {
+	if len(name) <= MaxFileNameBytes {
 		return name
 	}
-	dot := lastRuneIndex(runes, '.')
+	dot := strings.LastIndexByte(name, '.')
 	if dot > 0 {
-		extLen := len(runes) - dot
-		if extLen > 1 && extLen <= MaxPreservedExtRunes {
-			headLen := MaxFileNameRunes - extLen
-			return string(runes[:headLen]) + string(runes[dot:])
+		ext := name[dot:]
+		if len(ext) > 1 && utf8.RuneCountInString(ext) <= MaxPreservedExtRunes && len(ext) < MaxFileNameBytes {
+			head := truncateUTF8Bytes(name[:dot], MaxFileNameBytes-len(ext))
+			if head != "" {
+				return head + ext
+			}
 		}
 	}
-	return string(runes[:MaxFileNameRunes])
+	return truncateUTF8Bytes(name, MaxFileNameBytes)
+}
+
+func truncateUTF8Bytes(s string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(s) <= maxBytes {
+		return s
+	}
+	end := 0
+	for i := range s {
+		if i > maxBytes {
+			break
+		}
+		end = i
+	}
+	// Check if the rune starting at end also fits within maxBytes.
+	if _, sz := utf8.DecodeRuneInString(s[end:]); end+sz <= maxBytes {
+		end += sz
+	}
+	return s[:end]
 }
 
 // SplitMiddleTruncateName splits a filename into (head, tail) so middle ellipsis
@@ -270,8 +288,7 @@ func DisplaySourcePath(rawPath, machineHome, fallbackName string) string {
 
 // FormatFileSize formats byte counts using 1024-based binary scaling with B / KB / MB / GB labels.
 // Rounding carries cleanly across unit boundaries (e.g. 1023.99 KB -> "1.0 MB", 1023.99 MB -> "1.00 GB").
-func FormatFileSize(bytes int64, uiLocale string) string {
-	_ = usage.NormalizeUILocale(uiLocale)
+func FormatFileSize(bytes int64) string {
 	if bytes < 0 {
 		bytes = 0
 	}
@@ -298,7 +315,7 @@ func FormatFileSize(bytes int64, uiLocale string) string {
 
 // FormatFileProgress formats a (done, total) pair for downloading/paused subtitles,
 // dropping the redundant unit on done when both values share the same unit.
-func FormatFileProgress(done, total int64, uiLocale string) (doneText, totalText string) {
+func FormatFileProgress(done, total int64) (doneText, totalText string) {
 	if total < 0 {
 		total = 0
 	}
@@ -308,8 +325,8 @@ func FormatFileProgress(done, total int64, uiLocale string) (doneText, totalText
 	if done > total {
 		done = total
 	}
-	totalText = FormatFileSize(total, uiLocale)
-	doneText = FormatFileSize(done, uiLocale)
+	totalText = FormatFileSize(total)
+	doneText = FormatFileSize(done)
 	tNum, tUnit, tOk := strings.Cut(totalText, " ")
 	dNum, dUnit, dOk := strings.Cut(doneText, " ")
 	_ = tNum
@@ -400,7 +417,7 @@ func BuildCard(in CardInput) *corev1.SessionSharedFileItem {
 	displayName := SanitizeFileName(f.Name)
 	nameHead, nameTail := SplitMiddleTruncateName(displayName)
 	cls := Classify(displayName)
-	sizeStr := FormatFileSize(total, in.UILocale)
+	sizeStr := FormatFileSize(total)
 	displayPath := DisplaySourcePath(f.Path, in.MachineHome, displayName)
 	var sourceCaption *corev1.Text
 	if strings.TrimSpace(in.MachineName) != "" {
@@ -426,7 +443,7 @@ func BuildCard(in CardInput) *corev1.SessionSharedFileItem {
 		downloaded = clampBytes(in.Local.DownloadedBytes, total)
 		progress = byteProgress(downloaded, total)
 		waitingReconnect = in.Local.WaitingReconnect
-		doneStr, totalStr := FormatFileProgress(downloaded, total, in.UILocale)
+		doneStr, totalStr := FormatFileProgress(downloaded, total)
 		if in.Local.HasEta && in.Local.EtaSeconds > 0 {
 			subtitle = text.Msg(
 				text.KeySharedFileSubtitleDownloadingEta,
@@ -446,7 +463,7 @@ func BuildCard(in CardInput) *corev1.SessionSharedFileItem {
 	case corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED:
 		downloaded = clampBytes(in.Local.DownloadedBytes, total)
 		progress = byteProgress(downloaded, total)
-		doneStr, totalStr := FormatFileProgress(downloaded, total, in.UILocale)
+		doneStr, totalStr := FormatFileProgress(downloaded, total)
 		subtitle = text.Msg(
 			text.KeySharedFileSubtitlePaused,
 			text.Str("downloaded", doneStr),

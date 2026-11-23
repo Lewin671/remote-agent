@@ -230,16 +230,14 @@ func SourceLabel(kind corev1.SessionImageSourceKind, agentName string) *corev1.T
 	}
 }
 
-// DisplayName extracts the filename portion of an image's recorded path, or "" if absent.
+// DisplayName extracts and sanitizes the filename portion of an image's recorded path,
+// or "" if no path was recorded.
 func DisplayName(path string) string {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
 		return ""
 	}
-	if idx := strings.LastIndexAny(trimmed, "/\\"); idx >= 0 {
-		return trimmed[idx+1:]
-	}
-	return trimmed
+	return sharedfiles.SanitizeFileName(trimmed)
 }
 
 // CollectViewerImages walks timeline items in chronological order, including items inside
