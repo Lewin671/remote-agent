@@ -251,7 +251,7 @@ class SharedFilesTest {
     }
 
     @Test
-    fun scanLocalCleansLegacyMetaFormatAndEvictedCommittedFiles() = runTest {
+    fun scanLocalReportsLegacyMetaAndEvictedFilesTruthfullyForCoreCleanup() = runTest {
         val root = tempRoot()
         val executor = SharedFileIoExecutor(
             rootDir = root,
@@ -273,15 +273,29 @@ class SharedFilesTest {
             val evictedFile = executor.seedCommittedFileForTest("s-evict", "f-evict", "gone.pdf", ByteArray(64))
             assertTrue(evictedFile.delete())
 
-            // Valid v2 committed file should survive scan.
+            // Valid v2 committed file should be reported with exact bytes.
             executor.seedCommittedFileForTest("s-ok", "f-ok", "keep.pdf", ByteArray(128))
 
             val scanned = executor.executeScanLocal(SharedFileScanLocalEffect.newBuilder().setOpId(9L).build())
-            assertEquals(1, scanned.entriesCount)
-            assertEquals("s-ok", scanned.getEntries(0).sessionId)
-            assertEquals("f-ok", scanned.getEntries(0).fileId)
-            assertFalse("legacy dir must be cleaned up", legacyDir.exists())
-            assertFalse("evicted dir must be cleaned up", File(root, "s-evict/f-evict").exists())
+            val byFile = scanned.entriesList.associateBy { it.fileId }
+            assertEquals(3, scanned.entriesCount)
+
+            val ok = byFile.getValue("f-ok")
+            assertTrue(ok.completed)
+            assertEquals(128L, ok.bytesOnDisk)
+            assertEquals(128L, ok.expectedSizeBytes)
+
+            val legacy = byFile.getValue("f-old")
+            assertFalse(legacy.completed)
+            assertEquals(0L, legacy.committedOffset)
+            assertTrue(legacy.sha256.isEmpty)
+            // Shell must NOT delete legacy files on its own during scan; Core emits DeletePartial.
+            assertTrue(legacyDir.exists())
+
+            val evicted = byFile.getValue("f-evict")
+            assertTrue(evicted.completed)
+            assertEquals(-1L, evicted.bytesOnDisk)
+            assertTrue(File(root, "s-evict/f-evict").exists())
         } finally {
             executor.close()
             root.deleteRecursively()

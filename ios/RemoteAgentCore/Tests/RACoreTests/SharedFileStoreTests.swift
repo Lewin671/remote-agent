@@ -239,6 +239,19 @@ import Testing
         #expect(store.usedBytes() == 0)
     }
 
+    @Test func writeChunkReportsIOFailureInsteadOfChecksumMismatchWhenPartialMissing() {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let content = pattern(1000)
+        let hash = Data(SHA256.hash(data: content))
+
+        let res = store.writeChunk(writeEffect(
+            opID: 1, offset: 500, data: content[500..<1000], total: 1000,
+            committedOffset: 1000, sha256: hash, resetPartial: false))
+        #expect(!res.ok)
+        #expect(res.errorKind == .other)
+    }
+
     @Test func folderAndFileNamesStaySafe() {
         #expect(sharedFileFolderName("a1b2-c_3") == "a1b2-c_3")
         #expect(sharedFileFolderName("../x/y") == "___x_y")

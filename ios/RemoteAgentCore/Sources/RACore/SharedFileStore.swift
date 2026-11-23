@@ -242,28 +242,9 @@ public struct SharedFileStore: Sendable {
                 guard fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection) else {
                     throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno != 0 ? errno : EIO))
                 }
-            } else if !fm.fileExists(atPath: part.path) {
-                if effect.offset > 0 {
-                    return .with {
-                        $0.opID = effect.opID
-                        $0.sessionID = effect.sessionID
-                        $0.fileID = effect.fileID
-                        $0.ok = false
-                        $0.errorKind = .checksumMismatch
-                        $0.errorDetail = "partial file missing"
-                    }
-                }
+            } else if !fm.fileExists(atPath: part.path), effect.offset == 0 {
                 guard fm.createFile(atPath: part.path, contents: nil, attributes: Self.protection) else {
                     throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno != 0 ? errno : EIO))
-                }
-            } else if effect.offset > 0, (Self.fileLength(part) ?? 0) < effect.offset {
-                return .with {
-                    $0.opID = effect.opID
-                    $0.sessionID = effect.sessionID
-                    $0.fileID = effect.fileID
-                    $0.ok = false
-                    $0.errorKind = .checksumMismatch
-                    $0.errorDetail = "partial file truncated"
                 }
             }
 

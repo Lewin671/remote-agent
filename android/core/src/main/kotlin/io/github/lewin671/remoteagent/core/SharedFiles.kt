@@ -267,20 +267,11 @@ class SharedFileIoExecutor(
         return try {
             val sessionDirs = rootDir.listFiles().orEmpty()
             for (sidDir in sessionDirs) {
-                if (!sidDir.isDirectory) {
-                    sidDir.delete()
-                    continue
-                }
+                if (!sidDir.isDirectory) continue
                 val fileDirs = sidDir.listFiles().orEmpty()
                 for (fidDir in fileDirs) {
-                    if (!fidDir.isDirectory) {
-                        fidDir.delete()
-                        continue
-                    }
-                    scanFileDir(fidDir)?.let { builder.addEntries(it) }
-                }
-                if (sidDir.listFiles().isNullOrEmpty()) {
-                    sidDir.delete()
+                    if (!fidDir.isDirectory) continue
+                    scanFileDir(sidDir.name, fidDir)?.let { builder.addEntries(it) }
                 }
             }
             builder.build()
@@ -292,12 +283,8 @@ class SharedFileIoExecutor(
         }
     }
 
-    private fun scanFileDir(fidDir: File): SharedFileLocalEntry? {
-        // Remove any incomplete atomic temp files left by a prior crash.
-        fidDir.listFiles()?.forEach { f ->
-            if (f.isFile && f.name.endsWith(".tmp")) f.delete()
-        }
-
+    private fun scanFileDir(fallbackSid: String, fidDir: File): SharedFileLocalEntry? {
+        val fallbackFid = fidDir.name
         val committedMeta = committedMetaFile(fidDir)
         if (committedMeta.exists()) {
             val props = readMeta(committedMeta)
@@ -317,18 +304,11 @@ class SharedFileIoExecutor(
             ) {
                 val finalFile = File(File(fidDir, COMMITTED_FILE_DIR), safeLocalFileName(displayName))
                 if (finalFile.isFile) {
-                    val onDisk = finalFile.length()
-                    if (expectedSize == 0L && onDisk != 0L) {
-                        fidDir.deleteRecursively()
-                        return null
-                    }
-                    // Clean any stale partial leftovers alongside an already committed file.
-                    deletePartialFiles(fidDir)
                     return SharedFileLocalEntry.newBuilder()
                         .setSessionId(sid)
                         .setFileId(fid)
                         .setCompleted(true)
-                        .setBytesOnDisk(onDisk)
+                        .setBytesOnDisk(finalFile.length())
                         .setExpectedSizeBytes(expectedSize)
                         .apply {
                             if (durationMs != null && durationMs > 0L) {
@@ -338,9 +318,14 @@ class SharedFileIoExecutor(
                         .build()
                 }
             }
-            // Missing committed file (OS cache eviction) or corrupt committed.meta: discard committed artifacts.
-            committedMeta.delete()
-            File(fidDir, COMMITTED_FILE_DIR).deleteRecursively()
+            // Corrupt/legacy committed.meta or evicted committed file: report malformed completed
+            // entry truthfully so Core decides and emits SharedFileDeleteLocalEffect.
+            return SharedFileLocalEntry.newBuilder()
+                .setSessionId(sid.ifEmpty { fallbackSid })
+                .setFileId(fid.ifEmpty { fallbackFid })
+                .setCompleted(true)
+                .setBytesOnDisk(-1L)
+                .build()
         }
 
         val partialMeta = partialMetaFile(fidDir)
@@ -349,13 +334,13 @@ class SharedFileIoExecutor(
             val format = props?.getProperty("format")
             val sid = props?.getProperty("session_id").orEmpty()
             val fid = props?.getProperty("file_id").orEmpty()
+            val part = partFile(fidDir)
+            val bytesOnDisk = if (part.isFile) part.length() else 0L
             if (format == META_FORMAT_VERSION && sid.isNotEmpty() && fid.isNotEmpty()) {
                 val expectedSize = props?.getProperty("total_size_bytes")?.toLongOrNull() ?: 0L
                 val chunkBytes = props?.getProperty("chunk_bytes")?.toIntOrNull() ?: 0
                 val committedOffset = props?.getProperty("committed_offset")?.toLongOrNull() ?: 0L
                 val sha256Bytes = decodeHex32(props?.getProperty("expected_sha256").orEmpty())
-                val part = partFile(fidDir)
-                val bytesOnDisk = if (part.isFile) part.length() else 0L
                 return SharedFileLocalEntry.newBuilder()
                     .setSessionId(sid)
                     .setFileId(fid)
@@ -367,11 +352,27 @@ class SharedFileIoExecutor(
                     .setSha256(ByteString.copyFrom(sha256Bytes))
                     .build()
             }
-            deletePartialFiles(fidDir)
+            return SharedFileLocalEntry.newBuilder()
+                .setSessionId(sid.ifEmpty { fallbackSid })
+                .setFileId(fid.ifEmpty { fallbackFid })
+                .setCompleted(false)
+                .setBytesOnDisk(bytesOnDisk)
+                .build()
         }
 
-        // Legacy/unrecognized format (e.g. old meta.properties) or orphan files: treat as corrupt and clean up.
-        fidDir.deleteRecursively()
+        // Legacy/unrecognized format (e.g. old meta.properties) or orphan download.part:
+        // report truthfully as malformed partial so Core emits SharedFileDeletePartialEffect.
+        val children = fidDir.listFiles().orEmpty()
+        if (children.isNotEmpty()) {
+            val part = partFile(fidDir)
+            val bytesOnDisk = if (part.isFile) part.length() else 0L
+            return SharedFileLocalEntry.newBuilder()
+                .setSessionId(fallbackSid)
+                .setFileId(fallbackFid)
+                .setCompleted(false)
+                .setBytesOnDisk(bytesOnDisk)
+                .build()
+        }
         return null
     }
 
