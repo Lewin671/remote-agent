@@ -21,35 +21,6 @@
     "zh-CN": "{agent} 在问你"
   },
   {
-    "en": "Command approval",
-    "key": "list_state.android_request_command",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {},
-    "platforms": [
-      "android",
-      "web"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请求执行"
-  },
-  {
-    "en": "Permission approval",
-    "key": "list_state.android_request_permission",
-    "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请求权限"
-  },
-  {
     "en": "Awaiting approval",
     "key": "list_state.approval",
     "notes": "会话列表状态词，紧凑一行。 无变量。",

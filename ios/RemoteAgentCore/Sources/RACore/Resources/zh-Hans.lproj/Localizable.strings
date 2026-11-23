@@ -574,7 +574,6 @@
 "modes_full_new_note" = "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。";
 "modes_full_title" = "切到完全放行？";
 "modes_ios_outside_note" = "照实显示终端中的模式；不提供切到 %1$@ 的按钮。";
-"modes_locked" = "本会话以完全放行启动，不能切换审批模式";
 "modes_locked_note" = "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。";
 "modes_model_no_auto" = "这个模型没有自动模式，换一种审批模式再开始";
 "modes_permission_notice" = "照实显示终端中的模式；不提供切到 accept edits 的按钮。";
@@ -1983,8 +1982,6 @@
 "usage_strip_ttft" = "首字延迟";
 "usage_subtitle_offline" = "%1$@ · 离线";
 "usage_title" = "用量与速度";
-"usage_unit_wan" = "万";
-"usage_unit_yi" = "亿";
 "usage_unsupported_body" = "更新 %1$@ 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。";
 "usage_unsupported_title" = "电脑上的 remote-agent 版本较旧";
 "usage_vs_yesterday" = "较昨天";

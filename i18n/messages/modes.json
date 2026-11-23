@@ -351,22 +351,6 @@
     }
   },
   {
-    "key": "modes.locked",
-    "zh-CN": "本会话以完全放行启动，不能切换审批模式",
-    "en": "This session started with Full access; its approval mode cannot be changed",
-    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "modes.locked_note",
     "zh-CN": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
     "en": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",

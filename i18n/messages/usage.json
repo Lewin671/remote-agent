@@ -1127,38 +1127,6 @@
     }
   },
   {
-    "key": "usage.unit_wan",
-    "zh-CN": "万",
-    "en": "10k",
-    "params": {},
-    "notes": "中文 token 缩写万单位。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "usage.unit_yi",
-    "zh-CN": "亿",
-    "en": "100M",
-    "params": {},
-    "notes": "中文 token 缩写亿单位。",
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "usage.unsupported_body",
     "zh-CN": "更新 {name} 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。",
     "en": "Update remote-agent on {name} to view token consumption, cache hit rate, and output speed.",

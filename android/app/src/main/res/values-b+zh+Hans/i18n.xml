@@ -8,9 +8,6 @@
     <string name="approval_always_directory">"本项目访问 %1$s 以后不再问"</string>
     <string name="approval_always_prefix">"「%1$s」开头的命令以后不再问"</string>
     <string name="approval_android_deny_decision" formatted="false">"拒绝"</string>
-    <plurals name="approval_android_minutes_meta">
-        <item quantity="other">" · 剩 %1$d 分钟"</item>
-    </plurals>
     <string name="approval_android_reply_expired">"不确定「%1$s」有没有送到，它已过期，不会再重发"</string>
     <string name="approval_android_unknown_result" formatted="false">"结果未知"</string>
     <string name="approval_approve" formatted="false">"批准"</string>
@@ -522,8 +519,6 @@
     <string name="image_verification_failed" formatted="false">"图片校验失败，没有显示"</string>
     <string name="image_view" formatted="false">"查看图片"</string>
     <string name="list_state_agent_asking">"%1$s 在问你"</string>
-    <string name="list_state_android_request_command" formatted="false">"请求执行"</string>
-    <string name="list_state_android_request_permission" formatted="false">"请求权限"</string>
     <string name="list_state_approval" formatted="false">"等待审批"</string>
     <string name="list_state_ended" formatted="false">"已结束"</string>
     <string name="list_state_idle" formatted="false">"空闲"</string>
@@ -670,7 +665,6 @@
     <string name="modes_full_current_note" formatted="false">"之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。"</string>
     <string name="modes_full_new_note" formatted="false">"之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。"</string>
     <string name="modes_full_title" formatted="false">"切到完全放行？"</string>
-    <string name="modes_locked" formatted="false">"本会话以完全放行启动，不能切换审批模式"</string>
     <string name="modes_locked_note" formatted="false">"以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"</string>
     <string name="modes_model_no_auto" formatted="false">"这个模型没有自动模式，换一种审批模式再开始"</string>
     <string name="modes_permission_notice" formatted="false">"照实显示终端中的模式；不提供切到 accept edits 的按钮。"</string>
@@ -2298,8 +2292,6 @@
     <string name="usage_strip_ttft" formatted="false">"首字延迟"</string>
     <string name="usage_subtitle_offline">"%1$s · 离线"</string>
     <string name="usage_title" formatted="false">"用量与速度"</string>
-    <string name="usage_unit_wan" formatted="false">"万"</string>
-    <string name="usage_unit_yi" formatted="false">"亿"</string>
     <string name="usage_unsupported_body">"更新 %1$s 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。"</string>
     <string name="usage_unsupported_title" formatted="false">"电脑上的 remote-agent 版本较旧"</string>
     <plurals name="usage_vs_prev_days">

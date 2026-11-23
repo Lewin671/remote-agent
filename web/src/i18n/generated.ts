@@ -43,7 +43,6 @@ export interface MessageArgs {
   "approval.always_allowed": { [name: string]: never };
   "approval.always_directory": { path: string };
   "approval.always_prefix": { command: string };
-  "approval.android_minutes_meta": { count: number };
   "approval.android_reply_expired": { decision: string };
   "approval.android_unknown_result": { [name: string]: never };
   "approval.approve": { [name: string]: never };
@@ -382,7 +381,6 @@ export interface MessageArgs {
   "image.verification_failed": { [name: string]: never };
   "image.view": { [name: string]: never };
   "list_state.agent_asking": { agent: string };
-  "list_state.android_request_command": { [name: string]: never };
   "list_state.approval": { [name: string]: never };
   "list_state.ended": { [name: string]: never };
   "list_state.idle": { [name: string]: never };
@@ -514,7 +512,6 @@ export interface MessageArgs {
   "modes.full_current_note": { [name: string]: never };
   "modes.full_new_note": { [name: string]: never };
   "modes.full_title": { [name: string]: never };
-  "modes.locked": { [name: string]: never };
   "modes.locked_note": { [name: string]: never };
   "modes.model_no_auto": { [name: string]: never };
   "modes.permission_notice": { [name: string]: never };
@@ -1766,8 +1763,6 @@ export interface MessageArgs {
   "usage.strip_ttft": { [name: string]: never };
   "usage.subtitle_offline": { name: string };
   "usage.title": { [name: string]: never };
-  "usage.unit_wan": { [name: string]: never };
-  "usage.unit_yi": { [name: string]: never };
   "usage.unsupported_body": { name: string };
   "usage.unsupported_title": { [name: string]: never };
   "usage.vs_prev_days": { days: number };
@@ -1782,13 +1777,6 @@ export const messages = {
     "approval.always_allowed": "Allowed; always allow",
     "approval.always_directory": "Always allow access to {path} in this project",
     "approval.always_prefix": "Always allow commands starting with “{command}”",
-    "approval.android_minutes_meta": {
-      "forms": {
-        "one": " · {count} min left",
-        "other": " · {count} min left"
-      },
-      "plural": "count"
-    },
     "approval.android_reply_expired": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",
     "approval.android_unknown_result": "Result unknown",
     "approval.approve": "Approve",
@@ -2313,7 +2301,6 @@ export const messages = {
     "image.verification_failed": "Image verification failed; not displayed",
     "image.view": "View image",
     "list_state.agent_asking": "{agent} is asking you",
-    "list_state.android_request_command": "Command approval",
     "list_state.approval": "Awaiting approval",
     "list_state.ended": "Ended",
     "list_state.idle": "Idle",
@@ -2487,7 +2474,6 @@ export const messages = {
     "modes.full_current_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to this session.",
     "modes.full_new_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to the new session.",
     "modes.full_title": "Switch to Full access?",
-    "modes.locked": "This session started with Full access; its approval mode cannot be changed",
     "modes.locked_note": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",
     "modes.model_no_auto": "This model does not support Auto mode. Choose another approval mode before starting.",
     "modes.permission_notice": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
@@ -4117,8 +4103,6 @@ export const messages = {
     "usage.strip_ttft": "TTFT",
     "usage.subtitle_offline": "{name} · Offline",
     "usage.title": "Usage & speed",
-    "usage.unit_wan": "10k",
-    "usage.unit_yi": "100M",
     "usage.unsupported_body": "Update remote-agent on {name} to view token consumption, cache hit rate, and output speed.",
     "usage.unsupported_title": "remote-agent on this computer is older",
     "usage.vs_prev_days": {
@@ -4137,12 +4121,6 @@ export const messages = {
     "approval.always_allowed": "已允许，以后不再问",
     "approval.always_directory": "本项目访问 {path} 以后不再问",
     "approval.always_prefix": "「{command}」开头的命令以后不再问",
-    "approval.android_minutes_meta": {
-      "forms": {
-        "other": " · 剩 {count} 分钟"
-      },
-      "plural": "count"
-    },
     "approval.android_reply_expired": "不确定「{decision}」有没有送到，它已过期，不会再重发",
     "approval.android_unknown_result": "结果未知",
     "approval.approve": "批准",
@@ -4636,7 +4614,6 @@ export const messages = {
     "image.verification_failed": "图片校验失败，没有显示",
     "image.view": "查看图片",
     "list_state.agent_asking": "{agent} 在问你",
-    "list_state.android_request_command": "请求执行",
     "list_state.approval": "等待审批",
     "list_state.ended": "已结束",
     "list_state.idle": "空闲",
@@ -4803,7 +4780,6 @@ export const messages = {
     "modes.full_current_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
     "modes.full_new_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。",
     "modes.full_title": "切到完全放行？",
-    "modes.locked": "本会话以完全放行启动，不能切换审批模式",
     "modes.locked_note": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
     "modes.model_no_auto": "这个模型没有自动模式，换一种审批模式再开始",
     "modes.permission_notice": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
@@ -6372,8 +6348,6 @@ export const messages = {
     "usage.strip_ttft": "首字延迟",
     "usage.subtitle_offline": "{name} · 离线",
     "usage.title": "用量与速度",
-    "usage.unit_wan": "万",
-    "usage.unit_yi": "亿",
     "usage.unsupported_body": "更新 {name} 上的 remote-agent 后，可查看 token 消耗量、缓存命中率与输出速度。",
     "usage.unsupported_title": "电脑上的 remote-agent 版本较旧",
     "usage.vs_prev_days": {

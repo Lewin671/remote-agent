@@ -574,7 +574,6 @@
 "modes_full_new_note" = "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to the new session.";
 "modes_full_title" = "Switch to Full access?";
 "modes_ios_outside_note" = "Shows the terminal’s actual mode; no button is offered to switch to %1$@.";
-"modes_locked" = "This session started with Full access; its approval mode cannot be changed";
 "modes_locked_note" = "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.";
 "modes_model_no_auto" = "This model does not support Auto mode. Choose another approval mode before starting.";
 "modes_permission_notice" = "Shows the mode reported by the terminal; switching to accept edits is not offered.";
@@ -1983,8 +1982,6 @@
 "usage_strip_ttft" = "TTFT";
 "usage_subtitle_offline" = "%1$@ · Offline";
 "usage_title" = "Usage & speed";
-"usage_unit_wan" = "10k";
-"usage_unit_yi" = "100M";
 "usage_unsupported_body" = "Update remote-agent on %1$@ to view token consumption, cache hit rate, and output speed.";
 "usage_unsupported_title" = "remote-agent on this computer is older";
 "usage_vs_yesterday" = "vs yesterday";

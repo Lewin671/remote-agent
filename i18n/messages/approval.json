@@ -120,38 +120,6 @@
     "zh-CN": "拒绝"
   },
   {
-    "en": {
-      "forms": {
-        "one": " · {count} min left",
-        "other": " · {count} min left"
-      },
-      "plural": "count"
-    },
-    "key": "approval.android_minutes_meta",
-    "notes": "Android 批次 B：Sheets.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "count": {
-        "example": 2,
-        "type": "integer"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": {
-      "forms": {
-        "other": " · 剩 {count} 分钟"
-      },
-      "plural": "count"
-    }
-  },
-  {
     "en": "It is unclear whether “{decision}” arrived. It has expired and will not be resent",
     "key": "approval.android_reply_expired",
     "notes": "Android 批次 B：DarkCard.kt 的现有显示文案，保留原中文措辞与标点。参数：decision 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
