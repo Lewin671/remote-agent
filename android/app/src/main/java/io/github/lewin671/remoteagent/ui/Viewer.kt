@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.RETIRED_HISTORY_ERROR
@@ -179,9 +180,19 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
         info = { page ->
             val cur = all[page]
             val from = if (cur.hasSourceLabel()) uiText(cur.sourceLabel) else ""
-            val pathSuffix = if (cur.displayPath.isNotEmpty()) "  ${cur.displayPath}" else ""
-            if (from.isNotEmpty() || pathSuffix.isNotEmpty()) {
-                Text(from + pathSuffix, color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
+            if (from.isNotEmpty()) {
+                Text(from, color = Color.White, style = T.s13b, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            val path = cur.displayPath.ifEmpty { cur.displayName }
+            if (path.isNotEmpty()) {
+                Text(
+                    path,
+                    color = Color(0xFFD5DADE),
+                    style = T.s13,
+                    fontFamily = MonoFamily,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                )
             }
             val title = uiText(vm.header.title)
             val meta = listOfNotNull(cur.sizeText.ifEmpty { null }, title.ifEmpty { null }).joinToString(" · ")
