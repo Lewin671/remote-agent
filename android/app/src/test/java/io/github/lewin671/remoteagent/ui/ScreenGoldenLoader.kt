@@ -601,6 +601,9 @@ object ScreenGoldenLoader {
                 MachineCpuSection.newBuilder()
                     .setHasValue(c.bool("hasValue"))
                     .setHeadline(c.str("headline"))
+                    .setValue(c.f64("value"))
+                    .setValueText(c.str("valueText"))
+                    .setUnit(c.str("unit"))
                     .apply {
                         c.obj("detail")?.let { setDetail(parseText(it)) }
                         c.obj("detail2")?.let { setDetail2(parseText(it)) }
@@ -616,6 +619,11 @@ object ScreenGoldenLoader {
                     .setPressure(m.enum("pressure", MachinePressureTone.MACHINE_PRESSURE_TONE_UNSPECIFIED))
                     .setHasPressurePosition(m.bool("hasPressurePosition"))
                     .setPressurePosition(m.f64("pressurePosition"))
+                    .setValue(m.f64("value"))
+                    .setValueText(m.str("valueText"))
+                    .setUnit(m.str("unit"))
+                    .setUsedBytes(m.i64("usedBytes"))
+                    .setTotalBytes(m.i64("totalBytes"))
                     .apply {
                         m.obj("headline")?.let { setHeadline(parseText(it)) }
                         m.obj("caption")?.let { setCaption(parseText(it)) }
@@ -635,6 +643,11 @@ object ScreenGoldenLoader {
                     .setHasUsedFraction(d.bool("hasUsedFraction"))
                     .setUsedFraction(d.f64("usedFraction"))
                     .setShowActions(d.bool("showActions"))
+                    .setValue(d.f64("value"))
+                    .setValueText(d.str("valueText"))
+                    .setUnit(d.str("unit"))
+                    .setAvailableBytes(d.i64("availableBytes"))
+                    .setTotalBytes(d.i64("totalBytes"))
                     .apply {
                         d.obj("headline")?.let { setHeadline(parseText(it)) }
                         d.obj("caption")?.let { setCaption(parseText(it)) }
@@ -662,13 +675,56 @@ object ScreenGoldenLoader {
                                     .setMemoryBytes(r.i64("memoryBytes"))
                                     .setAgent(r.enum("agent", Agent.AGENT_UNSPECIFIED))
                                     .setSessionId(r.str("sessionId"))
+                                    .setCpuBarFraction(r.f64("cpuBarFraction"))
+                                    .setMemoryBarFraction(r.f64("memoryBarFraction"))
                                     .apply {
                                         r.obj("title")?.let { setTitle(parseText(it)) }
                                         r.obj("secondary")?.let { setSecondary(parseText(it)) }
+                                        r.obj("cpuValueText")?.let { setCpuValueText(parseText(it)) }
+                                        r.obj("memoryValueText")?.let { setMemoryValueText(parseText(it)) }
                                     },
                             )
                         }
                         t.obj("emptyText")?.let { setEmptyText(parseText(it)) }
+                    },
+            )
+        }
+        o.obj("modelUsage")?.let { mu ->
+            setModelUsage(
+                MachineModelUsagePreview.newBuilder()
+                    .setSupported(mu.bool("supported"))
+                    .setLoading(mu.bool("loading"))
+                    .setHasData(mu.bool("hasData"))
+                    .setFallbackThirtyDays(mu.bool("fallbackThirtyDays"))
+                    .setBackfilling(mu.bool("backfilling"))
+                    .setCachedOffline(mu.bool("cachedOffline"))
+                    .setCachedAtMs(mu.i64("cachedAtMs"))
+                    .apply {
+                        mu.arr("rows").forEach { re ->
+                            val r = re.jsonObject
+                            addRows(
+                                MachineModelUsageRow.newBuilder()
+                                    .setAgent(r.enum("agent", Agent.AGENT_UNSPECIFIED))
+                                    .setAgentName(r.str("agentName"))
+                                    .setModel(r.str("model"))
+                                    .setTotalTokens(r.i64("totalTokens"))
+                                    .setHasCacheHit(r.bool("hasCacheHit"))
+                                    .setCacheHitRate(r.f64("cacheHitRate"))
+                                    .setHasSpeed(r.bool("hasSpeed"))
+                                    .setSpeedP50(r.f64("speedP50"))
+                                    .setUsageRequestCount(r.i64("usageRequestCount"))
+                                    .setSpeedRequestCount(r.i64("speedRequestCount"))
+                                    .setFewSpeedSamples(r.bool("fewSpeedSamples"))
+                                    .apply {
+                                        r.obj("titleText")?.let { setTitleText(parseText(it)) }
+                                        r.obj("totalTokensText")?.let { setTotalTokensText(parseText(it)) }
+                                        r.obj("metaText")?.let { setMetaText(parseText(it)) }
+                                    },
+                            )
+                        }
+                        mu.obj("unsupportedFootnote")?.let { setUnsupportedFootnote(parseText(it)) }
+                        mu.obj("emptyText")?.let { setEmptyText(parseText(it)) }
+                        mu.obj("windowLabel")?.let { setWindowLabel(parseText(it)) }
                     },
             )
         }

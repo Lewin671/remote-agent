@@ -421,7 +421,10 @@ class UsageAndCliSwitchesTest {
                                 .setHasSpeed(true)
                                 .setSpeedP50(68.0)
                                 .setUsageRequestCount(14L)
-                                .setSpeedRequestCount(12L),
+                                .setSpeedRequestCount(12L)
+                                .setTitleText(coreLit("Claude Code · claude-sonnet-4-6"))
+                                .setTotalTokensText(coreLit("12.5万"))
+                                .setMetaText(coreLit("缓存 82% · 68 tok/s · 14 次 · 近 7 天")),
                         ),
                 )
                 .build()

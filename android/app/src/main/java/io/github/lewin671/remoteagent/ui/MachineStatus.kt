@@ -284,22 +284,6 @@ private fun SwapCard(
     }
 }
 
-private data class ParsedFigure(val value: String, val number: Double, val unit: String?)
-
-private fun parseFigure(raw: String, fallbackCaption: String): ParsedFigure {
-    val trimmed = raw.trim()
-    if (trimmed.isEmpty() || trimmed == "—") return ParsedFigure("—", 0.0, fallbackCaption.takeIf { it.isNotEmpty() })
-    if (trimmed.endsWith(" GB")) {
-        val numStr = trimmed.removeSuffix(" GB").trim()
-        return ParsedFigure(numStr, numStr.toDoubleOrNull() ?: 0.0, fallbackCaption.takeIf { it.isNotEmpty() } ?: "GB")
-    }
-    if (trimmed.endsWith("%")) {
-        val numStr = trimmed.removeSuffix("%").trim()
-        return ParsedFigure(numStr, numStr.toDoubleOrNull() ?: 0.0, "%")
-    }
-    return ParsedFigure(trimmed, 0.0, null)
-}
-
 @Composable
 private fun BigNumber(value: String, number: Double, unit: String?, color: Color, unitColor: Color) {
     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -370,15 +354,26 @@ private fun HeroCard(
         ) {
             val memCaption = uiText(view.memory.caption)
             if (chart.hasScrub) {
-                val scrubbed = uiText(chart.scrubValue)
-                val fig = parseFigure(scrubbed, if (metric == StatusMetric.MEMORY) memCaption else "")
-                BigNumber(fig.value, fig.number, fig.unit, ink, ink2)
+                val pt = chart.pointsList.getOrNull(chart.scrubIndex)
+                if (pt != null) {
+                    if (metric == StatusMetric.CPU) {
+                        val pct = pt.value
+                        BigNumber(kotlin.math.round(pct).toInt().toString(), pct, "%", ink, ink2)
+                    } else {
+                        val gib = pt.value / (1024.0 * 1024.0 * 1024.0)
+                        val text = String.format(java.util.Locale.US, "%.1f", gib)
+                        BigNumber(text, gib, memCaption.ifEmpty { view.memory.unit.takeIf { it.isNotEmpty() } }, ink, ink2)
+                    }
+                } else {
+                    BigNumber(uiText(chart.scrubValue).ifEmpty { "—" }, 0.0, if (metric == StatusMetric.MEMORY) memCaption.ifEmpty { null } else null, ink, ink2)
+                }
             } else if (metric == StatusMetric.CPU) {
-                val fig = parseFigure(view.cpu.headline, "")
-                BigNumber(fig.value, fig.number, fig.unit, ink, ink2)
+                val cpu = view.cpu
+                BigNumber(cpu.valueText.ifEmpty { "—" }, cpu.value, cpu.unit.takeIf { it.isNotEmpty() }, ink, ink2)
             } else {
-                val fig = parseFigure(uiText(view.memory.headline), memCaption)
-                BigNumber(fig.value, fig.number, fig.unit, ink, ink2)
+                val mem = view.memory
+                val unit = memCaption.ifEmpty { mem.unit }.takeIf { it.isNotEmpty() }
+                BigNumber(mem.valueText.ifEmpty { "—" }, mem.value, unit, ink, ink2)
             }
 
             Column(horizontalAlignment = Alignment.End) {
@@ -484,13 +479,13 @@ private fun MemoryTile(
     val p = pal
     val copy = uiText()
     val mem = view.memory
-    val fig = parseFigure(uiText(mem.headline), uiText(mem.caption))
+    val unit = uiText(mem.caption).ifEmpty { mem.unit }.takeIf { it.isNotEmpty() }
     val ink = if (dim) p.ink3 else p.pressureToneInk(mem.pressure, p.ink)
     val ink2 = if (dim) p.ink3 else p.ink2
     TileCard(modifier, onClick, uiText(mem.a11YLabel), card = card) {
         Kick(Lucide.Memory, copy(UiMessages.machineStatusMemory()), ink2)
         Spacer(Modifier.height(6.dp))
-        LargeFigure(fig.value, fig.number, fig.unit, ink, ink2)
+        LargeFigure(mem.valueText.ifEmpty { "—" }, mem.value, unit, ink, ink2)
         if (mem.hasPressurePosition) {
             Spacer(Modifier.height(10.dp))
             PressureScale(mem.pressurePosition.toFloat(), Modifier.alpha(if (dim) .5f else 1f))
@@ -517,13 +512,12 @@ private fun CpuTile(
     val p = pal
     val copy = uiText()
     val cpu = view.cpu
-    val fig = parseFigure(cpu.headline, "")
     val ink = if (dim) p.ink3 else p.ink
     val ink2 = if (dim) p.ink3 else p.ink2
     TileCard(modifier, onClick, uiText(cpu.a11YLabel), card = card) {
         Kick(Lucide.Cpu, copy(UiMessages.machineStatusCpu()), ink2)
         Spacer(Modifier.height(6.dp))
-        LargeFigure(fig.value, fig.number, fig.unit, ink, ink2)
+        LargeFigure(cpu.valueText.ifEmpty { "—" }, cpu.value, cpu.unit.takeIf { it.isNotEmpty() }, ink, ink2)
         Spacer(Modifier.height(10.dp))
         SayLines(uiText(cpu.detail), ink, uiText(cpu.detail2).takeIf { it.isNotEmpty() }, ink2)
     }
@@ -539,14 +533,14 @@ private fun DiskTile(
     val p = pal
     val copy = uiText()
     val disk = view.disk
-    val fig = parseFigure(uiText(disk.headline), uiText(disk.caption))
+    val diskUnit = if (disk.unit.isNotEmpty() && disk.unit != "GB") disk.unit else uiText(disk.caption).ifEmpty { disk.unit }.takeIf { it.isNotEmpty() }
     val ink = if (dim) p.ink3 else p.diskToneInk(disk.state, p.ink)
     val ink2 = if (dim) p.ink3 else p.ink2
     val bad = disk.state == DiskPressureState.DISK_PRESSURE_STATE_CRITICAL
     TileCard(modifier, onClick, uiText(disk.a11YLabel), onClickLabel = copy(UiMessages.machineStatusAgentUsage())) {
         Kick(Lucide.HardDrive, copy(UiMessages.machineStatusDisk()), ink2)
         Spacer(Modifier.height(6.dp))
-        LargeFigure(fig.value, fig.number, fig.unit, ink, if (dim) p.ink3 else if (bad) p.red else ink2)
+        LargeFigure(disk.valueText.ifEmpty { "—" }, disk.value, diskUnit, ink, if (dim) p.ink3 else if (bad) p.red else ink2)
         Spacer(Modifier.height(10.dp))
         if (disk.hasUsedFraction) {
             Box(Modifier.alpha(if (dim) .5f else 1f)) { DiskBar(disk.usedFraction.toFloat(), disk.state) }
@@ -602,7 +596,6 @@ private fun UsageList(
     onSession: (String) -> Unit,
 ) {
     val p = pal
-    val maxCpu = remember(rows) { rows.maxOfOrNull { it.cpuPercent }?.takeIf { it > 0.0 } ?: 100.0 }
     Column(Modifier.fillMaxWidth().statusCard(p).padding(vertical = 2.dp)) {
         if (rows.isEmpty()) {
             Text(empty, style = T.s15, color = p.ink3, modifier = Modifier.padding(16.dp))
@@ -612,7 +605,7 @@ private fun UsageList(
                 val clickable = r.sessionId.isNotEmpty()
                 val title = uiText(r.title).ifEmpty { r.id }
                 val sec = uiText(r.secondary)
-                val frac = (r.cpuPercent / maxCpu).coerceIn(0.0, 1.0).toFloat()
+                val frac = r.cpuBarFraction.toFloat().coerceIn(0f, 1f)
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -861,7 +854,6 @@ private fun ModelUsagePreviewSection(
 ) {
     val copy = uiText()
     val p = pal
-    val windowLabel = if (mu.fallbackThirtyDays) copy(UiMessages.usageEntryLast30D()) else copy(UiMessages.usageEntryLast7D())
     Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             copy(UiMessages.machineStatusModelUsageTitle()),
@@ -885,25 +877,9 @@ private fun ModelUsagePreviewSection(
                 if (idx > 0) {
                     Box(Modifier.padding(start = 54.dp).fillMaxWidth().height(0.5.dp).background(p.sep))
                 }
-                val hitPart = if (row.hasCacheHit) copy(UiMessages.usageEntryCachePct(formatUsageCacheHit(row.cacheHitRate))) else ""
-                val speedPart = if (row.hasSpeed) "${formatUsageSpeed(row.speedP50)} ${copy(UiMessages.usageKpiUnitToks())}" else ""
-                val meta = when {
-                    row.hasSpeed -> listOf(
-                        hitPart,
-                        speedPart,
-                        copy(UiMessages.usageEntryReqs(row.usageRequestCount.toInt())),
-                        windowLabel,
-                    ).filter { it.isNotEmpty() }.joinToString(" · ")
-                    row.fewSpeedSamples -> copy(
-                        UiMessages.usageEntryFewSamples(
-                            count = row.speedRequestCount.toInt(),
-                            detail = hitPart.ifEmpty { windowLabel },
-                        ),
-                    )
-                    else -> copy(UiMessages.usageEntryNoSpeed(hitPart.ifEmpty { windowLabel }))
-                }
-                val tokenStr = formatUsageTokens(row.totalTokens, copy)
-                val pairLabel = "${row.agentName} · ${row.model}"
+                val meta = uiText(row.metaText)
+                val tokenStr = uiText(row.totalTokensText)
+                val pairLabel = uiText(row.titleText)
                 Row(
                     Modifier.fillMaxWidth()
                         .clickable(role = Role.Button) { onOpenUsage(row.agent, row.model) }
