@@ -15,10 +15,6 @@ public  final class SecurityNotifyOpenedEffect extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SecurityNotifyOpenedEffect)
     SecurityNotifyOpenedEffectOrBuilder {
   private SecurityNotifyOpenedEffect() {
-    headerBytes_ = com.google.protobuf.ByteString.EMPTY;
-    sessionId_ = "";
-    machineId_ = "";
-    requestId_ = "";
     error_ = "";
   }
   private int bitField0_;
@@ -46,225 +42,6 @@ public  final class SecurityNotifyOpenedEffect extends
   private void clearOpId() {
 
     opId_ = 0L;
-  }
-
-  public static final int CONTENT_FIELD_NUMBER = 2;
-  private io.github.lewin671.remoteagent.proto.NotifyContent content_;
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   */
-  @java.lang.Override
-  public boolean hasContent() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.proto.NotifyContent getContent() {
-    return content_ == null ? io.github.lewin671.remoteagent.proto.NotifyContent.getDefaultInstance() : content_;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setContent(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-    value.getClass();  // minimal bytecode null check
-    content_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeContent(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-    value.getClass();  // minimal bytecode null check
-    if (content_ != null &&
-        content_ != io.github.lewin671.remoteagent.proto.NotifyContent.getDefaultInstance()) {
-      content_ =
-        io.github.lewin671.remoteagent.proto.NotifyContent.newBuilder(content_).mergeFrom(value).buildPartial();
-    } else {
-      content_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   */
-  private void clearContent() {
-    content_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
-  public static final int HEADER_BYTES_FIELD_NUMBER = 3;
-  private com.google.protobuf.ByteString headerBytes_;
-  /**
-   * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-   * @return The headerBytes.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString getHeaderBytes() {
-    return headerBytes_;
-  }
-  /**
-   * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-   * @param value The headerBytes to set.
-   */
-  private void setHeaderBytes(com.google.protobuf.ByteString value) {
-    java.lang.Class<?> valueClass = value.getClass();
-  
-    headerBytes_ = value;
-  }
-  /**
-   * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-   */
-  private void clearHeaderBytes() {
-
-    headerBytes_ = getDefaultInstance().getHeaderBytes();
-  }
-
-  public static final int SESSION_ID_FIELD_NUMBER = 4;
-  private java.lang.String sessionId_;
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @return The sessionId.
-   */
-  @java.lang.Override
-  public java.lang.String getSessionId() {
-    return sessionId_;
-  }
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @return The bytes for sessionId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getSessionIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(sessionId_);
-  }
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @param value The sessionId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSessionId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    sessionId_ = value;
-  }
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   */
-  private void clearSessionId() {
-
-    sessionId_ = getDefaultInstance().getSessionId();
-  }
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @param value The bytes for sessionId to set.
-   */
-  private void setSessionIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    sessionId_ = value.toStringUtf8();
-
-  }
-
-  public static final int MACHINE_ID_FIELD_NUMBER = 5;
-  private java.lang.String machineId_;
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @return The machineId.
-   */
-  @java.lang.Override
-  public java.lang.String getMachineId() {
-    return machineId_;
-  }
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @return The bytes for machineId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getMachineIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(machineId_);
-  }
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @param value The machineId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMachineId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    machineId_ = value;
-  }
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   */
-  private void clearMachineId() {
-
-    machineId_ = getDefaultInstance().getMachineId();
-  }
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @param value The bytes for machineId to set.
-   */
-  private void setMachineIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    machineId_ = value.toStringUtf8();
-
-  }
-
-  public static final int REQUEST_ID_FIELD_NUMBER = 6;
-  private java.lang.String requestId_;
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  @java.lang.Override
-  public java.lang.String getRequestId() {
-    return requestId_;
-  }
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getRequestIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(requestId_);
-  }
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @param value The requestId to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setRequestId(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    requestId_ = value;
-  }
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   */
-  private void clearRequestId() {
-
-    requestId_ = getDefaultInstance().getRequestId();
-  }
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @param value The bytes for requestId to set.
-   */
-  private void setRequestIdBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    requestId_ = value.toStringUtf8();
-
   }
 
   public static final int VERIFY_RECORD_UNCHANGED_FIELD_NUMBER = 7;
@@ -348,7 +125,7 @@ public  final class SecurityNotifyOpenedEffect extends
    */
   @java.lang.Override
   public boolean hasDisplay() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
@@ -364,7 +141,7 @@ public  final class SecurityNotifyOpenedEffect extends
   private void setDisplay(io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay value) {
     value.getClass();  // minimal bytecode null check
     display_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
@@ -379,14 +156,14 @@ public  final class SecurityNotifyOpenedEffect extends
     } else {
       display_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.SecurityNotifyDisplay display = 9 [json_name = "display"];</code>
    */
   private void clearDisplay() {
     display_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityNotifyOpenedEffect parseFrom(
@@ -511,228 +288,6 @@ public  final class SecurityNotifyOpenedEffect extends
     public Builder clearOpId() {
       copyOnWrite();
       instance.clearOpId();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    @java.lang.Override
-    public boolean hasContent() {
-      return instance.hasContent();
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.proto.NotifyContent getContent() {
-      return instance.getContent();
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    public Builder setContent(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-      copyOnWrite();
-      instance.setContent(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    public Builder setContent(
-        io.github.lewin671.remoteagent.proto.NotifyContent.Builder builderForValue) {
-      copyOnWrite();
-      instance.setContent(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    public Builder mergeContent(io.github.lewin671.remoteagent.proto.NotifyContent value) {
-      copyOnWrite();
-      instance.mergeContent(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-     */
-    public Builder clearContent() {  copyOnWrite();
-      instance.clearContent();
-      return this;
-    }
-
-    /**
-     * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-     * @return The headerBytes.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString getHeaderBytes() {
-      return instance.getHeaderBytes();
-    }
-    /**
-     * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-     * @param value The headerBytes to set.
-     * @return This builder for chaining.
-     */
-    public Builder setHeaderBytes(com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setHeaderBytes(value);
-      return this;
-    }
-    /**
-     * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearHeaderBytes() {
-      copyOnWrite();
-      instance.clearHeaderBytes();
-      return this;
-    }
-
-    /**
-     * <code>string session_id = 4 [json_name = "sessionId"];</code>
-     * @return The sessionId.
-     */
-    @java.lang.Override
-    public java.lang.String getSessionId() {
-      return instance.getSessionId();
-    }
-    /**
-     * <code>string session_id = 4 [json_name = "sessionId"];</code>
-     * @return The bytes for sessionId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getSessionIdBytes() {
-      return instance.getSessionIdBytes();
-    }
-    /**
-     * <code>string session_id = 4 [json_name = "sessionId"];</code>
-     * @param value The sessionId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSessionId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setSessionId(value);
-      return this;
-    }
-    /**
-     * <code>string session_id = 4 [json_name = "sessionId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearSessionId() {
-      copyOnWrite();
-      instance.clearSessionId();
-      return this;
-    }
-    /**
-     * <code>string session_id = 4 [json_name = "sessionId"];</code>
-     * @param value The bytes for sessionId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setSessionIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setSessionIdBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>string machine_id = 5 [json_name = "machineId"];</code>
-     * @return The machineId.
-     */
-    @java.lang.Override
-    public java.lang.String getMachineId() {
-      return instance.getMachineId();
-    }
-    /**
-     * <code>string machine_id = 5 [json_name = "machineId"];</code>
-     * @return The bytes for machineId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getMachineIdBytes() {
-      return instance.getMachineIdBytes();
-    }
-    /**
-     * <code>string machine_id = 5 [json_name = "machineId"];</code>
-     * @param value The machineId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMachineId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setMachineId(value);
-      return this;
-    }
-    /**
-     * <code>string machine_id = 5 [json_name = "machineId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMachineId() {
-      copyOnWrite();
-      instance.clearMachineId();
-      return this;
-    }
-    /**
-     * <code>string machine_id = 5 [json_name = "machineId"];</code>
-     * @param value The bytes for machineId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMachineIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setMachineIdBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>string request_id = 6 [json_name = "requestId"];</code>
-     * @return The requestId.
-     */
-    @java.lang.Override
-    public java.lang.String getRequestId() {
-      return instance.getRequestId();
-    }
-    /**
-     * <code>string request_id = 6 [json_name = "requestId"];</code>
-     * @return The bytes for requestId.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getRequestIdBytes() {
-      return instance.getRequestIdBytes();
-    }
-    /**
-     * <code>string request_id = 6 [json_name = "requestId"];</code>
-     * @param value The requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestId(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setRequestId(value);
-      return this;
-    }
-    /**
-     * <code>string request_id = 6 [json_name = "requestId"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearRequestId() {
-      copyOnWrite();
-      instance.clearRequestId();
-      return this;
-    }
-    /**
-     * <code>string request_id = 6 [json_name = "requestId"];</code>
-     * @param value The bytes for requestId to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRequestIdBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setRequestIdBytes(value);
       return this;
     }
 
@@ -878,18 +433,13 @@ public  final class SecurityNotifyOpenedEffect extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "opId_",
-            "content_",
-            "headerBytes_",
-            "sessionId_",
-            "machineId_",
-            "requestId_",
             "verifyRecordUnchanged_",
             "error_",
             "display_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0003\u0002\u1009\u0000\u0003" +
-              "\n\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0007\b\u0208\t\u1009\u0001";
+              "\u0000\u0004\u0000\u0001\u0001\t\u0004\u0000\u0000\u0000\u0001\u0003\u0007\u0007" +
+              "\b\u0208\t\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

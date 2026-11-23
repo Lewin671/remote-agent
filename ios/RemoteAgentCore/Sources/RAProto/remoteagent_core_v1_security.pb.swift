@@ -2570,23 +2570,6 @@ public struct PBSecurityNotifyOpenedEffect: Sendable {
 
   public var opID: UInt64 = 0
 
-  public var content: PBNotifyContent {
-    get {return _content ?? PBNotifyContent()}
-    set {_content = newValue}
-  }
-  /// Returns true if `content` has been explicitly set.
-  public var hasContent: Bool {return self._content != nil}
-  /// Clears the value of `content`. Subsequent reads from it will return its default value.
-  public mutating func clearContent() {self._content = nil}
-
-  public var headerBytes: Data = Data()
-
-  public var sessionID: String = String()
-
-  public var machineID: String = String()
-
-  public var requestID: String = String()
-
   public var verifyRecordUnchanged: Bool = false
 
   public var error: String = String()
@@ -2604,7 +2587,6 @@ public struct PBSecurityNotifyOpenedEffect: Sendable {
 
   public init() {}
 
-  fileprivate var _content: PBNotifyContent? = nil
   fileprivate var _display: PBSecurityNotifyDisplay? = nil
 }
 
@@ -7039,7 +7021,7 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityNotifyOpenedEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}content\0\u{3}header_bytes\0\u{3}session_id\0\u{3}machine_id\0\u{3}request_id\0\u{3}verify_record_unchanged\0\u{1}error\0\u{1}display\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{4}\u{6}verify_record_unchanged\0\u{1}error\0\u{1}display\0\u{b}content\0\u{b}header_bytes\0\u{b}session_id\0\u{b}machine_id\0\u{b}request_id\0\u{c}\u{2}\u{1}\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}\u{c}\u{6}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7048,11 +7030,6 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.opID) }()
-      case 2: try { try decoder.decodeSingularMessageField(value: &self._content) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.headerBytes) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.verifyRecordUnchanged) }()
       case 8: try { try decoder.decodeSingularStringField(value: &self.error) }()
       case 9: try { try decoder.decodeSingularMessageField(value: &self._display) }()
@@ -7069,21 +7046,6 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.opID != 0 {
       try visitor.visitSingularUInt64Field(value: self.opID, fieldNumber: 1)
     }
-    try { if let v = self._content {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-    } }()
-    if !self.headerBytes.isEmpty {
-      try visitor.visitSingularBytesField(value: self.headerBytes, fieldNumber: 3)
-    }
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 4)
-    }
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 5)
-    }
-    if !self.requestID.isEmpty {
-      try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 6)
-    }
     if self.verifyRecordUnchanged != false {
       try visitor.visitSingularBoolField(value: self.verifyRecordUnchanged, fieldNumber: 7)
     }
@@ -7098,11 +7060,6 @@ extension PBSecurityNotifyOpenedEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
 
   public static func ==(lhs: PBSecurityNotifyOpenedEffect, rhs: PBSecurityNotifyOpenedEffect) -> Bool {
     if lhs.opID != rhs.opID {return false}
-    if lhs._content != rhs._content {return false}
-    if lhs.headerBytes != rhs.headerBytes {return false}
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.requestID != rhs.requestID {return false}
     if lhs.verifyRecordUnchanged != rhs.verifyRecordUnchanged {return false}
     if lhs.error != rhs.error {return false}
     if lhs._display != rhs._display {return false}

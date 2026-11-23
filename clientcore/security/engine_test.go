@@ -986,10 +986,11 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 	notifyPlain = litewire.AppendVarint(notifyPlain, 3, uint64(v1.NotifyKind_NOTIFY_KIND_TURN_ENDED))
 	notifyPlain = litewire.AppendString(notifyPlain, 4, "done")
 	notifyPlain = litewire.AppendString(notifyPlain, 5, "body")
+	notifyPlain = litewire.AppendVarint(notifyPlain, 7, 1) // source_event_seq = 1
 	nhb, nkey, nnonce, err := devicesec.PrepareCiphertext(sec2, nil, devicesec.Header{
 		Account: acct, Domain: dom, Epoch: states[1].Core.Epoch, State: sh2,
 		ContentEpoch: states[1].Core.ContentEpoch, Sender: machine.id,
-		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify, Machine: machine.id, Session: "s-n", Request: "notif-1234567890", Seq: 1,
+		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify, Machine: machine.id, Session: "s-n", Request: "notify:2:1", Seq: 1,
 	}, len(notifyPlain), bytes.NewReader(bytes.Repeat([]byte{9}, 12)))
 	if err != nil {
 		t.Fatal(err)
@@ -1011,9 +1012,12 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 		t.Fatal(err)
 	}
 	openEffs := eng.HandleOpenNotify(nowMs+100, &corev1.SecurityOpenNotifyEvent{
-		OpId:       88,
-		NotifyBlob: ntfBlob,
-		Envelope:   nEnv,
+		OpId:         88,
+		NotifyBlob:   ntfBlob,
+		Envelope:     nEnv,
+		SessionId:    "s-n",
+		Tag:          "s-n/NOTIFY_KIND_TURN_ENDED",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 	})
 	var openedNotify *corev1.SecurityNotifyOpenedEffect
 	for _, ef := range openEffs {
@@ -1021,7 +1025,7 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 			openedNotify = no
 		}
 	}
-	if openedNotify == nil || openedNotify.Error != "" || openedNotify.Content == nil || openedNotify.Content.Title != "done" || openedNotify.Content.Text != "body" {
+	if openedNotify == nil || openedNotify.Error != "" || !openedNotify.GetDisplay().GetValid() || openedNotify.GetDisplay().GetTitle().GetLiteral() != "done" || openedNotify.GetDisplay().GetBody().GetLiteral() != "body" {
 		t.Fatalf("HandleOpenNotify with PurposeKey failed: %+v", openedNotify)
 	}
 }

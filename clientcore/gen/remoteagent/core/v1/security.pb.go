@@ -4965,11 +4965,6 @@ func (m *SecurityNotifyDisplay) AppendMarshal(b []byte) []byte {
 type SecurityNotifyOpenedEffect struct {
 	_                     [0]func()
 	OpId                  uint64
-	Content               *v1.NotifyContent
-	HeaderBytes           []byte
-	SessionId             string
-	MachineId             string
-	RequestId             string
 	VerifyRecordUnchanged bool
 	Error                 string
 	Display               *SecurityNotifyDisplay
@@ -4980,36 +4975,6 @@ func (m *SecurityNotifyOpenedEffect) GetOpId() uint64 {
 		return m.OpId
 	}
 	return 0
-}
-func (m *SecurityNotifyOpenedEffect) GetContent() *v1.NotifyContent {
-	if m != nil {
-		return m.Content
-	}
-	return nil
-}
-func (m *SecurityNotifyOpenedEffect) GetHeaderBytes() []byte {
-	if m != nil {
-		return m.HeaderBytes
-	}
-	return nil
-}
-func (m *SecurityNotifyOpenedEffect) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *SecurityNotifyOpenedEffect) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *SecurityNotifyOpenedEffect) GetRequestId() string {
-	if m != nil {
-		return m.RequestId
-	}
-	return ""
 }
 func (m *SecurityNotifyOpenedEffect) GetVerifyRecordUnchanged() bool {
 	if m != nil {
@@ -5033,11 +4998,6 @@ func (m *SecurityNotifyOpenedEffect) GetDisplay() *SecurityNotifyDisplay {
 var LitewireDesc_SecurityNotifyOpenedEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.OpId), Kind: litewire.KindUint64},
-		{Num: 2, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Content), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_NotifyContent},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.HeaderBytes), Kind: litewire.KindBytes},
-		{Num: 4, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.SessionId), Kind: litewire.KindString},
-		{Num: 5, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.MachineId), Kind: litewire.KindString},
-		{Num: 6, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.RequestId), Kind: litewire.KindString},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.VerifyRecordUnchanged), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Error), Kind: litewire.KindString},
 		{Num: 9, Offset: unsafe.Offsetof(SecurityNotifyOpenedEffect{}.Display), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityNotifyDisplay},

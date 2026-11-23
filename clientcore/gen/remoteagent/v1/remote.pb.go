@@ -3083,14 +3083,6 @@ var LitewireDesc_NotifyContent = litewire.MessageDesc{
 	},
 }
 
-func (m *NotifyContent) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *NotifyContent) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NotifyContent)
-}
-
 func (m *NotifyContent) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_NotifyContent)
 }
@@ -3165,14 +3157,6 @@ var LitewireDesc_NotifyApproval = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(NotifyApproval{}.DeadlineMs), Kind: litewire.KindInt64},
 		{Num: 7, Offset: unsafe.Offsetof(NotifyApproval{}.ToolInput), Kind: litewire.KindString},
 	},
-}
-
-func (m *NotifyApproval) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *NotifyApproval) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_NotifyApproval)
 }
 
 func (m *NotifyApproval) Unmarshal(b []byte) error {

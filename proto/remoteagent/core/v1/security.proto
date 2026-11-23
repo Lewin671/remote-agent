@@ -694,12 +694,9 @@ message SecurityNotifyDisplay {
 }
 
 message SecurityNotifyOpenedEffect {
+  reserved 2, 3, 4, 5, 6;
+  reserved "content", "header_bytes", "session_id", "machine_id", "request_id";
   uint64 op_id = 1;
-  remoteagent.v1.NotifyContent content = 2;
-  bytes header_bytes = 3;
-  string session_id = 4;
-  string machine_id = 5;
-  string request_id = 6;
   bool verify_record_unchanged = 7;
   string error = 8;
   SecurityNotifyDisplay display = 9;

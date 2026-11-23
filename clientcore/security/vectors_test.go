@@ -426,11 +426,12 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 
 	// Seal NotifyContent and open via Engine.HandleOpenNotify using PersistedNotifyRecord.
 	nPlain, err := proto.Marshal(&stdv1.NotifyContent{
-		Kind:        stdv1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
-		MachineId:   machine.id,
-		SessionId:   "sess-n1",
-		MachineName: "devbox",
-		Title:       "done",
+		Kind:           stdv1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+		MachineId:      machine.id,
+		SessionId:      "sess-n1",
+		SourceEventSeq: 1,
+		MachineName:    "devbox",
+		Title:          "done",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -440,7 +441,7 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 		Account: phone.id, Domain: dom, Epoch: s1Parsed.Core.Epoch, State: sh2,
 		ContentEpoch: s1Parsed.Core.ContentEpoch, Sender: machine.id,
 		Kind: devicesec.Notify.Kind(), Purpose: devicesec.Notify,
-		Machine: machine.id, Session: "sess-n1", Request: "notify-req-1",
+		Machine: machine.id, Session: "sess-n1", Request: "notify:2:1",
 	}
 	hb, aesKey, nonce, err := devicesec.PrepareCiphertext(sec2, nil, nh, len(nPlain), bytes.NewReader(bytes.Repeat([]byte{0xbb}, 12)))
 	if err != nil {
@@ -471,9 +472,12 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 	eng.Configure(&corev1.SecurityConfigEvent{Account: phone.id, DeviceId: phone.id, InlineCrypto: true})
 	_ = leaseRaw
 	openEffs := eng.HandleOpenNotify(int64(nowMs+20), &corev1.SecurityOpenNotifyEvent{
-		OpId:       9,
-		NotifyBlob: ntfRaw,
-		Envelope:   nEnv,
+		OpId:         9,
+		NotifyBlob:   ntfRaw,
+		Envelope:     nEnv,
+		SessionId:    "sess-n1",
+		Tag:          "sess-n1/NOTIFY_KIND_TURN_ENDED",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 	})
 	var opened *corev1.SecurityNotifyOpenedEffect
 	for _, ef := range openEffs {
@@ -481,7 +485,7 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 			opened = no
 		}
 	}
-	if opened == nil || opened.Error != "" || opened.Content == nil || opened.Content.Title != "done" {
+	if opened == nil || opened.Error != "" || !opened.GetDisplay().GetValid() || opened.GetDisplay().GetTitle().GetLiteral() != "done" {
 		t.Fatalf("HandleOpenNotify failed: %+v", opened)
 	}
 

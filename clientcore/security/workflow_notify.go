@@ -1,7 +1,6 @@
 package security
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -54,15 +53,6 @@ func (e *Engine) finishNotifyPlain(ev *corev1.SecurityOpenNotifyEvent, h devices
 		OpId:                  ev.OpId,
 		VerifyRecordUnchanged: verifyUnchanged,
 		Display:               display,
-	}
-	// Never leave decrypted plaintext on an invalid notification result.
-	// Legacy (pre-Step-2) shells that omit ExpectedKind temporarily keep Content until migrated (contract.md §11).
-	if display.GetValid() || ev.ExpectedKind == v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
-		eff.Content = nc
-		eff.HeaderBytes = slices.Clone(ev.Envelope.Header)
-		eff.SessionId = h.Session
-		eff.MachineId = h.Machine
-		eff.RequestId = h.Request
 	}
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityNotifyOpened{

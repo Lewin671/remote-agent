@@ -17,59 +17,6 @@ public interface SecurityNotifyOpenedEffectOrBuilder extends
   long getOpId();
 
   /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   * @return Whether the content field is set.
-   */
-  boolean hasContent();
-  /**
-   * <code>.remoteagent.v1.NotifyContent content = 2 [json_name = "content"];</code>
-   * @return The content.
-   */
-  io.github.lewin671.remoteagent.proto.NotifyContent getContent();
-
-  /**
-   * <code>bytes header_bytes = 3 [json_name = "headerBytes"];</code>
-   * @return The headerBytes.
-   */
-  com.google.protobuf.ByteString getHeaderBytes();
-
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @return The sessionId.
-   */
-  java.lang.String getSessionId();
-  /**
-   * <code>string session_id = 4 [json_name = "sessionId"];</code>
-   * @return The bytes for sessionId.
-   */
-  com.google.protobuf.ByteString
-      getSessionIdBytes();
-
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @return The machineId.
-   */
-  java.lang.String getMachineId();
-  /**
-   * <code>string machine_id = 5 [json_name = "machineId"];</code>
-   * @return The bytes for machineId.
-   */
-  com.google.protobuf.ByteString
-      getMachineIdBytes();
-
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @return The requestId.
-   */
-  java.lang.String getRequestId();
-  /**
-   * <code>string request_id = 6 [json_name = "requestId"];</code>
-   * @return The bytes for requestId.
-   */
-  com.google.protobuf.ByteString
-      getRequestIdBytes();
-
-  /**
    * <code>bool verify_record_unchanged = 7 [json_name = "verifyRecordUnchanged"];</code>
    * @return The verifyRecordUnchanged.
    */

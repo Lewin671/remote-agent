@@ -6227,11 +6227,6 @@ func (x *SecurityNotifyDisplay) GetSharedFileCount() int32 {
 type SecurityNotifyOpenedEffect struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	OpId                  uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	Content               *v1.NotifyContent      `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
-	HeaderBytes           []byte                 `protobuf:"bytes,3,opt,name=header_bytes,json=headerBytes,proto3" json:"header_bytes,omitempty"`
-	SessionId             string                 `protobuf:"bytes,4,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	MachineId             string                 `protobuf:"bytes,5,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	RequestId             string                 `protobuf:"bytes,6,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	VerifyRecordUnchanged bool                   `protobuf:"varint,7,opt,name=verify_record_unchanged,json=verifyRecordUnchanged,proto3" json:"verify_record_unchanged,omitempty"`
 	Error                 string                 `protobuf:"bytes,8,opt,name=error,proto3" json:"error,omitempty"`
 	Display               *SecurityNotifyDisplay `protobuf:"bytes,9,opt,name=display,proto3" json:"display,omitempty"`
@@ -6274,41 +6269,6 @@ func (x *SecurityNotifyOpenedEffect) GetOpId() uint64 {
 		return x.OpId
 	}
 	return 0
-}
-
-func (x *SecurityNotifyOpenedEffect) GetContent() *v1.NotifyContent {
-	if x != nil {
-		return x.Content
-	}
-	return nil
-}
-
-func (x *SecurityNotifyOpenedEffect) GetHeaderBytes() []byte {
-	if x != nil {
-		return x.HeaderBytes
-	}
-	return nil
-}
-
-func (x *SecurityNotifyOpenedEffect) GetSessionId() string {
-	if x != nil {
-		return x.SessionId
-	}
-	return ""
-}
-
-func (x *SecurityNotifyOpenedEffect) GetMachineId() string {
-	if x != nil {
-		return x.MachineId
-	}
-	return ""
-}
-
-func (x *SecurityNotifyOpenedEffect) GetRequestId() string {
-	if x != nil {
-		return x.RequestId
-	}
-	return ""
 }
 
 func (x *SecurityNotifyOpenedEffect) GetVerifyRecordUnchanged() bool {
@@ -6860,20 +6820,15 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\bsub_text\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\asubText\x124\n" +
 	"\bbig_text\x18\x10 \x01(\v2\x19.remoteagent.core.v1.TextR\abigText\x12I\n" +
 	"\x13shared_files_suffix\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x11sharedFilesSuffix\x12*\n" +
-	"\x11shared_file_count\x18\x12 \x01(\x05R\x0fsharedFileCount\"\xfe\x02\n" +
+	"\x11shared_file_count\x18\x12 \x01(\x05R\x0fsharedFileCount\"\x9e\x02\n" +
 	"\x1aSecurityNotifyOpenedEffect\x12\x13\n" +
-	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x127\n" +
-	"\acontent\x18\x02 \x01(\v2\x1d.remoteagent.v1.NotifyContentR\acontent\x12!\n" +
-	"\fheader_bytes\x18\x03 \x01(\fR\vheaderBytes\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x04 \x01(\tR\tsessionId\x12\x1d\n" +
-	"\n" +
-	"machine_id\x18\x05 \x01(\tR\tmachineId\x12\x1d\n" +
-	"\n" +
-	"request_id\x18\x06 \x01(\tR\trequestId\x126\n" +
+	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x126\n" +
 	"\x17verify_record_unchanged\x18\a \x01(\bR\x15verifyRecordUnchanged\x12\x14\n" +
 	"\x05error\x18\b \x01(\tR\x05error\x12D\n" +
-	"\adisplay\x18\t \x01(\v2*.remoteagent.core.v1.SecurityNotifyDisplayR\adisplay*\xdf\x01\n" +
+	"\adisplay\x18\t \x01(\v2*.remoteagent.core.v1.SecurityNotifyDisplayR\adisplayJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\acontentR\fheader_bytesR\n" +
+	"session_idR\n" +
+	"machine_idR\n" +
+	"request_id*\xdf\x01\n" +
 	"\x0fSecurityKeyKind\x12!\n" +
 	"\x1dSECURITY_KEY_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bSECURITY_KEY_KIND_DEVICE_ED\x10\x01\x12\x1e\n" +
@@ -7056,7 +7011,6 @@ var file_remoteagent_core_v1_security_proto_goTypes = []any{
 	(v1.GetRecoveryContextResponse_Phase)(0), // 81: remoteagent.v1.GetRecoveryContextResponse.Phase
 	(v1.NotifyKind)(0),                       // 82: remoteagent.v1.NotifyKind
 	(*Text)(nil),                             // 83: remoteagent.core.v1.Text
-	(*v1.NotifyContent)(nil),                 // 84: remoteagent.v1.NotifyContent
 }
 var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	0,   // 0: remoteagent.core.v1.SecurityKeySignEffect.key_kind:type_name -> remoteagent.core.v1.SecurityKeyKind
@@ -7161,13 +7115,12 @@ var file_remoteagent_core_v1_security_proto_depIdxs = []int32{
 	83,  // 99: remoteagent.core.v1.SecurityNotifyDisplay.sub_text:type_name -> remoteagent.core.v1.Text
 	83,  // 100: remoteagent.core.v1.SecurityNotifyDisplay.big_text:type_name -> remoteagent.core.v1.Text
 	83,  // 101: remoteagent.core.v1.SecurityNotifyDisplay.shared_files_suffix:type_name -> remoteagent.core.v1.Text
-	84,  // 102: remoteagent.core.v1.SecurityNotifyOpenedEffect.content:type_name -> remoteagent.v1.NotifyContent
-	70,  // 103: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
-	104, // [104:104] is the sub-list for method output_type
-	104, // [104:104] is the sub-list for method input_type
-	104, // [104:104] is the sub-list for extension type_name
-	104, // [104:104] is the sub-list for extension extendee
-	0,   // [0:104] is the sub-list for field type_name
+	70,  // 102: remoteagent.core.v1.SecurityNotifyOpenedEffect.display:type_name -> remoteagent.core.v1.SecurityNotifyDisplay
+	103, // [103:103] is the sub-list for method output_type
+	103, // [103:103] is the sub-list for method input_type
+	103, // [103:103] is the sub-list for extension type_name
+	103, // [103:103] is the sub-list for extension extendee
+	0,   // [0:103] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_security_proto_init() }

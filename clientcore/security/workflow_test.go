@@ -14,7 +14,9 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
+	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
+	"google.golang.org/protobuf/proto"
 )
 
 type recordedSignCall struct {
@@ -1071,13 +1073,14 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 	headState, _ := devicesec.ParseState(headBytes)
 	headHash, _ := headState.Hash()
 	sec := h.eng.epochSecrets[headState.Core.ContentEpoch]
-	ncBytes, _ := (&v1.NotifyContent{
-		MachineId: machMem.ID,
-		SessionId: "sess-1",
-		Kind:      v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
-		Title:     "Done",
-		Text:      "Finished turn",
-	}).Marshal()
+	ncBytes, _ := proto.Marshal(&stdv1.NotifyContent{
+		MachineId:      machMem.ID,
+		SessionId:      "sess-1",
+		Kind:           stdv1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+		SourceEventSeq: 1,
+		Title:          "Done",
+		Text:           "Finished turn",
+	})
 	hdr := devicesec.Header{
 		Account:      h.eng.pin.Account,
 		Domain:       h.eng.pin.Domain,
@@ -1089,7 +1092,7 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		Sender:       machMem.ID,
 		Session:      "sess-1",
 		Machine:      machMem.ID,
-		Request:      "req-1",
+		Request:      "notify:2:1",
 	}
 	ct, err := devicesec.NewCiphertext(sec[:], nil, hdr, ncBytes, rand.Reader)
 	if err != nil {
@@ -1102,25 +1105,41 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Path A succeeds
+	// Path A succeeds with validated display
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9001,
-		NotifyBlob: ntfEntry.data,
-		Envelope:   pbEnv,
+		OpId:         9001,
+		NotifyBlob:   ntfEntry.data,
+		Envelope:     pbEnv,
+		SessionId:    "sess-1",
+		Tag:          "sess-1/NOTIFY_KIND_TURN_ENDED",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 	}))
-	if res := h.notifyOpened[9001]; res == nil || res.Error != "" || res.Content.Title != "Done" || res.VerifyRecordUnchanged {
+	if res := h.notifyOpened[9001]; res == nil || res.Error != "" || !res.GetDisplay().GetValid() || res.GetDisplay().GetTitle().GetLiteral() != "Done" || res.VerifyRecordUnchanged {
 		t.Fatalf("Path A open notify failed: %+v", res)
 	}
 
 	// Path B succeeds with VerifyRecordUnchanged: true
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
-		OpId:       9002,
-		RecordBlob: recEntry.data,
-		Envelope:   pbEnv,
-		NowMs:      h.nowMs,
+		OpId:         9002,
+		RecordBlob:   recEntry.data,
+		Envelope:     pbEnv,
+		NowMs:        h.nowMs,
+		SessionId:    "sess-1",
+		Tag:          "sess-1/NOTIFY_KIND_TURN_ENDED",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 	}))
-	if res := h.notifyOpened[9002]; res == nil || res.Error != "" || !res.VerifyRecordUnchanged || res.Content.Text != "Finished turn" {
+	if res := h.notifyOpened[9002]; res == nil || res.Error != "" || !res.VerifyRecordUnchanged || !res.GetDisplay().GetValid() || res.GetDisplay().GetBody().GetLiteral() != "Finished turn" {
 		t.Fatalf("Path B open notify failed: %+v", res)
+	}
+
+	// Omitting ExpectedKind fails closed without leaking plaintext title/body.
+	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
+		OpId:       9006,
+		NotifyBlob: ntfEntry.data,
+		Envelope:   pbEnv,
+	}))
+	if res := h.notifyOpened[9006]; res == nil || res.Error != "" || res.GetDisplay().GetValid() || res.GetDisplay().GetTitle() != nil || res.GetDisplay().GetBody() != nil {
+		t.Fatalf("expected UNSPECIFIED ExpectedKind to fail closed without title/body, got %+v", res)
 	}
 
 	// Remove machine (abandoning pending pair delivery) & verify stale Path A and removed-sender Path B reject!
@@ -1883,9 +1902,16 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		})
 	}
 
-	// Verify finishNotifyPlain strips Content and metadata on invalid strict-mode notifications.
+	// Verify finishNotifyPlain emits fail-closed display with no plaintext fields on invalid notifications.
 	eng := NewEngine(&entropy.Pool{}, 0)
-	plainBytes, err := schedNC.Marshal()
+	plainBytes, err := proto.Marshal(&stdv1.NotifyContent{
+		Kind:           stdv1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+		MachineId:      schedNC.MachineId,
+		SessionId:      schedNC.SessionId,
+		SourceEventSeq: schedNC.SourceEventSeq,
+		Title:          schedNC.Title,
+		Text:           schedNC.Text,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1910,7 +1936,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	if opened.GetDisplay().GetValid() || opened.GetDisplay().GetGenericBody().GetKey() != text.KeyNotificationsScheduledTasksHaveNewResults {
 		t.Fatalf("expected invalid display with scheduled generic body, got %+v", opened.GetDisplay())
 	}
-	if opened.GetContent() != nil || len(opened.GetHeaderBytes()) != 0 || opened.GetSessionId() != "" || opened.GetMachineId() != "" || opened.GetRequestId() != "" {
-		t.Fatalf("invalid SecurityNotifyOpenedEffect must clear Content and metadata, got %+v", opened)
+	if opened.GetDisplay().GetTitle() != nil || opened.GetDisplay().GetBody() != nil || opened.GetDisplay().GetSessionId() != "" || opened.GetDisplay().GetMachineId() != "" {
+		t.Fatalf("invalid SecurityNotifyDisplay must not carry plaintext fields, got %+v", opened.GetDisplay())
 	}
 }
