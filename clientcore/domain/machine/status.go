@@ -218,12 +218,14 @@ func ringToneFromPressure(p v1.ResourcePressure) corev1.MachineRingTone {
 func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *corev1.MachineCpuSection {
 	if status == nil {
 		return &corev1.MachineCpuSection{
-			Headline: "—",
-			Chart:    chart,
+			Headline:  "—",
+			ValueText: "—",
+			Chart:     chart,
 		}
 	}
 	pct := int(math.Round(status.CpuPercent))
-	headline := strconv.FormatInt(int64(pct), 10) + "%"
+	valStr := strconv.FormatInt(int64(pct), 10)
+	headline := valStr + "%"
 	var detail, detail2 *corev1.Text
 	if status.Cores > 0 {
 		detail = text.Msg(text.KeyMachineStatusCores, text.Int("count", int64(status.Cores)))
@@ -238,18 +240,23 @@ func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *
 		Detail2:   detail2,
 		A11YLabel: text.Msg(text.KeyMachineStatusA11YCpuCard, text.Str("value", headline)),
 		Chart:     chart,
+		Value:     status.CpuPercent,
+		ValueText: valStr,
+		Unit:      "%",
 	}
 }
 
 func BuildMemorySection(status *v1.MachineStatus, chart *corev1.MachineChartView) *corev1.MachineMemorySection {
 	if status == nil {
 		return &corev1.MachineMemorySection{
-			Headline: text.Plain("—"),
-			Caption:  text.Msg(text.KeyMachineStatusGbUsed),
-			Chart:    chart,
+			Headline:  text.Plain("—"),
+			Caption:   text.Msg(text.KeyMachineStatusGbUsed),
+			Chart:     chart,
+			ValueText: "—",
 		}
 	}
-	usedTxt := text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", gbFixed(status.MemoryUsedBytes, true)))
+	valStr := gbFixed(status.MemoryUsedBytes, true)
+	usedTxt := text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", valStr))
 	var totalText, swapText *corev1.Text
 	totalFormatted := FormatBinarySize(status.MemoryTotalBytes)
 	if status.SwapUsedBytes != nil && *status.SwapUsedBytes > 0 {
@@ -300,18 +307,35 @@ func BuildMemorySection(status *v1.MachineStatus, chart *corev1.MachineChartView
 		SwapText:            swapText,
 		A11YLabel:           a11y,
 		Chart:               chart,
+		Value:               float64(status.MemoryUsedBytes) / float64(gibBytes),
+		ValueText:           valStr,
+		Unit:                "GB",
+		UsedBytes:           status.MemoryUsedBytes,
+		TotalBytes:          status.MemoryTotalBytes,
 	}
 }
 
 func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 	if status == nil || status.Disk == nil {
 		return &corev1.MachineDiskSection{
-			Headline: text.Plain("—"),
-			Caption:  text.Msg(text.KeyMachineStatusGbAvailable),
+			Headline:  text.Plain("—"),
+			Caption:   text.Msg(text.KeyMachineStatusGbAvailable),
+			ValueText: "—",
 		}
 	}
 	d := status.Disk
 	availTxt := FormatDecimalSize(d.AvailableBytes)
+	var diskVal float64
+	var diskValStr, diskUnit string
+	if d.AvailableBytes >= gbBytes {
+		diskVal = float64(d.AvailableBytes) / float64(gbBytes)
+		diskValStr = gbNumber(d.AvailableBytes, false)
+		diskUnit = "GB"
+	} else {
+		diskVal = math.Round(float64(d.AvailableBytes) / float64(mbBytes))
+		diskValStr = strconv.FormatFloat(diskVal, 'f', 0, 64)
+		diskUnit = "MB"
+	}
 
 	var state corev1.DiskPressureState
 	var badge *corev1.Text
@@ -364,6 +388,11 @@ func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 		AgentUsageLabel:    text.Msg(text.KeyMachineStatusAgentUsage),
 		AgentUsageValue:    agentVal,
 		A11YLabel:          text.Msg(text.KeyMachineStatusA11YDiskCard, text.ArgText("size", availTxt), text.ArgText("state", badge)),
+		Value:              diskVal,
+		ValueText:          diskValStr,
+		Unit:               diskUnit,
+		AvailableBytes:     d.AvailableBytes,
+		TotalBytes:         d.TotalBytes,
 	}
 }
 
@@ -534,6 +563,17 @@ func BuildUsageRows(
 		ordered = ordered[:TopUsageLimit]
 	}
 
+	var maxCPU float64
+	var maxMem uint64
+	for _, r := range ordered {
+		if r.CpuPercent > maxCPU {
+			maxCPU = r.CpuPercent
+		}
+		if r.MemoryBytes > maxMem {
+			maxMem = r.MemoryBytes
+		}
+	}
+
 	out := make([]*corev1.MachineUsageRow, 0, len(ordered))
 	for _, r := range ordered {
 		sess := sessionsByID[r.SessionId]
@@ -575,14 +615,27 @@ func BuildUsageRows(
 			sec = text.Join(text.KeyCommonNoteSeparator, cpuTxt, memTxt)
 		}
 
+		var cpuFrac, memFrac float64
+		if maxCPU > 0 {
+			cpuFrac = clampUnit(r.CpuPercent / maxCPU)
+		}
+		if maxMem > 0 {
+			memFrac = clampUnit(float64(r.MemoryBytes) / float64(maxMem))
+		}
 		out = append(out, &corev1.MachineUsageRow{
-			Id:          r.Id,
-			Title:       title,
-			Secondary:   sec,
-			CpuPercent:  r.CpuPercent,
-			MemoryBytes: r.MemoryBytes,
-			Agent:       agent,
-			SessionId:   knownID,
+			Id:                r.Id,
+			Title:             title,
+			Secondary:         sec,
+			CpuPercent:        r.CpuPercent,
+			MemoryBytes:       r.MemoryBytes,
+			Agent:             agent,
+			SessionId:         knownID,
+			CpuBarFraction:    cpuFrac,
+			MemoryBarFraction: memFrac,
+			CpuBarPercent:     int32(math.Round(cpuFrac * 100.0)),
+			MemoryBarPercent:  int32(math.Round(memFrac * 100.0)),
+			CpuValueText:      cpuTxt,
+			MemoryValueText:   memTxt,
 		})
 	}
 	return out, newOrder

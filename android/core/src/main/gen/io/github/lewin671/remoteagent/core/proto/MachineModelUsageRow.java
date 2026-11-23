@@ -18,6 +18,7 @@ public  final class MachineModelUsageRow extends
     agentName_ = "";
     model_ = "";
   }
+  private int bitField0_;
   public static final int AGENT_FIELD_NUMBER = 1;
   private int agent_;
   /**
@@ -362,6 +363,150 @@ public  final class MachineModelUsageRow extends
   private void clearFewSpeedSamples() {
 
     fewSpeedSamples_ = false;
+  }
+
+  public static final int TITLE_TEXT_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text titleText_;
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTitleText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTitleText() {
+    return titleText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : titleText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    titleText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (titleText_ != null &&
+        titleText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      titleText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(titleText_).mergeFrom(value).buildPartial();
+    } else {
+      titleText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   */
+  private void clearTitleText() {
+    titleText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int TOTAL_TOKENS_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text totalTokensText_;
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTotalTokensText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+    return totalTokensText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : totalTokensText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    totalTokensText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (totalTokensText_ != null &&
+        totalTokensText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      totalTokensText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(totalTokensText_).mergeFrom(value).buildPartial();
+    } else {
+      totalTokensText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   */
+  private void clearTotalTokensText() {
+    totalTokensText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int META_TEXT_FIELD_NUMBER = 14;
+  private io.github.lewin671.remoteagent.core.proto.Text metaText_;
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMetaText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMetaText() {
+    return metaText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : metaText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMetaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    metaText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMetaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (metaText_ != null &&
+        metaText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      metaText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(metaText_).mergeFrom(value).buildPartial();
+    } else {
+      metaText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   */
+  private void clearMetaText() {
+    metaText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineModelUsageRow parseFrom(
@@ -829,6 +974,147 @@ public  final class MachineModelUsageRow extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTitleText() {
+      return instance.hasTitleText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTitleText() {
+      return instance.getTitleText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    public Builder setTitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTitleText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    public Builder setTitleText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTitleText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    public Builder mergeTitleText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTitleText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+     */
+    public Builder clearTitleText() {  copyOnWrite();
+      instance.clearTitleText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTotalTokensText() {
+      return instance.hasTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText() {
+      return instance.getTotalTokensText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setTotalTokensText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    public Builder setTotalTokensText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTotalTokensText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    public Builder mergeTotalTokensText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeTotalTokensText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+     */
+    public Builder clearTotalTokensText() {  copyOnWrite();
+      instance.clearTotalTokensText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMetaText() {
+      return instance.hasMetaText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMetaText() {
+      return instance.getMetaText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    public Builder setMetaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMetaText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    public Builder setMetaText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMetaText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    public Builder mergeMetaText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMetaText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+     */
+    public Builder clearMetaText() {  copyOnWrite();
+      instance.clearMetaText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineModelUsageRow)
   }
   @java.lang.Override
@@ -845,6 +1131,7 @@ public  final class MachineModelUsageRow extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "agent_",
             "agentName_",
             "model_",
@@ -856,11 +1143,14 @@ public  final class MachineModelUsageRow extends
             "usageRequestCount_",
             "speedRequestCount_",
             "fewSpeedSamples_",
+            "titleText_",
+            "totalTokensText_",
+            "metaText_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0000\u0001\u000b\u000b\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0000\u0000\u0001\f\u0002\u0208" +
               "\u0003\u0208\u0004\u0003\u0005\u0007\u0006\u0000\u0007\u0007\b\u0000\t\u0003\n\u0003" +
-              "\u000b\u0007";
+              "\u000b\u0007\f\u1009\u0000\r\u1009\u0001\u000e\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

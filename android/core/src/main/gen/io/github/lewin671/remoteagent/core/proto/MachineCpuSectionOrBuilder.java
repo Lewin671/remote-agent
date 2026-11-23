@@ -71,4 +71,34 @@ public interface MachineCpuSectionOrBuilder extends
    * @return The chart.
    */
   io.github.lewin671.remoteagent.core.proto.MachineChartView getChart();
+
+  /**
+   * <code>double value = 7 [json_name = "value"];</code>
+   * @return The value.
+   */
+  double getValue();
+
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @return The valueText.
+   */
+  java.lang.String getValueText();
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @return The bytes for valueText.
+   */
+  com.google.protobuf.ByteString
+      getValueTextBytes();
+
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @return The unit.
+   */
+  java.lang.String getUnit();
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @return The bytes for unit.
+   */
+  com.google.protobuf.ByteString
+      getUnitBytes();
 }

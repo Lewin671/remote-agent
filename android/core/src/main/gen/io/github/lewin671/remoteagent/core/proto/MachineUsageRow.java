@@ -305,6 +305,206 @@ public  final class MachineUsageRow extends
 
   }
 
+  public static final int CPU_BAR_FRACTION_FIELD_NUMBER = 8;
+  private double cpuBarFraction_;
+  /**
+   * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+   * @return The cpuBarFraction.
+   */
+  @java.lang.Override
+  public double getCpuBarFraction() {
+    return cpuBarFraction_;
+  }
+  /**
+   * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+   * @param value The cpuBarFraction to set.
+   */
+  private void setCpuBarFraction(double value) {
+    
+    cpuBarFraction_ = value;
+  }
+  /**
+   * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+   */
+  private void clearCpuBarFraction() {
+
+    cpuBarFraction_ = 0D;
+  }
+
+  public static final int MEMORY_BAR_FRACTION_FIELD_NUMBER = 9;
+  private double memoryBarFraction_;
+  /**
+   * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+   * @return The memoryBarFraction.
+   */
+  @java.lang.Override
+  public double getMemoryBarFraction() {
+    return memoryBarFraction_;
+  }
+  /**
+   * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+   * @param value The memoryBarFraction to set.
+   */
+  private void setMemoryBarFraction(double value) {
+    
+    memoryBarFraction_ = value;
+  }
+  /**
+   * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+   */
+  private void clearMemoryBarFraction() {
+
+    memoryBarFraction_ = 0D;
+  }
+
+  public static final int CPU_BAR_PERCENT_FIELD_NUMBER = 10;
+  private int cpuBarPercent_;
+  /**
+   * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+   * @return The cpuBarPercent.
+   */
+  @java.lang.Override
+  public int getCpuBarPercent() {
+    return cpuBarPercent_;
+  }
+  /**
+   * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+   * @param value The cpuBarPercent to set.
+   */
+  private void setCpuBarPercent(int value) {
+    
+    cpuBarPercent_ = value;
+  }
+  /**
+   * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+   */
+  private void clearCpuBarPercent() {
+
+    cpuBarPercent_ = 0;
+  }
+
+  public static final int MEMORY_BAR_PERCENT_FIELD_NUMBER = 11;
+  private int memoryBarPercent_;
+  /**
+   * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+   * @return The memoryBarPercent.
+   */
+  @java.lang.Override
+  public int getMemoryBarPercent() {
+    return memoryBarPercent_;
+  }
+  /**
+   * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+   * @param value The memoryBarPercent to set.
+   */
+  private void setMemoryBarPercent(int value) {
+    
+    memoryBarPercent_ = value;
+  }
+  /**
+   * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+   */
+  private void clearMemoryBarPercent() {
+
+    memoryBarPercent_ = 0;
+  }
+
+  public static final int CPU_VALUE_TEXT_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text cpuValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasCpuValueText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getCpuValueText() {
+    return cpuValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : cpuValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setCpuValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    cpuValueText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeCpuValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (cpuValueText_ != null &&
+        cpuValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      cpuValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(cpuValueText_).mergeFrom(value).buildPartial();
+    } else {
+      cpuValueText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   */
+  private void clearCpuValueText() {
+    cpuValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int MEMORY_VALUE_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text memoryValueText_;
+  /**
+   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMemoryValueText() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMemoryValueText() {
+    return memoryValueText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : memoryValueText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMemoryValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    memoryValueText_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMemoryValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (memoryValueText_ != null &&
+        memoryValueText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      memoryValueText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(memoryValueText_).mergeFrom(value).buildPartial();
+    } else {
+      memoryValueText_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   */
+  private void clearMemoryValueText() {
+    memoryValueText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineUsageRow parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -696,6 +896,212 @@ public  final class MachineUsageRow extends
       return this;
     }
 
+    /**
+     * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+     * @return The cpuBarFraction.
+     */
+    @java.lang.Override
+    public double getCpuBarFraction() {
+      return instance.getCpuBarFraction();
+    }
+    /**
+     * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+     * @param value The cpuBarFraction to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCpuBarFraction(double value) {
+      copyOnWrite();
+      instance.setCpuBarFraction(value);
+      return this;
+    }
+    /**
+     * <code>double cpu_bar_fraction = 8 [json_name = "cpuBarFraction"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCpuBarFraction() {
+      copyOnWrite();
+      instance.clearCpuBarFraction();
+      return this;
+    }
+
+    /**
+     * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+     * @return The memoryBarFraction.
+     */
+    @java.lang.Override
+    public double getMemoryBarFraction() {
+      return instance.getMemoryBarFraction();
+    }
+    /**
+     * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+     * @param value The memoryBarFraction to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMemoryBarFraction(double value) {
+      copyOnWrite();
+      instance.setMemoryBarFraction(value);
+      return this;
+    }
+    /**
+     * <code>double memory_bar_fraction = 9 [json_name = "memoryBarFraction"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMemoryBarFraction() {
+      copyOnWrite();
+      instance.clearMemoryBarFraction();
+      return this;
+    }
+
+    /**
+     * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+     * @return The cpuBarPercent.
+     */
+    @java.lang.Override
+    public int getCpuBarPercent() {
+      return instance.getCpuBarPercent();
+    }
+    /**
+     * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+     * @param value The cpuBarPercent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCpuBarPercent(int value) {
+      copyOnWrite();
+      instance.setCpuBarPercent(value);
+      return this;
+    }
+    /**
+     * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCpuBarPercent() {
+      copyOnWrite();
+      instance.clearCpuBarPercent();
+      return this;
+    }
+
+    /**
+     * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+     * @return The memoryBarPercent.
+     */
+    @java.lang.Override
+    public int getMemoryBarPercent() {
+      return instance.getMemoryBarPercent();
+    }
+    /**
+     * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+     * @param value The memoryBarPercent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMemoryBarPercent(int value) {
+      copyOnWrite();
+      instance.setMemoryBarPercent(value);
+      return this;
+    }
+    /**
+     * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMemoryBarPercent() {
+      copyOnWrite();
+      instance.clearMemoryBarPercent();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasCpuValueText() {
+      return instance.hasCpuValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getCpuValueText() {
+      return instance.getCpuValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    public Builder setCpuValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setCpuValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    public Builder setCpuValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setCpuValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    public Builder mergeCpuValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeCpuValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+     */
+    public Builder clearCpuValueText() {  copyOnWrite();
+      instance.clearCpuValueText();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMemoryValueText() {
+      return instance.hasMemoryValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMemoryValueText() {
+      return instance.getMemoryValueText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    public Builder setMemoryValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMemoryValueText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    public Builder setMemoryValueText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMemoryValueText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    public Builder mergeMemoryValueText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMemoryValueText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+     */
+    public Builder clearMemoryValueText() {  copyOnWrite();
+      instance.clearMemoryValueText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineUsageRow)
   }
   @java.lang.Override
@@ -720,10 +1126,17 @@ public  final class MachineUsageRow extends
             "memoryBytes_",
             "agent_",
             "sessionId_",
+            "cpuBarFraction_",
+            "memoryBarFraction_",
+            "cpuBarPercent_",
+            "memoryBarPercent_",
+            "cpuValueText_",
+            "memoryValueText_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u0000\u0005\u0003\u0006\f\u0007\u0208";
+              "\u0000\r\u0000\u0001\u0001\r\r\u0000\u0000\u0000\u0001\u0208\u0002\u1009\u0000\u0003" +
+              "\u1009\u0001\u0004\u0000\u0005\u0003\u0006\f\u0007\u0208\b\u0000\t\u0000\n\u0004" +
+              "\u000b\u0004\f\u1009\u0002\r\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

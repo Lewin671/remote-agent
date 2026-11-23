@@ -988,6 +988,9 @@ type MachineCpuSection struct {
 	Detail2       *Text                  `protobuf:"bytes,4,opt,name=detail2,proto3" json:"detail2,omitempty"`
 	A11YLabel     *Text                  `protobuf:"bytes,5,opt,name=a11y_label,json=a11yLabel,proto3" json:"a11y_label,omitempty"`
 	Chart         *MachineChartView      `protobuf:"bytes,6,opt,name=chart,proto3" json:"chart,omitempty"`
+	Value         float64                `protobuf:"fixed64,7,opt,name=value,proto3" json:"value,omitempty"`
+	ValueText     string                 `protobuf:"bytes,8,opt,name=value_text,json=valueText,proto3" json:"value_text,omitempty"`
+	Unit          string                 `protobuf:"bytes,9,opt,name=unit,proto3" json:"unit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1064,6 +1067,27 @@ func (x *MachineCpuSection) GetChart() *MachineChartView {
 	return nil
 }
 
+func (x *MachineCpuSection) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *MachineCpuSection) GetValueText() string {
+	if x != nil {
+		return x.ValueText
+	}
+	return ""
+}
+
+func (x *MachineCpuSection) GetUnit() string {
+	if x != nil {
+		return x.Unit
+	}
+	return ""
+}
+
 type MachineMemorySection struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	HasValue            bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
@@ -1077,6 +1101,11 @@ type MachineMemorySection struct {
 	SwapText            *Text                  `protobuf:"bytes,9,opt,name=swap_text,json=swapText,proto3" json:"swap_text,omitempty"`
 	A11YLabel           *Text                  `protobuf:"bytes,10,opt,name=a11y_label,json=a11yLabel,proto3" json:"a11y_label,omitempty"`
 	Chart               *MachineChartView      `protobuf:"bytes,11,opt,name=chart,proto3" json:"chart,omitempty"`
+	Value               float64                `protobuf:"fixed64,12,opt,name=value,proto3" json:"value,omitempty"`
+	ValueText           string                 `protobuf:"bytes,13,opt,name=value_text,json=valueText,proto3" json:"value_text,omitempty"`
+	Unit                string                 `protobuf:"bytes,14,opt,name=unit,proto3" json:"unit,omitempty"`
+	UsedBytes           uint64                 `protobuf:"varint,15,opt,name=used_bytes,json=usedBytes,proto3" json:"used_bytes,omitempty"`
+	TotalBytes          uint64                 `protobuf:"varint,16,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1188,6 +1217,41 @@ func (x *MachineMemorySection) GetChart() *MachineChartView {
 	return nil
 }
 
+func (x *MachineMemorySection) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *MachineMemorySection) GetValueText() string {
+	if x != nil {
+		return x.ValueText
+	}
+	return ""
+}
+
+func (x *MachineMemorySection) GetUnit() string {
+	if x != nil {
+		return x.Unit
+	}
+	return ""
+}
+
+func (x *MachineMemorySection) GetUsedBytes() uint64 {
+	if x != nil {
+		return x.UsedBytes
+	}
+	return 0
+}
+
+func (x *MachineMemorySection) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
 type MachineDiskSection struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	HasValue           bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
@@ -1204,6 +1268,11 @@ type MachineDiskSection struct {
 	AgentUsageLabel    *Text                  `protobuf:"bytes,12,opt,name=agent_usage_label,json=agentUsageLabel,proto3" json:"agent_usage_label,omitempty"`
 	AgentUsageValue    *Text                  `protobuf:"bytes,13,opt,name=agent_usage_value,json=agentUsageValue,proto3" json:"agent_usage_value,omitempty"`
 	A11YLabel          *Text                  `protobuf:"bytes,14,opt,name=a11y_label,json=a11yLabel,proto3" json:"a11y_label,omitempty"`
+	Value              float64                `protobuf:"fixed64,15,opt,name=value,proto3" json:"value,omitempty"`
+	ValueText          string                 `protobuf:"bytes,16,opt,name=value_text,json=valueText,proto3" json:"value_text,omitempty"`
+	Unit               string                 `protobuf:"bytes,17,opt,name=unit,proto3" json:"unit,omitempty"`
+	AvailableBytes     uint64                 `protobuf:"varint,18,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
+	TotalBytes         uint64                 `protobuf:"varint,19,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -1336,17 +1405,58 @@ func (x *MachineDiskSection) GetA11YLabel() *Text {
 	return nil
 }
 
+func (x *MachineDiskSection) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *MachineDiskSection) GetValueText() string {
+	if x != nil {
+		return x.ValueText
+	}
+	return ""
+}
+
+func (x *MachineDiskSection) GetUnit() string {
+	if x != nil {
+		return x.Unit
+	}
+	return ""
+}
+
+func (x *MachineDiskSection) GetAvailableBytes() uint64 {
+	if x != nil {
+		return x.AvailableBytes
+	}
+	return 0
+}
+
+func (x *MachineDiskSection) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
 type MachineUsageRow struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         *Text                  `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Secondary     *Text                  `protobuf:"bytes,3,opt,name=secondary,proto3" json:"secondary,omitempty"`
-	CpuPercent    float64                `protobuf:"fixed64,4,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemoryBytes   uint64                 `protobuf:"varint,5,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
-	Agent         v1.Agent               `protobuf:"varint,6,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
-	SessionId     string                 `protobuf:"bytes,7,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title             *Text                  `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Secondary         *Text                  `protobuf:"bytes,3,opt,name=secondary,proto3" json:"secondary,omitempty"`
+	CpuPercent        float64                `protobuf:"fixed64,4,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryBytes       uint64                 `protobuf:"varint,5,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
+	Agent             v1.Agent               `protobuf:"varint,6,opt,name=agent,proto3,enum=remoteagent.v1.Agent" json:"agent,omitempty"`
+	SessionId         string                 `protobuf:"bytes,7,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	CpuBarFraction    float64                `protobuf:"fixed64,8,opt,name=cpu_bar_fraction,json=cpuBarFraction,proto3" json:"cpu_bar_fraction,omitempty"`
+	MemoryBarFraction float64                `protobuf:"fixed64,9,opt,name=memory_bar_fraction,json=memoryBarFraction,proto3" json:"memory_bar_fraction,omitempty"`
+	CpuBarPercent     int32                  `protobuf:"varint,10,opt,name=cpu_bar_percent,json=cpuBarPercent,proto3" json:"cpu_bar_percent,omitempty"`
+	MemoryBarPercent  int32                  `protobuf:"varint,11,opt,name=memory_bar_percent,json=memoryBarPercent,proto3" json:"memory_bar_percent,omitempty"`
+	CpuValueText      *Text                  `protobuf:"bytes,12,opt,name=cpu_value_text,json=cpuValueText,proto3" json:"cpu_value_text,omitempty"`
+	MemoryValueText   *Text                  `protobuf:"bytes,13,opt,name=memory_value_text,json=memoryValueText,proto3" json:"memory_value_text,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *MachineUsageRow) Reset() {
@@ -1428,6 +1538,48 @@ func (x *MachineUsageRow) GetSessionId() string {
 	return ""
 }
 
+func (x *MachineUsageRow) GetCpuBarFraction() float64 {
+	if x != nil {
+		return x.CpuBarFraction
+	}
+	return 0
+}
+
+func (x *MachineUsageRow) GetMemoryBarFraction() float64 {
+	if x != nil {
+		return x.MemoryBarFraction
+	}
+	return 0
+}
+
+func (x *MachineUsageRow) GetCpuBarPercent() int32 {
+	if x != nil {
+		return x.CpuBarPercent
+	}
+	return 0
+}
+
+func (x *MachineUsageRow) GetMemoryBarPercent() int32 {
+	if x != nil {
+		return x.MemoryBarPercent
+	}
+	return 0
+}
+
+func (x *MachineUsageRow) GetCpuValueText() *Text {
+	if x != nil {
+		return x.CpuValueText
+	}
+	return nil
+}
+
+func (x *MachineUsageRow) GetMemoryValueText() *Text {
+	if x != nil {
+		return x.MemoryValueText
+	}
+	return nil
+}
+
 type MachineTopUsageSection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SelectedTab   MachineUsageTab        `protobuf:"varint,1,opt,name=selected_tab,json=selectedTab,proto3,enum=remoteagent.core.v1.MachineUsageTab" json:"selected_tab,omitempty"`
@@ -1501,6 +1653,9 @@ type MachineModelUsageRow struct {
 	UsageRequestCount uint64                 `protobuf:"varint,9,opt,name=usage_request_count,json=usageRequestCount,proto3" json:"usage_request_count,omitempty"`
 	SpeedRequestCount uint64                 `protobuf:"varint,10,opt,name=speed_request_count,json=speedRequestCount,proto3" json:"speed_request_count,omitempty"`
 	FewSpeedSamples   bool                   `protobuf:"varint,11,opt,name=few_speed_samples,json=fewSpeedSamples,proto3" json:"few_speed_samples,omitempty"`
+	TitleText         *Text                  `protobuf:"bytes,12,opt,name=title_text,json=titleText,proto3" json:"title_text,omitempty"`
+	TotalTokensText   *Text                  `protobuf:"bytes,13,opt,name=total_tokens_text,json=totalTokensText,proto3" json:"total_tokens_text,omitempty"`
+	MetaText          *Text                  `protobuf:"bytes,14,opt,name=meta_text,json=metaText,proto3" json:"meta_text,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1612,6 +1767,27 @@ func (x *MachineModelUsageRow) GetFewSpeedSamples() bool {
 	return false
 }
 
+func (x *MachineModelUsageRow) GetTitleText() *Text {
+	if x != nil {
+		return x.TitleText
+	}
+	return nil
+}
+
+func (x *MachineModelUsageRow) GetTotalTokensText() *Text {
+	if x != nil {
+		return x.TotalTokensText
+	}
+	return nil
+}
+
+func (x *MachineModelUsageRow) GetMetaText() *Text {
+	if x != nil {
+		return x.MetaText
+	}
+	return nil
+}
+
 type MachineModelUsagePreview struct {
 	state               protoimpl.MessageState  `protogen:"open.v1"`
 	Supported           bool                    `protobuf:"varint,1,opt,name=supported,proto3" json:"supported,omitempty"`
@@ -1624,6 +1800,7 @@ type MachineModelUsagePreview struct {
 	Rows                []*MachineModelUsageRow `protobuf:"bytes,8,rep,name=rows,proto3" json:"rows,omitempty"`
 	UnsupportedFootnote *Text                   `protobuf:"bytes,9,opt,name=unsupported_footnote,json=unsupportedFootnote,proto3" json:"unsupported_footnote,omitempty"`
 	EmptyText           *Text                   `protobuf:"bytes,10,opt,name=empty_text,json=emptyText,proto3" json:"empty_text,omitempty"`
+	WindowLabel         *Text                   `protobuf:"bytes,11,opt,name=window_label,json=windowLabel,proto3" json:"window_label,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1724,6 +1901,13 @@ func (x *MachineModelUsagePreview) GetUnsupportedFootnote() *Text {
 func (x *MachineModelUsagePreview) GetEmptyText() *Text {
 	if x != nil {
 		return x.EmptyText
+	}
+	return nil
+}
+
+func (x *MachineModelUsagePreview) GetWindowLabel() *Text {
+	if x != nil {
+		return x.WindowLabel
 	}
 	return nil
 }
@@ -3241,7 +3425,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\bscrubAge\x12<\n" +
 	"\fa11y_summary\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\va11ySummary\x12\"\n" +
 	"\rcan_step_prev\x18\f \x01(\bR\vcanStepPrev\x12\"\n" +
-	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\"\xab\x02\n" +
+	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\"\xf4\x02\n" +
 	"\x11MachineCpuSection\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x12\x1a\n" +
 	"\bheadline\x18\x02 \x01(\tR\bheadline\x121\n" +
@@ -3249,7 +3433,11 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\adetail2\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\adetail2\x128\n" +
 	"\n" +
 	"a11y_label\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\x12;\n" +
-	"\x05chart\x18\x06 \x01(\v2%.remoteagent.core.v1.MachineChartViewR\x05chart\"\xef\x04\n" +
+	"\x05chart\x18\x06 \x01(\v2%.remoteagent.core.v1.MachineChartViewR\x05chart\x12\x14\n" +
+	"\x05value\x18\a \x01(\x01R\x05value\x12\x1d\n" +
+	"\n" +
+	"value_text\x18\b \x01(\tR\tvalueText\x12\x12\n" +
+	"\x04unit\x18\t \x01(\tR\x04unit\"\xf8\x05\n" +
 	"\x14MachineMemorySection\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x125\n" +
 	"\bheadline\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\bheadline\x123\n" +
@@ -3264,7 +3452,15 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\n" +
 	"a11y_label\x18\n" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\x12;\n" +
-	"\x05chart\x18\v \x01(\v2%.remoteagent.core.v1.MachineChartViewR\x05chart\"\x88\x06\n" +
+	"\x05chart\x18\v \x01(\v2%.remoteagent.core.v1.MachineChartViewR\x05chart\x12\x14\n" +
+	"\x05value\x18\f \x01(\x01R\x05value\x12\x1d\n" +
+	"\n" +
+	"value_text\x18\r \x01(\tR\tvalueText\x12\x12\n" +
+	"\x04unit\x18\x0e \x01(\tR\x04unit\x12\x1d\n" +
+	"\n" +
+	"used_bytes\x18\x0f \x01(\x04R\tusedBytes\x12\x1f\n" +
+	"\vtotal_bytes\x18\x10 \x01(\x04R\n" +
+	"totalBytes\"\x9b\a\n" +
 	"\x12MachineDiskSection\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x125\n" +
 	"\bheadline\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\bheadline\x123\n" +
@@ -3282,7 +3478,14 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x11agent_usage_label\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\x0fagentUsageLabel\x12E\n" +
 	"\x11agent_usage_value\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x0fagentUsageValue\x128\n" +
 	"\n" +
-	"a11y_label\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\"\x9b\x02\n" +
+	"a11y_label\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\x12\x14\n" +
+	"\x05value\x18\x0f \x01(\x01R\x05value\x12\x1d\n" +
+	"\n" +
+	"value_text\x18\x10 \x01(\tR\tvalueText\x12\x12\n" +
+	"\x04unit\x18\x11 \x01(\tR\x04unit\x12'\n" +
+	"\x0favailable_bytes\x18\x12 \x01(\x04R\x0eavailableBytes\x12\x1f\n" +
+	"\vtotal_bytes\x18\x13 \x01(\x04R\n" +
+	"totalBytes\"\xd3\x04\n" +
 	"\x0fMachineUsageRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x127\n" +
@@ -3292,12 +3495,19 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\fmemory_bytes\x18\x05 \x01(\x04R\vmemoryBytes\x12+\n" +
 	"\x05agent\x18\x06 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\a \x01(\tR\tsessionId\"\xd5\x01\n" +
+	"session_id\x18\a \x01(\tR\tsessionId\x12(\n" +
+	"\x10cpu_bar_fraction\x18\b \x01(\x01R\x0ecpuBarFraction\x12.\n" +
+	"\x13memory_bar_fraction\x18\t \x01(\x01R\x11memoryBarFraction\x12&\n" +
+	"\x0fcpu_bar_percent\x18\n" +
+	" \x01(\x05R\rcpuBarPercent\x12,\n" +
+	"\x12memory_bar_percent\x18\v \x01(\x05R\x10memoryBarPercent\x12?\n" +
+	"\x0ecpu_value_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\fcpuValueText\x12E\n" +
+	"\x11memory_value_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x0fmemoryValueText\"\xd5\x01\n" +
 	"\x16MachineTopUsageSection\x12G\n" +
 	"\fselected_tab\x18\x01 \x01(\x0e2$.remoteagent.core.v1.MachineUsageTabR\vselectedTab\x128\n" +
 	"\x04rows\x18\x02 \x03(\v2$.remoteagent.core.v1.MachineUsageRowR\x04rows\x128\n" +
 	"\n" +
-	"empty_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\"\xab\x03\n" +
+	"empty_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\"\xe4\x04\n" +
 	"\x14MachineModelUsageRow\x12+\n" +
 	"\x05agent\x18\x01 \x01(\x0e2\x15.remoteagent.v1.AgentR\x05agent\x12\x1d\n" +
 	"\n" +
@@ -3311,7 +3521,11 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x13usage_request_count\x18\t \x01(\x04R\x11usageRequestCount\x12.\n" +
 	"\x13speed_request_count\x18\n" +
 	" \x01(\x04R\x11speedRequestCount\x12*\n" +
-	"\x11few_speed_samples\x18\v \x01(\bR\x0ffewSpeedSamples\"\xd1\x03\n" +
+	"\x11few_speed_samples\x18\v \x01(\bR\x0ffewSpeedSamples\x128\n" +
+	"\n" +
+	"title_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\ttitleText\x12E\n" +
+	"\x11total_tokens_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x0ftotalTokensText\x126\n" +
+	"\tmeta_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\bmetaText\"\x8f\x04\n" +
 	"\x18MachineModelUsagePreview\x12\x1c\n" +
 	"\tsupported\x18\x01 \x01(\bR\tsupported\x12\x18\n" +
 	"\aloading\x18\x02 \x01(\bR\aloading\x12\x19\n" +
@@ -3325,7 +3539,8 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x14unsupported_footnote\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\x13unsupportedFootnote\x128\n" +
 	"\n" +
 	"empty_text\x18\n" +
-	" \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\"\xf3\a\n" +
+	" \x01(\v2\x19.remoteagent.core.v1.TextR\temptyText\x12<\n" +
+	"\fwindow_label\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\vwindowLabel\"\xf3\a\n" +
 	"\x16MachineStatusViewModel\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12!\n" +
@@ -3618,105 +3833,111 @@ var file_remoteagent_core_v1_machine_view_proto_goTypes = []any{
 	(v1.Agent)(0),                       // 41: remoteagent.v1.Agent
 }
 var file_remoteagent_core_v1_machine_view_proto_depIdxs = []int32{
-	7,  // 0: remoteagent.core.v1.MachineRingView.kind:type_name -> remoteagent.core.v1.MachineRingKind
-	40, // 1: remoteagent.core.v1.MachineRingView.label:type_name -> remoteagent.core.v1.Text
-	40, // 2: remoteagent.core.v1.MachineRingView.value_text:type_name -> remoteagent.core.v1.Text
-	8,  // 3: remoteagent.core.v1.MachineRingView.tone:type_name -> remoteagent.core.v1.MachineRingTone
-	40, // 4: remoteagent.core.v1.MachineRingView.a11y_label:type_name -> remoteagent.core.v1.Text
-	14, // 5: remoteagent.core.v1.MachineChartView.points:type_name -> remoteagent.core.v1.MachineChartPoint
-	40, // 6: remoteagent.core.v1.MachineChartView.scrub_value:type_name -> remoteagent.core.v1.Text
-	40, // 7: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
-	40, // 8: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
-	40, // 9: remoteagent.core.v1.MachineCpuSection.detail:type_name -> remoteagent.core.v1.Text
-	40, // 10: remoteagent.core.v1.MachineCpuSection.detail2:type_name -> remoteagent.core.v1.Text
-	40, // 11: remoteagent.core.v1.MachineCpuSection.a11y_label:type_name -> remoteagent.core.v1.Text
-	15, // 12: remoteagent.core.v1.MachineCpuSection.chart:type_name -> remoteagent.core.v1.MachineChartView
-	40, // 13: remoteagent.core.v1.MachineMemorySection.headline:type_name -> remoteagent.core.v1.Text
-	40, // 14: remoteagent.core.v1.MachineMemorySection.caption:type_name -> remoteagent.core.v1.Text
-	3,  // 15: remoteagent.core.v1.MachineMemorySection.pressure:type_name -> remoteagent.core.v1.MachinePressureTone
-	40, // 16: remoteagent.core.v1.MachineMemorySection.pressure_text:type_name -> remoteagent.core.v1.Text
-	40, // 17: remoteagent.core.v1.MachineMemorySection.total_text:type_name -> remoteagent.core.v1.Text
-	40, // 18: remoteagent.core.v1.MachineMemorySection.swap_text:type_name -> remoteagent.core.v1.Text
-	40, // 19: remoteagent.core.v1.MachineMemorySection.a11y_label:type_name -> remoteagent.core.v1.Text
-	15, // 20: remoteagent.core.v1.MachineMemorySection.chart:type_name -> remoteagent.core.v1.MachineChartView
-	40, // 21: remoteagent.core.v1.MachineDiskSection.headline:type_name -> remoteagent.core.v1.Text
-	40, // 22: remoteagent.core.v1.MachineDiskSection.caption:type_name -> remoteagent.core.v1.Text
-	4,  // 23: remoteagent.core.v1.MachineDiskSection.state:type_name -> remoteagent.core.v1.DiskPressureState
-	40, // 24: remoteagent.core.v1.MachineDiskSection.state_badge:type_name -> remoteagent.core.v1.Text
-	40, // 25: remoteagent.core.v1.MachineDiskSection.detail:type_name -> remoteagent.core.v1.Text
-	40, // 26: remoteagent.core.v1.MachineDiskSection.detail2:type_name -> remoteagent.core.v1.Text
-	40, // 27: remoteagent.core.v1.MachineDiskSection.cleanup_action_label:type_name -> remoteagent.core.v1.Text
-	40, // 28: remoteagent.core.v1.MachineDiskSection.agent_usage_label:type_name -> remoteagent.core.v1.Text
-	40, // 29: remoteagent.core.v1.MachineDiskSection.agent_usage_value:type_name -> remoteagent.core.v1.Text
-	40, // 30: remoteagent.core.v1.MachineDiskSection.a11y_label:type_name -> remoteagent.core.v1.Text
-	40, // 31: remoteagent.core.v1.MachineUsageRow.title:type_name -> remoteagent.core.v1.Text
-	40, // 32: remoteagent.core.v1.MachineUsageRow.secondary:type_name -> remoteagent.core.v1.Text
-	41, // 33: remoteagent.core.v1.MachineUsageRow.agent:type_name -> remoteagent.v1.Agent
-	5,  // 34: remoteagent.core.v1.MachineTopUsageSection.selected_tab:type_name -> remoteagent.core.v1.MachineUsageTab
-	19, // 35: remoteagent.core.v1.MachineTopUsageSection.rows:type_name -> remoteagent.core.v1.MachineUsageRow
-	40, // 36: remoteagent.core.v1.MachineTopUsageSection.empty_text:type_name -> remoteagent.core.v1.Text
-	41, // 37: remoteagent.core.v1.MachineModelUsageRow.agent:type_name -> remoteagent.v1.Agent
-	21, // 38: remoteagent.core.v1.MachineModelUsagePreview.rows:type_name -> remoteagent.core.v1.MachineModelUsageRow
-	40, // 39: remoteagent.core.v1.MachineModelUsagePreview.unsupported_footnote:type_name -> remoteagent.core.v1.Text
-	40, // 40: remoteagent.core.v1.MachineModelUsagePreview.empty_text:type_name -> remoteagent.core.v1.Text
-	0,  // 41: remoteagent.core.v1.MachineStatusViewModel.poll_state:type_name -> remoteagent.core.v1.MachinePollState
-	2,  // 42: remoteagent.core.v1.MachineStatusViewModel.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	40, // 43: remoteagent.core.v1.MachineStatusViewModel.status_badge:type_name -> remoteagent.core.v1.Text
-	40, // 44: remoteagent.core.v1.MachineStatusViewModel.unavailable_title:type_name -> remoteagent.core.v1.Text
-	13, // 45: remoteagent.core.v1.MachineStatusViewModel.rings:type_name -> remoteagent.core.v1.MachineRingView
-	16, // 46: remoteagent.core.v1.MachineStatusViewModel.cpu:type_name -> remoteagent.core.v1.MachineCpuSection
-	17, // 47: remoteagent.core.v1.MachineStatusViewModel.memory:type_name -> remoteagent.core.v1.MachineMemorySection
-	18, // 48: remoteagent.core.v1.MachineStatusViewModel.disk:type_name -> remoteagent.core.v1.MachineDiskSection
-	20, // 49: remoteagent.core.v1.MachineStatusViewModel.top_usage:type_name -> remoteagent.core.v1.MachineTopUsageSection
-	40, // 50: remoteagent.core.v1.MachineStatusViewModel.uptime_text:type_name -> remoteagent.core.v1.Text
-	40, // 51: remoteagent.core.v1.MachineStatusViewModel.battery_text:type_name -> remoteagent.core.v1.Text
-	22, // 52: remoteagent.core.v1.MachineStatusViewModel.model_usage:type_name -> remoteagent.core.v1.MachineModelUsagePreview
-	40, // 53: remoteagent.core.v1.DiskReminderView.title:type_name -> remoteagent.core.v1.Text
-	40, // 54: remoteagent.core.v1.DiskReminderView.detail:type_name -> remoteagent.core.v1.Text
-	40, // 55: remoteagent.core.v1.DiskReminderView.action_label:type_name -> remoteagent.core.v1.Text
-	41, // 56: remoteagent.core.v1.QuotaScreenRequest.filter_agent:type_name -> remoteagent.v1.Agent
-	11, // 57: remoteagent.core.v1.QuotaBannerView.severity:type_name -> remoteagent.core.v1.QuotaBannerSeverity
-	40, // 58: remoteagent.core.v1.QuotaBannerView.message:type_name -> remoteagent.core.v1.Text
-	41, // 59: remoteagent.core.v1.QuotaBannerView.agent:type_name -> remoteagent.v1.Agent
-	40, // 60: remoteagent.core.v1.QuotaRowView.label:type_name -> remoteagent.core.v1.Text
-	40, // 61: remoteagent.core.v1.QuotaRowView.pool_name:type_name -> remoteagent.core.v1.Text
-	9,  // 62: remoteagent.core.v1.QuotaRowView.tone:type_name -> remoteagent.core.v1.QuotaTone
-	40, // 63: remoteagent.core.v1.QuotaRowView.remaining_text:type_name -> remoteagent.core.v1.Text
-	40, // 64: remoteagent.core.v1.QuotaRowView.reset_text:type_name -> remoteagent.core.v1.Text
-	40, // 65: remoteagent.core.v1.QuotaRowView.reset_clock_text:type_name -> remoteagent.core.v1.Text
-	40, // 66: remoteagent.core.v1.QuotaRowView.footnote:type_name -> remoteagent.core.v1.Text
-	40, // 67: remoteagent.core.v1.QuotaWindowGroupView.group_label:type_name -> remoteagent.core.v1.Text
-	27, // 68: remoteagent.core.v1.QuotaWindowGroupView.rows:type_name -> remoteagent.core.v1.QuotaRowView
-	10, // 69: remoteagent.core.v1.QuotaAccountGroupView.state:type_name -> remoteagent.core.v1.QuotaSectionState
-	40, // 70: remoteagent.core.v1.QuotaAccountGroupView.status_text:type_name -> remoteagent.core.v1.Text
-	40, // 71: remoteagent.core.v1.QuotaAccountGroupView.freshness_text:type_name -> remoteagent.core.v1.Text
-	40, // 72: remoteagent.core.v1.QuotaAccountGroupView.error_text:type_name -> remoteagent.core.v1.Text
-	28, // 73: remoteagent.core.v1.QuotaAccountGroupView.groups:type_name -> remoteagent.core.v1.QuotaWindowGroupView
-	40, // 74: remoteagent.core.v1.QuotaAccountGroupView.usage_hint:type_name -> remoteagent.core.v1.Text
-	41, // 75: remoteagent.core.v1.QuotaCliSection.agent:type_name -> remoteagent.v1.Agent
-	10, // 76: remoteagent.core.v1.QuotaCliSection.state:type_name -> remoteagent.core.v1.QuotaSectionState
-	29, // 77: remoteagent.core.v1.QuotaCliSection.accounts:type_name -> remoteagent.core.v1.QuotaAccountGroupView
-	40, // 78: remoteagent.core.v1.QuotaCliSection.empty_or_error_text:type_name -> remoteagent.core.v1.Text
-	40, // 79: remoteagent.core.v1.QuotaCliSection.usage_hint:type_name -> remoteagent.core.v1.Text
-	27, // 80: remoteagent.core.v1.QuotaCliSection.summary_row:type_name -> remoteagent.core.v1.QuotaRowView
-	40, // 81: remoteagent.core.v1.QuotaCliSection.summary_line:type_name -> remoteagent.core.v1.Text
-	9,  // 82: remoteagent.core.v1.QuotaCliSection.summary_tone:type_name -> remoteagent.core.v1.QuotaTone
-	40, // 83: remoteagent.core.v1.QuotaCliSection.summary_meta:type_name -> remoteagent.core.v1.Text
-	40, // 84: remoteagent.core.v1.QuotaCliSection.summary_primary_text:type_name -> remoteagent.core.v1.Text
-	40, // 85: remoteagent.core.v1.QuotaCliSection.summary_window_text:type_name -> remoteagent.core.v1.Text
-	40, // 86: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
-	26, // 87: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
-	30, // 88: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
-	40, // 89: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
-	40, // 90: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
-	1,  // 91: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
-	5,  // 92: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
-	6,  // 93: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
-	94, // [94:94] is the sub-list for method output_type
-	94, // [94:94] is the sub-list for method input_type
-	94, // [94:94] is the sub-list for extension type_name
-	94, // [94:94] is the sub-list for extension extendee
-	0,  // [0:94] is the sub-list for field type_name
+	7,   // 0: remoteagent.core.v1.MachineRingView.kind:type_name -> remoteagent.core.v1.MachineRingKind
+	40,  // 1: remoteagent.core.v1.MachineRingView.label:type_name -> remoteagent.core.v1.Text
+	40,  // 2: remoteagent.core.v1.MachineRingView.value_text:type_name -> remoteagent.core.v1.Text
+	8,   // 3: remoteagent.core.v1.MachineRingView.tone:type_name -> remoteagent.core.v1.MachineRingTone
+	40,  // 4: remoteagent.core.v1.MachineRingView.a11y_label:type_name -> remoteagent.core.v1.Text
+	14,  // 5: remoteagent.core.v1.MachineChartView.points:type_name -> remoteagent.core.v1.MachineChartPoint
+	40,  // 6: remoteagent.core.v1.MachineChartView.scrub_value:type_name -> remoteagent.core.v1.Text
+	40,  // 7: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
+	40,  // 8: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
+	40,  // 9: remoteagent.core.v1.MachineCpuSection.detail:type_name -> remoteagent.core.v1.Text
+	40,  // 10: remoteagent.core.v1.MachineCpuSection.detail2:type_name -> remoteagent.core.v1.Text
+	40,  // 11: remoteagent.core.v1.MachineCpuSection.a11y_label:type_name -> remoteagent.core.v1.Text
+	15,  // 12: remoteagent.core.v1.MachineCpuSection.chart:type_name -> remoteagent.core.v1.MachineChartView
+	40,  // 13: remoteagent.core.v1.MachineMemorySection.headline:type_name -> remoteagent.core.v1.Text
+	40,  // 14: remoteagent.core.v1.MachineMemorySection.caption:type_name -> remoteagent.core.v1.Text
+	3,   // 15: remoteagent.core.v1.MachineMemorySection.pressure:type_name -> remoteagent.core.v1.MachinePressureTone
+	40,  // 16: remoteagent.core.v1.MachineMemorySection.pressure_text:type_name -> remoteagent.core.v1.Text
+	40,  // 17: remoteagent.core.v1.MachineMemorySection.total_text:type_name -> remoteagent.core.v1.Text
+	40,  // 18: remoteagent.core.v1.MachineMemorySection.swap_text:type_name -> remoteagent.core.v1.Text
+	40,  // 19: remoteagent.core.v1.MachineMemorySection.a11y_label:type_name -> remoteagent.core.v1.Text
+	15,  // 20: remoteagent.core.v1.MachineMemorySection.chart:type_name -> remoteagent.core.v1.MachineChartView
+	40,  // 21: remoteagent.core.v1.MachineDiskSection.headline:type_name -> remoteagent.core.v1.Text
+	40,  // 22: remoteagent.core.v1.MachineDiskSection.caption:type_name -> remoteagent.core.v1.Text
+	4,   // 23: remoteagent.core.v1.MachineDiskSection.state:type_name -> remoteagent.core.v1.DiskPressureState
+	40,  // 24: remoteagent.core.v1.MachineDiskSection.state_badge:type_name -> remoteagent.core.v1.Text
+	40,  // 25: remoteagent.core.v1.MachineDiskSection.detail:type_name -> remoteagent.core.v1.Text
+	40,  // 26: remoteagent.core.v1.MachineDiskSection.detail2:type_name -> remoteagent.core.v1.Text
+	40,  // 27: remoteagent.core.v1.MachineDiskSection.cleanup_action_label:type_name -> remoteagent.core.v1.Text
+	40,  // 28: remoteagent.core.v1.MachineDiskSection.agent_usage_label:type_name -> remoteagent.core.v1.Text
+	40,  // 29: remoteagent.core.v1.MachineDiskSection.agent_usage_value:type_name -> remoteagent.core.v1.Text
+	40,  // 30: remoteagent.core.v1.MachineDiskSection.a11y_label:type_name -> remoteagent.core.v1.Text
+	40,  // 31: remoteagent.core.v1.MachineUsageRow.title:type_name -> remoteagent.core.v1.Text
+	40,  // 32: remoteagent.core.v1.MachineUsageRow.secondary:type_name -> remoteagent.core.v1.Text
+	41,  // 33: remoteagent.core.v1.MachineUsageRow.agent:type_name -> remoteagent.v1.Agent
+	40,  // 34: remoteagent.core.v1.MachineUsageRow.cpu_value_text:type_name -> remoteagent.core.v1.Text
+	40,  // 35: remoteagent.core.v1.MachineUsageRow.memory_value_text:type_name -> remoteagent.core.v1.Text
+	5,   // 36: remoteagent.core.v1.MachineTopUsageSection.selected_tab:type_name -> remoteagent.core.v1.MachineUsageTab
+	19,  // 37: remoteagent.core.v1.MachineTopUsageSection.rows:type_name -> remoteagent.core.v1.MachineUsageRow
+	40,  // 38: remoteagent.core.v1.MachineTopUsageSection.empty_text:type_name -> remoteagent.core.v1.Text
+	41,  // 39: remoteagent.core.v1.MachineModelUsageRow.agent:type_name -> remoteagent.v1.Agent
+	40,  // 40: remoteagent.core.v1.MachineModelUsageRow.title_text:type_name -> remoteagent.core.v1.Text
+	40,  // 41: remoteagent.core.v1.MachineModelUsageRow.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	40,  // 42: remoteagent.core.v1.MachineModelUsageRow.meta_text:type_name -> remoteagent.core.v1.Text
+	21,  // 43: remoteagent.core.v1.MachineModelUsagePreview.rows:type_name -> remoteagent.core.v1.MachineModelUsageRow
+	40,  // 44: remoteagent.core.v1.MachineModelUsagePreview.unsupported_footnote:type_name -> remoteagent.core.v1.Text
+	40,  // 45: remoteagent.core.v1.MachineModelUsagePreview.empty_text:type_name -> remoteagent.core.v1.Text
+	40,  // 46: remoteagent.core.v1.MachineModelUsagePreview.window_label:type_name -> remoteagent.core.v1.Text
+	0,   // 47: remoteagent.core.v1.MachineStatusViewModel.poll_state:type_name -> remoteagent.core.v1.MachinePollState
+	2,   // 48: remoteagent.core.v1.MachineStatusViewModel.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	40,  // 49: remoteagent.core.v1.MachineStatusViewModel.status_badge:type_name -> remoteagent.core.v1.Text
+	40,  // 50: remoteagent.core.v1.MachineStatusViewModel.unavailable_title:type_name -> remoteagent.core.v1.Text
+	13,  // 51: remoteagent.core.v1.MachineStatusViewModel.rings:type_name -> remoteagent.core.v1.MachineRingView
+	16,  // 52: remoteagent.core.v1.MachineStatusViewModel.cpu:type_name -> remoteagent.core.v1.MachineCpuSection
+	17,  // 53: remoteagent.core.v1.MachineStatusViewModel.memory:type_name -> remoteagent.core.v1.MachineMemorySection
+	18,  // 54: remoteagent.core.v1.MachineStatusViewModel.disk:type_name -> remoteagent.core.v1.MachineDiskSection
+	20,  // 55: remoteagent.core.v1.MachineStatusViewModel.top_usage:type_name -> remoteagent.core.v1.MachineTopUsageSection
+	40,  // 56: remoteagent.core.v1.MachineStatusViewModel.uptime_text:type_name -> remoteagent.core.v1.Text
+	40,  // 57: remoteagent.core.v1.MachineStatusViewModel.battery_text:type_name -> remoteagent.core.v1.Text
+	22,  // 58: remoteagent.core.v1.MachineStatusViewModel.model_usage:type_name -> remoteagent.core.v1.MachineModelUsagePreview
+	40,  // 59: remoteagent.core.v1.DiskReminderView.title:type_name -> remoteagent.core.v1.Text
+	40,  // 60: remoteagent.core.v1.DiskReminderView.detail:type_name -> remoteagent.core.v1.Text
+	40,  // 61: remoteagent.core.v1.DiskReminderView.action_label:type_name -> remoteagent.core.v1.Text
+	41,  // 62: remoteagent.core.v1.QuotaScreenRequest.filter_agent:type_name -> remoteagent.v1.Agent
+	11,  // 63: remoteagent.core.v1.QuotaBannerView.severity:type_name -> remoteagent.core.v1.QuotaBannerSeverity
+	40,  // 64: remoteagent.core.v1.QuotaBannerView.message:type_name -> remoteagent.core.v1.Text
+	41,  // 65: remoteagent.core.v1.QuotaBannerView.agent:type_name -> remoteagent.v1.Agent
+	40,  // 66: remoteagent.core.v1.QuotaRowView.label:type_name -> remoteagent.core.v1.Text
+	40,  // 67: remoteagent.core.v1.QuotaRowView.pool_name:type_name -> remoteagent.core.v1.Text
+	9,   // 68: remoteagent.core.v1.QuotaRowView.tone:type_name -> remoteagent.core.v1.QuotaTone
+	40,  // 69: remoteagent.core.v1.QuotaRowView.remaining_text:type_name -> remoteagent.core.v1.Text
+	40,  // 70: remoteagent.core.v1.QuotaRowView.reset_text:type_name -> remoteagent.core.v1.Text
+	40,  // 71: remoteagent.core.v1.QuotaRowView.reset_clock_text:type_name -> remoteagent.core.v1.Text
+	40,  // 72: remoteagent.core.v1.QuotaRowView.footnote:type_name -> remoteagent.core.v1.Text
+	40,  // 73: remoteagent.core.v1.QuotaWindowGroupView.group_label:type_name -> remoteagent.core.v1.Text
+	27,  // 74: remoteagent.core.v1.QuotaWindowGroupView.rows:type_name -> remoteagent.core.v1.QuotaRowView
+	10,  // 75: remoteagent.core.v1.QuotaAccountGroupView.state:type_name -> remoteagent.core.v1.QuotaSectionState
+	40,  // 76: remoteagent.core.v1.QuotaAccountGroupView.status_text:type_name -> remoteagent.core.v1.Text
+	40,  // 77: remoteagent.core.v1.QuotaAccountGroupView.freshness_text:type_name -> remoteagent.core.v1.Text
+	40,  // 78: remoteagent.core.v1.QuotaAccountGroupView.error_text:type_name -> remoteagent.core.v1.Text
+	28,  // 79: remoteagent.core.v1.QuotaAccountGroupView.groups:type_name -> remoteagent.core.v1.QuotaWindowGroupView
+	40,  // 80: remoteagent.core.v1.QuotaAccountGroupView.usage_hint:type_name -> remoteagent.core.v1.Text
+	41,  // 81: remoteagent.core.v1.QuotaCliSection.agent:type_name -> remoteagent.v1.Agent
+	10,  // 82: remoteagent.core.v1.QuotaCliSection.state:type_name -> remoteagent.core.v1.QuotaSectionState
+	29,  // 83: remoteagent.core.v1.QuotaCliSection.accounts:type_name -> remoteagent.core.v1.QuotaAccountGroupView
+	40,  // 84: remoteagent.core.v1.QuotaCliSection.empty_or_error_text:type_name -> remoteagent.core.v1.Text
+	40,  // 85: remoteagent.core.v1.QuotaCliSection.usage_hint:type_name -> remoteagent.core.v1.Text
+	27,  // 86: remoteagent.core.v1.QuotaCliSection.summary_row:type_name -> remoteagent.core.v1.QuotaRowView
+	40,  // 87: remoteagent.core.v1.QuotaCliSection.summary_line:type_name -> remoteagent.core.v1.Text
+	9,   // 88: remoteagent.core.v1.QuotaCliSection.summary_tone:type_name -> remoteagent.core.v1.QuotaTone
+	40,  // 89: remoteagent.core.v1.QuotaCliSection.summary_meta:type_name -> remoteagent.core.v1.Text
+	40,  // 90: remoteagent.core.v1.QuotaCliSection.summary_primary_text:type_name -> remoteagent.core.v1.Text
+	40,  // 91: remoteagent.core.v1.QuotaCliSection.summary_window_text:type_name -> remoteagent.core.v1.Text
+	40,  // 92: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
+	26,  // 93: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
+	30,  // 94: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
+	40,  // 95: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
+	40,  // 96: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
+	1,   // 97: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
+	5,   // 98: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
+	6,   // 99: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
+	100, // [100:100] is the sub-list for method output_type
+	100, // [100:100] is the sub-list for method input_type
+	100, // [100:100] is the sub-list for extension type_name
+	100, // [100:100] is the sub-list for extension extendee
+	0,   // [0:100] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_machine_view_proto_init() }

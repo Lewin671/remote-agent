@@ -393,6 +393,54 @@ public  final class MachineModelUsagePreview extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int WINDOW_LABEL_FIELD_NUMBER = 11;
+  private io.github.lewin671.remoteagent.core.proto.Text windowLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasWindowLabel() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getWindowLabel() {
+    return windowLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : windowLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWindowLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    windowLabel_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeWindowLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (windowLabel_ != null &&
+        windowLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      windowLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(windowLabel_).mergeFrom(value).buildPartial();
+    } else {
+      windowLabel_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   */
+  private void clearWindowLabel() {
+    windowLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineModelUsagePreview parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -882,6 +930,53 @@ public  final class MachineModelUsagePreview extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasWindowLabel() {
+      return instance.hasWindowLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getWindowLabel() {
+      return instance.getWindowLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    public Builder setWindowLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setWindowLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    public Builder setWindowLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setWindowLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    public Builder mergeWindowLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeWindowLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+     */
+    public Builder clearWindowLabel() {  copyOnWrite();
+      instance.clearWindowLabel();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineModelUsagePreview)
   }
   @java.lang.Override
@@ -910,11 +1005,12 @@ public  final class MachineModelUsagePreview extends
             io.github.lewin671.remoteagent.core.proto.MachineModelUsageRow.class,
             "unsupportedFootnote_",
             "emptyText_",
+            "windowLabel_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
-              "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0002\b\u001b\t\u1009\u0000\n\u1009\u0001" +
-              "";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0001\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0002\b\u001b\t\u1009\u0000" +
+              "\n\u1009\u0001\u000b\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

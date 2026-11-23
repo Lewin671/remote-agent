@@ -306,7 +306,8 @@
               "headline": "—",
               "chart": {
                 "gapThresholdMs": "10000"
-              }
+              },
+              "valueText": "—"
             },
             "memory": {
               "headline": {
@@ -317,7 +318,8 @@
               },
               "chart": {
                 "gapThresholdMs": "10000"
-              }
+              },
+              "valueText": "—"
             },
             "disk": {
               "headline": {
@@ -325,7 +327,8 @@
               },
               "caption": {
                 "key": "machine_status.gb_available"
-              }
+              },
+              "valueText": "—"
             },
             "topUsage": {
               "selectedTab": "MACHINE_USAGE_TAB_SESSIONS"
@@ -548,7 +551,10 @@
                   ]
                 },
                 "canStepPrev": true
-              }
+              },
+              "value": 24.4,
+              "valueText": "24",
+              "unit": "%"
             },
             "memory": {
               "hasValue": true,
@@ -685,7 +691,12 @@
                   ]
                 },
                 "canStepPrev": true
-              }
+              },
+              "value": 11.199999999254942,
+              "valueText": "11.2",
+              "unit": "GB",
+              "usedBytes": "12025908428",
+              "totalBytes": "34359738368"
             },
             "disk": {
               "hasValue": true,
@@ -748,7 +759,12 @@
                     }
                   }
                 ]
-              }
+              },
+              "value": 1.5,
+              "valueText": "1.5",
+              "unit": "GB",
+              "availableBytes": "1500000000",
+              "totalBytes": "500000000000"
             },
             "topUsage": {
               "selectedTab": "MACHINE_USAGE_TAB_SESSIONS",
@@ -778,7 +794,23 @@
                   "cpuPercent": 15,
                   "memoryBytes": "900000000",
                   "agent": "AGENT_CODEX",
-                  "sessionId": "s-1"
+                  "sessionId": "s-1",
+                  "cpuBarFraction": 1,
+                  "memoryBarFraction": 1,
+                  "cpuBarPercent": 100,
+                  "memoryBarPercent": 100,
+                  "cpuValueText": {
+                    "literal": "15%"
+                  },
+                  "memoryValueText": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "858"
+                      }
+                    ]
+                  }
                 },
                 {
                   "id": "u-2",
@@ -803,7 +835,23 @@
                     "separatorKey": "common.note_separator"
                   },
                   "cpuPercent": 8,
-                  "memoryBytes": "400000000"
+                  "memoryBytes": "400000000",
+                  "cpuBarFraction": 0.5333333333333333,
+                  "memoryBarFraction": 0.4444444444444444,
+                  "cpuBarPercent": 53,
+                  "memoryBarPercent": 44,
+                  "cpuValueText": {
+                    "literal": "8%"
+                  },
+                  "memoryValueText": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "381"
+                      }
+                    ]
+                  }
                 }
               ]
             },
@@ -1057,7 +1105,10 @@
                   ]
                 },
                 "canStepNext": true
-              }
+              },
+              "value": 24.4,
+              "valueText": "24",
+              "unit": "%"
             },
             "memory": {
               "hasValue": true,
@@ -1194,7 +1245,12 @@
                   ]
                 },
                 "canStepPrev": true
-              }
+              },
+              "value": 11.199999999254942,
+              "valueText": "11.2",
+              "unit": "GB",
+              "usedBytes": "12025908428",
+              "totalBytes": "34359738368"
             },
             "disk": {
               "hasValue": true,
@@ -1257,7 +1313,12 @@
                     }
                   }
                 ]
-              }
+              },
+              "value": 1.5,
+              "valueText": "1.5",
+              "unit": "GB",
+              "availableBytes": "1500000000",
+              "totalBytes": "500000000000"
             },
             "topUsage": {
               "selectedTab": "MACHINE_USAGE_TAB_PROCESSES",
@@ -1290,7 +1351,23 @@
                   "cpuPercent": 12,
                   "memoryBytes": "600000000",
                   "agent": "AGENT_CODEX",
-                  "sessionId": "s-1"
+                  "sessionId": "s-1",
+                  "cpuBarFraction": 1,
+                  "memoryBarFraction": 1,
+                  "cpuBarPercent": 100,
+                  "memoryBarPercent": 100,
+                  "cpuValueText": {
+                    "literal": "12%"
+                  },
+                  "memoryValueText": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "572"
+                      }
+                    ]
+                  }
                 }
               ]
             },
@@ -1653,7 +1730,10 @@
               },
               "chart": {
                 "gapThresholdMs": "10000"
-              }
+              },
+              "value": 24.4,
+              "valueText": "24",
+              "unit": "%"
             },
             "memory": {
               "hasValue": true,
@@ -1746,7 +1826,12 @@
               },
               "chart": {
                 "gapThresholdMs": "10000"
-              }
+              },
+              "value": 11.199999999254942,
+              "valueText": "11.2",
+              "unit": "GB",
+              "usedBytes": "12025908428",
+              "totalBytes": "34359738368"
             },
             "disk": {
               "hasValue": true,
@@ -1809,7 +1894,12 @@
                     }
                   }
                 ]
-              }
+              },
+              "value": 1.5,
+              "valueText": "1.5",
+              "unit": "GB",
+              "availableBytes": "1500000000",
+              "totalBytes": "500000000000"
             },
             "topUsage": {
               "selectedTab": "MACHINE_USAGE_TAB_PROCESSES",
@@ -1842,7 +1932,23 @@
                   "cpuPercent": 12,
                   "memoryBytes": "600000000",
                   "agent": "AGENT_CODEX",
-                  "sessionId": "s-1"
+                  "sessionId": "s-1",
+                  "cpuBarFraction": 1,
+                  "memoryBarFraction": 1,
+                  "cpuBarPercent": 100,
+                  "memoryBarPercent": 100,
+                  "cpuValueText": {
+                    "literal": "12%"
+                  },
+                  "memoryValueText": {
+                    "key": "machine_status.size_mb",
+                    "args": [
+                      {
+                        "name": "size",
+                        "strValue": "572"
+                      }
+                    ]
+                  }
                 }
               ]
             },
@@ -2149,7 +2255,10 @@
                     }
                   ]
                 }
-              }
+              },
+              "value": 11,
+              "valueText": "11",
+              "unit": "%"
             },
             "memory": {
               "hasValue": true,
@@ -2251,7 +2360,12 @@
                   ]
                 },
                 "canStepPrev": true
-              }
+              },
+              "value": 10,
+              "valueText": "10.0",
+              "unit": "GB",
+              "usedBytes": "10737418240",
+              "totalBytes": "34359738368"
             },
             "disk": {
               "hasValue": true,
@@ -2318,7 +2432,12 @@
                     }
                   }
                 ]
-              }
+              },
+              "value": 42,
+              "valueText": "42",
+              "unit": "GB",
+              "availableBytes": "42000000000",
+              "totalBytes": "500000000000"
             },
             "topUsage": {
               "selectedTab": "MACHINE_USAGE_TAB_PROCESSES"

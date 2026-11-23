@@ -115,4 +115,46 @@ public interface MachineMemorySectionOrBuilder extends
    * @return The chart.
    */
   io.github.lewin671.remoteagent.core.proto.MachineChartView getChart();
+
+  /**
+   * <code>double value = 12 [json_name = "value"];</code>
+   * @return The value.
+   */
+  double getValue();
+
+  /**
+   * <code>string value_text = 13 [json_name = "valueText"];</code>
+   * @return The valueText.
+   */
+  java.lang.String getValueText();
+  /**
+   * <code>string value_text = 13 [json_name = "valueText"];</code>
+   * @return The bytes for valueText.
+   */
+  com.google.protobuf.ByteString
+      getValueTextBytes();
+
+  /**
+   * <code>string unit = 14 [json_name = "unit"];</code>
+   * @return The unit.
+   */
+  java.lang.String getUnit();
+  /**
+   * <code>string unit = 14 [json_name = "unit"];</code>
+   * @return The bytes for unit.
+   */
+  com.google.protobuf.ByteString
+      getUnitBytes();
+
+  /**
+   * <code>uint64 used_bytes = 15 [json_name = "usedBytes"];</code>
+   * @return The usedBytes.
+   */
+  long getUsedBytes();
+
+  /**
+   * <code>uint64 total_bytes = 16 [json_name = "totalBytes"];</code>
+   * @return The totalBytes.
+   */
+  long getTotalBytes();
 }

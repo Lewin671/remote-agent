@@ -244,6 +244,12 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 		return preview
 	}
 
+	if preview.FallbackThirtyDays {
+		preview.WindowLabel = text.Msg(text.KeyUsageEntryLast30D)
+	} else {
+		preview.WindowLabel = text.Msg(text.KeyUsageEntryLast7D)
+	}
+
 	if len(selected) == 0 {
 		if !preview.Loading {
 			preview.EmptyText = text.Msg(text.KeyMachineStatusModelUsageEmpty)
@@ -256,18 +262,46 @@ func buildMachineModelUsagePreview(st *State, m *lists.Machine) *corev1.MachineM
 		}
 		for _, s := range selected[:limit] {
 			eff := lists.EffectiveAgent(s.Agent)
+			agentName := lists.AgentInfo(eff).Name
+			tot := usage.TotalTokens(s.Current)
+			fewSpeed := s.Current.SpeedRequestCount > 0 && s.Current.SpeedRequestCount < usage.MinTrendRequests
+			var hitPart *corev1.Text
+			if s.Current.HasCacheHitRate {
+				hitPart = text.Msg(text.KeyUsageEntryCachePct, text.Str("pct", usage.FormatCacheHit(s.Current.CacheHitRate)))
+			}
+			var metaText *corev1.Text
+			if s.Current.HasSpeed {
+				speedPart := text.JoinLiteral(" ", text.Plain(usage.FormatSpeedValue(s.Current.SpeedP50)), text.Msg(text.KeyUsageKpiUnitToks))
+				reqsPart := text.Msg(text.KeyUsageEntryReqs, text.Int("count", int64(s.Current.UsageRequestCount)))
+				metaText = text.JoinLiteral(" · ", hitPart, speedPart, reqsPart, preview.WindowLabel)
+			} else if fewSpeed {
+				detail := hitPart
+				if detail == nil {
+					detail = preview.WindowLabel
+				}
+				metaText = text.Msg(text.KeyUsageEntryFewSamples, text.ArgText("detail", detail), text.Int("count", int64(s.Current.SpeedRequestCount)))
+			} else {
+				detail := hitPart
+				if detail == nil {
+					detail = preview.WindowLabel
+				}
+				metaText = text.Msg(text.KeyUsageEntryNoSpeed, text.ArgText("detail", detail))
+			}
 			preview.Rows = append(preview.Rows, &corev1.MachineModelUsageRow{
 				Agent:             eff,
-				AgentName:         lists.AgentInfo(eff).Name,
+				AgentName:         agentName,
 				Model:             s.Model,
-				TotalTokens:       usage.TotalTokens(s.Current),
+				TotalTokens:       tot,
 				HasCacheHit:       s.Current.HasCacheHitRate,
 				CacheHitRate:      s.Current.CacheHitRate,
 				HasSpeed:          s.Current.HasSpeed,
 				SpeedP50:          s.Current.SpeedP50,
 				UsageRequestCount: s.Current.UsageRequestCount,
 				SpeedRequestCount: s.Current.SpeedRequestCount,
-				FewSpeedSamples:   s.Current.SpeedRequestCount > 0 && s.Current.SpeedRequestCount < usage.MinTrendRequests,
+				FewSpeedSamples:   fewSpeed,
+				TitleText:         text.Plain(agentName + " · " + s.Model),
+				TotalTokensText:   usage.FormatTokensText(tot),
+				MetaText:          metaText,
 			})
 		}
 	}

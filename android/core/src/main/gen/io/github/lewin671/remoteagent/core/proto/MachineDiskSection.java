@@ -15,6 +15,8 @@ public  final class MachineDiskSection extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.MachineDiskSection)
     MachineDiskSectionOrBuilder {
   private MachineDiskSection() {
+    valueText_ = "";
+    unit_ = "";
   }
   private int bitField0_;
   public static final int HAS_VALUE_FIELD_NUMBER = 1;
@@ -593,6 +595,180 @@ public  final class MachineDiskSection extends
   private void clearA11YLabel() {
     a11YLabel_ = null;
     bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
+  public static final int VALUE_FIELD_NUMBER = 15;
+  private double value_;
+  /**
+   * <code>double value = 15 [json_name = "value"];</code>
+   * @return The value.
+   */
+  @java.lang.Override
+  public double getValue() {
+    return value_;
+  }
+  /**
+   * <code>double value = 15 [json_name = "value"];</code>
+   * @param value The value to set.
+   */
+  private void setValue(double value) {
+    
+    value_ = value;
+  }
+  /**
+   * <code>double value = 15 [json_name = "value"];</code>
+   */
+  private void clearValue() {
+
+    value_ = 0D;
+  }
+
+  public static final int VALUE_TEXT_FIELD_NUMBER = 16;
+  private java.lang.String valueText_;
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @return The valueText.
+   */
+  @java.lang.Override
+  public java.lang.String getValueText() {
+    return valueText_;
+  }
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @return The bytes for valueText.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getValueTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(valueText_);
+  }
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @param value The valueText to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setValueText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    valueText_ = value;
+  }
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   */
+  private void clearValueText() {
+
+    valueText_ = getDefaultInstance().getValueText();
+  }
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @param value The bytes for valueText to set.
+   */
+  private void setValueTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    valueText_ = value.toStringUtf8();
+
+  }
+
+  public static final int UNIT_FIELD_NUMBER = 17;
+  private java.lang.String unit_;
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @return The unit.
+   */
+  @java.lang.Override
+  public java.lang.String getUnit() {
+    return unit_;
+  }
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @return The bytes for unit.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getUnitBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(unit_);
+  }
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @param value The unit to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUnit(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    unit_ = value;
+  }
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   */
+  private void clearUnit() {
+
+    unit_ = getDefaultInstance().getUnit();
+  }
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @param value The bytes for unit to set.
+   */
+  private void setUnitBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    unit_ = value.toStringUtf8();
+
+  }
+
+  public static final int AVAILABLE_BYTES_FIELD_NUMBER = 18;
+  private long availableBytes_;
+  /**
+   * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+   * @return The availableBytes.
+   */
+  @java.lang.Override
+  public long getAvailableBytes() {
+    return availableBytes_;
+  }
+  /**
+   * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+   * @param value The availableBytes to set.
+   */
+  private void setAvailableBytes(long value) {
+    
+    availableBytes_ = value;
+  }
+  /**
+   * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+   */
+  private void clearAvailableBytes() {
+
+    availableBytes_ = 0L;
+  }
+
+  public static final int TOTAL_BYTES_FIELD_NUMBER = 19;
+  private long totalBytes_;
+  /**
+   * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+   * @return The totalBytes.
+   */
+  @java.lang.Override
+  public long getTotalBytes() {
+    return totalBytes_;
+  }
+  /**
+   * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+   * @param value The totalBytes to set.
+   */
+  private void setTotalBytes(long value) {
+    
+    totalBytes_ = value;
+  }
+  /**
+   * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+   */
+  private void clearTotalBytes() {
+
+    totalBytes_ = 0L;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineDiskSection parseFrom(
@@ -1273,6 +1449,188 @@ public  final class MachineDiskSection extends
       return this;
     }
 
+    /**
+     * <code>double value = 15 [json_name = "value"];</code>
+     * @return The value.
+     */
+    @java.lang.Override
+    public double getValue() {
+      return instance.getValue();
+    }
+    /**
+     * <code>double value = 15 [json_name = "value"];</code>
+     * @param value The value to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValue(double value) {
+      copyOnWrite();
+      instance.setValue(value);
+      return this;
+    }
+    /**
+     * <code>double value = 15 [json_name = "value"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearValue() {
+      copyOnWrite();
+      instance.clearValue();
+      return this;
+    }
+
+    /**
+     * <code>string value_text = 16 [json_name = "valueText"];</code>
+     * @return The valueText.
+     */
+    @java.lang.Override
+    public java.lang.String getValueText() {
+      return instance.getValueText();
+    }
+    /**
+     * <code>string value_text = 16 [json_name = "valueText"];</code>
+     * @return The bytes for valueText.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getValueTextBytes() {
+      return instance.getValueTextBytes();
+    }
+    /**
+     * <code>string value_text = 16 [json_name = "valueText"];</code>
+     * @param value The valueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValueText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setValueText(value);
+      return this;
+    }
+    /**
+     * <code>string value_text = 16 [json_name = "valueText"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearValueText() {
+      copyOnWrite();
+      instance.clearValueText();
+      return this;
+    }
+    /**
+     * <code>string value_text = 16 [json_name = "valueText"];</code>
+     * @param value The bytes for valueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValueTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setValueTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string unit = 17 [json_name = "unit"];</code>
+     * @return The unit.
+     */
+    @java.lang.Override
+    public java.lang.String getUnit() {
+      return instance.getUnit();
+    }
+    /**
+     * <code>string unit = 17 [json_name = "unit"];</code>
+     * @return The bytes for unit.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getUnitBytes() {
+      return instance.getUnitBytes();
+    }
+    /**
+     * <code>string unit = 17 [json_name = "unit"];</code>
+     * @param value The unit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnit(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setUnit(value);
+      return this;
+    }
+    /**
+     * <code>string unit = 17 [json_name = "unit"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUnit() {
+      copyOnWrite();
+      instance.clearUnit();
+      return this;
+    }
+    /**
+     * <code>string unit = 17 [json_name = "unit"];</code>
+     * @param value The bytes for unit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnitBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setUnitBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+     * @return The availableBytes.
+     */
+    @java.lang.Override
+    public long getAvailableBytes() {
+      return instance.getAvailableBytes();
+    }
+    /**
+     * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+     * @param value The availableBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAvailableBytes(long value) {
+      copyOnWrite();
+      instance.setAvailableBytes(value);
+      return this;
+    }
+    /**
+     * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAvailableBytes() {
+      copyOnWrite();
+      instance.clearAvailableBytes();
+      return this;
+    }
+
+    /**
+     * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+     * @return The totalBytes.
+     */
+    @java.lang.Override
+    public long getTotalBytes() {
+      return instance.getTotalBytes();
+    }
+    /**
+     * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+     * @param value The totalBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTotalBytes(long value) {
+      copyOnWrite();
+      instance.setTotalBytes(value);
+      return this;
+    }
+    /**
+     * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTotalBytes() {
+      copyOnWrite();
+      instance.clearTotalBytes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineDiskSection)
   }
   @java.lang.Override
@@ -1304,12 +1662,17 @@ public  final class MachineDiskSection extends
             "agentUsageLabel_",
             "agentUsageValue_",
             "a11YLabel_",
+            "value_",
+            "valueText_",
+            "unit_",
+            "availableBytes_",
+            "totalBytes_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0000\u0000\u0001\u0007\u0002\u1009" +
+              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0007\u0002\u1009" +
               "\u0000\u0003\u1009\u0001\u0004\f\u0005\u1009\u0002\u0006\u0007\u0007\u0000\b\u1009" +
               "\u0003\t\u1009\u0004\n\u0007\u000b\u1009\u0005\f\u1009\u0006\r\u1009\u0007\u000e" +
-              "\u1009\b";
+              "\u1009\b\u000f\u0000\u0010\u0208\u0011\u0208\u0012\u0003\u0013\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -16,6 +16,8 @@ public  final class MachineCpuSection extends
     MachineCpuSectionOrBuilder {
   private MachineCpuSection() {
     headline_ = "";
+    valueText_ = "";
+    unit_ = "";
   }
   private int bitField0_;
   public static final int HAS_VALUE_FIELD_NUMBER = 1;
@@ -282,6 +284,128 @@ public  final class MachineCpuSection extends
   private void clearChart() {
     chart_ = null;
     bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int VALUE_FIELD_NUMBER = 7;
+  private double value_;
+  /**
+   * <code>double value = 7 [json_name = "value"];</code>
+   * @return The value.
+   */
+  @java.lang.Override
+  public double getValue() {
+    return value_;
+  }
+  /**
+   * <code>double value = 7 [json_name = "value"];</code>
+   * @param value The value to set.
+   */
+  private void setValue(double value) {
+    
+    value_ = value;
+  }
+  /**
+   * <code>double value = 7 [json_name = "value"];</code>
+   */
+  private void clearValue() {
+
+    value_ = 0D;
+  }
+
+  public static final int VALUE_TEXT_FIELD_NUMBER = 8;
+  private java.lang.String valueText_;
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @return The valueText.
+   */
+  @java.lang.Override
+  public java.lang.String getValueText() {
+    return valueText_;
+  }
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @return The bytes for valueText.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getValueTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(valueText_);
+  }
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @param value The valueText to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setValueText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    valueText_ = value;
+  }
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   */
+  private void clearValueText() {
+
+    valueText_ = getDefaultInstance().getValueText();
+  }
+  /**
+   * <code>string value_text = 8 [json_name = "valueText"];</code>
+   * @param value The bytes for valueText to set.
+   */
+  private void setValueTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    valueText_ = value.toStringUtf8();
+
+  }
+
+  public static final int UNIT_FIELD_NUMBER = 9;
+  private java.lang.String unit_;
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @return The unit.
+   */
+  @java.lang.Override
+  public java.lang.String getUnit() {
+    return unit_;
+  }
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @return The bytes for unit.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getUnitBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(unit_);
+  }
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @param value The unit to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setUnit(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    unit_ = value;
+  }
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   */
+  private void clearUnit() {
+
+    unit_ = getDefaultInstance().getUnit();
+  }
+  /**
+   * <code>string unit = 9 [json_name = "unit"];</code>
+   * @param value The bytes for unit to set.
+   */
+  private void setUnitBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    unit_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineCpuSection parseFrom(
@@ -646,6 +770,132 @@ public  final class MachineCpuSection extends
       return this;
     }
 
+    /**
+     * <code>double value = 7 [json_name = "value"];</code>
+     * @return The value.
+     */
+    @java.lang.Override
+    public double getValue() {
+      return instance.getValue();
+    }
+    /**
+     * <code>double value = 7 [json_name = "value"];</code>
+     * @param value The value to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValue(double value) {
+      copyOnWrite();
+      instance.setValue(value);
+      return this;
+    }
+    /**
+     * <code>double value = 7 [json_name = "value"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearValue() {
+      copyOnWrite();
+      instance.clearValue();
+      return this;
+    }
+
+    /**
+     * <code>string value_text = 8 [json_name = "valueText"];</code>
+     * @return The valueText.
+     */
+    @java.lang.Override
+    public java.lang.String getValueText() {
+      return instance.getValueText();
+    }
+    /**
+     * <code>string value_text = 8 [json_name = "valueText"];</code>
+     * @return The bytes for valueText.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getValueTextBytes() {
+      return instance.getValueTextBytes();
+    }
+    /**
+     * <code>string value_text = 8 [json_name = "valueText"];</code>
+     * @param value The valueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValueText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setValueText(value);
+      return this;
+    }
+    /**
+     * <code>string value_text = 8 [json_name = "valueText"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearValueText() {
+      copyOnWrite();
+      instance.clearValueText();
+      return this;
+    }
+    /**
+     * <code>string value_text = 8 [json_name = "valueText"];</code>
+     * @param value The bytes for valueText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setValueTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setValueTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string unit = 9 [json_name = "unit"];</code>
+     * @return The unit.
+     */
+    @java.lang.Override
+    public java.lang.String getUnit() {
+      return instance.getUnit();
+    }
+    /**
+     * <code>string unit = 9 [json_name = "unit"];</code>
+     * @return The bytes for unit.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getUnitBytes() {
+      return instance.getUnitBytes();
+    }
+    /**
+     * <code>string unit = 9 [json_name = "unit"];</code>
+     * @param value The unit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnit(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setUnit(value);
+      return this;
+    }
+    /**
+     * <code>string unit = 9 [json_name = "unit"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearUnit() {
+      copyOnWrite();
+      instance.clearUnit();
+      return this;
+    }
+    /**
+     * <code>string unit = 9 [json_name = "unit"];</code>
+     * @param value The bytes for unit to set.
+     * @return This builder for chaining.
+     */
+    public Builder setUnitBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setUnitBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineCpuSection)
   }
   @java.lang.Override
@@ -669,10 +919,14 @@ public  final class MachineCpuSection extends
             "detail2_",
             "a11YLabel_",
             "chart_",
+            "value_",
+            "valueText_",
+            "unit_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0007\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
+              "\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003\u0007\u0000\b\u0208" +
+              "\t\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

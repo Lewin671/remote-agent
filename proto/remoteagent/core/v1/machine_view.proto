@@ -137,6 +137,9 @@ message MachineCpuSection {
   Text detail2 = 4;
   Text a11y_label = 5;
   MachineChartView chart = 6;
+  double value = 7;
+  string value_text = 8;
+  string unit = 9;
 }
 
 message MachineMemorySection {
@@ -151,6 +154,11 @@ message MachineMemorySection {
   Text swap_text = 9;
   Text a11y_label = 10;
   MachineChartView chart = 11;
+  double value = 12;
+  string value_text = 13;
+  string unit = 14;
+  uint64 used_bytes = 15;
+  uint64 total_bytes = 16;
 }
 
 message MachineDiskSection {
@@ -168,6 +176,11 @@ message MachineDiskSection {
   Text agent_usage_label = 12;
   Text agent_usage_value = 13;
   Text a11y_label = 14;
+  double value = 15;
+  string value_text = 16;
+  string unit = 17;
+  uint64 available_bytes = 18;
+  uint64 total_bytes = 19;
 }
 
 message MachineUsageRow {
@@ -178,6 +191,12 @@ message MachineUsageRow {
   uint64 memory_bytes = 5;
   remoteagent.v1.Agent agent = 6;
   string session_id = 7;
+  double cpu_bar_fraction = 8;
+  double memory_bar_fraction = 9;
+  int32 cpu_bar_percent = 10;
+  int32 memory_bar_percent = 11;
+  Text cpu_value_text = 12;
+  Text memory_value_text = 13;
 }
 
 message MachineTopUsageSection {
@@ -198,6 +217,9 @@ message MachineModelUsageRow {
   uint64 usage_request_count = 9;
   uint64 speed_request_count = 10;
   bool few_speed_samples = 11;
+  Text title_text = 12;
+  Text total_tokens_text = 13;
+  Text meta_text = 14;
 }
 
 message MachineModelUsagePreview {
@@ -211,6 +233,7 @@ message MachineModelUsagePreview {
   repeated MachineModelUsageRow rows = 8;
   Text unsupported_footnote = 9;
   Text empty_text = 10;
+  Text window_label = 11;
 }
 
 message MachineStatusViewModel {

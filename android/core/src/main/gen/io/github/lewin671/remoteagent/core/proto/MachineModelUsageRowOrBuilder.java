@@ -92,4 +92,37 @@ public interface MachineModelUsageRowOrBuilder extends
    * @return The fewSpeedSamples.
    */
   boolean getFewSpeedSamples();
+
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   * @return Whether the titleText field is set.
+   */
+  boolean hasTitleText();
+  /**
+   * <code>.remoteagent.core.v1.Text title_text = 12 [json_name = "titleText"];</code>
+   * @return The titleText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTitleText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   * @return Whether the totalTokensText field is set.
+   */
+  boolean hasTotalTokensText();
+  /**
+   * <code>.remoteagent.core.v1.Text total_tokens_text = 13 [json_name = "totalTokensText"];</code>
+   * @return The totalTokensText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTotalTokensText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   * @return Whether the metaText field is set.
+   */
+  boolean hasMetaText();
+  /**
+   * <code>.remoteagent.core.v1.Text meta_text = 14 [json_name = "metaText"];</code>
+   * @return The metaText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMetaText();
 }

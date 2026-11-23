@@ -380,6 +380,9 @@ type MachineCpuSection struct {
 	Detail2   *Text
 	A11YLabel *Text
 	Chart     *MachineChartView
+	Value     float64
+	ValueText string
+	Unit      string
 }
 
 func (m *MachineCpuSection) GetHasValue() bool {
@@ -418,6 +421,24 @@ func (m *MachineCpuSection) GetChart() *MachineChartView {
 	}
 	return nil
 }
+func (m *MachineCpuSection) GetValue() float64 {
+	if m != nil {
+		return m.Value
+	}
+	return 0
+}
+func (m *MachineCpuSection) GetValueText() string {
+	if m != nil {
+		return m.ValueText
+	}
+	return ""
+}
+func (m *MachineCpuSection) GetUnit() string {
+	if m != nil {
+		return m.Unit
+	}
+	return ""
+}
 
 var LitewireDesc_MachineCpuSection = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -427,6 +448,9 @@ var LitewireDesc_MachineCpuSection = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(MachineCpuSection{}.Detail2), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 5, Offset: unsafe.Offsetof(MachineCpuSection{}.A11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 6, Offset: unsafe.Offsetof(MachineCpuSection{}.Chart), Kind: litewire.KindMessage, Sub: &LitewireDesc_MachineChartView},
+		{Num: 7, Offset: unsafe.Offsetof(MachineCpuSection{}.Value), Kind: litewire.KindDouble},
+		{Num: 8, Offset: unsafe.Offsetof(MachineCpuSection{}.ValueText), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(MachineCpuSection{}.Unit), Kind: litewire.KindString},
 	},
 }
 
@@ -451,6 +475,11 @@ type MachineMemorySection struct {
 	SwapText            *Text
 	A11YLabel           *Text
 	Chart               *MachineChartView
+	Value               float64
+	ValueText           string
+	Unit                string
+	UsedBytes           uint64
+	TotalBytes          uint64
 }
 
 func (m *MachineMemorySection) GetHasValue() bool {
@@ -519,6 +548,36 @@ func (m *MachineMemorySection) GetChart() *MachineChartView {
 	}
 	return nil
 }
+func (m *MachineMemorySection) GetValue() float64 {
+	if m != nil {
+		return m.Value
+	}
+	return 0
+}
+func (m *MachineMemorySection) GetValueText() string {
+	if m != nil {
+		return m.ValueText
+	}
+	return ""
+}
+func (m *MachineMemorySection) GetUnit() string {
+	if m != nil {
+		return m.Unit
+	}
+	return ""
+}
+func (m *MachineMemorySection) GetUsedBytes() uint64 {
+	if m != nil {
+		return m.UsedBytes
+	}
+	return 0
+}
+func (m *MachineMemorySection) GetTotalBytes() uint64 {
+	if m != nil {
+		return m.TotalBytes
+	}
+	return 0
+}
 
 var LitewireDesc_MachineMemorySection = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -533,6 +592,11 @@ var LitewireDesc_MachineMemorySection = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(MachineMemorySection{}.SwapText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 10, Offset: unsafe.Offsetof(MachineMemorySection{}.A11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 11, Offset: unsafe.Offsetof(MachineMemorySection{}.Chart), Kind: litewire.KindMessage, Sub: &LitewireDesc_MachineChartView},
+		{Num: 12, Offset: unsafe.Offsetof(MachineMemorySection{}.Value), Kind: litewire.KindDouble},
+		{Num: 13, Offset: unsafe.Offsetof(MachineMemorySection{}.ValueText), Kind: litewire.KindString},
+		{Num: 14, Offset: unsafe.Offsetof(MachineMemorySection{}.Unit), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(MachineMemorySection{}.UsedBytes), Kind: litewire.KindUint64},
+		{Num: 16, Offset: unsafe.Offsetof(MachineMemorySection{}.TotalBytes), Kind: litewire.KindUint64},
 	},
 }
 
@@ -560,6 +624,11 @@ type MachineDiskSection struct {
 	AgentUsageLabel    *Text
 	AgentUsageValue    *Text
 	A11YLabel          *Text
+	Value              float64
+	ValueText          string
+	Unit               string
+	AvailableBytes     uint64
+	TotalBytes         uint64
 }
 
 func (m *MachineDiskSection) GetHasValue() bool {
@@ -646,6 +715,36 @@ func (m *MachineDiskSection) GetA11YLabel() *Text {
 	}
 	return nil
 }
+func (m *MachineDiskSection) GetValue() float64 {
+	if m != nil {
+		return m.Value
+	}
+	return 0
+}
+func (m *MachineDiskSection) GetValueText() string {
+	if m != nil {
+		return m.ValueText
+	}
+	return ""
+}
+func (m *MachineDiskSection) GetUnit() string {
+	if m != nil {
+		return m.Unit
+	}
+	return ""
+}
+func (m *MachineDiskSection) GetAvailableBytes() uint64 {
+	if m != nil {
+		return m.AvailableBytes
+	}
+	return 0
+}
+func (m *MachineDiskSection) GetTotalBytes() uint64 {
+	if m != nil {
+		return m.TotalBytes
+	}
+	return 0
+}
 
 var LitewireDesc_MachineDiskSection = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -663,6 +762,11 @@ var LitewireDesc_MachineDiskSection = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(MachineDiskSection{}.AgentUsageLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 13, Offset: unsafe.Offsetof(MachineDiskSection{}.AgentUsageValue), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 14, Offset: unsafe.Offsetof(MachineDiskSection{}.A11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(MachineDiskSection{}.Value), Kind: litewire.KindDouble},
+		{Num: 16, Offset: unsafe.Offsetof(MachineDiskSection{}.ValueText), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(MachineDiskSection{}.Unit), Kind: litewire.KindString},
+		{Num: 18, Offset: unsafe.Offsetof(MachineDiskSection{}.AvailableBytes), Kind: litewire.KindUint64},
+		{Num: 19, Offset: unsafe.Offsetof(MachineDiskSection{}.TotalBytes), Kind: litewire.KindUint64},
 	},
 }
 
@@ -675,14 +779,20 @@ func (m *MachineDiskSection) AppendMarshal(b []byte) []byte {
 }
 
 type MachineUsageRow struct {
-	_           [0]func()
-	Id          string
-	Title       *Text
-	Secondary   *Text
-	CpuPercent  float64
-	MemoryBytes uint64
-	Agent       v1.Agent
-	SessionId   string
+	_                 [0]func()
+	Id                string
+	Title             *Text
+	Secondary         *Text
+	CpuPercent        float64
+	MemoryBytes       uint64
+	Agent             v1.Agent
+	SessionId         string
+	CpuBarFraction    float64
+	MemoryBarFraction float64
+	CpuBarPercent     int32
+	MemoryBarPercent  int32
+	CpuValueText      *Text
+	MemoryValueText   *Text
 }
 
 func (m *MachineUsageRow) GetId() string {
@@ -727,6 +837,42 @@ func (m *MachineUsageRow) GetSessionId() string {
 	}
 	return ""
 }
+func (m *MachineUsageRow) GetCpuBarFraction() float64 {
+	if m != nil {
+		return m.CpuBarFraction
+	}
+	return 0
+}
+func (m *MachineUsageRow) GetMemoryBarFraction() float64 {
+	if m != nil {
+		return m.MemoryBarFraction
+	}
+	return 0
+}
+func (m *MachineUsageRow) GetCpuBarPercent() int32 {
+	if m != nil {
+		return m.CpuBarPercent
+	}
+	return 0
+}
+func (m *MachineUsageRow) GetMemoryBarPercent() int32 {
+	if m != nil {
+		return m.MemoryBarPercent
+	}
+	return 0
+}
+func (m *MachineUsageRow) GetCpuValueText() *Text {
+	if m != nil {
+		return m.CpuValueText
+	}
+	return nil
+}
+func (m *MachineUsageRow) GetMemoryValueText() *Text {
+	if m != nil {
+		return m.MemoryValueText
+	}
+	return nil
+}
 
 var LitewireDesc_MachineUsageRow = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -737,6 +883,12 @@ var LitewireDesc_MachineUsageRow = litewire.MessageDesc{
 		{Num: 5, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryBytes), Kind: litewire.KindUint64},
 		{Num: 6, Offset: unsafe.Offsetof(MachineUsageRow{}.Agent), Kind: litewire.KindInt32},
 		{Num: 7, Offset: unsafe.Offsetof(MachineUsageRow{}.SessionId), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuBarFraction), Kind: litewire.KindDouble},
+		{Num: 9, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryBarFraction), Kind: litewire.KindDouble},
+		{Num: 10, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuBarPercent), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryBarPercent), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -803,6 +955,9 @@ type MachineModelUsageRow struct {
 	UsageRequestCount uint64
 	SpeedRequestCount uint64
 	FewSpeedSamples   bool
+	TitleText         *Text
+	TotalTokensText   *Text
+	MetaText          *Text
 }
 
 func (m *MachineModelUsageRow) GetAgent() v1.Agent {
@@ -871,6 +1026,24 @@ func (m *MachineModelUsageRow) GetFewSpeedSamples() bool {
 	}
 	return false
 }
+func (m *MachineModelUsageRow) GetTitleText() *Text {
+	if m != nil {
+		return m.TitleText
+	}
+	return nil
+}
+func (m *MachineModelUsageRow) GetTotalTokensText() *Text {
+	if m != nil {
+		return m.TotalTokensText
+	}
+	return nil
+}
+func (m *MachineModelUsageRow) GetMetaText() *Text {
+	if m != nil {
+		return m.MetaText
+	}
+	return nil
+}
 
 var LitewireDesc_MachineModelUsageRow = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -885,6 +1058,9 @@ var LitewireDesc_MachineModelUsageRow = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(MachineModelUsageRow{}.UsageRequestCount), Kind: litewire.KindUint64},
 		{Num: 10, Offset: unsafe.Offsetof(MachineModelUsageRow{}.SpeedRequestCount), Kind: litewire.KindUint64},
 		{Num: 11, Offset: unsafe.Offsetof(MachineModelUsageRow{}.FewSpeedSamples), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(MachineModelUsageRow{}.TitleText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(MachineModelUsageRow{}.TotalTokensText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(MachineModelUsageRow{}.MetaText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -908,6 +1084,7 @@ type MachineModelUsagePreview struct {
 	Rows                []*MachineModelUsageRow
 	UnsupportedFootnote *Text
 	EmptyText           *Text
+	WindowLabel         *Text
 }
 
 func (m *MachineModelUsagePreview) GetSupported() bool {
@@ -970,6 +1147,12 @@ func (m *MachineModelUsagePreview) GetEmptyText() *Text {
 	}
 	return nil
 }
+func (m *MachineModelUsagePreview) GetWindowLabel() *Text {
+	if m != nil {
+		return m.WindowLabel
+	}
+	return nil
+}
 
 var LitewireDesc_MachineModelUsagePreview = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -983,6 +1166,7 @@ var LitewireDesc_MachineModelUsagePreview = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(MachineModelUsagePreview{}.Rows), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineModelUsageRow},
 		{Num: 9, Offset: unsafe.Offsetof(MachineModelUsagePreview{}.UnsupportedFootnote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 10, Offset: unsafe.Offsetof(MachineModelUsagePreview{}.EmptyText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(MachineModelUsagePreview{}.WindowLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

@@ -757,6 +757,21 @@ public struct PBMachineCpuSection: @unchecked Sendable {
   /// Clears the value of `chart`. Subsequent reads from it will return its default value.
   public mutating func clearChart() {_uniqueStorage()._chart = nil}
 
+  public var value: Double {
+    get {return _storage._value}
+    set {_uniqueStorage()._value = newValue}
+  }
+
+  public var valueText: String {
+    get {return _storage._valueText}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+
+  public var unit: String {
+    get {return _storage._unit}
+    set {_uniqueStorage()._unit = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -851,6 +866,31 @@ public struct PBMachineMemorySection: @unchecked Sendable {
   public var hasChart: Bool {return _storage._chart != nil}
   /// Clears the value of `chart`. Subsequent reads from it will return its default value.
   public mutating func clearChart() {_uniqueStorage()._chart = nil}
+
+  public var value: Double {
+    get {return _storage._value}
+    set {_uniqueStorage()._value = newValue}
+  }
+
+  public var valueText: String {
+    get {return _storage._valueText}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+
+  public var unit: String {
+    get {return _storage._unit}
+    set {_uniqueStorage()._unit = newValue}
+  }
+
+  public var usedBytes: UInt64 {
+    get {return _storage._usedBytes}
+    set {_uniqueStorage()._usedBytes = newValue}
+  }
+
+  public var totalBytes: UInt64 {
+    get {return _storage._totalBytes}
+    set {_uniqueStorage()._totalBytes = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -970,6 +1010,31 @@ public struct PBMachineDiskSection: @unchecked Sendable {
   /// Clears the value of `a11YLabel`. Subsequent reads from it will return its default value.
   public mutating func clearA11YLabel() {_uniqueStorage()._a11YLabel = nil}
 
+  public var value: Double {
+    get {return _storage._value}
+    set {_uniqueStorage()._value = newValue}
+  }
+
+  public var valueText: String {
+    get {return _storage._valueText}
+    set {_uniqueStorage()._valueText = newValue}
+  }
+
+  public var unit: String {
+    get {return _storage._unit}
+    set {_uniqueStorage()._unit = newValue}
+  }
+
+  public var availableBytes: UInt64 {
+    get {return _storage._availableBytes}
+    set {_uniqueStorage()._availableBytes = newValue}
+  }
+
+  public var totalBytes: UInt64 {
+    get {return _storage._totalBytes}
+    set {_uniqueStorage()._totalBytes = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1025,6 +1090,44 @@ public struct PBMachineUsageRow: @unchecked Sendable {
     set {_uniqueStorage()._sessionID = newValue}
   }
 
+  public var cpuBarFraction: Double {
+    get {return _storage._cpuBarFraction}
+    set {_uniqueStorage()._cpuBarFraction = newValue}
+  }
+
+  public var memoryBarFraction: Double {
+    get {return _storage._memoryBarFraction}
+    set {_uniqueStorage()._memoryBarFraction = newValue}
+  }
+
+  public var cpuBarPercent: Int32 {
+    get {return _storage._cpuBarPercent}
+    set {_uniqueStorage()._cpuBarPercent = newValue}
+  }
+
+  public var memoryBarPercent: Int32 {
+    get {return _storage._memoryBarPercent}
+    set {_uniqueStorage()._memoryBarPercent = newValue}
+  }
+
+  public var cpuValueText: PBCoreText {
+    get {return _storage._cpuValueText ?? PBCoreText()}
+    set {_uniqueStorage()._cpuValueText = newValue}
+  }
+  /// Returns true if `cpuValueText` has been explicitly set.
+  public var hasCpuValueText: Bool {return _storage._cpuValueText != nil}
+  /// Clears the value of `cpuValueText`. Subsequent reads from it will return its default value.
+  public mutating func clearCpuValueText() {_uniqueStorage()._cpuValueText = nil}
+
+  public var memoryValueText: PBCoreText {
+    get {return _storage._memoryValueText ?? PBCoreText()}
+    set {_uniqueStorage()._memoryValueText = newValue}
+  }
+  /// Returns true if `memoryValueText` has been explicitly set.
+  public var hasMemoryValueText: Bool {return _storage._memoryValueText != nil}
+  /// Clears the value of `memoryValueText`. Subsequent reads from it will return its default value.
+  public mutating func clearMemoryValueText() {_uniqueStorage()._memoryValueText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1057,36 +1160,98 @@ public struct PBMachineTopUsageSection: Sendable {
   fileprivate var _emptyText: PBCoreText? = nil
 }
 
-public struct PBMachineModelUsageRow: Sendable {
+public struct PBMachineModelUsageRow: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var agent: PBAgent = .unspecified
+  public var agent: PBAgent {
+    get {return _storage._agent}
+    set {_uniqueStorage()._agent = newValue}
+  }
 
-  public var agentName: String = String()
+  public var agentName: String {
+    get {return _storage._agentName}
+    set {_uniqueStorage()._agentName = newValue}
+  }
 
-  public var model: String = String()
+  public var model: String {
+    get {return _storage._model}
+    set {_uniqueStorage()._model = newValue}
+  }
 
-  public var totalTokens: UInt64 = 0
+  public var totalTokens: UInt64 {
+    get {return _storage._totalTokens}
+    set {_uniqueStorage()._totalTokens = newValue}
+  }
 
-  public var hasCacheHit_p: Bool = false
+  public var hasCacheHit_p: Bool {
+    get {return _storage._hasCacheHit_p}
+    set {_uniqueStorage()._hasCacheHit_p = newValue}
+  }
 
-  public var cacheHitRate: Double = 0
+  public var cacheHitRate: Double {
+    get {return _storage._cacheHitRate}
+    set {_uniqueStorage()._cacheHitRate = newValue}
+  }
 
-  public var hasSpeed_p: Bool = false
+  public var hasSpeed_p: Bool {
+    get {return _storage._hasSpeed_p}
+    set {_uniqueStorage()._hasSpeed_p = newValue}
+  }
 
-  public var speedP50: Double = 0
+  public var speedP50: Double {
+    get {return _storage._speedP50}
+    set {_uniqueStorage()._speedP50 = newValue}
+  }
 
-  public var usageRequestCount: UInt64 = 0
+  public var usageRequestCount: UInt64 {
+    get {return _storage._usageRequestCount}
+    set {_uniqueStorage()._usageRequestCount = newValue}
+  }
 
-  public var speedRequestCount: UInt64 = 0
+  public var speedRequestCount: UInt64 {
+    get {return _storage._speedRequestCount}
+    set {_uniqueStorage()._speedRequestCount = newValue}
+  }
 
-  public var fewSpeedSamples: Bool = false
+  public var fewSpeedSamples: Bool {
+    get {return _storage._fewSpeedSamples}
+    set {_uniqueStorage()._fewSpeedSamples = newValue}
+  }
+
+  public var titleText: PBCoreText {
+    get {return _storage._titleText ?? PBCoreText()}
+    set {_uniqueStorage()._titleText = newValue}
+  }
+  /// Returns true if `titleText` has been explicitly set.
+  public var hasTitleText: Bool {return _storage._titleText != nil}
+  /// Clears the value of `titleText`. Subsequent reads from it will return its default value.
+  public mutating func clearTitleText() {_uniqueStorage()._titleText = nil}
+
+  public var totalTokensText: PBCoreText {
+    get {return _storage._totalTokensText ?? PBCoreText()}
+    set {_uniqueStorage()._totalTokensText = newValue}
+  }
+  /// Returns true if `totalTokensText` has been explicitly set.
+  public var hasTotalTokensText: Bool {return _storage._totalTokensText != nil}
+  /// Clears the value of `totalTokensText`. Subsequent reads from it will return its default value.
+  public mutating func clearTotalTokensText() {_uniqueStorage()._totalTokensText = nil}
+
+  public var metaText: PBCoreText {
+    get {return _storage._metaText ?? PBCoreText()}
+    set {_uniqueStorage()._metaText = newValue}
+  }
+  /// Returns true if `metaText` has been explicitly set.
+  public var hasMetaText: Bool {return _storage._metaText != nil}
+  /// Clears the value of `metaText`. Subsequent reads from it will return its default value.
+  public mutating func clearMetaText() {_uniqueStorage()._metaText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBMachineModelUsagePreview: @unchecked Sendable {
@@ -1151,6 +1316,15 @@ public struct PBMachineModelUsagePreview: @unchecked Sendable {
   public var hasEmptyText: Bool {return _storage._emptyText != nil}
   /// Clears the value of `emptyText`. Subsequent reads from it will return its default value.
   public mutating func clearEmptyText() {_uniqueStorage()._emptyText = nil}
+
+  public var windowLabel: PBCoreText {
+    get {return _storage._windowLabel ?? PBCoreText()}
+    set {_uniqueStorage()._windowLabel = newValue}
+  }
+  /// Returns true if `windowLabel` has been explicitly set.
+  public var hasWindowLabel: Bool {return _storage._windowLabel != nil}
+  /// Clears the value of `windowLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearWindowLabel() {_uniqueStorage()._windowLabel = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2323,7 +2497,7 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCpuSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}detail\0\u{1}detail2\0\u{3}a11y_label\0\u{1}chart\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}detail\0\u{1}detail2\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
@@ -2332,6 +2506,9 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _detail2: PBCoreText? = nil
     var _a11YLabel: PBCoreText? = nil
     var _chart: PBMachineChartView? = nil
+    var _value: Double = 0
+    var _valueText: String = String()
+    var _unit: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2348,6 +2525,9 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _detail2 = source._detail2
       _a11YLabel = source._a11YLabel
       _chart = source._chart
+      _value = source._value
+      _valueText = source._valueText
+      _unit = source._unit
     }
   }
 
@@ -2372,6 +2552,9 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._detail2) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._a11YLabel) }()
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._chart) }()
+        case 7: try { try decoder.decodeSingularDoubleField(value: &_storage._value) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._valueText) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._unit) }()
         default: break
         }
       }
@@ -2402,6 +2585,15 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       try { if let v = _storage._chart {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
       } }()
+      if _storage._value.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._value, fieldNumber: 7)
+      }
+      if !_storage._valueText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._valueText, fieldNumber: 8)
+      }
+      if !_storage._unit.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._unit, fieldNumber: 9)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2417,6 +2609,9 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._detail2 != rhs_storage._detail2 {return false}
         if _storage._a11YLabel != rhs_storage._a11YLabel {return false}
         if _storage._chart != rhs_storage._chart {return false}
+        if _storage._value != rhs_storage._value {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._unit != rhs_storage._unit {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2428,7 +2623,7 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineMemorySection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}pressure\0\u{3}pressure_text\0\u{3}has_pressure_position\0\u{3}pressure_position\0\u{3}total_text\0\u{3}swap_text\0\u{3}a11y_label\0\u{1}chart\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}pressure\0\u{3}pressure_text\0\u{3}has_pressure_position\0\u{3}pressure_position\0\u{3}total_text\0\u{3}swap_text\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}used_bytes\0\u{3}total_bytes\0")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
@@ -2442,6 +2637,11 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     var _swapText: PBCoreText? = nil
     var _a11YLabel: PBCoreText? = nil
     var _chart: PBMachineChartView? = nil
+    var _value: Double = 0
+    var _valueText: String = String()
+    var _unit: String = String()
+    var _usedBytes: UInt64 = 0
+    var _totalBytes: UInt64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2463,6 +2663,11 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       _swapText = source._swapText
       _a11YLabel = source._a11YLabel
       _chart = source._chart
+      _value = source._value
+      _valueText = source._valueText
+      _unit = source._unit
+      _usedBytes = source._usedBytes
+      _totalBytes = source._totalBytes
     }
   }
 
@@ -2492,6 +2697,11 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._swapText) }()
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._a11YLabel) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._chart) }()
+        case 12: try { try decoder.decodeSingularDoubleField(value: &_storage._value) }()
+        case 13: try { try decoder.decodeSingularStringField(value: &_storage._valueText) }()
+        case 14: try { try decoder.decodeSingularStringField(value: &_storage._unit) }()
+        case 15: try { try decoder.decodeSingularUInt64Field(value: &_storage._usedBytes) }()
+        case 16: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalBytes) }()
         default: break
         }
       }
@@ -2537,6 +2747,21 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       try { if let v = _storage._chart {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
       } }()
+      if _storage._value.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._value, fieldNumber: 12)
+      }
+      if !_storage._valueText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._valueText, fieldNumber: 13)
+      }
+      if !_storage._unit.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._unit, fieldNumber: 14)
+      }
+      if _storage._usedBytes != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._usedBytes, fieldNumber: 15)
+      }
+      if _storage._totalBytes != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalBytes, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2557,6 +2782,11 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         if _storage._swapText != rhs_storage._swapText {return false}
         if _storage._a11YLabel != rhs_storage._a11YLabel {return false}
         if _storage._chart != rhs_storage._chart {return false}
+        if _storage._value != rhs_storage._value {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._unit != rhs_storage._unit {return false}
+        if _storage._usedBytes != rhs_storage._usedBytes {return false}
+        if _storage._totalBytes != rhs_storage._totalBytes {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2568,7 +2798,7 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineDiskSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}state\0\u{3}state_badge\0\u{3}has_used_fraction\0\u{3}used_fraction\0\u{1}detail\0\u{1}detail2\0\u{3}show_actions\0\u{3}cleanup_action_label\0\u{3}agent_usage_label\0\u{3}agent_usage_value\0\u{3}a11y_label\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}state\0\u{3}state_badge\0\u{3}has_used_fraction\0\u{3}used_fraction\0\u{1}detail\0\u{1}detail2\0\u{3}show_actions\0\u{3}cleanup_action_label\0\u{3}agent_usage_label\0\u{3}agent_usage_value\0\u{3}a11y_label\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}available_bytes\0\u{3}total_bytes\0")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
@@ -2585,6 +2815,11 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _agentUsageLabel: PBCoreText? = nil
     var _agentUsageValue: PBCoreText? = nil
     var _a11YLabel: PBCoreText? = nil
+    var _value: Double = 0
+    var _valueText: String = String()
+    var _unit: String = String()
+    var _availableBytes: UInt64 = 0
+    var _totalBytes: UInt64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2609,6 +2844,11 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _agentUsageLabel = source._agentUsageLabel
       _agentUsageValue = source._agentUsageValue
       _a11YLabel = source._a11YLabel
+      _value = source._value
+      _valueText = source._valueText
+      _unit = source._unit
+      _availableBytes = source._availableBytes
+      _totalBytes = source._totalBytes
     }
   }
 
@@ -2641,6 +2881,11 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._agentUsageLabel) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._agentUsageValue) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._a11YLabel) }()
+        case 15: try { try decoder.decodeSingularDoubleField(value: &_storage._value) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._valueText) }()
+        case 17: try { try decoder.decodeSingularStringField(value: &_storage._unit) }()
+        case 18: try { try decoder.decodeSingularUInt64Field(value: &_storage._availableBytes) }()
+        case 19: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalBytes) }()
         default: break
         }
       }
@@ -2695,6 +2940,21 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       try { if let v = _storage._a11YLabel {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       } }()
+      if _storage._value.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._value, fieldNumber: 15)
+      }
+      if !_storage._valueText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._valueText, fieldNumber: 16)
+      }
+      if !_storage._unit.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._unit, fieldNumber: 17)
+      }
+      if _storage._availableBytes != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._availableBytes, fieldNumber: 18)
+      }
+      if _storage._totalBytes != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalBytes, fieldNumber: 19)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2718,6 +2978,11 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._agentUsageLabel != rhs_storage._agentUsageLabel {return false}
         if _storage._agentUsageValue != rhs_storage._agentUsageValue {return false}
         if _storage._a11YLabel != rhs_storage._a11YLabel {return false}
+        if _storage._value != rhs_storage._value {return false}
+        if _storage._valueText != rhs_storage._valueText {return false}
+        if _storage._unit != rhs_storage._unit {return false}
+        if _storage._availableBytes != rhs_storage._availableBytes {return false}
+        if _storage._totalBytes != rhs_storage._totalBytes {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2729,7 +2994,7 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineUsageRow"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}secondary\0\u{3}cpu_percent\0\u{3}memory_bytes\0\u{1}agent\0\u{3}session_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}secondary\0\u{3}cpu_percent\0\u{3}memory_bytes\0\u{1}agent\0\u{3}session_id\0\u{3}cpu_bar_fraction\0\u{3}memory_bar_fraction\0\u{3}cpu_bar_percent\0\u{3}memory_bar_percent\0\u{3}cpu_value_text\0\u{3}memory_value_text\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2739,6 +3004,12 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _memoryBytes: UInt64 = 0
     var _agent: PBAgent = .unspecified
     var _sessionID: String = String()
+    var _cpuBarFraction: Double = 0
+    var _memoryBarFraction: Double = 0
+    var _cpuBarPercent: Int32 = 0
+    var _memoryBarPercent: Int32 = 0
+    var _cpuValueText: PBCoreText? = nil
+    var _memoryValueText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2756,6 +3027,12 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _memoryBytes = source._memoryBytes
       _agent = source._agent
       _sessionID = source._sessionID
+      _cpuBarFraction = source._cpuBarFraction
+      _memoryBarFraction = source._memoryBarFraction
+      _cpuBarPercent = source._cpuBarPercent
+      _memoryBarPercent = source._memoryBarPercent
+      _cpuValueText = source._cpuValueText
+      _memoryValueText = source._memoryValueText
     }
   }
 
@@ -2781,6 +3058,12 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 5: try { try decoder.decodeSingularUInt64Field(value: &_storage._memoryBytes) }()
         case 6: try { try decoder.decodeSingularEnumField(value: &_storage._agent) }()
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
+        case 8: try { try decoder.decodeSingularDoubleField(value: &_storage._cpuBarFraction) }()
+        case 9: try { try decoder.decodeSingularDoubleField(value: &_storage._memoryBarFraction) }()
+        case 10: try { try decoder.decodeSingularInt32Field(value: &_storage._cpuBarPercent) }()
+        case 11: try { try decoder.decodeSingularInt32Field(value: &_storage._memoryBarPercent) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._cpuValueText) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._memoryValueText) }()
         default: break
         }
       }
@@ -2814,6 +3097,24 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       if !_storage._sessionID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._sessionID, fieldNumber: 7)
       }
+      if _storage._cpuBarFraction.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._cpuBarFraction, fieldNumber: 8)
+      }
+      if _storage._memoryBarFraction.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._memoryBarFraction, fieldNumber: 9)
+      }
+      if _storage._cpuBarPercent != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._cpuBarPercent, fieldNumber: 10)
+      }
+      if _storage._memoryBarPercent != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._memoryBarPercent, fieldNumber: 11)
+      }
+      try { if let v = _storage._cpuValueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._memoryValueText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2830,6 +3131,12 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._memoryBytes != rhs_storage._memoryBytes {return false}
         if _storage._agent != rhs_storage._agent {return false}
         if _storage._sessionID != rhs_storage._sessionID {return false}
+        if _storage._cpuBarFraction != rhs_storage._cpuBarFraction {return false}
+        if _storage._memoryBarFraction != rhs_storage._memoryBarFraction {return false}
+        if _storage._cpuBarPercent != rhs_storage._cpuBarPercent {return false}
+        if _storage._memoryBarPercent != rhs_storage._memoryBarPercent {return false}
+        if _storage._cpuValueText != rhs_storage._cpuValueText {return false}
+        if _storage._memoryValueText != rhs_storage._memoryValueText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2885,79 +3192,160 @@ extension PBMachineTopUsageSection: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBMachineModelUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineModelUsageRow"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}speed_p50\0\u{3}usage_request_count\0\u{3}speed_request_count\0\u{3}few_speed_samples\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}agent\0\u{3}agent_name\0\u{1}model\0\u{3}total_tokens\0\u{3}has_cache_hit\0\u{3}cache_hit_rate\0\u{3}has_speed\0\u{3}speed_p50\0\u{3}usage_request_count\0\u{3}speed_request_count\0\u{3}few_speed_samples\0\u{3}title_text\0\u{3}total_tokens_text\0\u{3}meta_text\0")
+
+  fileprivate class _StorageClass {
+    var _agent: PBAgent = .unspecified
+    var _agentName: String = String()
+    var _model: String = String()
+    var _totalTokens: UInt64 = 0
+    var _hasCacheHit_p: Bool = false
+    var _cacheHitRate: Double = 0
+    var _hasSpeed_p: Bool = false
+    var _speedP50: Double = 0
+    var _usageRequestCount: UInt64 = 0
+    var _speedRequestCount: UInt64 = 0
+    var _fewSpeedSamples: Bool = false
+    var _titleText: PBCoreText? = nil
+    var _totalTokensText: PBCoreText? = nil
+    var _metaText: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _agent = source._agent
+      _agentName = source._agentName
+      _model = source._model
+      _totalTokens = source._totalTokens
+      _hasCacheHit_p = source._hasCacheHit_p
+      _cacheHitRate = source._cacheHitRate
+      _hasSpeed_p = source._hasSpeed_p
+      _speedP50 = source._speedP50
+      _usageRequestCount = source._usageRequestCount
+      _speedRequestCount = source._speedRequestCount
+      _fewSpeedSamples = source._fewSpeedSamples
+      _titleText = source._titleText
+      _totalTokensText = source._totalTokensText
+      _metaText = source._metaText
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularEnumField(value: &self.agent) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.agentName) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.model) }()
-      case 4: try { try decoder.decodeSingularUInt64Field(value: &self.totalTokens) }()
-      case 5: try { try decoder.decodeSingularBoolField(value: &self.hasCacheHit_p) }()
-      case 6: try { try decoder.decodeSingularDoubleField(value: &self.cacheHitRate) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.hasSpeed_p) }()
-      case 8: try { try decoder.decodeSingularDoubleField(value: &self.speedP50) }()
-      case 9: try { try decoder.decodeSingularUInt64Field(value: &self.usageRequestCount) }()
-      case 10: try { try decoder.decodeSingularUInt64Field(value: &self.speedRequestCount) }()
-      case 11: try { try decoder.decodeSingularBoolField(value: &self.fewSpeedSamples) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._agent) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._agentName) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._model) }()
+        case 4: try { try decoder.decodeSingularUInt64Field(value: &_storage._totalTokens) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._hasCacheHit_p) }()
+        case 6: try { try decoder.decodeSingularDoubleField(value: &_storage._cacheHitRate) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._hasSpeed_p) }()
+        case 8: try { try decoder.decodeSingularDoubleField(value: &_storage._speedP50) }()
+        case 9: try { try decoder.decodeSingularUInt64Field(value: &_storage._usageRequestCount) }()
+        case 10: try { try decoder.decodeSingularUInt64Field(value: &_storage._speedRequestCount) }()
+        case 11: try { try decoder.decodeSingularBoolField(value: &_storage._fewSpeedSamples) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._titleText) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._totalTokensText) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._metaText) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.agent != .unspecified {
-      try visitor.visitSingularEnumField(value: self.agent, fieldNumber: 1)
-    }
-    if !self.agentName.isEmpty {
-      try visitor.visitSingularStringField(value: self.agentName, fieldNumber: 2)
-    }
-    if !self.model.isEmpty {
-      try visitor.visitSingularStringField(value: self.model, fieldNumber: 3)
-    }
-    if self.totalTokens != 0 {
-      try visitor.visitSingularUInt64Field(value: self.totalTokens, fieldNumber: 4)
-    }
-    if self.hasCacheHit_p != false {
-      try visitor.visitSingularBoolField(value: self.hasCacheHit_p, fieldNumber: 5)
-    }
-    if self.cacheHitRate.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.cacheHitRate, fieldNumber: 6)
-    }
-    if self.hasSpeed_p != false {
-      try visitor.visitSingularBoolField(value: self.hasSpeed_p, fieldNumber: 7)
-    }
-    if self.speedP50.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.speedP50, fieldNumber: 8)
-    }
-    if self.usageRequestCount != 0 {
-      try visitor.visitSingularUInt64Field(value: self.usageRequestCount, fieldNumber: 9)
-    }
-    if self.speedRequestCount != 0 {
-      try visitor.visitSingularUInt64Field(value: self.speedRequestCount, fieldNumber: 10)
-    }
-    if self.fewSpeedSamples != false {
-      try visitor.visitSingularBoolField(value: self.fewSpeedSamples, fieldNumber: 11)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._agent != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._agent, fieldNumber: 1)
+      }
+      if !_storage._agentName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._agentName, fieldNumber: 2)
+      }
+      if !_storage._model.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._model, fieldNumber: 3)
+      }
+      if _storage._totalTokens != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._totalTokens, fieldNumber: 4)
+      }
+      if _storage._hasCacheHit_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasCacheHit_p, fieldNumber: 5)
+      }
+      if _storage._cacheHitRate.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._cacheHitRate, fieldNumber: 6)
+      }
+      if _storage._hasSpeed_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasSpeed_p, fieldNumber: 7)
+      }
+      if _storage._speedP50.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._speedP50, fieldNumber: 8)
+      }
+      if _storage._usageRequestCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._usageRequestCount, fieldNumber: 9)
+      }
+      if _storage._speedRequestCount != 0 {
+        try visitor.visitSingularUInt64Field(value: _storage._speedRequestCount, fieldNumber: 10)
+      }
+      if _storage._fewSpeedSamples != false {
+        try visitor.visitSingularBoolField(value: _storage._fewSpeedSamples, fieldNumber: 11)
+      }
+      try { if let v = _storage._titleText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._totalTokensText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      try { if let v = _storage._metaText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBMachineModelUsageRow, rhs: PBMachineModelUsageRow) -> Bool {
-    if lhs.agent != rhs.agent {return false}
-    if lhs.agentName != rhs.agentName {return false}
-    if lhs.model != rhs.model {return false}
-    if lhs.totalTokens != rhs.totalTokens {return false}
-    if lhs.hasCacheHit_p != rhs.hasCacheHit_p {return false}
-    if lhs.cacheHitRate != rhs.cacheHitRate {return false}
-    if lhs.hasSpeed_p != rhs.hasSpeed_p {return false}
-    if lhs.speedP50 != rhs.speedP50 {return false}
-    if lhs.usageRequestCount != rhs.usageRequestCount {return false}
-    if lhs.speedRequestCount != rhs.speedRequestCount {return false}
-    if lhs.fewSpeedSamples != rhs.fewSpeedSamples {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._agent != rhs_storage._agent {return false}
+        if _storage._agentName != rhs_storage._agentName {return false}
+        if _storage._model != rhs_storage._model {return false}
+        if _storage._totalTokens != rhs_storage._totalTokens {return false}
+        if _storage._hasCacheHit_p != rhs_storage._hasCacheHit_p {return false}
+        if _storage._cacheHitRate != rhs_storage._cacheHitRate {return false}
+        if _storage._hasSpeed_p != rhs_storage._hasSpeed_p {return false}
+        if _storage._speedP50 != rhs_storage._speedP50 {return false}
+        if _storage._usageRequestCount != rhs_storage._usageRequestCount {return false}
+        if _storage._speedRequestCount != rhs_storage._speedRequestCount {return false}
+        if _storage._fewSpeedSamples != rhs_storage._fewSpeedSamples {return false}
+        if _storage._titleText != rhs_storage._titleText {return false}
+        if _storage._totalTokensText != rhs_storage._totalTokensText {return false}
+        if _storage._metaText != rhs_storage._metaText {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2965,7 +3353,7 @@ extension PBMachineModelUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineModelUsagePreview"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}supported\0\u{1}loading\0\u{3}has_data\0\u{3}fallback_thirty_days\0\u{1}backfilling\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}rows\0\u{3}unsupported_footnote\0\u{3}empty_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}supported\0\u{1}loading\0\u{3}has_data\0\u{3}fallback_thirty_days\0\u{1}backfilling\0\u{3}cached_offline\0\u{3}cached_at_ms\0\u{1}rows\0\u{3}unsupported_footnote\0\u{3}empty_text\0\u{3}window_label\0")
 
   fileprivate class _StorageClass {
     var _supported: Bool = false
@@ -2978,6 +3366,7 @@ extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._Mess
     var _rows: [PBMachineModelUsageRow] = []
     var _unsupportedFootnote: PBCoreText? = nil
     var _emptyText: PBCoreText? = nil
+    var _windowLabel: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2998,6 +3387,7 @@ extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _rows = source._rows
       _unsupportedFootnote = source._unsupportedFootnote
       _emptyText = source._emptyText
+      _windowLabel = source._windowLabel
     }
   }
 
@@ -3026,6 +3416,7 @@ extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 8: try { try decoder.decodeRepeatedMessageField(value: &_storage._rows) }()
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._unsupportedFootnote) }()
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._emptyText) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._windowLabel) }()
         default: break
         }
       }
@@ -3068,6 +3459,9 @@ extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._Mess
       try { if let v = _storage._emptyText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
       } }()
+      try { if let v = _storage._windowLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3087,6 +3481,7 @@ extension PBMachineModelUsagePreview: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._rows != rhs_storage._rows {return false}
         if _storage._unsupportedFootnote != rhs_storage._unsupportedFootnote {return false}
         if _storage._emptyText != rhs_storage._emptyText {return false}
+        if _storage._windowLabel != rhs_storage._windowLabel {return false}
         return true
       }
       if !storagesAreEqual {return false}

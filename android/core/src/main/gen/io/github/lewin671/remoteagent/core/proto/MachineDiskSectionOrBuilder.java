@@ -143,4 +143,46 @@ public interface MachineDiskSectionOrBuilder extends
    * @return The a11yLabel.
    */
   io.github.lewin671.remoteagent.core.proto.Text getA11YLabel();
+
+  /**
+   * <code>double value = 15 [json_name = "value"];</code>
+   * @return The value.
+   */
+  double getValue();
+
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @return The valueText.
+   */
+  java.lang.String getValueText();
+  /**
+   * <code>string value_text = 16 [json_name = "valueText"];</code>
+   * @return The bytes for valueText.
+   */
+  com.google.protobuf.ByteString
+      getValueTextBytes();
+
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @return The unit.
+   */
+  java.lang.String getUnit();
+  /**
+   * <code>string unit = 17 [json_name = "unit"];</code>
+   * @return The bytes for unit.
+   */
+  com.google.protobuf.ByteString
+      getUnitBytes();
+
+  /**
+   * <code>uint64 available_bytes = 18 [json_name = "availableBytes"];</code>
+   * @return The availableBytes.
+   */
+  long getAvailableBytes();
+
+  /**
+   * <code>uint64 total_bytes = 19 [json_name = "totalBytes"];</code>
+   * @return The totalBytes.
+   */
+  long getTotalBytes();
 }

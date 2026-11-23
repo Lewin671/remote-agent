@@ -87,4 +87,15 @@ public interface MachineModelUsagePreviewOrBuilder extends
    * @return The emptyText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getEmptyText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   * @return Whether the windowLabel field is set.
+   */
+  boolean hasWindowLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text window_label = 11 [json_name = "windowLabel"];</code>
+   * @return The windowLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getWindowLabel();
 }
