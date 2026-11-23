@@ -231,16 +231,18 @@ class LayoutTest {
     }
 
     @Test fun projectSettingsLabelsStayWholeAtTwoHundredPercentFont() {
+        val m2 = MachineView("2222222222222222", online = true, lastSeenMs = 0, meta = state.machines[machineId]!!.meta)
+        remote.showForTest(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY, machines = state.machines + (m2.id to m2)))
         ui.setContent {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
-                    NewSettingsSheet(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY), key, "remote-agent", machineId, Agent.AGENT_CODEX, onDone = {}, onClose = {}, scheduling = true)
+                    CoreProjectSettingsSheet(projectKey = key, onClose = {})
                 }
             }
         }
         ui.onNodeWithText("电脑").assertIsDisplayed()
-        ui.onNodeWithText("权限").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("模型").performScrollTo().assertIsDisplayed()
     }
     private fun approval(lines: Int) = ApprovalRequested.newBuilder().setApprovalId("A$lines")
         .setCommand((1..lines).joinToString("\n") { "echo step-$it" }).setDescription("说明文字".repeat(30)).build()

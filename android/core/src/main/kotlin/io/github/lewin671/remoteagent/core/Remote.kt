@@ -1617,15 +1617,6 @@ class Remote(
         return deferred.await()
     }
 
-    fun loadMoreSessions(): Boolean {
-        coreHost.loadMoreHomeEnded()
-        return state.value.moreSessions
-    }
-
-    fun loadAllSessions() {
-        coreHost.loadMoreHomeEnded(step = 500)
-    }
-
     fun close() {
         closed = true
         running = false

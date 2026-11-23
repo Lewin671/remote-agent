@@ -89,7 +89,6 @@ import io.github.lewin671.remoteagent.core.filesSupported
 import io.github.lewin671.remoteagent.core.listWhen
 import io.github.lewin671.remoteagent.core.maxFiles
 import io.github.lewin671.remoteagent.core.newRequestId
-import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
@@ -580,8 +579,7 @@ private fun SessionTopBar(
                     }
                 },
                 buildList {
-                    val cfg = header.projectKey.takeIf { it.isNotEmpty() }?.let { projectConfig(state, it) }
-                    add(SheetAction(copy(UiMessages.projectsAndroidSettings()), enabled = !forking && cfg != null) { sheet = 3 })
+                    add(SheetAction(copy(UiMessages.projectsAndroidSettings()), enabled = !forking && header.projectKey.isNotEmpty()) { sheet = 3 })
                     if (actions.canRename) {
                         add(SheetAction(copy(UiMessages.sessionRename()), enabled = !forking) { rename = true })
                     }
@@ -646,28 +644,7 @@ private fun SessionTopBar(
             },
         )
         3 -> header.projectKey.takeIf { it.isNotEmpty() }?.let { key ->
-            projectConfig(state, key)?.let { initial ->
-                val ag = header.agent.takeIf { it != Agent.AGENT_UNSPECIFIED } ?: DEFAULT_AGENT
-                NewSettingsSheet(
-                    state,
-                    key,
-                    if (header.hasProjectName()) uiText(header.projectName) else projectName(key, copy = copy),
-                    initial.machineId,
-                    ag,
-                    onDone = { res ->
-                        if (res != null) {
-                            remote.coreHost.openNewSession(key)
-                            remote.coreHost.selectNewSessionMachine(res.machineId)
-                            res.sets.forEach { set ->
-                                remote.coreHost.selectNewSessionAgent(set.agent)
-                                remote.coreHost.selectNewSessionModel(set.model, set.effort, set.standardContext, set.mode)
-                            }
-                        }
-                        sheet = 0
-                    },
-                    onClose = { sheet = 0 },
-                )
-            }
+            CoreProjectSettingsSheet(projectKey = key, onClose = { sheet = 0 })
         }
     }
 

@@ -72,59 +72,6 @@ fun sessionLookup(sid: String, attempt: Int = 0): SessionLookup? {
     return if (held) null else lookup
 }
 
-/**
- * Fetches earlier pages of the session listing while a list wants them: the next one for [page],
- * every page left for [all] (filtering by title). It waits for the connection, and after a failed
- * page for a retry.
- */
-@Composable
-fun FetchEarlier(state: RemoteState, page: Boolean, all: Boolean = false) {
-    val remote = LocalRemote.current
-    val ready =
-        state.moreSessions && state.conn == ConnState.ONLINE && state.sessionsError.isEmpty()
-    LaunchedEffect(page, all, ready, state.sessionsNext) {
-        if (!ready) return@LaunchedEffect
-        try {
-            if (all) remote.loadAllSessions() else if (page) remote.loadMoreSessions()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // RemoteState.sessionsError says why; the line at the end offers the retry.
-        }
-    }
-}
-
-/**
- * The line that ends a list whose earlier sessions are wanted and not all fetched; after a failure
- * a tap tries again.
- */
-@Composable
-fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
-    val remote = LocalRemote.current
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val copy = uiText()
-    val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
-    val tailMsg = when {
-        state.conn != ConnState.ONLINE -> uiText(UiMessages.homeAndroidEarlierOffline())
-        state.sessionsError.isNotEmpty() && !state.sessionsListed -> copy(UiMessages.homeAndroidListFailedRetry(state.sessionsError.resolve(copy)))
-        state.sessionsError.isNotEmpty() -> copy(UiMessages.homeAndroidEarlierFailedRetry(state.sessionsError.resolve(copy)))
-        else -> uiText(UiMessages.homeLoadingEarlier())
-    }
-    Text(
-        tailMsg,
-        style = T.s12,
-        color = pal.ink2,
-        modifier =
-            modifier.then(
-                if (failed)
-                    Modifier.clickable {
-                        scope.launch { runCatching { remote.loadMoreSessions() } }
-                    }
-                else Modifier,
-            ),
-    )
-}
-
 /** Navigation actions shared by the screens. */
 data class Nav(
     val back: () -> Unit,

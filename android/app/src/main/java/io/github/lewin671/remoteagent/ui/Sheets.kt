@@ -49,7 +49,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
@@ -61,14 +60,6 @@ import io.github.lewin671.remoteagent.proto.CompactRequest
 import io.github.lewin671.remoteagent.proto.RenameSessionRequest
 import io.github.lewin671.remoteagent.proto.SetApprovalModeRequest
 import io.github.lewin671.remoteagent.proto.SetModelRequest
-
-val modeHelp get() =
-    mapOf(
-        Mode.ASK to sessionText(UiMessages.modesAskDesc()),
-        Mode.AUTO to sessionText(UiMessages.modesAutoDesc(agent = "CLI")),
-        Mode.PLAN to sessionText(UiMessages.modesPlanDesc()),
-        Mode.FULL to sessionText(UiMessages.modesSkipAll()),
-    )
 
 /** Approval mode picker rendered from [SessionViewModel.actions]. */
 @Composable
@@ -622,12 +613,3 @@ fun AllModels(onClick: () -> Unit) {
         ArrowText(uiText(UiMessages.modelsAll()), pal.blue, T.s15)
     }
 }
-
-internal fun modeHelpText(mode: Mode, agent: String, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String): String = copy(
-    when (mode) {
-        Mode.ASK -> UiMessages.modesAskDesc()
-        Mode.AUTO -> UiMessages.modesAutoDesc(agent)
-        Mode.PLAN -> UiMessages.modesPlanDesc()
-        Mode.FULL -> UiMessages.modesSkipAll()
-    },
-)

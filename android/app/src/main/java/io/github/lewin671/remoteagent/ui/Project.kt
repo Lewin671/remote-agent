@@ -304,6 +304,230 @@ fun NewSessionBox(
 }
 
 @Composable
+private fun ProjectSettingsRow(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)?,
+    dot: androidx.compose.ui.graphics.Color? = null,
+) {
+    val p = pal
+    if (LocalDensity.current.fontScale >= 1.8f) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(label, style = T.s13, color = p.ink2, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                if (dot != null) StatusMark(MarkKind.ONLINE, color = dot)
+                Text(
+                    value,
+                    style = T.s13,
+                    color = p.ink,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false),
+                )
+                Spacer(Modifier.width(8.dp))
+                Arrow(p.ink3, ts(18.sp))
+            }
+        }
+        return
+    }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(label, style = T.s13, color = p.ink2, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
+        if (dot != null) StatusMark(MarkKind.ONLINE, color = dot)
+        Text(
+            value,
+            style = T.s13,
+            color = p.ink,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            modifier = Modifier.widthIn(max = 200.dp),
+        )
+        Arrow(p.ink3, ts(18.sp))
+    }
+}
+
+/**
+ * 项目设置 sheet backed directly by Core's [NewSessionViewModel] and [NewSessionModelPanelView].
+ */
+@Composable
+fun CoreProjectSettingsSheet(
+    projectKey: String,
+    open: String = "",
+    onClose: () -> Unit,
+) {
+    val p = pal
+    val remote = LocalRemote.current
+    val initialView = remember(remote, projectKey) { remote.coreHost.snapshotNewSessionView(projectKey) }
+    LaunchedEffect(projectKey) { remote.coreHost.openNewSession(projectKey) }
+    val rawView by remote.newSessionView.collectAsState()
+    val view = if (projectKey.isEmpty() || rawView.projectKey == projectKey) rawView else initialView
+    val syncView by remote.coreHost.syncStateView.collectAsState()
+    val panel = view.modelPanel
+    val blockedPrefs = when {
+        syncView.connection != io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED ->
+            UiMessages.projectsConnectToEdit()
+        !syncView.prefsLoaded -> UiMessages.projectsLoading()
+        else -> null
+    }
+    val manyMachines = panel.machineChoicesCount > 1
+    val root = open.ifEmpty { if (!manyMachines) "model" else "" }
+    var page by remember(open) { mutableStateOf(open) }
+    val shown = page.ifEmpty { root }
+    val back: (() -> Unit)? = if (shown == root) null else ({ page = "" })
+    val editable = blockedPrefs == null && view.settled
+    val saveError = view.noticesList.firstOrNull { it.kind == NoticeKind.NOTICE_KIND_CONFIG_SAVE_ERROR }
+    val agents = view.availableAgentsList
+
+    @Composable
+    fun agentSelector() {
+        if (agents.size > 1) {
+            Segmented(
+                agents.map { it.displayName },
+                agents.indexOfFirst { it.selected }.coerceAtLeast(0),
+                { idx -> remote.coreHost.selectNewSessionAgent(agents[idx].agent) },
+                Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth(),
+                enabled = { editable },
+            )
+        }
+    }
+
+    Sheet(onClose) {
+        when (shown) {
+            "" -> {
+                SheetHead(uiText(UiMessages.projectsAndroidSettings()), uiText(UiMessages.commonDone()), onClose)
+                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (!view.settled) Hint(uiText(UiMessages.newSessionReadingPrevious()))
+                if (saveError != null) Notice(
+                    uiText(saveError.text),
+                    tone = NoticeTone.WARN,
+                    action = uiText(UiMessages.commonRetry()),
+                    onAction = { remote.coreHost.retryNewSessionSaveConfig(projectKey) },
+                )
+                FieldLabel(uiText(UiMessages.newSessionAndroidNewSession()))
+                if (manyMachines) {
+                    val selectedOnline = panel.machineChoicesList.firstOrNull { it.selected }?.online == true
+                    SheetList {
+                        ProjectSettingsRow(
+                            uiText(UiMessages.commonMachine()),
+                            view.machineName,
+                            { page = "machine" },
+                            dot = if (selectedOnline) p.green else p.faint,
+                        )
+                    }
+                }
+                agentSelector()
+                val modelValue = listOf(
+                    uiText(view.modelLabel).ifEmpty { uiText(UiMessages.newSessionDefaultModel()) },
+                    view.effortLabel,
+                ).filter { it.isNotEmpty() }.joinToString(" · ")
+                SheetList {
+                    ProjectSettingsRow(uiText(UiMessages.modelsTitle()), modelValue, { page = "model" })
+                }
+            }
+            "machine" -> {
+                SheetHead(uiText(UiMessages.commonMachine()), uiText(UiMessages.commonDone()), onClose, onBack = back)
+                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                SheetList {
+                    panel.machineChoicesList.forEachIndexed { i, mc ->
+                        ListItem(
+                            mc.name,
+                            uiText(mc.note),
+                            checked = mc.selected,
+                            enabled = mc.online && editable,
+                            last = i == panel.machineChoicesCount - 1,
+                            onClick = {
+                                remote.coreHost.selectNewSessionMachine(mc.machineId)
+                                if (back != null) back() else onClose()
+                            },
+                            trailing = { StatusMark(if (mc.online) MarkKind.ONLINE else MarkKind.OFF) },
+                        )
+                    }
+                }
+                Hint(uiText(UiMessages.newSessionAndroidChangeMachineHint()))
+            }
+            "model" -> {
+                SheetHead(uiText(UiMessages.modelsTitle()), uiText(UiMessages.commonDone()), onClose, onBack = back)
+                if (blockedPrefs != null) Notice(uiText(blockedPrefs))
+                if (!view.settled) Hint(uiText(UiMessages.newSessionReadingPrevious()))
+                if (saveError != null) Notice(
+                    uiText(saveError.text),
+                    tone = NoticeTone.WARN,
+                    action = uiText(UiMessages.commonRetry()),
+                    onAction = { remote.coreHost.retryNewSessionSaveConfig(projectKey) },
+                )
+                if (back == null) agentSelector()
+                var allModels by remember(view.config.machineId, view.config.agent) { mutableStateOf(false) }
+                val errText = uiText(panel.modelsError)
+                val controlsEnabled = editable && panel.panelEnabled
+                when {
+                    panel.modelsLoading && panel.modelsCount == 0 -> Text(
+                        errText.ifEmpty { uiText(UiMessages.modelsAndroidReadingMachine(name = view.machineName)) },
+                        style = T.s13,
+                        color = p.ink2,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
+                    errText.isNotEmpty() && panel.modelsCount == 0 -> Notice(
+                        errText,
+                        tone = NoticeTone.WARN,
+                        action = uiText(UiMessages.commonRetry()),
+                        onAction = { remote.coreHost.retryNewSessionModels(projectKey) },
+                    )
+                    else -> {
+                        val shownModels = panelVisibleModels(panel.modelsList, allModels)
+                        SheetList {
+                            ListItem(
+                                uiText(panel.defaultModelLabel).ifEmpty { uiText(UiMessages.modelsDefault()) },
+                                checked = panel.defaultModelChecked,
+                                enabled = controlsEnabled,
+                                last = shownModels.isEmpty(),
+                                onClick = { remote.coreHost.selectNewSessionModel("", "", null) },
+                            )
+                            shownModels.forEachIndexed { i, m ->
+                                ListItem(
+                                    m.displayName.ifEmpty { m.slug },
+                                    small = uiText(m.fixedEffortNote).ifEmpty { null },
+                                    checked = m.checked,
+                                    enabled = controlsEnabled,
+                                    last = i == shownModels.lastIndex,
+                                    onClick = { remote.coreHost.selectNewSessionModel(m.slug, "", null) },
+                                )
+                            }
+                        }
+                        if (!allModels && shownModels.size < panel.modelsCount) AllModels { allModels = true }
+                        if (panel.effortChoicesCount > 1) {
+                            FieldLabel(uiText(panel.effortTitle).ifEmpty { uiText(UiMessages.modelsEffort()) })
+                            ChoiceGrid(panel.effortChoicesList, panel.selectedEffort, controlsEnabled) { effort ->
+                                remote.coreHost.selectNewSessionModel(view.config.model, effort, null)
+                            }
+                        }
+                    }
+                }
+                if (panel.supportsContextWindow) {
+                    FieldLabel(uiText(UiMessages.modelsContextWindow()))
+                    if (panel.contextFixed) Hint(uiText(panel.contextNote).ifEmpty { uiText(UiMessages.modelsStandardOnly()) })
+                    else Segmented(
+                        listOf(uiText(UiMessages.modelsExtendedWindow()), uiText(UiMessages.modelsStandardWindow())),
+                        if (panel.standardContext) 1 else 0,
+                        { remote.coreHost.selectNewSessionModel(view.config.model, panel.selectedEffort, it == 1) },
+                        Modifier.fillMaxWidth(),
+                        enabled = { controlsEnabled },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun NewSessionNoticeRow(
     n: NewSessionNoticeView,
     onAction: (NoticeActionKind) -> Unit,

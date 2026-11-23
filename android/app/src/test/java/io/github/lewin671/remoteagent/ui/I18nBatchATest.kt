@@ -108,9 +108,9 @@ class I18nBatchATest(private val locale: String) {
         composer(); ui.onNodeWithTag("new-model").performClick()
         ui.onNodeWithTag("new-model-show-all").performClick(); shot("all-models")
     }
-    @Test fun projectSettings() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, onDone = {}, onClose = {}) }; shot("project-settings") }
-    @Test fun projectModels() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, open = "model", onDone = {}, onClose = {}) }; shot("project-models") }
-    @Test fun machineChoice() { show { NewSettingsSheet(state, path, "demo", "a", Agent.AGENT_CLAUDE, open = "machine", onDone = {}, onClose = {}) }; shot("choose-machine") }
+    @Test fun projectSettings() { show { CoreProjectSettingsSheet(path, onClose = {}) }; shot("project-settings") }
+    @Test fun projectModels() { show { CoreProjectSettingsSheet(path, open = "model", onClose = {}) }; shot("project-models") }
+    @Test fun machineChoice() { show { CoreProjectSettingsSheet(path, open = "machine", onClose = {}) }; shot("choose-machine") }
     @Test fun projectChoice() { show { PickProjectSheet(remote.homeView.collectAsState().value.sidebarProjects, {}) }; shot("choose-project") }
     @Test fun directoryOffline() { show { Column { CoreDirPickerBody(io.github.lewin671.remoteagent.core.proto.DirPickerView.newBuilder().setOpen(true).build(), onChosen = { _, _ -> }) } }; shot("new-project") }
     @Test fun emptyAndConnection() {
