@@ -1898,10 +1898,10 @@ export class DemoRemote extends Remote {
     // Prepared as for real, remembering the file's name so that one named
     // with "fail" can fail its upload.
     const real = r.prepareImage;
-    r.prepareImage = async (f, original) => {
+    r.prepareImage = async (f, original, maxOriginalBytes) => {
       let p;
       try {
-        p = await real(f, original);
+        p = await real(f, original, maxOriginalBytes);
       } catch {
         p = {
           bytes: new Uint8Array(await f.arrayBuffer()),

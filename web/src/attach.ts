@@ -28,7 +28,7 @@ export interface Prepared {
 }
 
 /** Prepares a chosen file: compressed, or the original when asked. */
-export type Prepare = (file: Blob, original: boolean) => Promise<Prepared>;
+export type Prepare = (file: Blob, original: boolean, maxOriginalBytes: number) => Promise<Prepared>;
 /** Uploads prepared bytes to a machine; resolves the image ID and its deadline. */
 export interface UploadedImage { imageId: string; fileId?: string; expiresMs: number }
 
@@ -122,6 +122,7 @@ export class Tray {
   machineId = "";
   fileSupported = false;
   maxFiles = 0;
+  originalImageMaxBytes = 0;
   galleryAcceptMime = "";
   originalImageHint = "";
   fileMetadataNotice = "";
@@ -149,6 +150,7 @@ export class Tray {
     this.max = ev.maxImages;
     this.maxFiles = ev.maxFiles;
     this.fileSupported = ev.supportsFiles;
+    if (ev.originalImageMaxBytes > 0n) this.originalImageMaxBytes = Number(ev.originalImageMaxBytes);
     this.galleryAcceptMime = ev.galleryAcceptMime;
     this.originalImageHint = renderText(ev.originalImageHint);
     this.fileMetadataNotice = renderText(ev.fileMetadataNotice);
@@ -623,8 +625,12 @@ export class Tray {
       if (prepare || !this.fresh(item)) {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
+        if (item.kind !== "file" && original && this.originalImageMaxBytes <= 0 && this.evaluate) {
+          this.syncLimits(this.evaluate({ machineId: this.machineId, sessionId: this.sessionId }));
+        }
+        const maxOrig = this.originalImageMaxBytes;
         set({ state: "preparing", progress: 0, error: undefined, problemInput: undefined, problem: undefined, imageId: undefined, fileId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
-        const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await readAttachment(item.file)), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original));
+        const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await readAttachment(item.file)), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original, maxOrig));
         if (!current() || !p) return;
         set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: item.kind === "file" ? undefined : new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }

@@ -2142,7 +2142,7 @@ export class Remote implements CoreExecutor {
     };
   }
 
-  prepareImage: Prepare = async (file, original) => (await import("./sendimages")).prepareForSending(file, original);
+  prepareImage: Prepare = async (file, original, maxOriginalBytes) => (await import("./sendimages")).prepareForSending(file, original, maxOriginalBytes);
 
   async uploadImage(
     machineId: string,

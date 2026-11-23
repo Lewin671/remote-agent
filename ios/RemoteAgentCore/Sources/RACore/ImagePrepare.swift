@@ -44,11 +44,11 @@ public let compressedTargetBytes = 900 * 1024
 
 /// The most bytes read of what was picked: three times an original's limit
 /// for an original (metadata may be most of it), 80 MB for one to compress.
-public func pickedReadLimit(original: Bool) -> Int64 { original ? maxOriginalBytes * 3 : 80 * 1024 * 1024 }
+public func pickedReadLimit(original: Bool, originalMaxBytes: Int64) -> Int64 { original ? originalMaxBytes * 3 : 80 * 1024 * 1024 }
 
 /// Refuses a picked file larger than what is read of one.
-public func checkPicked(bytes: Int64, original: Bool) throws {
-    let limit = pickedReadLimit(original: original)
+public func checkPicked(bytes: Int64, original: Bool, originalMaxBytes: Int64) throws {
+    let limit = pickedReadLimit(original: original, originalMaxBytes: originalMaxBytes)
     if bytes > limit { throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024)), kind: .dimensions) }
 }
 
@@ -57,7 +57,7 @@ public func checkPicked(bytes: Int64, original: Bool) throws {
 /// into memory (Android's `readUri` stops reading at the limit).
 public func readPicked(_ file: URL) throws -> Data {
     let size = try FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64 ?? 0
-    try checkPicked(bytes: size, original: false)
+    try checkPicked(bytes: size, original: false, originalMaxBytes: 0)
     return try Data(contentsOf: file)
 }
 
@@ -223,12 +223,12 @@ func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
 /// do not read (HEIC), is re-encoded at the highest quality instead, and
 /// `Processed.note` says so. `budget` is the most pixels to decode, the
 /// phone's own when nil.
-public func prepareImageNow(_ data: Data, original: Bool, budget: Int64? = nil) throws -> Processed {
-    try checkPicked(bytes: Int64(data.count), original: original)
-    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(maxOriginalBytes / 1024 / 1024)), kind: .originalTooLarge)
+public func prepareImageNow(_ data: Data, original: Bool, originalMaxBytes: Int64, budget: Int64? = nil) throws -> Processed {
+    try checkPicked(bytes: Int64(data.count), original: original, originalMaxBytes: originalMaxBytes)
+    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(originalMaxBytes / 1024 / 1024)), kind: .originalTooLarge)
     if original {
         if let clean = try stripOriginal(data), let format = detectFormat(clean) {
-            if Int64(clean.count) > maxOriginalBytes { throw tooLarge }
+            if Int64(clean.count) > originalMaxBytes { throw tooLarge }
             let size = imagePixelSize(clean)
             return Processed(bytes: clean, format: format, width: size?.w ?? 0, height: size?.h ?? 0)
         }
@@ -236,7 +236,7 @@ public func prepareImageNow(_ data: Data, original: Bool, budget: Int64? = nil) 
         let d = try decodeUpright(data, maxLong: 0, budget: budget)
         let png = d.alpha
         let out = try encodeImage(d.image, png: png, quality: turned ? 100 : 95)
-        if Int64(out.count) > maxOriginalBytes { throw tooLarge }
+        if Int64(out.count) > originalMaxBytes { throw tooLarge }
         return Processed(
             bytes: out, format: png ? .png : .jpeg, width: d.image.width, height: d.image.height,
             note: originalNote(turned: turned, png: png, sample: d.sample))
@@ -260,10 +260,10 @@ public func prepareImageNow(_ data: Data, original: Bool, budget: Int64? = nil) 
 private let preparing = DispatchQueue(label: "remote-agent.image-prepare", qos: .userInitiated)
 
 /// Prepares one picked image (`prepareImageNow`) after the ones asked for before it.
-public func prepareImage(_ data: Data, original: Bool) async throws -> Processed {
+public func prepareImage(_ data: Data, original: Bool, originalMaxBytes: Int64) async throws -> Processed {
     try await withCheckedThrowingContinuation { done in
         preparing.async {
-            done.resume(with: Result { try autoreleasepool { try prepareImageNow(data, original: original) } })
+            done.resume(with: Result { try autoreleasepool { try prepareImageNow(data, original: original, originalMaxBytes: originalMaxBytes) } })
         }
     }
 }

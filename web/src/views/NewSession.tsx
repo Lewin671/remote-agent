@@ -102,6 +102,7 @@ export function NewBoxView(p: {
         maxImages: vm.maxImages,
         maxFiles: vm.maxFiles,
         supportsFiles: vm.supportsFiles,
+        originalImageMaxBytes: Number(vm.originalImageMaxBytes),
         galleryAcceptMime: vm.galleryAcceptMime || undefined,
         originalImageHint: renderText(vm.originalImageHint),
         fileMetadataNotice: renderText(vm.fileMetadataNotice),

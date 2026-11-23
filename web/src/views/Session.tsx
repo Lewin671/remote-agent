@@ -1420,6 +1420,7 @@ export function SessionPage({
     maxImages: caps?.maxImages ?? 0,
     maxFiles: caps?.maxFiles ?? 0,
     supportsFiles: !!caps?.supportsFiles,
+    originalImageMaxBytes: Number(caps?.originalImageMaxBytes ?? 0),
     galleryAcceptMime: caps?.galleryAcceptMime || undefined,
     originalImageHint: renderText(caps?.originalImageHint),
     fileMetadataNotice: renderText(caps?.fileMetadataNotice),
@@ -1525,7 +1526,7 @@ export function SessionPage({
                 file: it.file instanceof File ? it.file : undefined,
               });
             } else {
-              const prep = it.prepared ?? (it.file ? await remote.prepareImage(it.file, !!saved.original) : undefined);
+              const prep = it.prepared ?? (it.file ? await remote.prepareImage(it.file, !!saved.original, tray.originalImageMaxBytes || Number(caps?.originalImageMaxBytes ?? 0)) : undefined);
               if (!prep) continue;
               const up = await remote.uploadImage(targetMachine, prep, () => undefined);
               uploadedImages.push(up.imageId);

@@ -18,6 +18,7 @@ export interface TrayCapabilities {
   maxImages: number;
   maxFiles: number;
   supportsFiles: boolean;
+  originalImageMaxBytes?: number;
   galleryAcceptMime?: string;
   originalImageHint?: string;
   fileMetadataNotice?: string;
@@ -48,6 +49,9 @@ export function useTray(remote: Remote, key: string, machineId: string, caps: Tr
   t.max = caps.maxImages;
   t.fileSupported = caps.supportsFiles;
   t.maxFiles = caps.maxFiles;
+  if (caps.originalImageMaxBytes && caps.originalImageMaxBytes > 0) {
+    t.originalImageMaxBytes = caps.originalImageMaxBytes;
+  }
   t.galleryAcceptMime = caps.galleryAcceptMime ?? "";
   t.originalImageHint = caps.originalImageHint ?? "";
   t.fileMetadataNotice = caps.fileMetadataNotice ?? "";

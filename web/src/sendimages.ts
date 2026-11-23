@@ -5,7 +5,7 @@
 import type { Prepared } from "./attach";
 import { compressImage, prepareOriginal } from "./images";
 
-export async function prepareForSending(file: Blob, original: boolean): Promise<Prepared> {
-  const p = original ? await prepareOriginal(file) : await compressImage(file);
+export async function prepareForSending(file: Blob, original: boolean, maxOriginalBytes: number): Promise<Prepared> {
+  const p = original ? await prepareOriginal(file, maxOriginalBytes) : await compressImage(file);
   return { bytes: p.bytes, format: p.format, width: p.width, height: p.height };
 }

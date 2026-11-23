@@ -6,8 +6,8 @@ import * as l10n from "./i18n";
 //                         JPEG (PNG when transparent), under COMPRESSED_BUDGET
 //                         so the sealed envelope fits in one 1 MiB command.
 //   prepareOriginal(file) "send original": original pixels and quality for
-//                         PNG/JPEG/WebP/GIF, up to MAX_ORIGINAL_BYTES, sent in
-//                         CHUNK_BYTES pieces (chunkBytes, sha256Hex).
+//                         PNG/JPEG/WebP/GIF, up to Core's original_image_max_bytes,
+//                         sent in CHUNK_BYTES pieces (chunkBytes, sha256Hex).
 //
 // Both turn the image upright by its EXIF orientation and remove metadata
 // (location, camera, XMP, text chunks) before anything leaves the device.
@@ -40,8 +40,6 @@ export { imageSize, readOrientation, sniffFormat, stripMetadata, type ImageForma
 export const MAX_IMAGES = 6;
 /** Long edge of a compressed image. The CLIs shrink to about 2000px themselves. */
 export const MAX_EDGE = 2048;
-/** Largest original accepted, before and after any re-encoding. */
-export const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
 /** Piece size for sending originals; each piece is sealed into its own envelope. */
 export const CHUNK_BYTES = 768 * 1024;
 /**
@@ -290,6 +288,7 @@ async function reencode(
   format: ImageFormat,
   mode: "png" | "jpeg" | "auto",
   jpegQuality: number,
+  maxOriginalBytes: number,
 ): Promise<OriginalImage> {
   checkDecodable(bytes, format);
   const { blob, orientation } = decodeSource(bytes, format);
@@ -301,7 +300,7 @@ async function reencode(
     const surface = backend.draw(img, orientation, img.width, img.height);
     const png = mode === "png" || (mode === "auto" && surface.hasAlpha());
     const out = png ? await surface.encode("image/png") : await surface.encode("image/jpeg", jpegQuality);
-    if (out.length > MAX_ORIGINAL_BYTES) throw new ImageError("too_large", `re-encoded to ${out.length} bytes`);
+    if (out.length > maxOriginalBytes) throw new ImageError("too_large", `re-encoded to ${out.length} bytes`);
     return { bytes: out, format: png ? "png" : "jpeg", width: surface.width, height: surface.height, reencoded: true };
   } finally {
     img.close();
@@ -320,19 +319,19 @@ async function reencode(
  * - HEIC, AVIF and anything else the browser decodes: re-encoded at the
  *   original size as JPEG 0.95, or PNG when transparent.
  */
-export async function prepareOriginal(file: Blob, backend: ImageBackend = browserBackend): Promise<OriginalImage> {
-  if (file.size > MAX_ORIGINAL_BYTES) throw new ImageError("too_large", `${file.size} bytes`);
+export async function prepareOriginal(file: Blob, maxOriginalBytes: number, backend: ImageBackend = browserBackend): Promise<OriginalImage> {
+  if (file.size > maxOriginalBytes) throw new ImageError("too_large", `${file.size} bytes`);
   const bytes = await readBlob(file);
   const format = sniffFormat(bytes);
   if (format !== "jpeg" && format !== "png" && format !== "webp" && format !== "gif") {
-    return reencode(backend, bytes, format, "auto", ORIGINAL_JPEG_QUALITY);
+    return reencode(backend, bytes, format, "auto", ORIGINAL_JPEG_QUALITY, maxOriginalBytes);
   }
   let stripped: Uint8Array;
   try {
     stripped = stripMetadata(bytes, format);
   } catch {
     // Malformed in a way browsers may tolerate; never pass it through as is.
-    return reencode(backend, bytes, format, format === "jpeg" ? "jpeg" : "png", 1);
+    return reencode(backend, bytes, format, format === "jpeg" ? "jpeg" : "png", 1, maxOriginalBytes);
   }
   const orientation = format === "gif" ? 1 : readOrientation(bytes);
   if (orientation === 1) {
@@ -345,8 +344,8 @@ export async function prepareOriginal(file: Blob, backend: ImageBackend = browse
     } catch {
       rotated = undefined;
     }
-    if (rotated && rotated.length <= MAX_ORIGINAL_BYTES) return { bytes: rotated, format, ...imageSize(rotated, format), reencoded: false };
-    return reencode(backend, bytes, format, "jpeg", 1);
+    if (rotated && rotated.length <= maxOriginalBytes) return { bytes: rotated, format, ...imageSize(rotated, format), reencoded: false };
+    return reencode(backend, bytes, format, "jpeg", 1, maxOriginalBytes);
   }
-  return reencode(backend, bytes, format, "png", 1);
+  return reencode(backend, bytes, format, "png", 1, maxOriginalBytes);
 }

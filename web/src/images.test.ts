@@ -10,7 +10,6 @@ import {
   MAX_CANVAS_PIXELS,
   MAX_EDGE,
   MAX_IMAGES,
-  MAX_ORIGINAL_BYTES,
   orientationMatrix,
   prepareOriginal,
   readOrientation,
@@ -235,8 +234,8 @@ describe("bytes", () => {
     expect(chunkBytes(b.subarray(0, 2000), 1000)).toHaveLength(2);
     expect(chunkBytes(new Uint8Array(0), 1000)).toEqual([]);
     expect(() => chunkBytes(b, 0)).toThrow();
-    // The largest original goes in 27 pieces.
-    expect(Math.ceil(MAX_ORIGINAL_BYTES / CHUNK_BYTES)).toBe(27);
+    // A 20 MiB original goes in 27 pieces.
+    expect(Math.ceil((20 * 1024 * 1024) / CHUNK_BYTES)).toBe(27);
   });
 
   it("hashes with SHA-256", async () => {
@@ -246,7 +245,6 @@ describe("bytes", () => {
   it("has the limits architecture.md sets", () => {
     expect(MAX_IMAGES).toBe(6);
     expect(MAX_EDGE).toBe(2048);
-    expect(MAX_ORIGINAL_BYTES).toBe(20 * 1024 * 1024);
     // Room for header, nonce, tag and Protobuf framing under the 1 MiB envelope.
     expect(COMPRESSED_BUDGET).toBeLessThanOrEqual(1024 * 1024 - 64 * 1024);
     expect(CHUNK_BYTES).toBeLessThanOrEqual(COMPRESSED_BUDGET);
@@ -383,24 +381,26 @@ describe("compressImage", () => {
 });
 
 describe("prepareOriginal", () => {
+  const TEST_MAX_ORIGINAL = 20 * 1024 * 1024;
   const blob = (b: Uint8Array) => new Blob([b as Uint8Array<ArrayBuffer>]);
 
-  it("refuses files over 20 MB", async () => {
+  it("refuses files over the provided original limit", async () => {
     const f = fakeBackend(1, 1);
-    await expect(prepareOriginal(blob(new Uint8Array(MAX_ORIGINAL_BYTES + 1)), f.backend)).rejects.toMatchObject({ code: "too_large", message: message("image.image_exceeds_20_mb") });
+    await expect(prepareOriginal(blob(new Uint8Array(TEST_MAX_ORIGINAL + 1)), TEST_MAX_ORIGINAL, f.backend)).rejects.toMatchObject({ code: "too_large", message: message("image.image_exceeds_20_mb") });
+    await expect(prepareOriginal(blob(new Uint8Array(1025)), 1024, f.backend)).rejects.toMatchObject({ code: "too_large" });
   });
 
   it("strips an upright JPEG without touching its pixels", async () => {
     const f = fakeBackend(1, 1);
     const base = fixture(s420);
-    const out = await prepareOriginal(blob(withSegments(base, segment(0xe1, exifOrientation(1)), segment(0xfe, "note"))), f.backend);
+    const out = await prepareOriginal(blob(withSegments(base, segment(0xe1, exifOrientation(1)), segment(0xfe, "note"))), TEST_MAX_ORIGINAL, f.backend);
     expect(out).toEqual({ bytes: base, format: "jpeg", width: 48, height: 32, reencoded: false });
     expect(f.calls).toEqual([]);
   });
 
   it("rotates a JPEG losslessly when it can", async () => {
     const f = fakeBackend(1, 1);
-    const out = await prepareOriginal(blob(withSegments(fixture(s420), segment(0xe1, exifOrientation(6)))), f.backend);
+    const out = await prepareOriginal(blob(withSegments(fixture(s420), segment(0xe1, exifOrientation(6)))), TEST_MAX_ORIGINAL, f.backend);
     expect(out).toMatchObject({ format: "jpeg", width: 32, height: 48, reencoded: false });
     expect(readOrientation(out.bytes)).toBe(1);
     expect(includes(out.bytes, SECRET_CAMERA)).toBe(false);
@@ -409,7 +409,7 @@ describe("prepareOriginal", () => {
 
   it("re-encodes a JPEG at full quality when rotation cannot be lossless", async () => {
     const f = fakeBackend(40, 32);
-    const out = await prepareOriginal(blob(withSegments(fixture(odd420), segment(0xe1, exifOrientation(8)))), f.backend);
+    const out = await prepareOriginal(blob(withSegments(fixture(odd420), segment(0xe1, exifOrientation(8)))), TEST_MAX_ORIGINAL, f.backend);
     expect(out).toMatchObject({ format: "jpeg", width: 32, height: 40, reencoded: true });
     expect(ops(f.calls)).toEqual([["decode"], ["draw", 8, 40, 32], ["encode", "image/jpeg", 1]]);
     expect(includes(f.decoded[0], "Exif")).toBe(false);
@@ -419,16 +419,16 @@ describe("prepareOriginal", () => {
     const plain = concat(PNG_SIGNATURE, pngIHDR(), pngIDAT(), pngChunk("IEND", ""));
     const rotated = concat(PNG_SIGNATURE, pngIHDR(), pngChunk("eXIf", exifTiff(6)), pngIDAT(), pngChunk("IEND", ""));
     let f = fakeBackend(2, 1);
-    expect(await prepareOriginal(blob(rotated), f.backend)).toMatchObject({ format: "png", width: 1, height: 2, reencoded: true });
+    expect(await prepareOriginal(blob(rotated), TEST_MAX_ORIGINAL, f.backend)).toMatchObject({ format: "png", width: 1, height: 2, reencoded: true });
     expect(ops(f.calls)).toEqual([["decode"], ["draw", 6, 2, 1], ["encode", "image/png", undefined]]);
     f = fakeBackend(2, 1);
     const withText = concat(PNG_SIGNATURE, pngIHDR(), pngChunk("tEXt", "a\0b"), pngIDAT(), pngChunk("IEND", ""));
-    expect(await prepareOriginal(blob(withText), f.backend)).toEqual({ bytes: plain, format: "png", width: 2, height: 1, reencoded: false });
+    expect(await prepareOriginal(blob(withText), TEST_MAX_ORIGINAL, f.backend)).toEqual({ bytes: plain, format: "png", width: 2, height: 1, reencoded: false });
   });
 
   it("converts HEIC to JPEG at the original size", async () => {
     const f = fakeBackend(4032, 3024);
-    const out = await prepareOriginal(blob(ftyp("heic", "mif1")), f.backend);
+    const out = await prepareOriginal(blob(ftyp("heic", "mif1")), TEST_MAX_ORIGINAL, f.backend);
     expect(out).toMatchObject({ format: "jpeg", width: 4032, height: 3024, reencoded: true });
     expect(ops(f.calls)).toEqual([["decode"], ["draw", 1, 4032, 3024], ["hasAlpha"], ["encode", "image/jpeg", 0.95]]);
   });
@@ -436,14 +436,14 @@ describe("prepareOriginal", () => {
   it("refuses originals too large for a canvas", async () => {
     const f = fakeBackend(8064, 6048);
     expect(8064 * 6048).toBeGreaterThan(MAX_CANVAS_PIXELS);
-    await expect(prepareOriginal(blob(ftyp("heic")), f.backend)).rejects.toMatchObject({ code: "too_large" });
+    await expect(prepareOriginal(blob(ftyp("heic")), TEST_MAX_ORIGINAL, f.backend)).rejects.toMatchObject({ code: "too_large" });
     expect(f.closed()).toBe(1);
   });
 
   it("never passes a malformed file through", async () => {
     const f = fakeBackend(48, 32);
     const b = fixture(s420);
-    const out = await prepareOriginal(blob(b.subarray(0, b.length - 2)), f.backend);
+    const out = await prepareOriginal(blob(b.subarray(0, b.length - 2)), TEST_MAX_ORIGINAL, f.backend);
     expect(out).toMatchObject({ format: "jpeg", reencoded: true });
   });
 });
@@ -471,7 +471,7 @@ describe("oversized images (review B3)", () => {
     const f = fakeBackend(60000, 60000);
     await expect(compressImage(new Blob([huge() as Uint8Array<ArrayBuffer>]), f.backend)).rejects.toThrow(ImageError);
     const photo = withSegments(huge(), segment(0xe1, exifOrientation(6)));
-    await expect(prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), f.backend)).rejects.toThrow(ImageError);
+    await expect(prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), 20 * 1024 * 1024, f.backend)).rejects.toThrow(ImageError);
     expect(f.calls.filter((c) => c.op === "decode")).toEqual([]);
   });
 });
@@ -516,7 +516,7 @@ describe("metadata after the first scan (self-check against the daemon/Android b
 
   it("carries no metadata after the scan into a losslessly rotated original", async () => {
     const photo = beforeEoi(withSegments(fixture(s420), segment(0xe1, exifOrientation(6))), segment(0xfe, gps), segment(0xe1, exifWithGps));
-    const out = await prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), fakeBackend(1, 1).backend);
+    const out = await prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), 20 * 1024 * 1024, fakeBackend(1, 1).backend);
     expect(out.reencoded).toBe(false);
     expect(has(out.bytes, gps)).toBe(false);
     expect(has(rotateJpegLossless(photo, 6)!, gps)).toBe(false);

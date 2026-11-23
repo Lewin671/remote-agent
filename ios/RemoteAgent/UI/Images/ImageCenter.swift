@@ -124,6 +124,7 @@ final class ImageCenter {
     /// The machine each draft's images go to now.
     @ObservationIgnored private var targets: [String: String] = [:]
     @ObservationIgnored private var fileCaps: [String: AttachmentCapabilities] = [:]
+    @ObservationIgnored private var originalMaxBytes: Int64 = 0
     @ObservationIgnored private var blockedKeys = Set<String>()
     @ObservationIgnored private var aimedKeys = Set<String>()
     /// Messages with images held for thumbnails and clean disk release while Core owns delivery.
@@ -175,8 +176,12 @@ final class ImageCenter {
         viewed.use(remote)
         uploads = ImageUploads(
             prepare: { [weak self] uri, original in
-                guard let data = try await self?.read(uri) else { throw AttachmentFailure(kind: .sourceMissing) }
-                return try await prepareImage(data, original: original)
+                guard let self, let data = try await self.read(uri) else { throw AttachmentFailure(kind: .sourceMissing) }
+                var limit = self.originalMaxBytes
+                if limit <= 0 {
+                    limit = await self.evaluateAttachments(PBAttachmentEvalScreenRequest()).originalImageMaxBytes
+                }
+                return try await prepareImage(data, original: original, originalMaxBytes: limit)
             },
             channel: { [remote] machine in
                 #if DEBUG
@@ -270,24 +275,28 @@ final class ImageCenter {
     // MARK: Core AttachmentEval
 
     func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel {
+        let eval: PBAttachmentEvalViewModel
         if let coreHost {
-            return await coreHost.evaluateAttachments(request)
-        }
-        let locale = MessageLocale.current
-        let client: CoreClient
-        if let existing = fallbackCore {
-            client = existing
-        } else if let created = try? CoreClient() {
-            fallbackCore = created
-            client = created
+            eval = await coreHost.evaluateAttachments(request)
         } else {
-            return PBAttachmentEvalViewModel()
+            let locale = MessageLocale.current
+            let client: CoreClient
+            if let existing = fallbackCore {
+                client = existing
+            } else if let created = try? CoreClient() {
+                fallbackCore = created
+                client = created
+            } else {
+                return PBAttachmentEvalViewModel()
+            }
+            if fallbackLocale != locale {
+                fallbackLocale = locale
+                _ = try? client.dispatch(.with { $0.localeChanged.uiLocale = locale })
+            }
+            eval = (try? client.view(.with { $0.attachmentEval = request }).attachmentEval) ?? PBAttachmentEvalViewModel()
         }
-        if fallbackLocale != locale {
-            fallbackLocale = locale
-            _ = try? client.dispatch(.with { $0.localeChanged.uiLocale = locale })
-        }
-        return (try? client.view(.with { $0.attachmentEval = request }).attachmentEval) ?? PBAttachmentEvalViewModel()
+        if eval.originalImageMaxBytes > 0 { originalMaxBytes = eval.originalImageMaxBytes }
+        return eval
     }
 
     private func evalRequest(
@@ -489,6 +498,7 @@ final class ImageCenter {
         if machineId != nil { aimedKeys.insert(key) }
         targets[key] = machineId
         fileCaps[key] = caps
+        if caps.originalImageMaxBytes > 0 { originalMaxBytes = caps.originalImageMaxBytes }
         if blocked { blockedKeys.insert(key) } else { blockedKeys.remove(key) }
         #if DEBUG
             if frozen { return }

@@ -9,9 +9,6 @@
 import Foundation
 import RAProto
 
-/// An original may be this large at most (architecture §17).
-public let maxOriginalBytes: Int64 = 20 * 1024 * 1024
-
 /// The long side of a compressed image.
 public let compressedLongSide = 2048
 
