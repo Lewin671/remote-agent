@@ -208,21 +208,46 @@ internal data class SharedFileMenuRequest(
 /** Where a downloaded file opens on Android. */
 internal enum class SharedFileOpenRoute { IMAGE_VIEWER, VIDEO_PLAYER, AUDIO_PLAYER, TEXT_VIEWER, PDF_VIEWER, SYSTEM_CHOOSER }
 
-private val PlayerVideoExts = setOf("mp4", "mov", "m4v", "webm", "mkv")
-private val PlayerAudioExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg")
+/** Containers Core classifies as video/audio that Android's framework MediaPlayer does not reliably decode. */
+private val MediaPlayerUnsupportedVideoMimes = setOf(
+    "video/x-msvideo", "video/avi", "video/msvideo", "video/3gpp", "video/3gpp2",
+    "video/x-flv", "video/x-ms-wmv", "video/x-ms-asf",
+)
+private val MediaPlayerUnsupportedVideoContainers = setOf("avi", "3gp", "3g2", "flv", "wmv")
+private val MediaPlayerUnsupportedAudioMimes = setOf("audio/opus")
+private val MediaPlayerUnsupportedAudioContainers = setOf("opus")
 
-internal fun sharedFileOpenRoute(displayName: String, kind: SharedFileKind = SharedFileKind.SHARED_FILE_KIND_UNSPECIFIED): SharedFileOpenRoute {
-    if (kind == SharedFileKind.SHARED_FILE_KIND_IMAGE) return SharedFileOpenRoute.IMAGE_VIEWER
-    if (kind == SharedFileKind.SHARED_FILE_KIND_PDF) return SharedFileOpenRoute.PDF_VIEWER
-    if (isSharedTextFile(displayName)) return SharedFileOpenRoute.TEXT_VIEWER
+private fun mediaPlayerSupports(displayName: String, mimeType: String, video: Boolean): Boolean {
     val ext = displayName.substringAfterLast('/', displayName).substringAfterLast('\\')
         .trim().substringAfterLast('.', "").lowercase(Locale.ROOT)
-    return when (ext) {
-        "pdf" -> SharedFileOpenRoute.PDF_VIEWER
-        in PlayerVideoExts -> SharedFileOpenRoute.VIDEO_PLAYER
-        in PlayerAudioExts -> SharedFileOpenRoute.AUDIO_PLAYER
-        else -> SharedFileOpenRoute.SYSTEM_CHOOSER
+    val resolvedMime = mimeType.substringBefore(';').trim().lowercase(Locale.ROOT)
+        .ifEmpty {
+            if (ext.isEmpty()) ""
+            else android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)?.lowercase(Locale.ROOT).orEmpty()
+        }
+    return if (video) {
+        resolvedMime !in MediaPlayerUnsupportedVideoMimes && ext !in MediaPlayerUnsupportedVideoContainers
+    } else {
+        resolvedMime !in MediaPlayerUnsupportedAudioMimes && ext !in MediaPlayerUnsupportedAudioContainers
     }
+}
+
+internal fun sharedFileOpenRoute(
+    displayName: String,
+    kind: SharedFileKind = SharedFileKind.SHARED_FILE_KIND_UNSPECIFIED,
+    mimeType: String = "",
+): SharedFileOpenRoute = when (kind) {
+    SharedFileKind.SHARED_FILE_KIND_IMAGE -> SharedFileOpenRoute.IMAGE_VIEWER
+    SharedFileKind.SHARED_FILE_KIND_PDF -> SharedFileOpenRoute.PDF_VIEWER
+    SharedFileKind.SHARED_FILE_KIND_VIDEO ->
+        if (mediaPlayerSupports(displayName, mimeType, video = true)) SharedFileOpenRoute.VIDEO_PLAYER
+        else SharedFileOpenRoute.SYSTEM_CHOOSER
+    SharedFileKind.SHARED_FILE_KIND_AUDIO ->
+        if (mediaPlayerSupports(displayName, mimeType, video = false)) SharedFileOpenRoute.AUDIO_PLAYER
+        else SharedFileOpenRoute.SYSTEM_CHOOSER
+    else ->
+        if (isSharedTextFile(displayName)) SharedFileOpenRoute.TEXT_VIEWER
+        else SharedFileOpenRoute.SYSTEM_CHOOSER
 }
 
 internal data class SharedFilePreviewTarget(
@@ -552,7 +577,7 @@ internal fun openSharedFile(
     host: SharedFileHostState?,
 ) {
     val name = item.displayName
-    when (val route = sharedFileOpenRoute(name, item.kind)) {
+    when (val route = sharedFileOpenRoute(name, item.kind, item.webPreviewMime)) {
         SharedFileOpenRoute.PDF_VIEWER -> host?.pdfPreview = SharedFilePreviewTarget(item, localFile)
         SharedFileOpenRoute.TEXT_VIEWER -> host?.pendingTextPreview = SharedFilePreviewTarget(item, localFile)
         SharedFileOpenRoute.IMAGE_VIEWER -> host?.imagePreview = SharedFilePreviewTarget(item, localFile)

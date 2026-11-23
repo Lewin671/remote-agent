@@ -15,9 +15,13 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], application = Application::class)
 class SharedPdfPolicyTest {
     @Test fun routesPdfCaseInsensitivelyWithoutChangingOtherRoutes() {
-        for (name in listOf("report.pdf", "REPORT.PDF", "report.PdF")) assertEquals(SharedFileOpenRoute.PDF_VIEWER, sharedFileOpenRoute(name))
-        for (name in listOf("pdf", "report.pdf.zip", "report.pdfx")) assertEquals(SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(name))
-        assertEquals(SharedFileOpenRoute.TEXT_VIEWER, sharedFileOpenRoute("notes.md"))
+        for (name in listOf("report.pdf", "REPORT.PDF", "report.PdF")) {
+            assertEquals(SharedFileOpenRoute.PDF_VIEWER, sharedFileOpenRoute(name, io.github.lewin671.remoteagent.core.proto.SharedFileKind.SHARED_FILE_KIND_PDF))
+        }
+        for (name in listOf("pdf", "report.pdf.zip", "report.pdfx")) {
+            assertEquals(SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(name, io.github.lewin671.remoteagent.core.proto.SharedFileKind.SHARED_FILE_KIND_OTHER))
+        }
+        assertEquals(SharedFileOpenRoute.TEXT_VIEWER, sharedFileOpenRoute("notes.md", io.github.lewin671.remoteagent.core.proto.SharedFileKind.SHARED_FILE_KIND_DOC))
     }
 
     @Test fun retainOnlyVisiblePagesAndOneNeighborEachSide() {

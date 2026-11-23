@@ -863,7 +863,15 @@ class SharedFilesUiTest {
         for (n in listOf("a.mp3", "a.m4a", "a.wav", "a.AAC", "a.flac", "a.ogg")) assertEquals(n, SharedFileOpenRoute.AUDIO_PLAYER, sharedFileOpenRoute(n, SharedFileKind.SHARED_FILE_KIND_AUDIO))
         assertEquals(SharedFileOpenRoute.TEXT_VIEWER, sharedFileOpenRoute("a.txt", SharedFileKind.SHARED_FILE_KIND_DOC))
         assertEquals(SharedFileOpenRoute.PDF_VIEWER, sharedFileOpenRoute("a.pdf", SharedFileKind.SHARED_FILE_KIND_PDF))
-        for (n in listOf("a.zip", "a.avi", "a.3gp", "a.opus", "noext", "a.mp4.zip")) assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n))
+        for (n in listOf("a.avi", "a.3gp", "a.flv", "a.wmv")) {
+            assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n, SharedFileKind.SHARED_FILE_KIND_VIDEO))
+        }
+        assertEquals(SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute("a.opus", SharedFileKind.SHARED_FILE_KIND_AUDIO))
+        assertEquals(SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute("clip", SharedFileKind.SHARED_FILE_KIND_VIDEO, mimeType = "video/x-msvideo"))
+        assertEquals(SharedFileOpenRoute.VIDEO_PLAYER, sharedFileOpenRoute("clip", SharedFileKind.SHARED_FILE_KIND_VIDEO, mimeType = "video/mp4"))
+        for (n in listOf("a.zip", "noext", "a.mp4.zip", "a.mp4")) {
+            assertEquals(n, SharedFileOpenRoute.SYSTEM_CHOOSER, sharedFileOpenRoute(n, SharedFileKind.SHARED_FILE_KIND_OTHER))
+        }
     }
 
     private fun localFor(session: String, name: String): File =
