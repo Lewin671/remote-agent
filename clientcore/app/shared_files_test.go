@@ -1613,4 +1613,201 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 			t.Fatalf("expected DOWNLOADED with merged 1:05 duration, got %+v", c)
 		}
 	})
+
+	t.Run("stale verify guards new download and serializes per-key verify", func(t *testing.T) {
+		interruptCases := []struct {
+			name            string
+			interrupt       func(h *sfHarness)
+			restartDownload bool
+			lateAtWrite     bool
+		}{
+			{
+				name: "cancel during verify then restart waits for prior verify without DeleteLocal",
+				interrupt: func(h *sfHarness) {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileCancelDownload{
+							SharedFileCancelDownload: &corev1.SharedFileCancelDownloadAction{SessionId: h.sessionID, FileId: "f-sv"},
+						},
+					})
+				},
+				restartDownload: true,
+			},
+			{
+				name: "delete during verify then restart ignores late verify during write without DeleteLocal",
+				interrupt: func(h *sfHarness) {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileDeleteLocal{
+							SharedFileDeleteLocal: &corev1.SharedFileDeleteLocalAction{SessionId: h.sessionID, FileId: "f-sv"},
+						},
+					})
+				},
+				restartDownload: true,
+				lateAtWrite:     true,
+			},
+			{
+				name: "ForgetSession during verify without restart cleans late commit",
+				interrupt: func(h *sfHarness) {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileForgetSession{
+							SharedFileForgetSession: &corev1.SharedFileForgetSessionAction{SessionId: h.sessionID},
+						},
+					})
+				},
+				restartDownload: false,
+			},
+			{
+				name: "ClearAll during verify without restart cleans late commit",
+				interrupt: func(h *sfHarness) {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileClearAll{SharedFileClearAll: &corev1.SharedFileClearAllAction{}},
+					})
+				},
+				restartDownload: false,
+			},
+			{
+				name: "ClearAll during verify then restart serializes verify without DeleteLocal",
+				interrupt: func(h *sfHarness) {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileClearAll{SharedFileClearAll: &corev1.SharedFileClearAllAction{}},
+					})
+				},
+				restartDownload: true,
+			},
+		}
+
+		for _, tc := range interruptCases {
+			t.Run(tc.name, func(t *testing.T) {
+				h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-sv", Name: "doc.pdf", SizeBytes: 64, Sha256: sfTestHash(0xd9)})
+				startToVerify := func() (*corev1.SharedFileWriteChunkEffect, *corev1.SharedFileVerifyAndCommitEffect) {
+					eff := h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileStartDownload{
+							SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{SessionId: h.sessionID, FileId: "f-sv"},
+						},
+					})
+					insp := findInspectDisk(eff)
+					eff = h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileDiskInspected{
+							SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-sv", Known: false},
+						},
+					})
+					dc, _ := findDispatchChunk(eff)
+					eff = h.deliverChunkOK(dc, bytes.Repeat([]byte{1}, 64), 64)
+					wc := findWriteChunk(eff)
+					if tc.lateAtWrite {
+						return wc, nil
+					}
+					eff = h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileWriteChunkResult{
+							SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc.GetOpId(), SessionId: h.sessionID, FileId: "f-sv", Ok: true},
+						},
+					})
+					return wc, findVerifyCommit(eff)
+				}
+
+				// Round 1 reaches VERIFYING.
+				savedLate := tc.lateAtWrite
+				tc.lateAtWrite = false
+				_, vc1 := startToVerify()
+				tc.lateAtWrite = savedLate
+				if vc1 == nil {
+					t.Fatalf("expected round-1 VerifyAndCommit")
+				}
+
+				tc.interrupt(h)
+
+				if !tc.restartDownload {
+					effLate := h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+							SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{
+								OpId:      vc1.GetOpId(),
+								SessionId: h.sessionID,
+								FileId:    "f-sv",
+								Ok:        true,
+							},
+						},
+					})
+					if findDeleteLocal(effLate) == nil {
+						t.Fatalf("expected DeleteLocal for orphaned late verify commit")
+					}
+					if c := h.card("f-sv"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+						t.Fatalf("expected AVAILABLE, got %+v", c)
+					}
+					return
+				}
+
+				// Round 2 starts immediately while vc1 is still in flight.
+				wc2, vc2Early := startToVerify()
+				if tc.lateAtWrite {
+					// Late vc1 arrives while round 2 is writing its chunk: must NOT emit DeleteLocal!
+					effLate := h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+							SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{
+								OpId:      vc1.GetOpId(),
+								SessionId: h.sessionID,
+								FileId:    "f-sv",
+								Ok:        true,
+							},
+						},
+					})
+					if findDeleteLocal(effLate) != nil {
+						t.Fatalf("stale verify must not emit DeleteLocal while round 2 is active")
+					}
+					eff := h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileWriteChunkResult{
+							SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc2.GetOpId(), SessionId: h.sessionID, FileId: "f-sv", Ok: true},
+						},
+					})
+					vc2 := findVerifyCommit(eff)
+					if vc2 == nil {
+						t.Fatalf("expected round-2 VerifyAndCommit after vc1 settled")
+					}
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+							SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{OpId: vc2.GetOpId(), SessionId: h.sessionID, FileId: "f-sv", Ok: true},
+						},
+					})
+					if c := h.card("f-sv"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+						t.Fatalf("expected DOWNLOADED after round 2, got %+v", c)
+					}
+					return
+				}
+
+				// Round 2 reached verify stage while vc1 is still in flight: MUST NOT emit a concurrent VerifyAndCommit!
+				if vc2Early != nil {
+					t.Fatalf("must not emit a second concurrent VerifyAndCommit while vc1 is in flight")
+				}
+				// Now vc1 settles ok -> must NOT emit DeleteLocal, and must emit round-2 VerifyAndCommit!
+				effLate := h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+						SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{
+							OpId:      vc1.GetOpId(),
+							SessionId: h.sessionID,
+							FileId:    "f-sv",
+							Ok:        true,
+						},
+					},
+				})
+				if findDeleteLocal(effLate) != nil {
+					t.Fatalf("stale verify must not emit DeleteLocal when round 2 is waiting to verify")
+				}
+				vc2 := findVerifyCommit(effLate)
+				if vc2 == nil || vc2.GetOpId() == vc1.GetOpId() {
+					t.Fatalf("expected serialized round-2 VerifyAndCommit after vc1 finished, got %+v", vc2)
+				}
+				h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+						SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{
+							OpId:      vc2.GetOpId(),
+							SessionId: h.sessionID,
+							FileId:    "f-sv",
+							Ok:        true,
+						},
+					},
+				})
+				if c := h.card("f-sv"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED {
+					t.Fatalf("expected DOWNLOADED after serialized round-2 verify, got %+v", c)
+				}
+			})
+		}
+	})
 }

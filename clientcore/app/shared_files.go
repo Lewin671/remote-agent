@@ -38,6 +38,7 @@ const (
 	sfPhaseFetchingChunk
 	sfPhaseWritingChunk
 	sfPhaseWaitingReconnect
+	sfPhaseWaitingPriorVerify
 	sfPhaseVerifying
 )
 
@@ -94,6 +95,11 @@ type sfEntry struct {
 	failureText   *corev1.Text
 }
 
+type sfStaleVerify struct {
+	key         sfKey
+	deliverOnly bool
+}
+
 type sfManager struct {
 	localCacheMaxBytes int64
 	storageFullKind    corev1.SharedFileFailureKind
@@ -102,15 +108,17 @@ type sfManager struct {
 	visibleSessionID   string
 	entries            map[sfKey]*sfEntry
 	reqToKey           map[string]sfKey
-	staleVerifyOps     map[uint64]sfKey
+	staleVerifyOps     map[uint64]sfStaleVerify
+	inFlightVerifyKey  map[sfKey]uint64
 }
 
 func newSFManager() *sfManager {
 	return &sfManager{
-		storageFullKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
-		entries:         make(map[sfKey]*sfEntry),
-		reqToKey:        make(map[string]sfKey),
-		staleVerifyOps:  make(map[uint64]sfKey),
+		storageFullKind:   corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
+		entries:           make(map[sfKey]*sfEntry),
+		reqToKey:          make(map[string]sfKey),
+		staleVerifyOps:    make(map[uint64]sfStaleVerify),
+		inFlightVerifyKey: make(map[sfKey]uint64),
 	}
 }
 
@@ -522,7 +530,9 @@ func (c *Core) handleSharedFileStartDownload(ctx *sync.StepContext, act *corev1.
 	entry.pausedPendingWriteOpID = 0
 
 	if readyToVerify {
-		effects = append(effects, c.emitVerifyAndCommit(mgr, entry))
+		if eff := c.emitVerifyAndCommit(mgr, entry); eff != nil {
+			effects = append(effects, eff)
+		}
 	} else if remaining := file.SizeBytes - resumeOff; remaining > 0 {
 		opID := mgr.allocOpID()
 		entry.phase = sfPhaseInspectingDisk
@@ -812,13 +822,23 @@ func (c *Core) handleSharedFileWriteChunkResult(ctx *sync.StepContext, ev *corev
 	entry.etaSeconds = 0
 	eff := c.emitVerifyAndCommit(mgr, entry)
 	c.syncSharedFileUI(entry)
+	if eff == nil {
+		return nil
+	}
 	return []*corev1.Effect{eff}
 }
 
 func (c *Core) emitVerifyAndCommit(mgr *sfManager, entry *sfEntry) *corev1.Effect {
+	if mgr.inFlightVerifyKey[entry.key] != 0 {
+		// Serialize verification per key: wait for the in-flight verify op to settle first.
+		entry.phase = sfPhaseWaitingPriorVerify
+		entry.activeOpID = 0
+		return nil
+	}
 	opID := mgr.allocOpID()
 	entry.phase = sfPhaseVerifying
 	entry.activeOpID = opID
+	mgr.inFlightVerifyKey[entry.key] = opID
 	return &corev1.Effect{
 		Effect: &corev1.Effect_SharedFileVerifyAndCommit{
 			SharedFileVerifyAndCommit: &corev1.SharedFileVerifyAndCommitEffect{
@@ -835,6 +855,21 @@ func (c *Core) emitVerifyAndCommit(mgr *sfManager, entry *sfEntry) *corev1.Effec
 	}
 }
 
+func shouldCleanupStaleVerify(entry *sfEntry) bool {
+	if entry == nil {
+		return true
+	}
+	switch entry.status {
+	case corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED,
+		corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP:
+		return true
+	case corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED:
+		return !entry.hasPartial
+	default:
+		return false
+	}
+}
+
 func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerifyAndCommitResultEvent) []*corev1.Effect {
 	if ev == nil || ev.SessionId == "" || ev.FileId == "" {
 		return nil
@@ -845,12 +880,25 @@ func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerify
 	}
 	key := sfKey{sessionID: ev.SessionId, fileID: ev.FileId}
 
-	// If a cancel/delete occurred while VerifyAndCommit was in flight and the shell already
-	// committed a local copy, instruct the shell to delete that orphaned copy.
-	if staleKey, isStale := mgr.staleVerifyOps[ev.OpId]; isStale {
+	// If a cancel/delete occurred while VerifyAndCommit was in flight, settle the per-key
+	// serialization slot first, then either start a waiting verification round or clean up
+	// an orphaned committed copy only when no active/partial/completed entry owns this key.
+	if stale, isStale := mgr.staleVerifyOps[ev.OpId]; isStale {
 		delete(mgr.staleVerifyOps, ev.OpId)
-		if ev.Ok {
-			return []*corev1.Effect{makeDeleteLocalEffect(staleKey)}
+		if mgr.inFlightVerifyKey[stale.key] == ev.OpId {
+			delete(mgr.inFlightVerifyKey, stale.key)
+		}
+		cur := mgr.entries[stale.key]
+		if cur != nil &&
+			cur.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING &&
+			cur.phase == sfPhaseWaitingPriorVerify {
+			if eff := c.emitVerifyAndCommit(mgr, cur); eff != nil {
+				return []*corev1.Effect{eff}
+			}
+			return nil
+		}
+		if ev.Ok && !stale.deliverOnly && shouldCleanupStaleVerify(cur) {
+			return []*corev1.Effect{makeDeleteLocalEffect(stale.key)}
 		}
 		return nil
 	}
@@ -861,6 +909,9 @@ func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerify
 		return nil
 	}
 	entry.activeOpID = 0
+	if mgr.inFlightVerifyKey[key] == ev.OpId {
+		delete(mgr.inFlightVerifyKey, key)
+	}
 
 	if !ev.Ok {
 		fKind, fDetail := sharedfiles.ClassifyIOFailure(ev.ErrorKind, ev.ErrorDetail, mgr.storageFullKind)
@@ -1240,7 +1291,7 @@ func (c *Core) reconcileSharedFileDownloads(effects *[]*corev1.Effect, dirty *sy
 
 		// Session exited: let an already-verifying local commit finish; clean up everything else.
 		if c.isSessionExitedByID(key.sessionID) {
-			if entry.phase == sfPhaseVerifying {
+			if entry.phase == sfPhaseVerifying || entry.phase == sfPhaseWaitingPriorVerify {
 				continue
 			}
 			hadPartial := entry.hasPartial || entry.phase == sfPhaseWritingChunk
@@ -1309,8 +1360,11 @@ func (c *Core) cancelActiveTransferWork(ctx *sync.StepContext, mgr *sfManager, e
 			}
 		}
 	}
-	if entry.phase == sfPhaseVerifying && entry.activeOpID != 0 && !entry.deliverOnly {
-		mgr.staleVerifyOps[entry.activeOpID] = entry.key
+	if entry.phase == sfPhaseVerifying && entry.activeOpID != 0 {
+		mgr.staleVerifyOps[entry.activeOpID] = sfStaleVerify{
+			key:         entry.key,
+			deliverOnly: entry.deliverOnly,
+		}
 	}
 	entry.activeOpID = 0
 }
