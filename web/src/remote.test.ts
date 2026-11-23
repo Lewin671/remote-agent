@@ -867,7 +867,7 @@ it("does not poll pairing state after startup without a pending delivery", async
 it.each(["complete", "missing", "final", "transient", "close"])(
   "resumes a pending delivery on startup and manages its timer on %s", async (outcome) => {
     const { SecurityWorkflowError } = await import("./core/security-client");
-    const { SecurityPendingOpSummarySchema, SecurityWorkflowStatusSchema } = await import("./gen/remoteagent/core/v1/security_pb");
+    const { SecurityErrorCode, SecurityPendingOpSummarySchema, SecurityWorkflowStatusSchema } = await import("./gen/remoteagent/core/v1/security_pb");
     const r = await probe();
     const state = r as unknown as {
       ensureHost(): { start(): void; stop(): void; securityClient: { resumePendingOp(): Promise<unknown> } };
@@ -879,7 +879,7 @@ it.each(["complete", "missing", "final", "transient", "close"])(
         pendingOp: hasDelivery ? create(SecurityPendingOpSummarySchema, { hasDelivery: true }) : undefined,
       });
     const resume = vi.fn(async () => {
-      if (outcome === "final") throw new SecurityWorkflowError("candidate must be removed", "invalid", false, false, "");
+      if (outcome === "final") throw new SecurityWorkflowError("candidate must be removed", SecurityErrorCode.INVALID, false, false, "");
       if (outcome === "transient") throw new ConnectError("offline", Code.Unavailable);
       state.applySecurityStatusSnapshot(pendingStatus(false));
       return pendingStatus(false);

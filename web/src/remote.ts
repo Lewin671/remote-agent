@@ -64,6 +64,7 @@ import {
 } from "./gen/remoteagent/core/v1/app_pb";
 import {
   SecurityBootstrapKind,
+  SecurityErrorCode,
   SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
   SecuritySealEnvelopeOpSchema,
@@ -649,7 +650,14 @@ export class Remote implements CoreExecutor {
       this.authorityError = errorText(e);
       if (
         (e instanceof SecurityWorkflowError &&
-          ["invalid", "untrusted", "conflict", "storage", "capacity", "expired", "canceled"].includes(e.code)) ||
+          [
+            SecurityErrorCode.INVALID,
+            SecurityErrorCode.UNTRUSTED,
+            SecurityErrorCode.CONFLICT,
+            SecurityErrorCode.STORAGE,
+            SecurityErrorCode.CAPACITY,
+            SecurityErrorCode.CANCELED,
+          ].includes(e.code)) ||
         (e instanceof ConnectError &&
           [Code.InvalidArgument, Code.NotFound, Code.PermissionDenied, Code.Unauthenticated, Code.FailedPrecondition].includes(e.code))
       ) {

@@ -7,6 +7,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   SecurityBootstrapKind,
+  SecurityErrorCode,
   SecurityPairingInfoSchema,
   SecurityWorkflowStatusSchema,
 } from "../gen/remoteagent/core/v1/security_pb";
@@ -51,7 +52,7 @@ function makeClient(opts?: {
         call.releaseJoin = (ok) =>
           ok
             ? res(create(SecurityPairingInfoSchema, { pairingId: pid, sasEmoji: ["🦊", "🌵", "🚲", "🎈"] }))
-            : rej(new SecurityWorkflowError("canceled", "canceled", false, false, ""));
+            : rej(new SecurityWorkflowError("canceled", SecurityErrorCode.CANCELED, false, false, ""));
       });
     }),
     confirmJoinSas: vi.fn(async () => {
@@ -59,7 +60,7 @@ function makeClient(opts?: {
       cur.confirming = true;
       return await new Promise((res, rej) => {
         cur.releaseConfirm = (ok) =>
-          ok ? res({} as never) : rej(new SecurityWorkflowError("canceled", "canceled", false, false, ""));
+          ok ? res({} as never) : rej(new SecurityWorkflowError("canceled", SecurityErrorCode.CANCELED, false, false, ""));
       });
     }),
     cancelJoinPairing: vi.fn(async () => {

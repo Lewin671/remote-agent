@@ -1,5 +1,6 @@
 import { t as message } from "../i18n";
 import { SecurityWorkflowError } from "../core/security-client";
+import { SecurityErrorCode } from "../gen/remoteagent/core/v1/security_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { joinBanner, joinExistingLead, joinLead } from "./Pairing";
@@ -13,12 +14,12 @@ it("tells a release mismatch apart from a wrong code", () => {
 
 
 it("an expired-or-canceled pairing does not accuse the other device of refusing", () => {
-  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_expired_or_was_canceled"), "expired", false, false, "refill"))).toEqual({
+  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_expired_or_was_canceled"), SecurityErrorCode.INVALID, false, false, "refill"))).toEqual({
     kind: "err",
     text: message("security.pairing_expired_or_was_canceled"),
     action: "refill",
   });
-  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_canceled"), "canceled", false, false, "restart")).text).toBe(message("security.pairing_canceled"));
+  expect(joinBanner(new SecurityWorkflowError(message("security.pairing_canceled"), SecurityErrorCode.CANCELED, false, false, "restart")).text).toBe(message("security.pairing_canceled"));
 });
 
 it("tells a browser to type the code the phone shows, never to scan", () => {

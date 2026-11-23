@@ -14,6 +14,7 @@ import {
   SecurityApprovePairingActionSchema,
   SecurityBoolActionSchema,
   SecurityConfigEventSchema,
+  SecurityErrorCode,
   SecurityForegroundEventSchema,
   SecurityPrepareCreationActionSchema,
   SecurityRemoveDeviceActionSchema,
@@ -80,7 +81,7 @@ export function parsePairLinkQuery(query: string): PairLink | undefined {
 export class SecurityWorkflowError extends Error {
   constructor(
     message: string,
-    readonly code: string,
+    readonly code: SecurityErrorCode,
     readonly retryable: boolean,
     readonly uncertain: boolean,
     readonly errorAction: string,
@@ -97,8 +98,8 @@ export function translateSecurityKey(raw: string): string {
   return raw;
 }
 
-export function translateSecurityErrorMessage(res: Pick<SecurityWorkflowResultEffect, "error" | "errorCode" | "errorAction">): string {
-  return translateSecurityKey(res.error || res.errorCode || "security error");
+export function translateSecurityErrorMessage(res: Pick<SecurityWorkflowResultEffect, "error" | "errorAction">): string {
+  return translateSecurityKey(res.error || "security error");
 }
 
 export interface SecurityWorkflowDispatcher {
@@ -142,7 +143,7 @@ export class SecurityClient {
       w.reject(
         new SecurityWorkflowError(
           translateSecurityErrorMessage(res),
-          res.errorCode,
+          res.structuredErrorCode,
           res.retryable,
           res.uncertain,
           res.errorAction,

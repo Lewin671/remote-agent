@@ -27,24 +27,28 @@ export class SecurityError extends Error {
   }
 }
 
-const VALID_SECURITY_CODES = new Set<SecurityError["code"]>([
-  "invalid",
-  "untrusted",
-  "stale",
-  "unknown",
-  "conflict",
-  "pending",
-  "capacity",
-  "storage",
-  "unavailable",
-  "lease",
-  "clock",
-]);
-
-export function toSecurityCode(code: string): SecurityError["code"] {
-  if (code === "recovery_unavailable") return "unavailable";
-  if (VALID_SECURITY_CODES.has(code as SecurityError["code"])) return code as SecurityError["code"];
-  return "invalid";
+export function structuredToSecurityCode(code: SecurityErrorCode): SecurityError["code"] {
+  switch (code) {
+    case SecurityErrorCode.LEASE_EXPIRED:
+      return "lease";
+    case SecurityErrorCode.STALE:
+      return "stale";
+    case SecurityErrorCode.UNTRUSTED:
+      return "untrusted";
+    case SecurityErrorCode.CLOCK_SKEWED:
+      return "clock";
+    case SecurityErrorCode.CAPACITY:
+      return "capacity";
+    case SecurityErrorCode.STORAGE:
+      return "storage";
+    case SecurityErrorCode.CONFLICT:
+      return "conflict";
+    case SecurityErrorCode.RECOVERY_UNAVAILABLE:
+    case SecurityErrorCode.UNAVAILABLE:
+      return "unavailable";
+    default:
+      return "invalid";
+  }
 }
 
 function makeSecErr(code: SecurityError["code"]): SecurityError {
@@ -121,6 +125,7 @@ import {
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
   SecurityConfigEventSchema,
+  SecurityErrorCode,
   SecurityForegroundEventSchema,
   SecurityOpRequestEventSchema,
   type SecurityOpRequestEvent,
@@ -2791,12 +2796,10 @@ export class CoreHost {
         if (w) {
           this.securityOpWaiters.delete(res.opId);
           if (res.error) {
-            if (res.errorCode === "unsupported_history") {
+            if (res.structuredErrorCode === SecurityErrorCode.UNSUPPORTED_HISTORY) {
               w.reject(new UnsupportedHistoryError());
-            } else if (res.errorCode === "stale" && res.error.toLowerCase().includes("lease")) {
-              w.reject(makeSecErr("lease"));
             } else {
-              w.reject(makeSecErr(toSecurityCode(res.errorCode)));
+              w.reject(makeSecErr(structuredToSecurityCode(res.structuredErrorCode)));
             }
           } else {
             w.resolve(res);

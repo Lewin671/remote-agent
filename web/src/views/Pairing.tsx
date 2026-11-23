@@ -2,7 +2,7 @@ import * as l10n from "../i18n";
 import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
-import { SecurityBootstrapKind } from "../gen/remoteagent/core/v1/security_pb";
+import { SecurityBootstrapKind, SecurityErrorCode } from "../gen/remoteagent/core/v1/security_pb";
 import {
   createStandaloneSecurityClient,
   parsePairLinkQuery,
@@ -34,24 +34,24 @@ export function joinBanner(e: unknown): {
   action: "" | "restart" | "retry" | "refill";
 } {
   if (e instanceof SecurityWorkflowError) {
-    if (e.code === "clock") {
+    if (e.code === SecurityErrorCode.CLOCK_SKEWED) {
       return {
         kind: "warn",
         text: l10n.t("security.this_device_s_clock_is_behind_the_managing_client"),
         action: "retry",
       };
     }
-    if (e.code === "capacity") {
+    if (e.code === SecurityErrorCode.CAPACITY) {
       return {
         kind: "err",
         text: l10n.t("security.the_account_s_state_chain_is_too_long_to"),
         action: "",
       };
     }
-    if (e.errorAction === "refill" || ["not_found", "invalid", "expired", "invalid_argument"].includes(e.code)) {
+    if (e.errorAction === "refill" || e.code === SecurityErrorCode.NOT_FOUND || e.code === SecurityErrorCode.INVALID) {
       return { kind: "err", text: e.message, action: "refill" };
     }
-    if (e.uncertain || e.retryable || e.code === "unavailable" || e.code === "deadline_exceeded") {
+    if (e.uncertain || e.retryable || e.code === SecurityErrorCode.UNAVAILABLE) {
       return { kind: "warn", text: e.message, action: "retry" };
     }
     return { kind: "err", text: e.message, action: "restart" };

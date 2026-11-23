@@ -10,6 +10,7 @@ import { ScheduleDetail } from "./Schedules";
 import { getCoreHost } from "../core/host";
 import { CommandError, errorText, SecurityError } from "../remote";
 import { SecurityWorkflowError } from "../core/security-client";
+import { SecurityErrorCode } from "../gen/remoteagent/core/v1/security_pb";
 import { joinBanner } from "./Pairing";
 import { ImageError } from "../imagecodec/error";
 import { Tray } from "../attach";
@@ -84,7 +85,7 @@ it("localizes safe error and notification shells while preserving external conte
   localeStore.overrideForTesting("en");
   expect(errorText(new SecurityError("invalid"))).toBe(t("errors.invalid_ciphertext_signature_key_or_content_verification_failed"));
   expect(errorText(new Error("CLI 原始错误"))).toBe("CLI 原始错误");
-  expect(joinBanner(new SecurityWorkflowError(t("security.pairing_canceled"), "canceled", false, false, "restart"))).toMatchObject({ action: "restart", text: "Pairing canceled" });
+  expect(joinBanner(new SecurityWorkflowError(t("security.pairing_canceled"), SecurityErrorCode.CANCELED, false, false, "restart"))).toMatchObject({ action: "restart", text: "Pairing canceled" });
   expect(await pushContent({ tag: "example/NOTIFY_KIND_SCHEDULED" })).toEqual({ title: "remote-agent", body: "Scheduled tasks have new results" });
   expect(await pushContent({ body: "Original push content" })).toEqual({ title: "remote-agent", body: "Original push content" });
   expect(launchText("startup.the_page_could_not_load_check_your_connection_and", "en")).toBe("The page could not load. Check your connection and retry.");
