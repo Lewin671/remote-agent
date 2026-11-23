@@ -131,7 +131,6 @@ import {
   SecurityErrorCode,
   SecurityForegroundEventSchema,
   SecurityOpRequestEventSchema,
-  SecurityStorageOp,
   type SecurityOpRequestEvent,
   type SecurityOpResultEffect,
   type SecurityStatusChangedEffect,
@@ -252,6 +251,7 @@ import {
 } from "../gen/remoteagent/core/v1/shared_files_pb";
 import { SharedFileExecutor, WEB_LOCAL_CACHE_MAX_BYTES } from "../shared-files";
 import { sharedFileStore, type SharedFileStore } from "../shared-file-store";
+import { registerActiveSharedFileClearer } from "./security-store-v4";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -834,6 +834,7 @@ export class CoreHost {
   private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
   private unsubscribeLocale?: () => void;
+  private unregisterSharedFileClearer?: () => void;
   readonly sharedFiles: SharedFileExecutor;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
@@ -877,6 +878,7 @@ export class CoreHost {
       },
       onDeliverOnly: opts.onDeliverLargeSharedFile,
     });
+    this.unregisterSharedFileClearer = registerActiveSharedFileClearer(() => this.sharedFileClearAllAndWait());
 
     if (this.remote) {
       this.remote.attachHost({
@@ -1231,6 +1233,11 @@ export class CoreHost {
   }
   sharedFileClearAll() {
     if (!this.closed) this.emit({ case: "sharedFileClearAll", value: create(SharedFileClearAllActionSchema) });
+  }
+
+  async sharedFileClearAllAndWait(): Promise<void> {
+    if (!this.closed) this.sharedFileClearAll();
+    await this.sharedFiles.whenIdle();
   }
   sharedFileDurationProbed(sessionId: string, fileId: string, durationMs: number) {
     if (!this.closed && sessionId && fileId && Number.isFinite(durationMs) && durationMs > 0) {
@@ -2968,9 +2975,6 @@ export class CoreHost {
         break;
 
       default:
-        if (val.case === "securityStorage" && val.value.op === SecurityStorageOp.CLEAR_ALL) {
-          this.sharedFileClearAll();
-        }
         this.executor?.securityEffect?.(val);
         break;
     }
@@ -3102,6 +3106,8 @@ export class CoreHost {
     if (this.closed) return;
     this.unsubscribeLocale?.();
     this.unsubscribeLocale = undefined;
+    this.unregisterSharedFileClearer?.();
+    this.unregisterSharedFileClearer = undefined;
     this.sharedFiles.setAutoOpenHandler(undefined);
     this.stop();
     this.closed = true;

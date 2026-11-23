@@ -1,6 +1,8 @@
 import { create } from "@bufbuild/protobuf";
+import { IDBFactory } from "fake-indexeddb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CoreHost } from "./core/host";
+import { clearAllSecurityV4, SecurityStoreV4 } from "./core/security-store-v4";
 import { DemoRemote } from "./dev/demo";
 import {
   EventSchema as WireEventSchema,
@@ -612,6 +614,69 @@ describe("CoreHost real Core WASM shared-file smoke test", () => {
     } finally {
       host.dispose();
       demo.dispose();
+    }
+  });
+
+  it("routes logout CLEAR_ALL through active CoreHost FIFO queue once and waits for in-flight writes before resolving", async () => {
+    const baseStore = new MemorySharedFileStore();
+    const order: string[] = [];
+    let releaseWrite!: () => void;
+    const writeGate = new Promise<void>((res) => { releaseWrite = res; });
+    let clearAllCount = 0;
+
+    const origWrite = baseStore.writeChunk.bind(baseStore);
+    const origClear = baseStore.clearAll.bind(baseStore);
+    vi.spyOn(baseStore, "writeChunk").mockImplementation(async (params) => {
+      order.push("write:start");
+      await writeGate;
+      await origWrite(params);
+      order.push("write:done");
+    });
+    vi.spyOn(baseStore, "clearAll").mockImplementation(async () => {
+      clearAllCount++;
+      order.push("clearAll");
+      await origClear();
+    });
+
+    const host = new CoreHost(undefined, { sharedFileStore: baseStore });
+    try {
+      const payload = new Uint8Array([1, 2, 3, 4]);
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", payload));
+      // Enqueue a slow WriteChunk onto the host's FIFO queue.
+      host.sharedFiles.handleWriteChunk(
+        create(SharedFileWriteChunkEffectSchema, {
+          opId: 1n,
+          sessionId: "s-out",
+          fileId: "f-out",
+          displayName: "out.bin",
+          offset: 0n,
+          data: payload,
+          totalSizeBytes: BigInt(payload.length),
+          chunkBytes: 4,
+          committedOffset: BigInt(payload.length),
+          expectedSha256: hash,
+          resetPartial: true,
+        }),
+      );
+      await vi.waitFor(() => expect(order).toEqual(["write:start"]));
+
+      // Logout triggers CLEAR_ALL: must wait for the in-flight WriteChunk, then run ClearAll ONCE.
+      const secStore = new SecurityStoreV4(() => new IDBFactory());
+      let logoutResolved = false;
+      const logoutPromise = clearAllSecurityV4(secStore).then(() => { logoutResolved = true; });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(logoutResolved).toBe(false);
+
+      releaseWrite();
+      await logoutPromise;
+
+      expect(logoutResolved).toBe(true);
+      expect(clearAllCount).toBe(1);
+      expect(order).toEqual(["write:start", "write:done", "clearAll"]);
+      expect(await baseStore.scanLocal()).toEqual([]);
+    } finally {
+      host.dispose();
     }
   });
 });

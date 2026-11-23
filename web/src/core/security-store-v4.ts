@@ -152,8 +152,20 @@ function broadcastLogout(): void {
   } catch { /* ignore */ }
 }
 
+const activeSharedFileClearers = new Set<() => Promise<void>>();
+
+/** Registers an active CoreHost's queued shared-file ClearAll handler for logout coordination. */
+export function registerActiveSharedFileClearer(fn: () => Promise<void>): () => void {
+  activeSharedFileClearers.add(fn);
+  return () => { activeSharedFileClearers.delete(fn); };
+}
+
 async function clearAccountCaches(): Promise<void> {
   await clearEventCache().catch(() => undefined);
+  if (activeSharedFileClearers.size > 0) {
+    await Promise.all([...activeSharedFileClearers].map((fn) => fn().catch(() => undefined)));
+    return;
+  }
   await import("../shared-file-store").then((m) => m.sharedFileStore.clearAll()).catch(() => undefined);
 }
 
