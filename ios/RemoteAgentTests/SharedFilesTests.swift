@@ -331,6 +331,105 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         #expect(server2.count == 0)
     }
 
+    @Test func sharedFileStorageEffectsEnqueueInBatchOrderAcrossActorReentrancy() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("sf-order-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let account = Account(
+            server: "http://127.0.0.1:1",
+            deviceId: "00112233445566778899aabbccddeeff",
+            accountId: "11111111111111111111111111111111"
+        )
+        let remote = try Remote(account: account, http: HTTP(), allowPlainHttp: true)
+        let screens = CoreScreens()
+        let store = SharedFileStore(root: root)
+
+        let payload = Data("fresh-second-batch".utf8)
+        let hash = Data(SHA256.hash(data: payload))
+        let navEntered = AsyncStream<Void>.makeStream()
+        let resumeBatch1 = AsyncStream<Void>.makeStream()
+        let host = try CoreHost.live(
+            remote: remote,
+            account: account,
+            defaults: UserDefaults(suiteName: "sf-order-\(UUID().uuidString)")!,
+            screens: screens,
+            sharedFileStore: store,
+            demoMode: true,
+            onNavigate: { _ in }
+        )
+        defer { Task { await host.closeAsync() } }
+        await host.setNavigateSuspendHookForTesting {
+            navEntered.continuation.yield(())
+            var it = resumeBatch1.stream.makeAsyncIterator()
+            _ = await it.next()
+        }
+
+        // Seed an initial partial file so Batch 1's DeletePartial has real work to remove.
+        let seedWrite = PBSharedFileWriteChunkEffect.with {
+            $0.opID = 1
+            $0.sessionID = "s1"
+            $0.fileID = "f1"
+            $0.displayName = "note.txt"
+            $0.offset = 0
+            $0.data = Data("stale-first".utf8)
+            $0.totalSizeBytes = Int64(payload.count)
+            $0.chunkBytes = 100
+            $0.committedOffset = Int64("stale-first".utf8.count)
+            $0.expectedSha256 = hash
+            $0.resetPartial = true
+        }
+        #expect(store.writeChunk(seedWrite).ok)
+
+        // Batch 1 contains an effect that suspends (.navigate) BEFORE .sharedFileDeletePartial.
+        let batch1: [PBCoreEffect] = [
+            .with {
+                $0.navigate = .with {
+                    $0.route = .session
+                    $0.sessionID = "s1"
+                }
+            },
+            .with {
+                $0.sharedFileDeletePartial = .with {
+                    $0.sessionID = "s1"
+                    $0.fileID = "f1"
+                }
+            },
+        ]
+        let batch2: [PBCoreEffect] = [
+            .with {
+                $0.sharedFileWriteChunk = .with {
+                    $0.opID = 2
+                    $0.sessionID = "s1"
+                    $0.fileID = "f1"
+                    $0.displayName = "note.txt"
+                    $0.offset = 0
+                    $0.data = payload
+                    $0.totalSizeBytes = Int64(payload.count)
+                    $0.chunkBytes = 100
+                    $0.committedOffset = Int64(payload.count)
+                    $0.expectedSha256 = hash
+                    $0.resetPartial = true
+                }
+            },
+        ]
+
+        // Start Batch 1 and hold it deterministically mid-loop at .navigate's await;
+        // while Batch 1 is suspended, run Batch 2 to completion, then release Batch 1.
+        // Because Batch 1 enqueued DeletePartial synchronously before any await,
+        // DeletePartial runs BEFORE Batch 2's WriteChunk and the new partial survives.
+        let task1 = Task { await host.processEffectBatchForTesting(batch1) }
+        _ = await nextEvent(navEntered.stream)
+        await host.processEffectBatchForTesting(batch2)
+        resumeBatch1.continuation.yield(())
+        await task1.value
+        await host.drainSharedFileQueue()
+
+        let scanned = store.scanLocal(opID: 99)
+        let entry = try #require(scanned.entries.first)
+        #expect(!entry.completed)
+        #expect(entry.committedOffset == Int64(payload.count))
+        #expect(entry.bytesOnDisk == Int64(payload.count))
+    }
+
     @Test func aThumbnailIsMadeFromTheCopy() async throws {
         let png = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 20)).image { ctx in
             UIColor.red.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 40, height: 20))

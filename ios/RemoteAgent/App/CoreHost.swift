@@ -1812,9 +1812,102 @@ actor CoreHost: SyncEngine {
         replenishEntropy(minIds: 8, minFloats: 8)
         do {
             let batch = try client.dispatch(envelope)
+            enqueueSharedFileStorageEffects(batch.effects)
             await handleEffects(batch.effects)
         } catch {
             // Core rejects malformed events; keep host loop alive.
+        }
+    }
+
+    #if DEBUG
+    private var navigateSuspendHookForTesting: (@Sendable () async -> Void)?
+
+    func setNavigateSuspendHookForTesting(_ hook: (@Sendable () async -> Void)?) {
+        navigateSuspendHookForTesting = hook
+    }
+
+    func processEffectBatchForTesting(_ effects: [PBCoreEffect]) async {
+        guard !closed else { return }
+        enqueueSharedFileStorageEffects(effects)
+        await handleEffects(effects)
+    }
+    #endif
+
+    /// Synchronously enqueues every shared-file storage Effect in `effects` onto the single
+    /// global FIFO queue before any `await` in `handleEffects` can allow actor reentrancy to
+    /// interleave a later dispatch's storage Effects ahead of this batch.
+    private func enqueueSharedFileStorageEffects(_ effects: [PBCoreEffect]) {
+        guard !closed else { return }
+        for eff in effects {
+            switch eff.effect {
+            case .sharedFileScanLocal(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.scanLocal(opID: eff.opID)
+                    await self?.dispatch { $0.sharedFileLocalScanned = result }
+                }
+
+            case .sharedFileInspectDisk(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.inspectDisk(eff)
+                    await self?.dispatch { $0.sharedFileDiskInspected = result }
+                }
+
+            case .sharedFileWriteChunk(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.writeChunk(eff)
+                    await self?.dispatch { $0.sharedFileWriteChunkResult = result }
+                }
+
+            case .sharedFileVerifyAndCommit(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.verifyAndCommit(eff)
+                    await self?.dispatch { $0.sharedFileVerifyAndCommitResult = result }
+                }
+
+            case .sharedFileDeletePartial(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp {
+                    store.deletePartial(sessionID: eff.sessionID, fileID: eff.fileID)
+                }
+
+            case .sharedFileDeleteLocal(let eff):
+                let store = self.sharedFileStore
+                let clearThumb = self.sharedFileHandlers?.onClearThumbnail
+                let key = SharedFileKey(sessionId: eff.sessionID, fileId: eff.fileID)
+                enqueueSharedFileOp {
+                    store.deleteLocal(sessionID: eff.sessionID, fileID: eff.fileID)
+                    if let clearThumb {
+                        await MainActor.run { clearThumb(key) }
+                    }
+                }
+
+            case .sharedFileDeleteSession(let eff):
+                let store = self.sharedFileStore
+                let clearSession = self.sharedFileHandlers?.onClearSessionThumbnails
+                enqueueSharedFileOp {
+                    store.deleteSession(sessionID: eff.sessionID)
+                    if let clearSession {
+                        await MainActor.run { clearSession(eff.sessionID) }
+                    }
+                }
+
+            case .sharedFileClearAll:
+                let store = self.sharedFileStore
+                let clearAll = self.sharedFileHandlers?.onClearAllThumbnails
+                enqueueSharedFileOp {
+                    store.clearAll()
+                    if let clearAll {
+                        await MainActor.run { clearAll() }
+                    }
+                }
+
+            default:
+                break
+            }
         }
     }
 
@@ -1931,6 +2024,11 @@ actor CoreHost: SyncEngine {
             case .navigate(let n):
                 let handler = onNavigate
                 await MainActor.run { handler(n) }
+                #if DEBUG
+                if let hook = navigateSuspendHookForTesting {
+                    await hook()
+                }
+                #endif
 
             case .attachmentsSettled(let a):
                 await handleAttachmentsSettled(a)
@@ -2135,70 +2233,16 @@ actor CoreHost: SyncEngine {
             case .usageCacheWrite(let eff):
                 defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
 
-            case .sharedFileScanLocal(let eff):
-                let store = self.sharedFileStore
-                enqueueSharedFileOp { [weak self] in
-                    let result = store.scanLocal(opID: eff.opID)
-                    await self?.dispatch { $0.sharedFileLocalScanned = result }
-                }
-
-            case .sharedFileInspectDisk(let eff):
-                let store = self.sharedFileStore
-                enqueueSharedFileOp { [weak self] in
-                    let result = store.inspectDisk(eff)
-                    await self?.dispatch { $0.sharedFileDiskInspected = result }
-                }
-
-            case .sharedFileWriteChunk(let eff):
-                let store = self.sharedFileStore
-                enqueueSharedFileOp { [weak self] in
-                    let result = store.writeChunk(eff)
-                    await self?.dispatch { $0.sharedFileWriteChunkResult = result }
-                }
-
-            case .sharedFileVerifyAndCommit(let eff):
-                let store = self.sharedFileStore
-                enqueueSharedFileOp { [weak self] in
-                    let result = store.verifyAndCommit(eff)
-                    await self?.dispatch { $0.sharedFileVerifyAndCommitResult = result }
-                }
-
-            case .sharedFileDeletePartial(let eff):
-                let store = self.sharedFileStore
-                enqueueSharedFileOp {
-                    store.deletePartial(sessionID: eff.sessionID, fileID: eff.fileID)
-                }
-
-            case .sharedFileDeleteLocal(let eff):
-                let store = self.sharedFileStore
-                let clearThumb = self.sharedFileHandlers?.onClearThumbnail
-                let key = SharedFileKey(sessionId: eff.sessionID, fileId: eff.fileID)
-                enqueueSharedFileOp {
-                    store.deleteLocal(sessionID: eff.sessionID, fileID: eff.fileID)
-                    if let clearThumb {
-                        await MainActor.run { clearThumb(key) }
-                    }
-                }
-
-            case .sharedFileDeleteSession(let eff):
-                let store = self.sharedFileStore
-                let clearSession = self.sharedFileHandlers?.onClearSessionThumbnails
-                enqueueSharedFileOp {
-                    store.deleteSession(sessionID: eff.sessionID)
-                    if let clearSession {
-                        await MainActor.run { clearSession(eff.sessionID) }
-                    }
-                }
-
-            case .sharedFileClearAll:
-                let store = self.sharedFileStore
-                let clearAll = self.sharedFileHandlers?.onClearAllThumbnails
-                enqueueSharedFileOp {
-                    store.clearAll()
-                    if let clearAll {
-                        await MainActor.run { clearAll() }
-                    }
-                }
+            case .sharedFileScanLocal,
+                 .sharedFileInspectDisk,
+                 .sharedFileWriteChunk,
+                 .sharedFileVerifyAndCommit,
+                 .sharedFileDeletePartial,
+                 .sharedFileDeleteLocal,
+                 .sharedFileDeleteSession,
+                 .sharedFileClearAll:
+                // Already enqueued synchronously in batch order before any await.
+                break
 
             case .sharedFileCompleted(let eff):
                 completedSharedFiles.append(eff)
