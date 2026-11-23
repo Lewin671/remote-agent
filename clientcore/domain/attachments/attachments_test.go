@@ -178,18 +178,6 @@ func TestClassifyImageProblemAndSummary(t *testing.T) {
 			wantKey:  text.KeyImageImageExceeds20MbTurnOffOriginalAndSend,
 		},
 		{
-			name:     "local key dot form",
-			in:       &corev1.ImageProblemInput{LocalKey: "image.ios_image_has_no_dimensions"},
-			wantKind: corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DIMENSIONS,
-			wantKey:  text.KeyImageImageDimensionsAreTooLargeResizeItAndRetry,
-		},
-		{
-			name:     "local key underscore form",
-			in:       &corev1.ImageProblemInput{LocalKey: "attachment_ios_cannot_read_the_source_file_remove_it_and_select"},
-			wantKind: corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_SOURCE_MISSING,
-			wantKey:  text.KeyImageThisImageHasNoLocalCopyRemoveItAnd,
-		},
-		{
 			name:      "error code resource_exhausted",
 			in:        &corev1.ImageProblemInput{ErrorCode: "resource_exhausted"},
 			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_STORAGE_FULL,

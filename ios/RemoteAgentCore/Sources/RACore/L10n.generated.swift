@@ -185,10 +185,6 @@ public enum L10n {
         let key = "attachment_ios_clipboard_empty"
         return format(key, locale: locale, args: [])
     }
-    public static func attachmentIosComputerOfflineConnectToAddFiles(locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_computer_offline_connect_to_add_files"
-        return format(key, locale: locale, args: [])
-    }
     public static func attachmentIosCouldNotConnectToTheComputerRetryTheUpload(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_could_not_connect_to_the_computer_retry_the_upload"
         return format(key, locale: locale, args: [])
@@ -213,10 +209,6 @@ public enum L10n {
         let key = "attachment_ios_file_missing"
         return format(key, locale: locale, args: [])
     }
-    public static func attachmentIosFileTooLargeEachFileMayBeAtMost(value: String, locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_file_too_large_each_file_may_be_at_most"
-        return format(key, locale: locale, args: [value])
-    }
     public static func attachmentIosFileUploadFailedRetryOrSelectTheFileAgain(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_file_upload_failed_retry_or_select_the_file_again"
         return format(key, locale: locale, args: [])
@@ -231,14 +223,6 @@ public enum L10n {
     }
     public static func attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_file_verification_failed_the_file_may_have_changed_select"
-        return format(key, locale: locale, args: [])
-    }
-    public static func attachmentIosFilesLimitNotice(limit: Int, locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_files_limit_notice"
-        return format(key, locale: locale, args: [Int64(limit)])
-    }
-    public static func attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd(locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_folders_cannot_be_sent_directly_compress_the_folder_and"
         return format(key, locale: locale, args: [])
     }
     public static func attachmentIosImageMissing(locale: String = MessageLocale.current) -> String {
@@ -276,14 +260,6 @@ public enum L10n {
     public static func attachmentIosPreparing(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_preparing"
         return format(key, locale: locale, args: [])
-    }
-    public static func attachmentIosRestoreFilesLimit(count: Int, locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_restore_files_limit"
-        return format(key, locale: locale, args: [Int64(count)])
-    }
-    public static func attachmentIosRestoreImagesLimit(count: Int, have: Int, limit: Int, locale: String = MessageLocale.current) -> String {
-        let key = "attachment_ios_restore_images_limit"
-        return format(key, locale: locale, args: [Int64(count), Int64(have), Int64(limit)])
     }
     public static func attachmentIosRestoreUnavailable(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_restore_unavailable"
@@ -1585,10 +1561,6 @@ public enum L10n {
         let key = "image_ios_attachment_storage"
         return format(key, locale: locale, args: [value])
     }
-    public static func imageIosAttachmentsExceedThisComputerSFileCountOrSize(locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_attachments_exceed_this_computer_s_file_count_or_size"
-        return format(key, locale: locale, args: [])
-    }
     public static func imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_attachments_need_uploading_again_complete_the_upload_before_sending"
         return format(key, locale: locale, args: [])
@@ -1656,10 +1628,6 @@ public enum L10n {
     public static func imageIosFullSizeImagesViewedOnWillBeClearedAnd(value: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_full_size_images_viewed_on_will_be_cleared_and"
         return format(key, locale: locale, args: [value])
-    }
-    public static func imageIosGeneratedBy(agent: String, locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_generated_by"
-        return format(key, locale: locale, args: [agent])
     }
     public static func imageIosGeneratedSize(size: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_generated_size"
@@ -1745,10 +1713,6 @@ public enum L10n {
         let key = "image_ios_pixels_exceed_this_phone_s_limit_reduced_to_1"
         return format(key, locale: locale, args: [value])
     }
-    public static func imageIosPlaceholderIndex(index: String, locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_placeholder_index"
-        return format(key, locale: locale, args: [index])
-    }
     public static func imageIosReEncodedAtHighestQualityAfterCorrectingOrientation(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_re_encoded_at_highest_quality_after_correcting_orientation"
         return format(key, locale: locale, args: [])
@@ -1777,14 +1741,6 @@ public enum L10n {
         let key = "image_ios_the_computer_did_not_provide_an_image_id"
         return format(key, locale: locale, args: [])
     }
-    public static func imageIosThisComputerDoesNotSupportFileUploads(locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_this_computer_does_not_support_file_uploads"
-        return format(key, locale: locale, args: [])
-    }
-    public static func imageIosThisComputerDoesNotSupportTheseFilesCheckTheir(locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_this_computer_does_not_support_these_files_check_their"
-        return format(key, locale: locale, args: [])
-    }
     public static func imageIosUnselected(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_unselected"
         return format(key, locale: locale, args: [])
@@ -1797,10 +1753,6 @@ public enum L10n {
         let key = "image_ios_upload_progress"
         return format(key, locale: locale, args: [Int64(percent)])
     }
-    public static func imageIosUserPaste(locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_user_paste"
-        return format(key, locale: locale, args: [])
-    }
     public static func imageIosVerificationFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_verification_failed"
         return format(key, locale: locale, args: [reason])
@@ -1808,10 +1760,6 @@ public enum L10n {
     public static func imageIosViewFull(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_view_full"
         return format(key, locale: locale, args: [])
-    }
-    public static func imageIosViewedBy(agent: String, locale: String = MessageLocale.current) -> String {
-        let key = "image_ios_viewed_by"
-        return format(key, locale: locale, args: [agent])
     }
     public static func imageIosViewingCache(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_viewing_cache"
@@ -1896,10 +1844,6 @@ public enum L10n {
     public static func imageRemoveIndex(index: Int, locale: String = MessageLocale.current) -> String {
         let key = "image_remove_index"
         return format(key, locale: locale, args: [Int64(index)])
-    }
-    public static func imageScreenshots(count: Int, locale: String = MessageLocale.current) -> String {
-        let key = "image_screenshots"
-        return format(key, locale: locale, args: [Int64(count)])
     }
     public static func imageShare(locale: String = MessageLocale.current) -> String {
         let key = "image_share"
@@ -2072,6 +2016,10 @@ public enum L10n {
     public static func machineStatusA11YRing(name: String, value: String, locale: String = MessageLocale.current) -> String {
         let key = "machine_status_a11y_ring"
         return format(key, locale: locale, args: [name, value])
+    }
+    public static func machineStatusA11YScrubValue(age: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "machine_status_a11y_scrub_value"
+        return format(key, locale: locale, args: [age, value])
     }
     public static func machineStatusAgentUsage(locale: String = MessageLocale.current) -> String {
         let key = "machine_status_agent_usage"
@@ -6953,10 +6901,6 @@ public enum L10n {
         let key = "shared_file_menu_save_to_device"
         return format(key, locale: locale, args: [])
     }
-    public static func sharedFileMenuSaveToFiles(locale: String = MessageLocale.current) -> String {
-        let key = "shared_file_menu_save_to_files"
-        return format(key, locale: locale, args: [])
-    }
     public static func sharedFileMenuShare(locale: String = MessageLocale.current) -> String {
         let key = "shared_file_menu_share"
         return format(key, locale: locale, args: [])
@@ -8593,10 +8537,6 @@ public enum L10nMessage {
         let key = "attachment_ios_clipboard_empty"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func attachmentIosComputerOfflineConnectToAddFiles() -> LocalizedMessage {
-        let key = "attachment_ios_computer_offline_connect_to_add_files"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func attachmentIosCouldNotConnectToTheComputerRetryTheUpload() -> LocalizedMessage {
         let key = "attachment_ios_could_not_connect_to_the_computer_retry_the_upload"
         return LocalizedMessage(key: key, arguments: [])
@@ -8621,10 +8561,6 @@ public enum L10nMessage {
         let key = "attachment_ios_file_missing"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func attachmentIosFileTooLargeEachFileMayBeAtMost(value: String) -> LocalizedMessage {
-        let key = "attachment_ios_file_too_large_each_file_may_be_at_most"
-        return LocalizedMessage(key: key, arguments: [.string(value)])
-    }
     public static func attachmentIosFileUploadFailedRetryOrSelectTheFileAgain() -> LocalizedMessage {
         let key = "attachment_ios_file_upload_failed_retry_or_select_the_file_again"
         return LocalizedMessage(key: key, arguments: [])
@@ -8639,14 +8575,6 @@ public enum L10nMessage {
     }
     public static func attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect() -> LocalizedMessage {
         let key = "attachment_ios_file_verification_failed_the_file_may_have_changed_select"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func attachmentIosFilesLimitNotice(limit: Int) -> LocalizedMessage {
-        let key = "attachment_ios_files_limit_notice"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(limit))])
-    }
-    public static func attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd() -> LocalizedMessage {
-        let key = "attachment_ios_folders_cannot_be_sent_directly_compress_the_folder_and"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func attachmentIosImageMissing() -> LocalizedMessage {
@@ -8684,14 +8612,6 @@ public enum L10nMessage {
     public static func attachmentIosPreparing() -> LocalizedMessage {
         let key = "attachment_ios_preparing"
         return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func attachmentIosRestoreFilesLimit(count: Int) -> LocalizedMessage {
-        let key = "attachment_ios_restore_files_limit"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
-    }
-    public static func attachmentIosRestoreImagesLimit(count: Int, have: Int, limit: Int) -> LocalizedMessage {
-        let key = "attachment_ios_restore_images_limit"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(have)), .integer(Int64(limit))])
     }
     public static func attachmentIosRestoreUnavailable() -> LocalizedMessage {
         let key = "attachment_ios_restore_unavailable"
@@ -9993,10 +9913,6 @@ public enum L10nMessage {
         let key = "image_ios_attachment_storage"
         return LocalizedMessage(key: key, arguments: [.string(value)])
     }
-    public static func imageIosAttachmentsExceedThisComputerSFileCountOrSize() -> LocalizedMessage {
-        let key = "image_ios_attachments_exceed_this_computer_s_file_count_or_size"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending() -> LocalizedMessage {
         let key = "image_ios_attachments_need_uploading_again_complete_the_upload_before_sending"
         return LocalizedMessage(key: key, arguments: [])
@@ -10064,10 +9980,6 @@ public enum L10nMessage {
     public static func imageIosFullSizeImagesViewedOnWillBeClearedAnd(value: String) -> LocalizedMessage {
         let key = "image_ios_full_size_images_viewed_on_will_be_cleared_and"
         return LocalizedMessage(key: key, arguments: [.string(value)])
-    }
-    public static func imageIosGeneratedBy(agent: String) -> LocalizedMessage {
-        let key = "image_ios_generated_by"
-        return LocalizedMessage(key: key, arguments: [.string(agent)])
     }
     public static func imageIosGeneratedSize(size: String) -> LocalizedMessage {
         let key = "image_ios_generated_size"
@@ -10153,10 +10065,6 @@ public enum L10nMessage {
         let key = "image_ios_pixels_exceed_this_phone_s_limit_reduced_to_1"
         return LocalizedMessage(key: key, arguments: [.string(value)])
     }
-    public static func imageIosPlaceholderIndex(index: String) -> LocalizedMessage {
-        let key = "image_ios_placeholder_index"
-        return LocalizedMessage(key: key, arguments: [.string(index)])
-    }
     public static func imageIosReEncodedAtHighestQualityAfterCorrectingOrientation() -> LocalizedMessage {
         let key = "image_ios_re_encoded_at_highest_quality_after_correcting_orientation"
         return LocalizedMessage(key: key, arguments: [])
@@ -10185,14 +10093,6 @@ public enum L10nMessage {
         let key = "image_ios_the_computer_did_not_provide_an_image_id"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func imageIosThisComputerDoesNotSupportFileUploads() -> LocalizedMessage {
-        let key = "image_ios_this_computer_does_not_support_file_uploads"
-        return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func imageIosThisComputerDoesNotSupportTheseFilesCheckTheir() -> LocalizedMessage {
-        let key = "image_ios_this_computer_does_not_support_these_files_check_their"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func imageIosUnselected() -> LocalizedMessage {
         let key = "image_ios_unselected"
         return LocalizedMessage(key: key, arguments: [])
@@ -10205,10 +10105,6 @@ public enum L10nMessage {
         let key = "image_ios_upload_progress"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
     }
-    public static func imageIosUserPaste() -> LocalizedMessage {
-        let key = "image_ios_user_paste"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func imageIosVerificationFailed(reason: String) -> LocalizedMessage {
         let key = "image_ios_verification_failed"
         return LocalizedMessage(key: key, arguments: [.string(reason)])
@@ -10216,10 +10112,6 @@ public enum L10nMessage {
     public static func imageIosViewFull() -> LocalizedMessage {
         let key = "image_ios_view_full"
         return LocalizedMessage(key: key, arguments: [])
-    }
-    public static func imageIosViewedBy(agent: String) -> LocalizedMessage {
-        let key = "image_ios_viewed_by"
-        return LocalizedMessage(key: key, arguments: [.string(agent)])
     }
     public static func imageIosViewingCache() -> LocalizedMessage {
         let key = "image_ios_viewing_cache"
@@ -10304,10 +10196,6 @@ public enum L10nMessage {
     public static func imageRemoveIndex(index: Int) -> LocalizedMessage {
         let key = "image_remove_index"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(index))])
-    }
-    public static func imageScreenshots(count: Int) -> LocalizedMessage {
-        let key = "image_screenshots"
-        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
     }
     public static func imageShare() -> LocalizedMessage {
         let key = "image_share"
@@ -10480,6 +10368,10 @@ public enum L10nMessage {
     public static func machineStatusA11YRing(name: String, value: String) -> LocalizedMessage {
         let key = "machine_status_a11y_ring"
         return LocalizedMessage(key: key, arguments: [.string(name), .string(value)])
+    }
+    public static func machineStatusA11YScrubValue(age: String, value: String) -> LocalizedMessage {
+        let key = "machine_status_a11y_scrub_value"
+        return LocalizedMessage(key: key, arguments: [.string(age), .string(value)])
     }
     public static func machineStatusAgentUsage() -> LocalizedMessage {
         let key = "machine_status_agent_usage"
@@ -15361,10 +15253,6 @@ public enum L10nMessage {
         let key = "shared_file_menu_save_to_device"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func sharedFileMenuSaveToFiles() -> LocalizedMessage {
-        let key = "shared_file_menu_save_to_files"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func sharedFileMenuShare() -> LocalizedMessage {
         let key = "shared_file_menu_share"
         return LocalizedMessage(key: key, arguments: [])
@@ -16945,20 +16833,16 @@ public enum L10nText {
         case "attachment.ios_choose_machine": return L10n.format("attachment_ios_choose_machine", locale: locale, args: [])
         case "attachment.ios_choose_photos": return L10n.format("attachment_ios_choose_photos", locale: locale, args: [])
         case "attachment.ios_clipboard_empty": return L10n.format("attachment_ios_clipboard_empty", locale: locale, args: [])
-        case "attachment.ios_computer_offline_connect_to_add_files": return L10n.format("attachment_ios_computer_offline_connect_to_add_files", locale: locale, args: [])
         case "attachment.ios_could_not_connect_to_the_computer_retry_the_upload": return L10n.format("attachment_ios_could_not_connect_to_the_computer_retry_the_upload", locale: locale, args: [])
         case "attachment.ios_could_not_create_the_local_cache_directory": return L10n.format("attachment_ios_could_not_create_the_local_cache_directory", locale: locale, args: [strArg(args["value"])])
         case "attachment.ios_could_not_restore_pending_attachments_retry": return L10n.format("attachment_ios_could_not_restore_pending_attachments_retry", locale: locale, args: [])
         case "attachment.ios_could_not_save_pending_images": return L10n.format("attachment_ios_could_not_save_pending_images", locale: locale, args: [])
         case "attachment.ios_file_count": return L10n.format("attachment_ios_file_count", locale: locale, args: [intArg(args["count"]), intArg(args["limit"])])
         case "attachment.ios_file_missing": return L10n.format("attachment_ios_file_missing", locale: locale, args: [])
-        case "attachment.ios_file_too_large_each_file_may_be_at_most": return L10n.format("attachment_ios_file_too_large_each_file_may_be_at_most", locale: locale, args: [strArg(args["value"])])
         case "attachment.ios_file_upload_failed_retry_or_select_the_file_again": return L10n.format("attachment_ios_file_upload_failed_retry_or_select_the_file_again", locale: locale, args: [])
         case "attachment.ios_file_upload_is_not_authorized_check_device_authorization": return L10n.format("attachment_ios_file_upload_is_not_authorized_check_device_authorization", locale: locale, args: [])
         case "attachment.ios_file_upload_state_was_not_saved": return L10n.format("attachment_ios_file_upload_state_was_not_saved", locale: locale, args: [strArg(args["value"])])
         case "attachment.ios_file_verification_failed_the_file_may_have_changed_select": return L10n.format("attachment_ios_file_verification_failed_the_file_may_have_changed_select", locale: locale, args: [])
-        case "attachment.ios_files_limit_notice": return L10n.format("attachment_ios_files_limit_notice", locale: locale, args: [intArg(args["limit"])])
-        case "attachment.ios_folders_cannot_be_sent_directly_compress_the_folder_and": return L10n.format("attachment_ios_folders_cannot_be_sent_directly_compress_the_folder_and", locale: locale, args: [])
         case "attachment.ios_image_missing": return L10n.format("attachment_ios_image_missing", locale: locale, args: [])
         case "attachment.ios_missing": return L10n.format("attachment_ios_missing", locale: locale, args: [])
         case "attachment.ios_not_saved": return L10n.format("attachment_ios_not_saved", locale: locale, args: [])
@@ -16968,8 +16852,6 @@ public enum L10nText {
         case "attachment.ios_pending_attachments_have_not_been_restored_retry": return L10n.format("attachment_ios_pending_attachments_have_not_been_restored_retry", locale: locale, args: [])
         case "attachment.ios_photos": return L10n.format("attachment_ios_photos", locale: locale, args: [])
         case "attachment.ios_preparing": return L10n.format("attachment_ios_preparing", locale: locale, args: [])
-        case "attachment.ios_restore_files_limit": return L10n.format("attachment_ios_restore_files_limit", locale: locale, args: [intArg(args["count"])])
-        case "attachment.ios_restore_images_limit": return L10n.format("attachment_ios_restore_images_limit", locale: locale, args: [intArg(args["count"]), intArg(args["have"]), intArg(args["limit"])])
         case "attachment.ios_restore_unavailable": return L10n.format("attachment_ios_restore_unavailable", locale: locale, args: [])
         case "attachment.ios_signed_out_of_the_account": return L10n.format("attachment_ios_signed_out_of_the_account", locale: locale, args: [])
         case "attachment.ios_the_app_restarted_delivery_of_this_message_is_unconfirmed": return L10n.format("attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed", locale: locale, args: [])
@@ -17052,17 +16934,17 @@ public enum L10nText {
         case "composer.message_unconfirmed": return L10n.format("composer_message_unconfirmed", locale: locale, args: [])
         case "composer.not_written": return L10n.format("composer_not_written", locale: locale, args: [])
         case "composer.plan_placeholder": return L10n.format("composer_plan_placeholder", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve1(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "composer.ready_timeout": return L10n.format("composer_ready_timeout", locale: locale, args: [])
         case "composer.restore": return L10n.format("composer_restore", locale: locale, args: [])
         case "composer.restore_files_full": return L10n.format("composer_restore_files_full", locale: locale, args: [intArg(args["count"])])
         case "composer.restore_images_full": return L10n.format("composer_restore_images_full", locale: locale, args: [intArg(args["count"]), intArg(args["existing"])])
         case "composer.running_placeholder": return L10n.format("composer_running_placeholder", locale: locale, args: [])
         case "composer.send": return L10n.format("composer_send", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve1(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "composer.send_after": return L10n.format("composer_send_after", locale: locale, args: [])
         case "composer.send_failure": return L10n.format("composer_send_failure", locale: locale, args: [strArg(args["reason"])])
         case "composer.shortcut": return L10n.format("composer_shortcut", locale: locale, args: [strArg(args["keys"])])
@@ -17207,17 +17089,17 @@ public enum L10nText {
         case "errors.the_computer_did_not_return_an_attachment_id": return L10n.format("errors_the_computer_did_not_return_an_attachment_id", locale: locale, args: [])
         case "errors.the_computer_is_offline_the_command_was_not_sent": return L10n.format("errors_the_computer_is_offline_the_command_was_not_sent", locale: locale, args: [])
         case "errors.the_computer_is_still_verifying_attachments_retry_shortly": return L10n.format("errors_the_computer_is_still_verifying_attachments_retry_shortly", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve2(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "errors.the_computer_s_reply_could_not_be_verified_command": return L10n.format("errors_the_computer_s_reply_could_not_be_verified_command", locale: locale, args: [])
         case "errors.the_draft_could_not_be_restored_you_can_still": return L10n.format("errors_the_draft_could_not_be_restored_you_can_still", locale: locale, args: [])
         case "errors.the_draft_could_not_be_saved_locally_keep_the": return L10n.format("errors_the_draft_could_not_be_saved_locally_keep_the", locale: locale, args: [])
         case "errors.the_plan_display_changed_review_it_again": return L10n.format("errors_the_plan_display_changed_review_it_again", locale: locale, args: [])
         case "errors.the_previous_operation_s_outcome_is_still_unknown_reload": return L10n.format("errors_the_previous_operation_s_outcome_is_still_unknown_reload", locale: locale, args: [])
         case "errors.the_relay_did_not_provide_a_verifiable_execution_result": return L10n.format("errors_the_relay_did_not_provide_a_verifiable_execution_result", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve2(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "errors.the_request_on_the_computer_changed_review_it_again": return L10n.format("errors_the_request_on_the_computer_changed_review_it_again", locale: locale, args: [])
         case "errors.the_server_address_cannot_include_a_username_or_password": return L10n.format("errors_the_server_address_cannot_include_a_username_or_password", locale: locale, args: [])
         case "errors.the_server_does_not_recognize_this_device_it_may": return L10n.format("errors_the_server_does_not_recognize_this_device_it_may", locale: locale, args: [])
@@ -17305,7 +17187,6 @@ public enum L10nText {
         case "image.image_exceeds_20_mb_turn_off_original_and_send": return L10n.format("image_image_exceeds_20_mb_turn_off_original_and_send", locale: locale, args: [])
         case "image.ios_actions_hint": return L10n.format("image_ios_actions_hint", locale: locale, args: [])
         case "image.ios_attachment_storage": return L10n.format("image_ios_attachment_storage", locale: locale, args: [strArg(args["value"])])
-        case "image.ios_attachments_exceed_this_computer_s_file_count_or_size": return L10n.format("image_ios_attachments_exceed_this_computer_s_file_count_or_size", locale: locale, args: [])
         case "image.ios_attachments_need_uploading_again_complete_the_upload_before_sending": return L10n.format("image_ios_attachments_need_uploading_again_complete_the_upload_before_sending", locale: locale, args: [])
         case "image.ios_cannot_decode_image": return L10n.format("image_ios_cannot_decode_image", locale: locale, args: [])
         case "image.ios_cannot_decode_this_image": return L10n.format("image_ios_cannot_decode_this_image", locale: locale, args: [])
@@ -17323,7 +17204,6 @@ public enum L10nText {
         case "image.ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages": return L10n.format("image_ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages", locale: locale, args: [])
         case "image.ios_empty": return L10n.format("image_ios_empty", locale: locale, args: [])
         case "image.ios_full_size_images_viewed_on_will_be_cleared_and": return L10n.format("image_ios_full_size_images_viewed_on_will_be_cleared_and", locale: locale, args: [strArg(args["value"])])
-        case "image.ios_generated_by": return L10n.format("image_ios_generated_by", locale: locale, args: [strArg(args["agent"])])
         case "image.ios_generated_size": return L10n.format("image_ios_generated_size", locale: locale, args: [strArg(args["size"])])
         case "image.ios_gif_contains_an_unrecognized_block": return L10n.format("image_ios_gif_contains_an_unrecognized_block", locale: locale, args: [])
         case "image.ios_gif_is_truncated": return L10n.format("image_ios_gif_is_truncated", locale: locale, args: [])
@@ -17345,7 +17225,6 @@ public enum L10nText {
         case "image.ios_page": return L10n.format("image_ios_page", locale: locale, args: [intArg(args["count"]), intArg(args["index"])])
         case "image.ios_pending_and_unconfirmed_attachments": return L10n.format("image_ios_pending_and_unconfirmed_attachments", locale: locale, args: [])
         case "image.ios_pixels_exceed_this_phone_s_limit_reduced_to_1": return L10n.format("image_ios_pixels_exceed_this_phone_s_limit_reduced_to_1", locale: locale, args: [strArg(args["value"])])
-        case "image.ios_placeholder_index": return L10n.format("image_ios_placeholder_index", locale: locale, args: [strArg(args["index"])])
         case "image.ios_re_encoded_at_highest_quality_after_correcting_orientation": return L10n.format("image_ios_re_encoded_at_highest_quality_after_correcting_orientation", locale: locale, args: [])
         case "image.ios_retained_original": return L10n.format("image_ios_retained_original", locale: locale, args: [])
         case "image.ios_save_permission": return L10n.format("image_ios_save_permission", locale: locale, args: [])
@@ -17353,20 +17232,11 @@ public enum L10nText {
         case "image.ios_selected_count": return L10n.format("image_ios_selected_count", locale: locale, args: [intArg(args["count"]), intArg(args["limit"])])
         case "image.ios_session_removed": return L10n.format("image_ios_session_removed", locale: locale, args: [])
         case "image.ios_the_computer_did_not_provide_an_image_id": return L10n.format("image_ios_the_computer_did_not_provide_an_image_id", locale: locale, args: [])
-        case "image.ios_this_computer_does_not_support_file_uploads": return L10n.format("image_ios_this_computer_does_not_support_file_uploads", locale: locale, args: [])
-        case "image.ios_this_computer_does_not_support_these_files_check_their": return L10n.format("image_ios_this_computer_does_not_support_these_files_check_their", locale: locale, args: [])
         case "image.ios_unselected": return L10n.format("image_ios_unselected", locale: locale, args: [])
         case "image.ios_unsupported_image_format": return L10n.format("image_ios_unsupported_image_format", locale: locale, args: [])
         case "image.ios_upload_progress": return L10n.format("image_ios_upload_progress", locale: locale, args: [intArg(args["percent"])])
-        case "image.ios_user_paste": return L10n.format("image_ios_user_paste", locale: locale, args: [])
         case "image.ios_verification_failed": return L10n.format("image_ios_verification_failed", locale: locale, args: [strArg(args["reason"])])
         case "image.ios_view_full": return L10n.format("image_ios_view_full", locale: locale, args: [])
-        case "image.ios_viewed_by": return L10n.format("image_ios_viewed_by", locale: locale, args: [strArg(args["agent"])])
-        default: return nil
-        }
-    }
-    private static func resolve3(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "image.ios_viewing_cache": return L10n.format("image_ios_viewing_cache", locale: locale, args: [])
         case "image.ios_zoom": return L10n.format("image_ios_zoom", locale: locale, args: [])
         case "image.load_connected": return L10n.format("image_load_connected", locale: locale, args: [])
@@ -17380,6 +17250,11 @@ public enum L10nText {
         case "image.original_missing": return L10n.format("image_original_missing", locale: locale, args: [])
         case "image.original_not_uploaded": return L10n.format("image_original_not_uploaded", locale: locale, args: [])
         case "image.original_on_computer": return L10n.format("image_original_on_computer", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve3(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "image.placeholder": return L10n.format("image_placeholder", locale: locale, args: [intArg(args["index"])])
         case "image.position": return L10n.format("image_position", locale: locale, args: [intArg(args["count"]), intArg(args["index"])])
         case "image.position_state": return L10n.format("image_position_state", locale: locale, args: [intArg(args["count"]), intArg(args["index"]), strArg(args["state"])])
@@ -17388,7 +17263,6 @@ public enum L10nText {
         case "image.previous": return L10n.format("image_previous", locale: locale, args: [])
         case "image.prompt": return L10n.format("image_prompt", locale: locale, args: [])
         case "image.remove_index": return L10n.format("image_remove_index", locale: locale, args: [intArg(args["index"])])
-        case "image.screenshots": return L10n.format("image_screenshots", locale: locale, args: [intArg(args["count"])])
         case "image.share": return L10n.format("image_share", locale: locale, args: [])
         case "image.share_failed": return L10n.format("image_share_failed", locale: locale, args: [strArg(args["reason"])])
         case "image.the_computer_s_attachment_storage_is_full_clear_space": return L10n.format("image_the_computer_s_attachment_storage_is_full_clear_space", locale: locale, args: [])
@@ -17432,6 +17306,7 @@ public enum L10nText {
         case "machine_status.a11y_next_sample": return L10n.format("machine_status_a11y_next_sample", locale: locale, args: [])
         case "machine_status.a11y_prev_sample": return L10n.format("machine_status_a11y_prev_sample", locale: locale, args: [])
         case "machine_status.a11y_ring": return L10n.format("machine_status_a11y_ring", locale: locale, args: [strArg(args["name"]), strArg(args["value"])])
+        case "machine_status.a11y_scrub_value": return L10n.format("machine_status_a11y_scrub_value", locale: locale, args: [strArg(args["age"]), strArg(args["value"])])
         case "machine_status.agent_usage": return L10n.format("machine_status_agent_usage", locale: locale, args: [])
         case "machine_status.axis_1min": return L10n.format("machine_status_axis_1min", locale: locale, args: [])
         case "machine_status.axis_2min": return L10n.format("machine_status_axis_2min", locale: locale, args: [])
@@ -17517,11 +17392,6 @@ public enum L10nText {
         case "models.ios_load_failed": return L10n.format("models_ios_load_failed", locale: locale, args: [strArg(args["agent"]), strArg(args["reason"])])
         case "models.ios_picker": return L10n.format("models_ios_picker", locale: locale, args: [])
         case "models.ios_reading_machine": return L10n.format("models_ios_reading_machine", locale: locale, args: [strArg(args["name"])])
-        default: return nil
-        }
-    }
-    private static func resolve4(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "models.load_failed_reason": return L10n.format("models_load_failed_reason", locale: locale, args: [strArg(args["agent"]), strArg(args["reason"])])
         case "models.reading_machine": return L10n.format("models_reading_machine", locale: locale, args: [strArg(args["name"])])
         case "models.standard_only": return L10n.format("models_standard_only", locale: locale, args: [])
@@ -17535,6 +17405,11 @@ public enum L10nText {
         case "modes.agent_own": return L10n.format("modes_agent_own", locale: locale, args: [strArg(args["agent"])])
         case "modes.agy_ask_desc": return L10n.format("modes_agy_ask_desc", locale: locale, args: [])
         case "modes.agy_plan_desc": return L10n.format("modes_agy_plan_desc", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve4(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "modes.ask": return L10n.format("modes_ask", locale: locale, args: [])
         case "modes.ask_desc": return L10n.format("modes_ask_desc", locale: locale, args: [])
         case "modes.ask_generic_desc": return L10n.format("modes_ask_generic_desc", locale: locale, args: [])
@@ -17672,11 +17547,6 @@ public enum L10nText {
         case "projects.removed": return L10n.format("projects_removed", locale: locale, args: [])
         case "projects.save_failed": return L10n.format("projects_save_failed", locale: locale, args: [strArg(args["reason"])])
         case "projects.save_failed_reason": return L10n.format("projects_save_failed_reason", locale: locale, args: [strArg(args["reason"])])
-        default: return nil
-        }
-    }
-    private static func resolve5(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "projects.saving_settings": return L10n.format("projects_saving_settings", locale: locale, args: [])
         case "projects.search": return L10n.format("projects_search", locale: locale, args: [])
         case "projects.search_empty": return L10n.format("projects_search_empty", locale: locale, args: [strArg(args["query"])])
@@ -17690,6 +17560,11 @@ public enum L10nText {
         case "queue.attachments_a11y": return L10n.format("queue_attachments_a11y", locale: locale, args: [intArg(args["count"])])
         case "queue.cancel_all": return L10n.format("queue_cancel_all", locale: locale, args: [])
         case "queue.cancel_failed": return L10n.format("queue_cancel_failed", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve5(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "queue.canceled": return L10n.format("queue_canceled", locale: locale, args: [])
         case "queue.canceled_count": return L10n.format("queue_canceled_count", locale: locale, args: [intArg(args["count"])])
         case "queue.canceling": return L10n.format("queue_canceling", locale: locale, args: [])
@@ -17827,11 +17702,6 @@ public enum L10nText {
         case "schedule.in_conversation": return L10n.format("schedule_in_conversation", locale: locale, args: [])
         case "schedule.ios_attention_once": return L10n.format("schedule_ios_attention_once", locale: locale, args: [strArg(args["reason"])])
         case "schedule.ios_choose_a_valid_iana_time_zone": return L10n.format("schedule_ios_choose_a_valid_iana_time_zone", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve6(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "schedule.ios_days": return L10n.format("schedule_ios_days", locale: locale, args: [])
         case "schedule.ios_delete_this_task": return L10n.format("schedule_ios_delete_this_task", locale: locale, args: [])
         case "schedule.ios_enter_a_valid_interval": return L10n.format("schedule_ios_enter_a_valid_interval", locale: locale, args: [])
@@ -17845,6 +17715,11 @@ public enum L10nText {
         case "schedule.ios_seconds": return L10n.format("schedule_ios_seconds", locale: locale, args: [])
         case "schedule.ios_stops_future_automatic_runs_messages_already_sent_and_conversations": return L10n.format("schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations", locale: locale, args: [])
         case "schedule.ios_take_action": return L10n.format("schedule_ios_take_action", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve6(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "schedule.ios_takeover_notice": return L10n.format("schedule_ios_takeover_notice", locale: locale, args: [strArg(args["notice"])])
         case "schedule.ios_task_details": return L10n.format("schedule_ios_task_details", locale: locale, args: [])
         case "schedule.ios_task_not_found": return L10n.format("schedule_ios_task_not_found", locale: locale, args: [])
@@ -17982,11 +17857,6 @@ public enum L10nText {
         case "schedule.when": return L10n.format("schedule_when", locale: locale, args: [])
         case "schedule.workdays_at": return L10n.format("schedule_workdays_at", locale: locale, args: [strArg(args["time"])])
         case "schedule.zone_time": return L10n.format("schedule_zone_time", locale: locale, args: [strArg(args["city"])])
-        default: return nil
-        }
-    }
-    private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "security.a_security_operation_is_unfinished_continue_it_first": return L10n.format("security_a_security_operation_is_unfinished_continue_it_first", locale: locale, args: [])
         case "security.a_security_operation_is_unfinished_continue_the_original_operation": return L10n.format("security_a_security_operation_is_unfinished_continue_the_original_operation", locale: locale, args: [])
         case "security.abandon_this_succession_preparation": return L10n.format("security_abandon_this_succession_preparation", locale: locale, args: [])
@@ -18000,6 +17870,11 @@ public enum L10nText {
         case "security.add_on_authority": return L10n.format("security_add_on_authority", locale: locale, args: [strArg(args["name"])])
         case "security.after_removing_this_unfinished_pairing_generate_a_new_code": return L10n.format("security_after_removing_this_unfinished_pairing_generate_a_new_code", locale: locale, args: [])
         case "security.after_submission_wait_48_hours_the_current_managing_client": return L10n.format("security_after_submission_wait_48_hours_the_current_managing_client", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve7(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "security.allow_to_join": return L10n.format("security_allow_to_join", locale: locale, args: [])
         case "security.apply_again": return L10n.format("security_apply_again", locale: locale, args: [])
         case "security.approved_waiting_for_the_new_device_to_finish_binding": return L10n.format("security_approved_waiting_for_the_new_device_to_finish_binding", locale: locale, args: [])
@@ -18137,11 +18012,6 @@ public enum L10nText {
         case "security.ios_security_state_is_unverified_the_operation_was_not_sent": return L10n.format("security_ios_security_state_is_unverified_the_operation_was_not_sent", locale: locale, args: [])
         case "security.ios_setup_token": return L10n.format("security_ios_setup_token", locale: locale, args: [])
         case "security.ios_setup_token_if_required": return L10n.format("security_ios_setup_token_if_required", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "security.ios_submit_and_verify_original_request": return L10n.format("security_ios_submit_and_verify_original_request", locale: locale, args: [])
         case "security.ios_successor_device": return L10n.format("security_ios_successor_device", locale: locale, args: [])
         case "security.ios_successor_preparation_result_unverified_continue_the_original_operation": return L10n.format("security_ios_successor_preparation_result_unverified_continue_the_original_operation", locale: locale, args: [])
@@ -18155,6 +18025,11 @@ public enum L10nText {
         case "security.ios_the_server_rejected_this_device_s_login": return L10n.format("security_ios_the_server_rejected_this_device_s_login", locale: locale, args: [])
         case "security.ios_the_successor_s_public_key_may_already_be_published": return L10n.format("security_ios_the_successor_s_public_key_may_already_be_published", locale: locale, args: [])
         case "security.ios_this_deletes_the_entire_account_on_the_current_relay": return L10n.format("security_ios_this_deletes_the_entire_account_on_the_current_relay", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve8(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "security.ios_this_device_has_no_available_camera_go_back_to": return L10n.format("security_ios_this_device_has_no_available_camera_go_back_to", locale: locale, args: [])
         case "security.ios_this_device_is_over_5_minutes_behind_the_security": return L10n.format("security_ios_this_device_is_over_5_minutes_behind_the_security", locale: locale, args: [])
         case "security.ios_this_device_is_the_sole_managing_client_transfer_management": return L10n.format("security_ios_this_device_is_the_sole_managing_client_transfer_management", locale: locale, args: [])
@@ -18292,11 +18167,6 @@ public enum L10nText {
         case "security.waiting_for_comparison": return L10n.format("security_waiting_for_comparison", locale: locale, args: [])
         case "security.waiting_for_the_new_device_to_enter_the_pairing": return L10n.format("security_waiting_for_the_new_device_to_enter_the_pairing", locale: locale, args: [])
         case "security.waiting_for_the_successor_device_to_generate_and_save": return L10n.format("security_waiting_for_the_successor_device_to_generate_and_save", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "session.abandon_fork": return L10n.format("session_abandon_fork", locale: locale, args: [])
         case "session.android_compacted_usage": return L10n.format("session_android_compacted_usage", locale: locale, args: [strArg(args["after"]), strArg(args["before"])])
         case "session.android_fork_connected": return L10n.format("session_android_fork_connected", locale: locale, args: [])
@@ -18310,6 +18180,11 @@ public enum L10nText {
         case "session.compacted": return L10n.format("session_compacted", locale: locale, args: [])
         case "session.compacting": return L10n.format("session_compacting", locale: locale, args: [])
         case "session.connect_resume": return L10n.format("session_connect_resume", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve9(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "session.context": return L10n.format("session_context", locale: locale, args: [])
         case "session.context_tokens": return L10n.format("session_context_tokens", locale: locale, args: [strArg(args["total"]), strArg(args["used"])])
         case "session.context_used": return L10n.format("session_context_used", locale: locale, args: [intArg(args["percent"])])
@@ -18447,11 +18322,6 @@ public enum L10nText {
         case "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": return L10n.format("settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache", locale: locale, args: [])
         case "settings.cli_disabled": return L10n.format("settings_cli_disabled", locale: locale, args: [])
         case "settings.cli_disabled_explanation": return L10n.format("settings_cli_disabled_explanation", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "settings.cli_enable_on_computer": return L10n.format("settings_cli_enable_on_computer", locale: locale, args: [])
         case "settings.cli_installed_version": return L10n.format("settings_cli_installed_version", locale: locale, args: [])
         case "settings.cli_new_project_defaults_footer": return L10n.format("settings_cli_new_project_defaults_footer", locale: locale, args: [])
@@ -18465,6 +18335,11 @@ public enum L10nText {
         case "settings.cli_switches_offline_reason": return L10n.format("settings_cli_switches_offline_reason", locale: locale, args: [strArg(args["name"])])
         case "settings.cli_switches_update_error": return L10n.format("settings_cli_switches_update_error", locale: locale, args: [strArg(args["reason"])])
         case "settings.cli_unverified_badge": return L10n.format("settings_cli_unverified_badge", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve10(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "settings.cli_unverified_short": return L10n.format("settings_cli_unverified_short", locale: locale, args: [])
         case "settings.client_name": return L10n.format("settings_client_name", locale: locale, args: [])
         case "settings.clients_add_client": return L10n.format("settings_clients_add_client", locale: locale, args: [])
@@ -18602,11 +18477,6 @@ public enum L10nText {
         case "settings.rejoin_account": return L10n.format("settings_rejoin_account", locale: locale, args: [])
         case "settings.remove_computer_ellipsis": return L10n.format("settings_remove_computer_ellipsis", locale: locale, args: [])
         case "settings.remove_non_authority_footer": return L10n.format("settings_remove_non_authority_footer", locale: locale, args: [strArg(args["name"])])
-        default: return nil
-        }
-    }
-    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "settings.restore_default_name": return L10n.format("settings_restore_default_name", locale: locale, args: [])
         case "settings.runs_on": return L10n.format("settings_runs_on", locale: locale, args: [])
         case "settings.save_error": return L10n.format("settings_save_error", locale: locale, args: [strArg(args["reason"])])
@@ -18620,6 +18490,11 @@ public enum L10nText {
         case "settings.section_this_device": return L10n.format("settings_section_this_device", locale: locale, args: [])
         case "settings.security_notifications": return L10n.format("settings_security_notifications", locale: locale, args: [])
         case "settings.security_summary_non_authority": return L10n.format("settings_security_summary_non_authority", locale: locale, args: [strArg(args["name"])])
+        default: return nil
+        }
+    }
+    private static func resolve11(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "settings.server_and_connection": return L10n.format("settings_server_and_connection", locale: locale, args: [])
         case "settings.session_alerts_are_off_you_will_not_be_notified": return L10n.format("settings_session_alerts_are_off_you_will_not_be_notified", locale: locale, args: [])
         case "settings.sessions_end_automatically_after_this_much_inactivity_not_running": return L10n.format("settings_sessions_end_automatically_after_this_much_inactivity_not_running", locale: locale, args: [])
@@ -18692,7 +18567,6 @@ public enum L10nText {
         case "shared_file.menu_open_with": return L10n.format("shared_file_menu_open_with", locale: locale, args: [])
         case "shared_file.menu_save_to_album": return L10n.format("shared_file_menu_save_to_album", locale: locale, args: [])
         case "shared_file.menu_save_to_device": return L10n.format("shared_file_menu_save_to_device", locale: locale, args: [])
-        case "shared_file.menu_save_to_files": return L10n.format("shared_file_menu_save_to_files", locale: locale, args: [])
         case "shared_file.menu_share": return L10n.format("shared_file_menu_share", locale: locale, args: [])
         case "shared_file.notification_files": return L10n.format("shared_file_notification_files", locale: locale, args: [intArg(args["count"])])
         case "shared_file.reason_browser_storage_full": return L10n.format("shared_file_reason_browser_storage_full", locale: locale, args: [])
@@ -18757,11 +18631,6 @@ public enum L10nText {
         case "terminal.ios_restore_hint": return L10n.format("terminal_ios_restore_hint", locale: locale, args: [])
         case "terminal.ios_retry_history": return L10n.format("terminal_ios_retry_history", locale: locale, args: [])
         case "terminal.ios_screen": return L10n.format("terminal_ios_screen", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "terminal.ios_screen_hint": return L10n.format("terminal_ios_screen_hint", locale: locale, args: [])
         case "terminal.ios_size_changed": return L10n.format("terminal_ios_size_changed", locale: locale, args: [strArg(args["size"])])
         case "terminal.ios_wait_connection": return L10n.format("terminal_ios_wait_connection", locale: locale, args: [])
@@ -18776,6 +18645,11 @@ public enum L10nText {
         case "terminal.restore": return L10n.format("terminal_restore", locale: locale, args: [])
         case "terminal.right": return L10n.format("terminal_right", locale: locale, args: [])
         case "terminal.size_changed": return L10n.format("terminal_size_changed", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve12(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "terminal.size_note": return L10n.format("terminal_size_note", locale: locale, args: [])
         case "terminal.up": return L10n.format("terminal_up", locale: locale, args: [])
         case "terminal.view_details": return L10n.format("terminal_view_details", locale: locale, args: [])
@@ -18924,11 +18798,6 @@ public enum L10nText {
         case "transport.diag_state_ok": return L10n.format("transport_diag_state_ok", locale: locale, args: [])
         case "transport.diag_status_blocked": return L10n.format("transport_diag_status_blocked", locale: locale, args: [])
         case "transport.diag_status_checking": return L10n.format("transport_diag_status_checking", locale: locale, args: [])
-        default: return nil
-        }
-    }
-    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
-        switch key {
         case "transport.diag_status_connected": return L10n.format("transport_diag_status_connected", locale: locale, args: [])
         case "transport.diag_status_enabled": return L10n.format("transport_diag_status_enabled", locale: locale, args: [])
         case "transport.diag_status_no_reply": return L10n.format("transport_diag_status_no_reply", locale: locale, args: [])
@@ -18943,6 +18812,11 @@ public enum L10nText {
         case "transport.diag_title_probe_blocked": return L10n.format("transport_diag_title_probe_blocked", locale: locale, args: [])
         case "transport.diag_type_host": return L10n.format("transport_diag_type_host", locale: locale, args: [])
         case "transport.diag_type_other": return L10n.format("transport_diag_type_other", locale: locale, args: [])
+        default: return nil
+        }
+    }
+    private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
+        switch key {
         case "transport.diag_type_prflx": return L10n.format("transport_diag_type_prflx", locale: locale, args: [])
         case "transport.diag_type_relay": return L10n.format("transport_diag_type_relay", locale: locale, args: [])
         case "transport.diag_type_srflx": return L10n.format("transport_diag_type_srflx", locale: locale, args: [])

@@ -1645,7 +1645,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	}
 	turnHdr := devicesec.Header{Machine: "m1", Session: "s1", Request: "notify:2:42"}
 	tOK := buildNotifyDisplay(turnEv, turnHdr, turnNC)
-	if !tOK.Valid || tOK.ShowDetailedByDefault || tOK.SharedFileCount != 2 || tOK.SharedFilesSuffix.GetKey() != text.KeySharedFileNotificationFiles {
+	if !tOK.Valid || tOK.ShowDetailedByDefault || tOK.SharedFileCount != 2 || len(tOK.GetFullGenericBody().GetJoin()) != 2 || tOK.GetFullGenericBody().GetJoin()[1].GetKey() != text.KeySharedFileNotificationFiles {
 		t.Fatalf("expected valid turn ended display with shared files suffix, got %+v", tOK)
 	}
 	if got := tOK.FullGenericBody; got == nil || len(got.Join) != 2 || got.SeparatorLiteral != " " ||
@@ -1840,17 +1840,17 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			wantGenericKey: text.KeyMachineStatusHomeWarning,
 		},
 		{
-			name: "disk empty request id in header",
-			ev:   diskEv,
-			h:    devicesec.Header{Machine: "m1", Request: ""},
-			nc:   diskNC,
+			name:           "disk empty request id in header",
+			ev:             diskEv,
+			h:              devicesec.Header{Machine: "m1", Request: ""},
+			nc:             diskNC,
 			wantGenericKey: text.KeyMachineStatusHomeWarning,
 		},
 		{
-			name: "disk mismatched request id",
-			ev:   diskEv,
-			h:    devicesec.Header{Machine: "m1", Request: "disk:999:3"},
-			nc:   diskNC,
+			name:           "disk mismatched request id",
+			ev:             diskEv,
+			h:              devicesec.Header{Machine: "m1", Request: "disk:999:3"},
+			nc:             diskNC,
 			wantGenericKey: text.KeyMachineStatusHomeWarning,
 		},
 		{
@@ -1900,10 +1900,10 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
 		},
 		{
-			name: "scheduled empty request id",
-			ev:   schedEv,
-			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
-			nc:   schedNC,
+			name:           "scheduled empty request id",
+			ev:             schedEv,
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:             schedNC,
 			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
 		},
 		{
@@ -1936,10 +1936,10 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			wantGenericKey: text.KeyNotificationsAndroidAConversationTurnFinished,
 		},
 		{
-			name: "turn ended empty request id",
-			ev:   turnEv,
-			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
-			nc:   turnNC,
+			name:           "turn ended empty request id",
+			ev:             turnEv,
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:             turnNC,
 			wantGenericKey: text.KeyNotificationsAndroidAConversationTurnFinished,
 		},
 		{
@@ -1961,24 +1961,24 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
 		},
 		{
-			name: "attention empty request id",
-			ev:   appEv,
-			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
-			nc:   appNC,
+			name:           "attention empty request id",
+			ev:             appEv,
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:             appNC,
 			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
 		},
 		{
-			name: "attention mismatched approval request id",
-			ev:   appEv,
-			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: "ap-other"},
-			nc:   appNC,
+			name:           "attention mismatched approval request id",
+			ev:             appEv,
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: "ap-other"},
+			nc:             appNC,
 			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
 		},
 		{
-			name: "attention header machine mismatch",
-			ev:   appEv,
-			h:    devicesec.Header{Machine: "m-other", Session: "s1", Request: "ap-1"},
-			nc:   appNC,
+			name:           "attention header machine mismatch",
+			ev:             appEv,
+			h:              devicesec.Header{Machine: "m-other", Session: "s1", Request: "ap-1"},
+			nc:             appNC,
 			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
 		},
 	}
@@ -1989,8 +1989,8 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			if got.GetValid() {
 				t.Fatalf("expected Valid=false, got %+v", got)
 			}
-			if got.GetGenericBody().GetKey() != tc.wantGenericKey {
-				t.Fatalf("GenericBody key = %q, want %q", got.GetGenericBody().GetKey(), tc.wantGenericKey)
+			if got.GetFullGenericBody().GetKey() != tc.wantGenericKey {
+				t.Fatalf("GenericBody key = %q, want %q", got.GetFullGenericBody().GetKey(), tc.wantGenericKey)
 			}
 			if got.GetTitle() != nil || got.GetBody() != nil || got.GetSubText() != nil || got.GetBigText() != nil ||
 				got.GetApprovalId() != "" || got.GetTag() != "" || got.GetSessionId() != "" || got.GetMachineId() != "" {
@@ -2030,7 +2030,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		t.Fatalf("expected 1 SecurityNotifyOpenedEffect, got %+v", effs)
 	}
 	opened := effs[0].GetSecurityNotifyOpened()
-	if opened.GetDisplay().GetValid() || opened.GetDisplay().GetGenericBody().GetKey() != text.KeyNotificationsScheduledTasksHaveNewResults {
+	if opened.GetDisplay().GetValid() || opened.GetDisplay().GetFullGenericBody().GetKey() != text.KeyNotificationsScheduledTasksHaveNewResults {
 		t.Fatalf("expected invalid display with scheduled generic body, got %+v", opened.GetDisplay())
 	}
 	if opened.GetDisplay().GetTitle() != nil || opened.GetDisplay().GetBody() != nil || opened.GetDisplay().GetSessionId() != "" || opened.GetDisplay().GetMachineId() != "" {

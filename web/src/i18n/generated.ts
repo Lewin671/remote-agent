@@ -369,7 +369,6 @@ export interface MessageArgs {
   "image.previous": { [name: string]: never };
   "image.prompt": { [name: string]: never };
   "image.remove_index": { index: number };
-  "image.screenshots": { count: number };
   "image.share": { [name: string]: never };
   "image.share_failed": { reason: string };
   "image.the_computer_s_attachment_storage_is_full_clear_space": { [name: string]: never };
@@ -412,6 +411,7 @@ export interface MessageArgs {
   "machine_status.a11y_next_sample": { [name: string]: never };
   "machine_status.a11y_prev_sample": { [name: string]: never };
   "machine_status.a11y_ring": { name: string; value: string };
+  "machine_status.a11y_scrub_value": { age: string; value: string };
   "machine_status.agent_usage": { [name: string]: never };
   "machine_status.axis_1min": { [name: string]: never };
   "machine_status.axis_2min": { [name: string]: never };
@@ -2293,13 +2293,6 @@ export const messages = {
     "image.previous": "Previous image",
     "image.prompt": "Prompt",
     "image.remove_index": "Remove image {index}",
-    "image.screenshots": {
-      "forms": {
-        "one": " · {count} screenshot",
-        "other": " · {count} screenshots"
-      },
-      "plural": "count"
-    },
     "image.share": "Share",
     "image.share_failed": "Could not share: {reason}",
     "image.the_computer_s_attachment_storage_is_full_clear_space": "The computer’s attachment storage is full. Clear space and retry.",
@@ -2342,6 +2335,7 @@ export const messages = {
     "machine_status.a11y_next_sample": "Next sample",
     "machine_status.a11y_prev_sample": "Previous sample",
     "machine_status.a11y_ring": "{name}, {value}",
+    "machine_status.a11y_scrub_value": "{value}, {age}",
     "machine_status.agent_usage": "remote-agent usage",
     "machine_status.axis_1min": "1 min ago",
     "machine_status.axis_2min": "2 min ago",
@@ -4617,12 +4611,6 @@ export const messages = {
     "image.previous": "上一张",
     "image.prompt": "提示词",
     "image.remove_index": "移除图片 {index}",
-    "image.screenshots": {
-      "forms": {
-        "other": " · {count} 张截图"
-      },
-      "plural": "count"
-    },
     "image.share": "分享",
     "image.share_failed": "没能分享：{reason}",
     "image.the_computer_s_attachment_storage_is_full_clear_space": "电脑附件空间不足，清理后重试",
@@ -4665,6 +4653,7 @@ export const messages = {
     "machine_status.a11y_next_sample": "下一个采样点",
     "machine_status.a11y_prev_sample": "上一个采样点",
     "machine_status.a11y_ring": "{name}，{value}",
+    "machine_status.a11y_scrub_value": "{value}，{age}",
     "machine_status.agent_usage": "remote-agent 的占用",
     "machine_status.axis_1min": "1 分钟前",
     "machine_status.axis_2min": "2 分钟前",

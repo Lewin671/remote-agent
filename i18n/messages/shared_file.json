@@ -723,20 +723,6 @@
     }
   },
   {
-    "key": "shared_file.toast_cleaned",
-    "zh-CN": "文件已清理",
-    "en": "File cleaned up",
-    "notes": "点按或尝试操作已被清理的文件时的提示。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "shared_file.toast_saved_to_album",
     "zh-CN": "已存到相册",
     "en": "Saved to Photos",
@@ -982,20 +968,6 @@
       "android",
       "ios",
       "web"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "shared_file.menu_save_to_files",
-    "zh-CN": "存到「文件」",
-    "en": "Save to Files",
-    "notes": "长按菜单操作（iOS）：用系统的文件导出面板把本机副本存到「文件」App。",
-    "params": {},
-    "platforms": [
-      "ios"
     ],
     "status": {
       "zh-CN": "source",

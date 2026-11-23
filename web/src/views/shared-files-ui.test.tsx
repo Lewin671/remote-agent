@@ -228,7 +228,6 @@ it("handles click download/pause/open via Core ViewModel and renders video previ
   const openFileSpy = vi.fn();
   const vidItem = create(SessionSharedFileItemSchema, {
     fileId: "ui-vid-1",
-    name: "clip.mp4",
     displayName: "clip.mp4",
     nameHead: "clip",
     nameTail: ".mp4",
@@ -429,7 +428,6 @@ it("web security: saves always as application/octet-stream, previews only Core-a
   // Image overlay "save" goes through the octet-stream path, not the image/* preview blob.
   const png = create(SessionSharedFileItemSchema, {
     fileId: "sec-png",
-    name: "cover.png",
     displayName: "cover.png",
     sizeBytes: 3n,
     sizeText: create(TextSchema, { literal: "3 B" }),
@@ -465,7 +463,6 @@ it("web security: saves always as application/octet-stream, previews only Core-a
   // Video overlay: media element source is a blob of Core's preview MIME; saving is octet-stream.
   const vid = create(SessionSharedFileItemSchema, {
     fileId: "sec-vid",
-    name: "clip.mp4",
     displayName: "clip.mp4",
     sizeBytes: 3n,
     sizeText: create(TextSchema, { literal: "3 B" }),

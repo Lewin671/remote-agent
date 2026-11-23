@@ -211,12 +211,11 @@ func (AttachmentRejectKind) EnumDescriptor() ([]byte, []int) {
 }
 
 // Structured input for Core's image error classifier.
-// Shells pass the highest-fidelity signal they have (explicit_kind > local_key > error_code > raw_diagnostic).
+// Shells pass the highest-fidelity signal they have (explicit_kind > error_code > raw_diagnostic).
 // Never pass already-translated UI prose into raw_diagnostic.
 type ImageProblemInput struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ExplicitKind  ImageProblemKind       `protobuf:"varint,1,opt,name=explicit_kind,json=explicitKind,proto3,enum=remoteagent.core.v1.ImageProblemKind" json:"explicit_kind,omitempty"`
-	LocalKey      string                 `protobuf:"bytes,2,opt,name=local_key,json=localKey,proto3" json:"local_key,omitempty"`
 	ErrorCode     string                 `protobuf:"bytes,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	RawDiagnostic string                 `protobuf:"bytes,4,opt,name=raw_diagnostic,json=rawDiagnostic,proto3" json:"raw_diagnostic,omitempty"`
 	// True when the failure happened while reading from the OS photo/file provider;
@@ -261,13 +260,6 @@ func (x *ImageProblemInput) GetExplicitKind() ImageProblemKind {
 		return x.ExplicitKind
 	}
 	return ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED
-}
-
-func (x *ImageProblemInput) GetLocalKey() string {
-	if x != nil {
-		return x.LocalKey
-	}
-	return ""
 }
 
 func (x *ImageProblemInput) GetErrorCode() string {
@@ -877,14 +869,13 @@ var File_remoteagent_core_v1_attachments_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\n" +
-	"*remoteagent/core/v1/attachments_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\"\xee\x01\n" +
+	"*remoteagent/core/v1/attachments_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\"\xe2\x01\n" +
 	"\x11ImageProblemInput\x12J\n" +
-	"\rexplicit_kind\x18\x01 \x01(\x0e2%.remoteagent.core.v1.ImageProblemKindR\fexplicitKind\x12\x1b\n" +
-	"\tlocal_key\x18\x02 \x01(\tR\blocalKey\x12\x1d\n" +
+	"\rexplicit_kind\x18\x01 \x01(\x0e2%.remoteagent.core.v1.ImageProblemKindR\fexplicitKind\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12%\n" +
 	"\x0eraw_diagnostic\x18\x04 \x01(\tR\rrawDiagnostic\x12*\n" +
-	"\x11is_reading_source\x18\x05 \x01(\bR\x0fisReadingSource\"\xa0\x01\n" +
+	"\x11is_reading_source\x18\x05 \x01(\bR\x0fisReadingSourceJ\x04\b\x02\x10\x03R\tlocal_key\"\xa0\x01\n" +
 	"\x10ImageProblemView\x129\n" +
 	"\x04kind\x18\x01 \x01(\x0e2%.remoteagent.core.v1.ImageProblemKindR\x04kind\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12\x1c\n" +

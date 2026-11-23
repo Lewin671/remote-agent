@@ -38,9 +38,6 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
                 CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED) to ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED,
             )
             val failures = errors.map { attachmentFailure(it.first) }
-            for (f in failures) {
-                assertTrue("must not set legacy local_key", f.input.localKey.isEmpty())
-            }
             val eval = evaluateImageProblems(remote, failures.map { it.input })
             assertEquals(errors.size, eval.problemsCount)
             for (i in errors.indices) {
@@ -50,7 +47,6 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
                 assertEquals(expectedKind == ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, view.retryable)
             }
             val ioUpload = attachmentFailure(java.io.IOException("opaque detail"), upload = true)
-            assertTrue(ioUpload.input.localKey.isEmpty())
             val ioView = evaluateImageProblems(remote, listOf(ioUpload.input)).getProblems(0)
             assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, ioView.kind)
             assertTrue(ioView.retryable)

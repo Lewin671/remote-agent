@@ -374,7 +374,7 @@ internal fun TimelineItemView(
                     for (seg in um.textSegmentsList) {
                         when (seg.kindCase) {
                             SessionMessageTextSegment.KindCase.IMAGE_INDEX -> {
-                                val label = if (seg.hasImageLabel()) uiText(seg.imageLabel) else "[Image #${seg.imageIndex}]"
+                                val label = uiText(seg.imageLabel)
                                 pushStyle(SpanStyle(color = p.ink2, fontWeight = platformWeight(FontWeight.Medium)))
                                 append(label)
                                 pop()

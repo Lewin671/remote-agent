@@ -2525,15 +2525,6 @@ public struct PBSecurityNotifyDisplay: @unchecked Sendable {
   /// Clears the value of `body`. Subsequent reads from it will return its default value.
   public mutating func clearBody() {_uniqueStorage()._body = nil}
 
-  public var genericBody: PBCoreText {
-    get {return _storage._genericBody ?? PBCoreText()}
-    set {_uniqueStorage()._genericBody = newValue}
-  }
-  /// Returns true if `genericBody` has been explicitly set.
-  public var hasGenericBody: Bool {return _storage._genericBody != nil}
-  /// Clears the value of `genericBody`. Subsequent reads from it will return its default value.
-  public mutating func clearGenericBody() {_uniqueStorage()._genericBody = nil}
-
   public var subText: PBCoreText {
     get {return _storage._subText ?? PBCoreText()}
     set {_uniqueStorage()._subText = newValue}
@@ -2551,15 +2542,6 @@ public struct PBSecurityNotifyDisplay: @unchecked Sendable {
   public var hasBigText: Bool {return _storage._bigText != nil}
   /// Clears the value of `bigText`. Subsequent reads from it will return its default value.
   public mutating func clearBigText() {_uniqueStorage()._bigText = nil}
-
-  public var sharedFilesSuffix: PBCoreText {
-    get {return _storage._sharedFilesSuffix ?? PBCoreText()}
-    set {_uniqueStorage()._sharedFilesSuffix = newValue}
-  }
-  /// Returns true if `sharedFilesSuffix` has been explicitly set.
-  public var hasSharedFilesSuffix: Bool {return _storage._sharedFilesSuffix != nil}
-  /// Clears the value of `sharedFilesSuffix`. Subsequent reads from it will return its default value.
-  public mutating func clearSharedFilesSuffix() {_uniqueStorage()._sharedFilesSuffix = nil}
 
   public var sharedFileCount: Int32 {
     get {return _storage._sharedFileCount}
@@ -6856,7 +6838,7 @@ extension PBSecurityOpenNotifyEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityNotifyDisplay"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}valid\0\u{1}kind\0\u{1}tag\0\u{3}machine_id\0\u{3}session_id\0\u{3}approval_id\0\u{3}source_event_seq\0\u{3}deadline_ms\0\u{1}truncated\0\u{1}critical\0\u{3}show_detailed_by_default\0\u{1}title\0\u{1}body\0\u{3}generic_body\0\u{3}sub_text\0\u{3}big_text\0\u{3}shared_files_suffix\0\u{3}shared_file_count\0\u{3}full_generic_body\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}valid\0\u{1}kind\0\u{1}tag\0\u{3}machine_id\0\u{3}session_id\0\u{3}approval_id\0\u{3}source_event_seq\0\u{3}deadline_ms\0\u{1}truncated\0\u{1}critical\0\u{3}show_detailed_by_default\0\u{1}title\0\u{1}body\0\u{4}\u{2}sub_text\0\u{3}big_text\0\u{4}\u{2}shared_file_count\0\u{3}full_generic_body\0\u{b}generic_body\0\u{b}shared_files_suffix\0\u{c}\u{e}\u{1}\u{c}\u{11}\u{1}")
 
   fileprivate class _StorageClass {
     var _valid: Bool = false
@@ -6872,10 +6854,8 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _showDetailedByDefault: Bool = false
     var _title: PBCoreText? = nil
     var _body: PBCoreText? = nil
-    var _genericBody: PBCoreText? = nil
     var _subText: PBCoreText? = nil
     var _bigText: PBCoreText? = nil
-    var _sharedFilesSuffix: PBCoreText? = nil
     var _sharedFileCount: Int32 = 0
     var _fullGenericBody: PBCoreText? = nil
 
@@ -6901,10 +6881,8 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
       _showDetailedByDefault = source._showDetailedByDefault
       _title = source._title
       _body = source._body
-      _genericBody = source._genericBody
       _subText = source._subText
       _bigText = source._bigText
-      _sharedFilesSuffix = source._sharedFilesSuffix
       _sharedFileCount = source._sharedFileCount
       _fullGenericBody = source._fullGenericBody
     }
@@ -6938,10 +6916,8 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 11: try { try decoder.decodeSingularBoolField(value: &_storage._showDetailedByDefault) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._title) }()
         case 13: try { try decoder.decodeSingularMessageField(value: &_storage._body) }()
-        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._genericBody) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._subText) }()
         case 16: try { try decoder.decodeSingularMessageField(value: &_storage._bigText) }()
-        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._sharedFilesSuffix) }()
         case 18: try { try decoder.decodeSingularInt32Field(value: &_storage._sharedFileCount) }()
         case 19: try { try decoder.decodeSingularMessageField(value: &_storage._fullGenericBody) }()
         default: break
@@ -6995,17 +6971,11 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
       try { if let v = _storage._body {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
       } }()
-      try { if let v = _storage._genericBody {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
-      } }()
       try { if let v = _storage._subText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
       } }()
       try { if let v = _storage._bigText {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 16)
-      } }()
-      try { if let v = _storage._sharedFilesSuffix {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
       } }()
       if _storage._sharedFileCount != 0 {
         try visitor.visitSingularInt32Field(value: _storage._sharedFileCount, fieldNumber: 18)
@@ -7035,10 +7005,8 @@ extension PBSecurityNotifyDisplay: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._showDetailedByDefault != rhs_storage._showDetailedByDefault {return false}
         if _storage._title != rhs_storage._title {return false}
         if _storage._body != rhs_storage._body {return false}
-        if _storage._genericBody != rhs_storage._genericBody {return false}
         if _storage._subText != rhs_storage._subText {return false}
         if _storage._bigText != rhs_storage._bigText {return false}
-        if _storage._sharedFilesSuffix != rhs_storage._sharedFilesSuffix {return false}
         if _storage._sharedFileCount != rhs_storage._sharedFileCount {return false}
         if _storage._fullGenericBody != rhs_storage._fullGenericBody {return false}
         return true

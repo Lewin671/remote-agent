@@ -11,46 +11,10 @@ public interface SessionSharedFileItemOrBuilder extends
     com.google.protobuf.MessageLiteOrBuilder {
 
   /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @return The path.
-   */
-  java.lang.String getPath();
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @return The bytes for path.
-   */
-  com.google.protobuf.ByteString
-      getPathBytes();
-
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The name.
-   */
-  java.lang.String getName();
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The bytes for name.
-   */
-  com.google.protobuf.ByteString
-      getNameBytes();
-
-  /**
    * <code>int64 size_bytes = 3 [json_name = "sizeBytes"];</code>
    * @return The sizeBytes.
    */
   long getSizeBytes();
-
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @return The mimeType.
-   */
-  java.lang.String getMimeType();
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @return The bytes for mimeType.
-   */
-  com.google.protobuf.ByteString
-      getMimeTypeBytes();
 
   /**
    * <code>string file_id = 5 [json_name = "fileId"];</code>
@@ -63,12 +27,6 @@ public interface SessionSharedFileItemOrBuilder extends
    */
   com.google.protobuf.ByteString
       getFileIdBytes();
-
-  /**
-   * <code>bool available = 6 [json_name = "available"];</code>
-   * @return The available.
-   */
-  boolean getAvailable();
 
   /**
    * <code>bytes sha256 = 7 [json_name = "sha256"];</code>

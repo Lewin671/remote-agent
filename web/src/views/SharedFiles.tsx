@@ -240,7 +240,7 @@ function CardVisuals({
   thumbUrl?: string;
   caption: string;
 }) {
-  const nameHead = file.nameHead || file.displayName || file.name;
+  const nameHead = file.nameHead || file.displayName;
   const nameTail = file.nameTail;
   const { cls, icon } = tileAppearance(file.kind);
   const showThumb = file.status === SharedFileCardStatus.DOWNLOADED && !!thumbUrl;
@@ -455,7 +455,7 @@ export function SharedFileCard({
     return () => clearTimeout(longPressTimer.current);
   }, []);
 
-  const displayName = file.displayName || file.name;
+  const displayName = file.displayName;
   const subtitle = renderText(file.subtitle);
   const fullPath = file.displayPath || displayName;
   const sourceCaption = renderText(file.sourceCaption);
@@ -710,7 +710,7 @@ export function SharedFilePreviewOverlay({
   useEscape(onClose);
   useDialogFocus(boxRef);
 
-  const safeName = target.file.displayName || target.file.name;
+  const safeName = target.file.displayName;
   const pathText = target.file.displayPath || safeName;
   const sizeText = renderText(target.file.sizeText);
 

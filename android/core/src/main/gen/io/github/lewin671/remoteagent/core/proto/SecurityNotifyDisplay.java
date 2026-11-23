@@ -507,54 +507,6 @@ public  final class SecurityNotifyDisplay extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
-  public static final int GENERIC_BODY_FIELD_NUMBER = 14;
-  private io.github.lewin671.remoteagent.core.proto.Text genericBody_;
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   */
-  @java.lang.Override
-  public boolean hasGenericBody() {
-    return ((bitField0_ & 0x00000004) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getGenericBody() {
-    return genericBody_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : genericBody_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    genericBody_ = value;
-    bitField0_ |= 0x00000004;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (genericBody_ != null &&
-        genericBody_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      genericBody_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(genericBody_).mergeFrom(value).buildPartial();
-    } else {
-      genericBody_ = value;
-    }
-    bitField0_ |= 0x00000004;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   */
-  private void clearGenericBody() {
-    genericBody_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
-  }
-
   public static final int SUB_TEXT_FIELD_NUMBER = 15;
   private io.github.lewin671.remoteagent.core.proto.Text subText_;
   /**
@@ -562,7 +514,7 @@ public  final class SecurityNotifyDisplay extends
    */
   @java.lang.Override
   public boolean hasSubText() {
-    return ((bitField0_ & 0x00000008) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text sub_text = 15 [json_name = "subText"];</code>
@@ -578,7 +530,7 @@ public  final class SecurityNotifyDisplay extends
   private void setSubText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     subText_ = value;
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text sub_text = 15 [json_name = "subText"];</code>
@@ -593,14 +545,14 @@ public  final class SecurityNotifyDisplay extends
     } else {
       subText_ = value;
     }
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text sub_text = 15 [json_name = "subText"];</code>
    */
   private void clearSubText() {
     subText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000008);
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static final int BIG_TEXT_FIELD_NUMBER = 16;
@@ -610,7 +562,7 @@ public  final class SecurityNotifyDisplay extends
    */
   @java.lang.Override
   public boolean hasBigText() {
-    return ((bitField0_ & 0x00000010) != 0);
+    return ((bitField0_ & 0x00000008) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text big_text = 16 [json_name = "bigText"];</code>
@@ -626,7 +578,7 @@ public  final class SecurityNotifyDisplay extends
   private void setBigText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     bigText_ = value;
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text big_text = 16 [json_name = "bigText"];</code>
@@ -641,62 +593,14 @@ public  final class SecurityNotifyDisplay extends
     } else {
       bigText_ = value;
     }
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text big_text = 16 [json_name = "bigText"];</code>
    */
   private void clearBigText() {
     bigText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000010);
-  }
-
-  public static final int SHARED_FILES_SUFFIX_FIELD_NUMBER = 17;
-  private io.github.lewin671.remoteagent.core.proto.Text sharedFilesSuffix_;
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   */
-  @java.lang.Override
-  public boolean hasSharedFilesSuffix() {
-    return ((bitField0_ & 0x00000020) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getSharedFilesSuffix() {
-    return sharedFilesSuffix_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sharedFilesSuffix_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSharedFilesSuffix(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    sharedFilesSuffix_ = value;
-    bitField0_ |= 0x00000020;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeSharedFilesSuffix(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (sharedFilesSuffix_ != null &&
-        sharedFilesSuffix_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      sharedFilesSuffix_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sharedFilesSuffix_).mergeFrom(value).buildPartial();
-    } else {
-      sharedFilesSuffix_ = value;
-    }
-    bitField0_ |= 0x00000020;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   */
-  private void clearSharedFilesSuffix() {
-    sharedFilesSuffix_ = null;
-    bitField0_ = (bitField0_ & ~0x00000020);
+    bitField0_ = (bitField0_ & ~0x00000008);
   }
 
   public static final int SHARED_FILE_COUNT_FIELD_NUMBER = 18;
@@ -732,7 +636,7 @@ public  final class SecurityNotifyDisplay extends
    */
   @java.lang.Override
   public boolean hasFullGenericBody() {
-    return ((bitField0_ & 0x00000040) != 0);
+    return ((bitField0_ & 0x00000010) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
@@ -748,7 +652,7 @@ public  final class SecurityNotifyDisplay extends
   private void setFullGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     fullGenericBody_ = value;
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
@@ -763,14 +667,14 @@ public  final class SecurityNotifyDisplay extends
     } else {
       fullGenericBody_ = value;
     }
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text full_generic_body = 19 [json_name = "fullGenericBody"];</code>
    */
   private void clearFullGenericBody() {
     fullGenericBody_ = null;
-    bitField0_ = (bitField0_ & ~0x00000040);
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay parseFrom(
@@ -1375,53 +1279,6 @@ public  final class SecurityNotifyDisplay extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    @java.lang.Override
-    public boolean hasGenericBody() {
-      return instance.hasGenericBody();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getGenericBody() {
-      return instance.getGenericBody();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    public Builder setGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setGenericBody(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    public Builder setGenericBody(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setGenericBody(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    public Builder mergeGenericBody(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeGenericBody(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-     */
-    public Builder clearGenericBody() {  copyOnWrite();
-      instance.clearGenericBody();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text sub_text = 15 [json_name = "subText"];</code>
      */
     @java.lang.Override
@@ -1512,53 +1369,6 @@ public  final class SecurityNotifyDisplay extends
      */
     public Builder clearBigText() {  copyOnWrite();
       instance.clearBigText();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    @java.lang.Override
-    public boolean hasSharedFilesSuffix() {
-      return instance.hasSharedFilesSuffix();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getSharedFilesSuffix() {
-      return instance.getSharedFilesSuffix();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    public Builder setSharedFilesSuffix(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setSharedFilesSuffix(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    public Builder setSharedFilesSuffix(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSharedFilesSuffix(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    public Builder mergeSharedFilesSuffix(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeSharedFilesSuffix(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-     */
-    public Builder clearSharedFilesSuffix() {  copyOnWrite();
-      instance.clearSharedFilesSuffix();
       return this;
     }
 
@@ -1667,18 +1477,16 @@ public  final class SecurityNotifyDisplay extends
             "showDetailedByDefault_",
             "title_",
             "body_",
-            "genericBody_",
             "subText_",
             "bigText_",
-            "sharedFilesSuffix_",
             "sharedFileCount_",
             "fullGenericBody_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0007\u0002\f" +
+              "\u0000\u0011\u0000\u0001\u0001\u0013\u0011\u0000\u0000\u0000\u0001\u0007\u0002\f" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0003\b\u0002\t\u0007\n\u0007" +
-              "\u000b\u0007\f\u1009\u0000\r\u1009\u0001\u000e\u1009\u0002\u000f\u1009\u0003\u0010" +
-              "\u1009\u0004\u0011\u1009\u0005\u0012\u0004\u0013\u1009\u0006";
+              "\u000b\u0007\f\u1009\u0000\r\u1009\u0001\u000f\u1009\u0002\u0010\u1009\u0003\u0012" +
+              "\u0004\u0013\u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

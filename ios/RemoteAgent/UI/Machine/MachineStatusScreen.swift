@@ -886,7 +886,7 @@ private struct HeroContent: View {
                         .padding(.top, 6)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(chart.a11YSummary.rendered())
-                        .accessibilityValue(chart.hasScrub_p ? chart.scrubAge.rendered() : "")
+                        .accessibilityValue(chart.hasScrub_p ? chart.scrubA11YValue.rendered() : "")
                         .accessibilityAdjustableAction { dir in onStep(dir == .increment ? 1 : -1) }
                         .accessibilityAction(named: Text(L10n.machineStatusA11YPrevSample())) { onStep(-1) }
                         .accessibilityAction(named: Text(L10n.machineStatusA11YNextSample())) { onStep(1) }

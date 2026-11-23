@@ -5538,5 +5538,130 @@
     "path": "web/src/views/Usage.tsx",
     "literal": "u-base",
     "reason": "CSS class name ('u-base') on SVG chart baseline, never displayed to users."
+  },
+  {
+    "path": "web/src/attach.ts",
+    "literal": "failed",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/SharedFiles.tsx",
+    "literal": "sf-tile thumb",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/SharedFiles.tsx",
+    "literal": "sf-mi",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/SharedFiles.tsx",
+    "literal": "mi",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/SharedFiles.tsx",
+    "literal": "; case SharedFileMenuAction.SHARE: return",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/SharedFiles.tsx",
+    "literal": "; case SharedFileMenuAction.DELETE_LOCAL: return",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "generatedImages",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "), [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup], ); return (",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "seg.kind.case === \"text\" ? (",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Files.tsx",
+    "literal": "ltr",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "failed",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "attachments",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "i.state === \"failed\"); const failureSummary = renderText(tray.failureSummary); return (",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "0 && tray.originalImageHint &&",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "0 && tray.fileMetadataNotice &&",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "0 && failureSummary && (",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "sf:${sharedFile.name}",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "preparing",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "uploading",
+    "reason": "Internal state, CSS class, attribute value or React key; never rendered as text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "undefined, ); export const ViewerImagesMeta = createContext",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "0 : !!viewer?.hasPrev; const hasNext = draft ? draftIndex",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "Math.abs(dy)) step(dx",
+    "reason": "Lint false positive: JSX/TypeScript code between `=>`/`<` comparisons, not visible text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Viewer.kt",
+    "literal": "${page + 1} / ${all.size}",
+    "reason": "Pager position while swiping (numbers only, no words); the core's position_text replaces it once the page settles."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Viewer.kt",
+    "literal": "${current + 1} / $count",
+    "reason": "Pager position while swiping (numbers only, no words); the core's position_text replaces it once the page settles."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SharedFileSamples.swift",
+    "literal": "shared_file.subtitle_offline",
+    "reason": "Message key referenced by a demo sample, not display text."
   }
 ]

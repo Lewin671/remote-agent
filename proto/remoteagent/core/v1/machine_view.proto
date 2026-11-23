@@ -123,7 +123,8 @@ message MachineChartView {
   double ceiling = 6;
   bool has_scrub = 7;
   int32 scrub_index = 8;
-  Text scrub_value = 9;
+  reserved 9;
+  reserved "scrub_value";
   Text scrub_age = 10;
   Text a11y_summary = 11;
   bool can_step_prev = 12;
@@ -131,6 +132,8 @@ message MachineChartView {
   double scrub_numeric_value = 14;
   string scrub_value_text = 15;
   string scrub_unit = 16;
+  // Screen-reader value while scrubbing: the full sample value and its age.
+  Text scrub_a11y_value = 17;
 }
 
 message MachineCpuSection {

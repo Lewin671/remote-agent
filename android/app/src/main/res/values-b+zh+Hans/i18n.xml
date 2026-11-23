@@ -31,11 +31,6 @@
     <string name="approval_truncated" formatted="false">"内容被截断，请在终端查看"</string>
     <string name="attachment_android_choose_computer" formatted="false">"先选一台电脑"</string>
     <string name="attachment_android_failed_meta" formatted="false">" · 上传失败"</string>
-    <plurals name="attachment_android_files_limit">
-        <item quantity="other">"一条消息最多 %1$d 个文件，多选的文件没有加入"</item>
-    </plurals>
-    <string name="attachment_android_name_too_long" formatted="false">"文件名过长，请重命名后重新选择"</string>
-    <string name="attachment_android_name_unreadable" formatted="false">"无法读取文件名，请重新选择文件"</string>
     <string name="attachment_android_not_saved" formatted="false">"附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"</string>
     <string name="attachment_android_permission_temporary" formatted="false">"这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件"</string>
     <string name="attachment_android_preparing_meta" formatted="false">" · 准备中"</string>
@@ -237,7 +232,6 @@
     <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"附件传输已中止或发生变化，请重试"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
     <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
-    <string name="errors_android_cannot_read_file_size_select_the_file_again" formatted="false">"无法读取文件大小，请重新选择文件"</string>
     <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"读不到源文件，请移除后重新选择"</string>
     <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"文件名过长或为空，请重命名后重新选择"</string>
     <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件太大，单个文件最多 %1$s"</string>
@@ -417,7 +411,6 @@
     <string name="image_android_download_retry">"没能下载：%1$s · 点按重试"</string>
     <string name="image_android_empty" formatted="false">"没有图片"</string>
     <string name="image_android_file_upload_unavailable" formatted="false">"文件上传不可用"</string>
-    <string name="image_android_generated_by">"%1$s 生成的图片"</string>
     <string name="image_android_generated_size">"生成的图片%1$s"</string>
     <string name="image_android_gif_contains_an_unrecognized_block" formatted="false">"GIF 里有认不出的块"</string>
     <string name="image_android_gif_is_truncated" formatted="false">"GIF 被截断"</string>
@@ -457,9 +450,7 @@
     <string name="image_android_upload_progress">"正在传到电脑，%1$s%%"</string>
     <string name="image_android_upload_to_the_computer_again" formatted="false">"需要重新传到电脑"</string>
     <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"需要重新传到电脑；源文件无法读取时请重新选择文件"</string>
-    <string name="image_android_user_pasted" formatted="false">"用户粘贴"</string>
     <string name="image_android_verify_failed">"图片校验失败：%1$s"</string>
-    <string name="image_android_viewed_by">"%1$s 查看的图片"</string>
     <plurals name="image_attach_failed">
         <item quantity="other">"%1$d 张图没加上，点图片看原因"</item>
     </plurals>
@@ -505,9 +496,6 @@
     <string name="image_previous" formatted="false">"上一张"</string>
     <string name="image_prompt" formatted="false">"提示词"</string>
     <string name="image_remove_index">"移除图片 %1$d"</string>
-    <plurals name="image_screenshots">
-        <item quantity="other">" · %1$d 张截图"</item>
-    </plurals>
     <string name="image_share" formatted="false">"分享"</string>
     <string name="image_share_failed">"没能分享：%1$s"</string>
     <string name="image_the_computer_s_attachment_storage_is_full_clear_space" formatted="false">"电脑附件空间不足，清理后重试"</string>
@@ -550,6 +538,7 @@
     <string name="machine_status_a11y_next_sample" formatted="false">"下一个采样点"</string>
     <string name="machine_status_a11y_prev_sample" formatted="false">"上一个采样点"</string>
     <string name="machine_status_a11y_ring">"%1$s，%2$s"</string>
+    <string name="machine_status_a11y_scrub_value">"%2$s，%1$s"</string>
     <string name="machine_status_agent_usage" formatted="false">"remote-agent 的占用"</string>
     <string name="machine_status_axis_1min" formatted="false">"1 分钟前"</string>
     <string name="machine_status_axis_2min" formatted="false">"2 分钟前"</string>
@@ -1940,7 +1929,6 @@
     <string name="shared_file_subtitle_media_size">"%1$s · %2$s"</string>
     <string name="shared_file_subtitle_offline" formatted="false">"电脑不在线"</string>
     <string name="shared_file_subtitle_paused">"已暂停 · %1$s / %2$s"</string>
-    <string name="shared_file_toast_cleaned" formatted="false">"文件已清理"</string>
     <string name="shared_file_toast_saved_to_album" formatted="false">"已存到相册"</string>
     <string name="shared_file_toast_saved_to_downloads" formatted="false">"已存到「下载」"</string>
     <string name="shared_file_type_archive" formatted="false">"压缩包"</string>

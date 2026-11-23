@@ -48,7 +48,6 @@ const (
 type ImageProblemInput struct {
 	_               [0]func()
 	ExplicitKind    ImageProblemKind
-	LocalKey        string
 	ErrorCode       string
 	RawDiagnostic   string
 	IsReadingSource bool
@@ -59,12 +58,6 @@ func (m *ImageProblemInput) GetExplicitKind() ImageProblemKind {
 		return m.ExplicitKind
 	}
 	return 0
-}
-func (m *ImageProblemInput) GetLocalKey() string {
-	if m != nil {
-		return m.LocalKey
-	}
-	return ""
 }
 func (m *ImageProblemInput) GetErrorCode() string {
 	if m != nil {
@@ -89,7 +82,6 @@ var LitewireDesc_ImageProblemInput = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&ImageProblemInput{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ImageProblemInput{}.ExplicitKind), Kind: litewire.KindInt32},
-		{Num: 2, Offset: unsafe.Offsetof(ImageProblemInput{}.LocalKey), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(ImageProblemInput{}.ErrorCode), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(ImageProblemInput{}.RawDiagnostic), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(ImageProblemInput{}.IsReadingSource), Kind: litewire.KindBool},

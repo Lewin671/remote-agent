@@ -4823,10 +4823,8 @@ type SecurityNotifyDisplay struct {
 	ShowDetailedByDefault bool
 	Title                 *Text
 	Body                  *Text
-	GenericBody           *Text
 	SubText               *Text
 	BigText               *Text
-	SharedFilesSuffix     *Text
 	SharedFileCount       int32
 	FullGenericBody       *Text
 }
@@ -4909,12 +4907,6 @@ func (m *SecurityNotifyDisplay) GetBody() *Text {
 	}
 	return nil
 }
-func (m *SecurityNotifyDisplay) GetGenericBody() *Text {
-	if m != nil {
-		return m.GenericBody
-	}
-	return nil
-}
 func (m *SecurityNotifyDisplay) GetSubText() *Text {
 	if m != nil {
 		return m.SubText
@@ -4924,12 +4916,6 @@ func (m *SecurityNotifyDisplay) GetSubText() *Text {
 func (m *SecurityNotifyDisplay) GetBigText() *Text {
 	if m != nil {
 		return m.BigText
-	}
-	return nil
-}
-func (m *SecurityNotifyDisplay) GetSharedFilesSuffix() *Text {
-	if m != nil {
-		return m.SharedFilesSuffix
 	}
 	return nil
 }
@@ -4961,10 +4947,8 @@ var LitewireDesc_SecurityNotifyDisplay = litewire.MessageDesc{
 		{Num: 11, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.ShowDetailedByDefault), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 13, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.Body), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 14, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.GenericBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 15, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SubText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.BigText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 17, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFilesSuffix), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 18, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.SharedFileCount), Kind: litewire.KindInt32},
 		{Num: 19, Offset: unsafe.Offsetof(SecurityNotifyDisplay{}.FullGenericBody), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},

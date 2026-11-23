@@ -260,7 +260,6 @@ type MachineChartView struct {
 	Ceiling           float64
 	HasScrub          bool
 	ScrubIndex        int32
-	ScrubValue        *Text
 	ScrubAge          *Text
 	A11YSummary       *Text
 	CanStepPrev       bool
@@ -268,6 +267,7 @@ type MachineChartView struct {
 	ScrubNumericValue float64
 	ScrubValueText    string
 	ScrubUnit         string
+	ScrubA11YValue    *Text
 }
 
 func (m *MachineChartView) GetVisible() bool {
@@ -318,12 +318,6 @@ func (m *MachineChartView) GetScrubIndex() int32 {
 	}
 	return 0
 }
-func (m *MachineChartView) GetScrubValue() *Text {
-	if m != nil {
-		return m.ScrubValue
-	}
-	return nil
-}
 func (m *MachineChartView) GetScrubAge() *Text {
 	if m != nil {
 		return m.ScrubAge
@@ -366,6 +360,12 @@ func (m *MachineChartView) GetScrubUnit() string {
 	}
 	return ""
 }
+func (m *MachineChartView) GetScrubA11YValue() *Text {
+	if m != nil {
+		return m.ScrubA11YValue
+	}
+	return nil
+}
 
 var LitewireDesc_MachineChartView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -377,7 +377,6 @@ var LitewireDesc_MachineChartView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(MachineChartView{}.Ceiling), Kind: litewire.KindDouble},
 		{Num: 7, Offset: unsafe.Offsetof(MachineChartView{}.HasScrub), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(MachineChartView{}.ScrubIndex), Kind: litewire.KindInt32},
-		{Num: 9, Offset: unsafe.Offsetof(MachineChartView{}.ScrubValue), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 10, Offset: unsafe.Offsetof(MachineChartView{}.ScrubAge), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 11, Offset: unsafe.Offsetof(MachineChartView{}.A11YSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 12, Offset: unsafe.Offsetof(MachineChartView{}.CanStepPrev), Kind: litewire.KindBool},
@@ -385,6 +384,7 @@ var LitewireDesc_MachineChartView = litewire.MessageDesc{
 		{Num: 14, Offset: unsafe.Offsetof(MachineChartView{}.ScrubNumericValue), Kind: litewire.KindDouble},
 		{Num: 15, Offset: unsafe.Offsetof(MachineChartView{}.ScrubValueText), Kind: litewire.KindString},
 		{Num: 16, Offset: unsafe.Offsetof(MachineChartView{}.ScrubUnit), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(MachineChartView{}.ScrubA11YValue), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

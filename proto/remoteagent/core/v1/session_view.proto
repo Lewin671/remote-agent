@@ -707,12 +707,10 @@ message SharedFileMenuItemView {
 }
 
 message SessionSharedFileItem {
-  string path = 1;
-  string name = 2;
+  reserved 1, 2, 4, 6;
+  reserved "path", "name", "mime_type", "available";
   int64 size_bytes = 3;
-  string mime_type = 4;
   string file_id = 5;
-  bool available = 6;
   bytes sha256 = 7;
   string display_name = 8;
   string name_head = 9;

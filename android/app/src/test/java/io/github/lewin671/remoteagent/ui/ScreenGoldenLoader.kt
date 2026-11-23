@@ -597,7 +597,6 @@ object ScreenGoldenLoader {
         setCeiling(o.f64("ceiling"))
         setHasScrub(o.bool("hasScrub"))
         setScrubIndex(o.i32("scrubIndex"))
-        o.obj("scrubValue")?.let { setScrubValue(parseText(it)) }
         o.obj("scrubAge")?.let { setScrubAge(parseText(it)) }
         o.obj("a11ySummary")?.let { setA11YSummary(parseText(it)) }
         setCanStepPrev(o.bool("canStepPrev"))

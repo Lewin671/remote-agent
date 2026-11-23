@@ -261,8 +261,8 @@ object Notifier {
 
         val nm = context.getSystemService(NotificationManager::class.java)
         val valid = notifyDisplay?.takeIf { it.valid && it.kind == kind }
-        val generic = valid?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
-            ?: notifyDisplay?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
+        val generic = valid?.takeIf { it.hasFullGenericBody() }?.let { resolveText(it.fullGenericBody) }?.ifEmpty { null }
+            ?: notifyDisplay?.takeIf { it.hasFullGenericBody() }?.let { resolveText(it.fullGenericBody) }?.ifEmpty { null }
             ?: when (kind) {
                 NotifyKind.NOTIFY_KIND_SCHEDULED -> copy(UiMessages.notificationsScheduledTasksHaveNewResults())
                 NotifyKind.NOTIFY_KIND_TURN_ENDED -> copy(UiMessages.notificationsAndroidAConversationTurnFinished())

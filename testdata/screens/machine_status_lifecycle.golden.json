@@ -1044,9 +1044,6 @@
                 "gapThresholdMs": "10000",
                 "ceiling": 100,
                 "hasScrub": true,
-                "scrubValue": {
-                  "literal": "18%"
-                },
                 "scrubAge": {
                   "key": "machine_status.seconds_ago",
                   "args": [
@@ -1076,7 +1073,30 @@
                 "canStepNext": true,
                 "scrubNumericValue": 18,
                 "scrubValueText": "18",
-                "scrubUnit": "%"
+                "scrubUnit": "%",
+                "scrubA11yValue": {
+                  "key": "machine_status.a11y_scrub_value",
+                  "args": [
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "18%"
+                      }
+                    },
+                    {
+                      "name": "age",
+                      "textValue": {
+                        "key": "machine_status.seconds_ago",
+                        "args": [
+                          {
+                            "name": "count",
+                            "intValue": "4"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
               },
               "value": 24.4,
               "valueText": "24",
@@ -2162,9 +2182,6 @@
                 "gapThresholdMs": "10000",
                 "ceiling": 100,
                 "hasScrub": true,
-                "scrubValue": {
-                  "literal": "11%"
-                },
                 "scrubAge": {
                   "key": "machine_status.axis_now"
                 },
@@ -2187,7 +2204,24 @@
                 },
                 "scrubNumericValue": 11,
                 "scrubValueText": "11",
-                "scrubUnit": "%"
+                "scrubUnit": "%",
+                "scrubA11yValue": {
+                  "key": "machine_status.a11y_scrub_value",
+                  "args": [
+                    {
+                      "name": "value",
+                      "textValue": {
+                        "literal": "11%"
+                      }
+                    },
+                    {
+                      "name": "age",
+                      "textValue": {
+                        "key": "machine_status.axis_now"
+                      }
+                    }
+                  ]
+                }
               },
               "value": 11,
               "valueText": "11",

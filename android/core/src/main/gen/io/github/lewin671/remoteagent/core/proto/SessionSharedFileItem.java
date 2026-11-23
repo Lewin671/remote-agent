@@ -15,9 +15,6 @@ public  final class SessionSharedFileItem extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SessionSharedFileItem)
     SessionSharedFileItemOrBuilder {
   private SessionSharedFileItem() {
-    path_ = "";
-    name_ = "";
-    mimeType_ = "";
     fileId_ = "";
     sha256_ = com.google.protobuf.ByteString.EMPTY;
     displayName_ = "";
@@ -29,102 +26,6 @@ public  final class SessionSharedFileItem extends
     webPreviewMime_ = "";
   }
   private int bitField0_;
-  public static final int PATH_FIELD_NUMBER = 1;
-  private java.lang.String path_;
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @return The path.
-   */
-  @java.lang.Override
-  public java.lang.String getPath() {
-    return path_;
-  }
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @return The bytes for path.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getPathBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(path_);
-  }
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @param value The path to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setPath(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    path_ = value;
-  }
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   */
-  private void clearPath() {
-
-    path_ = getDefaultInstance().getPath();
-  }
-  /**
-   * <code>string path = 1 [json_name = "path"];</code>
-   * @param value The bytes for path to set.
-   */
-  private void setPathBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    path_ = value.toStringUtf8();
-
-  }
-
-  public static final int NAME_FIELD_NUMBER = 2;
-  private java.lang.String name_;
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The name.
-   */
-  @java.lang.Override
-  public java.lang.String getName() {
-    return name_;
-  }
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @return The bytes for name.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getNameBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(name_);
-  }
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @param value The name to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setName(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    name_ = value;
-  }
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   */
-  private void clearName() {
-
-    name_ = getDefaultInstance().getName();
-  }
-  /**
-   * <code>string name = 2 [json_name = "name"];</code>
-   * @param value The bytes for name to set.
-   */
-  private void setNameBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    name_ = value.toStringUtf8();
-
-  }
-
   public static final int SIZE_BYTES_FIELD_NUMBER = 3;
   private long sizeBytes_;
   /**
@@ -149,54 +50,6 @@ public  final class SessionSharedFileItem extends
   private void clearSizeBytes() {
 
     sizeBytes_ = 0L;
-  }
-
-  public static final int MIME_TYPE_FIELD_NUMBER = 4;
-  private java.lang.String mimeType_;
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @return The mimeType.
-   */
-  @java.lang.Override
-  public java.lang.String getMimeType() {
-    return mimeType_;
-  }
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @return The bytes for mimeType.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getMimeTypeBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(mimeType_);
-  }
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @param value The mimeType to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMimeType(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    mimeType_ = value;
-  }
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   */
-  private void clearMimeType() {
-
-    mimeType_ = getDefaultInstance().getMimeType();
-  }
-  /**
-   * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-   * @param value The bytes for mimeType to set.
-   */
-  private void setMimeTypeBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    mimeType_ = value.toStringUtf8();
-
   }
 
   public static final int FILE_ID_FIELD_NUMBER = 5;
@@ -245,32 +98,6 @@ public  final class SessionSharedFileItem extends
     checkByteStringIsUtf8(value);
     fileId_ = value.toStringUtf8();
 
-  }
-
-  public static final int AVAILABLE_FIELD_NUMBER = 6;
-  private boolean available_;
-  /**
-   * <code>bool available = 6 [json_name = "available"];</code>
-   * @return The available.
-   */
-  @java.lang.Override
-  public boolean getAvailable() {
-    return available_;
-  }
-  /**
-   * <code>bool available = 6 [json_name = "available"];</code>
-   * @param value The available to set.
-   */
-  private void setAvailable(boolean value) {
-    
-    available_ = value;
-  }
-  /**
-   * <code>bool available = 6 [json_name = "available"];</code>
-   */
-  private void clearAvailable() {
-
-    available_ = false;
   }
 
   public static final int SHA256_FIELD_NUMBER = 7;
@@ -1469,104 +1296,6 @@ public  final class SessionSharedFileItem extends
 
 
     /**
-     * <code>string path = 1 [json_name = "path"];</code>
-     * @return The path.
-     */
-    @java.lang.Override
-    public java.lang.String getPath() {
-      return instance.getPath();
-    }
-    /**
-     * <code>string path = 1 [json_name = "path"];</code>
-     * @return The bytes for path.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getPathBytes() {
-      return instance.getPathBytes();
-    }
-    /**
-     * <code>string path = 1 [json_name = "path"];</code>
-     * @param value The path to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPath(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setPath(value);
-      return this;
-    }
-    /**
-     * <code>string path = 1 [json_name = "path"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearPath() {
-      copyOnWrite();
-      instance.clearPath();
-      return this;
-    }
-    /**
-     * <code>string path = 1 [json_name = "path"];</code>
-     * @param value The bytes for path to set.
-     * @return This builder for chaining.
-     */
-    public Builder setPathBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setPathBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return The name.
-     */
-    @java.lang.Override
-    public java.lang.String getName() {
-      return instance.getName();
-    }
-    /**
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return The bytes for name.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getNameBytes() {
-      return instance.getNameBytes();
-    }
-    /**
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @param value The name to set.
-     * @return This builder for chaining.
-     */
-    public Builder setName(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setName(value);
-      return this;
-    }
-    /**
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearName() {
-      copyOnWrite();
-      instance.clearName();
-      return this;
-    }
-    /**
-     * <code>string name = 2 [json_name = "name"];</code>
-     * @param value The bytes for name to set.
-     * @return This builder for chaining.
-     */
-    public Builder setNameBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setNameBytes(value);
-      return this;
-    }
-
-    /**
      * <code>int64 size_bytes = 3 [json_name = "sizeBytes"];</code>
      * @return The sizeBytes.
      */
@@ -1591,55 +1320,6 @@ public  final class SessionSharedFileItem extends
     public Builder clearSizeBytes() {
       copyOnWrite();
       instance.clearSizeBytes();
-      return this;
-    }
-
-    /**
-     * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-     * @return The mimeType.
-     */
-    @java.lang.Override
-    public java.lang.String getMimeType() {
-      return instance.getMimeType();
-    }
-    /**
-     * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-     * @return The bytes for mimeType.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getMimeTypeBytes() {
-      return instance.getMimeTypeBytes();
-    }
-    /**
-     * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-     * @param value The mimeType to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMimeType(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setMimeType(value);
-      return this;
-    }
-    /**
-     * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMimeType() {
-      copyOnWrite();
-      instance.clearMimeType();
-      return this;
-    }
-    /**
-     * <code>string mime_type = 4 [json_name = "mimeType"];</code>
-     * @param value The bytes for mimeType to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMimeTypeBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setMimeTypeBytes(value);
       return this;
     }
 
@@ -1689,34 +1369,6 @@ public  final class SessionSharedFileItem extends
         com.google.protobuf.ByteString value) {
       copyOnWrite();
       instance.setFileIdBytes(value);
-      return this;
-    }
-
-    /**
-     * <code>bool available = 6 [json_name = "available"];</code>
-     * @return The available.
-     */
-    @java.lang.Override
-    public boolean getAvailable() {
-      return instance.getAvailable();
-    }
-    /**
-     * <code>bool available = 6 [json_name = "available"];</code>
-     * @param value The available to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAvailable(boolean value) {
-      copyOnWrite();
-      instance.setAvailable(value);
-      return this;
-    }
-    /**
-     * <code>bool available = 6 [json_name = "available"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAvailable() {
-      copyOnWrite();
-      instance.clearAvailable();
       return this;
     }
 
@@ -2870,12 +2522,8 @@ public  final class SessionSharedFileItem extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
-            "path_",
-            "name_",
             "sizeBytes_",
-            "mimeType_",
             "fileId_",
-            "available_",
             "sha256_",
             "displayName_",
             "nameHead_",
@@ -2905,12 +2553,11 @@ public  final class SessionSharedFileItem extends
             "webPreviewMime_",
           };
           java.lang.String info =
-              "\u0000 \u0000\u0001\u0001  \u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0002" +
-              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\n\b\u0208\t\u0208\n\u0208\u000b\f\f\u1009" +
-              "\u0000\r\u1009\u0001\u000e\u0208\u000f\u1009\u0002\u0010\f\u0011\u1009\u0003\u0012" +
-              "\u0007\u0013\u1009\u0004\u0014\u0002\u0015\u0000\u0016\u0007\u0017\f\u0018\u1009" +
-              "\u0005\u0019\u0007\u001a\u1009\u0006\u001b\u001b\u001c\u0007\u001d\u0007\u001e\u0208" +
-              "\u001f\f \u0208";
+              "\u0000\u001c\u0000\u0001\u0003 \u001c\u0000\u0001\u0000\u0003\u0002\u0005\u0208\u0007" +
+              "\n\b\u0208\t\u0208\n\u0208\u000b\f\f\u1009\u0000\r\u1009\u0001\u000e\u0208\u000f" +
+              "\u1009\u0002\u0010\f\u0011\u1009\u0003\u0012\u0007\u0013\u1009\u0004\u0014\u0002" +
+              "\u0015\u0000\u0016\u0007\u0017\f\u0018\u1009\u0005\u0019\u0007\u001a\u1009\u0006" +
+              "\u001b\u001b\u001c\u0007\u001d\u0007\u001e\u0208\u001f\f \u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

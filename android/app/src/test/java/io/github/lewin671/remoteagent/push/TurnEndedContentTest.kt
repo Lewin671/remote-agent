@@ -49,7 +49,7 @@ class TurnEndedContentTest {
             .setSessionId("session")
             .setTitle(CoreText.newBuilder().setLiteral("Session"))
             .setBody(body)
-            .setGenericBody(generic)
+            .setFullGenericBody(generic)
             .setSharedFileCount(count ?: 0)
             .build()
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_TURN_ENDED, display, showContent,

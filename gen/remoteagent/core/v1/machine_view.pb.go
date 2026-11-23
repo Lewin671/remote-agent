@@ -850,7 +850,6 @@ type MachineChartView struct {
 	Ceiling           float64                `protobuf:"fixed64,6,opt,name=ceiling,proto3" json:"ceiling,omitempty"`
 	HasScrub          bool                   `protobuf:"varint,7,opt,name=has_scrub,json=hasScrub,proto3" json:"has_scrub,omitempty"`
 	ScrubIndex        int32                  `protobuf:"varint,8,opt,name=scrub_index,json=scrubIndex,proto3" json:"scrub_index,omitempty"`
-	ScrubValue        *Text                  `protobuf:"bytes,9,opt,name=scrub_value,json=scrubValue,proto3" json:"scrub_value,omitempty"`
 	ScrubAge          *Text                  `protobuf:"bytes,10,opt,name=scrub_age,json=scrubAge,proto3" json:"scrub_age,omitempty"`
 	A11YSummary       *Text                  `protobuf:"bytes,11,opt,name=a11y_summary,json=a11ySummary,proto3" json:"a11y_summary,omitempty"`
 	CanStepPrev       bool                   `protobuf:"varint,12,opt,name=can_step_prev,json=canStepPrev,proto3" json:"can_step_prev,omitempty"`
@@ -858,8 +857,10 @@ type MachineChartView struct {
 	ScrubNumericValue float64                `protobuf:"fixed64,14,opt,name=scrub_numeric_value,json=scrubNumericValue,proto3" json:"scrub_numeric_value,omitempty"`
 	ScrubValueText    string                 `protobuf:"bytes,15,opt,name=scrub_value_text,json=scrubValueText,proto3" json:"scrub_value_text,omitempty"`
 	ScrubUnit         string                 `protobuf:"bytes,16,opt,name=scrub_unit,json=scrubUnit,proto3" json:"scrub_unit,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Screen-reader value while scrubbing: the full sample value and its age.
+	ScrubA11YValue *Text `protobuf:"bytes,17,opt,name=scrub_a11y_value,json=scrubA11yValue,proto3" json:"scrub_a11y_value,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MachineChartView) Reset() {
@@ -948,13 +949,6 @@ func (x *MachineChartView) GetScrubIndex() int32 {
 	return 0
 }
 
-func (x *MachineChartView) GetScrubValue() *Text {
-	if x != nil {
-		return x.ScrubValue
-	}
-	return nil
-}
-
 func (x *MachineChartView) GetScrubAge() *Text {
 	if x != nil {
 		return x.ScrubAge
@@ -1002,6 +996,13 @@ func (x *MachineChartView) GetScrubUnit() string {
 		return x.ScrubUnit
 	}
 	return ""
+}
+
+func (x *MachineChartView) GetScrubA11YValue() *Text {
+	if x != nil {
+		return x.ScrubA11YValue
+	}
+	return nil
 }
 
 type MachineCpuSection struct {
@@ -3392,7 +3393,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"a11y_label\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\ta11yLabel\"B\n" +
 	"\x11MachineChartPoint\x12\x17\n" +
 	"\atime_ms\x18\x01 \x01(\x03R\x06timeMs\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x01R\x05value\"\xad\x05\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value\"\xc9\x05\n" +
 	"\x10MachineChartView\x12\x18\n" +
 	"\avisible\x18\x01 \x01(\bR\avisible\x12>\n" +
 	"\x06points\x18\x02 \x03(\v2&.remoteagent.core.v1.MachineChartPointR\x06points\x12&\n" +
@@ -3402,9 +3403,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\aceiling\x18\x06 \x01(\x01R\aceiling\x12\x1b\n" +
 	"\thas_scrub\x18\a \x01(\bR\bhasScrub\x12\x1f\n" +
 	"\vscrub_index\x18\b \x01(\x05R\n" +
-	"scrubIndex\x12:\n" +
-	"\vscrub_value\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
-	"scrubValue\x126\n" +
+	"scrubIndex\x126\n" +
 	"\tscrub_age\x18\n" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\bscrubAge\x12<\n" +
 	"\fa11y_summary\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\va11ySummary\x12\"\n" +
@@ -3413,7 +3412,9 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x13scrub_numeric_value\x18\x0e \x01(\x01R\x11scrubNumericValue\x12(\n" +
 	"\x10scrub_value_text\x18\x0f \x01(\tR\x0escrubValueText\x12\x1d\n" +
 	"\n" +
-	"scrub_unit\x18\x10 \x01(\tR\tscrubUnit\"\xe8\x02\n" +
+	"scrub_unit\x18\x10 \x01(\tR\tscrubUnit\x12C\n" +
+	"\x10scrub_a11y_value\x18\x11 \x01(\v2\x19.remoteagent.core.v1.TextR\x0escrubA11yValueJ\x04\b\t\x10\n" +
+	"R\vscrub_value\"\xe8\x02\n" +
 	"\x11MachineCpuSection\x12\x1b\n" +
 	"\thas_value\x18\x01 \x01(\bR\bhasValue\x121\n" +
 	"\x06detail\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x06detail\x123\n" +
@@ -3822,9 +3823,9 @@ var file_remoteagent_core_v1_machine_view_proto_depIdxs = []int32{
 	8,  // 3: remoteagent.core.v1.MachineRingView.tone:type_name -> remoteagent.core.v1.MachineRingTone
 	40, // 4: remoteagent.core.v1.MachineRingView.a11y_label:type_name -> remoteagent.core.v1.Text
 	14, // 5: remoteagent.core.v1.MachineChartView.points:type_name -> remoteagent.core.v1.MachineChartPoint
-	40, // 6: remoteagent.core.v1.MachineChartView.scrub_value:type_name -> remoteagent.core.v1.Text
-	40, // 7: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
-	40, // 8: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
+	40, // 6: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
+	40, // 7: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
+	40, // 8: remoteagent.core.v1.MachineChartView.scrub_a11y_value:type_name -> remoteagent.core.v1.Text
 	40, // 9: remoteagent.core.v1.MachineCpuSection.detail:type_name -> remoteagent.core.v1.Text
 	40, // 10: remoteagent.core.v1.MachineCpuSection.detail2:type_name -> remoteagent.core.v1.Text
 	40, // 11: remoteagent.core.v1.MachineCpuSection.a11y_label:type_name -> remoteagent.core.v1.Text

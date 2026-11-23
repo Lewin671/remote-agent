@@ -46,7 +46,7 @@ class MachineDiskNotificationTest {
                 CoreText.newBuilder()
                     .setKey(if (critical) "machine_status.notify_critical_body" else "machine_status.notify_warning_body"),
             )
-            .setGenericBody(CoreText.newBuilder().setKey("machine_status.home_warning"))
+            .setFullGenericBody(CoreText.newBuilder().setKey("machine_status.home_warning"))
             .build()
     }
 

@@ -3796,34 +3796,14 @@ public struct PBSessionSharedFileItem: @unchecked Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var path: String {
-    get {return _storage._path}
-    set {_uniqueStorage()._path = newValue}
-  }
-
-  public var name: String {
-    get {return _storage._name}
-    set {_uniqueStorage()._name = newValue}
-  }
-
   public var sizeBytes: Int64 {
     get {return _storage._sizeBytes}
     set {_uniqueStorage()._sizeBytes = newValue}
   }
 
-  public var mimeType: String {
-    get {return _storage._mimeType}
-    set {_uniqueStorage()._mimeType = newValue}
-  }
-
   public var fileID: String {
     get {return _storage._fileID}
     set {_uniqueStorage()._fileID = newValue}
-  }
-
-  public var available: Bool {
-    get {return _storage._available}
-    set {_uniqueStorage()._available = newValue}
   }
 
   public var sha256: Data {
@@ -9597,15 +9577,11 @@ extension PBSharedFileMenuItemView: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionSharedFileItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}size_bytes\0\u{3}mime_type\0\u{3}file_id\0\u{1}available\0\u{1}sha256\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{1}kind\0\u{3}kind_label\0\u{3}size_text\0\u{3}display_path\0\u{3}source_caption\0\u{1}status\0\u{1}subtitle\0\u{3}subtitle_is_error\0\u{3}a11y_label\0\u{3}downloaded_bytes\0\u{1}progress\0\u{3}waiting_reconnect\0\u{3}primary_action\0\u{3}primary_label\0\u{3}primary_enabled\0\u{3}primary_disabled_reason\0\u{3}menu_items\0\u{3}supports_album_save\0\u{3}has_media_duration\0\u{3}duration_text\0\u{3}web_preview_kind\0\u{3}web_preview_mime\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{3}size_bytes\0\u{4}\u{2}file_id\0\u{2}\u{2}sha256\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{1}kind\0\u{3}kind_label\0\u{3}size_text\0\u{3}display_path\0\u{3}source_caption\0\u{1}status\0\u{1}subtitle\0\u{3}subtitle_is_error\0\u{3}a11y_label\0\u{3}downloaded_bytes\0\u{1}progress\0\u{3}waiting_reconnect\0\u{3}primary_action\0\u{3}primary_label\0\u{3}primary_enabled\0\u{3}primary_disabled_reason\0\u{3}menu_items\0\u{3}supports_album_save\0\u{3}has_media_duration\0\u{3}duration_text\0\u{3}web_preview_kind\0\u{3}web_preview_mime\0\u{b}path\0\u{b}name\0\u{b}mime_type\0\u{b}available\0\u{c}\u{1}\u{1}\u{c}\u{2}\u{1}\u{c}\u{4}\u{1}\u{c}\u{6}\u{1}")
 
   fileprivate class _StorageClass {
-    var _path: String = String()
-    var _name: String = String()
     var _sizeBytes: Int64 = 0
-    var _mimeType: String = String()
     var _fileID: String = String()
-    var _available: Bool = false
     var _sha256: Data = Data()
     var _displayName: String = String()
     var _nameHead: String = String()
@@ -9642,12 +9618,8 @@ extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._Message
     private init() {}
 
     init(copying source: _StorageClass) {
-      _path = source._path
-      _name = source._name
       _sizeBytes = source._sizeBytes
-      _mimeType = source._mimeType
       _fileID = source._fileID
-      _available = source._available
       _sha256 = source._sha256
       _displayName = source._displayName
       _nameHead = source._nameHead
@@ -9692,12 +9664,8 @@ extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._Message
         // allocates stack space for every case branch when no optimizations are
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
-        case 1: try { try decoder.decodeSingularStringField(value: &_storage._path) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
         case 3: try { try decoder.decodeSingularInt64Field(value: &_storage._sizeBytes) }()
-        case 4: try { try decoder.decodeSingularStringField(value: &_storage._mimeType) }()
         case 5: try { try decoder.decodeSingularStringField(value: &_storage._fileID) }()
-        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._available) }()
         case 7: try { try decoder.decodeSingularBytesField(value: &_storage._sha256) }()
         case 8: try { try decoder.decodeSingularStringField(value: &_storage._displayName) }()
         case 9: try { try decoder.decodeSingularStringField(value: &_storage._nameHead) }()
@@ -9736,23 +9704,11 @@ extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._Message
       // allocates stack space for every if/case branch local when no optimizations
       // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
       // https://github.com/apple/swift-protobuf/issues/1182
-      if !_storage._path.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._path, fieldNumber: 1)
-      }
-      if !_storage._name.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._name, fieldNumber: 2)
-      }
       if _storage._sizeBytes != 0 {
         try visitor.visitSingularInt64Field(value: _storage._sizeBytes, fieldNumber: 3)
       }
-      if !_storage._mimeType.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._mimeType, fieldNumber: 4)
-      }
       if !_storage._fileID.isEmpty {
         try visitor.visitSingularStringField(value: _storage._fileID, fieldNumber: 5)
-      }
-      if _storage._available != false {
-        try visitor.visitSingularBoolField(value: _storage._available, fieldNumber: 6)
       }
       if !_storage._sha256.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._sha256, fieldNumber: 7)
@@ -9841,12 +9797,8 @@ extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._Message
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
         let rhs_storage = _args.1
-        if _storage._path != rhs_storage._path {return false}
-        if _storage._name != rhs_storage._name {return false}
         if _storage._sizeBytes != rhs_storage._sizeBytes {return false}
-        if _storage._mimeType != rhs_storage._mimeType {return false}
         if _storage._fileID != rhs_storage._fileID {return false}
-        if _storage._available != rhs_storage._available {return false}
         if _storage._sha256 != rhs_storage._sha256 {return false}
         if _storage._displayName != rhs_storage._displayName {return false}
         if _storage._nameHead != rhs_storage._nameHead {return false}

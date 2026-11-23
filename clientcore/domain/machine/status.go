@@ -479,7 +479,6 @@ func BuildChart(
 			out.ScrubIndex = scrubIndex
 			p := pts[scrubIndex]
 			full, num, valText, unit := formatChartParts(p.Value, memory)
-			out.ScrubValue = full
 			out.ScrubNumericValue = num
 			out.ScrubValueText = valText
 			out.ScrubUnit = unit
@@ -489,6 +488,11 @@ func BuildChart(
 			} else {
 				out.ScrubAge = text.Msg(text.KeyMachineStatusSecondsAgo, text.Int("count", secs))
 			}
+			out.ScrubA11YValue = text.Msg(
+				text.KeyMachineStatusA11YScrubValue,
+				text.ArgText("value", full),
+				text.ArgText("age", out.ScrubAge),
+			)
 			out.CanStepPrev = scrubIndex > 0
 			out.CanStepNext = int(scrubIndex) < len(pts)-1
 		} else {

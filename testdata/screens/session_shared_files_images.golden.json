@@ -186,6 +186,12 @@
                   "intValue": "2"
                 }
               ]
+            },
+            "imagesPickBlockedReason": {
+              "key": "attachment.disconnected"
+            },
+            "filesPickBlockedReason": {
+              "key": "attachment.disconnected_files"
             }
           }
         },
@@ -532,11 +538,8 @@
                   "sharedFiles": {
                     "files": [
                       {
-                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
-                        "name": "product-walkthrough-recording-2026.mp4",
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "available": true,
                         "sha256": "AQIDBA==",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
@@ -600,11 +603,8 @@
                         "webPreviewMime": "video/mp4"
                       },
                       {
-                        "path": "/Users/me/proj/docs/design-notes.docx",
-                        "name": "design-notes.docx",
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "available": true,
                         "sha256": "BQYHCA==",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
@@ -1176,11 +1176,8 @@
                   "sharedFiles": {
                     "files": [
                       {
-                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
-                        "name": "product-walkthrough-recording-2026.mp4",
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "available": true,
                         "sha256": "AQIDBA==",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
@@ -1284,11 +1281,8 @@
                         "webPreviewMime": "video/mp4"
                       },
                       {
-                        "path": "/Users/me/proj/docs/design-notes.docx",
-                        "name": "design-notes.docx",
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "available": true,
                         "sha256": "BQYHCA==",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
@@ -1933,11 +1927,8 @@
                   "sharedFiles": {
                     "files": [
                       {
-                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
-                        "name": "product-walkthrough-recording-2026.mp4",
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "available": true,
                         "sha256": "AQIDBA==",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
@@ -2051,11 +2042,8 @@
                         "webPreviewMime": "video/mp4"
                       },
                       {
-                        "path": "/Users/me/proj/docs/design-notes.docx",
-                        "name": "design-notes.docx",
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "available": true,
                         "sha256": "BQYHCA==",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
@@ -2678,11 +2666,8 @@
                   "sharedFiles": {
                     "files": [
                       {
-                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
-                        "name": "product-walkthrough-recording-2026.mp4",
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "available": true,
                         "sha256": "AQIDBA==",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
@@ -2796,11 +2781,8 @@
                         "webPreviewMime": "video/mp4"
                       },
                       {
-                        "path": "/Users/me/proj/docs/design-notes.docx",
-                        "name": "design-notes.docx",
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "available": true,
                         "sha256": "BQYHCA==",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
@@ -3422,11 +3404,8 @@
                   "sharedFiles": {
                     "files": [
                       {
-                        "path": "/Users/me/proj/out/product-walkthrough-recording-2026.mp4",
-                        "name": "product-walkthrough-recording-2026.mp4",
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "available": true,
                         "sha256": "AQIDBA==",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
@@ -3540,11 +3519,8 @@
                         "webPreviewMime": "video/mp4"
                       },
                       {
-                        "path": "/Users/me/proj/docs/design-notes.docx",
-                        "name": "design-notes.docx",
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "available": true,
                         "sha256": "BQYHCA==",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",

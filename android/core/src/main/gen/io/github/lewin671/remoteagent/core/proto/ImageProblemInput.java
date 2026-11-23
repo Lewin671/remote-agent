@@ -8,7 +8,7 @@ package io.github.lewin671.remoteagent.core.proto;
 /**
  * <pre>
  * Structured input for Core's image error classifier.
- * Shells pass the highest-fidelity signal they have (explicit_kind &gt; local_key &gt; error_code &gt; raw_diagnostic).
+ * Shells pass the highest-fidelity signal they have (explicit_kind &gt; error_code &gt; raw_diagnostic).
  * Never pass already-translated UI prose into raw_diagnostic.
  * </pre>
  *
@@ -21,7 +21,6 @@ public  final class ImageProblemInput extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.ImageProblemInput)
     ImageProblemInputOrBuilder {
   private ImageProblemInput() {
-    localKey_ = "";
     errorCode_ = "";
     rawDiagnostic_ = "";
   }
@@ -65,54 +64,6 @@ public  final class ImageProblemInput extends
   private void clearExplicitKind() {
 
     explicitKind_ = 0;
-  }
-
-  public static final int LOCAL_KEY_FIELD_NUMBER = 2;
-  private java.lang.String localKey_;
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @return The localKey.
-   */
-  @java.lang.Override
-  public java.lang.String getLocalKey() {
-    return localKey_;
-  }
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @return The bytes for localKey.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getLocalKeyBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(localKey_);
-  }
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @param value The localKey to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setLocalKey(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    localKey_ = value;
-  }
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   */
-  private void clearLocalKey() {
-
-    localKey_ = getDefaultInstance().getLocalKey();
-  }
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @param value The bytes for localKey to set.
-   */
-  private void setLocalKeyBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    localKey_ = value.toStringUtf8();
-
   }
 
   public static final int ERROR_CODE_FIELD_NUMBER = 3;
@@ -338,7 +289,7 @@ public  final class ImageProblemInput extends
   /**
    * <pre>
    * Structured input for Core's image error classifier.
-   * Shells pass the highest-fidelity signal they have (explicit_kind &gt; local_key &gt; error_code &gt; raw_diagnostic).
+   * Shells pass the highest-fidelity signal they have (explicit_kind &gt; error_code &gt; raw_diagnostic).
    * Never pass already-translated UI prose into raw_diagnostic.
    * </pre>
    *
@@ -398,55 +349,6 @@ public  final class ImageProblemInput extends
     public Builder clearExplicitKind() {
       copyOnWrite();
       instance.clearExplicitKind();
-      return this;
-    }
-
-    /**
-     * <code>string local_key = 2 [json_name = "localKey"];</code>
-     * @return The localKey.
-     */
-    @java.lang.Override
-    public java.lang.String getLocalKey() {
-      return instance.getLocalKey();
-    }
-    /**
-     * <code>string local_key = 2 [json_name = "localKey"];</code>
-     * @return The bytes for localKey.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getLocalKeyBytes() {
-      return instance.getLocalKeyBytes();
-    }
-    /**
-     * <code>string local_key = 2 [json_name = "localKey"];</code>
-     * @param value The localKey to set.
-     * @return This builder for chaining.
-     */
-    public Builder setLocalKey(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setLocalKey(value);
-      return this;
-    }
-    /**
-     * <code>string local_key = 2 [json_name = "localKey"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearLocalKey() {
-      copyOnWrite();
-      instance.clearLocalKey();
-      return this;
-    }
-    /**
-     * <code>string local_key = 2 [json_name = "localKey"];</code>
-     * @param value The bytes for localKey to set.
-     * @return This builder for chaining.
-     */
-    public Builder setLocalKeyBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setLocalKeyBytes(value);
       return this;
     }
 
@@ -608,14 +510,13 @@ public  final class ImageProblemInput extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "explicitKind_",
-            "localKey_",
             "errorCode_",
             "rawDiagnostic_",
             "isReadingSource_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0007";
+              "\u0000\u0004\u0000\u0000\u0001\u0005\u0004\u0000\u0000\u0000\u0001\f\u0003\u0208" +
+              "\u0004\u0208\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -387,7 +387,9 @@ private fun HeroCard(
             Spacer(Modifier.height(12.dp))
             Box(
                 Modifier.fillMaxWidth().semantics {
-                    if (a11yChart.isNotEmpty()) stateDescription = a11yChart
+                    val scrubA11y = if (chart.hasScrub) uiText(chart.scrubA11YValue) else ""
+                    if (scrubA11y.isNotEmpty()) stateDescription = scrubA11y
+                    else if (a11yChart.isNotEmpty()) stateDescription = a11yChart
                     val actions = ArrayList<CustomAccessibilityAction>()
                     if (chart.canStepPrev) {
                         actions.add(CustomAccessibilityAction(prevSampleLabel) {

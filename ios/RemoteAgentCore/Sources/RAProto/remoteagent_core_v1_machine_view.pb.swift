@@ -662,15 +662,6 @@ public struct PBMachineChartView: @unchecked Sendable {
     set {_uniqueStorage()._scrubIndex = newValue}
   }
 
-  public var scrubValue: PBCoreText {
-    get {return _storage._scrubValue ?? PBCoreText()}
-    set {_uniqueStorage()._scrubValue = newValue}
-  }
-  /// Returns true if `scrubValue` has been explicitly set.
-  public var hasScrubValue: Bool {return _storage._scrubValue != nil}
-  /// Clears the value of `scrubValue`. Subsequent reads from it will return its default value.
-  public mutating func clearScrubValue() {_uniqueStorage()._scrubValue = nil}
-
   public var scrubAge: PBCoreText {
     get {return _storage._scrubAge ?? PBCoreText()}
     set {_uniqueStorage()._scrubAge = newValue}
@@ -713,6 +704,16 @@ public struct PBMachineChartView: @unchecked Sendable {
     get {return _storage._scrubUnit}
     set {_uniqueStorage()._scrubUnit = newValue}
   }
+
+  /// Screen-reader value while scrubbing: the full sample value and its age.
+  public var scrubA11YValue: PBCoreText {
+    get {return _storage._scrubA11YValue ?? PBCoreText()}
+    set {_uniqueStorage()._scrubA11YValue = newValue}
+  }
+  /// Returns true if `scrubA11YValue` has been explicitly set.
+  public var hasScrubA11YValue: Bool {return _storage._scrubA11YValue != nil}
+  /// Clears the value of `scrubA11YValue`. Subsequent reads from it will return its default value.
+  public mutating func clearScrubA11YValue() {_uniqueStorage()._scrubA11YValue = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2325,7 +2326,7 @@ extension PBMachineChartPoint: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineChartView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}points\0\u{3}window_start_ms\0\u{3}window_end_ms\0\u{3}gap_threshold_ms\0\u{1}ceiling\0\u{3}has_scrub\0\u{3}scrub_index\0\u{3}scrub_value\0\u{3}scrub_age\0\u{3}a11y_summary\0\u{3}can_step_prev\0\u{3}can_step_next\0\u{3}scrub_numeric_value\0\u{3}scrub_value_text\0\u{3}scrub_unit\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}points\0\u{3}window_start_ms\0\u{3}window_end_ms\0\u{3}gap_threshold_ms\0\u{1}ceiling\0\u{3}has_scrub\0\u{3}scrub_index\0\u{4}\u{2}scrub_age\0\u{3}a11y_summary\0\u{3}can_step_prev\0\u{3}can_step_next\0\u{3}scrub_numeric_value\0\u{3}scrub_value_text\0\u{3}scrub_unit\0\u{3}scrub_a11y_value\0\u{b}scrub_value\0\u{c}\u{9}\u{1}")
 
   fileprivate class _StorageClass {
     var _visible: Bool = false
@@ -2336,7 +2337,6 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     var _ceiling: Double = 0
     var _hasScrub_p: Bool = false
     var _scrubIndex: Int32 = 0
-    var _scrubValue: PBCoreText? = nil
     var _scrubAge: PBCoreText? = nil
     var _a11YSummary: PBCoreText? = nil
     var _canStepPrev: Bool = false
@@ -2344,6 +2344,7 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
     var _scrubNumericValue: Double = 0
     var _scrubValueText: String = String()
     var _scrubUnit: String = String()
+    var _scrubA11YValue: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2362,7 +2363,6 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       _ceiling = source._ceiling
       _hasScrub_p = source._hasScrub_p
       _scrubIndex = source._scrubIndex
-      _scrubValue = source._scrubValue
       _scrubAge = source._scrubAge
       _a11YSummary = source._a11YSummary
       _canStepPrev = source._canStepPrev
@@ -2370,6 +2370,7 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       _scrubNumericValue = source._scrubNumericValue
       _scrubValueText = source._scrubValueText
       _scrubUnit = source._scrubUnit
+      _scrubA11YValue = source._scrubA11YValue
     }
   }
 
@@ -2396,7 +2397,6 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         case 6: try { try decoder.decodeSingularDoubleField(value: &_storage._ceiling) }()
         case 7: try { try decoder.decodeSingularBoolField(value: &_storage._hasScrub_p) }()
         case 8: try { try decoder.decodeSingularInt32Field(value: &_storage._scrubIndex) }()
-        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._scrubValue) }()
         case 10: try { try decoder.decodeSingularMessageField(value: &_storage._scrubAge) }()
         case 11: try { try decoder.decodeSingularMessageField(value: &_storage._a11YSummary) }()
         case 12: try { try decoder.decodeSingularBoolField(value: &_storage._canStepPrev) }()
@@ -2404,6 +2404,7 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         case 14: try { try decoder.decodeSingularDoubleField(value: &_storage._scrubNumericValue) }()
         case 15: try { try decoder.decodeSingularStringField(value: &_storage._scrubValueText) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._scrubUnit) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._scrubA11YValue) }()
         default: break
         }
       }
@@ -2440,9 +2441,6 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       if _storage._scrubIndex != 0 {
         try visitor.visitSingularInt32Field(value: _storage._scrubIndex, fieldNumber: 8)
       }
-      try { if let v = _storage._scrubValue {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
-      } }()
       try { if let v = _storage._scrubAge {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
       } }()
@@ -2464,6 +2462,9 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
       if !_storage._scrubUnit.isEmpty {
         try visitor.visitSingularStringField(value: _storage._scrubUnit, fieldNumber: 16)
       }
+      try { if let v = _storage._scrubA11YValue {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2481,7 +2482,6 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._ceiling != rhs_storage._ceiling {return false}
         if _storage._hasScrub_p != rhs_storage._hasScrub_p {return false}
         if _storage._scrubIndex != rhs_storage._scrubIndex {return false}
-        if _storage._scrubValue != rhs_storage._scrubValue {return false}
         if _storage._scrubAge != rhs_storage._scrubAge {return false}
         if _storage._a11YSummary != rhs_storage._a11YSummary {return false}
         if _storage._canStepPrev != rhs_storage._canStepPrev {return false}
@@ -2489,6 +2489,7 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
         if _storage._scrubNumericValue != rhs_storage._scrubNumericValue {return false}
         if _storage._scrubValueText != rhs_storage._scrubValueText {return false}
         if _storage._scrubUnit != rhs_storage._scrubUnit {return false}
+        if _storage._scrubA11YValue != rhs_storage._scrubA11YValue {return false}
         return true
       }
       if !storagesAreEqual {return false}

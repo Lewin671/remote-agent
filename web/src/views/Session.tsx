@@ -675,7 +675,7 @@ export function SessionScreenView({
       file.webPreviewKind === SharedFileWebPreviewKind.UNSPECIFIED ||
       !file.webPreviewMime
     ) {
-      saveBlobAsDownload(blob, file.displayName || file.name);
+      saveBlobAsDownload(blob, file.displayName);
       return;
     }
     setViewingShared({
@@ -2362,9 +2362,9 @@ const TimelineRow = memo(function TimelineRow({
         <div className="file-chips">
           {sf.files.map((f, i) => (
             <FileChip
-              key={f.fileId || f.path || f.name || String(i)}
+              key={f.fileId || String(i)}
               file={{
-                name: f.name,
+                name: f.displayName,
                 displayName: f.displayName,
                 nameHead: f.nameHead,
                 nameTail: f.nameTail,

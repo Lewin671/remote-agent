@@ -39,11 +39,12 @@ enum AttachmentRejectKind {
 }
 
 // Structured input for Core's image error classifier.
-// Shells pass the highest-fidelity signal they have (explicit_kind > local_key > error_code > raw_diagnostic).
+// Shells pass the highest-fidelity signal they have (explicit_kind > error_code > raw_diagnostic).
 // Never pass already-translated UI prose into raw_diagnostic.
 message ImageProblemInput {
   ImageProblemKind explicit_kind = 1;
-  string local_key = 2;
+  reserved 2;
+  reserved "local_key";
   string error_code = 3;
   string raw_diagnostic = 4;
   // True when the failure happened while reading from the OS photo/file provider;

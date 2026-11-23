@@ -28,64 +28,6 @@
     }
   },
   {
-    "key": "attachment.android_files_limit",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "一条消息最多 {count} 个文件，多选的文件没有加入"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "A message can contain at most {count} file; extra file were not added",
-        "other": "A message can contain at most {count} files; extra files were not added"
-      }
-    },
-    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。参数：count 为非负数量，控制复数。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.android_name_too_long",
-    "zh-CN": "文件名过长，请重命名后重新选择",
-    "en": "Filename is too long. Rename the file and select it again",
-    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.android_name_unreadable",
-    "zh-CN": "无法读取文件名，请重新选择文件",
-    "en": "Could not read the filename. Select the file again",
-    "notes": "Android 批次 B：FileDrafts.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.android_not_saved",
     "zh-CN": "附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失",
     "en": "Attachments were not saved to the phone. Check free space. You can still send them now, but they may be lost when the app closes",
@@ -491,20 +433,6 @@
     }
   },
   {
-    "key": "attachment.ios_computer_offline_connect_to_add_files",
-    "zh-CN": "电脑离线，连上后才能添加文件",
-    "en": "Computer offline. Connect to add files.",
-    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.ios_could_not_connect_to_the_computer_retry_the_upload",
     "zh-CN": "没能连上电脑，请重试上传",
     "en": "Could not connect to the computer. Retry the upload.",
@@ -614,25 +542,6 @@
     }
   },
   {
-    "key": "attachment.ios_file_too_large_each_file_may_be_at_most",
-    "zh-CN": "文件太大，单个文件最多 {value}",
-    "en": "File too large. Each file may be at most {value}.",
-    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 fileSize(maxBytes)；用户内容和系统/CLI 原文不翻译。",
-    "params": {
-      "value": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.ios_file_upload_failed_retry_or_select_the_file_again",
     "zh-CN": "文件上传失败，请重试或重新选择",
     "en": "File upload failed. Retry or select the file again.",
@@ -683,50 +592,6 @@
     "key": "attachment.ios_file_verification_failed_the_file_may_have_changed_select",
     "zh-CN": "文件校验失败，文件可能已被修改，请重新选择",
     "en": "File verification failed. The file may have changed. Select it again.",
-    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.ios_files_limit_notice",
-    "zh-CN": {
-      "plural": "limit",
-      "forms": {
-        "other": "一条消息最多 {limit} 个文件，多选的文件没有加入"
-      }
-    },
-    "en": {
-      "plural": "limit",
-      "forms": {
-        "one": "Up to {limit} file per message. Extra file were not added.",
-        "other": "Up to {limit} files per message. Extra files were not added."
-      }
-    },
-    "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：limit 为当前数量（保留原整数规则）。",
-    "params": {
-      "limit": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.ios_folders_cannot_be_sent_directly_compress_the_folder_and",
-    "zh-CN": "文件夹不能直接发送，请压缩后选择",
-    "en": "Folders cannot be sent directly. Compress the folder and select it.",
     "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
@@ -857,74 +722,6 @@
     "en": " · Preparing",
     "notes": "FileChip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.ios_restore_files_limit",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "放回后会超过 {count} 个文件，先移除一些再放回"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "Restoring would exceed {count} file. Remove some first.",
-        "other": "Restoring would exceed {count} files. Remove some first."
-      }
-    },
-    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：count 为当前整数数量，保留原阈值。",
-    "params": {
-      "count": {
-        "type": "integer",
-        "example": 2
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "attachment.ios_restore_images_limit",
-    "zh-CN": {
-      "plural": "count",
-      "forms": {
-        "other": "输入框里已有 {have} 张图，放回这 {count} 张会超过 {limit} 张。先移除一些再放回"
-      }
-    },
-    "en": {
-      "plural": "count",
-      "forms": {
-        "one": "Images already in composer: {have}. Restoring {count} image would exceed {limit}. Remove some first.",
-        "other": "Images already in composer: {have}. Restoring {count} images would exceed {limit}. Remove some first."
-      }
-    },
-    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：have 为当前整数数量，保留原阈值；count 为当前整数数量，保留原阈值；limit 为当前整数数量，保留原阈值。",
-    "params": {
-      "have": {
-        "type": "integer",
-        "example": 2
-      },
-      "count": {
-        "type": "integer",
-        "example": 2
-      },
-      "limit": {
-        "type": "integer",
-        "example": 2
-      }
-    },
     "platforms": [
       "ios"
     ],

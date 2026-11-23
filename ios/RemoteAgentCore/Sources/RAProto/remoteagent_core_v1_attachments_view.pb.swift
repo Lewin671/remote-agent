@@ -190,7 +190,7 @@ public enum PBAttachmentRejectKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 }
 
 /// Structured input for Core's image error classifier.
-/// Shells pass the highest-fidelity signal they have (explicit_kind > local_key > error_code > raw_diagnostic).
+/// Shells pass the highest-fidelity signal they have (explicit_kind > error_code > raw_diagnostic).
 /// Never pass already-translated UI prose into raw_diagnostic.
 public struct PBImageProblemInput: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -198,8 +198,6 @@ public struct PBImageProblemInput: Sendable {
   // methods supported on all messages.
 
   public var explicitKind: PBImageProblemKind = .unspecified
-
-  public var localKey: String = String()
 
   public var errorCode: String = String()
 
@@ -530,7 +528,7 @@ extension PBAttachmentRejectKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBImageProblemInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ImageProblemInput"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}explicit_kind\0\u{3}local_key\0\u{3}error_code\0\u{3}raw_diagnostic\0\u{3}is_reading_source\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}explicit_kind\0\u{4}\u{2}error_code\0\u{3}raw_diagnostic\0\u{3}is_reading_source\0\u{b}local_key\0\u{c}\u{2}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -539,7 +537,6 @@ extension PBImageProblemInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularEnumField(value: &self.explicitKind) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.localKey) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.rawDiagnostic) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.isReadingSource) }()
@@ -551,9 +548,6 @@ extension PBImageProblemInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.explicitKind != .unspecified {
       try visitor.visitSingularEnumField(value: self.explicitKind, fieldNumber: 1)
-    }
-    if !self.localKey.isEmpty {
-      try visitor.visitSingularStringField(value: self.localKey, fieldNumber: 2)
     }
     if !self.errorCode.isEmpty {
       try visitor.visitSingularStringField(value: self.errorCode, fieldNumber: 3)
@@ -569,7 +563,6 @@ extension PBImageProblemInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
   public static func ==(lhs: PBImageProblemInput, rhs: PBImageProblemInput) -> Bool {
     if lhs.explicitKind != rhs.explicitKind {return false}
-    if lhs.localKey != rhs.localKey {return false}
     if lhs.errorCode != rhs.errorCode {return false}
     if lhs.rawDiagnostic != rhs.rawDiagnostic {return false}
     if lhs.isReadingSource != rhs.isReadingSource {return false}

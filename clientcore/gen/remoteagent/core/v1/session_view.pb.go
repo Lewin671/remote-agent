@@ -4481,12 +4481,8 @@ func (m *SharedFileMenuItemView) AppendMarshal(b []byte) []byte {
 
 type SessionSharedFileItem struct {
 	_                     [0]func()
-	Path                  string
-	Name                  string
 	SizeBytes             int64
-	MimeType              string
 	FileId                string
-	Available             bool
 	Sha256                []byte
 	DisplayName           string
 	NameHead              string
@@ -4515,41 +4511,17 @@ type SessionSharedFileItem struct {
 	WebPreviewMime        string
 }
 
-func (m *SessionSharedFileItem) GetPath() string {
-	if m != nil {
-		return m.Path
-	}
-	return ""
-}
-func (m *SessionSharedFileItem) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
 func (m *SessionSharedFileItem) GetSizeBytes() int64 {
 	if m != nil {
 		return m.SizeBytes
 	}
 	return 0
 }
-func (m *SessionSharedFileItem) GetMimeType() string {
-	if m != nil {
-		return m.MimeType
-	}
-	return ""
-}
 func (m *SessionSharedFileItem) GetFileId() string {
 	if m != nil {
 		return m.FileId
 	}
 	return ""
-}
-func (m *SessionSharedFileItem) GetAvailable() bool {
-	if m != nil {
-		return m.Available
-	}
-	return false
 }
 func (m *SessionSharedFileItem) GetSha256() []byte {
 	if m != nil {
@@ -4710,12 +4682,8 @@ func (m *SessionSharedFileItem) GetWebPreviewMime() string {
 
 var LitewireDesc_SessionSharedFileItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Path), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Name), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SizeBytes), Kind: litewire.KindInt64},
-		{Num: 4, Offset: unsafe.Offsetof(SessionSharedFileItem{}.MimeType), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(SessionSharedFileItem{}.FileId), Kind: litewire.KindString},
-		{Num: 6, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Available), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Sha256), Kind: litewire.KindBytes},
 		{Num: 8, Offset: unsafe.Offsetof(SessionSharedFileItem{}.DisplayName), Kind: litewire.KindString},
 		{Num: 9, Offset: unsafe.Offsetof(SessionSharedFileItem{}.NameHead), Kind: litewire.KindString},

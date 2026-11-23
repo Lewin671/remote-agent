@@ -128,17 +128,6 @@ public interface SecurityNotifyDisplayOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.Text getBody();
 
   /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   * @return Whether the genericBody field is set.
-   */
-  boolean hasGenericBody();
-  /**
-   * <code>.remoteagent.core.v1.Text generic_body = 14 [json_name = "genericBody"];</code>
-   * @return The genericBody.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getGenericBody();
-
-  /**
    * <code>.remoteagent.core.v1.Text sub_text = 15 [json_name = "subText"];</code>
    * @return Whether the subText field is set.
    */
@@ -159,17 +148,6 @@ public interface SecurityNotifyDisplayOrBuilder extends
    * @return The bigText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getBigText();
-
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   * @return Whether the sharedFilesSuffix field is set.
-   */
-  boolean hasSharedFilesSuffix();
-  /**
-   * <code>.remoteagent.core.v1.Text shared_files_suffix = 17 [json_name = "sharedFilesSuffix"];</code>
-   * @return The sharedFilesSuffix.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getSharedFilesSuffix();
 
   /**
    * <code>int32 shared_file_count = 18 [json_name = "sharedFileCount"];</code>

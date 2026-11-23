@@ -79,7 +79,6 @@ func invalidNotifyDisplay(kind v1.NotifyKind) *corev1.SecurityNotifyDisplay {
 	return &corev1.SecurityNotifyDisplay{
 		Valid:           false,
 		Kind:            kind,
-		GenericBody:     generic,
 		FullGenericBody: generic,
 	}
 }
@@ -103,7 +102,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 		return &corev1.SecurityNotifyDisplay{
 			Valid:           false,
 			Kind:            expectedKind,
-			GenericBody:     genericBody,
 			FullGenericBody: genericBody,
 		}
 	}
@@ -151,7 +149,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			MachineId:             nc.MachineId,
 			Critical:              critical,
 			ShowDetailedByDefault: true,
-			GenericBody:           genericBody,
 			FullGenericBody:       genericBody,
 		}
 		if critical {
@@ -193,7 +190,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			ShowDetailedByDefault: true,
 			Title:                 text.Plain(nc.Title),
 			Body:                  text.Plain(nc.Text),
-			GenericBody:           genericBody,
 			FullGenericBody:       genericBody,
 		}
 
@@ -217,7 +213,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			MachineId:       nc.MachineId,
 			SessionId:       nc.SessionId,
 			SourceEventSeq:  nc.SourceEventSeq,
-			GenericBody:     genericBody,
 			SharedFileCount: int32(nc.SharedFileCount),
 		}
 		if nc.Title != "" {
@@ -231,7 +226,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 		}
 		if nc.SharedFileCount > 0 {
 			suffix := text.Msg(text.KeySharedFileNotificationFiles, text.Int("count", int64(nc.SharedFileCount)))
-			out.SharedFilesSuffix = suffix
 			out.FullGenericBody = text.JoinLiteral(" ", baseGeneric, suffix)
 			if nc.Text != "" {
 				out.Body = text.JoinLiteral(" ", text.Plain(nc.Text), suffix)
@@ -269,7 +263,6 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			MachineId:       nc.MachineId,
 			SessionId:       nc.SessionId,
 			SourceEventSeq:  nc.SourceEventSeq,
-			GenericBody:     genericBody,
 			FullGenericBody: genericBody,
 		}
 		if a := nc.Approval; a != nil {

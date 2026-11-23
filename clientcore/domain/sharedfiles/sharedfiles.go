@@ -516,11 +516,8 @@ func BuildCard(in CardInput) *corev1.SessionSharedFileItem {
 	menuItems := buildMenuItems(status, cls, in.Online, downloaded)
 
 	return &corev1.SessionSharedFileItem{
-		Path:                  f.Path,
-		Name:                  f.Name,
 		SizeBytes:             f.SizeBytes,
 		FileId:                f.FileId,
-		Available:             available,
 		Sha256:                slices.Clone(f.Sha256),
 		DisplayName:           displayName,
 		NameHead:              nameHead,

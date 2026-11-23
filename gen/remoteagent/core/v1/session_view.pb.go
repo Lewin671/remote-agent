@@ -5939,12 +5939,8 @@ func (x *SharedFileMenuItemView) GetSeparated() bool {
 
 type SessionSharedFileItem struct {
 	state                 protoimpl.MessageState    `protogen:"open.v1"`
-	Path                  string                    `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
-	Name                  string                    `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	SizeBytes             int64                     `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
-	MimeType              string                    `protobuf:"bytes,4,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	FileId                string                    `protobuf:"bytes,5,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
-	Available             bool                      `protobuf:"varint,6,opt,name=available,proto3" json:"available,omitempty"`
 	Sha256                []byte                    `protobuf:"bytes,7,opt,name=sha256,proto3" json:"sha256,omitempty"`
 	DisplayName           string                    `protobuf:"bytes,8,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	NameHead              string                    `protobuf:"bytes,9,opt,name=name_head,json=nameHead,proto3" json:"name_head,omitempty"`
@@ -6005,20 +6001,6 @@ func (*SessionSharedFileItem) Descriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_session_view_proto_rawDescGZIP(), []int{36}
 }
 
-func (x *SessionSharedFileItem) GetPath() string {
-	if x != nil {
-		return x.Path
-	}
-	return ""
-}
-
-func (x *SessionSharedFileItem) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
 func (x *SessionSharedFileItem) GetSizeBytes() int64 {
 	if x != nil {
 		return x.SizeBytes
@@ -6026,25 +6008,11 @@ func (x *SessionSharedFileItem) GetSizeBytes() int64 {
 	return 0
 }
 
-func (x *SessionSharedFileItem) GetMimeType() string {
-	if x != nil {
-		return x.MimeType
-	}
-	return ""
-}
-
 func (x *SessionSharedFileItem) GetFileId() string {
 	if x != nil {
 		return x.FileId
 	}
 	return ""
-}
-
-func (x *SessionSharedFileItem) GetAvailable() bool {
-	if x != nil {
-		return x.Available
-	}
-	return false
 }
 
 func (x *SessionSharedFileItem) GetSha256() []byte {
@@ -8835,15 +8803,11 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\aenabled\x18\x03 \x01(\bR\aenabled\x12B\n" +
 	"\x0fdisabled_reason\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x0edisabledReason\x12 \n" +
 	"\vdestructive\x18\x05 \x01(\bR\vdestructive\x12\x1c\n" +
-	"\tseparated\x18\x06 \x01(\bR\tseparated\"\xee\v\n" +
-	"\x15SessionSharedFileItem\x12\x12\n" +
-	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
+	"\tseparated\x18\x06 \x01(\bR\tseparated\"\xc5\v\n" +
+	"\x15SessionSharedFileItem\x12\x1d\n" +
 	"\n" +
-	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12\x1b\n" +
-	"\tmime_type\x18\x04 \x01(\tR\bmimeType\x12\x17\n" +
-	"\afile_id\x18\x05 \x01(\tR\x06fileId\x12\x1c\n" +
-	"\tavailable\x18\x06 \x01(\bR\tavailable\x12\x16\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12\x17\n" +
+	"\afile_id\x18\x05 \x01(\tR\x06fileId\x12\x16\n" +
 	"\x06sha256\x18\a \x01(\fR\x06sha256\x12!\n" +
 	"\fdisplay_name\x18\b \x01(\tR\vdisplayName\x12\x1b\n" +
 	"\tname_head\x18\t \x01(\tR\bnameHead\x12\x1b\n" +
@@ -8873,7 +8837,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x12has_media_duration\x18\x1d \x01(\bR\x10hasMediaDuration\x12#\n" +
 	"\rduration_text\x18\x1e \x01(\tR\fdurationText\x12W\n" +
 	"\x10web_preview_kind\x18\x1f \x01(\x0e2-.remoteagent.core.v1.SharedFileWebPreviewKindR\x0ewebPreviewKind\x12(\n" +
-	"\x10web_preview_mime\x18  \x01(\tR\x0ewebPreviewMime\"Z\n" +
+	"\x10web_preview_mime\x18  \x01(\tR\x0ewebPreviewMimeJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03J\x04\b\x04\x10\x05J\x04\b\x06\x10\aR\x04pathR\x04nameR\tmime_typeR\tavailable\"Z\n" +
 	"\x16SessionSharedFilesItem\x12@\n" +
 	"\x05files\x18\x01 \x03(\v2*.remoteagent.core.v1.SessionSharedFileItemR\x05files\"u\n" +
 	"\x1aSessionGeneratedImagesItem\x12%\n" +

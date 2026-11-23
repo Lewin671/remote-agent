@@ -67,9 +67,6 @@ func ClassifyImageProblem(in *corev1.ImageProblemInput) *corev1.ImageProblemView
 	if k := classifyErrorCode(in.ErrorCode, in.RawDiagnostic); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return BuildImageProblem(k)
 	}
-	if k := classifyLocalKey(in.LocalKey); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
-		return BuildImageProblem(k)
-	}
 	if k := classifyRawDiagnostic(in.RawDiagnostic); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return BuildImageProblem(k)
 	}
@@ -119,94 +116,6 @@ func classifyStableToken(token string) corev1.ImageProblemKind {
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UPLOAD_FAILED
 	case "processing_failed":
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_PROCESSING_FAILED
-	default:
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED
-	}
-}
-
-func classifyLocalKey(rawKey string) corev1.ImageProblemKind {
-	k := strings.TrimSpace(rawKey)
-	if k == "" {
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED
-	}
-	if stable := classifyStableToken(strings.ToLower(k)); stable != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
-		return stable
-	}
-	norm := strings.ReplaceAll(strings.ToLower(k), ".", "_")
-	switch norm {
-	case "image_ios_original_exceeds_mb",
-		"image_android_original_exceeds_20_mb",
-		"image_image_exceeds_20_mb",
-		"image_image_exceeds_20_mb_turn_off_original_and_send":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE
-
-	case "image_ios_image_exceeds_mb",
-		"image_android_image_exceeds_value1_mb",
-		"image_ios_image_has_no_dimensions",
-		"image_android_image_has_no_dimensions",
-		"image_image_dimensions_are_too_large",
-		"image_image_dimensions_are_too_large_send_a_compressed_version",
-		"image_image_dimensions_are_too_large_resize_it_and_retry":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DIMENSIONS
-
-	case "attachment_file_missing",
-		"attachment_android_source_unreadable",
-		"attachment_ios_cannot_read_the_source_file_remove_it_and_select",
-		"image_android_this_image_has_no_local_copy_remove_it_and_select",
-		"image_android_this_image_has_no_local_copy_available_for_reprocessing_remove",
-		"image_this_image_has_no_local_copy_remove_it_and":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_SOURCE_MISSING
-
-	case "image_ios_cannot_read_this_image",
-		"image_android_cannot_read_this_image",
-		"image_cannot_read_this_image",
-		"image_ios_cannot_decode_image",
-		"image_android_cannot_decode_image",
-		"image_ios_cannot_decode_this_image",
-		"image_android_cannot_decode_this_image",
-		"image_ios_could_not_encode_this_image",
-		"image_ios_not_a_readable_jpeg",
-		"image_android_unreadable_jpeg",
-		"image_ios_not_a_readable_png",
-		"image_android_unreadable_png",
-		"image_ios_not_a_readable_webp",
-		"image_android_unreadable_webp",
-		"image_ios_not_a_readable_gif",
-		"image_android_unreadable_gif",
-		"image_ios_gif_is_truncated",
-		"image_android_gif_is_truncated",
-		"image_ios_gif_contains_an_unrecognized_block",
-		"image_android_gif_contains_an_unrecognized_block",
-		"image_ios_unsupported_image_format",
-		"image_android_unsupported_image_format",
-		"image_this_image_format_is_not_supported",
-		"image_cannot_read_this_image_try_jpeg_or_png_instead":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DECODE
-
-	case "attachment_ios_this_phone_s_pending_image_storage_is_full_send",
-		"image_android_phone_storage_for_pending_images_is_full_send_or_remove",
-		"attachment_ios_the_computer_s_attachment_storage_is_full_clear_space",
-		"image_the_computer_s_attachment_storage_is_full_clear_space":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_STORAGE_FULL
-
-	case "connection_no_server",
-		"connection_no_response",
-		"connection_ios_server_error",
-		"errors_connection_timed_out",
-		"errors_connection_timed_out_reconnecting",
-		"errors_connection_dropped_midway",
-		"errors_ios_cannot_find_the_server_check_your_network",
-		"errors_ios_secure_connection_failed",
-		"errors_the_computer_is_offline_the_command_was_not_sent",
-		"errors_ios_this_command_expired_and_was_not_sent",
-		"errors_ios_unsure_whether_the_computer_executed_this",
-		"image_ios_needs_uploading_to_the_computer_again",
-		"image_android_upload_to_the_computer_again",
-		"image_android_upload_to_the_computer_again_if_the_source_cannot_be",
-		"image_the_image_could_not_reach_the_computer_retry_when",
-		"attachment_ios_could_not_connect_to_the_computer_retry_the_upload":
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UPLOAD_FAILED
-
 	default:
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED
 	}

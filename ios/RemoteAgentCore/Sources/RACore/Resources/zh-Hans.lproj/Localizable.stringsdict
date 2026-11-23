@@ -44,48 +44,6 @@
 			<string>%1$lld / %2$lld 个文件</string>
 		</dict>
 	</dict>
-	<key>attachment_ios_files_limit_notice</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@limit@</string>
-		<key>limit</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>一条消息最多 %1$lld 个文件，多选的文件没有加入</string>
-		</dict>
-	</dict>
-	<key>attachment_ios_restore_files_limit</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>放回后会超过 %1$lld 个文件，先移除一些再放回</string>
-		</dict>
-	</dict>
-	<key>attachment_ios_restore_images_limit</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>输入框里已有 %2$lld 张图，放回这 %1$lld 张会超过 %3$lld 张。先移除一些再放回</string>
-		</dict>
-	</dict>
 	<key>attachment_max_files</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -532,20 +490,6 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>图片 %2$lld，共 %1$lld 张，%3$@</string>
-		</dict>
-	</dict>
-	<key>image_screenshots</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string> · %1$lld 张截图</string>
 		</dict>
 	</dict>
 	<key>machine_status_cores</key>

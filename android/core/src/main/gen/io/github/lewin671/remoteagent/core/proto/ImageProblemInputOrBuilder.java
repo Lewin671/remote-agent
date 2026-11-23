@@ -22,18 +22,6 @@ public interface ImageProblemInputOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.ImageProblemKind getExplicitKind();
 
   /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @return The localKey.
-   */
-  java.lang.String getLocalKey();
-  /**
-   * <code>string local_key = 2 [json_name = "localKey"];</code>
-   * @return The bytes for localKey.
-   */
-  com.google.protobuf.ByteString
-      getLocalKeyBytes();
-
-  /**
    * <code>string error_code = 3 [json_name = "errorCode"];</code>
    * @return The errorCode.
    */

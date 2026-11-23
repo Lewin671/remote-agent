@@ -67,17 +67,6 @@ public interface MachineChartViewOrBuilder extends
   int getScrubIndex();
 
   /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   * @return Whether the scrubValue field is set.
-   */
-  boolean hasScrubValue();
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   * @return The scrubValue.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getScrubValue();
-
-  /**
    * <code>.remoteagent.core.v1.Text scrub_age = 10 [json_name = "scrubAge"];</code>
    * @return Whether the scrubAge field is set.
    */
@@ -140,4 +129,23 @@ public interface MachineChartViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getScrubUnitBytes();
+
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   * @return Whether the scrubA11yValue field is set.
+   */
+  boolean hasScrubA11YValue();
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   * @return The scrubA11yValue.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getScrubA11YValue();
 }

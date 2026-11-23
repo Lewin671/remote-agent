@@ -56,20 +56,6 @@
     "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
   },
   {
-    "en": "Cannot read file size. Select the file again",
-    "key": "errors.android_cannot_read_file_size_select_the_file_again",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "无法读取文件大小，请重新选择文件"
-  },
-  {
     "en": "Cannot read the source file. Remove it and select the file again",
     "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
     "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",

@@ -50,54 +50,6 @@
 			<string>Files: %1$lld / %2$lld</string>
 		</dict>
 	</dict>
-	<key>attachment_ios_files_limit_notice</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@limit@</string>
-		<key>limit</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>Up to %1$lld file per message. Extra file were not added.</string>
-			<key>other</key>
-			<string>Up to %1$lld files per message. Extra files were not added.</string>
-		</dict>
-	</dict>
-	<key>attachment_ios_restore_files_limit</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>Restoring would exceed %1$lld file. Remove some first.</string>
-			<key>other</key>
-			<string>Restoring would exceed %1$lld files. Remove some first.</string>
-		</dict>
-	</dict>
-	<key>attachment_ios_restore_images_limit</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string>Images already in composer: %2$lld. Restoring %1$lld image would exceed %3$lld. Remove some first.</string>
-			<key>other</key>
-			<string>Images already in composer: %2$lld. Restoring %1$lld images would exceed %3$lld. Remove some first.</string>
-		</dict>
-	</dict>
 	<key>attachment_max_files</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -608,22 +560,6 @@
 			<string>Image %2$lld of %1$lld, %3$@</string>
 			<key>other</key>
 			<string>Image %2$lld of %1$lld, %3$@</string>
-		</dict>
-	</dict>
-	<key>image_screenshots</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>one</key>
-			<string> · %1$lld screenshot</string>
-			<key>other</key>
-			<string> · %1$lld screenshots</string>
 		</dict>
 	</dict>
 	<key>machine_status_cores</key>

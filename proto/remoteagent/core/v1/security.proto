@@ -687,10 +687,10 @@ message SecurityNotifyDisplay {
   bool show_detailed_by_default = 11;
   Text title = 12;
   Text body = 13;
-  Text generic_body = 14;
+  reserved 14, 17;
+  reserved "generic_body", "shared_files_suffix";
   Text sub_text = 15;
   Text big_text = 16;
-  Text shared_files_suffix = 17;
   int32 shared_file_count = 18;
   Text full_generic_body = 19;
 }

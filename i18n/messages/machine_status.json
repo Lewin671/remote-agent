@@ -1130,6 +1130,31 @@
     }
   },
   {
+    "key": "machine_status.a11y_scrub_value",
+    "zh-CN": "{value}，{age}",
+    "en": "{value}, {age}",
+    "notes": "电脑状态图表拖动取值时读屏朗读的值：value 是该采样点带单位的数值，age 是它距现在多久（如「10 秒前」）。整句翻译，不拼接。 空间：只用于读屏，不显示。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "41%"
+      },
+      "age": {
+        "type": "string",
+        "example": "10 秒前"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "machine_status.a11y_prev_sample",
     "zh-CN": "上一个采样点",
     "en": "Previous sample",

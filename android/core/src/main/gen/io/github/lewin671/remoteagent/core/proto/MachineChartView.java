@@ -299,54 +299,6 @@ public  final class MachineChartView extends
     scrubIndex_ = 0;
   }
 
-  public static final int SCRUB_VALUE_FIELD_NUMBER = 9;
-  private io.github.lewin671.remoteagent.core.proto.Text scrubValue_;
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   */
-  @java.lang.Override
-  public boolean hasScrubValue() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getScrubValue() {
-    return scrubValue_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : scrubValue_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setScrubValue(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    scrubValue_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeScrubValue(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (scrubValue_ != null &&
-        scrubValue_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      scrubValue_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(scrubValue_).mergeFrom(value).buildPartial();
-    } else {
-      scrubValue_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-   */
-  private void clearScrubValue() {
-    scrubValue_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int SCRUB_AGE_FIELD_NUMBER = 10;
   private io.github.lewin671.remoteagent.core.proto.Text scrubAge_;
   /**
@@ -354,7 +306,7 @@ public  final class MachineChartView extends
    */
   @java.lang.Override
   public boolean hasScrubAge() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text scrub_age = 10 [json_name = "scrubAge"];</code>
@@ -370,7 +322,7 @@ public  final class MachineChartView extends
   private void setScrubAge(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     scrubAge_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text scrub_age = 10 [json_name = "scrubAge"];</code>
@@ -385,14 +337,14 @@ public  final class MachineChartView extends
     } else {
       scrubAge_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text scrub_age = 10 [json_name = "scrubAge"];</code>
    */
   private void clearScrubAge() {
     scrubAge_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int A11Y_SUMMARY_FIELD_NUMBER = 11;
@@ -402,7 +354,7 @@ public  final class MachineChartView extends
    */
   @java.lang.Override
   public boolean hasA11YSummary() {
-    return ((bitField0_ & 0x00000004) != 0);
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_summary = 11 [json_name = "a11ySummary"];</code>
@@ -418,7 +370,7 @@ public  final class MachineChartView extends
   private void setA11YSummary(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     a11YSummary_ = value;
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_summary = 11 [json_name = "a11ySummary"];</code>
@@ -433,14 +385,14 @@ public  final class MachineChartView extends
     } else {
       a11YSummary_ = value;
     }
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_summary = 11 [json_name = "a11ySummary"];</code>
    */
   private void clearA11YSummary() {
     a11YSummary_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static final int CAN_STEP_PREV_FIELD_NUMBER = 12;
@@ -615,6 +567,74 @@ public  final class MachineChartView extends
     checkByteStringIsUtf8(value);
     scrubUnit_ = value.toStringUtf8();
 
+  }
+
+  public static final int SCRUB_A11Y_VALUE_FIELD_NUMBER = 17;
+  private io.github.lewin671.remoteagent.core.proto.Text scrubA11YValue_;
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   */
+  @java.lang.Override
+  public boolean hasScrubA11YValue() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getScrubA11YValue() {
+    return scrubA11YValue_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : scrubA11YValue_;
+  }
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setScrubA11YValue(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    scrubA11YValue_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeScrubA11YValue(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (scrubA11YValue_ != null &&
+        scrubA11YValue_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      scrubA11YValue_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(scrubA11YValue_).mergeFrom(value).buildPartial();
+    } else {
+      scrubA11YValue_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <pre>
+   * Screen-reader value while scrubbing: the full sample value and its age.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+   */
+  private void clearScrubA11YValue() {
+    scrubA11YValue_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineChartView parseFrom(
@@ -1013,53 +1033,6 @@ public  final class MachineChartView extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    @java.lang.Override
-    public boolean hasScrubValue() {
-      return instance.hasScrubValue();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getScrubValue() {
-      return instance.getScrubValue();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    public Builder setScrubValue(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setScrubValue(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    public Builder setScrubValue(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setScrubValue(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    public Builder mergeScrubValue(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeScrubValue(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text scrub_value = 9 [json_name = "scrubValue"];</code>
-     */
-    public Builder clearScrubValue() {  copyOnWrite();
-      instance.clearScrubValue();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text scrub_age = 10 [json_name = "scrubAge"];</code>
      */
     @java.lang.Override
@@ -1335,6 +1308,77 @@ public  final class MachineChartView extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    @java.lang.Override
+    public boolean hasScrubA11YValue() {
+      return instance.hasScrubA11YValue();
+    }
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getScrubA11YValue() {
+      return instance.getScrubA11YValue();
+    }
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    public Builder setScrubA11YValue(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setScrubA11YValue(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    public Builder setScrubA11YValue(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setScrubA11YValue(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    public Builder mergeScrubA11YValue(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeScrubA11YValue(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Screen-reader value while scrubbing: the full sample value and its age.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text scrub_a11y_value = 17 [json_name = "scrubA11yValue"];</code>
+     */
+    public Builder clearScrubA11YValue() {  copyOnWrite();
+      instance.clearScrubA11YValue();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineChartView)
   }
   @java.lang.Override
@@ -1361,7 +1405,6 @@ public  final class MachineChartView extends
             "ceiling_",
             "hasScrub_",
             "scrubIndex_",
-            "scrubValue_",
             "scrubAge_",
             "a11YSummary_",
             "canStepPrev_",
@@ -1369,12 +1412,13 @@ public  final class MachineChartView extends
             "scrubNumericValue_",
             "scrubValueText_",
             "scrubUnit_",
+            "scrubA11YValue_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0001\u0000\u0001\u0007\u0002\u001b" +
-              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u0000\u0007\u0007\b\u0004\t\u1009\u0000" +
-              "\n\u1009\u0001\u000b\u1009\u0002\f\u0007\r\u0007\u000e\u0000\u000f\u0208\u0010\u0208" +
-              "";
+              "\u0000\u0010\u0000\u0001\u0001\u0011\u0010\u0000\u0001\u0000\u0001\u0007\u0002\u001b" +
+              "\u0003\u0002\u0004\u0002\u0005\u0002\u0006\u0000\u0007\u0007\b\u0004\n\u1009\u0000" +
+              "\u000b\u1009\u0001\f\u0007\r\u0007\u000e\u0000\u000f\u0208\u0010\u0208\u0011\u1009" +
+              "\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
