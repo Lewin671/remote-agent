@@ -47,6 +47,7 @@ import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.core.translateSecurityKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -224,7 +225,7 @@ internal fun JoinContent(
     var comparisonPending by remember { mutableStateOf(false) }
     var registering by remember { mutableStateOf(false) }
     var activePairingId by remember { mutableStateOf<String?>(null) }
-    var mode by remember(pendingCreate, pendingRecovery, pendingRegistration, existingRepair) {
+    var mode by remember {
         mutableStateOf(
             when {
                 pendingCreate -> "create"
@@ -233,6 +234,15 @@ internal fun JoinContent(
                 else -> "entry"
             },
         )
+    }
+    // Keep the active onboarding screen mounted once a pending create/recovery/registration
+    // transitions to READY so account adoption finishes without dropping back to "entry".
+    LaunchedEffect(pendingCreate, pendingRecovery, pendingRegistration, existingRepair) {
+        when {
+            pendingCreate -> mode = "create"
+            pendingRecovery -> mode = "recover"
+            pendingRegistration || existingRepair -> mode = "join"
+        }
     }
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
@@ -309,7 +319,7 @@ internal fun JoinContent(
                 } else {
                     val res = secHost.client.resumePendingOp()
                     activePairingId = null
-                    app.adoptBootstrappedAccount(res.status)
+                    withContext(NonCancellable) { app.adoptBootstrappedAccount(res.status) }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
@@ -326,7 +336,7 @@ internal fun JoinContent(
             try {
                 val res = secHost.client.confirmJoinSas(pairingId)
                 activePairingId = null
-                app.adoptBootstrappedAccount(res.status)
+                withContext(NonCancellable) { app.adoptBootstrappedAccount(res.status) }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {

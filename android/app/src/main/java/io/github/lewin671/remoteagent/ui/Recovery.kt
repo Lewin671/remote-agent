@@ -28,7 +28,10 @@ import io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary
 import io.github.lewin671.remoteagent.core.proto.SecurityRecoveryInfo
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal fun activePendingOp(status: SecurityWorkflowStatus?): SecurityPendingOpSummary? =
     status?.takeIf { it.hasPendingOp() }?.pendingOp
@@ -401,8 +404,10 @@ fun RecoverScreen(app: RaApp, client: SecurityClient? = null, onBack: () -> Unit
                                         if (codeSaved) secClient.confirmRecoveryCodeSaved()
                                         secClient.completeRecovery().status
                                     },
-                                    adopt = app::adoptBootstrappedAccount,
+                                    adopt = { st -> withContext(NonCancellable) { app.adoptBootstrappedAccount(st) } },
                                 )
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 error = displayError(e)
                             } finally {
@@ -582,7 +587,9 @@ fun CreateAccountScreen(app: RaApp, client: SecurityClient? = null, onBack: () -
                                     res = secClient.adoptCreationWithoutCode()
                                     st = res.status
                                 }
-                                app.adoptBootstrappedAccount(st)
+                                withContext(NonCancellable) { app.adoptBootstrappedAccount(st) }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: Exception) {
                                 error = displayError(e)
                                 busy = false
