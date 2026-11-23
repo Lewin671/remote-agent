@@ -780,13 +780,7 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		}
 		act := k.SessionImageViewerNavigate
 		ui := store.ensureUI(act.SessionId)
-		anchors := ui.LastViewerRefs
-		if len(anchors) == 0 {
-			snap := c.m.sync.SessionSnapshot(act.SessionId)
-			vm := screens.BuildSessionView(snap, c.m.state, &corev1.SessionScreenRequest{SessionId: act.SessionId}, ui)
-			_ = vm
-			anchors = ui.LastViewerRefs
-		}
+		anchors := screens.CollectSessionViewerAnchors(c.m.sync.SessionSnapshot(act.SessionId))
 		total := int32(len(anchors))
 		if total == 0 {
 			return nil

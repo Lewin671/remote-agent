@@ -240,9 +240,36 @@ func DisplayName(path string) string {
 	return sharedfiles.SanitizeFileName(trimmed)
 }
 
+func stripPreview(ref *v1.ImageRef) *v1.ImageRef {
+	if ref == nil {
+		return nil
+	}
+	return &v1.ImageRef{
+		ImageId:        ref.ImageId,
+		Source:         ref.Source,
+		Sync:           ref.Sync,
+		CliIndex:       ref.CliIndex,
+		Path:           ref.Path,
+		Format:         ref.Format,
+		Width:          ref.Width,
+		Height:         ref.Height,
+		Bytes:          ref.Bytes,
+		OriginalWidth:  ref.OriginalWidth,
+		OriginalHeight: ref.OriginalHeight,
+		DisplayWidth:   ref.DisplayWidth,
+		DisplayHeight:  ref.DisplayHeight,
+		Preview:        nil,
+		PreviewFormat:  ref.PreviewFormat,
+		PreviewWidth:   ref.PreviewWidth,
+		PreviewHeight:  ref.PreviewHeight,
+		UploadId:       ref.UploadId,
+	}
+}
+
 // CollectViewerImages walks timeline items in chronological order, including items inside
 // collapsed quiet scheduled groups (marking them with in_collapsed_group = true) so opening
 // the viewer from any image or paging across a session is consistent across all three shells.
+// The returned Ref strips embedded 320px preview bytes because the viewer fetches full images by image_id.
 func CollectViewerImages(
 	items []*corev1.SessionTimelineItem,
 	agentName, machineHome string,
@@ -270,7 +297,7 @@ func CollectViewerImages(
 			EventImageIndex:    evIdx,
 			TimestampMs:        ts,
 			Kind:               kind,
-			Ref:                ref,
+			Ref:                stripPreview(ref),
 			ToolTitle:          toolTitle,
 			RevisedPrompt:      revisedPrompt,
 			SourceLabel:        SourceLabel(kind, agentName),

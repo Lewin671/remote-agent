@@ -2347,6 +2347,137 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 	}
 }
 
+func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Machines: []*corev1.DemoMachine{
+					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
+				},
+				Sessions: []*corev1.DemoSession{
+					{SessionId: "s-win", MachineId: "m1", LastSeq: 6, Meta: &v1.Session{Id: "s-win", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
+				},
+				SessionEvents: []*corev1.DemoSessionEvents{
+					{
+						SessionId: "s-win",
+						Events: []*v1.Event{
+							{
+								Seq:       1,
+								SessionId: "s-win",
+								Kind: &v1.Event_UserMessage{
+									UserMessage: &v1.UserMessage{
+										Text: "first",
+										Images: []*v1.ImageRef{
+											{ImageId: "img1", Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Format: v1.ImageFormat_IMAGE_FORMAT_PNG, Preview: []byte{1, 2, 3, 4}, PreviewWidth: 320, PreviewHeight: 240},
+										},
+									},
+								},
+							},
+							{
+								Seq:       2,
+								SessionId: "s-win",
+								Kind: &v1.Event_UserMessage{
+									UserMessage: &v1.UserMessage{
+										Text: "second",
+										Images: []*v1.ImageRef{
+											{ImageId: "img2", Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, Preview: []byte{5, 6, 7, 8}, Width: 800, Height: 600},
+										},
+									},
+								},
+							},
+							{Seq: 3, SessionId: "s-win", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "msg3"}}},
+							{Seq: 4, SessionId: "s-win", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "msg4"}}},
+							{Seq: 5, SessionId: "s-win", Kind: &v1.Event_AgentMessage{AgentMessage: &v1.AgentMessage{Text: "msg5"}}},
+							{
+								Seq:       6,
+								SessionId: "s-win",
+								Kind: &v1.Event_UserMessage{
+									UserMessage: &v1.UserMessage{
+										Text: "latest",
+										Images: []*v1.ImageRef{
+											{ImageId: "img3", Sync: v1.ImageSync_IMAGE_SYNC_SYNCED, Format: v1.ImageFormat_IMAGE_FORMAT_WEBP, Preview: []byte{9, 10}, Width: 600, Height: 600},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	viewSmallWindow := func() *corev1.SessionViewModel {
+		vm, err := c.View(&corev1.Screen{
+			Screen: &corev1.Screen_Session{
+				Session: &corev1.SessionScreenRequest{
+					SessionId: "s-win",
+					Window:    &corev1.SessionWindowRequest{Limit: 2},
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("View error: %v", err)
+		}
+		return vm.GetSession()
+	}
+
+	// Open and navigate BEFORE any View() call, starting from out-of-window anchor seq=2.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_SessionImageViewerOpen{
+			SessionImageViewerOpen: &corev1.SessionImageViewerOpenAction{SessionId: "s-win", Seq: 2, ImageIndex: 0},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1150,
+		Event: &corev1.Event_SessionImageViewerNavigate{
+			SessionImageViewerNavigate: &corev1.SessionImageViewerNavigateAction{SessionId: "s-win", Delta: 1},
+		},
+	})
+	s1 := viewSmallWindow()
+	if len(s1.GetTimeline().GetItems()) != 2 {
+		t.Fatalf("expected 2 windowed timeline items, got %d", len(s1.GetTimeline().GetItems()))
+	}
+	if len(s1.GetTimeline().GetViewerImages()) != 3 {
+		t.Fatalf("expected all 3 session viewer_images despite Limit=2 window, got %d", len(s1.GetTimeline().GetViewerImages()))
+	}
+	for _, vi := range s1.GetTimeline().GetViewerImages() {
+		if len(vi.GetRef().GetPreview()) != 0 {
+			t.Fatalf("viewer image %s still carries preview bytes", vi.GetRef().GetImageId())
+		}
+	}
+	if iv := s1.GetImageViewer(); !iv.GetOpen() || iv.GetCurrentIndex() != 2 || iv.GetCurrentImage().GetRef().GetImageId() != "img3" {
+		t.Fatalf("expected navigate from out-of-window seq=2 (+1) before View to land on index 2 (img3), got %+v", iv)
+	}
+
+	// Now open out-of-window seq=2 directly and verify it resolves to index 1 (NOT fallback 0) and steps backward to index 0.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1200,
+		Event: &corev1.Event_SessionImageViewerOpen{
+			SessionImageViewerOpen: &corev1.SessionImageViewerOpenAction{SessionId: "s-win", Seq: 2, ImageIndex: 0},
+		},
+	})
+	s2 := viewSmallWindow()
+	if iv := s2.GetImageViewer(); iv.GetCurrentIndex() != 1 || iv.GetCurrentImage().GetRef().GetImageId() != "img2" || !iv.GetHasPrev() || !iv.GetHasNext() {
+		t.Fatalf("expected out-of-window anchor seq=2 -> index 1 (img2), got %+v", iv)
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1250,
+		Event: &corev1.Event_SessionImageViewerNavigate{
+			SessionImageViewerNavigate: &corev1.SessionImageViewerNavigateAction{SessionId: "s-win", Delta: -1},
+		},
+	})
+	s3 := viewSmallWindow()
+	if iv := s3.GetImageViewer(); iv.GetCurrentIndex() != 0 || iv.GetCurrentImage().GetRef().GetImageId() != "img1" || iv.GetHasPrev() {
+		t.Fatalf("expected prev from out-of-window index 1 -> index 0 (img1), got %+v", iv)
+	}
+}
+
 func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 	c := New()
 	defer c.Close()

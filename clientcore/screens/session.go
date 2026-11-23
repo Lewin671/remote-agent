@@ -149,11 +149,10 @@ type SessionUIState struct {
 	ViewerSeq              uint64
 	ViewerEventIndex       int32
 	ViewerIndex            int32
-	LastViewerRefs         []ViewerImageAnchor
 	timeline               *timelineCache
 }
 
-// ViewerImageAnchor records a viewer image's (seq, event_image_index) identity from the last rendered window.
+// ViewerImageAnchor records a viewer image's (seq, event_image_index) identity in session order.
 type ViewerImageAnchor struct {
 	Seq             uint64
 	EventImageIndex int32

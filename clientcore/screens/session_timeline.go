@@ -413,7 +413,7 @@ func buildSessionTimeline(
 		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
 			folded := foldQuietScheduledItemsWithSpans(ui.timeline.rawItems, ui.timeline.spans, st.Cal, win)
 			applyTimelineWindow(out, folded, win)
-			populateViewerImages(out, caps.Name, home, ui)
+			out.ViewerImages = images.CollectViewerImages(folded, caps.Name, home)
 			return out
 		}
 	}
@@ -1011,28 +1011,65 @@ func buildSessionTimeline(
 	}
 	folded := foldQuietScheduledItemsWithSpans(rawItems, spans, st.Cal, win)
 
-	// Apply window pagination and anchor resolution.
+	// Apply window pagination and anchor resolution; viewer_images always covers the full folded timeline.
 	applyTimelineWindow(out, folded, win)
-	populateViewerImages(out, caps.Name, home, ui)
+	out.ViewerImages = images.CollectViewerImages(folded, caps.Name, home)
 	return out
 }
 
-func populateViewerImages(out *corev1.SessionTimelineView, agentName, machineHome string, ui *SessionUIState) {
-	if out == nil {
-		return
+// CollectSessionViewerAnchors computes the full chronological sequence of viewer image anchors
+// directly from the session snapshot's events and projection (matching buildSessionTimeline's
+// CompletedAt tool placement order) without building a view model or relying on any visible window.
+func CollectSessionViewerAnchors(in world.SessionSnapshot) []ViewerImageAnchor {
+	events := in.Events
+	if len(events) == 0 {
+		return nil
 	}
-	out.ViewerImages = images.CollectViewerImages(out.Items, agentName, machineHome)
-	if ui != nil {
-		if len(out.ViewerImages) == 0 {
-			ui.LastViewerRefs = nil
-		} else {
-			anchors := make([]ViewerImageAnchor, len(out.ViewerImages))
-			for i, img := range out.ViewerImages {
-				anchors[i] = ViewerImageAnchor{Seq: img.Seq, EventImageIndex: img.EventImageIndex}
-			}
-			ui.LastViewerRefs = anchors
+	p := in.Projection
+	if p == nil {
+		p = &corev1.ProjectionState{}
+	}
+	callAt := make(map[uint64]*v1.Event, len(p.CompletedAt))
+	placed := make(map[uint64]bool, len(p.CompletedAt))
+	for startSeq, callSeq := range p.CompletedAt {
+		if ce := findEventBySeq(events, callSeq); ce != nil {
+			callAt[startSeq] = ce
+			placed[callSeq] = true
 		}
 	}
+	var anchors []ViewerImageAnchor
+	appendRefs := func(seq uint64, refs []*v1.ImageRef) {
+		for i, ref := range refs {
+			if ref != nil {
+				anchors = append(anchors, ViewerImageAnchor{Seq: seq, EventImageIndex: int32(i)})
+			}
+		}
+	}
+	for _, e := range events {
+		if e == nil || projection.IsSkeleton(e) {
+			continue
+		}
+		switch k := e.Kind.(type) {
+		case *v1.Event_UserMessage:
+			if k.UserMessage != nil {
+				appendRefs(e.Seq, k.UserMessage.Images)
+			}
+		case *v1.Event_ToolStarted:
+			if ce := callAt[e.Seq]; ce != nil && ce.GetToolCall() != nil {
+				appendRefs(ce.Seq, ce.GetToolCall().Images)
+			}
+		case *v1.Event_ToolCall:
+			if placed[e.Seq] || k.ToolCall == nil {
+				continue
+			}
+			appendRefs(e.Seq, k.ToolCall.Images)
+		case *v1.Event_ImageGenerated:
+			if k.ImageGenerated != nil {
+				appendRefs(e.Seq, k.ImageGenerated.Images)
+			}
+		}
+	}
+	return anchors
 }
 
 func eventItemID(seq uint64) string {

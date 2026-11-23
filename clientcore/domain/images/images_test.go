@@ -225,4 +225,35 @@ func TestAspectSizeAndFormatHelpers(t *testing.T) {
 	if got := DisplayName("/tmp/\u202e\u200b\u2028shot.png"); got != "shot.png" {
 		t.Fatalf("DisplayName sanitized = %q, want shot.png", got)
 	}
+
+	// Verify CollectViewerImages strips 320px preview bytes while preserving preview dimensions for aspect ratio.
+	withPreview := []*corev1.SessionTimelineItem{
+		{
+			Seq: 1,
+			Kind: &corev1.SessionTimelineItem_UserMessage{
+				UserMessage: &corev1.SessionUserMessageItem{
+					Images: []*v1.ImageRef{
+						{
+							ImageId:       "img-prev",
+							Sync:          v1.ImageSync_IMAGE_SYNC_SYNCED,
+							Format:        v1.ImageFormat_IMAGE_FORMAT_JPEG,
+							Preview:       []byte{0xff, 0xd8, 0xff, 0xe0},
+							PreviewWidth:  320,
+							PreviewHeight: 160,
+						},
+					},
+				},
+			},
+		},
+	}
+	collected := CollectViewerImages(withPreview, "Codex", "/Users/me")
+	if len(collected) != 1 {
+		t.Fatalf("expected 1 viewer image, got %d", len(collected))
+	}
+	if len(collected[0].GetRef().GetPreview()) != 0 {
+		t.Fatalf("expected Preview bytes stripped from viewer image ref, got %d bytes", len(collected[0].GetRef().GetPreview()))
+	}
+	if collected[0].GetAspectRatio() != 2.0 {
+		t.Fatalf("expected AspectRatio 2.0 preserved from PreviewWidth/PreviewHeight, got %v", collected[0].GetAspectRatio())
+	}
 }
