@@ -28,16 +28,6 @@ class FilesTest {
         assertNotNull(fileLimitError(-1, 0, 6, MAX_FILE_BYTES))
     }
 
-    @Test fun middleEllipsisKeepsExtensionAndUnicode() {
-        assertEquals("a.zip", fileChipName("a.zip"))
-        val name = "😀非常长的季度分析报告".repeat(5) + ".csv"
-        val shown = fileChipName(name)
-        assertTrue(shown.startsWith("😀非常"))
-        assertTrue(shown.endsWith(".csv"))
-        assertEquals(32, shown.codePointCount(0, shown.length))
-        assertFalse(shown.contains('\uFFFD'))
-    }
-
     private class Channel(val expected: ByteArray, val lost: Boolean = false) : UploadChannel {
         var bytes = java.io.ByteArrayOutputStream()
         var maxSeen = 0

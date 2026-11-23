@@ -92,6 +92,7 @@ import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
@@ -681,7 +682,6 @@ internal fun ChatPane(
     val remote = LocalRemote.current
     val header = vm.header
     val tl = vm.timeline
-    val machineName = if (header.hasComputerName()) uiText(header.computerName) else header.machineId.take(8)
     val list = rememberLazyListState()
     val followState = remember { Follow() }
     val unseen = remember { NewMessages() }
@@ -755,13 +755,25 @@ internal fun ChatPane(
     entrances.outgoing(trayItems.map { it.requestId })
 
     Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
-        val reachabilityUnknown = header.computerReachability == ComputerReachability.COMPUTER_REACHABILITY_UNKNOWN
-        val chatMachineOnline = header.computerOnline || reachabilityUnknown
+        val sharedItemsById = remember(items) {
+            buildMap<String, SessionSharedFileItem> {
+                fun visit(list: List<SessionTimelineItem>) {
+                    for (it in list) {
+                        when (it.kindCase) {
+                            SessionTimelineItem.KindCase.SHARED_FILES ->
+                                it.sharedFiles.filesList.forEach { f -> put(f.fileId, f) }
+                            SessionTimelineItem.KindCase.QUIET_SCHEDULED_GROUP ->
+                                visit(it.quietScheduledGroup.itemsList)
+                            else -> Unit
+                        }
+                    }
+                }
+                visit(items)
+            }
+        }
         SharedFileHost(
             sessionId = sid,
-            machineName = machineName,
-            machineOnline = chatMachineOnline,
-            sessionExited = header.exited,
+            itemsById = sharedItemsById,
             modifier = Modifier.weight(1f),
         ) {
             Box(Modifier.fillMaxSize()) {
@@ -771,9 +783,6 @@ internal fun ChatPane(
                     agentName = header.agentName,
                     onImage = { seq, i -> nav.image(sid, seq, i) },
                     onSession = { nav.session(it) },
-                    machineName = machineName,
-                    machineOnline = chatMachineOnline,
-                    sessionExited = header.exited,
                 )
                 CompositionLocalProvider(LocalChat provides chatCtx) {
                     var showSkeleton by remember(sid) { mutableStateOf(false) }

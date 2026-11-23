@@ -101,9 +101,6 @@ class ChatContext(
     val agentName: String = "",
     val onImage: (seq: Long, index: Int) -> Unit = { _, _ -> },
     val onSession: (String) -> Unit = {},
-    val machineName: String = "",
-    val machineOnline: Boolean = true,
-    val sessionExited: Boolean = false,
     val localOutboxById: Map<String, Outgoing> = emptyMap(),
 )
 

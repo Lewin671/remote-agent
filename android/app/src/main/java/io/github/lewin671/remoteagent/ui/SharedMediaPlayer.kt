@@ -78,9 +78,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.formatMediaDuration
-import io.github.lewin671.remoteagent.core.sanitizeSharedFileName
-import io.github.lewin671.remoteagent.proto.SharedFile
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileMenuAction
 import java.io.File
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -288,11 +287,11 @@ internal class MediaPlayerEngine(
 /** The player as its own full-screen window, like the image viewer. */
 @Composable
 internal fun SharedMediaPlayerDialog(
-    file: SharedFile,
+    item: SessionSharedFileItem,
     localFile: File,
     video: Boolean,
     onDismiss: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
 ) {
     val context = LocalContext.current
     val orientation = LocalConfiguration.current.orientation
@@ -334,7 +333,7 @@ internal fun SharedMediaPlayerDialog(
             }
             SharedMediaPlayerPage(
                 engine = engine,
-                fileName = sanitizeSharedFileName(file.name),
+                fileName = item.displayName.ifEmpty { item.name },
                 video = video,
                 onClose = onDismiss,
                 onAction = onAction,
@@ -387,7 +386,7 @@ internal fun SharedMediaPlayerPage(
     fileName: String,
     video: Boolean,
     onClose: () -> Unit,
-    onAction: (SharedMenuAction) -> Unit,
+    onAction: (SharedFileMenuAction) -> Unit,
     safeInsets: WindowInsets = WindowInsets.displayCutout.union(WindowInsets.waterfall),
     videoSurface: @Composable (Modifier) -> Unit = { PlayerTextureView(engine, it) },
 ) {
@@ -466,7 +465,7 @@ internal fun SharedMediaPlayerPage(
             },
     ) {
         when {
-            failed -> PlayerErrorState(onOpenWith = { onAction(SharedMenuAction.OPEN_WITH) }, modifier = Modifier.align(Alignment.Center))
+            failed -> PlayerErrorState(onOpenWith = { onAction(SharedFileMenuAction.SHARED_FILE_MENU_ACTION_OPEN_WITH) }, modifier = Modifier.align(Alignment.Center))
             video -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val ratio = if (engine.videoWidth > 0 && engine.videoHeight > 0) engine.videoWidth.toFloat() / engine.videoHeight else 16f / 9f
                 videoSurface(Modifier.aspectRatio(ratio))
@@ -526,13 +525,12 @@ internal fun SharedMediaPlayerPage(
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { menuOpen = false; interaction++ } })
             SharedFileContextMenuCard(
                 path = "",
-                machineName = "",
+                sourceCaption = "",
                 entries = playerMenuEntries(video),
                 onAction = { action ->
                     menuOpen = false
                     onAction(action)
                 },
-                copy = copy,
                 palette = DarkPalette,
                 modifier = Modifier.testTag("player-menu")
                     .align(Alignment.TopEnd)
@@ -646,8 +644,8 @@ internal fun PlayerScrubber(
         targetValue = if (dragFraction != null) SharedPlayerSpec.ThumbDragging else SharedPlayerSpec.ThumbRest,
         animationSpec = tween(Motion.FAST),
     )
-    val elapsed = formatMediaDuration(shownMs.toLong())
-    val total = formatMediaDuration(dur.toLong())
+    val elapsed = formatPlayerTime(shownMs.toLong())
+    val total = formatPlayerTime(dur.toLong())
 
     Column(modifier.fillMaxWidth()) {
         Box(
@@ -704,7 +702,16 @@ internal fun PlayerScrubber(
         Row(Modifier.fillMaxWidth()) {
             Text(elapsed, style = PlayerTimeStyle, color = SharedPlayerSpec.TimeColor, maxLines = 1)
             Spacer(Modifier.weight(1f))
-            Text(MINUS + formatMediaDuration((dur - shownMs).toLong()), style = PlayerTimeStyle, color = SharedPlayerSpec.TimeColor, maxLines = 1)
+            Text(MINUS + formatPlayerTime((dur - shownMs).toLong()), style = PlayerTimeStyle, color = SharedPlayerSpec.TimeColor, maxLines = 1)
         }
     }
+}
+
+private fun formatPlayerTime(durationMs: Long): String {
+    val totalSecs = (durationMs.coerceAtLeast(0L) + 500L) / 1000L
+    val h = totalSecs / 3600L
+    val m = (totalSecs % 3600L) / 60L
+    val s = totalSecs % 60L
+    return if (h > 0L) String.format(java.util.Locale.US, "%d:%02d:%02d", h, m, s)
+    else String.format(java.util.Locale.US, "%d:%02d", m, s)
 }

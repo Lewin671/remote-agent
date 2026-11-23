@@ -26,8 +26,12 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.lewin671.remoteagent.core.SharedFileTransferState
+import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
+import io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus
+import io.github.lewin671.remoteagent.core.proto.SharedFileKind
+import io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction
+import io.github.lewin671.remoteagent.core.toSharedFileTarget
 import io.github.lewin671.remoteagent.data.SharedFileManager
-import io.github.lewin671.remoteagent.proto.SharedFile
 import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -46,16 +50,24 @@ class SharedTextViewerOnDeviceTest {
     @After fun cleanup() { manager.clearAll() }
 
     private fun show(name: String, content: String) {
-        val file = SharedFile.newBuilder().setFileId("text-preview").setName(name)
-            .setSizeBytes(content.toByteArray().size.toLong()).build()
-        val local = manager.store.localFileFor("text-preview", file).apply { parentFile!!.mkdirs(); writeText(content) }
+        val file = SessionSharedFileItem.newBuilder()
+            .setFileId("text-preview")
+            .setName(name)
+            .setDisplayName(name)
+            .setSizeBytes(content.toByteArray().size.toLong())
+            .setKind(SharedFileKind.SHARED_FILE_KIND_DOC)
+            .setStatus(SharedFileCardStatus.SHARED_FILE_CARD_STATUS_DOWNLOADED)
+            .setPrimaryAction(SharedFilePrimaryAction.SHARED_FILE_PRIMARY_ACTION_OPEN)
+            .setPrimaryEnabled(true)
+            .build()
+        val local = manager.store.localFileFor("text-preview", file.toSharedFileTarget()).apply { parentFile!!.mkdirs(); writeText(content) }
         manager.store.setStateForTest("text-preview", file.fileId, SharedFileTransferState.Downloaded(local))
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
-                SharedFileHost("text-preview", "Test computer", true, false, Modifier.fillMaxSize(), manager) {
+                SharedFileHost("text-preview", mapOf(file.fileId to file), Modifier.fillMaxSize(), manager) {
                     Column(Modifier.fillMaxSize().background(pal.paper).verticalScroll(chatScroll)) {
                         Spacer(Modifier.height(320.dp))
-                        SharedFilesBlock(listOf(file), "text-preview", "Test computer", true, false)
+                        SharedFilesBlock(listOf(file), "text-preview")
                         Spacer(Modifier.height(900.dp))
                     }
                 }

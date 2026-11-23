@@ -14,14 +14,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.*
-import io.github.lewin671.remoteagent.proto.SentFile
+import io.github.lewin671.remoteagent.core.proto.SessionFileRefView
 
 @Composable
 internal fun rememberDocumentPicker(
@@ -52,12 +55,22 @@ internal fun rememberDocumentPicker(
  * loaded to draw it.
  */
 @Composable
-internal fun FileChip(name: String, size: Long, state: PendingImage.State? = null, onRetry: (() -> Unit)? = null, onRemove: (() -> Unit)? = null) {
+internal fun FileChip(
+    name: String,
+    size: Long = 0L,
+    state: PendingImage.State? = null,
+    onRetry: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null,
+    sizeText: String? = null,
+    nameHead: String = "",
+    nameTail: String = "",
+) {
     val copy = uiText()
     val p = pal
     // One line is a capsule; once a reason or a large font makes it taller, a card's corners (design-system §5).
     val density = androidx.compose.ui.platform.LocalDensity.current
-    var tall by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var tall by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val nameStyle = T.s15.copy(fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.Medium))
     Row(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).onSizeChanged { tall = with(density) { it.height.toDp() } > 60.dp }
             .clip(if (tall) Radii.R20 else Radii.Pill).background(p.fill)
@@ -67,14 +80,26 @@ internal fun FileChip(name: String, size: Long, state: PendingImage.State? = nul
     ) {
         Ic(Lucide.File, 20.dp, p.ink2)
         Column(Modifier.weight(1f)) {
-            Text(fileChipName(name), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis, style = T.s15.copy(fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.Medium)), color = p.ink, modifier = Modifier.semantics { contentDescription = name })
+            if (nameHead.isNotEmpty() && nameTail.isNotEmpty()) {
+                val measurer = rememberTextMeasurer()
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val maxWidthPx = constraints.maxWidth
+                    val shown = remember(name, nameHead, nameTail, nameStyle, maxWidthPx) {
+                        fitMiddleEllipsizedName(name, nameHead, nameTail, nameStyle, maxWidthPx, 1, measurer)
+                    }
+                    Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, style = nameStyle, color = p.ink, modifier = Modifier.semantics { contentDescription = name })
+                }
+            } else {
+                Text(name, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = nameStyle, color = p.ink, modifier = Modifier.semantics { contentDescription = name })
+            }
             val status = when (state) {
                 PendingImage.State.Processing -> copy(UiMessages.attachmentAndroidPreparingMeta())
                 is PendingImage.State.Uploading -> copy(UiMessages.attachmentAndroidUploadMeta(percent = ((state.progress * 100).toInt()).toString()))
                 is PendingImage.State.Failed -> copy(UiMessages.attachmentAndroidFailedMeta())
                 else -> ""
             }
-            Text(fileSize(size) + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
+            val sizeLabel = sizeText ?: fileSize(size)
+            Text(sizeLabel + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
             if (state is PendingImage.State.Uploading) Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(Radii.Pill).background(p.fill2)) {
                 Box(Modifier.fillMaxWidth(state.progress).height(3.dp).clip(Radii.Pill).background(p.ink))
             }
@@ -90,9 +115,17 @@ internal fun FileChip(name: String, size: Long, state: PendingImage.State? = nul
 }
 
 @Composable
-internal fun FileChips(files: List<SentFile>) {
+internal fun FileChips(files: List<SessionFileRefView>) {
     if (files.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        files.forEach { FileChip(it.name, it.sizeBytes) }
+        files.forEach { f ->
+            FileChip(
+                name = f.displayName.ifEmpty { f.name },
+                size = f.sizeBytes,
+                sizeText = if (f.hasSizeText()) uiText(f.sizeText) else null,
+                nameHead = f.nameHead,
+                nameTail = f.nameTail,
+            )
+        }
     }
 }
 

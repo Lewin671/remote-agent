@@ -55,15 +55,6 @@ fun fileSize(bytes: Long): String = when {
     else -> java.lang.String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1024.0 / 1024.0)
 }
 
-/** Code point based middle truncation; the tail always contains the extension. */
-fun fileChipName(name: String, max: Int = 32): String {
-    val chars = name.codePoints().toArray()
-    if (chars.size <= max || max < 3) return name
-    val extension = name.substringAfterLast('.', "").codePointCount(0, name.substringAfterLast('.', "").length) + 1
-    val tail = maxOf((max - 1) / 2, extension).coerceAtMost(max - 2)
-    return String(chars, 0, max - 1 - tail) + "…" + String(chars, chars.size - tail, tail)
-}
-
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
 /** IO from the provider is distinguished from network IO by where it happened. */

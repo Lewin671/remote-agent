@@ -1126,6 +1126,9 @@ class CoreHost(
     fun retrySessionLoad(sessionId: String) =
         send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
 
+    fun sendSharedFileLocalState(event: SharedFileLocalStateEvent) =
+        send { setSharedFileLocalState(event) }
+
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
 

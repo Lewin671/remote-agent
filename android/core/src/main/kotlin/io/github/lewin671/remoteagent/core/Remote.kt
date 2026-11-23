@@ -1610,6 +1610,9 @@ class Remote(
 
     fun retrySessionLoad(sid: String) = coreHost.retrySessionLoad(sid)
 
+    fun sendSharedFileLocalState(event: io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent) =
+        coreHost.sendSharedFileLocalState(event)
+
     suspend fun fetchSession(sid: String): Boolean {
         if (state.value.sessions[sid] != null) return true
         val deferred = CompletableDeferred<Boolean>()

@@ -1,8 +1,10 @@
 package io.github.lewin671.remoteagent.core
 
 import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SharedFileFailureKind
+import io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent
+import io.github.lewin671.remoteagent.core.proto.SharedFileTransferStatus
 import io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse
-import io.github.lewin671.remoteagent.proto.SharedFile
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest
 import kotlinx.serialization.json.boolean
@@ -53,7 +55,7 @@ class SharedFilesTest {
                 if(code=="not_found") assertEquals(SharedFileTransferState.CleanedUp,state)
                 else {
                     assertTrue(row.toString(),state is SharedFileTransferState.Failed)
-                    assertEquals(if(retry)SharedFileFailureKind.DISCONNECTED else SharedFileFailureKind.OTHER,(state as SharedFileTransferState.Failed).kind)
+                    assertEquals(if(retry)SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED else SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_OTHER,(state as SharedFileTransferState.Failed).kind)
                 }
             } finally {store.close();root.deleteRecursively()}
         }
@@ -82,14 +84,13 @@ class SharedFilesTest {
         sizeBytes: Long,
         sha256: ByteArray = ByteArray(0),
         path: String = "/Users/alex/Movies/video.mp4",
-    ): SharedFile =
-        SharedFile.newBuilder()
-            .setFileId(id)
-            .setName(name)
-            .setSizeBytes(sizeBytes)
-            .setSha256(ByteString.copyFrom(sha256))
-            .setPath(path)
-            .build()
+    ): SharedFileTarget =
+        SharedFileTarget(
+            fileId = id,
+            displayName = name,
+            sizeBytes = sizeBytes,
+            sha256 = sha256,
+        )
 
     @Test
     fun vectorsBlockMathAndDownloadsMatchFixture() = runTest {
@@ -179,16 +180,6 @@ class SharedFilesTest {
     }
 
     @Test
-    fun tileStylesSeparateAudioFromArchivesAndDocs() {
-        assertEquals(SharedFileTileStyle.VIDEO, classifySharedFile("clip.mp4").tileStyle())
-        assertEquals(SharedFileTileStyle.IMAGE, classifySharedFile("cover.png").tileStyle())
-        assertEquals(SharedFileTileStyle.AUDIO, classifySharedFile("track.mp3").tileStyle())
-        assertEquals(SharedFileTileStyle.ARCHIVE_OR_OTHER, classifySharedFile("proj.zip").tileStyle())
-        assertEquals(SharedFileTileStyle.ARCHIVE_OR_OTHER, classifySharedFile("blob.bin").tileStyle())
-        assertEquals(SharedFileTileStyle.PDF_OR_DOC, classifySharedFile("report.pdf").tileStyle())
-    }
-
-    @Test
     fun pauseAndAppRestartResumesFromPersistedBlocks() = runTest {
         val root = tempRoot()
         try {
@@ -251,7 +242,7 @@ class SharedFilesTest {
                 clock = { testScheduler.currentTime },
                 sleeper = { ms -> kotlinx.coroutines.delay(ms) },
                 ioDispatcher = dispatcher,
-                durationExtractor = { 102_000L },
+                durationExtractor = { _, _ -> 102_000L },
             )
             try {
                 assertEquals(
@@ -351,7 +342,7 @@ class SharedFilesTest {
                 store.startOrResume("s1", file)
                 testScheduler.advanceUntilIdle()
                 assertEquals(
-                    SharedFileTransferState.Failed(SharedFileFailureKind.CHECKSUM_MISMATCH),
+                    SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH),
                     store.states.value["s1:f-bad"],
                 )
                 assertEquals(0L, store.usedBytes())
@@ -494,7 +485,7 @@ class SharedFilesTest {
             store.startOrResume("s", file)
             testScheduler.advanceUntilIdle()
             assertEquals(30_000L, testScheduler.currentTime)
-            assertEquals(SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED), store.states.value["s:file-1"])
+            assertEquals(SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED), store.states.value["s:file-1"])
             assertEquals(1024L, File(root, "s/file-1/download.part").length())
             online = true
             drop = false
@@ -533,7 +524,7 @@ class SharedFilesTest {
             storeDrop.startOrResume("s1", fileDropZero)
             testScheduler.advanceUntilIdle()
             assertEquals(
-                SharedFileTransferState.Failed(SharedFileFailureKind.DISCONNECTED),
+                SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED),
                 storeDrop.states.value["s1:f-drop0"],
             )
             storeDrop.close()
@@ -566,7 +557,7 @@ class SharedFilesTest {
             storeFull.startOrResume("s1", fileFull)
             testScheduler.advanceUntilIdle()
             assertEquals(
-                SharedFileTransferState.Failed(SharedFileFailureKind.DISK_FULL, "write failed: ENOSPC (No space left on device)"),
+                SharedFileTransferState.Failed(SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL, "write failed: ENOSPC (No space left on device)"),
                 storeFull.states.value["s1:f-full"],
             )
             storeFull.close()
@@ -576,68 +567,66 @@ class SharedFilesTest {
     }
 
     @Test
-    fun uiStateResolutionPreservesDownloadedEvenWhenOfflineOrExited() {
+    fun localStateEventsThrottleProgressAndEmitTransitionsImmediately() = runTest {
         val root = tempRoot()
+        val events = mutableListOf<SharedFileLocalStateEvent>()
         try {
-            val localFile = File(root, "done.mp4").apply { writeBytes(byteArrayOf(1, 2, 3)) }
-            val sf = sharedFile(id = "f1", name = "done.mp4", sizeBytes = 3L)
-
-            val dl = resolveSharedFileUiState(
-                sf,
-                SharedFileTransferState.Downloaded(localFile, durationMs = 102_000L),
-                machineOnline = false,
-                sessionExited = true,
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val blockBytes = 16
+            val sizeBytes = 6400L // 400 blocks = 0.25% each
+            val file = sharedFile(id = "f-throt", name = "big.bin", sizeBytes = sizeBytes)
+            val store = SharedFileStore(
+                rootDir = root,
+                fetcher = SharedFileChunkFetcher { _, _, _ ->
+                    kotlinx.coroutines.delay(50) // < 250ms throttle window, 0.25% per block
+                    GetSharedFileChunkResponse.newBuilder()
+                        .setData(ByteString.copyFrom(ByteArray(blockBytes)))
+                        .setTotalBytes(sizeBytes)
+                        .build()
+                },
+                isMachineOnline = { true },
+                blockBytesProvider = { blockBytes },
+                clock = { testScheduler.currentTime },
+                sleeper = { kotlinx.coroutines.delay(it) },
+                ioDispatcher = dispatcher,
+                onLocalStateEvent = { events += it },
             )
-            assertEquals(CardVisualState.DOWNLOADED, dl.visual)
-            assertEquals(102_000L, dl.durationMs)
+            try {
+                store.startOrResume("s1", file)
+                testScheduler.advanceUntilIdle()
+                val dlEvents = events.filter {
+                    it.updatesCount == 1 &&
+                        it.getUpdates(0).fileId == "f-throt" &&
+                        it.getUpdates(0).status == SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADING
+                }
+                // 400 chunks at 50ms each = 20s -> ~100 integer % changes, strictly fewer than 400 raw chunks.
+                assertTrue("expected throttling (< 200 events for 400 chunks), got ${dlEvents.size}", dlEvents.size < 200)
+                assertTrue("expected downloaded event", events.any {
+                    it.updatesCount == 1 &&
+                        it.getUpdates(0).fileId == "f-throt" &&
+                        it.getUpdates(0).status == SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADED
+                })
 
-            val pausedOffline = resolveSharedFileUiState(
-                sf,
-                SharedFileTransferState.Paused(512L, 1024L),
-                machineOnline = false,
-                sessionExited = false,
-            )
-            assertEquals(CardVisualState.PAUSED, pausedOffline.visual)
+                val snapshot = store.buildFullLocalStateEvent()
+                assertTrue(snapshot.replaceAll)
+                assertEquals(1, snapshot.updatesCount)
+                assertEquals("f-throt", snapshot.getUpdates(0).fileId)
 
-            val offline = resolveSharedFileUiState(
-                sf,
-                SharedFileTransferState.Idle,
-                machineOnline = false,
-                sessionExited = false,
-            )
-            assertEquals(CardVisualState.MACHINE_OFFLINE, offline.visual)
+                events.clear()
+                store.removeSession("s1")
+                assertEquals(1, events.size)
+                assertEquals("s1", events.single().clearSessionId)
 
-            val exited = resolveSharedFileUiState(
-                sf,
-                SharedFileTransferState.Paused(512L, 1024L),
-                machineOnline = false,
-                sessionExited = true,
-            )
-            assertEquals(CardVisualState.CLEANED_UP, exited.visual)
+                events.clear()
+                store.clearAll()
+                assertEquals(1, events.size)
+                assertTrue(events.single().replaceAll)
+                assertEquals(0, events.single().updatesCount)
+            } finally {
+                store.close()
+            }
         } finally {
             root.deleteRecursively()
         }
-    }
-
-    @Test
-    fun classificationPathSanitizationAndFormatting() {
-        assertEquals(SharedFileKind.VIDEO, classifySharedFile("daocheng.mp4"))
-        assertEquals(SharedFileKind.IMAGE, classifySharedFile("cover.PNG"))
-        assertEquals(SharedFileKind.AUDIO, classifySharedFile("voice.m4a"))
-        assertEquals(SharedFileKind.ARCHIVE, classifySharedFile("project.zip"))
-        assertEquals(SharedFileKind.PDF, classifySharedFile("report.pdf"))
-        assertEquals(SharedFileKind.DOC, classifySharedFile("notes.md"))
-        assertEquals(SharedFileKind.OTHER, classifySharedFile("raw.unknown"))
-
-        assertEquals("evil.png", sanitizeSharedFileName("../../\u202eevil.png\u0000"))
-        assertEquals("file", sanitizeSharedFileName("../.."))
-
-        assertEquals("~/Movies/daocheng/out/daocheng-final.mp4", displaySharedPath("/Users/alice/Movies/daocheng/out/daocheng-final.mp4", "x.mp4"))
-        assertEquals("~/work/a.zip", displaySharedPath("/home/bob/work/a.zip", "a.zip"))
-
-        assertEquals("24.3 MB", formatSharedFileSize(24_300_000L))
-        assertEquals("8.1" to "24.3 MB", formatSharedProgress(8_100_000L, 24_300_000L))
-        assertEquals("512.0 KB" to "24.3 MB", formatSharedProgress(512_000L, 24_300_000L))
-        assertEquals("1:42", formatMediaDuration(102_000L))
     }
 }

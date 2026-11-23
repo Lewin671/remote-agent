@@ -67,8 +67,6 @@ import io.github.lewin671.remoteagent.core.proto.SessionNoteTone
 import io.github.lewin671.remoteagent.core.proto.SessionNotifyReceiptItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionToolStatus
-import io.github.lewin671.remoteagent.proto.SentFile
-import io.github.lewin671.remoteagent.proto.SharedFile
 import kotlin.math.roundToInt
 
 /** Side gutter of rows inside a chat (design-system §3). */
@@ -374,7 +372,7 @@ internal fun TimelineItemView(
                     {
                         if (um.imagesCount > 0) ImageRow(um.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) })
                         if (um.filesCount > 0) {
-                            FileChips(um.filesList.map { f -> SentFile.newBuilder().setName(f.name).setSizeBytes(f.sizeBytes).build() })
+                            FileChips(um.filesList)
                         }
                     }
                 } else null,
@@ -424,20 +422,7 @@ internal fun TimelineItemView(
             }
         }
         SessionTimelineItem.KindCase.SHARED_FILES -> if (chat != null) {
-            SharedFilesBlock(
-                item.sharedFiles.filesList.map { f ->
-                    SharedFile.newBuilder()
-                        .setFileId(f.fileId)
-                        .setName(f.name)
-                        .setPath(f.path)
-                        .setSizeBytes(f.sizeBytes)
-                        .build()
-                },
-                chat.sid,
-                chat.machineName,
-                chat.machineOnline,
-                chat.sessionExited,
-            )
+            SharedFilesBlock(item.sharedFiles.filesList, chat.sid)
         }
         SessionTimelineItem.KindCase.GENERATED_IMAGES -> {
             val g = item.generatedImages
