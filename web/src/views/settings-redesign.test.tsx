@@ -391,6 +391,7 @@ describe("Computer Page 4 core modules + Archive Fix + Storage Page + Filtered P
       ],
       showUsageEntry: true,
       usageTotalTokens: 340_000_000n,
+      usageTokensText: create(TextSchema, { literal: "3.4亿" }),
       usageFallbackThirtyDays: true,
       showCliSwitches: true,
       cliSwitchesEditable: true,

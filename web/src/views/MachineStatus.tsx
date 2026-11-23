@@ -5,9 +5,8 @@
 // this file renders the MachineStatusViewModel and SVG curve geometry.
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { t, useLocale } from "../i18n";
+import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { formatCacheHit, formatSpeedValue, formatTokens } from "../usageFormat";
 import {
   MachineChartKind,
   MachinePollMode,
@@ -228,9 +227,21 @@ function Hero({ vm, main, moving, reduced, onScrub, onClearScrub }: {
   const chartKind = isCpu ? MachineChartKind.CPU : MachineChartKind.MEMORY;
   const tone = isCpu ? "" : (PRESSURE_TONE[mem?.pressure ?? 0] ?? "");
   let headMain = "—", headUnit = "";
-  const rawHead = chart?.hasScrub ? renderText(chart.scrubValue) : isCpu ? (cpu?.hasValue ? cpu.headline : "") : (mem?.hasValue ? renderText(mem.headline) : "");
-  if (isCpu && rawHead.endsWith("%")) { headMain = rawHead.slice(0, -1); headUnit = "%"; }
-  else { headMain = rawHead || "—"; if (!chart?.hasScrub && !isCpu && mem?.hasValue) headUnit = renderText(mem.caption); }
+  if (chart?.hasScrub) {
+    const scrubPt = chart.points[chart.scrubIndex];
+    if (isCpu && scrubPt) {
+      headMain = String(Math.round(scrubPt.value));
+      headUnit = "%";
+    } else {
+      headMain = renderText(chart.scrubValue) || "—";
+    }
+  } else if (isCpu) {
+    headMain = cpu?.valueText || "—";
+    headUnit = cpu?.unit || "";
+  } else {
+    headMain = mem?.valueText || "—";
+    if (mem?.hasValue) headUnit = renderText(mem.caption);
+  }
   const aside1 = isCpu ? renderText(cpu?.detail2) : renderText(mem?.totalText), aside2 = isCpu ? renderText(cpu?.detail) : "";
   return (
     <section className="ms-card ms-hero">
@@ -261,7 +272,7 @@ function MemTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => voi
   return (
     <button type="button" className="ms-card ms-tile" aria-label={renderText(mem?.a11yLabel) || t("machine_status.memory")} onClick={onOpen}>
       <span className="ms-kick"><MemoryIcon />{t("machine_status.memory")}</span>
-      <span className="ms-lg"><Roll text={mem?.hasValue ? (renderText(mem.headline) || "—") : "—"} />{mem?.hasValue && <small>{renderText(mem.caption)}</small>}</span>
+      <span className="ms-lg"><Roll text={mem?.valueText || "—"} />{mem?.hasValue && <small>{renderText(mem.caption)}</small>}</span>
       <span className="ms-say"><b className={tone}>{renderText(mem?.pressureText)}</b>{renderText(mem?.totalText)}</span>
       {mem?.hasPressurePosition && <span className="ms-uv" aria-hidden="true"><i style={{ left: `${Math.min(100, Math.max(0, mem.pressurePosition * 100)).toFixed(1)}%` }} /></span>}
     </button>
@@ -273,7 +284,7 @@ function CpuTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => voi
   return (
     <button type="button" className="ms-card ms-tile" aria-label={renderText(cpu?.a11yLabel) || t("machine_status.cpu")} onClick={onOpen}>
       <span className="ms-kick"><CpuIcon />{t("machine_status.cpu")}</span>
-      <span className="ms-lg"><Roll text={cpu?.hasValue ? cpu.headline : "—"} /></span>
+      <span className="ms-lg"><Roll text={cpu?.hasValue ? `${cpu.valueText}${cpu.unit}` : "—"} /></span>
       <span className="ms-say">{d2 && <b>{d2}</b>}{d}</span>
     </button>
   );
@@ -285,7 +296,7 @@ function DiskTile({ vm, onOpen }: { vm: MachineStatusViewModel; onOpen: () => vo
   return (
     <button type="button" className="ms-card ms-tile" aria-label={renderText(disk.a11yLabel) || t("machine_status.disk")} onClick={onOpen}>
       <span className="ms-kick"><DiskIcon />{t("machine_status.disk")}</span>
-      <span className={`ms-lg${tone ? ` ${tone}` : ""}`}><Roll text={disk.hasValue ? (renderText(disk.headline) || "—") : "—"} />{disk.hasValue && <small>{renderText(disk.caption)}</small>}</span>
+      <span className={`ms-lg${tone ? ` ${tone}` : ""}`}><Roll text={disk.valueText || "—"} />{disk.hasValue && <small>{disk.unit === "GB" ? renderText(disk.caption) : disk.unit}</small>}</span>
       <span className="ms-say"><b className={tone}>{renderText(disk.stateBadge)}</b>{renderText(disk.detail)}{d2 && <><br />{d2}</>}</span>
       {disk.hasUsedFraction && <span className={`ms-stor${tone ? ` ${tone}` : ""}`} aria-hidden="true">{usedPct > 0 && <i className="a" style={{ width: `${usedPct}%` }} />}</span>}
     </button>
@@ -298,17 +309,17 @@ function Ranking({ vm, stale, main, go }: { vm: MachineStatusViewModel; stale: b
   const top = vm.topUsage;
   if (!top || !top.rows.length) return <div className="ms-card ms-list ms-none">{renderText(top?.emptyText) || t("machine_status.no_running_sessions")}</div>;
   const byMem = main === "mem" && Number(top.rows[0].memoryBytes) > 0;
-  const maxVal = byMem ? Number(top.rows[0].memoryBytes) : top.rows[0].cpuPercent;
   return (
     <ul className="ms-card ms-list" ref={list}>
       {top.rows.map((row, i) => {
-        const pct = maxVal > 0 ? Math.max(0, Math.min(100, Math.round(((byMem ? Number(row.memoryBytes) : row.cpuPercent) / maxVal) * 100))) : 0;
+        const pct = Math.max(0, Math.min(100, Math.round((byMem ? row.memoryBarFraction : row.cpuBarFraction) * 100)));
+        const primaryVal = renderText(byMem ? row.memoryValueText : row.cpuValueText);
         const sec = renderText(row.secondary);
         const body = (
           <>
             {usageIcon(row.agent)}
             <span className="ms-rb">
-              <span className="ms-rt"><span>{renderText(row.title)}</span><span>{pct}%</span></span>
+              <span className="ms-rt"><span>{renderText(row.title)}</span><span>{primaryVal}</span></span>
               <span className="ms-rm"><span className="ms-bar" style={{ width: `${pct}%` }} />{sec && <small>{sec}</small>}</span>
             </span>
           </>
@@ -324,15 +335,12 @@ function Ranking({ vm, stale, main, go }: { vm: MachineStatusViewModel; stale: b
 }
 
 function ModelUsagePreviewCard({ id, vm, go }: { id: string; vm: MachineStatusViewModel; go: Go }) {
-  const locale = useLocale();
   const mu = vm.modelUsage;
   if (!mu?.supported) return null;
-  const secCls = "ms-sec";
-  const windowLabel = mu.fallbackThirtyDays ? t("usage.entry_last_30d") : t("usage.entry_last_7d");
   const unavail = renderText(mu.unsupportedFootnote);
   return (
     <>
-      <div className={secCls}>
+      <div className="ms-sec">
         <h2>{t("machine_status.model_usage_title")}</h2>
         <button type="button" className="link" onClick={() => go(routeForUsage(id))}>
           {t("machine_status.model_usage_view_trends")}
@@ -340,40 +348,26 @@ function ModelUsagePreviewCard({ id, vm, go }: { id: string; vm: MachineStatusVi
       </div>
       {mu.hasData ? (
         <ul className="ms-card ms-list ms-mu-list">
-          {mu.rows.map((row) => {
-            const hitPart = row.hasCacheHit ? t("usage.entry_cache_pct", { pct: formatCacheHit(row.cacheHitRate) }) : "";
-            const speedPart = row.hasSpeed ? `${formatSpeedValue(row.speedP50)} ${t("usage.kpi_unit_toks")}` : "";
-            let meta = "";
-            if (row.hasSpeed) {
-              meta = [hitPart, speedPart, t("usage.entry_reqs", { count: Number(row.usageRequestCount) }), windowLabel].filter(Boolean).join(" · ");
-            } else if (row.fewSpeedSamples) {
-              meta = t("usage.entry_few_samples", { count: Number(row.speedRequestCount), detail: hitPart || windowLabel });
-            } else {
-              meta = t("usage.entry_no_speed", { detail: hitPart || windowLabel });
-            }
-            const titleText = `${row.agentName} · ${row.model}`;
-            const tokenStr = formatTokens(row.totalTokens, locale);
-            return (
-              <li key={`${row.agent}:${row.model}`} className="ms-mu-row">
-                <button
-                  type="button"
-                  className="ms-mu-btn"
-                  onClick={() => go(routeForUsage(id, row.agent, row.model))}
-                >
-                  <AgentMark agent={row.agent} named />
-                  <span className="ms-rb">
-                    <span className="ms-rt">
-                      <span>{titleText}</span>
-                      <span>{tokenStr}</span>
-                    </span>
-                    <span className="ms-rm">
-                      <small>{meta}</small>
-                    </span>
+          {mu.rows.map((row) => (
+            <li key={`${row.agent}:${row.model}`} className="ms-mu-row">
+              <button
+                type="button"
+                className="ms-mu-btn"
+                onClick={() => go(routeForUsage(id, row.agent, row.model))}
+              >
+                <AgentMark agent={row.agent} named />
+                <span className="ms-rb">
+                  <span className="ms-rt">
+                    <span>{renderText(row.titleText)}</span>
+                    <span>{renderText(row.totalTokensText)}</span>
                   </span>
-                </button>
-              </li>
-            );
-          })}
+                  <span className="ms-rm">
+                    <small>{renderText(row.metaText)}</small>
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
         </ul>
       ) : (
         <div className="ms-card ms-list ms-none">{renderText(mu.emptyText) || t("machine_status.model_usage_empty")}</div>

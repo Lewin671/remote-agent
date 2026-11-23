@@ -656,7 +656,7 @@ describe("in English", () => {
     const copy = host.cloneNode(true) as HTMLElement;
     copy.querySelectorAll(".ms-rt > span:first-child").forEach((e) => e.remove());
     const text = copy.textContent!;
-    for (const part of ["Live", "CPU", "Memory", "Disk", "Pressure high", "Almost full", "New sessions may not start", "Ask the Agent to clean up", "remote-agent usage", "Top usage", "Show processes", "2 min ago", "Now", "Up 3 d 4 hr", "Battery 81%, charging", "GB used", "16 GB total, 4.8 GB swap", "1.2 GB", "3.1 GB"])
+    for (const part of ["Live", "CPU", "Memory", "Disk", "Pressure high", "Almost full", "New sessions may not start", "Ask the Agent to clean up", "remote-agent usage", "Top usage", "Show processes", "2 min ago", "Now", "Up 3 d 4 hr", "Battery 81%, charging", "GB used", "GB free", "16 GB total, 4.8 GB swap", "1.2", "3.1 GB"])
       expect(text).toContain(part);
     expect(text).not.toMatch(/[一-鿿]/);
   });

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as l10n from "../i18n";
-import { t, useLocale } from "../i18n";
+import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
 import { ApprovalMode, Agent } from "../gen/remoteagent/v1/event_pb";
 import {
@@ -27,7 +27,6 @@ import {
 } from "../core/host";
 import { renderText } from "../core/text";
 import type { Remote } from "../remote";
-import { formatTokens } from "../usageFormat";
 import { RejoinButton } from "../Rejoin";
 import { DirectSettingsSheet } from "./ConnectionGroup";
 import { DeviceActions } from "./DeviceManagement";
@@ -663,7 +662,6 @@ export function MachineSettingsScreenView({
   ringsSlot?: ReactNode;
   connectionSlot?: ReactNode;
 }) {
-  const locale = useLocale();
   const [activeCliAgent, setActiveCliAgent] = useState<Agent>();
   const [directOpen, setDirectOpen] = useState(directOpenDefault);
   const [runtimeSheet, setRuntimeSheet] = useState<RuntimeSheet>();
@@ -740,8 +738,8 @@ export function MachineSettingsScreenView({
 
   let usageSummaryText = "";
   if (vm.showUsageEntry) {
-    if (vm.usageTotalTokens > 0n) {
-      const val = formatTokens(vm.usageTotalTokens, locale);
+    const val = renderText(vm.usageTokensText);
+    if (val) {
       if (vm.usageCachedOffline) usageSummaryText = l10n.t("settings.usage_summary_cached", { value: val });
       else if (vm.usageFallbackThirtyDays) usageSummaryText = l10n.t("settings.usage_summary_30d", { value: val });
       else usageSummaryText = l10n.t("settings.usage_summary_7d", { value: val });
