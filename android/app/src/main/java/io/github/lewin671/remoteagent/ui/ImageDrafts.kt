@@ -13,13 +13,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
-import io.github.lewin671.remoteagent.core.MAX_IMAGES
-import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.capabilities
-import io.github.lewin671.remoteagent.ui.displayError
+import io.github.lewin671.remoteagent.core.messageText
 import io.github.lewin671.remoteagent.core.newRequestId
-import io.github.lewin671.remoteagent.core.takePicked
+import io.github.lewin671.remoteagent.core.proto.ImageProblemInput
 import io.github.lewin671.remoteagent.core.uploadImage
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import kotlinx.coroutines.Dispatchers
@@ -41,8 +38,18 @@ interface SealedFiles {
  * bytes encrypted on disk; documents keep only their URI, name and size.
  * Both follow the message's machine and stay recoverable until confirmation.
  */
-class PendingImage(val id: String, val uri: String?, val fileName: String? = null, fileBytes: Long = 0, retainSource: Boolean = true) {
+class PendingImage(
+    val id: String,
+    val uri: String?,
+    val fileName: String? = null,
+    fileBytes: Long = 0,
+    retainSource: Boolean = true,
+    isVideo: Boolean = false,
+    formattedSize: String = "",
+) {
     var fileBytes by mutableStateOf(fileBytes)
+    var isVideo by mutableStateOf(isVideo)
+    var formattedSize by mutableStateOf(formattedSize)
     var sizeVerified = false
     internal val ownerAccount = AccountMemory.token
     init { if (retainSource) PendingUris.retain(this) }
@@ -116,7 +123,12 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
             constructor(problem: AppImageFailure) : this(problem.failure())
             val error: io.github.lewin671.remoteagent.core.MessageText get() = failure.detail
             companion object {
-                fun raw(diagnostic: String) = Failed(rawAttachmentFailure(diagnostic))
+                fun raw(diagnostic: String) = Failed(
+                    AttachmentFailure(
+                        input = ImageProblemInput.newBuilder().setRawDiagnostic(diagnostic).build(),
+                        detail = diagnostic.messageText(),
+                    ),
+                )
             }
         }
     }
@@ -303,15 +315,19 @@ class ImageDraft(
         get() = noticeValue
         set(value) { noticeValue = value; restoreNoticeActive = false }
 
-    fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
-        if (restoring) return
-        val (taken, left) = takePicked(pictures.size, picked, max)
-        notice = if (left > 0) sessionText(UiMessages.attachmentImagesLimit(count = left, limit = max)) else ""
+    fun addAcceptedPictures(
+        context: Context,
+        taken: List<Uri>,
+        remote: Remote,
+        originalMaxBytes: Long = 20L * 1024 * 1024,
+        machine: () -> String?,
+    ) {
+        if (restoring || taken.isEmpty()) return
         for (uri in taken) {
             val img = PendingImage(newRequestId(), uri.toString())
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             images += img
-            process(context, img, remote, machine)
+            process(context, img, remote, originalMaxBytes, machine)
         }
         persistOrder()
     }
@@ -409,7 +425,13 @@ class ImageDraft(
         persistOrder()
     }
 
-    private fun process(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
+    private fun process(
+        context: Context,
+        img: PendingImage,
+        remote: Remote,
+        originalMaxBytes: Long = 20L * 1024 * 1024,
+        machine: () -> String?,
+    ) {
         val turn = img.stopUpload(staleBytes = true)
         if (!img.valid(turn)) return
         invalidate(img)
@@ -419,7 +441,7 @@ class ImageDraft(
         img.transferId = newRequestId()
         img.job = RaApp.instance.scope.launch {
             try {
-                val p = withContext(Dispatchers.Default) { processImage(context, Uri.parse(img.uri!!), original) }
+                val p = withContext(Dispatchers.Default) { processImage(context, Uri.parse(img.uri!!), original, originalMaxBytes) }
                 val preview = withContext(Dispatchers.Default) { thumbnail(p.bytes) }
                 if (img.ownerAccount !== AccountMemory.token || img.generation != turn) return@launch
                 img.processed = p
@@ -520,7 +542,7 @@ class ImageDraft(
     internal fun sendAllTo(remote: Remote, machineId: String, caps: AttachmentCaps? = null) {
         retarget(remote, machineId)
         if (selectedMachine != machineId) return
-        val effective = caps ?: remote.state.value.machines[machineId].toAttachmentCaps()
+        val effective = caps ?: remote.attachmentCapsFor(machineId)
         for (img in images) {
             if (img.isFile && fileDraftBlocked(this, effective, copy = ::sessionText) != null) continue
             if (!img.isFile && !effective.supportsImages) continue
@@ -535,9 +557,9 @@ class ImageDraft(
         img.state = PendingImage.State.Failed(AppImageFailure.REPROCESS_SOURCE_MISSING)
     }
 
-    fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
+    fun retry(context: Context, img: PendingImage, remote: Remote, originalMaxBytes: Long = 20L * 1024 * 1024, machine: () -> String?) {
         if (img.needsProcessing) {
-            if (!img.uri.isNullOrEmpty()) process(context, img, remote, machine)
+            if (!img.uri.isNullOrEmpty()) process(context, img, remote, originalMaxBytes, machine)
             else { missingImageSource(img); persistOrder() }
         } else machine()?.let { upload(remote, img, it, forceFresh = true) }
     }
@@ -552,8 +574,8 @@ class ImageDraft(
         persistOrder()
     }
 
-    fun setOriginal(context: Context, v: Boolean, remote: Remote, machine: () -> String?) =
-        changeOriginal(v) { process(context, it, remote, machine) }
+    fun setOriginal(context: Context, v: Boolean, remote: Remote, originalMaxBytes: Long = 20L * 1024 * 1024, machine: () -> String?) =
+        changeOriginal(v) { process(context, it, remote, originalMaxBytes, machine) }
 
     fun remove(img: PendingImage) {
         images.remove(img)
@@ -606,7 +628,7 @@ class ImageDraft(
      * is dropped: when they do not fit with what is here already, nothing
      * is put back and [notice] says why. Returns whether they went in.
      */
-    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = io.github.lewin671.remoteagent.core.MAX_FILES): Boolean {
+    fun attach(back: List<PendingImage>, max: Int, wereOriginal: Boolean = original, fileMax: Int = 6): Boolean {
         if (restoring) {
             notice = sessionText(UiMessages.imageAndroidRestoreWait())
             return false

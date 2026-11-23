@@ -163,11 +163,11 @@ suspend fun loginWithStore(api: Api, deviceId: String, store: SecurityStoreV4): 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
 enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNOWN, COMPUTER_OFFLINE, IMAGE_MISSING, EXECUTED_RESULT_UNAVAILABLE, IDENTITY_CONFLICT }
 
-class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: ImageFailureKind? = null, val readOnly: Boolean = false, val outcome: Outcome = if (fromDaemon) Outcome.UNKNOWN else Outcome.NOT_SENT, val conflictKind: String = "", val resultAvailable: Boolean = true) :
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: io.github.lewin671.remoteagent.core.proto.ImageProblemKind? = null, val readOnly: Boolean = false, val outcome: Outcome = if (fromDaemon) Outcome.UNKNOWN else Outcome.NOT_SENT, val conflictKind: String = "", val resultAvailable: Boolean = true) :
     Exception(message), MessageFailure {
     override var display: MessageText = if ((outcome == Outcome.EXECUTED && !resultAvailable) || conflictKind == "identity") message.messageText() else if (code == "disk_full") UiMessages.machineStatusDiskFull().messageText() else if (code == "storage_exhausted") UiMessages.machineStatusStorageExhausted().messageText() else message.messageText()
         private set
-    constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW, imageKind: ImageFailureKind? = null, outcome: Outcome = if (fromDaemon) Outcome.UNKNOWN else Outcome.NOT_SENT, conflictKind: String = "", resultAvailable: Boolean = true) : this(code, "command_failure", fromDaemon, failureKind, imageKind, outcome = outcome, conflictKind = conflictKind, resultAvailable = resultAvailable) { display = message }
+    constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW, imageKind: io.github.lewin671.remoteagent.core.proto.ImageProblemKind? = null, outcome: Outcome = if (fromDaemon) Outcome.UNKNOWN else Outcome.NOT_SENT, conflictKind: String = "", resultAvailable: Boolean = true) : this(code, "command_failure", fromDaemon, failureKind, imageKind, outcome = outcome, conflictKind = conflictKind, resultAvailable = resultAvailable) { display = message }
     // fromDaemon identifies a verified answer, including explicit unknown.
     // Certainty comes from outcome, not authentication alone.
 

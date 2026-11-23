@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.*
 import org.junit.Assert.*
@@ -18,64 +19,48 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun locales() = listOf(arrayOf("zh-CN"), arrayOf("en"))
     }
+
     @get:Rule val ui = createComposeRule()
     private fun text(message: UiMessage) = messageTextForTest(message, locale)
-    private data class Case(val cause: AppImageFailure, val kind: ImageProblemKind, val retryable: Boolean, val caption: UiMessage)
-    private val cases get() = listOf(
-        Case(AppImageFailure.SOURCE_MISSING, ImageProblemKind.SOURCE, false, UiMessages.imageThisImageHasNoLocalCopyRemoveItAnd()),
-        Case(AppImageFailure.FILE_MISSING, ImageProblemKind.SOURCE, false, UiMessages.attachmentFileMissing()),
-        Case(AppImageFailure.REPROCESS_SELECTION, ImageProblemKind.REPROCESS, false, UiMessages.imageAndroidReprocessOrSelectTheImageAgain()),
-        Case(AppImageFailure.FILE_UPLOAD_AGAIN, ImageProblemKind.NETWORK, true, UiMessages.imageAndroidUploadToTheComputerAgainIfTheSourceCannotBe()),
-        Case(AppImageFailure.REPROCESS_MODE, ImageProblemKind.REPROCESS, false, UiMessages.imageAndroidReprocessUsingTheCurrentMode()),
-        Case(AppImageFailure.UPLOAD_AGAIN, ImageProblemKind.NETWORK, true, UiMessages.imageTheImageCouldNotReachTheComputerRetryWhen()),
-        Case(AppImageFailure.CHOOSE_COMPUTER, ImageProblemKind.CHOOSE_COMPUTER, false, UiMessages.attachmentAndroidChooseComputer()),
-        Case(AppImageFailure.REPROCESS_SOURCE_MISSING, ImageProblemKind.SOURCE, false, UiMessages.imageThisImageHasNoLocalCopyRemoveItAnd()),
-        Case(AppImageFailure.UPDATE_REQUIRED, ImageProblemKind.UPDATE_REQUIRED, false, UiMessages.attachmentUpdateRequired()),
-    )
 
-    @Test fun everyAppCauseHasTheSameKindRetryAndSpecificCaptionInBothLanguages() {
-        assertEquals(AppImageFailure.entries.toSet(), cases.map { it.cause }.toSet())
-        for ((cause, kind, retryable, caption) in cases) {
-            val failed = PendingImage.State.Failed(cause)
-            val problem = imageProblem(failed.failure, ::text)
-            assertEquals(cause.name, kind, problem.kind)
-            assertEquals(cause.name, retryable, problem.retryable)
-            assertEquals(cause.name, text(caption), problem.message)
-            assertEquals(text(cause.message), failed.error.resolve(::text))
-            assertNotEquals(text(UiMessages.imageThisImageCouldNotBeProcessed()), problem.message)
+    @Test fun typedLocalExceptionsPassStructuredSignalsWithoutLocalKeyOrProse() {
+        val remote = Remote(Account("http://127.0.0.1:1", "preview"), Api.defaultHttp())
+        try {
+            val codec = runCatching { stripPng(byteArrayOf()) }.exceptionOrNull()!!
+            val dimensions = runCatching { decodeSample(0, 1, 2048, 1024) }.exceptionOrNull()!!
+            val errors = listOf(
+                codec to ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE,
+                dimensions to ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS,
+                ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE) to ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE,
+                ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS) to ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS,
+                FileSourceException(java.io.IOException("opaque provider detail")) to ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING,
+                FileContentChanged() to ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING,
+                CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED) to ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED,
+            )
+            val failures = errors.map { attachmentFailure(it.first) }
+            for (f in failures) {
+                assertTrue("must not set legacy local_key", f.input.localKey.isEmpty())
+            }
+            val eval = evaluateImageProblems(remote, failures.map { it.input })
+            assertEquals(errors.size, eval.problemsCount)
+            for (i in errors.indices) {
+                val expectedKind = errors[i].second
+                val view = eval.getProblems(i)
+                assertEquals(expectedKind, view.kind)
+                assertEquals(expectedKind == ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, view.retryable)
+            }
+            val ioUpload = attachmentFailure(java.io.IOException("opaque detail"), upload = true)
+            assertTrue(ioUpload.input.localKey.isEmpty())
+            val ioView = evaluateImageProblems(remote, listOf(ioUpload.input)).getProblems(0)
+            assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, ioView.kind)
+            assertTrue(ioView.retryable)
+        } finally {
+            remote.close()
         }
     }
 
-    @Test fun typedLocalExceptionsNeverClassifyTheirTranslatedDisplayText() {
-        val codec = runCatching { stripPng(byteArrayOf()) }.exceptionOrNull()!!
-        val dimensions = runCatching { decodeSample(0, 1, 2048, 1024) }.exceptionOrNull()!!
-        val errors = listOf(
-            Triple(codec, ImageProblemKind.FORMAT, UiMessages.imageCannotReadThisImageTryJpegOrPngInstead()),
-            Triple(dimensions, ImageProblemKind.DIMENSIONS, UiMessages.imageImageDimensionsAreTooLargeResizeItAndRetry()),
-            Triple(ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.ORIGINAL_LIMIT), ImageProblemKind.ORIGINAL_LIMIT, UiMessages.imageImageExceeds20MbTurnOffOriginalAndSend()),
-            Triple(ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.DIMENSIONS), ImageProblemKind.DIMENSIONS, UiMessages.imageImageDimensionsAreTooLargeResizeItAndRetry()),
-            Triple(FileSourceException(java.io.IOException("opaque provider detail")), ImageProblemKind.SOURCE, UiMessages.imageThisImageHasNoLocalCopyRemoveItAnd()),
-            Triple(FileContentChanged(), ImageProblemKind.SOURCE, UiMessages.imageThisImageHasNoLocalCopyRemoveItAnd()),
-            Triple(CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText(), imageKind = ImageProblemKind.NETWORK), ImageProblemKind.NETWORK, UiMessages.imageTheImageCouldNotReachTheComputerRetryWhen()),
-        )
-        for ((error, kind, caption) in errors) {
-            val failure = attachmentFailure(error)
-            val problem = imageProblem(failure, ::text)
-            assertEquals(kind, problem.kind)
-            assertEquals(kind == ImageProblemKind.NETWORK, problem.retryable)
-            assertEquals(text(caption), problem.message)
-        }
-        val uploaded = imageProblem(attachmentFailure(java.io.IOException("opaque detail"), upload = true), ::text)
-        assertEquals(ImageProblemKind.NETWORK, uploaded.kind)
-        assertTrue(uploaded.retryable)
-        assertEquals(text(UiMessages.imageTheImageCouldNotReachTheComputerRetryWhen()), uploaded.message)
-        val local = MessageException(UiMessages.attachmentUpdateRequired().messageText())
-        assertEquals(text(UiMessages.attachmentUpdateRequired()), imageProblem(attachmentFailure(local), ::text).message)
-    }
-
-    @Test fun existingDiskBytesRestoreKindsWithoutStoringOrReadingAResolvedFailure() {
+    @Test fun existingDiskBytesRestoreStructuredKindsWithoutStoringOrReadingAResolvedFailure() {
         val files = MemoryFiles()
-        // The pre-fix order/meta/upload format; no new fields and no error text persisted.
         files.put("draft", "order", "0\nimage\nstale\nfile".toByteArray())
         files.put("draft", "image.meta", "1\n10\n10\n0\ncontent://example/image\n".toByteArray())
         files.put("draft", "image.img", byteArrayOf(1, 2, 3))
@@ -88,9 +73,14 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
         val (loaded, originalMode) = loadImages(files, "draft")
         assertFalse(originalMode)
         assertEquals(listOf("image", "stale", "file"), loaded.map { it.id })
-        assertEquals(listOf(ImageProblemKind.NETWORK, ImageProblemKind.REPROCESS, ImageProblemKind.NETWORK), loaded.map { (it.state as PendingImage.State.Failed).failure.kind })
-        assertEquals(text(UiMessages.imageTheImageCouldNotReachTheComputerRetryWhen()), imageProblem((loaded[0].state as PendingImage.State.Failed).failure, ::text).message)
-        assertEquals(text(UiMessages.imageAndroidReprocessUsingTheCurrentMode()), imageProblem((loaded[1].state as PendingImage.State.Failed).failure, ::text).message)
+        assertEquals(
+            listOf(
+                ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED,
+                ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED,
+                ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED,
+            ),
+            loaded.map { (it.state as PendingImage.State.Failed).failure.input.explicitKind },
+        )
         assertEquals(text(UiMessages.imageAndroidUploadToTheComputerAgainIfTheSourceCannotBe()), (loaded[2].state as PendingImage.State.Failed).error.resolve(::text))
         assertEquals(original.keys, files.data.keys)
         original.forEach { (key, value) -> assertArrayEquals(key, value, files.data.getValue(key)) }
@@ -99,26 +89,29 @@ class ImageFailureLocaleRegressionTest(private val locale: String) {
     @Test fun returningToTheComposerRetainsExplicitSourceAndProcessingCauses() {
         val source = PendingImage("source", null, retainSource = false)
         source.restoreToDraft()
-        assertEquals(ImageProblemKind.SOURCE, (source.state as PendingImage.State.Failed).failure.kind)
-        assertFalse(imageProblem((source.state as PendingImage.State.Failed).failure, ::text).retryable)
+        assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING, (source.state as PendingImage.State.Failed).failure.input.explicitKind)
         val stale = PendingImage("stale", "content://example/stale", retainSource = false)
         stale.restoreToDraft()
-        assertEquals(ImageProblemKind.REPROCESS, (stale.state as PendingImage.State.Failed).failure.kind)
-        assertEquals(text(UiMessages.imageAndroidReprocessOrSelectTheImageAgain()), imageProblem((stale.state as PendingImage.State.Failed).failure, ::text).message)
+        assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED, (stale.state as PendingImage.State.Failed).failure.input.explicitKind)
     }
 
-    private fun viewer(cause: AppImageFailure) {
+    private fun viewer(cause: AppImageFailure, expectedMessage: UiMessage, expectRetry: Boolean) {
         val remote = Remote(Account("http://127.0.0.1:1", "preview"), Api.defaultHttp())
         val draft = ImageDraft("locale-failure", MemoryFiles(), scope = null)
         draft.images += PendingImage("image", null, retainSource = false).apply { state = PendingImage.State.Failed(cause) }
         try {
             ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalMessageLocale provides locale) { DraftImageViewer(draft, remote, "computer", 0) {} } } }
-            val problem = imageProblem((draft.images.single().state as PendingImage.State.Failed).failure, ::text)
-            ui.onNodeWithText(problem.message).assertIsDisplayed()
-            if (problem.retryable) ui.onNodeWithText(text(UiMessages.commonRetry())).assertIsDisplayed()
+            ui.onNodeWithText(text(expectedMessage)).assertIsDisplayed()
+            if (expectRetry) ui.onNodeWithText(text(UiMessages.commonRetry())).assertIsDisplayed()
             else ui.onNodeWithText(text(UiMessages.commonRetry())).assertDoesNotExist()
-        } finally { remote.close() }
+        } finally {
+            remote.close()
+        }
     }
-    @Test fun restoredNetworkFailureShowsRetryInTheEnglishAndChineseViewer() = viewer(AppImageFailure.UPLOAD_AGAIN)
-    @Test fun missingSourceShowsTheSpecificCaptionWithoutRetryInBothLanguages() = viewer(AppImageFailure.SOURCE_MISSING)
+
+    @Test fun restoredNetworkFailureShowsRetryInTheEnglishAndChineseViewer() =
+        viewer(AppImageFailure.UPLOAD_AGAIN, UiMessages.imageTheImageCouldNotReachTheComputerRetryWhen(), expectRetry = true)
+
+    @Test fun missingSourceShowsTheSpecificCaptionWithoutRetryInBothLanguages() =
+        viewer(AppImageFailure.SOURCE_MISSING, UiMessages.imageThisImageHasNoLocalCopyRemoveItAnd(), expectRetry = false)
 }

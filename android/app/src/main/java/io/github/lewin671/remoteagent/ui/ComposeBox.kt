@@ -90,6 +90,7 @@ fun ComposeBox(
     modifier: Modifier = Modifier,
     plusEnabled: Boolean = true,
     onFile: (() -> Unit)? = null,
+    fileMetadataNotice: String = uiText(UiMessages.attachmentMetadata()),
     sendLabel: String = uiText(UiMessages.composerSend()),
     focusRequester: FocusRequester? = null,
     onFocus: (Boolean) -> Unit = {},
@@ -159,7 +160,7 @@ fun ComposeBox(
                     field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
                     top?.invoke()
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        AttachButton(onPlus, onFile, plusEnabled, menu)
+                        AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu)
                         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { tools() }
                         send()
                     }
@@ -181,7 +182,7 @@ fun ComposeBox(
                         top?.invoke()
                         ComposerInputLayout(
                             useTwoRow = useTwoRow,
-                            attach = { AttachButton(onPlus, onFile, plusEnabled, menu) },
+                            attach = { AttachButton(onPlus, onFile, plusEnabled, fileMetadataNotice, menu) },
                             field = {
                                 val fieldMod = if (useTwoRow) {
                                     Modifier.fillMaxWidth().heightIn(min = 32.dp).padding(horizontal = 8.dp, vertical = 2.dp)
@@ -353,7 +354,7 @@ private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onCli
  * once, or, when the computer takes files ([onFile]), a glass menu above it.
  */
 @Composable
-private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean, menu: ComposerPicker) {
+private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean, fileMetadataNotice: String, menu: ComposerPicker) {
     val copy = uiText()
     val p = pal
     val open = menu.open == "attach"
@@ -367,14 +368,14 @@ private fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boo
     ) {
         Ic(Lucide.Plus, 22.dp, p.ink)
         if (open && onFile != null) ComposerMenuPopup(menu, AboveProvider(gap, right = false)) {
-            AttachMenu(onMedia = { menu.close(); onPlus() }, onFile = { menu.close(); onFile() })
+            AttachMenu(onMedia = { menu.close(); onPlus() }, onFile = { menu.close(); onFile() }, fileMetadataNotice = fileMetadataNotice)
         }
     }
 }
 
 /** The ＋ menu when the computer takes files: 照片和视频, 文件, and that files go as they are. */
 @Composable
-private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
+private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit, fileMetadataNotice: String) {
     val copy = uiText()
     val p = pal
     Column(Modifier.padding(12.dp).width(248.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
@@ -389,9 +390,6 @@ private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
                 Text(label, style = T.s17, color = p.ink)
             }
         }
-        Text(uiText(FILES_AS_THEY_ARE), style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
+        Text(fileMetadataNotice, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
     }
 }
-
-/** Said wherever files are offered or waiting to go. */
-val FILES_AS_THEY_ARE get() = UiMessages.attachmentMetadata()

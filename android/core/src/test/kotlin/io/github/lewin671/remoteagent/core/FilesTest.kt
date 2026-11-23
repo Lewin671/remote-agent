@@ -10,23 +10,7 @@ import java.security.MessageDigest
 
 class FilesTest {
     @get:org.junit.Rule val hangGuard = hangGuard()
-    private fun machine(supported: Boolean, count: Int = 6, bytes: Long = MAX_FILE_BYTES) = MachineView("m", true, 0,
-        MachineMeta.newBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder()
-            .setFileUpload(supported).setMaxFilesPerMessage(count).setMaxFileUploadBytes(bytes)).build())
-
-    @Test fun capabilityAndIndependentLimits() {
-        assertFalse(filesSupported(null))
-        assertFalse(filesSupported(machine(false)))
-        assertTrue(filesSupported(machine(true)))
-        assertEquals(2, maxFiles(machine(true, 2)))
-        assertEquals(12L, maxFileBytes(machine(true, bytes = 12)))
-        assertEquals(6, maxFiles(machine(true, 99)))
-        assertNull(fileLimitError(0, 0, 6, MAX_FILE_BYTES))
-        assertNull(fileLimitError(MAX_FILE_BYTES, 5, 6, MAX_FILE_BYTES))
-        assertTrue(fileLimitError(MAX_FILE_BYTES + 1, 0, 6, MAX_FILE_BYTES)!!.contains("文件太大"))
-        assertTrue(fileLimitError(1, 6, 6, MAX_FILE_BYTES)!!.contains("最多 6 个文件"))
-        assertNotNull(fileLimitError(-1, 0, 6, MAX_FILE_BYTES))
-    }
+    private val hundredMiB = 100L * 1024 * 1024
 
     private class Channel(val expected: ByteArray, val lost: Boolean = false) : UploadChannel {
         var bytes = java.io.ByteArrayOutputStream()
@@ -122,7 +106,7 @@ class FilesTest {
             fun receiving() = ImageUploadStatus.newBuilder().setState(ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING).setPersistedBytes(uploaded).build()
             override suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): ImageUploadStatus = error("image")
             override suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): ImageUploadStatus {
-                assertEquals(MAX_FILE_BYTES, total)
+                assertEquals(hundredMiB, total)
                 assertArrayEquals(expectedHash, sha256)
                 return receiving()
             }
@@ -142,10 +126,10 @@ class FilesTest {
         }
         var opens = 0
         var closes = 0
-        uploadFile(channel, "large", "large.bin", MAX_FILE_BYTES, {
+        uploadFile(channel, "large", "large.bin", hundredMiB, {
             opens++
             object : InputStream() {
-                var remaining = MAX_FILE_BYTES
+                var remaining = hundredMiB
                 override fun read(): Int { if (remaining == 0L) return -1; remaining--; return 0 }
                 override fun read(b: ByteArray, off: Int, len: Int): Int {
                     assertTrue(len <= DEFAULT_CHUNK_BYTES)
@@ -158,7 +142,7 @@ class FilesTest {
                 override fun close() { closes++ }
             }
         })
-        assertEquals(MAX_FILE_BYTES, uploaded)
+        assertEquals(hundredMiB, uploaded)
         assertEquals(2, opens)
         assertEquals(2, closes)
     }

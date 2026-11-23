@@ -35,7 +35,7 @@ class LinkTest {
                 val state = projected(daemon.id)
                 remote.showForTest(state)
                 assertTrue(state.peer(daemon.id).canProbe(false))
-                assertTrue(filesSupported(state.machines[daemon.id]))
+                assertTrue(capabilities(state.machines[daemon.id])?.fileUpload == true)
                 assertNull(protocolMismatch(state.machines[daemon.id]))
                 val command = Command.newBuilder().setCreateSession(CreateSessionRequest.newBuilder().setCwd("/work/example").addFileIds("original-file")).build()
                 remote.machineCommand(daemon.id, command)

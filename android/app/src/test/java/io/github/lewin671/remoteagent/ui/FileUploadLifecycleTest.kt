@@ -136,7 +136,7 @@ class FileUploadLifecycleTest {
     @Test fun anUnresolvedMachinePreservesRestoredCompletedFilesUntilARealSwitch() = runBlocking {
         val disk = MemoryFiles()
         val original = file("large").apply {
-            fileBytes = MAX_FILE_BYTES; sizeVerified = true
+            fileBytes = 100L * 1024 * 1024; sizeVerified = true
             machineId = "saved-machine"; transferId = "saved-transfer"; fileId = "saved-file"
             expiresMs = Long.MAX_VALUE; state = PendingImage.State.Ready
         }

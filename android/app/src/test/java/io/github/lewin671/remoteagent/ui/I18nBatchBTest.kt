@@ -306,9 +306,9 @@ class I18nBatchBTest(private val locale: String) {
     @Test fun renameDialog() { show { RenameDialog("s", defaultSessionVm) {} }; shot("rename") }
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
-            FileChip("example.patch", 2048, PendingImage.State.Uploading(.42f), {}, {})
-            FileChip("notes.txt", 320, PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
-            Text(uiText(FILES_AS_THEY_ARE))
+            FileChip("example.patch", "2.0 KB", PendingImage.State.Uploading(.42f), {}, {})
+            FileChip("notes.txt", "320 B", PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
+            Text(uiText(UiMessages.attachmentMetadata()))
             GeneratedCard("generated", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()), "Original image prompt") {}
         } }; shot("attachments")
     }

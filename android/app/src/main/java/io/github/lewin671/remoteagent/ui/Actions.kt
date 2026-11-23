@@ -13,7 +13,6 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.UiMessages
-import io.github.lewin671.remoteagent.core.maxFileBytes
 import io.github.lewin671.remoteagent.core.messageText
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect
@@ -280,10 +279,10 @@ object Outbox {
         if (releaseImages) hit.images.forEach { it.release(abort = false) }
     }
 
-    fun takeBack(sid: String, requestId: String, draft: ImageDraft): Boolean {
+    fun takeBack(sid: String, requestId: String, draft: ImageDraft, maxImages: Int = 6, maxFiles: Int = 6): Boolean {
         val hit = bySession[sid]?.firstOrNull { it.requestId == requestId } ?: return false
         if (!hit.hasLocalAttachments) return false
-        val attached = draft.attach(hit.images, io.github.lewin671.remoteagent.core.MAX_IMAGES, hit.original)
+        val attached = draft.attach(hit.images, maxImages, hit.original, fileMax = maxFiles)
         if (!attached) return false
         bySession[sid]?.remove(hit)
         draft.whenKept(hit.images.map { it.id }) { runCatching { records.remove(sid, requestId) } }
@@ -316,7 +315,7 @@ object Outbox {
                 val uploadedFiles = ArrayList<String>()
                 val clones = ArrayList<PendingImage>(source.images.size)
                 val channel = remote.uploadChannel(targetMachine)
-                val machine = remote.state.value.machines[targetMachine]
+                val caps = remote.attachmentCapsFor(targetMachine, sid)
                 val ok = runCatching {
                     withContext(Dispatchers.IO) {
                         for (orig in source.images) {
@@ -335,7 +334,9 @@ object Outbox {
                                     orig.fileName ?: "file",
                                     orig.fileBytes,
                                     { RaApp.instance.contentResolver.openInputStream(Uri.parse(u)) ?: throw java.io.FileNotFoundException() },
-                                    maxBytes = maxFileBytes(machine),
+                                    maxBytes = caps.maxFileBytes,
+                                    maxNameBytes = caps.maxFileNameBytes,
+                                    maxSizeText = caps.maxFileSizeText,
                                 )
                                 clone.fileId = res.fileId
                                 clone.machineId = targetMachine

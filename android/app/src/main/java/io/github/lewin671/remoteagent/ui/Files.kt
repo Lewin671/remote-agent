@@ -1,22 +1,21 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.*
+import io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest
 import io.github.lewin671.remoteagent.core.proto.SessionFileRefView
 
 @Composable
@@ -32,18 +32,51 @@ internal fun rememberDocumentPicker(
     remote: Remote,
     machineId: String?,
     caps: AttachmentCaps,
+    sessionId: String = "",
 ): (() -> Unit)? {
     val copy = uiText()
     val context = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
-        draft.addDocuments(context, it, remote, machineId, caps = caps)
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            draft.addPickedCandidates(
+                context = context,
+                uris = uris,
+                remote = remote,
+                machineId = machineId,
+                sessionId = sessionId,
+                caps = caps,
+                forceFile = true,
+            )
+        }
     }
     if (!caps.supportsFiles) return null
     return {
-        when {
-            draft.restoring || draft.readingFiles -> Unit
-            draft.documents.size >= caps.maxFiles -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
-            else -> picker.launch(arrayOf("*/*"))
+        if (!draft.restoring && !draft.readingFiles) {
+            val eval = remote.evaluateAttachments(
+                AttachmentEvalScreenRequest.newBuilder().apply {
+                    if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+                    if (sessionId.isNotEmpty()) setSessionId(sessionId)
+                    setCurrentImages(draft.pictures.size)
+                    setCurrentFiles(draft.documents.size)
+                }.build(),
+            )
+            if (eval.capabilitiesLoaded || !caps.capabilitiesLoaded) {
+                if (!eval.canPickFiles) {
+                    val reason = when {
+                        eval.hasFileUploadBlockedReason() -> coreTextToMessageText(eval.fileUploadBlockedReason).resolve(copy)
+                        draft.documents.size >= eval.maxFiles && eval.maxFiles > 0 -> copy(UiMessages.attachmentMaxFiles(count = eval.maxFiles))
+                        else -> copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles))
+                    }
+                    if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
+                } else {
+                    picker.launch(arrayOf("*/*"))
+                }
+            } else {
+                when {
+                    draft.documents.size >= caps.maxFiles -> ImageNotices.show(draft.key, copy(UiMessages.attachmentMaxFiles(count = caps.maxFiles)))
+                    else -> picker.launch(arrayOf("*/*"))
+                }
+            }
         }
     }
 }
@@ -57,11 +90,10 @@ internal fun rememberDocumentPicker(
 @Composable
 internal fun FileChip(
     name: String,
-    size: Long = 0L,
+    sizeText: String,
     state: PendingImage.State? = null,
     onRetry: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
-    sizeText: String? = null,
     nameHead: String = "",
     nameTail: String = "",
 ) {
@@ -69,7 +101,7 @@ internal fun FileChip(
     val p = pal
     // One line is a capsule; once a reason or a large font makes it taller, a card's corners (design-system §5).
     val density = androidx.compose.ui.platform.LocalDensity.current
-    var tall by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var tall by remember { mutableStateOf(false) }
     val nameStyle = T.s15.copy(fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.Medium))
     Row(
         Modifier.fillMaxWidth().heightIn(min = 52.dp).onSizeChanged { tall = with(density) { it.height.toDp() } > 60.dp }
@@ -98,8 +130,7 @@ internal fun FileChip(
                 is PendingImage.State.Failed -> copy(UiMessages.attachmentAndroidFailedMeta())
                 else -> ""
             }
-            val sizeLabel = sizeText ?: fileSize(size)
-            Text(sizeLabel + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
+            Text(sizeText + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
             if (state is PendingImage.State.Uploading) Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(Radii.Pill).background(p.fill2)) {
                 Box(Modifier.fillMaxWidth(state.progress).height(3.dp).clip(Radii.Pill).background(p.ink))
             }
@@ -120,8 +151,7 @@ internal fun FileChips(files: List<SessionFileRefView>) {
         files.forEach { f ->
             FileChip(
                 name = f.displayName.ifEmpty { f.name },
-                size = f.sizeBytes,
-                sizeText = if (f.hasSizeText()) uiText(f.sizeText) else null,
+                sizeText = if (f.hasSizeText()) uiText(f.sizeText) else "",
                 nameHead = f.nameHead,
                 nameTail = f.nameTail,
             )
@@ -131,23 +161,33 @@ internal fun FileChips(files: List<SessionFileRefView>) {
 
 /** The files in the box, apart from videos from the library, which sit among the images ([ImageStrip]). */
 @Composable
-internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?, caps: AttachmentCaps? = null) {
+internal fun FileStrip(
+    draft: ImageDraft,
+    remote: Remote,
+    machineId: String?,
+    caps: AttachmentCaps? = null,
+    docMetaById: Map<String, EvaluatedDocumentMeta>? = null,
+) {
     val copy = uiText()
     if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-    val files = draft.documents.filterNot { isVideoDraft(it) }
-    val blocked = if (caps != null) {
-        fileDraftBlocked(draft, caps, copy = copy)
-    } else {
-        val state by remote.state.collectAsState()
-        fileDraftBlocked(draft, state.machines[machineId], copy = copy)
-    }
+    val metaById = docMetaById ?: rememberEvaluatedDocuments(remote, machineId, draft.documents)
+    val files = draft.documents.filterNot { metaById[it.id]?.isVideo == true }
+    val effectiveCaps = caps ?: remember(remote, machineId) { remote.attachmentCapsFor(machineId) }
+    val blocked = fileDraftBlocked(draft, effectiveCaps, copy = copy)
     if (files.isEmpty() && blocked == null) return
+    val metadataNotice = effectiveCaps.fileMetadataNotice?.let { uiText(it) }?.ifEmpty { null }
+        ?: copy(UiMessages.attachmentMetadata())
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         files.forEach { file ->
-            FileChip(file.fileName!!, file.fileBytes, file.state,
-                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true, caps = caps) } }, onRemove = { draft.remove(file) })
+            FileChip(
+                name = file.fileName!!,
+                sizeText = metaById[file.id]?.formattedSize ?: file.formattedSize,
+                state = file.state,
+                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true, caps = effectiveCaps) } },
+                onRemove = { draft.remove(file) },
+            )
         }
         blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
-        if (files.isNotEmpty()) Text(uiText(FILES_AS_THEY_ARE), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        if (files.isNotEmpty()) Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
     }
 }

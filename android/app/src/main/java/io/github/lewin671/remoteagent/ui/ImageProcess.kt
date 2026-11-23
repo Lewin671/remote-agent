@@ -1,7 +1,5 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,12 +8,13 @@ import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import io.github.lewin671.remoteagent.core.COMPRESSED_LONG_SIDE
-import io.github.lewin671.remoteagent.core.MAX_ORIGINAL_BYTES
 import io.github.lewin671.remoteagent.core.MAX_DECODE_PIXELS
+import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.decodeSample
 import io.github.lewin671.remoteagent.core.detectFormat
 import io.github.lewin671.remoteagent.core.fitLongSide
 import io.github.lewin671.remoteagent.core.orientationOf
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.core.stripOriginal
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import java.io.ByteArrayOutputStream
@@ -30,13 +29,17 @@ class ImageTooLarge(message: io.github.lewin671.remoteagent.core.UiMessage, kind
 }
 
 private fun imageFormatError(message: io.github.lewin671.remoteagent.core.UiMessage): Nothing =
-    throw io.github.lewin671.remoteagent.core.MessageArgumentException(io.github.lewin671.remoteagent.core.MessageText.Message(message), imageKind = ImageProblemKind.FORMAT)
+    throw io.github.lewin671.remoteagent.core.MessageArgumentException(
+        io.github.lewin671.remoteagent.core.MessageText.Message(message),
+        imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE,
+    )
 
 /** A compressed image aims at this size, so it goes in one command. */
 private const val COMPRESSED_TARGET = 900 * 1024
+private const val FALLBACK_ORIGINAL_MAX_BYTES = 20L * 1024 * 1024
 
 /** Reads what the picker gave, up to [limit] bytes. */
-fun readUri(context: Context, uri: Uri, limit: Long): ByteArray {
+fun readUri(context: Context, uri: Uri, limit: Long, originalLimit: Long = FALLBACK_ORIGINAL_MAX_BYTES): ByteArray {
     val out = ByteArrayOutputStream()
     context.contentResolver.openInputStream(uri)?.use { input ->
         val buf = ByteArray(64 * 1024)
@@ -45,10 +48,18 @@ fun readUri(context: Context, uri: Uri, limit: Long): ByteArray {
             val n = input.read(buf)
             if (n < 0) break
             total += n
-            if (total > limit) throw ImageTooLarge(UiMessages.imageAndroidImageExceedsValue1Mb((limit / 1024 / 1024).toString()), if (limit == MAX_ORIGINAL_BYTES) ImageProblemKind.ORIGINAL_LIMIT else ImageProblemKind.DIMENSIONS)
+            if (total > limit) {
+                throw ImageTooLarge(
+                    UiMessages.imageAndroidImageExceedsValue1Mb((limit / 1024 / 1024).toString()),
+                    if (limit == originalLimit) ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE else ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS,
+                )
+            }
             out.write(buf, 0, n)
         }
-    } ?: throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotReadThisImage()), imageKind = ImageProblemKind.FORMAT)
+    } ?: throw io.github.lewin671.remoteagent.core.MessageException(
+        io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotReadThisImage()),
+        imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE,
+    )
     return out.toByteArray()
 }
 
@@ -74,14 +85,6 @@ private fun pixelBudget(): Long = minOf(MAX_DECODE_PIXELS, Runtime.getRuntime().
 /** A decoded picture and the sample size it was decoded at (1: full size). */
 private class Decoded(val bitmap: Bitmap, val sample: Int)
 
-/**
- * Decodes and turns the picture upright, at most [maxLong] on its long
- * side (0: full size), never more than [pixelBudget] pixels: the size is
- * read first and the image sampled down to fit. Formats the CLIs read are
- * decoded here with the orientation they record applied; others (HEIC) go
- * through ImageDecoder, which turns them itself. Intermediate bitmaps are
- * recycled as soon as the next one exists.
- */
 private fun decodeUpright(data: ByteArray, maxLong: Int): Decoded {
     val budget = pixelBudget()
     val fmt = detectFormat(data)
@@ -118,28 +121,20 @@ private val preparing = Any()
 private fun encode(b: Bitmap, png: Boolean, quality: Int): ByteArray =
     ByteArrayOutputStream().also { b.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
 
-/**
- * Prepares one picked image (architecture §17). Compressed: upright, long
- * side at most 2048, JPEG, or PNG when it has transparency; re-encoding
- * leaves every bit of metadata behind. Original: the file as it is, its
- * metadata taken out; a photo turned by its orientation tag, or a format
- * the CLIs do not read, is re-encoded at the highest quality instead, and
- * [Processed.note] says so.
- */
-fun processImage(context: Context, uri: Uri, original: Boolean): Processed = synchronized(preparing) {
+fun processImage(context: Context, uri: Uri, original: Boolean, originalMaxBytes: Long = FALLBACK_ORIGINAL_MAX_BYTES): Processed = synchronized(preparing) {
+    val maxOriginal = if (originalMaxBytes > 0L) originalMaxBytes else FALLBACK_ORIGINAL_MAX_BYTES
     try {
-        prepare(context, uri, original)
+        prepare(context, uri, original, maxOriginal)
     } catch (e: OutOfMemoryError) {
-        // An error, not an exception: without this it would end the app.
-        throw ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.DIMENSIONS)
+        throw ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS)
     }
 }
 
-private fun prepare(context: Context, uri: Uri, original: Boolean): Processed {
-    val data = readUri(context, uri, if (original) MAX_ORIGINAL_BYTES * 3 else 80L * 1024 * 1024)
+private fun prepare(context: Context, uri: Uri, original: Boolean, maxOriginal: Long): Processed {
+    val data = readUri(context, uri, if (original) maxOriginal * 3 else 80L * 1024 * 1024, maxOriginal)
     if (original) {
         stripOriginal(data)?.let { clean ->
-            if (clean.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.ORIGINAL_LIMIT)
+            if (clean.size > maxOriginal) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE)
             val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(clean, 0, clean.size, b)
             return Processed(clean, detectFormat(clean)!!, b.outWidth, b.outHeight)
@@ -151,7 +146,7 @@ private fun prepare(context: Context, uri: Uri, original: Boolean): Processed {
         val out = encode(bmp, png, if (turned) 100 else 95)
         val (w, h) = bmp.width to bmp.height
         bmp.recycle()
-        if (out.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.ORIGINAL_LIMIT)
+        if (out.size > maxOriginal) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE)
         val shrunk = if (d.sample > 1) sessionText(UiMessages.imageAndroidPixelCountExceedsThisPhoneSLimitScaledDownTo((d.sample).toString())) else ""
         return Processed(
             out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h,

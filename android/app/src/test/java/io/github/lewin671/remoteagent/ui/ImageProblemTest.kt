@@ -1,7 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
+import io.github.lewin671.remoteagent.core.Account
+import io.github.lewin671.remoteagent.core.Api
+import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.proto.ImageProblemInput
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import org.junit.Assert.*
 import org.junit.Test
@@ -10,12 +13,27 @@ import org.junit.Test
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ImageProblemTest {
     @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    @Test fun invalidImagesAreNotRetriedAndTransportFailuresCanBeRetried() {
-        assertEquals(ImageProblem(ImageProblemKind.ORIGINAL_LIMIT, "图片超过 20 MB，关掉原图再发", false), imageProblem(rawAttachmentFailure("原图超过20 MB")))
-        assertFalse(imageProblem(rawAttachmentFailure("the image does not decode")).retryable)
-        assertTrue(imageProblem(rawAttachmentFailure("unavailable: machine offline")).retryable)
-        assertEquals(messageTextForTest(UiMessages.imageThisImageCouldNotBeProcessed()), imageProblem(rawAttachmentFailure("opaque internal exception")).message)
-        assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed").map(::rawAttachmentFailure)) { "$it 张图没加上，点图片看原因" })
+
+    @Test fun coreAttachmentEvalClassifiesStructuredProblemsAndSummary() {
+        val remote = Remote(Account("http://127.0.0.1:1", "c1"), Api.defaultHttp())
+        try {
+            val eval = evaluateImageProblems(
+                remote,
+                listOf(
+                    ImageProblemInput.newBuilder().setExplicitKind(ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE).build(),
+                    ImageProblemInput.newBuilder().setErrorCode("unavailable").build(),
+                ),
+            )
+            assertEquals(2, eval.problemsCount)
+            assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE, eval.getProblems(0).kind)
+            assertFalse(eval.getProblems(0).retryable)
+            assertEquals(ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED, eval.getProblems(1).kind)
+            assertTrue(eval.getProblems(1).retryable)
+            assertTrue(eval.hasFailureSummary())
+            assertEquals("image.attach_failed", eval.failureSummary.key)
+        } finally {
+            remote.close()
+        }
     }
 
     @Test fun uncertainMessagesAreRecoverableOnlyWhileTheirLocalAttachmentSurvives() {

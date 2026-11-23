@@ -60,6 +60,6 @@ class LibraryVideoStripTest {
         ui.onNodeWithContentDescription("移除文件 clip.mp4").assertDoesNotExist()
         // Only a video: no 原图 and no image count.
         ui.onNodeWithText("原图", substring = true).assertDoesNotExist()
-        ui.onNodeWithText(messageTextForTest(FILES_AS_THEY_ARE)).assertIsDisplayed()
+        ui.onNodeWithText(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.attachmentMetadata())).assertIsDisplayed()
     }
 }

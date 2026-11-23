@@ -1622,6 +1622,9 @@ class Remote(
     fun closeSessionImageViewer(sid: String) =
         coreHost.closeSessionImageViewer(sid)
 
+    fun evaluateAttachments(req: io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest): io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel =
+        coreHost.evaluateAttachments(req)
+
     suspend fun fetchSession(sid: String): Boolean {
         if (state.value.sessions[sid] != null) return true
         val deferred = CompletableDeferred<Boolean>()
@@ -1859,10 +1862,11 @@ class Remote(
     }
 
     fun requireFileSupport(machineId: String?, hasFiles: Boolean, mayHaveRun: Boolean = false) {
-        if (hasFiles && !filesSupported(state.value.machines[machineId])) {
+        if (hasFiles && capabilities(state.value.machines[machineId])?.fileUpload != true) {
+            val required = UiMessages.attachmentUpdateRequired().messageText()
             throw CommandException(
                 if (mayHaveRun) CommandException.UNKNOWN else "failed_precondition",
-                if (mayHaveRun) localized { copy -> copy(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame(FILE_UPLOAD_UPDATE_REQUIRED.resolve(copy))) } else FILE_UPLOAD_UPDATE_REQUIRED,
+                if (mayHaveRun) localized { copy -> copy(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame(required.resolve(copy))) } else required,
                 outcome = if (mayHaveRun) Outcome.UNKNOWN else Outcome.NOT_SENT,
             )
         }

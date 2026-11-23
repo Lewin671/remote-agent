@@ -790,6 +790,18 @@ class CoreHost(
         return ViewModel.parseFrom(rawVm)
     }
 
+    /** Synchronous stateless attachment/problem evaluation via Core (`Screen.attachment_eval`). */
+    fun evaluateAttachments(req: AttachmentEvalScreenRequest): AttachmentEvalViewModel {
+        val screen = Screen.newBuilder().setAttachmentEval(req).build()
+        val rawVm: ByteArray? = synchronized(coreLock) {
+            if (closed.get()) return AttachmentEvalViewModel.getDefaultInstance()
+            core.view(screen.toByteArray())
+        }
+        if (rawVm == null || rawVm.isEmpty()) return AttachmentEvalViewModel.getDefaultInstance()
+        val vm = ViewModel.parseFrom(rawVm)
+        return if (vm.viewCase == ViewModel.ViewCase.ATTACHMENT_EVAL) vm.attachmentEval else AttachmentEvalViewModel.getDefaultInstance()
+    }
+
     private class KeyedWatchFlow<V, K>(
         private val lock: Any,
         private val key: Any,

@@ -83,11 +83,9 @@ import kotlin.math.roundToInt
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
-import io.github.lewin671.remoteagent.core.MAX_IMAGES
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.listWhen
-import io.github.lewin671.remoteagent.core.maxFiles
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
@@ -176,7 +174,7 @@ fun SessionScreen(sid: String) {
                 val cur = draft.text.value
                 draft.text.value = if (cur.isBlank()) eff.text else cur.trimEnd() + "\n" + eff.text
             }
-            if (Outbox.takeBack(sid, eff.requestId, draft)) {
+            if (Outbox.takeBack(sid, eff.requestId, draft, header.capabilities.maxImages.takeIf { it > 0 } ?: 6, header.capabilities.maxFiles.takeIf { it > 0 } ?: 6)) {
                 draft.images.forEach { draft.bindAbort(it, remote) }
                 if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId)
             }
@@ -1018,7 +1016,7 @@ internal fun Composer(
     val maxImg = attachCaps.maxImages
     val blocked = if (caps.hasImageUploadBlockedReason()) uiText(caps.imageUploadBlockedReason).ifEmpty { null } else null
     RefreshDraftUploads(images, remote, machineId, blocked, attachCaps)
-    val pick = rememberImagePicker(images, remote, machineId, blocked, attachCaps)
+    val pick = rememberImagePicker(images, remote, machineId, blocked, attachCaps, sessionId = sid)
 
     fun send(requestedMode: SendMode? = null) {
         val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER
@@ -1080,7 +1078,8 @@ internal fun Composer(
             (images.images.isEmpty() || images.ready(machineId)),
         onSend = { send() },
         onPlus = pick,
-        onFile = rememberDocumentPicker(images, remote, machineId, attachCaps),
+        onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
+        fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }?.ifEmpty { null } ?: copy(UiMessages.attachmentMetadata()),
         plusEnabled = composer.canAttachImages && !images.restoring && (blocked == null || (attachCaps.supportsFiles && online && header.computerOnline)),
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({

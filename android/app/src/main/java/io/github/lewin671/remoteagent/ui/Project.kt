@@ -229,6 +229,7 @@ fun NewSessionBox(
             onSend = { start() },
             onPlus = pick,
             onFile = rememberDocumentPicker(images, remote, machine, attachCaps),
+            fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }?.ifEmpty { null } ?: uiText(UiMessages.attachmentMetadata()),
             plusEnabled = !images.restoring && (blocked == null || attachCaps.supportsFiles && attachCaps.machineOnline),
             sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,

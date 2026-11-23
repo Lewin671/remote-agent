@@ -1,44 +1,11 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.proto.ImageUploadState
-import io.github.lewin671.remoteagent.proto.SentFile
 import kotlinx.coroutines.ensureActive
 import java.io.InputStream
 import java.security.MessageDigest
 import kotlin.coroutines.coroutineContext
-
-const val MAX_FILES = 6
-const val MAX_FILE_BYTES = 100L * 1024 * 1024
-val FILE_UPLOAD_UPDATE_REQUIRED = UiMessages.attachmentUpdateRequired().messageText()
-fun filesSupported(m: MachineView?) = capabilities(m)?.fileUpload == true
-fun maxFiles(m: MachineView?) = capabilities(m)?.maxFilesPerMessage?.takeIf { it > 0 }?.coerceAtMost(MAX_FILES) ?: MAX_FILES
-fun maxFileBytes(m: MachineView?) = capabilities(m)?.maxFileUploadBytes?.takeIf { it > 0 }?.coerceAtMost(MAX_FILE_BYTES) ?: MAX_FILE_BYTES
-fun fileLimitError(size: Long, count: Int, max: Int, maxBytes: Long): MessageText? = when {
-    count >= max -> UiMessages.attachmentMaxFiles((max).toInt()).messageText()
-    size < 0 -> UiMessages.errorsAndroidCannotReadFileSizeSelectTheFileAgain().messageText()
-    size > maxBytes -> UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1((fileSize(maxBytes)).toString()).messageText()
-    else -> null
-}
-/**
- * Videos picked from the library go as files, beside the images
- * (session-files 「从相册选视频」). A picked item is one by its type, or,
- * when that is not known, by its name.
- */
-fun isVideo(mime: String?, name: String): Boolean =
-    if (mime != null) mime.startsWith("video/") else name.substringAfterLast('.', "").lowercase() in VIDEO_EXTENSIONS
-
-private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "mov", "3gp", "3g2", "webm", "mkv", "avi", "mpg", "mpeg", "ts", "wmv", "flv")
-
-/** Why a video picked from the library is turned away as it is picked: it is over the size limit. Null when it is taken. */
-fun pickedVideoError(name: String, size: Long, maxBytes: Long): MessageText? =
-    if (size > maxBytes) UiMessages.attachmentNamedSizeLimit((maxBytes / 1024 / 1024).toInt(), (name).toString()).messageText() else null
-
-/**
- * How many more items the library may give: images while they fit, and,
- * when the computer takes files ([videos]), videos while files fit.
- */
-fun libraryRoom(images: Int, maxImages: Int, files: Int, maxFiles: Int, videos: Boolean): Int =
-    (maxImages - images).coerceAtLeast(0) + if (videos) (maxFiles - files).coerceAtLeast(0) else 0
 
 /** A video's length in the corner of its thumbnail: 0:42, 12:05, 1:02:03. */
 fun videoLength(ms: Long): String {
@@ -49,17 +16,20 @@ fun videoLength(ms: Long): String {
     return if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, sec) else String.format(java.util.Locale.ROOT, "%d:%02d", m, sec)
 }
 
-fun fileSize(bytes: Long): String = when {
-    bytes < 1024 -> "$bytes B"
-    bytes < 1024 * 1024 -> java.lang.String.format(java.util.Locale.ROOT, "%.1f KB", bytes / 1024.0)
-    else -> java.lang.String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1024.0 / 1024.0)
-}
-
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
 /** IO from the provider is distinguished from network IO by where it happened. */
-class FileSourceException(cause: Exception) : MessageException(UiMessages.errorsAndroidCannotReadTheSourceFileRemoveItAndSelectThe().messageText(), cause, imageKind = ImageFailureKind.SOURCE)
-class FileContentChanged : MessageException(UiMessages.errorsAndroidTheFileChangedDuringUploadRetryOrSelectTheFile().messageText(), imageKind = ImageFailureKind.SOURCE)
+class FileSourceException(cause: Exception) : MessageException(
+    UiMessages.errorsAndroidCannotReadTheSourceFileRemoveItAndSelectThe().messageText(),
+    cause,
+    imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING,
+)
+
+class FileContentChanged : MessageException(
+    UiMessages.errorsAndroidTheFileChangedDuringUploadRetryOrSelectTheFile().messageText(),
+    imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_SOURCE_MISSING,
+)
+
 fun isUploadHashMismatch(e: Throwable) = e is CommandException && e.code == "invalid_argument" && e.message.orEmpty().contains("hash", ignoreCase = true)
 fun restartUpload(e: Throwable) = e is CommandException && (e.code == "already_exists" || e.code == "not_found" || isUploadHashMismatch(e))
 fun uploadErrorText(e: Throwable): MessageText = when {
@@ -82,13 +52,20 @@ object FileUploads {
 
 /** Metadata size is only a hint. Hash the actual bytes, then verify the upload pass against them. */
 suspend fun uploadFile(
-    ch: UploadChannel, transferId: String, name: String, total: Long,
-    open: () -> InputStream, maxChunk: Int = DEFAULT_CHUNK_BYTES, retries: Int = 3,
-    maxBytes: Long = MAX_FILE_BYTES,
+    ch: UploadChannel,
+    transferId: String,
+    name: String,
+    total: Long,
+    open: () -> InputStream,
+    maxChunk: Int = DEFAULT_CHUNK_BYTES,
+    retries: Int = 3,
+    maxBytes: Long = 100L * 1024 * 1024,
+    maxNameBytes: Int = 255,
+    maxSizeText: String = "100.0 MB",
     onPrepared: (Long) -> Unit = {},
     onProgress: (Long, Long) -> Unit = { _, _ -> },
 ): UploadedFile {
-    requireMessage(name.isNotBlank() && name.toByteArray().size <= 255) { UiMessages.errorsAndroidFileNameIsTooLongOrEmptyRenameTheFile().messageText() }
+    requireMessage(name.isNotBlank() && name.toByteArray().size <= maxNameBytes) { UiMessages.errorsAndroidFileNameIsTooLongOrEmptyRenameTheFile().messageText() }
     fun <T> source(work: () -> T): T = try { work() } catch (e: java.io.IOException) { throw FileSourceException(e) } catch (e: SecurityException) { throw FileSourceException(e) }
     fun openSource(): InputStream = object : java.io.FilterInputStream(source { open() }) {
         override fun close() { try { super.close() } catch (e: java.io.IOException) { throw FileSourceException(e) } }
@@ -102,7 +79,7 @@ suspend fun uploadFile(
             val n = source { input.read(buffer) }
             if (n < 0) break
             actual += n
-            requireMessage(actual <= minOf(maxBytes, MAX_FILE_BYTES)) { UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1((fileSize(minOf(maxBytes, MAX_FILE_BYTES))).toString()).messageText() }
+            requireMessage(actual <= maxBytes) { UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1(maxSizeText).messageText() }
             digest.update(buffer, 0, n)
         }
     }
