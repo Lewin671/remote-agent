@@ -71,12 +71,10 @@ private final class ReportSpy: @unchecked Sendable {
     ) -> PBSessionSharedFileItem {
         .with {
             $0.fileID = id
-            $0.name = name
             $0.displayName = name
             $0.nameHead = name
             $0.sizeBytes = Int64(content.count)
             $0.sha256 = Data(SHA256.hash(data: content))
-            $0.path = "/Users/me/\(name)"
             $0.displayPath = "~/\(name)"
             $0.status = status
             $0.primaryAction = action
