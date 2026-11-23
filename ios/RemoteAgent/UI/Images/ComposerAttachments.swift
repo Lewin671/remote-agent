@@ -21,18 +21,6 @@ struct ComposerAttachments {
         self.caps = caps
     }
 
-    init(remote: Remote, key: String, machineId: String?, blocked: String?, limit: Int) {
-        self.init(
-            remote: remote,
-            key: key,
-            machineId: machineId,
-            caps: AttachmentCapabilities(
-                maxImages: limit,
-                imageUploadBlocked: blocked
-            )
-        )
-    }
-
     init(sessionID: String, header: PBSessionHeaderView, remote: Remote) {
         self.init(
             remote: remote,
@@ -55,7 +43,7 @@ struct ComposerAttachments {
     var draft: ImageDraft { center.draft(key) }
     var hasImages: Bool { !draft.images.isEmpty }
     var ready: Bool {
-        !draft.restoring && draft.filesAllowed(for: caps) && (draft.images.isEmpty || draft.ready(machineId: machineId))
+        !draft.restoring && (draft.images.isEmpty || draft.ready(machineId: machineId))
     }
 
     func pick() { center.plus(key, machineId: machineId, caps: caps) }

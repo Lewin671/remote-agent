@@ -9,9 +9,6 @@
 import Foundation
 import RAProto
 
-/// At most this many images go with one message, whatever the daemon says or the picker allowed.
-public let maxImages = 6
-
 /// An original may be this large at most (architecture §17).
 public let maxOriginalBytes: Int64 = 20 * 1024 * 1024
 

@@ -78,24 +78,42 @@ struct NewSessionBox: View {
             onSubmit: {
                 images.refresh()
                 guard vm.canStart, images.ready else { return }
+                let projectKey = vm.projectKey.ifEmpty(key)
+                let draftKey = ImageCenter.projectKey(projectKey)
                 let attached = images.draft.images
-                let submission = NewSessionAttachmentsSubmission(
-                    draftKey: ImageCenter.projectKey(vm.projectKey.ifEmpty(key)),
-                    machineId: machineId,
-                    taken: attached,
-                    imageIds: attached.filter { !$0.isFile }.compactMap(\.imageId),
-                    fileIds: attached.filter(\.isFile).compactMap(\.imageId),
-                    center: images.center
-                )
-                Haptics.confirm()
-                context.submitNewSession(
-                    projectKey: vm.projectKey.ifEmpty(key),
-                    prompt: text,
-                    attachmentCount: Int32(attached.count),
-                    attachmentsMoved: false,
-                    autoModeSupported: vm.modelPanel.canSelectAutoMode,
-                    attachments: submission
-                )
+                let promptText = text
+                let autoModeSupported = vm.modelPanel.canSelectAutoMode
+                let doSubmit: @MainActor () -> Void = {
+                    let submission = NewSessionAttachmentsSubmission(
+                        draftKey: draftKey,
+                        machineId: machineId,
+                        taken: attached,
+                        imageIds: attached.filter { !$0.isFile }.compactMap(\.imageId),
+                        fileIds: attached.filter(\.isFile).compactMap(\.imageId),
+                        center: images.center
+                    )
+                    Haptics.confirm()
+                    context.submitNewSession(
+                        projectKey: projectKey,
+                        prompt: promptText,
+                        attachmentCount: Int32(attached.count),
+                        attachmentsMoved: false,
+                        autoModeSupported: autoModeSupported,
+                        attachments: submission
+                    )
+                }
+                if attached.isEmpty {
+                    doSubmit()
+                } else {
+                    Task {
+                        let check = await images.center.evaluateDraft(draftKey, machineId: machineId)
+                        guard check.allowed else {
+                            if !check.reason.isEmpty { images.center.say(draftKey, check.reason) }
+                            return
+                        }
+                        doSubmit()
+                    }
+                }
             },
             onMachine: onMachine,
             onModel: onModel,

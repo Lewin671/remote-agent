@@ -86,26 +86,21 @@ private actor FileReceiver: UploadChannel {
         #expect(converted.originalImageHint == L10n.imageOriginalHint())
         #expect(converted.fileMetadataNotice == L10n.attachmentMetadata())
         #expect(converted.maxFiles == 2 && converted.maxFileBytes == 10 && converted.maxFileSizeText == "10 B")
-        let (folder, file) = try source(11)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let d = ImageDraft(key: "new:project", files: MemoryFiles(), saves: nil)
-        d.append([pending(file)])
-        #expect(!d.filesAllowed(for: caps()))
-        #expect(!d.filesAllowed(for: caps(supported: false)))
     }
 
     @Test func the100MiBBoundaryIsInspectedWithoutReadingBytes() throws {
+        let boundary: Int64 = 100 * 1024 * 1024
         let (folder, source) = try source()
         defer { try? FileManager.default.removeItem(at: folder) }
         let url = folder.appendingPathComponent(source.name)
         let handle = try FileHandle(forWritingTo: url)
         defer { try? handle.close() }
-        try handle.truncate(atOffset: UInt64(maxFileBytes))
+        try handle.truncate(atOffset: UInt64(boundary))
         let atLimit = try PickedFile.inspect(url: url)
-        #expect(atLimit.sizeBytes == maxFileBytes && !atLimit.isDirectory && !atLimit.sizeUnknown)
-        try handle.truncate(atOffset: UInt64(maxFileBytes + 1))
+        #expect(atLimit.sizeBytes == boundary && !atLimit.isDirectory && !atLimit.sizeUnknown)
+        try handle.truncate(atOffset: UInt64(boundary + 1))
         let overLimit = try PickedFile.inspect(url: url)
-        #expect(overLimit.sizeBytes == maxFileBytes + 1)
+        #expect(overLimit.sizeBytes == boundary + 1)
     }
 
     @Test func documentsRestoreWithoutCopyingTheirContentsToTheImageStore() throws {
@@ -134,13 +129,10 @@ private actor FileReceiver: UploadChannel {
         #expect(item.transferId != transfer && item.imageId == nil && item.machineId == nil, "expiry invalidates the old completion synchronously")
     }
 
-    @Test func filesCountSeparatelyAndRestoreForcesUploadWhileUnknownRequestsKeepIDs() throws {
+    @Test func restoreForcesUploadWhileUnknownRequestsKeepIDs() throws {
         let (folder, file) = try source()
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = MemoryFiles()
-        let d = ImageDraft(key: "s", files: store, saves: nil)
-        d.append((0..<6).map { _ in pending(file) })
-        #expect(!d.attach([pending(file)], max: 6))
         let p = pending(file)
         p.imageId = "first-file-id"; p.machineId = "mac"; p.state = .ready; p.expiresMs = Int64.max
         let o = Outgoing(requestId: "request", text: "", fileIds: ["first-file-id"], images: [p], mode: .queue)
@@ -149,7 +141,7 @@ private actor FileReceiver: UploadChannel {
         let r = try #require(records.load(sid: "session").first)
         #expect(r.state == .unknown && r.fileIds == ["first-file-id"] && r.mode == .queue)
         let input = ImageDraft(key: "back", files: store, saves: nil)
-        #expect(input.attach(r.images, max: 6))
+        #expect(input.attach(r.images))
         #expect(r.images.first?.imageId == nil)
         #expect(r.fileIds == ["first-file-id"])
         input.remove(try #require(input.documents.first))

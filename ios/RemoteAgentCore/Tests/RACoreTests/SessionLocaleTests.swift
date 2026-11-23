@@ -24,10 +24,4 @@ import Testing
             }
         }
     }
-
-    @Test func attachmentNoticesRetainArgumentsInTheRequestedLanguage() {
-        let notice = AttachmentNotice.restoreImages(have: 3, count: 4, limit: 6)
-        #expect(MessageLocale.$overrideForTesting.withValue("zh-CN") { notice.text } == "输入框里已有 3 张图，放回这 4 张会超过 6 张。先移除一些再放回")
-        #expect(MessageLocale.$overrideForTesting.withValue("en") { notice.text }.contains("4 images"))
-    }
 }

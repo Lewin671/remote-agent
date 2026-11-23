@@ -371,12 +371,12 @@ private struct FileMachineChannel: UploadChannel {
         #expect(restored.documents.first?.file?.bookmark == renewed.bookmark)
         #expect(try restored.documents.first?.file?.digest().count == 32)
         draft.restoring = true
-        #expect(draft.attach([], max: 6), "text-only restore does not wait for attachment loading")
+        #expect(draft.attach([]), "text-only restore does not wait for attachment loading")
         let remote = PendingImage(id: "remote", uri: nil)
         remote.file = PickedFile(remote: .with { $0.name = "remote.txt"; $0.sizeBytes = 1 })
         #expect(!remote.hasSource)
         let emptyDisk = MemoryFiles(), placeholders = ImageDraft(key: "p", files: emptyDisk, saves: nil)
-        #expect(placeholders.attach([remote], max: 6))
+        #expect(placeholders.attach([remote]))
         #expect(placeholders.toSend(machineId: "a").isEmpty)
         #expect(!emptyDisk.keys.contains { $0.hasSuffix(".file") })
     }

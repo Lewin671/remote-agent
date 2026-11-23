@@ -125,9 +125,8 @@ struct AttachMenu: View {
                 if paste {
                     Button { images.paste() } label: { Label(L10n.attachmentIosPasteImage(), systemImage: "doc.on.clipboard") }
                 }
-                if files {
-                    let metaNotice = images.caps.fileMetadataNotice.isEmpty ? L10n.attachmentMetadata() : images.caps.fileMetadataNotice
-                    Section { Text(metaNotice) }
+                if files, !images.caps.fileMetadataNotice.isEmpty {
+                    Section { Text(images.caps.fileMetadataNotice) }
                 }
             } label: {
                 PlusCircle()

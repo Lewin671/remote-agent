@@ -94,10 +94,9 @@ import Testing
 
     #if DEBUG
     @Test func filePickerRoutesImageAsFileUnchangedViaCoreEval() async throws {
-        let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-files-\(UUID())")!)
-        let model = AppModel(settings: settings)
-        let demoRemote = Demo.remote()
-        var state = Demo.state(.everyday)
+        let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
+        let remote = try Remote(account: account, http: AppModel.http)
+        var state = RemoteState()
         state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
             $0.hostname = "MacBook"
             $0.capabilities.imageUpload = true
@@ -106,19 +105,17 @@ import Testing
             $0.capabilities.maxFileUploadBytes = 100 * 1024 * 1024
         })
         state.sessions["s-file"] = SessionView(id: "s-file", machineId: "mac")
-        let initial = state
-        model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: demoRemote, initial: initial) {
-            await demoRemote.showForTest(state: initial)
-        }
-        defer { model.closeSyncForTest() }
-        let host = try #require(model.context?.coreHost)
+        await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: account, defaults: UserDefaults(suiteName: "ra-files-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        defer { host.close() }
+        await host.seedDemo(state: state)
+        ImageCenter.install(remote: remote, coreHost: host, files: VolatileFiles(), live: false)
+        defer { ImageCenter.remove(remote) }
         let key = ImageCenter.sessionKey("s-file")
-        let center = ImageCenter.of(demoRemote)
-        for _ in 0..<100 {
-            if (await host.evaluateAttachments(.with { $0.machineID = "mac" })).supportsFiles { break }
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        let center = ImageCenter.of(remote)
 
         let pngURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
         try Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]).write(to: pngURL)
@@ -152,7 +149,6 @@ import Testing
         center.aim(draft.key, at: "mac", blocked: true, caps: unsupported)
         #expect(timer.isCancelled)
         #expect(!p.readyFor("mac"))
-        #expect(!draft.filesAllowed(for: unsupported))
     }
 
     @Test func fileOnlySessionMessagePersistsAndRestoresWithOriginalRequest() async throws {
@@ -161,11 +157,21 @@ import Testing
         let account = Account(server: "http://127.0.0.1:1", deviceId: "00112233445566778899aabbccddeeff")
         let remote = try Remote(account: account, http: AppModel.http)
         var state = RemoteState()
-        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = true
+        })
         state.sessions["session"] = SessionView(id: "session", machineId: "mac")
         await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: account, defaults: UserDefaults(suiteName: "ra-sf-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        defer { host.close() }
+        await host.seedDemo(state: state)
         let files = VolatileFiles()
-        ImageCenter.install(remote: remote, files: files)
+        ImageCenter.install(remote: remote, coreHost: host, files: files)
         defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote)
         let draft = center.draft(ImageCenter.sessionKey("session"))
@@ -181,7 +187,7 @@ import Testing
         let restored = try #require(OutgoingRecords(files: files).load(sid: "session").first)
         #expect(restored.fileIds == ["uploaded-file"] && restored.requestId == outgoing.requestId)
         #expect(restored.images.first?.file == p.file)
-        #expect(center.putBack(sid: "session", max: 6, outgoing))
+        #expect(await center.putBack(sid: "session", outgoing))
         #expect(draft.documents.first?.imageId == nil)
     }
 }

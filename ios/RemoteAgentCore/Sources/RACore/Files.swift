@@ -4,9 +4,6 @@ import Foundation
 import RAProto
 import UniformTypeIdentifiers
 
-public let maxFiles = 6
-public let maxFileBytes: Int64 = 100 * 1024 * 1024
-
 public var fileCapabilityUpdate: String { L10n.attachmentIosThisComputerHasNotDeclaredFileUploadSupportUpdate() }
 
 /// Core-supplied attachment capabilities for a session or new-session composer.
@@ -27,16 +24,16 @@ public struct AttachmentCapabilities: Equatable, Sendable {
     public var fileMetadataNotice: String
 
     public init(
-        capabilitiesLoaded: Bool = true,
-        supportsImages: Bool = true,
+        capabilitiesLoaded: Bool = false,
+        supportsImages: Bool = false,
         supportsFiles: Bool = false,
-        maxImages: Int = RACore.maxImages,
-        maxFiles: Int = RACore.maxFiles,
-        maxFileBytes: Int64 = RACore.maxFileBytes,
-        maxFileNameBytes: Int = 255,
+        maxImages: Int = 0,
+        maxFiles: Int = 0,
+        maxFileBytes: Int64 = 0,
+        maxFileNameBytes: Int = 0,
         maxFileSizeText: String = "",
-        originalImageMaxBytes: Int64 = RACore.maxOriginalBytes,
-        galleryAllowsVideo: Bool? = nil,
+        originalImageMaxBytes: Int64 = 0,
+        galleryAllowsVideo: Bool = false,
         imageUploadBlocked: String? = nil,
         fileUploadBlocked: String? = nil,
         originalImageHint: String = "",
@@ -45,13 +42,13 @@ public struct AttachmentCapabilities: Equatable, Sendable {
         self.capabilitiesLoaded = capabilitiesLoaded
         self.supportsImages = supportsImages
         self.supportsFiles = supportsFiles
-        self.maxImages = maxImages > 0 ? maxImages : RACore.maxImages
-        self.maxFiles = maxFiles > 0 ? maxFiles : RACore.maxFiles
-        self.maxFileBytes = maxFileBytes > 0 ? maxFileBytes : RACore.maxFileBytes
-        self.maxFileNameBytes = maxFileNameBytes > 0 ? maxFileNameBytes : 255
+        self.maxImages = maxImages
+        self.maxFiles = maxFiles
+        self.maxFileBytes = maxFileBytes
+        self.maxFileNameBytes = maxFileNameBytes
         self.maxFileSizeText = maxFileSizeText
-        self.originalImageMaxBytes = originalImageMaxBytes > 0 ? originalImageMaxBytes : RACore.maxOriginalBytes
-        self.galleryAllowsVideo = galleryAllowsVideo ?? supportsFiles
+        self.originalImageMaxBytes = originalImageMaxBytes
+        self.galleryAllowsVideo = galleryAllowsVideo
         self.imageUploadBlocked = imageUploadBlocked
         self.fileUploadBlocked = fileUploadBlocked
         self.originalImageHint = originalImageHint

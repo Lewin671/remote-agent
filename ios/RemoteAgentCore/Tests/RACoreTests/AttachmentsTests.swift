@@ -118,7 +118,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
     @Test func sendingTakesOnlyItsImagesAndUntickesOriginal() {
         let d = draft("new:/p", MemoryFiles())
         let sent = [img("a"), img("b")]
-        d.attach(sent, max: 6, wereOriginal: true)
+        d.attach(sent, wereOriginal: true)
         #expect(d.original)
         let later = img("c")
         d.images.append(later)
@@ -127,17 +127,6 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         // Still one image: 原图 stays for it; once the tray is empty it goes back to unticked.
         d.detach([later])
         #expect(!d.original)
-    }
-
-    @Test func puttingBackNeverGoesPastTheLimitNorDropsImages() {
-        let d = draft("session:s", MemoryFiles())
-        d.attach((1...4).map { img("have\($0)") }, max: 6)
-        let back = (1...3).map { img("back\($0)") }
-        #expect(!d.attach(back, max: 6))
-        #expect(d.images.count == 4)
-        #expect(d.notice.contains("超过 6 张"))
-        #expect(d.attach(Array(back.prefix(2)), max: 6))
-        #expect(d.images.count == 6)
     }
 
     @Test func anUploadToAnotherMachineIsReplacedByTheLatestTarget() {
@@ -158,7 +147,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let d = draft("session:s", files)
         let ready = img("a")
         let preparing = PendingImage(id: "b", uri: "content://picker/b")
-        d.attach([ready], max: 6)
+        d.attach([ready])
         d.images.append(preparing)
         // A save that runs while b is still being prepared keeps b in the selection.
         d.detach([])
@@ -169,7 +158,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
     @Test func everyOrderWrittenListsTheImagesAlreadyKept() throws {
         let files = MemoryFiles()
         let d = draft("session:s", files)
-        d.attach([img("a")], max: 6)
+        d.attach([img("a")])
         // A second image is prepared: only it is written, and the order still names the first at every moment.
         d.images.append(img("b"))
         d.persist()
@@ -185,7 +174,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         // The save waits its turn; the image is removed meanwhile.
         saves.suspend()
         let a = img("a")
-        d.attach([a, img("b")], max: 6)
+        d.attach([a, img("b")])
         d.remove(a)
         saves.resume()
         saves.sync {}
@@ -193,7 +182,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         #expect(String(decoding: try #require(try files.get(folder: "session:s", name: "order")), as: UTF8.self) == "0\nb")
         // The same for a draft dropped whole.
         saves.suspend()
-        d.attach([img("c")], max: 6)
+        d.attach([img("c")])
         d.clear()
         saves.resume()
         saves.sync {}
@@ -223,7 +212,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         // No room: the images are in the draft but not on disk, so their copy elsewhere must stay.
         files.full = true
         let (a, b) = (img("a"), img("b"))
-        d.attach([a, b], max: 6)
+        d.attach([a, b])
         d.whenKept(["a", "b"]) { heard.append("both") }
         d.whenKept(["a"]) { heard.append("a") }
         #expect(heard.isEmpty)
@@ -245,7 +234,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let d = draft("session:s", MemoryFiles())
         let i = img("a")
         let transfer = i.transferId
-        d.attach([i], max: 6)
+        d.attach([i])
         // Put back: the daemon may have used the old upload up.
         #expect(i.state == .failed(error: AttachmentFailure(kind: .uploadFailed)))
         #expect(i.imageId == nil && i.machineId == nil)
@@ -272,7 +261,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let files = MemoryFiles()
         let d = draft("session:s", files)
         files.full = true
-        d.attach([img("a")], max: 6)
+        d.attach([img("a")])
         #expect(d.notice == L10n.attachmentIosNotSaved())
         #expect(files.keys.isEmpty)
         // Room again: the next save writes the image it could not write before.

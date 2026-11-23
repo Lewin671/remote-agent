@@ -60,8 +60,8 @@ struct ImageStrip: View {
             return nil
         }
         let failures = failedEntries.isEmpty ? "" : (center.failureSummaries[key] ?? "")
-        let originalHint = caps.originalImageHint.isEmpty ? L10n.imageOriginalHint() : caps.originalImageHint
-        let metadataNotice = caps.fileMetadataNotice.isEmpty ? L10n.attachmentMetadata() : caps.fileMetadataNotice
+        let originalHint = caps.originalImageHint
+        let metadataNotice = caps.fileMetadataNotice
         VStack(alignment: .leading, spacing: 0) {
             if let error = draft.restoreError {
                 Banner(error, tone: .error, action: L10n.commonRetry()) { center.retryDraft(key) }
@@ -77,7 +77,7 @@ struct ImageStrip: View {
                 }
                 let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
                 if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: L10n.commonIosNoteSeparator()), DS.ink2) }
-                if draft.original { line(originalHint, DS.ink2) }
+                if draft.original, !originalHint.isEmpty { line(originalHint, DS.ink2) }
             }
             if !draft.documents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -92,7 +92,9 @@ struct ImageStrip: View {
                             )
                         }
                     }
-                    Text(metadataNotice).font(.footnote).ink(DS.ink2)
+                    if !metadataNotice.isEmpty {
+                        Text(metadataNotice).font(.footnote).ink(DS.ink2)
+                    }
                     Text(L10n.attachmentIosFileCount(count: Int(draft.documents.count), limit: Int(caps.maxFiles))).font(.footnote).ink(DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
@@ -310,10 +312,9 @@ private struct ImagePickerHost: ViewModifier {
         // Observe focus during rendering, before the presentation modifier
         // transfers first-responder ownership to a native picker.
         let editorFocused = focus?.wrappedValue ?? false
-        let draft = center.draft(key)
         // Videos go as files where the computer takes files (session-files.md 「从相册选视频」).
         let videos = caps.galleryAllowsVideo
-        let room = center.libraryRooms[key] ?? Swift.max(caps.maxImages - draft.photos.count + (videos ? Swift.max(caps.maxFiles - draft.documents.count, 0) : 0), 1)
+        let room = center.libraryRooms[key] ?? 1
         content
             .actionMenu(
                 isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),

@@ -134,13 +134,14 @@ struct SessionScreen: View {
         .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
             let matching = restores.filter { $0.effect.sessionID == id }
             guard !matching.isEmpty else { return }
-            let caps = AttachmentCapabilities(header.capabilities)
-            for item in matching {
-                SessionImages.applyRestore(
-                    item.effect, session: id, caps: caps, remote: context.remote, store: context.sessionStore
-                )
-            }
             context.core.consumeComposerRestores(Set(matching.map(\.id)))
+            Task {
+                for item in matching {
+                    await SessionImages.applyRestore(
+                        item.effect, session: id, remote: context.remote, store: context.sessionStore
+                    )
+                }
+            }
         }
         .onChange(of: context.core.pendingResendAttachments, initial: true) { _, resends in
             let matching = resends.filter { $0.effect.sessionID == id }
