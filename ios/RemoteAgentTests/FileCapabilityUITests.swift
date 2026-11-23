@@ -84,8 +84,11 @@ import Testing
     }
 
     @Test func capabilityIsRecheckedAfterSavingTheOutgoingRecord() async throws {
-        let remote = try remote(); let coreHost = try await host(for: remote, state: state(support: true)); defer { coreHost.close() }
-        ImageCenter.install(remote: remote, coreHost: coreHost, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
+        let remote = try remote()
+        let allowedHost = try await host(for: remote, state: state(support: true, metaRev: 1)); defer { allowedHost.close() }
+        let blockedHost = try await host(for: remote, state: state(support: false, metaRev: 2)); defer { blockedHost.close() }
+        let switcher = SwitchableAttachmentEvaluator(allowedHost)
+        ImageCenter.install(remote: remote, coreHost: switcher, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), draft = center.draft("session:s")
         await center.restoredDraft(draft.key); draft.append([readyFile()])
         let gate = CapabilitySaveGate(); defer { gate.open.signal() }
@@ -95,13 +98,20 @@ import Testing
             gate.markEntered(); gate.open.wait()
         }, submit: { submitted.append($0) }) { if case .failure(let error) = $0 { failure = errorText(error) } }
         await eventually { gate.entered }
-        let dropped = state(support: false, metaRev: 2)
-        await remote.showForTest(state: dropped)
-        await coreHost.appendDemoSessionData(state: dropped)
+        await switcher.set(blockedHost)
         gate.open.signal()
         await eventually { failure != nil || !submitted.isEmpty }
         #expect(failure?.contains("更新") == true && submitted.isEmpty)
         #expect(draft.images.count == 1 && center.heldOutgoing("s", requestId: "original") == nil)
+    }
+}
+
+private actor SwitchableAttachmentEvaluator: AttachmentEvaluating {
+    private var current: any AttachmentEvaluating
+    init(_ initial: any AttachmentEvaluating) { current = initial }
+    func set(_ next: any AttachmentEvaluating) { current = next }
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel {
+        await current.evaluateAttachments(request)
     }
 }
 
