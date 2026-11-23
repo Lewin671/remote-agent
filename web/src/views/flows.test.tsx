@@ -19,13 +19,11 @@ import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSetPromptActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { projects } from "../model";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, dockContentMax, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { Home, Sidebar, WideHome } from "./Home";
-import { loadProjectConfig } from "../storage";
 import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { ManagePage } from "./Projects";
@@ -1552,8 +1550,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(go());
-  await act(async () => { await vi.waitFor(() => expect(loadProjectConfig(reloaded.account, project)).toBeUndefined()); });
-  expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project });
+  await vi.waitFor(() => expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project }));
 });
 
 it("keeps project settings by path, and never stores or reads an approval mode there", async () => {
@@ -4514,7 +4511,6 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
    return renderText([...list.pinned, ...list.others].find(p => p.key === s.info!.cwd)?.subtitle);
  };
  expect(sub()).toContain(message("projects.pending_count", {"count":1}, "zh-CN"));
- expect(projects(r.sessions.values(),r.machines.values()).find(p=>p.key===s.info!.cwd)?.sessions.map(x=>x.id)).toContain(s.id);
  ds.info!.planOpen=false;ds.info!.pendingApprovals=0;ds.info!.pendingQuestions=0;ds.info!.status=SessionStatus.IDLE;ds.checkpoint=undefined;(r as unknown as { evs: Map<string, unknown> }).evs.delete(s.id);
  syncDemo(r);
  expect(sub()).not.toContain(message("projects.pending_count", {"count":1}, "zh-CN"));

@@ -4,8 +4,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { localeStore, t, useLocale } from "../i18n";
 import { DemoRemote } from "../dev/demo";
-import { modeLabel } from "../model";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { SecurityPage } from "./Security";
 import { Settings } from "./Settings";
 import { ScheduleDetail } from "./Schedules";
@@ -90,12 +88,6 @@ it("localizes safe error and notification shells while preserving external conte
   expect(await pushContent({ tag: "example/NOTIFY_KIND_SCHEDULED" })).toEqual({ title: "remote-agent", body: "Scheduled tasks have new results" });
   expect(await pushContent({ body: "Original push content" })).toEqual({ title: "remote-agent", body: "Original push content" });
   expect(launchText("startup.the_page_could_not_load_check_your_connection_and", "en")).toBe("The page could not load. Check your connection and retry.");
-});
-
-it("formats the effective approval mode without trimming a translated prefix", () => {
-  localeStore.overrideForTesting("en");
-  expect(modeLabel(ApprovalMode.UNSPECIFIED, { known: true, mode: ApprovalMode.FULL_ACCESS, varies: false }, Agent.CODEX, false)).toBe("Full access");
-  expect(modeLabel(ApprovalMode.UNSPECIFIED, { known: true, mode: ApprovalMode.UNSPECIFIED, varies: false }, Agent.CODEX, false)).toBe("Codex’s own mode");
 });
 
 it("reformats an already loaded remote-control expiry when the locale changes", async () => {

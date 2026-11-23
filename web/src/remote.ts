@@ -198,7 +198,6 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import { describeBrowser, type DeviceInfo } from "./devices";
 import type { Prepare, Tray } from "./attach";
-import { modelLabel } from "./model";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
@@ -2320,9 +2319,6 @@ export class Remote implements CoreExecutor {
     await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
   }
 
-  modelName(machineId: string, agent: Agent, slug: string): string {
-    return modelLabel(this.modelLists.get(machineId + "/" + agent)?.models, slug, agent);
-  }
   cachedModels(machineId: string, agent: Agent): ListModelsResponse | undefined {
     return this.modelLists.get(machineId + "/" + agent);
   }

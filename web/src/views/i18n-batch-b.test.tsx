@@ -8,7 +8,6 @@ import { localeStore, t, useLocale } from "../i18n";
 import * as i18n from "../i18n";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { ApprovalMode, OriginKind, OriginSchema, type EventSchema } from "../gen/remoteagent/v1/event_pb";
-import { modeOf } from "../model";
 import { imageFailureLine, imageProblemKind } from "../image-problem";
 import { skeletonNote } from "../skeleton";
 import { SessionPage } from "./Session";
@@ -67,7 +66,7 @@ it("updates existing history and preserves the draft and structured changes on l
   expect(input.getAttribute("aria-label")).toBe("Message");
   expect(host.textContent).toContain("switched approval mode to Auto");
   expect(host.textContent).toContain("new-model");
-  expect(modeOf(remote.sessions.get("s-idle")!)?.mode).toBe(ApprovalMode.AUTO);
+  expect(getCoreHost(remote).viewSession("s-idle").header?.approvalMode).toBe(ApprovalMode.AUTO);
 });
 
 it.each(["zh-CN", "en"] as const)("uses origin IDs even if another device is named like the self label in %s", async locale => {

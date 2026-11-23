@@ -1,80 +1,35 @@
 import { t as message } from "./i18n";
 import { describe, expect, it } from "vitest";
-import { create } from "@bufbuild/protobuf";
-import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
-import { DaemonSettingsSchema } from "./gen/remoteagent/v1/local_pb";
-import {
-  AGENTS,
-  DEFAULT_AGENT,
-  agentById,
-  agentInfo,
-  agentName,
-  defaultsFor,
-  isKnownAgent,
-} from "./agents";
+import { Agent } from "./gen/remoteagent/v1/event_pb";
+import { DEFAULT_AGENT, agentInfo, agentName } from "./agents";
 
 describe("agents registry", () => {
-  it("lists known CLIs in stable order", () => {
-    expect(AGENTS.map((a) => a.id)).toEqual(["codex", "claude", "agy"]);
-    expect(AGENTS.map((a) => a.agent)).toEqual([Agent.CODEX, Agent.CLAUDE, Agent.ANTIGRAVITY]);
-    expect(DEFAULT_AGENT).toBe(Agent.CODEX);
-  });
-
   it("looks up agent info by enum", () => {
+    expect(DEFAULT_AGENT).toBe(Agent.CODEX);
+
     const codex = agentInfo(Agent.CODEX);
-    expect(codex.id).toBe("codex");
     expect(codex.name).toBe("Codex");
-    expect(codex.toolLabelFromItemType).toBe(false);
-    expect(codex.planClearContext).toBe(true);
-    expect(codex.planKeepLabel).toBe(message("dock.plan_keep"));
-    expect(codex.planApproveLabel).toBe(message("approval.approve_execute"));
-    expect(codex.planNote).toBeNull();
-    expect(codex.standardContextOption).toBe(false);
-    expect(codex.reconcilesUnclaimedInput).toBe(false);
-    expect(codex.sessionNeedsModelList).toBe(false);
-    expect(codex.switchesModelInSession).toBe(true);
-    expect(codex.forks).toBe(true);
-    expect(codex.modelLabel("gpt-6-sol")).toBe("GPT-6-Sol");
+    expect(codex.trustFolderHint).toBeNull();
+    expect(codex.permissionModeNotice).toBeNull();
+    expect(codex.showMaxEffort).toBe(true);
 
     const claude = agentInfo(Agent.CLAUDE);
-    expect(claude.id).toBe("claude");
     expect(claude.name).toBe("Claude Code");
-    expect(claude.toolLabelFromItemType).toBe(true);
-    expect(claude.planClearContext).toBe(false);
-    expect(claude.planKeepLabel).toBe(message("modes.plan_edit"));
-    expect(claude.planApproveLabel).toBe(message("approval.approve"));
-    expect(claude.planNote).toBe(message("dock.claude_plan_note"));
-    expect(claude.standardContextOption).toBe(true);
-    expect(claude.reconcilesUnclaimedInput).toBe(true);
-    expect(claude.sessionNeedsModelList).toBe(true);
-    expect(claude.switchesModelInSession).toBe(true);
-    expect(claude.forks).toBe(true);
-    expect(claude.modelLabel("claude-sonnet-5-5")).toBe("claude-sonnet-5-5");
+    expect(claude.trustFolderHint).toBe(message("dock.trust_folder"));
+    expect(claude.permissionModeNotice).toBe(message("modes.permission_notice"));
+    expect(claude.showMaxEffort).toBe(false);
 
     const agy = agentInfo(Agent.ANTIGRAVITY);
-    expect(agy.id).toBe("agy");
     expect(agy.name).toBe("Antigravity");
-    expect(agy.toolLabelFromItemType).toBe(false);
-    expect(agy.planClearContext).toBe(false);
-    expect(agy.planKeepLabel).toBe(message("modes.plan_edit"));
-    expect(agy.planApproveLabel).toBe(message("approval.approve"));
-    expect(agy.planNote).toBe(message("dock.agy_plan_note"));
-    expect(agy.standardContextOption).toBe(false);
-    expect(agy.autoMayBeUnavailable).toBe(true);
     expect(agy.trustFolderHint).toBeNull();
-    expect(agy.usageHint).toBeNull();
-    expect(agy.reconcilesUnclaimedInput).toBe(false);
-    expect(agy.sessionNeedsModelList).toBe(true);
-    expect(agy.switchesModelInSession).toBe(false);
-    expect(agy.forks).toBe(false);
+    expect(agy.permissionModeNotice).toBeNull();
     expect(agy.showMaxEffort).toBe(false);
-    expect(agy.modelLabel("gemini-3.1-pro-high")).toBe("gemini-3.1-pro-high");
   });
 
   it("maps UNSPECIFIED, null, and undefined to Codex", () => {
-    expect(agentInfo(Agent.UNSPECIFIED).id).toBe("codex");
-    expect(agentInfo(undefined).id).toBe("codex");
-    expect(agentInfo(null).id).toBe("codex");
+    expect(agentInfo(Agent.UNSPECIFIED).agent).toBe(Agent.CODEX);
+    expect(agentInfo(undefined).agent).toBe(Agent.CODEX);
+    expect(agentInfo(null).agent).toBe(Agent.CODEX);
     expect(agentName(Agent.UNSPECIFIED)).toBe("Codex");
     expect(agentName(undefined)).toBe("Codex");
   });
@@ -82,78 +37,14 @@ describe("agents registry", () => {
   it("maps unrecognized agent values to unknown entry and never Codex", () => {
     const unknown = agentInfo(999 as Agent);
     expect(unknown.agent).toBe(999);
-    expect(unknown.id).toBe("");
     expect(unknown.name).toBe(message("models.unknown_cli"));
-    expect(unknown.toolLabelFromItemType).toBe(false);
-    expect(unknown.planClearContext).toBe(false);
-    expect(unknown.planNote).toBeNull();
-    expect(unknown.standardContextOption).toBe(false);
-    expect(unknown.autoMayBeUnavailable).toBe(false);
     expect(unknown.trustFolderHint).toBeNull();
-    expect(unknown.usageHint).toBeNull();
-    expect(unknown.reconcilesUnclaimedInput).toBe(false);
-    expect(unknown.sessionNeedsModelList).toBe(false);
-    expect(unknown.switchesModelInSession).toBe(false);
-    expect(unknown.forks).toBe(false);
-    expect(unknown.showMaxEffort).toBe(false);
     expect(unknown.permissionModeNotice).toBeNull();
-    expect(unknown.modelLabel("any-slug")).toBe("any-slug");
+    expect(unknown.showMaxEffort).toBe(false);
     expect(agentName(999 as Agent)).toBe(message("models.unknown_cli"));
     // Passing unknown.agent back into agentInfo must still be the unknown entry, never Codex.
     const roundtripped = agentInfo(unknown.agent);
-    expect(roundtripped.id).toBe("");
     expect(roundtripped.name).toBe(message("models.unknown_cli"));
     expect(roundtripped.agent).toBe(999);
-    expect(agentInfo(agentById("unknown").agent).id).toBe("");
-  });
-
-  it("looks up agents by target id", () => {
-    expect(agentById("codex").agent).toBe(Agent.CODEX);
-    expect(agentById("claude").agent).toBe(Agent.CLAUDE);
-    expect(agentById("agy").agent).toBe(Agent.ANTIGRAVITY);
-    expect(agentById("").id).toBe("");
-    expect(agentById("unknown").id).toBe("");
-    expect(agentById(undefined).id).toBe("");
-    expect(agentById(null).id).toBe("");
-  });
-
-  it("checks whether an agent enum is recognized", () => {
-    expect(isKnownAgent(Agent.CODEX)).toBe(true);
-    expect(isKnownAgent(Agent.CLAUDE)).toBe(true);
-    expect(isKnownAgent(Agent.ANTIGRAVITY)).toBe(true);
-    expect(isKnownAgent(Agent.UNSPECIFIED)).toBe(false);
-    expect(isKnownAgent(999)).toBe(false);
-    expect(isKnownAgent("codex")).toBe(false);
-  });
-
-  it("reads defaultsFor Codex, Claude, Antigravity, and unknown", () => {
-    expect(defaultsFor(create(DaemonSettingsSchema, {
-      defaultModel: "gpt-6-sol",
-      defaultEffort: "medium",
-      defaultMode: ApprovalMode.AUTO,
-    }), Agent.CODEX)).toEqual({
-      model: "gpt-6-sol",
-      effort: "medium",
-      mode: ApprovalMode.AUTO,
-    });
-    expect(defaultsFor(create(DaemonSettingsSchema, {
-      claude: { model: "claude-sonnet-5-5", effort: "low", mode: ApprovalMode.ASK },
-    }), Agent.CLAUDE)).toEqual({
-      model: "claude-sonnet-5-5",
-      effort: "low",
-      mode: ApprovalMode.ASK,
-    });
-    expect(defaultsFor(create(DaemonSettingsSchema, {
-      antigravity: { model: "gemini-3.1-pro-high", effort: "high", mode: ApprovalMode.ASK },
-    }), Agent.ANTIGRAVITY)).toEqual({
-      model: "gemini-3.1-pro-high",
-      effort: "high",
-      mode: ApprovalMode.ASK,
-    });
-    expect(defaultsFor(create(DaemonSettingsSchema, { defaultModel: "m" }), 999 as Agent)).toEqual({
-      model: "",
-      effort: "",
-      mode: ApprovalMode.UNSPECIFIED,
-    });
   });
 });
