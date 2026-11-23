@@ -424,12 +424,14 @@ func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
 	settleErr(1090, dc1, "disk_full", "no space left on device")
 
 	ns := viewNS()
-	if !ns.GetDiskFull() || ns.GetCanStart() {
-		t.Fatalf("expected DiskFull=true and CanStart=false after disk_full failure, got diskFull=%v canStart=%v", ns.GetDiskFull(), ns.GetCanStart())
+	// A failed start is retryable once space is freed: it raises a retry notice
+	// but does not block starting (only critical disk pressure does).
+	if !ns.GetDiskFull() || !ns.GetCanStart() {
+		t.Fatalf("expected DiskFull=true and CanStart=true after disk_full failure, got diskFull=%v canStart=%v", ns.GetDiskFull(), ns.GetCanStart())
 	}
 	var hasDiskFullNotice bool
 	for _, n := range ns.GetNotices() {
-		if n.GetKind() == corev1.NoticeKind_NOTICE_KIND_DISK_FULL && n.GetTargetMachineId() == "m-1" {
+		if n.GetKind() == corev1.NoticeKind_NOTICE_KIND_DISK_FULL && n.GetTargetMachineId() == "m-1" && n.GetAction() == corev1.NoticeActionKind_NOTICE_ACTION_KIND_RETRY_START {
 			hasDiskFullNotice = true
 		}
 	}

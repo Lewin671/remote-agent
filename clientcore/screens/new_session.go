@@ -232,7 +232,11 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	machineOnline := lists.MachineReachable(machine)
 	offline := listed && machine != nil && !machineOnline
 	hidden := lists.IsHidden(st.World.Prefs, key)
-	diskFull := (draft != nil && draft.DiskFull) || (machineOnline && machine != nil && machine.Meta != nil && machine.Meta.DiskStatus != nil && machine.Meta.DiskStatus.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL)
+	// diskCritical blocks starting while the computer reports critical disk
+	// pressure. A previous start that failed with disk_full only raises a notice
+	// the user can retry from once space is freed, so it does not block.
+	diskCritical := machineOnline && machine != nil && machine.Meta != nil && machine.Meta.DiskStatus != nil && machine.Meta.DiskStatus.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL
+	diskFull := (draft != nil && draft.DiskFull) || diskCritical
 
 	var notices []*corev1.NewSessionNoticeView
 	if draft != nil && draft.AttachmentsMoved && machineName != "" {
@@ -394,7 +398,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Kind:            corev1.NoticeKind_NOTICE_KIND_DISK_FULL,
 			Severity:        corev1.NoticeSeverity_NOTICE_SEVERITY_ERROR,
 			Text:            text.Msg(text.KeyMachineStatusDiskFull),
-			Action:          corev1.NoticeActionKind_NOTICE_ACTION_KIND_OPEN_DISK_USAGE,
+			Action:          corev1.NoticeActionKind_NOTICE_ACTION_KIND_RETRY_START,
 			TargetMachineId: cfg.MachineID,
 		})
 	} else if draft != nil && hasReason(draft.StartErrorText, draft.StartError) {
@@ -439,7 +443,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	case autoIssue == lists.AutoIssueAccount:
 		canStart = false
 		disabledReason = text.Msg(text.KeyModesAccountNoAuto)
-	case diskFull:
+	case diskCritical:
 		canStart = false
 		disabledReason = text.Msg(text.KeyMachineStatusDiskFull)
 	case !drafting:
