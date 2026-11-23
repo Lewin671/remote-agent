@@ -36,7 +36,7 @@ type Classification struct {
 	WebPreviewMime    string
 }
 
-// LocalState holds shell-reported local transfer progress, cache presence, and media metadata.
+// LocalState holds transfer progress, cache presence, and media metadata for one shared file.
 type LocalState struct {
 	Status           corev1.SharedFileTransferStatus
 	DownloadedBytes  int64
@@ -47,6 +47,7 @@ type LocalState struct {
 	DurationMs       int64
 	FailureKind      corev1.SharedFileFailureKind
 	FailureDetail    string
+	FailureText      *corev1.Text
 }
 
 // CardInput supplies all inputs required to build a display-ready SessionSharedFileItem.
@@ -565,7 +566,9 @@ func failureSubtitle(local *LocalState) *corev1.Text {
 	case corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL:
 		reason = text.Msg(text.KeySharedFileReasonBrowserStorageFull)
 	default:
-		if detail != "" {
+		if local != nil && local.FailureText != nil {
+			reason = local.FailureText
+		} else if detail != "" {
 			reason = text.Plain(detail)
 		} else {
 			reason = text.Msg(text.KeySharedFileReasonUnknown)
