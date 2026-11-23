@@ -375,7 +375,6 @@ func (m *MachineChartView) AppendMarshal(b []byte) []byte {
 type MachineCpuSection struct {
 	_         [0]func()
 	HasValue  bool
-	Headline  string
 	Detail    *Text
 	Detail2   *Text
 	A11YLabel *Text
@@ -390,12 +389,6 @@ func (m *MachineCpuSection) GetHasValue() bool {
 		return m.HasValue
 	}
 	return false
-}
-func (m *MachineCpuSection) GetHeadline() string {
-	if m != nil {
-		return m.Headline
-	}
-	return ""
 }
 func (m *MachineCpuSection) GetDetail() *Text {
 	if m != nil {
@@ -443,7 +436,6 @@ func (m *MachineCpuSection) GetUnit() string {
 var LitewireDesc_MachineCpuSection = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(MachineCpuSection{}.HasValue), Kind: litewire.KindBool},
-		{Num: 2, Offset: unsafe.Offsetof(MachineCpuSection{}.Headline), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(MachineCpuSection{}.Detail), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(MachineCpuSection{}.Detail2), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 5, Offset: unsafe.Offsetof(MachineCpuSection{}.A11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
@@ -465,7 +457,6 @@ func (m *MachineCpuSection) AppendMarshal(b []byte) []byte {
 type MachineMemorySection struct {
 	_                   [0]func()
 	HasValue            bool
-	Headline            *Text
 	Caption             *Text
 	Pressure            MachinePressureTone
 	PressureText        *Text
@@ -487,12 +478,6 @@ func (m *MachineMemorySection) GetHasValue() bool {
 		return m.HasValue
 	}
 	return false
-}
-func (m *MachineMemorySection) GetHeadline() *Text {
-	if m != nil {
-		return m.Headline
-	}
-	return nil
 }
 func (m *MachineMemorySection) GetCaption() *Text {
 	if m != nil {
@@ -582,7 +567,6 @@ func (m *MachineMemorySection) GetTotalBytes() uint64 {
 var LitewireDesc_MachineMemorySection = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(MachineMemorySection{}.HasValue), Kind: litewire.KindBool},
-		{Num: 2, Offset: unsafe.Offsetof(MachineMemorySection{}.Headline), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 3, Offset: unsafe.Offsetof(MachineMemorySection{}.Caption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(MachineMemorySection{}.Pressure), Kind: litewire.KindInt32},
 		{Num: 5, Offset: unsafe.Offsetof(MachineMemorySection{}.PressureText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
@@ -611,7 +595,6 @@ func (m *MachineMemorySection) AppendMarshal(b []byte) []byte {
 type MachineDiskSection struct {
 	_                  [0]func()
 	HasValue           bool
-	Headline           *Text
 	Caption            *Text
 	State              DiskPressureState
 	StateBadge         *Text
@@ -636,12 +619,6 @@ func (m *MachineDiskSection) GetHasValue() bool {
 		return m.HasValue
 	}
 	return false
-}
-func (m *MachineDiskSection) GetHeadline() *Text {
-	if m != nil {
-		return m.Headline
-	}
-	return nil
 }
 func (m *MachineDiskSection) GetCaption() *Text {
 	if m != nil {
@@ -749,7 +726,6 @@ func (m *MachineDiskSection) GetTotalBytes() uint64 {
 var LitewireDesc_MachineDiskSection = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(MachineDiskSection{}.HasValue), Kind: litewire.KindBool},
-		{Num: 2, Offset: unsafe.Offsetof(MachineDiskSection{}.Headline), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 3, Offset: unsafe.Offsetof(MachineDiskSection{}.Caption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(MachineDiskSection{}.State), Kind: litewire.KindInt32},
 		{Num: 5, Offset: unsafe.Offsetof(MachineDiskSection{}.StateBadge), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},

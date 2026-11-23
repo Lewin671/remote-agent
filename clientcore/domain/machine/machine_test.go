@@ -352,13 +352,13 @@ func TestMachineStatusRawValuesUnitsAndTopUsageBars(t *testing.T) {
 	}
 	status.Disk.AvailableBytes = 999_600_000 // rounds to 1000 MB -> must carry over to 1 GB
 	diskCarry := BuildDiskSection(status)
-	if diskCarry.ValueText != "1" || diskCarry.Unit != "GB" || diskCarry.Headline.GetKey() != text.KeyMachineStatusSizeGb {
-		t.Fatalf("expected 999.6 MB disk to carry over to 1 GB, got value=%q unit=%q headline=%+v", diskCarry.ValueText, diskCarry.Unit, diskCarry.Headline)
+	if diskCarry.ValueText != "1" || diskCarry.Unit != "GB" || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeGb {
+		t.Fatalf("expected 999.6 MB disk to carry over to 1 GB, got value=%q unit=%q", diskCarry.ValueText, diskCarry.Unit)
 	}
 	status.Disk.AvailableBytes = 999_400_000 // rounds to 999 MB -> stays MB
 	disk999 := BuildDiskSection(status)
-	if disk999.ValueText != "999" || disk999.Unit != "MB" || disk999.Headline.GetKey() != text.KeyMachineStatusSizeMb {
-		t.Fatalf("expected 999.4 MB disk to stay 999 MB, got value=%q unit=%q headline=%+v", disk999.ValueText, disk999.Unit, disk999.Headline)
+	if disk999.ValueText != "999" || disk999.Unit != "MB" || FormatDecimalSize(status.Disk.AvailableBytes).GetKey() != text.KeyMachineStatusSizeMb {
+		t.Fatalf("expected 999.4 MB disk to stay 999 MB, got value=%q unit=%q", disk999.ValueText, disk999.Unit)
 	}
 	status.Disk.AvailableBytes = 24_000_000_000
 	diskGB := BuildDiskSection(status)

@@ -131,8 +131,9 @@ message MachineChartView {
 }
 
 message MachineCpuSection {
+  reserved 2;
+  reserved "headline";
   bool has_value = 1;
-  string headline = 2;
   Text detail = 3;
   Text detail2 = 4;
   Text a11y_label = 5;
@@ -143,8 +144,9 @@ message MachineCpuSection {
 }
 
 message MachineMemorySection {
+  reserved 2;
+  reserved "headline";
   bool has_value = 1;
-  Text headline = 2;
   Text caption = 3;
   MachinePressureTone pressure = 4;
   Text pressure_text = 5;
@@ -162,8 +164,9 @@ message MachineMemorySection {
 }
 
 message MachineDiskSection {
+  reserved 2;
+  reserved "headline";
   bool has_value = 1;
-  Text headline = 2;
   Text caption = 3;
   DiskPressureState state = 4;
   Text state_badge = 5;

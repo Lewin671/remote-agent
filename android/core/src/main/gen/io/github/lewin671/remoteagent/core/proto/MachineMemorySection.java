@@ -45,54 +45,6 @@ public  final class MachineMemorySection extends
     hasValue_ = false;
   }
 
-  public static final int HEADLINE_FIELD_NUMBER = 2;
-  private io.github.lewin671.remoteagent.core.proto.Text headline_;
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.Override
-  public boolean hasHeadline() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getHeadline() {
-    return headline_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : headline_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    headline_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (headline_ != null &&
-        headline_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      headline_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(headline_).mergeFrom(value).buildPartial();
-    } else {
-      headline_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  private void clearHeadline() {
-    headline_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int CAPTION_FIELD_NUMBER = 3;
   private io.github.lewin671.remoteagent.core.proto.Text caption_;
   /**
@@ -100,7 +52,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasCaption() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
@@ -116,7 +68,7 @@ public  final class MachineMemorySection extends
   private void setCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     caption_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
@@ -131,14 +83,14 @@ public  final class MachineMemorySection extends
     } else {
       caption_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
    */
   private void clearCaption() {
     caption_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int PRESSURE_FIELD_NUMBER = 4;
@@ -190,7 +142,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasPressureText() {
-    return ((bitField0_ & 0x00000004) != 0);
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text pressure_text = 5 [json_name = "pressureText"];</code>
@@ -206,7 +158,7 @@ public  final class MachineMemorySection extends
   private void setPressureText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     pressureText_ = value;
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text pressure_text = 5 [json_name = "pressureText"];</code>
@@ -221,14 +173,14 @@ public  final class MachineMemorySection extends
     } else {
       pressureText_ = value;
     }
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text pressure_text = 5 [json_name = "pressureText"];</code>
    */
   private void clearPressureText() {
     pressureText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static final int HAS_PRESSURE_POSITION_FIELD_NUMBER = 6;
@@ -290,7 +242,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasTotalText() {
-    return ((bitField0_ & 0x00000008) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text total_text = 8 [json_name = "totalText"];</code>
@@ -306,7 +258,7 @@ public  final class MachineMemorySection extends
   private void setTotalText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     totalText_ = value;
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text total_text = 8 [json_name = "totalText"];</code>
@@ -321,14 +273,14 @@ public  final class MachineMemorySection extends
     } else {
       totalText_ = value;
     }
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text total_text = 8 [json_name = "totalText"];</code>
    */
   private void clearTotalText() {
     totalText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000008);
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static final int SWAP_TEXT_FIELD_NUMBER = 9;
@@ -338,7 +290,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasSwapText() {
-    return ((bitField0_ & 0x00000010) != 0);
+    return ((bitField0_ & 0x00000008) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text swap_text = 9 [json_name = "swapText"];</code>
@@ -354,7 +306,7 @@ public  final class MachineMemorySection extends
   private void setSwapText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     swapText_ = value;
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text swap_text = 9 [json_name = "swapText"];</code>
@@ -369,14 +321,14 @@ public  final class MachineMemorySection extends
     } else {
       swapText_ = value;
     }
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text swap_text = 9 [json_name = "swapText"];</code>
    */
   private void clearSwapText() {
     swapText_ = null;
-    bitField0_ = (bitField0_ & ~0x00000010);
+    bitField0_ = (bitField0_ & ~0x00000008);
   }
 
   public static final int A11Y_LABEL_FIELD_NUMBER = 10;
@@ -386,7 +338,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasA11YLabel() {
-    return ((bitField0_ & 0x00000020) != 0);
+    return ((bitField0_ & 0x00000010) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 10 [json_name = "a11yLabel"];</code>
@@ -402,7 +354,7 @@ public  final class MachineMemorySection extends
   private void setA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     a11YLabel_ = value;
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 10 [json_name = "a11yLabel"];</code>
@@ -417,14 +369,14 @@ public  final class MachineMemorySection extends
     } else {
       a11YLabel_ = value;
     }
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 10 [json_name = "a11yLabel"];</code>
    */
   private void clearA11YLabel() {
     a11YLabel_ = null;
-    bitField0_ = (bitField0_ & ~0x00000020);
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static final int CHART_FIELD_NUMBER = 11;
@@ -434,7 +386,7 @@ public  final class MachineMemorySection extends
    */
   @java.lang.Override
   public boolean hasChart() {
-    return ((bitField0_ & 0x00000040) != 0);
+    return ((bitField0_ & 0x00000020) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.MachineChartView chart = 11 [json_name = "chart"];</code>
@@ -450,7 +402,7 @@ public  final class MachineMemorySection extends
   private void setChart(io.github.lewin671.remoteagent.core.proto.MachineChartView value) {
     value.getClass();  // minimal bytecode null check
     chart_ = value;
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000020;
   }
   /**
    * <code>.remoteagent.core.v1.MachineChartView chart = 11 [json_name = "chart"];</code>
@@ -465,14 +417,14 @@ public  final class MachineMemorySection extends
     } else {
       chart_ = value;
     }
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000020;
   }
   /**
    * <code>.remoteagent.core.v1.MachineChartView chart = 11 [json_name = "chart"];</code>
    */
   private void clearChart() {
     chart_ = null;
-    bitField0_ = (bitField0_ & ~0x00000040);
+    bitField0_ = (bitField0_ & ~0x00000020);
   }
 
   public static final int VALUE_FIELD_NUMBER = 12;
@@ -771,53 +723,6 @@ public  final class MachineMemorySection extends
     public Builder clearHasValue() {
       copyOnWrite();
       instance.clearHasValue();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    @java.lang.Override
-    public boolean hasHeadline() {
-      return instance.hasHeadline();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getHeadline() {
-      return instance.getHeadline();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder setHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setHeadline(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder setHeadline(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setHeadline(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder mergeHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeHeadline(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder clearHeadline() {  copyOnWrite();
-      instance.clearHeadline();
       return this;
     }
 
@@ -1405,7 +1310,6 @@ public  final class MachineMemorySection extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "hasValue_",
-            "headline_",
             "caption_",
             "pressure_",
             "pressureText_",
@@ -1422,10 +1326,10 @@ public  final class MachineMemorySection extends
             "totalBytes_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0007\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\f\u0005\u1009\u0002\u0006\u0007\u0007\u0000\b\u1009" +
-              "\u0003\t\u1009\u0004\n\u1009\u0005\u000b\u1009\u0006\f\u0000\r\u0208\u000e\u0208" +
-              "\u000f\u0003\u0010\u0003";
+              "\u0000\u000f\u0000\u0001\u0001\u0010\u000f\u0000\u0000\u0000\u0001\u0007\u0003\u1009" +
+              "\u0000\u0004\f\u0005\u1009\u0001\u0006\u0007\u0007\u0000\b\u1009\u0002\t\u1009\u0003" +
+              "\n\u1009\u0004\u000b\u1009\u0005\f\u0000\r\u0208\u000e\u0208\u000f\u0003\u0010\u0003" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

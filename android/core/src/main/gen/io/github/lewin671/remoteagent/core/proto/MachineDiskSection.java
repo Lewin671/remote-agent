@@ -45,54 +45,6 @@ public  final class MachineDiskSection extends
     hasValue_ = false;
   }
 
-  public static final int HEADLINE_FIELD_NUMBER = 2;
-  private io.github.lewin671.remoteagent.core.proto.Text headline_;
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.Override
-  public boolean hasHeadline() {
-    return ((bitField0_ & 0x00000001) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getHeadline() {
-    return headline_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : headline_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    headline_ = value;
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (headline_ != null &&
-        headline_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      headline_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(headline_).mergeFrom(value).buildPartial();
-    } else {
-      headline_ = value;
-    }
-    bitField0_ |= 0x00000001;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   */
-  private void clearHeadline() {
-    headline_ = null;
-    bitField0_ = (bitField0_ & ~0x00000001);
-  }
-
   public static final int CAPTION_FIELD_NUMBER = 3;
   private io.github.lewin671.remoteagent.core.proto.Text caption_;
   /**
@@ -100,7 +52,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasCaption() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
@@ -116,7 +68,7 @@ public  final class MachineDiskSection extends
   private void setCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     caption_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
@@ -131,14 +83,14 @@ public  final class MachineDiskSection extends
     } else {
       caption_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000001;
   }
   /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
    */
   private void clearCaption() {
     caption_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static final int STATE_FIELD_NUMBER = 4;
@@ -190,7 +142,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasStateBadge() {
-    return ((bitField0_ & 0x00000004) != 0);
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text state_badge = 5 [json_name = "stateBadge"];</code>
@@ -206,7 +158,7 @@ public  final class MachineDiskSection extends
   private void setStateBadge(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     stateBadge_ = value;
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text state_badge = 5 [json_name = "stateBadge"];</code>
@@ -221,14 +173,14 @@ public  final class MachineDiskSection extends
     } else {
       stateBadge_ = value;
     }
-    bitField0_ |= 0x00000004;
+    bitField0_ |= 0x00000002;
   }
   /**
    * <code>.remoteagent.core.v1.Text state_badge = 5 [json_name = "stateBadge"];</code>
    */
   private void clearStateBadge() {
     stateBadge_ = null;
-    bitField0_ = (bitField0_ & ~0x00000004);
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static final int HAS_USED_FRACTION_FIELD_NUMBER = 6;
@@ -290,7 +242,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasDetail() {
-    return ((bitField0_ & 0x00000008) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text detail = 8 [json_name = "detail"];</code>
@@ -306,7 +258,7 @@ public  final class MachineDiskSection extends
   private void setDetail(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     detail_ = value;
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text detail = 8 [json_name = "detail"];</code>
@@ -321,14 +273,14 @@ public  final class MachineDiskSection extends
     } else {
       detail_ = value;
     }
-    bitField0_ |= 0x00000008;
+    bitField0_ |= 0x00000004;
   }
   /**
    * <code>.remoteagent.core.v1.Text detail = 8 [json_name = "detail"];</code>
    */
   private void clearDetail() {
     detail_ = null;
-    bitField0_ = (bitField0_ & ~0x00000008);
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static final int DETAIL2_FIELD_NUMBER = 9;
@@ -338,7 +290,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasDetail2() {
-    return ((bitField0_ & 0x00000010) != 0);
+    return ((bitField0_ & 0x00000008) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text detail2 = 9 [json_name = "detail2"];</code>
@@ -354,7 +306,7 @@ public  final class MachineDiskSection extends
   private void setDetail2(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     detail2_ = value;
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text detail2 = 9 [json_name = "detail2"];</code>
@@ -369,14 +321,14 @@ public  final class MachineDiskSection extends
     } else {
       detail2_ = value;
     }
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.Text detail2 = 9 [json_name = "detail2"];</code>
    */
   private void clearDetail2() {
     detail2_ = null;
-    bitField0_ = (bitField0_ & ~0x00000010);
+    bitField0_ = (bitField0_ & ~0x00000008);
   }
 
   public static final int SHOW_ACTIONS_FIELD_NUMBER = 10;
@@ -412,7 +364,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasCleanupActionLabel() {
-    return ((bitField0_ & 0x00000020) != 0);
+    return ((bitField0_ & 0x00000010) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text cleanup_action_label = 11 [json_name = "cleanupActionLabel"];</code>
@@ -428,7 +380,7 @@ public  final class MachineDiskSection extends
   private void setCleanupActionLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     cleanupActionLabel_ = value;
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text cleanup_action_label = 11 [json_name = "cleanupActionLabel"];</code>
@@ -443,14 +395,14 @@ public  final class MachineDiskSection extends
     } else {
       cleanupActionLabel_ = value;
     }
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text cleanup_action_label = 11 [json_name = "cleanupActionLabel"];</code>
    */
   private void clearCleanupActionLabel() {
     cleanupActionLabel_ = null;
-    bitField0_ = (bitField0_ & ~0x00000020);
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static final int AGENT_USAGE_LABEL_FIELD_NUMBER = 12;
@@ -460,7 +412,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasAgentUsageLabel() {
-    return ((bitField0_ & 0x00000040) != 0);
+    return ((bitField0_ & 0x00000020) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_label = 12 [json_name = "agentUsageLabel"];</code>
@@ -476,7 +428,7 @@ public  final class MachineDiskSection extends
   private void setAgentUsageLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     agentUsageLabel_ = value;
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000020;
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_label = 12 [json_name = "agentUsageLabel"];</code>
@@ -491,14 +443,14 @@ public  final class MachineDiskSection extends
     } else {
       agentUsageLabel_ = value;
     }
-    bitField0_ |= 0x00000040;
+    bitField0_ |= 0x00000020;
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_label = 12 [json_name = "agentUsageLabel"];</code>
    */
   private void clearAgentUsageLabel() {
     agentUsageLabel_ = null;
-    bitField0_ = (bitField0_ & ~0x00000040);
+    bitField0_ = (bitField0_ & ~0x00000020);
   }
 
   public static final int AGENT_USAGE_VALUE_FIELD_NUMBER = 13;
@@ -508,7 +460,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasAgentUsageValue() {
-    return ((bitField0_ & 0x00000080) != 0);
+    return ((bitField0_ & 0x00000040) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_value = 13 [json_name = "agentUsageValue"];</code>
@@ -524,7 +476,7 @@ public  final class MachineDiskSection extends
   private void setAgentUsageValue(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     agentUsageValue_ = value;
-    bitField0_ |= 0x00000080;
+    bitField0_ |= 0x00000040;
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_value = 13 [json_name = "agentUsageValue"];</code>
@@ -539,14 +491,14 @@ public  final class MachineDiskSection extends
     } else {
       agentUsageValue_ = value;
     }
-    bitField0_ |= 0x00000080;
+    bitField0_ |= 0x00000040;
   }
   /**
    * <code>.remoteagent.core.v1.Text agent_usage_value = 13 [json_name = "agentUsageValue"];</code>
    */
   private void clearAgentUsageValue() {
     agentUsageValue_ = null;
-    bitField0_ = (bitField0_ & ~0x00000080);
+    bitField0_ = (bitField0_ & ~0x00000040);
   }
 
   public static final int A11Y_LABEL_FIELD_NUMBER = 14;
@@ -556,7 +508,7 @@ public  final class MachineDiskSection extends
    */
   @java.lang.Override
   public boolean hasA11YLabel() {
-    return ((bitField0_ & 0x00000100) != 0);
+    return ((bitField0_ & 0x00000080) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 14 [json_name = "a11yLabel"];</code>
@@ -572,7 +524,7 @@ public  final class MachineDiskSection extends
   private void setA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     a11YLabel_ = value;
-    bitField0_ |= 0x00000100;
+    bitField0_ |= 0x00000080;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 14 [json_name = "a11yLabel"];</code>
@@ -587,14 +539,14 @@ public  final class MachineDiskSection extends
     } else {
       a11YLabel_ = value;
     }
-    bitField0_ |= 0x00000100;
+    bitField0_ |= 0x00000080;
   }
   /**
    * <code>.remoteagent.core.v1.Text a11y_label = 14 [json_name = "a11yLabel"];</code>
    */
   private void clearA11YLabel() {
     a11YLabel_ = null;
-    bitField0_ = (bitField0_ & ~0x00000100);
+    bitField0_ = (bitField0_ & ~0x00000080);
   }
 
   public static final int VALUE_FIELD_NUMBER = 15;
@@ -893,53 +845,6 @@ public  final class MachineDiskSection extends
     public Builder clearHasValue() {
       copyOnWrite();
       instance.clearHasValue();
-      return this;
-    }
-
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    @java.lang.Override
-    public boolean hasHeadline() {
-      return instance.hasHeadline();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getHeadline() {
-      return instance.getHeadline();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder setHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setHeadline(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder setHeadline(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setHeadline(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder mergeHeadline(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeHeadline(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-     */
-    public Builder clearHeadline() {  copyOnWrite();
-      instance.clearHeadline();
       return this;
     }
 
@@ -1649,7 +1554,6 @@ public  final class MachineDiskSection extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "hasValue_",
-            "headline_",
             "caption_",
             "state_",
             "stateBadge_",
@@ -1669,10 +1573,10 @@ public  final class MachineDiskSection extends
             "totalBytes_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0007\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\f\u0005\u1009\u0002\u0006\u0007\u0007\u0000\b\u1009" +
-              "\u0003\t\u1009\u0004\n\u0007\u000b\u1009\u0005\f\u1009\u0006\r\u1009\u0007\u000e" +
-              "\u1009\b\u000f\u0000\u0010\u0208\u0011\u0208\u0012\u0003\u0013\u0003";
+              "\u0000\u0012\u0000\u0001\u0001\u0013\u0012\u0000\u0000\u0000\u0001\u0007\u0003\u1009" +
+              "\u0000\u0004\f\u0005\u1009\u0001\u0006\u0007\u0007\u0000\b\u1009\u0002\t\u1009\u0003" +
+              "\n\u0007\u000b\u1009\u0004\f\u1009\u0005\r\u1009\u0006\u000e\u1009\u0007\u000f\u0000" +
+              "\u0010\u0208\u0011\u0208\u0012\u0003\u0013\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

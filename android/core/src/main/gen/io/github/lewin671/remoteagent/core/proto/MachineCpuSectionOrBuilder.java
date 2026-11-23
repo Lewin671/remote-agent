@@ -17,18 +17,6 @@ public interface MachineCpuSectionOrBuilder extends
   boolean getHasValue();
 
   /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @return The headline.
-   */
-  java.lang.String getHeadline();
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @return The bytes for headline.
-   */
-  com.google.protobuf.ByteString
-      getHeadlineBytes();
-
-  /**
    * <code>.remoteagent.core.v1.Text detail = 3 [json_name = "detail"];</code>
    * @return Whether the detail field is set.
    */

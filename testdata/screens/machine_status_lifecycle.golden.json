@@ -303,16 +303,12 @@
               }
             ],
             "cpu": {
-              "headline": "—",
               "chart": {
                 "gapThresholdMs": "10000"
               },
               "valueText": "—"
             },
             "memory": {
-              "headline": {
-                "literal": "—"
-              },
               "caption": {
                 "key": "machine_status.gb_used"
               },
@@ -322,9 +318,6 @@
               "valueText": "—"
             },
             "disk": {
-              "headline": {
-                "literal": "—"
-              },
               "caption": {
                 "key": "machine_status.gb_available"
               },
@@ -489,7 +482,6 @@
             ],
             "cpu": {
               "hasValue": true,
-              "headline": "24%",
               "detail": {
                 "key": "machine_status.cores",
                 "args": [
@@ -558,15 +550,6 @@
             },
             "memory": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "11.2"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_used"
               },
@@ -700,15 +683,6 @@
             },
             "disk": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "1.5"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_available"
               },
@@ -1026,7 +1000,6 @@
             ],
             "cpu": {
               "hasValue": true,
-              "headline": "24%",
               "detail": {
                 "key": "machine_status.cores",
                 "args": [
@@ -1108,15 +1081,6 @@
             },
             "memory": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "11.2"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_used"
               },
@@ -1250,15 +1214,6 @@
             },
             "disk": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "1.5"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_available"
               },
@@ -1694,7 +1649,6 @@
             ],
             "cpu": {
               "hasValue": true,
-              "headline": "24%",
               "detail": {
                 "key": "machine_status.cores",
                 "args": [
@@ -1731,15 +1685,6 @@
             },
             "memory": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "11.2"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_used"
               },
@@ -1829,15 +1774,6 @@
             },
             "disk": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "1.5"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_available"
               },
@@ -2192,7 +2128,6 @@
             ],
             "cpu": {
               "hasValue": true,
-              "headline": "11%",
               "detail": {
                 "key": "machine_status.cores",
                 "args": [
@@ -2254,15 +2189,6 @@
             },
             "memory": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "10.0"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_used"
               },
@@ -2361,15 +2287,6 @@
             },
             "disk": {
               "hasValue": true,
-              "headline": {
-                "key": "machine_status.size_gb",
-                "args": [
-                  {
-                    "name": "size",
-                    "strValue": "42"
-                  }
-                ]
-              },
               "caption": {
                 "key": "machine_status.gb_available"
               },

@@ -716,11 +716,6 @@ public struct PBMachineCpuSection: @unchecked Sendable {
     set {_uniqueStorage()._hasValue_p = newValue}
   }
 
-  public var headline: String {
-    get {return _storage._headline}
-    set {_uniqueStorage()._headline = newValue}
-  }
-
   public var detail: PBCoreText {
     get {return _storage._detail ?? PBCoreText()}
     set {_uniqueStorage()._detail = newValue}
@@ -788,15 +783,6 @@ public struct PBMachineMemorySection: @unchecked Sendable {
     get {return _storage._hasValue_p}
     set {_uniqueStorage()._hasValue_p = newValue}
   }
-
-  public var headline: PBCoreText {
-    get {return _storage._headline ?? PBCoreText()}
-    set {_uniqueStorage()._headline = newValue}
-  }
-  /// Returns true if `headline` has been explicitly set.
-  public var hasHeadline: Bool {return _storage._headline != nil}
-  /// Clears the value of `headline`. Subsequent reads from it will return its default value.
-  public mutating func clearHeadline() {_uniqueStorage()._headline = nil}
 
   public var caption: PBCoreText {
     get {return _storage._caption ?? PBCoreText()}
@@ -908,15 +894,6 @@ public struct PBMachineDiskSection: @unchecked Sendable {
     get {return _storage._hasValue_p}
     set {_uniqueStorage()._hasValue_p = newValue}
   }
-
-  public var headline: PBCoreText {
-    get {return _storage._headline ?? PBCoreText()}
-    set {_uniqueStorage()._headline = newValue}
-  }
-  /// Returns true if `headline` has been explicitly set.
-  public var hasHeadline: Bool {return _storage._headline != nil}
-  /// Clears the value of `headline`. Subsequent reads from it will return its default value.
-  public mutating func clearHeadline() {_uniqueStorage()._headline = nil}
 
   public var caption: PBCoreText {
     get {return _storage._caption ?? PBCoreText()}
@@ -2487,11 +2464,10 @@ extension PBMachineChartView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCpuSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}detail\0\u{1}detail2\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{2}\u{2}detail\0\u{1}detail2\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{b}headline\0\u{c}\u{2}\u{1}")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
-    var _headline: String = String()
     var _detail: PBCoreText? = nil
     var _detail2: PBCoreText? = nil
     var _a11YLabel: PBCoreText? = nil
@@ -2510,7 +2486,6 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
     init(copying source: _StorageClass) {
       _hasValue_p = source._hasValue_p
-      _headline = source._headline
       _detail = source._detail
       _detail2 = source._detail2
       _a11YLabel = source._a11YLabel
@@ -2537,7 +2512,6 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularBoolField(value: &_storage._hasValue_p) }()
-        case 2: try { try decoder.decodeSingularStringField(value: &_storage._headline) }()
         case 3: try { try decoder.decodeSingularMessageField(value: &_storage._detail) }()
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._detail2) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._a11YLabel) }()
@@ -2559,9 +2533,6 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       // https://github.com/apple/swift-protobuf/issues/1182
       if _storage._hasValue_p != false {
         try visitor.visitSingularBoolField(value: _storage._hasValue_p, fieldNumber: 1)
-      }
-      if !_storage._headline.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._headline, fieldNumber: 2)
       }
       try { if let v = _storage._detail {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
@@ -2594,7 +2565,6 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._hasValue_p != rhs_storage._hasValue_p {return false}
-        if _storage._headline != rhs_storage._headline {return false}
         if _storage._detail != rhs_storage._detail {return false}
         if _storage._detail2 != rhs_storage._detail2 {return false}
         if _storage._a11YLabel != rhs_storage._a11YLabel {return false}
@@ -2613,11 +2583,10 @@ extension PBMachineCpuSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineMemorySection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}pressure\0\u{3}pressure_text\0\u{3}has_pressure_position\0\u{3}pressure_position\0\u{3}total_text\0\u{3}swap_text\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}used_bytes\0\u{3}total_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{2}\u{2}caption\0\u{1}pressure\0\u{3}pressure_text\0\u{3}has_pressure_position\0\u{3}pressure_position\0\u{3}total_text\0\u{3}swap_text\0\u{3}a11y_label\0\u{1}chart\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}used_bytes\0\u{3}total_bytes\0\u{b}headline\0\u{c}\u{2}\u{1}")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
-    var _headline: PBCoreText? = nil
     var _caption: PBCoreText? = nil
     var _pressure: PBMachinePressureTone = .unspecified
     var _pressureText: PBCoreText? = nil
@@ -2643,7 +2612,6 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
     init(copying source: _StorageClass) {
       _hasValue_p = source._hasValue_p
-      _headline = source._headline
       _caption = source._caption
       _pressure = source._pressure
       _pressureText = source._pressureText
@@ -2677,7 +2645,6 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularBoolField(value: &_storage._hasValue_p) }()
-        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._headline) }()
         case 3: try { try decoder.decodeSingularMessageField(value: &_storage._caption) }()
         case 4: try { try decoder.decodeSingularEnumField(value: &_storage._pressure) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._pressureText) }()
@@ -2707,9 +2674,6 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if _storage._hasValue_p != false {
         try visitor.visitSingularBoolField(value: _storage._hasValue_p, fieldNumber: 1)
       }
-      try { if let v = _storage._headline {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      } }()
       try { if let v = _storage._caption {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       } }()
@@ -2762,7 +2726,6 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._hasValue_p != rhs_storage._hasValue_p {return false}
-        if _storage._headline != rhs_storage._headline {return false}
         if _storage._caption != rhs_storage._caption {return false}
         if _storage._pressure != rhs_storage._pressure {return false}
         if _storage._pressureText != rhs_storage._pressureText {return false}
@@ -2788,11 +2751,10 @@ extension PBMachineMemorySection: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineDiskSection"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{1}headline\0\u{1}caption\0\u{1}state\0\u{3}state_badge\0\u{3}has_used_fraction\0\u{3}used_fraction\0\u{1}detail\0\u{1}detail2\0\u{3}show_actions\0\u{3}cleanup_action_label\0\u{3}agent_usage_label\0\u{3}agent_usage_value\0\u{3}a11y_label\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}available_bytes\0\u{3}total_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_value\0\u{2}\u{2}caption\0\u{1}state\0\u{3}state_badge\0\u{3}has_used_fraction\0\u{3}used_fraction\0\u{1}detail\0\u{1}detail2\0\u{3}show_actions\0\u{3}cleanup_action_label\0\u{3}agent_usage_label\0\u{3}agent_usage_value\0\u{3}a11y_label\0\u{1}value\0\u{3}value_text\0\u{1}unit\0\u{3}available_bytes\0\u{3}total_bytes\0\u{b}headline\0\u{c}\u{2}\u{1}")
 
   fileprivate class _StorageClass {
     var _hasValue_p: Bool = false
-    var _headline: PBCoreText? = nil
     var _caption: PBCoreText? = nil
     var _state: PBDiskPressureState = .unspecified
     var _stateBadge: PBCoreText? = nil
@@ -2821,7 +2783,6 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
     init(copying source: _StorageClass) {
       _hasValue_p = source._hasValue_p
-      _headline = source._headline
       _caption = source._caption
       _state = source._state
       _stateBadge = source._stateBadge
@@ -2858,7 +2819,6 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         // enabled. https://github.com/apple/swift-protobuf/issues/1034
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularBoolField(value: &_storage._hasValue_p) }()
-        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._headline) }()
         case 3: try { try decoder.decodeSingularMessageField(value: &_storage._caption) }()
         case 4: try { try decoder.decodeSingularEnumField(value: &_storage._state) }()
         case 5: try { try decoder.decodeSingularMessageField(value: &_storage._stateBadge) }()
@@ -2891,9 +2851,6 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       if _storage._hasValue_p != false {
         try visitor.visitSingularBoolField(value: _storage._hasValue_p, fieldNumber: 1)
       }
-      try { if let v = _storage._headline {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
-      } }()
       try { if let v = _storage._caption {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
       } }()
@@ -2955,7 +2912,6 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         let _storage = _args.0
         let rhs_storage = _args.1
         if _storage._hasValue_p != rhs_storage._hasValue_p {return false}
-        if _storage._headline != rhs_storage._headline {return false}
         if _storage._caption != rhs_storage._caption {return false}
         if _storage._state != rhs_storage._state {return false}
         if _storage._stateBadge != rhs_storage._stateBadge {return false}

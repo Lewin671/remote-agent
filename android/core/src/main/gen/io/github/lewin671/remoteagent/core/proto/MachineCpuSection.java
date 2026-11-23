@@ -15,7 +15,6 @@ public  final class MachineCpuSection extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.MachineCpuSection)
     MachineCpuSectionOrBuilder {
   private MachineCpuSection() {
-    headline_ = "";
     valueText_ = "";
     unit_ = "";
   }
@@ -44,54 +43,6 @@ public  final class MachineCpuSection extends
   private void clearHasValue() {
 
     hasValue_ = false;
-  }
-
-  public static final int HEADLINE_FIELD_NUMBER = 2;
-  private java.lang.String headline_;
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @return The headline.
-   */
-  @java.lang.Override
-  public java.lang.String getHeadline() {
-    return headline_;
-  }
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @return The bytes for headline.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getHeadlineBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(headline_);
-  }
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @param value The headline to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setHeadline(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    headline_ = value;
-  }
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   */
-  private void clearHeadline() {
-
-    headline_ = getDefaultInstance().getHeadline();
-  }
-  /**
-   * <code>string headline = 2 [json_name = "headline"];</code>
-   * @param value The bytes for headline to set.
-   */
-  private void setHeadlineBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    headline_ = value.toStringUtf8();
-
   }
 
   public static final int DETAIL_FIELD_NUMBER = 3;
@@ -534,55 +485,6 @@ public  final class MachineCpuSection extends
     }
 
     /**
-     * <code>string headline = 2 [json_name = "headline"];</code>
-     * @return The headline.
-     */
-    @java.lang.Override
-    public java.lang.String getHeadline() {
-      return instance.getHeadline();
-    }
-    /**
-     * <code>string headline = 2 [json_name = "headline"];</code>
-     * @return The bytes for headline.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getHeadlineBytes() {
-      return instance.getHeadlineBytes();
-    }
-    /**
-     * <code>string headline = 2 [json_name = "headline"];</code>
-     * @param value The headline to set.
-     * @return This builder for chaining.
-     */
-    public Builder setHeadline(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setHeadline(value);
-      return this;
-    }
-    /**
-     * <code>string headline = 2 [json_name = "headline"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearHeadline() {
-      copyOnWrite();
-      instance.clearHeadline();
-      return this;
-    }
-    /**
-     * <code>string headline = 2 [json_name = "headline"];</code>
-     * @param value The bytes for headline to set.
-     * @return This builder for chaining.
-     */
-    public Builder setHeadlineBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setHeadlineBytes(value);
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text detail = 3 [json_name = "detail"];</code>
      */
     @java.lang.Override
@@ -914,7 +816,6 @@ public  final class MachineCpuSection extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
             "hasValue_",
-            "headline_",
             "detail_",
             "detail2_",
             "a11YLabel_",
@@ -924,9 +825,8 @@ public  final class MachineCpuSection extends
             "unit_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
-              "\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003\u0007\u0000\b\u0208" +
-              "\t\u0208";
+              "\u0000\b\u0000\u0001\u0001\t\b\u0000\u0000\u0000\u0001\u0007\u0003\u1009\u0000\u0004" +
+              "\u1009\u0001\u0005\u1009\u0002\u0006\u1009\u0003\u0007\u0000\b\u0208\t\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

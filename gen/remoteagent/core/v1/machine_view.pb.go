@@ -983,7 +983,6 @@ func (x *MachineChartView) GetCanStepNext() bool {
 type MachineCpuSection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	HasValue      bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
-	Headline      string                 `protobuf:"bytes,2,opt,name=headline,proto3" json:"headline,omitempty"`
 	Detail        *Text                  `protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
 	Detail2       *Text                  `protobuf:"bytes,4,opt,name=detail2,proto3" json:"detail2,omitempty"`
 	A11YLabel     *Text                  `protobuf:"bytes,5,opt,name=a11y_label,json=a11yLabel,proto3" json:"a11y_label,omitempty"`
@@ -1030,13 +1029,6 @@ func (x *MachineCpuSection) GetHasValue() bool {
 		return x.HasValue
 	}
 	return false
-}
-
-func (x *MachineCpuSection) GetHeadline() string {
-	if x != nil {
-		return x.Headline
-	}
-	return ""
 }
 
 func (x *MachineCpuSection) GetDetail() *Text {
@@ -1091,7 +1083,6 @@ func (x *MachineCpuSection) GetUnit() string {
 type MachineMemorySection struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	HasValue            bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
-	Headline            *Text                  `protobuf:"bytes,2,opt,name=headline,proto3" json:"headline,omitempty"`
 	Caption             *Text                  `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`
 	Pressure            MachinePressureTone    `protobuf:"varint,4,opt,name=pressure,proto3,enum=remoteagent.core.v1.MachinePressureTone" json:"pressure,omitempty"`
 	PressureText        *Text                  `protobuf:"bytes,5,opt,name=pressure_text,json=pressureText,proto3" json:"pressure_text,omitempty"`
@@ -1145,13 +1136,6 @@ func (x *MachineMemorySection) GetHasValue() bool {
 		return x.HasValue
 	}
 	return false
-}
-
-func (x *MachineMemorySection) GetHeadline() *Text {
-	if x != nil {
-		return x.Headline
-	}
-	return nil
 }
 
 func (x *MachineMemorySection) GetCaption() *Text {
@@ -1255,7 +1239,6 @@ func (x *MachineMemorySection) GetTotalBytes() uint64 {
 type MachineDiskSection struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	HasValue           bool                   `protobuf:"varint,1,opt,name=has_value,json=hasValue,proto3" json:"has_value,omitempty"`
-	Headline           *Text                  `protobuf:"bytes,2,opt,name=headline,proto3" json:"headline,omitempty"`
 	Caption            *Text                  `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`
 	State              DiskPressureState      `protobuf:"varint,4,opt,name=state,proto3,enum=remoteagent.core.v1.DiskPressureState" json:"state,omitempty"`
 	StateBadge         *Text                  `protobuf:"bytes,5,opt,name=state_badge,json=stateBadge,proto3" json:"state_badge,omitempty"`
@@ -1312,13 +1295,6 @@ func (x *MachineDiskSection) GetHasValue() bool {
 		return x.HasValue
 	}
 	return false
-}
-
-func (x *MachineDiskSection) GetHeadline() *Text {
-	if x != nil {
-		return x.Headline
-	}
-	return nil
 }
 
 func (x *MachineDiskSection) GetCaption() *Text {
@@ -3409,10 +3385,9 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	" \x01(\v2\x19.remoteagent.core.v1.TextR\bscrubAge\x12<\n" +
 	"\fa11y_summary\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\va11ySummary\x12\"\n" +
 	"\rcan_step_prev\x18\f \x01(\bR\vcanStepPrev\x12\"\n" +
-	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\"\xf4\x02\n" +
+	"\rcan_step_next\x18\r \x01(\bR\vcanStepNext\"\xe8\x02\n" +
 	"\x11MachineCpuSection\x12\x1b\n" +
-	"\thas_value\x18\x01 \x01(\bR\bhasValue\x12\x1a\n" +
-	"\bheadline\x18\x02 \x01(\tR\bheadline\x121\n" +
+	"\thas_value\x18\x01 \x01(\bR\bhasValue\x121\n" +
 	"\x06detail\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\x06detail\x123\n" +
 	"\adetail2\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\adetail2\x128\n" +
 	"\n" +
@@ -3421,10 +3396,9 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x05value\x18\a \x01(\x01R\x05value\x12\x1d\n" +
 	"\n" +
 	"value_text\x18\b \x01(\tR\tvalueText\x12\x12\n" +
-	"\x04unit\x18\t \x01(\tR\x04unit\"\xf8\x05\n" +
+	"\x04unit\x18\t \x01(\tR\x04unitJ\x04\b\x02\x10\x03R\bheadline\"\xd1\x05\n" +
 	"\x14MachineMemorySection\x12\x1b\n" +
-	"\thas_value\x18\x01 \x01(\bR\bhasValue\x125\n" +
-	"\bheadline\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\bheadline\x123\n" +
+	"\thas_value\x18\x01 \x01(\bR\bhasValue\x123\n" +
 	"\acaption\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\acaption\x12D\n" +
 	"\bpressure\x18\x04 \x01(\x0e2(.remoteagent.core.v1.MachinePressureToneR\bpressure\x12>\n" +
 	"\rpressure_text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\fpressureText\x122\n" +
@@ -3444,10 +3418,9 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\n" +
 	"used_bytes\x18\x0f \x01(\x04R\tusedBytes\x12\x1f\n" +
 	"\vtotal_bytes\x18\x10 \x01(\x04R\n" +
-	"totalBytes\"\x9b\a\n" +
+	"totalBytesJ\x04\b\x02\x10\x03R\bheadline\"\xf4\x06\n" +
 	"\x12MachineDiskSection\x12\x1b\n" +
-	"\thas_value\x18\x01 \x01(\bR\bhasValue\x125\n" +
-	"\bheadline\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\bheadline\x123\n" +
+	"\thas_value\x18\x01 \x01(\bR\bhasValue\x123\n" +
 	"\acaption\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\acaption\x12<\n" +
 	"\x05state\x18\x04 \x01(\x0e2&.remoteagent.core.v1.DiskPressureStateR\x05state\x12:\n" +
 	"\vstate_badge\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
@@ -3469,7 +3442,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x04unit\x18\x11 \x01(\tR\x04unit\x12'\n" +
 	"\x0favailable_bytes\x18\x12 \x01(\x04R\x0eavailableBytes\x12\x1f\n" +
 	"\vtotal_bytes\x18\x13 \x01(\x04R\n" +
-	"totalBytes\"\xfd\x03\n" +
+	"totalBytesJ\x04\b\x02\x10\x03R\bheadline\"\xfd\x03\n" +
 	"\x0fMachineUsageRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x127\n" +
@@ -3815,111 +3788,109 @@ var file_remoteagent_core_v1_machine_view_proto_goTypes = []any{
 	(v1.Agent)(0),                       // 41: remoteagent.v1.Agent
 }
 var file_remoteagent_core_v1_machine_view_proto_depIdxs = []int32{
-	7,   // 0: remoteagent.core.v1.MachineRingView.kind:type_name -> remoteagent.core.v1.MachineRingKind
-	40,  // 1: remoteagent.core.v1.MachineRingView.label:type_name -> remoteagent.core.v1.Text
-	40,  // 2: remoteagent.core.v1.MachineRingView.value_text:type_name -> remoteagent.core.v1.Text
-	8,   // 3: remoteagent.core.v1.MachineRingView.tone:type_name -> remoteagent.core.v1.MachineRingTone
-	40,  // 4: remoteagent.core.v1.MachineRingView.a11y_label:type_name -> remoteagent.core.v1.Text
-	14,  // 5: remoteagent.core.v1.MachineChartView.points:type_name -> remoteagent.core.v1.MachineChartPoint
-	40,  // 6: remoteagent.core.v1.MachineChartView.scrub_value:type_name -> remoteagent.core.v1.Text
-	40,  // 7: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
-	40,  // 8: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
-	40,  // 9: remoteagent.core.v1.MachineCpuSection.detail:type_name -> remoteagent.core.v1.Text
-	40,  // 10: remoteagent.core.v1.MachineCpuSection.detail2:type_name -> remoteagent.core.v1.Text
-	40,  // 11: remoteagent.core.v1.MachineCpuSection.a11y_label:type_name -> remoteagent.core.v1.Text
-	15,  // 12: remoteagent.core.v1.MachineCpuSection.chart:type_name -> remoteagent.core.v1.MachineChartView
-	40,  // 13: remoteagent.core.v1.MachineMemorySection.headline:type_name -> remoteagent.core.v1.Text
-	40,  // 14: remoteagent.core.v1.MachineMemorySection.caption:type_name -> remoteagent.core.v1.Text
-	3,   // 15: remoteagent.core.v1.MachineMemorySection.pressure:type_name -> remoteagent.core.v1.MachinePressureTone
-	40,  // 16: remoteagent.core.v1.MachineMemorySection.pressure_text:type_name -> remoteagent.core.v1.Text
-	40,  // 17: remoteagent.core.v1.MachineMemorySection.total_text:type_name -> remoteagent.core.v1.Text
-	40,  // 18: remoteagent.core.v1.MachineMemorySection.swap_text:type_name -> remoteagent.core.v1.Text
-	40,  // 19: remoteagent.core.v1.MachineMemorySection.a11y_label:type_name -> remoteagent.core.v1.Text
-	15,  // 20: remoteagent.core.v1.MachineMemorySection.chart:type_name -> remoteagent.core.v1.MachineChartView
-	40,  // 21: remoteagent.core.v1.MachineDiskSection.headline:type_name -> remoteagent.core.v1.Text
-	40,  // 22: remoteagent.core.v1.MachineDiskSection.caption:type_name -> remoteagent.core.v1.Text
-	4,   // 23: remoteagent.core.v1.MachineDiskSection.state:type_name -> remoteagent.core.v1.DiskPressureState
-	40,  // 24: remoteagent.core.v1.MachineDiskSection.state_badge:type_name -> remoteagent.core.v1.Text
-	40,  // 25: remoteagent.core.v1.MachineDiskSection.detail:type_name -> remoteagent.core.v1.Text
-	40,  // 26: remoteagent.core.v1.MachineDiskSection.detail2:type_name -> remoteagent.core.v1.Text
-	40,  // 27: remoteagent.core.v1.MachineDiskSection.cleanup_action_label:type_name -> remoteagent.core.v1.Text
-	40,  // 28: remoteagent.core.v1.MachineDiskSection.agent_usage_label:type_name -> remoteagent.core.v1.Text
-	40,  // 29: remoteagent.core.v1.MachineDiskSection.agent_usage_value:type_name -> remoteagent.core.v1.Text
-	40,  // 30: remoteagent.core.v1.MachineDiskSection.a11y_label:type_name -> remoteagent.core.v1.Text
-	40,  // 31: remoteagent.core.v1.MachineUsageRow.title:type_name -> remoteagent.core.v1.Text
-	40,  // 32: remoteagent.core.v1.MachineUsageRow.secondary:type_name -> remoteagent.core.v1.Text
-	41,  // 33: remoteagent.core.v1.MachineUsageRow.agent:type_name -> remoteagent.v1.Agent
-	40,  // 34: remoteagent.core.v1.MachineUsageRow.cpu_value_text:type_name -> remoteagent.core.v1.Text
-	40,  // 35: remoteagent.core.v1.MachineUsageRow.memory_value_text:type_name -> remoteagent.core.v1.Text
-	5,   // 36: remoteagent.core.v1.MachineTopUsageSection.selected_tab:type_name -> remoteagent.core.v1.MachineUsageTab
-	19,  // 37: remoteagent.core.v1.MachineTopUsageSection.rows:type_name -> remoteagent.core.v1.MachineUsageRow
-	40,  // 38: remoteagent.core.v1.MachineTopUsageSection.empty_text:type_name -> remoteagent.core.v1.Text
-	41,  // 39: remoteagent.core.v1.MachineModelUsageRow.agent:type_name -> remoteagent.v1.Agent
-	40,  // 40: remoteagent.core.v1.MachineModelUsageRow.title_text:type_name -> remoteagent.core.v1.Text
-	40,  // 41: remoteagent.core.v1.MachineModelUsageRow.total_tokens_text:type_name -> remoteagent.core.v1.Text
-	40,  // 42: remoteagent.core.v1.MachineModelUsageRow.meta_text:type_name -> remoteagent.core.v1.Text
-	21,  // 43: remoteagent.core.v1.MachineModelUsagePreview.rows:type_name -> remoteagent.core.v1.MachineModelUsageRow
-	40,  // 44: remoteagent.core.v1.MachineModelUsagePreview.unsupported_footnote:type_name -> remoteagent.core.v1.Text
-	40,  // 45: remoteagent.core.v1.MachineModelUsagePreview.empty_text:type_name -> remoteagent.core.v1.Text
-	40,  // 46: remoteagent.core.v1.MachineModelUsagePreview.window_label:type_name -> remoteagent.core.v1.Text
-	0,   // 47: remoteagent.core.v1.MachineStatusViewModel.poll_state:type_name -> remoteagent.core.v1.MachinePollState
-	2,   // 48: remoteagent.core.v1.MachineStatusViewModel.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
-	40,  // 49: remoteagent.core.v1.MachineStatusViewModel.status_badge:type_name -> remoteagent.core.v1.Text
-	40,  // 50: remoteagent.core.v1.MachineStatusViewModel.unavailable_title:type_name -> remoteagent.core.v1.Text
-	13,  // 51: remoteagent.core.v1.MachineStatusViewModel.rings:type_name -> remoteagent.core.v1.MachineRingView
-	16,  // 52: remoteagent.core.v1.MachineStatusViewModel.cpu:type_name -> remoteagent.core.v1.MachineCpuSection
-	17,  // 53: remoteagent.core.v1.MachineStatusViewModel.memory:type_name -> remoteagent.core.v1.MachineMemorySection
-	18,  // 54: remoteagent.core.v1.MachineStatusViewModel.disk:type_name -> remoteagent.core.v1.MachineDiskSection
-	20,  // 55: remoteagent.core.v1.MachineStatusViewModel.top_usage:type_name -> remoteagent.core.v1.MachineTopUsageSection
-	40,  // 56: remoteagent.core.v1.MachineStatusViewModel.uptime_text:type_name -> remoteagent.core.v1.Text
-	40,  // 57: remoteagent.core.v1.MachineStatusViewModel.battery_text:type_name -> remoteagent.core.v1.Text
-	22,  // 58: remoteagent.core.v1.MachineStatusViewModel.model_usage:type_name -> remoteagent.core.v1.MachineModelUsagePreview
-	40,  // 59: remoteagent.core.v1.DiskReminderView.title:type_name -> remoteagent.core.v1.Text
-	40,  // 60: remoteagent.core.v1.DiskReminderView.detail:type_name -> remoteagent.core.v1.Text
-	40,  // 61: remoteagent.core.v1.DiskReminderView.action_label:type_name -> remoteagent.core.v1.Text
-	41,  // 62: remoteagent.core.v1.QuotaScreenRequest.filter_agent:type_name -> remoteagent.v1.Agent
-	11,  // 63: remoteagent.core.v1.QuotaBannerView.severity:type_name -> remoteagent.core.v1.QuotaBannerSeverity
-	40,  // 64: remoteagent.core.v1.QuotaBannerView.message:type_name -> remoteagent.core.v1.Text
-	41,  // 65: remoteagent.core.v1.QuotaBannerView.agent:type_name -> remoteagent.v1.Agent
-	40,  // 66: remoteagent.core.v1.QuotaRowView.label:type_name -> remoteagent.core.v1.Text
-	40,  // 67: remoteagent.core.v1.QuotaRowView.pool_name:type_name -> remoteagent.core.v1.Text
-	9,   // 68: remoteagent.core.v1.QuotaRowView.tone:type_name -> remoteagent.core.v1.QuotaTone
-	40,  // 69: remoteagent.core.v1.QuotaRowView.remaining_text:type_name -> remoteagent.core.v1.Text
-	40,  // 70: remoteagent.core.v1.QuotaRowView.reset_text:type_name -> remoteagent.core.v1.Text
-	40,  // 71: remoteagent.core.v1.QuotaRowView.reset_clock_text:type_name -> remoteagent.core.v1.Text
-	40,  // 72: remoteagent.core.v1.QuotaRowView.footnote:type_name -> remoteagent.core.v1.Text
-	40,  // 73: remoteagent.core.v1.QuotaWindowGroupView.group_label:type_name -> remoteagent.core.v1.Text
-	27,  // 74: remoteagent.core.v1.QuotaWindowGroupView.rows:type_name -> remoteagent.core.v1.QuotaRowView
-	10,  // 75: remoteagent.core.v1.QuotaAccountGroupView.state:type_name -> remoteagent.core.v1.QuotaSectionState
-	40,  // 76: remoteagent.core.v1.QuotaAccountGroupView.status_text:type_name -> remoteagent.core.v1.Text
-	40,  // 77: remoteagent.core.v1.QuotaAccountGroupView.freshness_text:type_name -> remoteagent.core.v1.Text
-	40,  // 78: remoteagent.core.v1.QuotaAccountGroupView.error_text:type_name -> remoteagent.core.v1.Text
-	28,  // 79: remoteagent.core.v1.QuotaAccountGroupView.groups:type_name -> remoteagent.core.v1.QuotaWindowGroupView
-	40,  // 80: remoteagent.core.v1.QuotaAccountGroupView.usage_hint:type_name -> remoteagent.core.v1.Text
-	41,  // 81: remoteagent.core.v1.QuotaCliSection.agent:type_name -> remoteagent.v1.Agent
-	10,  // 82: remoteagent.core.v1.QuotaCliSection.state:type_name -> remoteagent.core.v1.QuotaSectionState
-	29,  // 83: remoteagent.core.v1.QuotaCliSection.accounts:type_name -> remoteagent.core.v1.QuotaAccountGroupView
-	40,  // 84: remoteagent.core.v1.QuotaCliSection.empty_or_error_text:type_name -> remoteagent.core.v1.Text
-	40,  // 85: remoteagent.core.v1.QuotaCliSection.usage_hint:type_name -> remoteagent.core.v1.Text
-	27,  // 86: remoteagent.core.v1.QuotaCliSection.summary_row:type_name -> remoteagent.core.v1.QuotaRowView
-	40,  // 87: remoteagent.core.v1.QuotaCliSection.summary_line:type_name -> remoteagent.core.v1.Text
-	9,   // 88: remoteagent.core.v1.QuotaCliSection.summary_tone:type_name -> remoteagent.core.v1.QuotaTone
-	40,  // 89: remoteagent.core.v1.QuotaCliSection.summary_meta:type_name -> remoteagent.core.v1.Text
-	40,  // 90: remoteagent.core.v1.QuotaCliSection.summary_primary_text:type_name -> remoteagent.core.v1.Text
-	40,  // 91: remoteagent.core.v1.QuotaCliSection.summary_window_text:type_name -> remoteagent.core.v1.Text
-	40,  // 92: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
-	26,  // 93: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
-	30,  // 94: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
-	40,  // 95: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
-	40,  // 96: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
-	1,   // 97: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
-	5,   // 98: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
-	6,   // 99: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
-	100, // [100:100] is the sub-list for method output_type
-	100, // [100:100] is the sub-list for method input_type
-	100, // [100:100] is the sub-list for extension type_name
-	100, // [100:100] is the sub-list for extension extendee
-	0,   // [0:100] is the sub-list for field type_name
+	7,  // 0: remoteagent.core.v1.MachineRingView.kind:type_name -> remoteagent.core.v1.MachineRingKind
+	40, // 1: remoteagent.core.v1.MachineRingView.label:type_name -> remoteagent.core.v1.Text
+	40, // 2: remoteagent.core.v1.MachineRingView.value_text:type_name -> remoteagent.core.v1.Text
+	8,  // 3: remoteagent.core.v1.MachineRingView.tone:type_name -> remoteagent.core.v1.MachineRingTone
+	40, // 4: remoteagent.core.v1.MachineRingView.a11y_label:type_name -> remoteagent.core.v1.Text
+	14, // 5: remoteagent.core.v1.MachineChartView.points:type_name -> remoteagent.core.v1.MachineChartPoint
+	40, // 6: remoteagent.core.v1.MachineChartView.scrub_value:type_name -> remoteagent.core.v1.Text
+	40, // 7: remoteagent.core.v1.MachineChartView.scrub_age:type_name -> remoteagent.core.v1.Text
+	40, // 8: remoteagent.core.v1.MachineChartView.a11y_summary:type_name -> remoteagent.core.v1.Text
+	40, // 9: remoteagent.core.v1.MachineCpuSection.detail:type_name -> remoteagent.core.v1.Text
+	40, // 10: remoteagent.core.v1.MachineCpuSection.detail2:type_name -> remoteagent.core.v1.Text
+	40, // 11: remoteagent.core.v1.MachineCpuSection.a11y_label:type_name -> remoteagent.core.v1.Text
+	15, // 12: remoteagent.core.v1.MachineCpuSection.chart:type_name -> remoteagent.core.v1.MachineChartView
+	40, // 13: remoteagent.core.v1.MachineMemorySection.caption:type_name -> remoteagent.core.v1.Text
+	3,  // 14: remoteagent.core.v1.MachineMemorySection.pressure:type_name -> remoteagent.core.v1.MachinePressureTone
+	40, // 15: remoteagent.core.v1.MachineMemorySection.pressure_text:type_name -> remoteagent.core.v1.Text
+	40, // 16: remoteagent.core.v1.MachineMemorySection.total_text:type_name -> remoteagent.core.v1.Text
+	40, // 17: remoteagent.core.v1.MachineMemorySection.swap_text:type_name -> remoteagent.core.v1.Text
+	40, // 18: remoteagent.core.v1.MachineMemorySection.a11y_label:type_name -> remoteagent.core.v1.Text
+	15, // 19: remoteagent.core.v1.MachineMemorySection.chart:type_name -> remoteagent.core.v1.MachineChartView
+	40, // 20: remoteagent.core.v1.MachineDiskSection.caption:type_name -> remoteagent.core.v1.Text
+	4,  // 21: remoteagent.core.v1.MachineDiskSection.state:type_name -> remoteagent.core.v1.DiskPressureState
+	40, // 22: remoteagent.core.v1.MachineDiskSection.state_badge:type_name -> remoteagent.core.v1.Text
+	40, // 23: remoteagent.core.v1.MachineDiskSection.detail:type_name -> remoteagent.core.v1.Text
+	40, // 24: remoteagent.core.v1.MachineDiskSection.detail2:type_name -> remoteagent.core.v1.Text
+	40, // 25: remoteagent.core.v1.MachineDiskSection.cleanup_action_label:type_name -> remoteagent.core.v1.Text
+	40, // 26: remoteagent.core.v1.MachineDiskSection.agent_usage_label:type_name -> remoteagent.core.v1.Text
+	40, // 27: remoteagent.core.v1.MachineDiskSection.agent_usage_value:type_name -> remoteagent.core.v1.Text
+	40, // 28: remoteagent.core.v1.MachineDiskSection.a11y_label:type_name -> remoteagent.core.v1.Text
+	40, // 29: remoteagent.core.v1.MachineUsageRow.title:type_name -> remoteagent.core.v1.Text
+	40, // 30: remoteagent.core.v1.MachineUsageRow.secondary:type_name -> remoteagent.core.v1.Text
+	41, // 31: remoteagent.core.v1.MachineUsageRow.agent:type_name -> remoteagent.v1.Agent
+	40, // 32: remoteagent.core.v1.MachineUsageRow.cpu_value_text:type_name -> remoteagent.core.v1.Text
+	40, // 33: remoteagent.core.v1.MachineUsageRow.memory_value_text:type_name -> remoteagent.core.v1.Text
+	5,  // 34: remoteagent.core.v1.MachineTopUsageSection.selected_tab:type_name -> remoteagent.core.v1.MachineUsageTab
+	19, // 35: remoteagent.core.v1.MachineTopUsageSection.rows:type_name -> remoteagent.core.v1.MachineUsageRow
+	40, // 36: remoteagent.core.v1.MachineTopUsageSection.empty_text:type_name -> remoteagent.core.v1.Text
+	41, // 37: remoteagent.core.v1.MachineModelUsageRow.agent:type_name -> remoteagent.v1.Agent
+	40, // 38: remoteagent.core.v1.MachineModelUsageRow.title_text:type_name -> remoteagent.core.v1.Text
+	40, // 39: remoteagent.core.v1.MachineModelUsageRow.total_tokens_text:type_name -> remoteagent.core.v1.Text
+	40, // 40: remoteagent.core.v1.MachineModelUsageRow.meta_text:type_name -> remoteagent.core.v1.Text
+	21, // 41: remoteagent.core.v1.MachineModelUsagePreview.rows:type_name -> remoteagent.core.v1.MachineModelUsageRow
+	40, // 42: remoteagent.core.v1.MachineModelUsagePreview.unsupported_footnote:type_name -> remoteagent.core.v1.Text
+	40, // 43: remoteagent.core.v1.MachineModelUsagePreview.empty_text:type_name -> remoteagent.core.v1.Text
+	40, // 44: remoteagent.core.v1.MachineModelUsagePreview.window_label:type_name -> remoteagent.core.v1.Text
+	0,  // 45: remoteagent.core.v1.MachineStatusViewModel.poll_state:type_name -> remoteagent.core.v1.MachinePollState
+	2,  // 46: remoteagent.core.v1.MachineStatusViewModel.status_dot:type_name -> remoteagent.core.v1.MachineStatusDot
+	40, // 47: remoteagent.core.v1.MachineStatusViewModel.status_badge:type_name -> remoteagent.core.v1.Text
+	40, // 48: remoteagent.core.v1.MachineStatusViewModel.unavailable_title:type_name -> remoteagent.core.v1.Text
+	13, // 49: remoteagent.core.v1.MachineStatusViewModel.rings:type_name -> remoteagent.core.v1.MachineRingView
+	16, // 50: remoteagent.core.v1.MachineStatusViewModel.cpu:type_name -> remoteagent.core.v1.MachineCpuSection
+	17, // 51: remoteagent.core.v1.MachineStatusViewModel.memory:type_name -> remoteagent.core.v1.MachineMemorySection
+	18, // 52: remoteagent.core.v1.MachineStatusViewModel.disk:type_name -> remoteagent.core.v1.MachineDiskSection
+	20, // 53: remoteagent.core.v1.MachineStatusViewModel.top_usage:type_name -> remoteagent.core.v1.MachineTopUsageSection
+	40, // 54: remoteagent.core.v1.MachineStatusViewModel.uptime_text:type_name -> remoteagent.core.v1.Text
+	40, // 55: remoteagent.core.v1.MachineStatusViewModel.battery_text:type_name -> remoteagent.core.v1.Text
+	22, // 56: remoteagent.core.v1.MachineStatusViewModel.model_usage:type_name -> remoteagent.core.v1.MachineModelUsagePreview
+	40, // 57: remoteagent.core.v1.DiskReminderView.title:type_name -> remoteagent.core.v1.Text
+	40, // 58: remoteagent.core.v1.DiskReminderView.detail:type_name -> remoteagent.core.v1.Text
+	40, // 59: remoteagent.core.v1.DiskReminderView.action_label:type_name -> remoteagent.core.v1.Text
+	41, // 60: remoteagent.core.v1.QuotaScreenRequest.filter_agent:type_name -> remoteagent.v1.Agent
+	11, // 61: remoteagent.core.v1.QuotaBannerView.severity:type_name -> remoteagent.core.v1.QuotaBannerSeverity
+	40, // 62: remoteagent.core.v1.QuotaBannerView.message:type_name -> remoteagent.core.v1.Text
+	41, // 63: remoteagent.core.v1.QuotaBannerView.agent:type_name -> remoteagent.v1.Agent
+	40, // 64: remoteagent.core.v1.QuotaRowView.label:type_name -> remoteagent.core.v1.Text
+	40, // 65: remoteagent.core.v1.QuotaRowView.pool_name:type_name -> remoteagent.core.v1.Text
+	9,  // 66: remoteagent.core.v1.QuotaRowView.tone:type_name -> remoteagent.core.v1.QuotaTone
+	40, // 67: remoteagent.core.v1.QuotaRowView.remaining_text:type_name -> remoteagent.core.v1.Text
+	40, // 68: remoteagent.core.v1.QuotaRowView.reset_text:type_name -> remoteagent.core.v1.Text
+	40, // 69: remoteagent.core.v1.QuotaRowView.reset_clock_text:type_name -> remoteagent.core.v1.Text
+	40, // 70: remoteagent.core.v1.QuotaRowView.footnote:type_name -> remoteagent.core.v1.Text
+	40, // 71: remoteagent.core.v1.QuotaWindowGroupView.group_label:type_name -> remoteagent.core.v1.Text
+	27, // 72: remoteagent.core.v1.QuotaWindowGroupView.rows:type_name -> remoteagent.core.v1.QuotaRowView
+	10, // 73: remoteagent.core.v1.QuotaAccountGroupView.state:type_name -> remoteagent.core.v1.QuotaSectionState
+	40, // 74: remoteagent.core.v1.QuotaAccountGroupView.status_text:type_name -> remoteagent.core.v1.Text
+	40, // 75: remoteagent.core.v1.QuotaAccountGroupView.freshness_text:type_name -> remoteagent.core.v1.Text
+	40, // 76: remoteagent.core.v1.QuotaAccountGroupView.error_text:type_name -> remoteagent.core.v1.Text
+	28, // 77: remoteagent.core.v1.QuotaAccountGroupView.groups:type_name -> remoteagent.core.v1.QuotaWindowGroupView
+	40, // 78: remoteagent.core.v1.QuotaAccountGroupView.usage_hint:type_name -> remoteagent.core.v1.Text
+	41, // 79: remoteagent.core.v1.QuotaCliSection.agent:type_name -> remoteagent.v1.Agent
+	10, // 80: remoteagent.core.v1.QuotaCliSection.state:type_name -> remoteagent.core.v1.QuotaSectionState
+	29, // 81: remoteagent.core.v1.QuotaCliSection.accounts:type_name -> remoteagent.core.v1.QuotaAccountGroupView
+	40, // 82: remoteagent.core.v1.QuotaCliSection.empty_or_error_text:type_name -> remoteagent.core.v1.Text
+	40, // 83: remoteagent.core.v1.QuotaCliSection.usage_hint:type_name -> remoteagent.core.v1.Text
+	27, // 84: remoteagent.core.v1.QuotaCliSection.summary_row:type_name -> remoteagent.core.v1.QuotaRowView
+	40, // 85: remoteagent.core.v1.QuotaCliSection.summary_line:type_name -> remoteagent.core.v1.Text
+	9,  // 86: remoteagent.core.v1.QuotaCliSection.summary_tone:type_name -> remoteagent.core.v1.QuotaTone
+	40, // 87: remoteagent.core.v1.QuotaCliSection.summary_meta:type_name -> remoteagent.core.v1.Text
+	40, // 88: remoteagent.core.v1.QuotaCliSection.summary_primary_text:type_name -> remoteagent.core.v1.Text
+	40, // 89: remoteagent.core.v1.QuotaCliSection.summary_window_text:type_name -> remoteagent.core.v1.Text
+	40, // 90: remoteagent.core.v1.QuotaViewModel.offline_notice:type_name -> remoteagent.core.v1.Text
+	26, // 91: remoteagent.core.v1.QuotaViewModel.banner:type_name -> remoteagent.core.v1.QuotaBannerView
+	30, // 92: remoteagent.core.v1.QuotaViewModel.sections:type_name -> remoteagent.core.v1.QuotaCliSection
+	40, // 93: remoteagent.core.v1.QuotaViewModel.footer_note:type_name -> remoteagent.core.v1.Text
+	40, // 94: remoteagent.core.v1.QuotaViewModel.empty_text:type_name -> remoteagent.core.v1.Text
+	1,  // 95: remoteagent.core.v1.MachineStatusWatchEvent.mode:type_name -> remoteagent.core.v1.MachinePollMode
+	5,  // 96: remoteagent.core.v1.MachineStatusTabEvent.tab:type_name -> remoteagent.core.v1.MachineUsageTab
+	6,  // 97: remoteagent.core.v1.MachineStatusScrubEvent.kind:type_name -> remoteagent.core.v1.MachineChartKind
+	98, // [98:98] is the sub-list for method output_type
+	98, // [98:98] is the sub-list for method input_type
+	98, // [98:98] is the sub-list for extension type_name
+	98, // [98:98] is the sub-list for extension extendee
+	0,  // [0:98] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_machine_view_proto_init() }

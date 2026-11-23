@@ -613,7 +613,6 @@ object ScreenGoldenLoader {
             setCpu(
                 MachineCpuSection.newBuilder()
                     .setHasValue(c.bool("hasValue"))
-                    .setHeadline(c.str("headline"))
                     .setValue(c.f64("value"))
                     .setValueText(c.str("valueText"))
                     .setUnit(c.str("unit"))
@@ -638,7 +637,6 @@ object ScreenGoldenLoader {
                     .setUsedBytes(m.i64("usedBytes"))
                     .setTotalBytes(m.i64("totalBytes"))
                     .apply {
-                        m.obj("headline")?.let { setHeadline(parseText(it)) }
                         m.obj("caption")?.let { setCaption(parseText(it)) }
                         m.obj("pressureText")?.let { setPressureText(parseText(it)) }
                         m.obj("totalText")?.let { setTotalText(parseText(it)) }
@@ -662,7 +660,6 @@ object ScreenGoldenLoader {
                     .setAvailableBytes(d.i64("availableBytes"))
                     .setTotalBytes(d.i64("totalBytes"))
                     .apply {
-                        d.obj("headline")?.let { setHeadline(parseText(it)) }
                         d.obj("caption")?.let { setCaption(parseText(it)) }
                         d.obj("stateBadge")?.let { setStateBadge(parseText(it)) }
                         d.obj("detail")?.let { setDetail(parseText(it)) }

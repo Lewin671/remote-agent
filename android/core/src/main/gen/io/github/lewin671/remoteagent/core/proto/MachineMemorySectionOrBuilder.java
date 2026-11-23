@@ -17,17 +17,6 @@ public interface MachineMemorySectionOrBuilder extends
   boolean getHasValue();
 
   /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   * @return Whether the headline field is set.
-   */
-  boolean hasHeadline();
-  /**
-   * <code>.remoteagent.core.v1.Text headline = 2 [json_name = "headline"];</code>
-   * @return The headline.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getHeadline();
-
-  /**
    * <code>.remoteagent.core.v1.Text caption = 3 [json_name = "caption"];</code>
    * @return Whether the caption field is set.
    */

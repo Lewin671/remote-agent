@@ -224,14 +224,12 @@ func ringToneFromPressure(p v1.ResourcePressure) corev1.MachineRingTone {
 func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *corev1.MachineCpuSection {
 	if status == nil {
 		return &corev1.MachineCpuSection{
-			Headline:  "—",
 			ValueText: "—",
 			Chart:     chart,
 		}
 	}
 	pct := int(math.Round(status.CpuPercent))
 	valStr := strconv.FormatInt(int64(pct), 10)
-	headline := valStr + "%"
 	var detail, detail2 *corev1.Text
 	if status.Cores > 0 {
 		detail = text.Msg(text.KeyMachineStatusCores, text.Int("count", int64(status.Cores)))
@@ -241,10 +239,9 @@ func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *
 	}
 	return &corev1.MachineCpuSection{
 		HasValue:  true,
-		Headline:  headline,
 		Detail:    detail,
 		Detail2:   detail2,
-		A11YLabel: text.Msg(text.KeyMachineStatusA11YCpuCard, text.Str("value", headline)),
+		A11YLabel: text.Msg(text.KeyMachineStatusA11YCpuCard, text.Str("value", valStr+"%")),
 		Chart:     chart,
 		Value:     status.CpuPercent,
 		ValueText: valStr,
@@ -255,7 +252,6 @@ func BuildCpuSection(status *v1.MachineStatus, chart *corev1.MachineChartView) *
 func BuildMemorySection(status *v1.MachineStatus, chart *corev1.MachineChartView) *corev1.MachineMemorySection {
 	if status == nil {
 		return &corev1.MachineMemorySection{
-			Headline:  text.Plain("—"),
 			Caption:   text.Msg(text.KeyMachineStatusGbUsed),
 			Chart:     chart,
 			ValueText: "—",
@@ -303,7 +299,6 @@ func BuildMemorySection(status *v1.MachineStatus, chart *corev1.MachineChartView
 
 	return &corev1.MachineMemorySection{
 		HasValue:            true,
-		Headline:            usedTxt,
 		Caption:             text.Msg(text.KeyMachineStatusGbUsed),
 		Pressure:            pressure,
 		PressureText:        pressureText,
@@ -324,7 +319,6 @@ func BuildMemorySection(status *v1.MachineStatus, chart *corev1.MachineChartView
 func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 	if status == nil || status.Disk == nil {
 		return &corev1.MachineDiskSection{
-			Headline:  text.Plain("—"),
 			Caption:   text.Msg(text.KeyMachineStatusGbAvailable),
 			ValueText: "—",
 		}
@@ -388,7 +382,6 @@ func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 
 	return &corev1.MachineDiskSection{
 		HasValue:           true,
-		Headline:           availTxt,
 		Caption:            text.Msg(text.KeyMachineStatusGbAvailable),
 		State:              state,
 		StateBadge:         badge,
