@@ -139,6 +139,32 @@ public  final class SessionTerminalPopupDockView extends
     canGoTerminal_ = false;
   }
 
+  public static final int IS_TRUST_FOLDER_FIELD_NUMBER = 4;
+  private boolean isTrustFolder_;
+  /**
+   * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+   * @return The isTrustFolder.
+   */
+  @java.lang.Override
+  public boolean getIsTrustFolder() {
+    return isTrustFolder_;
+  }
+  /**
+   * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+   * @param value The isTrustFolder to set.
+   */
+  private void setIsTrustFolder(boolean value) {
+    
+    isTrustFolder_ = value;
+  }
+  /**
+   * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+   */
+  private void clearIsTrustFolder() {
+
+    isTrustFolder_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionTerminalPopupDockView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -358,6 +384,34 @@ public  final class SessionTerminalPopupDockView extends
       return this;
     }
 
+    /**
+     * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+     * @return The isTrustFolder.
+     */
+    @java.lang.Override
+    public boolean getIsTrustFolder() {
+      return instance.getIsTrustFolder();
+    }
+    /**
+     * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+     * @param value The isTrustFolder to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsTrustFolder(boolean value) {
+      copyOnWrite();
+      instance.setIsTrustFolder(value);
+      return this;
+    }
+    /**
+     * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsTrustFolder() {
+      copyOnWrite();
+      instance.clearIsTrustFolder();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTerminalPopupDockView)
   }
   @java.lang.Override
@@ -378,10 +432,11 @@ public  final class SessionTerminalPopupDockView extends
             "popupTitle_",
             "hint_",
             "canGoTerminal_",
+            "isTrustFolder_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
-              "\u1009\u0001\u0003\u0007";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
+              "\u1009\u0001\u0003\u0007\u0004\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

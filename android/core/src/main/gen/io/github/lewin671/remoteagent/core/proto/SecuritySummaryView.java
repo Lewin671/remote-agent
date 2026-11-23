@@ -315,6 +315,84 @@ public  final class SecuritySummaryView extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int HAS_HANDOFF_OFFER_FIELD_NUMBER = 9;
+  private boolean hasHandoffOffer_;
+  /**
+   * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+   * @return The hasHandoffOffer.
+   */
+  @java.lang.Override
+  public boolean getHasHandoffOffer() {
+    return hasHandoffOffer_;
+  }
+  /**
+   * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+   * @param value The hasHandoffOffer to set.
+   */
+  private void setHasHandoffOffer(boolean value) {
+    
+    hasHandoffOffer_ = value;
+  }
+  /**
+   * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+   */
+  private void clearHasHandoffOffer() {
+
+    hasHandoffOffer_ = false;
+  }
+
+  public static final int RECOVERY_STATUS_STALE_FIELD_NUMBER = 10;
+  private boolean recoveryStatusStale_;
+  /**
+   * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+   * @return The recoveryStatusStale.
+   */
+  @java.lang.Override
+  public boolean getRecoveryStatusStale() {
+    return recoveryStatusStale_;
+  }
+  /**
+   * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+   * @param value The recoveryStatusStale to set.
+   */
+  private void setRecoveryStatusStale(boolean value) {
+    
+    recoveryStatusStale_ = value;
+  }
+  /**
+   * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+   */
+  private void clearRecoveryStatusStale() {
+
+    recoveryStatusStale_ = false;
+  }
+
+  public static final int LEASE_END_MS_FIELD_NUMBER = 11;
+  private long leaseEndMs_;
+  /**
+   * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+   * @return The leaseEndMs.
+   */
+  @java.lang.Override
+  public long getLeaseEndMs() {
+    return leaseEndMs_;
+  }
+  /**
+   * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+   * @param value The leaseEndMs to set.
+   */
+  private void setLeaseEndMs(long value) {
+    
+    leaseEndMs_ = value;
+  }
+  /**
+   * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+   */
+  private void clearLeaseEndMs() {
+
+    leaseEndMs_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecuritySummaryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -716,6 +794,90 @@ public  final class SecuritySummaryView extends
       return this;
     }
 
+    /**
+     * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+     * @return The hasHandoffOffer.
+     */
+    @java.lang.Override
+    public boolean getHasHandoffOffer() {
+      return instance.getHasHandoffOffer();
+    }
+    /**
+     * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+     * @param value The hasHandoffOffer to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasHandoffOffer(boolean value) {
+      copyOnWrite();
+      instance.setHasHandoffOffer(value);
+      return this;
+    }
+    /**
+     * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasHandoffOffer() {
+      copyOnWrite();
+      instance.clearHasHandoffOffer();
+      return this;
+    }
+
+    /**
+     * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+     * @return The recoveryStatusStale.
+     */
+    @java.lang.Override
+    public boolean getRecoveryStatusStale() {
+      return instance.getRecoveryStatusStale();
+    }
+    /**
+     * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+     * @param value The recoveryStatusStale to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryStatusStale(boolean value) {
+      copyOnWrite();
+      instance.setRecoveryStatusStale(value);
+      return this;
+    }
+    /**
+     * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRecoveryStatusStale() {
+      copyOnWrite();
+      instance.clearRecoveryStatusStale();
+      return this;
+    }
+
+    /**
+     * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+     * @return The leaseEndMs.
+     */
+    @java.lang.Override
+    public long getLeaseEndMs() {
+      return instance.getLeaseEndMs();
+    }
+    /**
+     * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+     * @param value The leaseEndMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLeaseEndMs(long value) {
+      copyOnWrite();
+      instance.setLeaseEndMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLeaseEndMs() {
+      copyOnWrite();
+      instance.clearLeaseEndMs();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecuritySummaryView)
   }
   @java.lang.Override
@@ -741,10 +903,14 @@ public  final class SecuritySummaryView extends
             "recoveryReadyMs_",
             "summaryText_",
             "recoveryNotice_",
+            "hasHandoffOffer_",
+            "recoveryStatusStale_",
+            "leaseEndMs_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0208" +
-              "\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001";
+              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001" +
+              "\t\u0007\n\u0007\u000b\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

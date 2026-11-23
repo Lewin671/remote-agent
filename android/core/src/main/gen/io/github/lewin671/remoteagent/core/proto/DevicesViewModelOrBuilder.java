@@ -149,4 +149,28 @@ public interface DevicesViewModelOrBuilder extends
    * @return The clientCountText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getClientCountText();
+
+  /**
+   * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+   * @return The clockSkewed.
+   */
+  boolean getClockSkewed();
+
+  /**
+   * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+   * @return The recoveryPending.
+   */
+  boolean getRecoveryPending();
+
+  /**
+   * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+   * @return The leaseEndMs.
+   */
+  long getLeaseEndMs();
+
+  /**
+   * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+   * @return The loadFailed.
+   */
+  boolean getLoadFailed();
 }

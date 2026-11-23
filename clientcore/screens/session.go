@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
@@ -285,10 +286,17 @@ func buildSessionHeader(
 	}
 
 	if !in.Found {
-		out.Missing = in.SessionsListed && !in.LookingUp
-		if out.Missing {
+		out.LookupFailed = in.LookupFailed && !in.LookingUp
+		if out.LookupFailed {
+			out.LookupErrorText = in.LookupErrorText
+		}
+		out.Missing = (in.SessionsListed && !in.LookingUp) || (out.LookupFailed && in.LookupErrorText == nil)
+		switch {
+		case out.LookupFailed && in.LookupErrorText != nil:
+			out.StatusText = in.LookupErrorText
+		case out.Missing:
 			out.MissingText = text.Msg(text.KeyCommonAndroidCannotFindThisSession)
-		} else {
+		default:
 			out.StatusText = text.Msg(text.KeyCommonLoading)
 		}
 		out.Title = text.Msg(text.KeySessionTitle)
@@ -335,12 +343,16 @@ func buildSessionHeader(
 	if cwd != "" {
 		out.Cwd = cwd
 		out.ProjectKey = projKey
-		out.ProjectName = text.Plain(lists.ShortPath(cwd))
+		out.ShortPath = lists.ShortPath(cwd)
+		out.ProjectName = text.Plain(out.ShortPath)
 		if out.ProjectName == nil {
 			out.ProjectName = text.Plain(cwd)
 		}
 	} else {
 		out.ProjectName = text.Msg(text.KeyProjectsUnknown)
+	}
+	if st != nil {
+		out.MultipleMachines = len(st.World.Machines) > 1
 	}
 
 	reachabilityUnknown := (in.ReachabilityUnknown || st.ReachabilityUnknown || (lm != nil && lm.ReachabilityUnknown)) && !in.Removed && !in.AccountControlLost
@@ -463,6 +475,7 @@ func buildSessionHeader(
 		out.ForkedFromId = meta.ForkedFrom
 		out.ScheduledTaskId = meta.ScheduledTaskId
 		out.IsScheduled = meta.ScheduledTaskId != ""
+		out.TaskOwned = meta.ScheduledTaskId != ""
 	}
 	if out.ForkedFromId != "" {
 		for _, ev := range in.Events {
@@ -494,20 +507,24 @@ func buildSessionHeader(
 	}
 	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && out.ComputerOnline && !unlinked && !out.ProtocolMismatch && !in.AccountControlLost && !in.Removed
 	out.Capabilities = &corev1.SessionCapabilitiesView{
-		CanSend:             onlineReady && !out.Exited,
-		SupportsImages:      mc != nil && mc.ImageUpload,
-		SupportsFiles:       mc != nil && mc.FileUpload,
-		SupportsSendModes:   caps.SteersDuringTurn,
-		SupportsSharedFiles: mc != nil && mc.SharedFiles,
-		SupportsAlwaysAllow: mc != nil && mc.ApprovalAlways,
-		SupportsSteer:       caps.SteersDuringTurn,
-		SupportsCompact:     caps.Agent != v1.Agent_AGENT_ANTIGRAVITY,
-		SupportsFork:        caps.Forks,
-		SupportsModelSwitch: caps.SwitchesModelInSession,
-		SupportsModeSwitch:  true,
-		SupportsSchedule:    mc != nil && mc.ScheduledTasks,
-		TerminalAvailable:   meta != nil && meta.Status != v1.SessionStatus_SESSION_STATUS_EXITED,
-		MaxImages:           maxImagesCount(mc),
+		CanSend:                  onlineReady && !out.Exited,
+		SupportsImages:           mc != nil && mc.ImageUpload,
+		SupportsFiles:            mc != nil && mc.FileUpload,
+		SupportsSendModes:        caps.SteersDuringTurn,
+		SupportsSharedFiles:      mc != nil && mc.SharedFiles,
+		SupportsAlwaysAllow:      mc != nil && mc.ApprovalAlways,
+		SupportsSteer:            caps.SteersDuringTurn,
+		SupportsCompact:          caps.Agent != v1.Agent_AGENT_ANTIGRAVITY,
+		SupportsFork:             caps.Forks,
+		SupportsModelSwitch:      caps.SwitchesModelInSession,
+		SupportsModeSwitch:       true,
+		SupportsSchedule:         mc != nil && mc.ScheduledTasks,
+		TerminalAvailable:        meta != nil && meta.Status != v1.SessionStatus_SESSION_STATUS_EXITED,
+		MaxImages:                maxImagesCount(mc),
+		MaxFiles:                 maxFilesCount(mc),
+		MaxFileBytes:             maxFileBytesLimit(mc),
+		CapabilitiesLoaded:       lm != nil && lm.Meta != nil,
+		ImageUploadBlockedReason: imageUploadBlockedReason(lm, out.ComputerOnline, onlineReady),
 	}
 	if st != nil && st.DirectReportFn != nil && machineID != "" {
 		if _, report, ok := st.DirectReportFn(machineID); ok {
@@ -518,11 +535,53 @@ func buildSessionHeader(
 	return out
 }
 
+const (
+	defaultMaxFilesPerMessage = 6
+	defaultMaxFileUploadBytes = 100 * 1024 * 1024
+)
+
 func maxImagesCount(mc *v1.MachineCapabilities) int32 {
 	if mc == nil || mc.MaxImagesPerMessage <= 0 {
 		return 6
 	}
 	return mc.MaxImagesPerMessage
+}
+
+func maxFilesCount(mc *v1.MachineCapabilities) int32 {
+	if mc == nil || mc.MaxFilesPerMessage <= 0 {
+		return defaultMaxFilesPerMessage
+	}
+	if mc.MaxFilesPerMessage > defaultMaxFilesPerMessage {
+		return defaultMaxFilesPerMessage
+	}
+	return mc.MaxFilesPerMessage
+}
+
+func maxFileBytesLimit(mc *v1.MachineCapabilities) int64 {
+	if mc == nil || mc.MaxFileUploadBytes <= 0 {
+		return defaultMaxFileUploadBytes
+	}
+	if mc.MaxFileUploadBytes > defaultMaxFileUploadBytes {
+		return defaultMaxFileUploadBytes
+	}
+	return mc.MaxFileUploadBytes
+}
+
+func imageUploadBlockedReason(lm *lists.Machine, computerOnline, onlineReady bool) *corev1.Text {
+	name := lists.MachineName(lm, "")
+	if lm == nil || !computerOnline {
+		return text.Msg(text.KeyAttachmentComputerOffline, text.Str("name", name))
+	}
+	if !onlineReady {
+		return text.Msg(text.KeyAttachmentDisconnected)
+	}
+	if lm.Meta == nil {
+		return text.Msg(text.KeyAttachmentComputerUnread, text.Str("name", name))
+	}
+	if lm.Meta.Capabilities == nil || !lm.Meta.Capabilities.ImageUpload {
+		return text.Msg(text.KeyAttachmentPathSpaces, text.Str("name", name))
+	}
+	return nil
 }
 
 func knownSessionModeText(mode v1.ApprovalMode, raw string) *corev1.Text {
@@ -670,6 +729,7 @@ func buildSessionActions(
 			out.ForkBlockedReason = text.Msg(text.KeySessionForkAfterPending)
 		}
 	}
+	out.ForkAction = buildSessionForkAction(caps.Forks, header.ComputerOnline, header.ComputerUnlinked, out.CanFork, out.ForkBlockedReason, out.Fork)
 
 	out.CanCompact = header.Capabilities.SupportsCompact && onlineReady && !exited && !runningTurn
 	out.CanSwitchModel = caps.SwitchesModelInSession && onlineReady && !exited && !runningTurn
@@ -731,6 +791,10 @@ func buildSessionActions(
 		modeLocked = ls.Info.ModeLocked
 		fullAccessUnavailable = ls.Info.FullAccessUnavailable
 	}
+	out.ModeLocked = modeLocked
+	if caps.Agent == v1.Agent_AGENT_CLAUDE {
+		out.ModePermissionNotice = text.Msg(text.KeyModesPermissionNotice)
+	}
 	for _, m := range []v1.ApprovalMode{
 		v1.ApprovalMode_APPROVAL_MODE_ASK,
 		v1.ApprovalMode_APPROVAL_MODE_AUTO,
@@ -751,6 +815,48 @@ func buildSessionActions(
 	}
 
 	out.UsageEntry = buildSessionUsageEntry(st, lm, caps, header.Model)
+	return out
+}
+
+func buildSessionForkAction(
+	supportsFork, computerOnline, computerUnlinked, canFork bool,
+	blockedReason *corev1.Text,
+	cmd *corev1.SessionCommandState,
+) *corev1.SessionForkActionView {
+	visible := supportsFork && computerOnline && !computerUnlinked
+	out := &corev1.SessionForkActionView{
+		Visible: visible,
+	}
+	if !supportsFork {
+		return out
+	}
+	switch {
+	case cmd != nil && cmd.Busy:
+		out.Busy = true
+		out.Label = text.Msg(text.KeySessionForking)
+	case !canFork && blockedReason != nil:
+		out.Label = text.Msg(text.KeySessionFork)
+		out.Note = blockedReason
+	case cmd != nil && cmd.Expired:
+		out.Enabled = true
+		out.Abandons = true
+		out.NoteError = true
+		out.Label = text.Msg(text.KeySessionAbandonFork)
+		out.Note = text.Msg(text.KeySessionForkExpired)
+	case cmd != nil && (cmd.Frozen || cmd.Status == corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN):
+		out.Enabled = canFork
+		out.CanAbandon = cmd.CanAbandon
+		out.NoteError = true
+		out.Label = text.Msg(text.KeySessionFork)
+		out.Note = text.Msg(text.KeySessionForkUnknown)
+	default:
+		out.Enabled = canFork
+		out.Label = text.Msg(text.KeySessionFork)
+		if cmd != nil && cmd.ErrorText != nil {
+			out.NoteError = true
+			out.Note = text.Msg(text.KeySessionForkFailed, text.ArgText("reason", cmd.ErrorText))
+		}
+	}
 	return out
 }
 
@@ -982,9 +1088,12 @@ func buildSessionDock(
 		if deadlineMs > 0 && st.Cal.NowMs > 0 && deadlineMs > st.Cal.NowMs {
 			remSec := (deadlineMs - st.Cal.NowMs + 999) / 1000
 			if remSec >= 60 {
-				out.TimeLeft = text.Msg(text.KeyApprovalAndroidMinutesMeta, text.Int("count", lists.MinutesLeft(deadlineMs, st.Cal.NowMs)))
+				mins := lists.MinutesLeft(deadlineMs, st.Cal.NowMs)
+				out.TimeLeft = text.Msg(text.KeyApprovalAndroidMinutesMeta, text.Int("count", mins))
+				out.TimeLeftPlain = text.Msg(text.KeyHomeIosApprovalRemaining, text.Int("count", mins))
 			} else {
 				out.TimeLeft = text.Msg(text.KeyApprovalSecondsLeft, text.Int("count", remSec))
+				out.TimeLeftPlain = out.TimeLeft
 			}
 		}
 
@@ -1002,6 +1111,7 @@ func buildSessionDock(
 			truncated = lists.ApprovalTruncated(a)
 			skeleton = lists.IsApprovalSkeleton(a)
 		}
+		out.IsSkeleton = skeleton
 		var canAlways bool
 		var alwaysKind corev1.AlwaysAllowKind
 		var alwaysTarget string
@@ -1050,6 +1160,7 @@ func buildSessionDock(
 		out.HasItem = true
 		out.Kind = corev1.SessionDockKind_SESSION_DOCK_KIND_QUESTION
 		out.ItemId = pq.QuestionId
+		out.IsSkeleton = projection.IsQuestionSkeleton(q)
 		out.MoreCount = int32(extra)
 		if seq, ok := findQuestionSeq(in, pq.QuestionId); ok {
 			out.ObservedSeq = seq
@@ -1098,6 +1209,7 @@ func buildSessionDock(
 		out.HasItem = true
 		out.Kind = corev1.SessionDockKind_SESSION_DOCK_KIND_PLAN
 		out.ItemId = "plan"
+		out.IsSkeleton = projection.IsSkeletonText(p.Plan.Text)
 		if in.Checkpoint != nil {
 			out.ObservedSeq = in.Checkpoint.PlanEventSeq
 		}
@@ -1152,7 +1264,8 @@ func buildSessionDock(
 			popupTitle = text.Msg(text.KeyListStatePopup)
 		}
 		var hint *corev1.Text
-		if caps.Agent == v1.Agent_AGENT_CLAUDE && detail == "trust folder" {
+		isTrustFolder := caps.Agent == v1.Agent_AGENT_CLAUDE && detail == "trust folder"
+		if isTrustFolder {
 			hint = text.Msg(text.KeyDockTrustFolder)
 		}
 		out.Title = text.Msg(text.KeyListStatePopup)
@@ -1164,6 +1277,7 @@ func buildSessionDock(
 				PopupTitle:    popupTitle,
 				Hint:          hint,
 				CanGoTerminal: termAvail,
+				IsTrustFolder: isTrustFolder,
 			},
 		}
 		return out
@@ -1340,9 +1454,12 @@ func buildSessionComposer(
 	out.Enabled = onlineReady
 	out.HasActiveTurn = runningTurn
 	out.SupportsQueueMode = caps.SteersDuringTurn
+	out.DefaultSendMode = lists.SendModeFor(caps.Agent, v1.SendMode_SEND_MODE_STEER, runningTurn)
 	out.CanAttachImages = onlineReady && header.Capabilities.SupportsImages
 	out.CanAttachFiles = onlineReady && header.Capabilities.SupportsFiles
 	out.InterruptVisible = runningTurn && header.ComputerOnline && !header.ComputerUnlinked && (in.Conn == lists.ConnConnected || st.DisplayGrace)
+	out.SlashWarningTitle = text.Msg(text.KeyComposerSlashTitle)
+	out.SlashWarningText = text.Msg(text.KeyComposerSlashNote)
 
 	switch {
 	case header.Exited:
@@ -1369,6 +1486,7 @@ func buildSessionComposer(
 	case runningTurn:
 		out.Placeholder = text.Msg(text.KeyComposerRunningPlaceholder)
 	default:
+		out.IsDefaultPlaceholder = true
 		out.Placeholder = text.Msg(text.KeyComposerMessage)
 	}
 
@@ -1618,6 +1736,7 @@ func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *c
 		CanRestore:             idle && hasLocalCopy,
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           true,
+		IsSkeleton:             projection.IsSkeletonText(pi.RequestId) || projection.IsSkeletonText(itemText),
 	}, true
 }
 
@@ -1748,6 +1867,7 @@ func buildTerminalInputTrayItem(p trayBuildParams, ip *corev1.InputProjection, o
 		CanRestore:             canRestore,
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           false,
+		IsSkeleton:             projection.IsSkeletonText(ip.RequestId) || projection.IsSkeletonText(itemText),
 	}, true
 }
 
@@ -1770,6 +1890,7 @@ func buildLocalOutgoingTrayItem(p trayBuildParams, og *SessionOutgoingRecord) (*
 		Mode:                   mode,
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           false,
+		IsSkeleton:             projection.IsSkeletonText(og.RequestID) || projection.IsSkeletonText(og.Text),
 	}
 
 	switch og.State {
@@ -1839,6 +1960,7 @@ func buildStartPromptTrayItem(p trayBuildParams) *corev1.SessionTrayItemView {
 		Mode:                   v1.SendMode_SEND_MODE_STEER,
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           false,
+		IsSkeleton:             projection.IsSkeletonText(reqID) || projection.IsSkeletonText(p.ui.PendingStartPrompt.Text),
 	}
 }
 

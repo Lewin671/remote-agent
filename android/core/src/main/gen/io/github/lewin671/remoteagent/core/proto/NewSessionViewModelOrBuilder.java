@@ -251,4 +251,74 @@ public interface NewSessionViewModelOrBuilder extends
    * @return The autoIssue.
    */
   io.github.lewin671.remoteagent.core.proto.AutoIssueKind getAutoIssue();
+
+  /**
+   * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+   * @return The prefsBlocked.
+   */
+  boolean getPrefsBlocked();
+
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   * @return Whether the prefsBlockedReason field is set.
+   */
+  boolean hasPrefsBlockedReason();
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   * @return The prefsBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getPrefsBlockedReason();
+
+  /**
+   * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+   * @return The capabilitiesLoaded.
+   */
+  boolean getCapabilitiesLoaded();
+
+  /**
+   * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+   * @return The supportsImages.
+   */
+  boolean getSupportsImages();
+
+  /**
+   * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+   * @return The supportsFiles.
+   */
+  boolean getSupportsFiles();
+
+  /**
+   * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+   * @return The maxImages.
+   */
+  int getMaxImages();
+
+  /**
+   * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+   * @return The maxFiles.
+   */
+  int getMaxFiles();
+
+  /**
+   * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+   * @return The maxFileBytes.
+   */
+  long getMaxFileBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   * @return Whether the imageUploadBlockedReason field is set.
+   */
+  boolean hasImageUploadBlockedReason();
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   * @return The imageUploadBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getImageUploadBlockedReason();
+
+  /**
+   * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+   * @return The diskFull.
+   */
+  boolean getDiskFull();
 }

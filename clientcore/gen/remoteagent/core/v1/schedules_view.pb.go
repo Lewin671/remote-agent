@@ -1144,6 +1144,8 @@ type ScheduleAttentionView struct {
 	PrimaryActionKind           ScheduleRecoveryActionKind
 	PrimaryActionEnabled        bool
 	PrimaryActionDisabledReason *Text
+	ShowEnableCliAction         bool
+	DisabledAgent               v1.Agent
 }
 
 func (m *ScheduleAttentionView) GetShow() bool {
@@ -1188,6 +1190,18 @@ func (m *ScheduleAttentionView) GetPrimaryActionDisabledReason() *Text {
 	}
 	return nil
 }
+func (m *ScheduleAttentionView) GetShowEnableCliAction() bool {
+	if m != nil {
+		return m.ShowEnableCliAction
+	}
+	return false
+}
+func (m *ScheduleAttentionView) GetDisabledAgent() v1.Agent {
+	if m != nil {
+		return m.DisabledAgent
+	}
+	return 0
+}
 
 var LitewireDesc_ScheduleAttentionView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1198,6 +1212,8 @@ var LitewireDesc_ScheduleAttentionView = litewire.MessageDesc{
 		{Num: 5, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionKind), Kind: litewire.KindInt32},
 		{Num: 6, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionEnabled), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(ScheduleAttentionView{}.PrimaryActionDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(ScheduleAttentionView{}.ShowEnableCliAction), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ScheduleAttentionView{}.DisabledAgent), Kind: litewire.KindInt32},
 	},
 }
 

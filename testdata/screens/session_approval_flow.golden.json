@@ -341,9 +341,13 @@
                 "supportsModeSwitch": true,
                 "supportsSchedule": true,
                 "terminalAvailable": true,
-                "maxImages": 6
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true
               },
-              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/Code/app"
             },
             "actions": {
               "canInterrupt": true,
@@ -478,7 +482,19 @@
                   "switchAfterTurn": true
                 }
               ],
-              "usageEntry": {}
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.fork_after_turn"
+                }
+              },
+              "modePermissionNotice": {
+                "key": "modes.permission_notice"
+              }
             },
             "dock": {
               "hasItem": true,
@@ -519,7 +535,14 @@
               "canAttachImages": true,
               "canAttachFiles": true,
               "interruptVisible": true,
-              "pendingTray": {}
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
             },
             "timeline": {
               "items": [
@@ -625,9 +648,13 @@
                 "supportsModeSwitch": true,
                 "supportsSchedule": true,
                 "terminalAvailable": true,
-                "maxImages": 6
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true
               },
-              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/Code/app"
             },
             "actions": {
               "canInterrupt": true,
@@ -762,7 +789,19 @@
                   "switchAfterTurn": true
                 }
               ],
-              "usageEntry": {}
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.fork_after_turn"
+                }
+              },
+              "modePermissionNotice": {
+                "key": "modes.permission_notice"
+              }
             },
             "dock": {
               "hasItem": true,
@@ -805,7 +844,14 @@
               "canAttachImages": true,
               "canAttachFiles": true,
               "interruptVisible": true,
-              "pendingTray": {}
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
             },
             "timeline": {
               "items": [
@@ -937,9 +983,13 @@
                 "supportsModeSwitch": true,
                 "supportsSchedule": true,
                 "terminalAvailable": true,
-                "maxImages": 6
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true
               },
-              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/Code/app"
             },
             "actions": {
               "interrupt": {
@@ -1066,7 +1116,17 @@
                   "available": true
                 }
               ],
-              "usageEntry": {}
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "enabled": true,
+                "label": {
+                  "key": "session.fork"
+                }
+              },
+              "modePermissionNotice": {
+                "key": "modes.permission_notice"
+              }
             },
             "dock": {},
             "composer": {
@@ -1077,7 +1137,15 @@
               "supportsQueueMode": true,
               "canAttachImages": true,
               "canAttachFiles": true,
-              "pendingTray": {}
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
             },
             "timeline": {
               "items": [

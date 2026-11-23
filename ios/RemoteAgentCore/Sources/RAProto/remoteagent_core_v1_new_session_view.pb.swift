@@ -783,6 +783,64 @@ public struct PBCoreNewSessionViewModel: @unchecked Sendable {
     set {_uniqueStorage()._autoIssue = newValue}
   }
 
+  public var prefsBlocked: Bool {
+    get {return _storage._prefsBlocked}
+    set {_uniqueStorage()._prefsBlocked = newValue}
+  }
+
+  public var prefsBlockedReason: PBCoreText {
+    get {return _storage._prefsBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._prefsBlockedReason = newValue}
+  }
+  /// Returns true if `prefsBlockedReason` has been explicitly set.
+  public var hasPrefsBlockedReason: Bool {return _storage._prefsBlockedReason != nil}
+  /// Clears the value of `prefsBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearPrefsBlockedReason() {_uniqueStorage()._prefsBlockedReason = nil}
+
+  public var capabilitiesLoaded: Bool {
+    get {return _storage._capabilitiesLoaded}
+    set {_uniqueStorage()._capabilitiesLoaded = newValue}
+  }
+
+  public var supportsImages: Bool {
+    get {return _storage._supportsImages}
+    set {_uniqueStorage()._supportsImages = newValue}
+  }
+
+  public var supportsFiles: Bool {
+    get {return _storage._supportsFiles}
+    set {_uniqueStorage()._supportsFiles = newValue}
+  }
+
+  public var maxImages: Int32 {
+    get {return _storage._maxImages}
+    set {_uniqueStorage()._maxImages = newValue}
+  }
+
+  public var maxFiles: Int32 {
+    get {return _storage._maxFiles}
+    set {_uniqueStorage()._maxFiles = newValue}
+  }
+
+  public var maxFileBytes: Int64 {
+    get {return _storage._maxFileBytes}
+    set {_uniqueStorage()._maxFileBytes = newValue}
+  }
+
+  public var imageUploadBlockedReason: PBCoreText {
+    get {return _storage._imageUploadBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._imageUploadBlockedReason = newValue}
+  }
+  /// Returns true if `imageUploadBlockedReason` has been explicitly set.
+  public var hasImageUploadBlockedReason: Bool {return _storage._imageUploadBlockedReason != nil}
+  /// Clears the value of `imageUploadBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearImageUploadBlockedReason() {_uniqueStorage()._imageUploadBlockedReason = nil}
+
+  public var diskFull: Bool {
+    get {return _storage._diskFull}
+    set {_uniqueStorage()._diskFull = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1473,7 +1531,7 @@ extension PBCoreNewSessionModelPanelView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NewSessionViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_selectable\0\u{3}project_key\0\u{3}project_name\0\u{3}short_path\0\u{3}has_projects\0\u{1}prompt\0\u{1}drafting\0\u{1}busy\0\u{1}settled\0\u{1}frozen\0\u{1}config\0\u{3}machine_name\0\u{3}machine_selectable\0\u{3}agent_name\0\u{3}available_agents\0\u{3}model_label\0\u{3}effort_label\0\u{3}default_mode\0\u{3}location_text\0\u{1}notices\0\u{3}can_start\0\u{3}disabled_reason\0\u{3}model_panel\0\u{3}project_removed\0\u{3}auto_issue\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_selectable\0\u{3}project_key\0\u{3}project_name\0\u{3}short_path\0\u{3}has_projects\0\u{1}prompt\0\u{1}drafting\0\u{1}busy\0\u{1}settled\0\u{1}frozen\0\u{1}config\0\u{3}machine_name\0\u{3}machine_selectable\0\u{3}agent_name\0\u{3}available_agents\0\u{3}model_label\0\u{3}effort_label\0\u{3}default_mode\0\u{3}location_text\0\u{1}notices\0\u{3}can_start\0\u{3}disabled_reason\0\u{3}model_panel\0\u{3}project_removed\0\u{3}auto_issue\0\u{3}prefs_blocked\0\u{3}prefs_blocked_reason\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}image_upload_blocked_reason\0\u{3}disk_full\0")
 
   fileprivate class _StorageClass {
     var _projectSelectable: Bool = false
@@ -1501,6 +1559,16 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _modelPanel: PBCoreNewSessionModelPanelView? = nil
     var _projectRemoved: Bool = false
     var _autoIssue: PBCoreAutoIssueKind = .unspecified
+    var _prefsBlocked: Bool = false
+    var _prefsBlockedReason: PBCoreText? = nil
+    var _capabilitiesLoaded: Bool = false
+    var _supportsImages: Bool = false
+    var _supportsFiles: Bool = false
+    var _maxImages: Int32 = 0
+    var _maxFiles: Int32 = 0
+    var _maxFileBytes: Int64 = 0
+    var _imageUploadBlockedReason: PBCoreText? = nil
+    var _diskFull: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1536,6 +1604,16 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _modelPanel = source._modelPanel
       _projectRemoved = source._projectRemoved
       _autoIssue = source._autoIssue
+      _prefsBlocked = source._prefsBlocked
+      _prefsBlockedReason = source._prefsBlockedReason
+      _capabilitiesLoaded = source._capabilitiesLoaded
+      _supportsImages = source._supportsImages
+      _supportsFiles = source._supportsFiles
+      _maxImages = source._maxImages
+      _maxFiles = source._maxFiles
+      _maxFileBytes = source._maxFileBytes
+      _imageUploadBlockedReason = source._imageUploadBlockedReason
+      _diskFull = source._diskFull
     }
   }
 
@@ -1579,6 +1657,16 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 23: try { try decoder.decodeSingularMessageField(value: &_storage._modelPanel) }()
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._projectRemoved) }()
         case 25: try { try decoder.decodeSingularEnumField(value: &_storage._autoIssue) }()
+        case 26: try { try decoder.decodeSingularBoolField(value: &_storage._prefsBlocked) }()
+        case 27: try { try decoder.decodeSingularMessageField(value: &_storage._prefsBlockedReason) }()
+        case 28: try { try decoder.decodeSingularBoolField(value: &_storage._capabilitiesLoaded) }()
+        case 29: try { try decoder.decodeSingularBoolField(value: &_storage._supportsImages) }()
+        case 30: try { try decoder.decodeSingularBoolField(value: &_storage._supportsFiles) }()
+        case 31: try { try decoder.decodeSingularInt32Field(value: &_storage._maxImages) }()
+        case 32: try { try decoder.decodeSingularInt32Field(value: &_storage._maxFiles) }()
+        case 33: try { try decoder.decodeSingularInt64Field(value: &_storage._maxFileBytes) }()
+        case 34: try { try decoder.decodeSingularMessageField(value: &_storage._imageUploadBlockedReason) }()
+        case 35: try { try decoder.decodeSingularBoolField(value: &_storage._diskFull) }()
         default: break
         }
       }
@@ -1666,6 +1754,36 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._autoIssue != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._autoIssue, fieldNumber: 25)
       }
+      if _storage._prefsBlocked != false {
+        try visitor.visitSingularBoolField(value: _storage._prefsBlocked, fieldNumber: 26)
+      }
+      try { if let v = _storage._prefsBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+      } }()
+      if _storage._capabilitiesLoaded != false {
+        try visitor.visitSingularBoolField(value: _storage._capabilitiesLoaded, fieldNumber: 28)
+      }
+      if _storage._supportsImages != false {
+        try visitor.visitSingularBoolField(value: _storage._supportsImages, fieldNumber: 29)
+      }
+      if _storage._supportsFiles != false {
+        try visitor.visitSingularBoolField(value: _storage._supportsFiles, fieldNumber: 30)
+      }
+      if _storage._maxImages != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._maxImages, fieldNumber: 31)
+      }
+      if _storage._maxFiles != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._maxFiles, fieldNumber: 32)
+      }
+      if _storage._maxFileBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._maxFileBytes, fieldNumber: 33)
+      }
+      try { if let v = _storage._imageUploadBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 34)
+      } }()
+      if _storage._diskFull != false {
+        try visitor.visitSingularBoolField(value: _storage._diskFull, fieldNumber: 35)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1700,6 +1818,16 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._modelPanel != rhs_storage._modelPanel {return false}
         if _storage._projectRemoved != rhs_storage._projectRemoved {return false}
         if _storage._autoIssue != rhs_storage._autoIssue {return false}
+        if _storage._prefsBlocked != rhs_storage._prefsBlocked {return false}
+        if _storage._prefsBlockedReason != rhs_storage._prefsBlockedReason {return false}
+        if _storage._capabilitiesLoaded != rhs_storage._capabilitiesLoaded {return false}
+        if _storage._supportsImages != rhs_storage._supportsImages {return false}
+        if _storage._supportsFiles != rhs_storage._supportsFiles {return false}
+        if _storage._maxImages != rhs_storage._maxImages {return false}
+        if _storage._maxFiles != rhs_storage._maxFiles {return false}
+        if _storage._maxFileBytes != rhs_storage._maxFileBytes {return false}
+        if _storage._imageUploadBlockedReason != rhs_storage._imageUploadBlockedReason {return false}
+        if _storage._diskFull != rhs_storage._diskFull {return false}
         return true
       }
       if !storagesAreEqual {return false}

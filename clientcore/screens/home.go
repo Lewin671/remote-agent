@@ -219,12 +219,14 @@ func buildHomeHeadlineView(h *lists.HomeHeadlineInfo, liveLoaded bool, errText *
 		}
 	case lists.HeadlineConnecting:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_ERROR
+		v.IsConnecting = true
 		v.Title = text.Msg(text.KeyConnectionConnecting)
 		if h.Kept {
 			v.Sub = text.Msg(text.KeyConnectionPreviousBelow)
 		}
 	case lists.HeadlineReconnecting:
 		v.Kind = corev1.HeadlineKind_HEADLINE_KIND_ERROR
+		v.IsConnecting = true
 		v.Title = text.Msg(text.KeyConnectionReconnecting)
 		if h.Kept || liveLoaded {
 			v.Sub = text.Msg(text.KeyConnectionPreviousBelow)
@@ -280,6 +282,7 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 	switch e.Kind {
 	case lists.HomeEmptyLoading:
 		v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NONE
+		v.Loading = true
 		v.Message = text.Msg(text.KeyCommonLoading)
 	case lists.HomeEmptyNoMachines:
 		if !st.World.IsManager && hasReason(st.ManagerNameText, st.World.ManagerName) {
@@ -369,6 +372,18 @@ func buildAttentionCardView(item *lists.SessionItem, st *State) *corev1.Attentio
 			}
 		}
 	}
+	locked := false
+	if st != nil {
+		dw := displayWorld(st)
+		var mac *lists.Machine
+		for _, m := range dw.Machines {
+			if m != nil && m.ID == item.MachineID {
+				mac = m
+				break
+			}
+		}
+		locked = dw.AccountControlLost || dw.AccountClockSkewed || lists.WorldUnlinked(&dw) || !lists.MachineReachable(mac)
+	}
 	return &corev1.AttentionCardView{
 		SessionId:   item.ID,
 		MachineId:   item.MachineID,
@@ -385,6 +400,7 @@ func buildAttentionCardView(item *lists.SessionItem, st *State) *corev1.Attentio
 		AlwaysKind:  alwaysKind,
 		AlwaysArg:   alwaysArg,
 		AlwaysLabel: alwaysLabel,
+		Locked:      locked,
 	}
 }
 

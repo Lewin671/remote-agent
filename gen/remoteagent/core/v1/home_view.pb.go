@@ -596,6 +596,7 @@ type HomeHeadlineView struct {
 	DetailsAction  bool                   `protobuf:"varint,7,opt,name=details_action,json=detailsAction,proto3" json:"details_action,omitempty"`
 	Unlinked       bool                   `protobuf:"varint,8,opt,name=unlinked,proto3" json:"unlinked,omitempty"`
 	HighlightArg   string                 `protobuf:"bytes,9,opt,name=highlight_arg,json=highlightArg,proto3" json:"highlight_arg,omitempty"`
+	IsConnecting   bool                   `protobuf:"varint,10,opt,name=is_connecting,json=isConnecting,proto3" json:"is_connecting,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -693,6 +694,13 @@ func (x *HomeHeadlineView) GetHighlightArg() string {
 	return ""
 }
 
+func (x *HomeHeadlineView) GetIsConnecting() bool {
+	if x != nil {
+		return x.IsConnecting
+	}
+	return false
+}
+
 type HomeEmptyView struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	Kind             HomeEmptyKind          `protobuf:"varint,1,opt,name=kind,proto3,enum=remoteagent.core.v1.HomeEmptyKind" json:"kind,omitempty"`
@@ -703,6 +711,7 @@ type HomeEmptyView struct {
 	CanAddDevice     bool                   `protobuf:"varint,6,opt,name=can_add_device,json=canAddDevice,proto3" json:"can_add_device,omitempty"`
 	CanStartFirst    bool                   `protobuf:"varint,7,opt,name=can_start_first,json=canStartFirst,proto3" json:"can_start_first,omitempty"`
 	CanRetry         bool                   `protobuf:"varint,8,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	Loading          bool                   `protobuf:"varint,9,opt,name=loading,proto3" json:"loading,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -793,6 +802,13 @@ func (x *HomeEmptyView) GetCanRetry() bool {
 	return false
 }
 
+func (x *HomeEmptyView) GetLoading() bool {
+	if x != nil {
+		return x.Loading
+	}
+	return false
+}
+
 type AttentionCardView struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -810,6 +826,7 @@ type AttentionCardView struct {
 	AlwaysKind    AlwaysAllowKind        `protobuf:"varint,13,opt,name=always_kind,json=alwaysKind,proto3,enum=remoteagent.core.v1.AlwaysAllowKind" json:"always_kind,omitempty"`
 	AlwaysArg     string                 `protobuf:"bytes,14,opt,name=always_arg,json=alwaysArg,proto3" json:"always_arg,omitempty"`
 	AlwaysLabel   *Text                  `protobuf:"bytes,15,opt,name=always_label,json=alwaysLabel,proto3" json:"always_label,omitempty"`
+	Locked        bool                   `protobuf:"varint,16,opt,name=locked,proto3" json:"locked,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -947,6 +964,13 @@ func (x *AttentionCardView) GetAlwaysLabel() *Text {
 		return x.AlwaysLabel
 	}
 	return nil
+}
+
+func (x *AttentionCardView) GetLocked() bool {
+	if x != nil {
+		return x.Locked
+	}
+	return false
 }
 
 type AttentionRowView struct {
@@ -2230,7 +2254,7 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"detailText\x12.\n" +
 	"\x13live_push_connected\x18\x04 \x01(\bR\x11livePushConnected\x12\x16\n" +
 	"\x06reason\x18\x05 \x01(\tR\x06reason\x12,\n" +
-	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMs\"\xf0\x02\n" +
+	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMs\"\x95\x03\n" +
 	"\x10HomeHeadlineView\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.remoteagent.core.v1.HeadlineKindR\x04kind\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x12'\n" +
@@ -2240,7 +2264,9 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\bsub_path\x18\x06 \x01(\bR\asubPath\x12%\n" +
 	"\x0edetails_action\x18\a \x01(\bR\rdetailsAction\x12\x1a\n" +
 	"\bunlinked\x18\b \x01(\bR\bunlinked\x12#\n" +
-	"\rhighlight_arg\x18\t \x01(\tR\fhighlightArg\"\xd9\x02\n" +
+	"\rhighlight_arg\x18\t \x01(\tR\fhighlightArg\x12#\n" +
+	"\ris_connecting\x18\n" +
+	" \x01(\bR\fisConnecting\"\xf3\x02\n" +
 	"\rHomeEmptyView\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".remoteagent.core.v1.HomeEmptyKindR\x04kind\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12\x18\n" +
@@ -2249,7 +2275,8 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\x12ready_machine_name\x18\x05 \x01(\tR\x10readyMachineName\x12$\n" +
 	"\x0ecan_add_device\x18\x06 \x01(\bR\fcanAddDevice\x12&\n" +
 	"\x0fcan_start_first\x18\a \x01(\bR\rcanStartFirst\x12\x1b\n" +
-	"\tcan_retry\x18\b \x01(\bR\bcanRetry\"\xdf\x04\n" +
+	"\tcan_retry\x18\b \x01(\bR\bcanRetry\x12\x18\n" +
+	"\aloading\x18\t \x01(\bR\aloading\"\xf7\x04\n" +
 	"\x11AttentionCardView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -2272,7 +2299,8 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"alwaysKind\x12\x1d\n" +
 	"\n" +
 	"always_arg\x18\x0e \x01(\tR\talwaysArg\x12<\n" +
-	"\falways_label\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\valwaysLabel\"\xc6\x02\n" +
+	"\falways_label\x18\x0f \x01(\v2\x19.remoteagent.core.v1.TextR\valwaysLabel\x12\x16\n" +
+	"\x06locked\x18\x10 \x01(\bR\x06locked\"\xc6\x02\n" +
 	"\x10AttentionRowView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +

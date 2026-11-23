@@ -79,6 +79,10 @@ message SessionCapabilitiesView {
   bool terminal_available = 13;
   Text terminal_hint = 14;
   int32 max_images = 15;
+  int32 max_files = 16;
+  int64 max_file_bytes = 17;
+  bool capabilities_loaded = 18;
+  Text image_upload_blocked_reason = 19;
 }
 
 enum ComputerReachability {
@@ -156,6 +160,11 @@ message SessionHeaderView {
   Text missing_text = 53;
   ComputerReachability computer_reachability = 54;
   SessionDirectChipView direct_chip = 55;
+  bool task_owned = 56;
+  bool lookup_failed = 57;
+  Text lookup_error_text = 58;
+  bool multiple_machines = 59;
+  string short_path = 60;
 }
 
 message SessionDirectChipView {
@@ -216,6 +225,17 @@ message SessionUsageEntryView {
   Text footnote = 17;
 }
 
+message SessionForkActionView {
+  bool visible = 1;
+  bool enabled = 2;
+  bool busy = 3;
+  bool abandons = 4;
+  bool can_abandon = 5;
+  bool note_error = 6;
+  Text label = 7;
+  Text note = 8;
+}
+
 message SessionActionsView {
   bool can_interrupt = 1;
   SessionCommandState interrupt = 2;
@@ -253,6 +273,9 @@ message SessionActionsView {
   SessionCommandState set_mode = 27;
   repeated SessionModeChoiceView mode_choices = 28;
   SessionUsageEntryView usage_entry = 29;
+  SessionForkActionView fork_action = 30;
+  bool mode_locked = 31;
+  Text mode_permission_notice = 32;
 }
 
 enum SessionDockKind {
@@ -278,6 +301,8 @@ message SessionDockView {
   bool waiting_confirmation = 11;
 
   SessionCommandState command = 12;
+  bool is_skeleton = 13;
+  Text time_left_plain = 14;
 
   oneof detail {
     SessionApprovalDockView approval = 20;
@@ -345,6 +370,7 @@ message SessionTerminalPopupDockView {
   Text popup_title = 1;
   Text hint = 2;
   bool can_go_terminal = 3;
+  bool is_trust_folder = 4;
 }
 
 enum SessionTrayGroupKind {
@@ -399,6 +425,7 @@ message SessionTrayItemView {
   bool can_restore = 24;
   bool network_actions_disabled = 25;
   bool server_backed = 26;
+  bool is_skeleton = 27;
 }
 
 message SessionTrayGroupView {
@@ -438,6 +465,10 @@ message SessionComposerView {
   bool interrupt_visible = 8;
   SessionPendingTrayView pending_tray = 9;
   repeated string retained_attachment_request_ids = 10;
+  remoteagent.v1.SendMode default_send_mode = 11;
+  bool is_default_placeholder = 12;
+  Text slash_warning_title = 13;
+  Text slash_warning_text = 14;
 }
 
 message SessionTimelineView {

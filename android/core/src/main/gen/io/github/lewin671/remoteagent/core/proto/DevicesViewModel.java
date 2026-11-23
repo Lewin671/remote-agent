@@ -731,6 +731,110 @@ public  final class DevicesViewModel extends
     bitField0_ = (bitField0_ & ~0x00000008);
   }
 
+  public static final int CLOCK_SKEWED_FIELD_NUMBER = 15;
+  private boolean clockSkewed_;
+  /**
+   * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+   * @return The clockSkewed.
+   */
+  @java.lang.Override
+  public boolean getClockSkewed() {
+    return clockSkewed_;
+  }
+  /**
+   * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+   * @param value The clockSkewed to set.
+   */
+  private void setClockSkewed(boolean value) {
+    
+    clockSkewed_ = value;
+  }
+  /**
+   * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+   */
+  private void clearClockSkewed() {
+
+    clockSkewed_ = false;
+  }
+
+  public static final int RECOVERY_PENDING_FIELD_NUMBER = 16;
+  private boolean recoveryPending_;
+  /**
+   * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+   * @return The recoveryPending.
+   */
+  @java.lang.Override
+  public boolean getRecoveryPending() {
+    return recoveryPending_;
+  }
+  /**
+   * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+   * @param value The recoveryPending to set.
+   */
+  private void setRecoveryPending(boolean value) {
+    
+    recoveryPending_ = value;
+  }
+  /**
+   * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+   */
+  private void clearRecoveryPending() {
+
+    recoveryPending_ = false;
+  }
+
+  public static final int LEASE_END_MS_FIELD_NUMBER = 17;
+  private long leaseEndMs_;
+  /**
+   * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+   * @return The leaseEndMs.
+   */
+  @java.lang.Override
+  public long getLeaseEndMs() {
+    return leaseEndMs_;
+  }
+  /**
+   * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+   * @param value The leaseEndMs to set.
+   */
+  private void setLeaseEndMs(long value) {
+    
+    leaseEndMs_ = value;
+  }
+  /**
+   * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+   */
+  private void clearLeaseEndMs() {
+
+    leaseEndMs_ = 0L;
+  }
+
+  public static final int LOAD_FAILED_FIELD_NUMBER = 18;
+  private boolean loadFailed_;
+  /**
+   * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+   * @return The loadFailed.
+   */
+  @java.lang.Override
+  public boolean getLoadFailed() {
+    return loadFailed_;
+  }
+  /**
+   * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+   * @param value The loadFailed to set.
+   */
+  private void setLoadFailed(boolean value) {
+    
+    loadFailed_ = value;
+  }
+  /**
+   * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+   */
+  private void clearLoadFailed() {
+
+    loadFailed_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.DevicesViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1560,6 +1664,118 @@ public  final class DevicesViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+     * @return The clockSkewed.
+     */
+    @java.lang.Override
+    public boolean getClockSkewed() {
+      return instance.getClockSkewed();
+    }
+    /**
+     * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+     * @param value The clockSkewed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClockSkewed(boolean value) {
+      copyOnWrite();
+      instance.setClockSkewed(value);
+      return this;
+    }
+    /**
+     * <code>bool clock_skewed = 15 [json_name = "clockSkewed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClockSkewed() {
+      copyOnWrite();
+      instance.clearClockSkewed();
+      return this;
+    }
+
+    /**
+     * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+     * @return The recoveryPending.
+     */
+    @java.lang.Override
+    public boolean getRecoveryPending() {
+      return instance.getRecoveryPending();
+    }
+    /**
+     * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+     * @param value The recoveryPending to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryPending(boolean value) {
+      copyOnWrite();
+      instance.setRecoveryPending(value);
+      return this;
+    }
+    /**
+     * <code>bool recovery_pending = 16 [json_name = "recoveryPending"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRecoveryPending() {
+      copyOnWrite();
+      instance.clearRecoveryPending();
+      return this;
+    }
+
+    /**
+     * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+     * @return The leaseEndMs.
+     */
+    @java.lang.Override
+    public long getLeaseEndMs() {
+      return instance.getLeaseEndMs();
+    }
+    /**
+     * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+     * @param value The leaseEndMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLeaseEndMs(long value) {
+      copyOnWrite();
+      instance.setLeaseEndMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 lease_end_ms = 17 [json_name = "leaseEndMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLeaseEndMs() {
+      copyOnWrite();
+      instance.clearLeaseEndMs();
+      return this;
+    }
+
+    /**
+     * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+     * @return The loadFailed.
+     */
+    @java.lang.Override
+    public boolean getLoadFailed() {
+      return instance.getLoadFailed();
+    }
+    /**
+     * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+     * @param value The loadFailed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoadFailed(boolean value) {
+      copyOnWrite();
+      instance.setLoadFailed(value);
+      return this;
+    }
+    /**
+     * <code>bool load_failed = 18 [json_name = "loadFailed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoadFailed() {
+      copyOnWrite();
+      instance.clearLoadFailed();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DevicesViewModel)
   }
   @java.lang.Override
@@ -1594,11 +1810,16 @@ public  final class DevicesViewModel extends
             "machinesLoading_",
             "emptyComputersText_",
             "clientCountText_",
+            "clockSkewed_",
+            "recoveryPending_",
+            "leaseEndMs_",
+            "loadFailed_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0003\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u1009\u0000\b\u001b\t\u001b" +
-              "\n\u001b\u000b\u1009\u0001\f\u0007\r\u1009\u0002\u000e\u1009\u0003";
+              "\n\u001b\u000b\u1009\u0001\f\u0007\r\u1009\u0002\u000e\u1009\u0003\u000f\u0007\u0010" +
+              "\u0007\u0011\u0002\u0012\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

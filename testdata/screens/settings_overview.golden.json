@@ -361,7 +361,8 @@
                       "intValue": "21"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-auth",
@@ -394,7 +395,8 @@
                       "intValue": "10"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-2",
@@ -426,7 +428,8 @@
                       "intValue": "15"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-3",
@@ -458,7 +461,8 @@
                       "intValue": "16"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-4",
@@ -490,7 +494,8 @@
                       "intValue": "18"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               }
             ],
             "unfinishedPairings": [
@@ -524,7 +529,8 @@
                       "intValue": "3"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               }
             ],
             "clientCountText": {
@@ -535,7 +541,9 @@
                   "intValue": "5"
                 }
               ]
-            }
+            },
+            "recoveryPending": true,
+            "leaseEndMs": "1791164460000"
           }
         },
         "selfClient": {
@@ -836,7 +844,8 @@
                       "intValue": "21"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-auth",
@@ -869,7 +878,8 @@
                       "intValue": "10"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-2",
@@ -901,7 +911,8 @@
                       "intValue": "15"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-3",
@@ -933,7 +944,8 @@
                       "intValue": "16"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               }
             ],
             "hasMoreClients": true,
@@ -954,7 +966,8 @@
               },
               "recoveryNotice": {
                 "key": "settings.recovery_waiting_banner"
-              }
+              },
+              "leaseEndMs": "1791164460000"
             },
             "notifications": {
               "supported": true,
@@ -999,7 +1012,12 @@
                     "strValue": "38"
                   }
                 ]
-              }
+              },
+              "connState": "CONN_STATE_CONNECTED",
+              "networkAvailable": true,
+              "livePushConnected": true,
+              "everOnline": true,
+              "connStartedAtMs": "1791078060000"
             },
             "diskReminders": [
               {
@@ -1377,7 +1395,8 @@
                       "intValue": "21"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-auth",
@@ -1410,7 +1429,8 @@
                       "intValue": "10"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-2",
@@ -1442,7 +1462,8 @@
                       "intValue": "15"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               },
               {
                 "deviceId": "dev-3",
@@ -1474,7 +1495,8 @@
                       "intValue": "16"
                     }
                   ]
-                }
+                },
+                "kind": "DEVICE_KIND_CLIENT"
               }
             ],
             "hasMoreClients": true,
@@ -1495,7 +1517,8 @@
               },
               "recoveryNotice": {
                 "key": "settings.recovery_waiting_banner"
-              }
+              },
+              "leaseEndMs": "1791164460000"
             },
             "notifications": {
               "supported": true,
@@ -1541,7 +1564,12 @@
                     "strValue": "38"
                   }
                 ]
-              }
+              },
+              "connState": "CONN_STATE_CONNECTED",
+              "networkAvailable": true,
+              "livePushConnected": true,
+              "everOnline": true,
+              "connStartedAtMs": "1791078060000"
             },
             "diskReminders": [
               {

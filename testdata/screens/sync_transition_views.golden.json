@@ -255,7 +255,10 @@
             ],
             "trustedMachineIds": [
               "m1"
-            ]
+            ],
+            "connectionStartedAtMs": "1791078060000",
+            "networkAvailable": true,
+            "everOnline": true
           }
         }
       }
@@ -635,7 +638,10 @@
             ],
             "trustedMachineIds": [
               "m1"
-            ]
+            ],
+            "connectionStartedAtMs": "1791078060000",
+            "networkAvailable": true,
+            "everOnline": true
           }
         }
       }

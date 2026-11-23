@@ -364,4 +364,57 @@ public interface SyncStateViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getArchiveMachineIdsBytes(int index);
+
+  /**
+   * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+   * @return The connectionStartedAtMs.
+   */
+  long getConnectionStartedAtMs();
+
+  /**
+   * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+   * @return The networkAvailable.
+   */
+  boolean getNetworkAvailable();
+
+  /**
+   * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+   * @return The everOnline.
+   */
+  boolean getEverOnline();
+
+  /**
+   * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+   * @return The connectFailures.
+   */
+  int getConnectFailures();
+
+  /**
+   * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+   * @return The recoveryStatusStale.
+   */
+  boolean getRecoveryStatusStale();
+
+  /**
+   * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+   * @return The devicesLoadFailed.
+   */
+  boolean getDevicesLoadFailed();
+
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   * @return Whether the devicesErrorText field is set.
+   */
+  boolean hasDevicesErrorText();
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   * @return The devicesErrorText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDevicesErrorText();
+
+  /**
+   * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+   * @return The hasHandoffOffer.
+   */
+  boolean getHasHandoffOffer();
 }

@@ -494,4 +494,16 @@ public interface MachineSettingsViewModelOrBuilder extends
    */
   com.google.protobuf.ByteString
       getShortIdBytes();
+
+  /**
+   * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+   * @return The appOnline.
+   */
+  boolean getAppOnline();
+
+  /**
+   * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+   * @return The isManager.
+   */
+  boolean getIsManager();
 }

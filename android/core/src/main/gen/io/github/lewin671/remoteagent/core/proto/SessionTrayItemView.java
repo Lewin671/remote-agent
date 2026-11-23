@@ -1010,6 +1010,32 @@ public  final class SessionTrayItemView extends
     serverBacked_ = false;
   }
 
+  public static final int IS_SKELETON_FIELD_NUMBER = 27;
+  private boolean isSkeleton_;
+  /**
+   * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+   * @return The isSkeleton.
+   */
+  @java.lang.Override
+  public boolean getIsSkeleton() {
+    return isSkeleton_;
+  }
+  /**
+   * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+   * @param value The isSkeleton to set.
+   */
+  private void setIsSkeleton(boolean value) {
+    
+    isSkeleton_ = value;
+  }
+  /**
+   * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+   */
+  private void clearIsSkeleton() {
+
+    isSkeleton_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionTrayItemView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2136,6 +2162,34 @@ public  final class SessionTrayItemView extends
       return this;
     }
 
+    /**
+     * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+     * @return The isSkeleton.
+     */
+    @java.lang.Override
+    public boolean getIsSkeleton() {
+      return instance.getIsSkeleton();
+    }
+    /**
+     * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+     * @param value The isSkeleton to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsSkeleton(boolean value) {
+      copyOnWrite();
+      instance.setIsSkeleton(value);
+      return this;
+    }
+    /**
+     * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsSkeleton() {
+      copyOnWrite();
+      instance.clearIsSkeleton();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTrayItemView)
   }
   @java.lang.Override
@@ -2179,13 +2233,14 @@ public  final class SessionTrayItemView extends
             "canRestore_",
             "networkActionsDisabled_",
             "serverBacked_",
+            "isSkeleton_",
           };
           java.lang.String info =
-              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001b\u0000\u0001\u0001\u001b\u001b\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\f\u0004\f\u0005\f\u0006\u0004\u0007\u0007\b\u0208\t\u1009\u0000\n\u0007\u000b" +
               "\u0004\f\u0004\r\u0004\u000e\u021a\u000f\u021a\u0010\f\u0011\u1009\u0001\u0012\u0007" +
               "\u0013\u0007\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u0007\u0019\u0007" +
-              "\u001a\u0007";
+              "\u001a\u0007\u001b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

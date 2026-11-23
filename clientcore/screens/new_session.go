@@ -457,6 +457,20 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		protoAutoIssue = corev1.AutoIssueKind_AUTO_ISSUE_KIND_NONE
 	}
 
+	var mc *v1.MachineCapabilities
+	if mMeta != nil {
+		mc = mMeta.Capabilities
+	}
+	onlineReady := st.World.Connection == lists.ConnConnected && machineOnline && !lists.MachineUnlinked(machine, &st.World) && res.ProtocolMismatch == 0 && !st.World.AccountControlLost
+	prefsBlocked := st.World.AccountControlLost || st.World.AccountClockSkewed || lists.WorldUnlinked(&st.World)
+	var prefsBlockedReason *corev1.Text
+	switch {
+	case st.World.AccountClockSkewed:
+		prefsBlockedReason = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+	case st.World.AccountControlLost || lists.WorldUnlinked(&st.World):
+		prefsBlockedReason = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+	}
+
 	modelPanel := buildModelPanelView(st, cfg, modelsResp, hasModels, modelsLoading, modelsErrText, modelsErr, pickedModel, efforts, selectedEffort, defaultModelLabel, frozen, busy, machineOnline)
 
 	return &corev1.NewSessionViewModel{
@@ -478,20 +492,30 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			StandardContext: cfg.StandardContext,
 			Mode:            cfg.Mode,
 		},
-		MachineName:       machineName,
-		MachineSelectable: machineSelectable,
-		AgentName:         agentCap.Name,
-		AvailableAgents:   agentOpts,
-		ModelLabel:        modelLabel,
-		EffortLabel:       selectedEffort,
-		DefaultMode:       dmView,
-		LocationText:      locationText,
-		Notices:           notices,
-		CanStart:          canStart,
-		DisabledReason:    disabledReason,
-		ModelPanel:        modelPanel,
-		ProjectRemoved:    hidden,
-		AutoIssue:         protoAutoIssue,
+		MachineName:              machineName,
+		MachineSelectable:        machineSelectable,
+		AgentName:                agentCap.Name,
+		AvailableAgents:          agentOpts,
+		ModelLabel:               modelLabel,
+		EffortLabel:              selectedEffort,
+		DefaultMode:              dmView,
+		LocationText:             locationText,
+		Notices:                  notices,
+		CanStart:                 canStart,
+		DisabledReason:           disabledReason,
+		ModelPanel:               modelPanel,
+		ProjectRemoved:           hidden,
+		AutoIssue:                protoAutoIssue,
+		PrefsBlocked:             prefsBlocked,
+		PrefsBlockedReason:       prefsBlockedReason,
+		CapabilitiesLoaded:       mMeta != nil,
+		SupportsImages:           mc != nil && mc.ImageUpload,
+		SupportsFiles:            mc != nil && mc.FileUpload,
+		MaxImages:                maxImagesCount(mc),
+		MaxFiles:                 maxFilesCount(mc),
+		MaxFileBytes:             maxFileBytesLimit(mc),
+		ImageUploadBlockedReason: imageUploadBlockedReason(machine, machineOnline, onlineReady),
+		DiskFull:                 diskFull,
 	}
 }
 

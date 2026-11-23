@@ -4115,6 +4115,7 @@ type SecurityHandoffCandidate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	RecoveryEd    []byte                 `protobuf:"bytes,2,opt,name=recovery_ed,json=recoveryEd,proto3" json:"recovery_ed,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4161,6 +4162,13 @@ func (x *SecurityHandoffCandidate) GetRecoveryEd() []byte {
 		return x.RecoveryEd
 	}
 	return nil
+}
+
+func (x *SecurityHandoffCandidate) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
 }
 
 type SecurityExitAdvice struct {
@@ -6385,11 +6393,12 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"\vrecovery_id\x18\x01 \x01(\tR\n" +
 	"recoveryId\x12F\n" +
 	"\x05phase\x18\x02 \x01(\x0e20.remoteagent.v1.GetRecoveryContextResponse.PhaseR\x05phase\x12\x19\n" +
-	"\bready_ms\x18\x03 \x01(\x03R\areadyMs\"X\n" +
+	"\bready_ms\x18\x03 \x01(\x03R\areadyMs\"{\n" +
 	"\x18SecurityHandoffCandidate\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x1f\n" +
 	"\vrecovery_ed\x18\x02 \x01(\fR\n" +
-	"recoveryEd\"l\n" +
+	"recoveryEd\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"l\n" +
 	"\x12SecurityExitAdvice\x12\x1c\n" +
 	"\tauthority\x18\x01 \x01(\bR\tauthority\x12\x1e\n" +
 	"\n" +

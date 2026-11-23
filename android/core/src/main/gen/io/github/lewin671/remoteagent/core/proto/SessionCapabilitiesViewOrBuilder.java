@@ -104,4 +104,33 @@ public interface SessionCapabilitiesViewOrBuilder extends
    * @return The maxImages.
    */
   int getMaxImages();
+
+  /**
+   * <code>int32 max_files = 16 [json_name = "maxFiles"];</code>
+   * @return The maxFiles.
+   */
+  int getMaxFiles();
+
+  /**
+   * <code>int64 max_file_bytes = 17 [json_name = "maxFileBytes"];</code>
+   * @return The maxFileBytes.
+   */
+  long getMaxFileBytes();
+
+  /**
+   * <code>bool capabilities_loaded = 18 [json_name = "capabilitiesLoaded"];</code>
+   * @return The capabilitiesLoaded.
+   */
+  boolean getCapabilitiesLoaded();
+
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 19 [json_name = "imageUploadBlockedReason"];</code>
+   * @return Whether the imageUploadBlockedReason field is set.
+   */
+  boolean hasImageUploadBlockedReason();
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 19 [json_name = "imageUploadBlockedReason"];</code>
+   * @return The imageUploadBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getImageUploadBlockedReason();
 }

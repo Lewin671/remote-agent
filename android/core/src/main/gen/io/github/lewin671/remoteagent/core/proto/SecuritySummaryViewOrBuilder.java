@@ -79,4 +79,22 @@ public interface SecuritySummaryViewOrBuilder extends
    * @return The recoveryNotice.
    */
   io.github.lewin671.remoteagent.core.proto.Text getRecoveryNotice();
+
+  /**
+   * <code>bool has_handoff_offer = 9 [json_name = "hasHandoffOffer"];</code>
+   * @return The hasHandoffOffer.
+   */
+  boolean getHasHandoffOffer();
+
+  /**
+   * <code>bool recovery_status_stale = 10 [json_name = "recoveryStatusStale"];</code>
+   * @return The recoveryStatusStale.
+   */
+  boolean getRecoveryStatusStale();
+
+  /**
+   * <code>int64 lease_end_ms = 11 [json_name = "leaseEndMs"];</code>
+   * @return The leaseEndMs.
+   */
+  long getLeaseEndMs();
 }

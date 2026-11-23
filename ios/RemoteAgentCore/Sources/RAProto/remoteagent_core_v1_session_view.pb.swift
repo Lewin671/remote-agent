@@ -782,6 +782,30 @@ public struct PBSessionCapabilitiesView: @unchecked Sendable {
     set {_uniqueStorage()._maxImages = newValue}
   }
 
+  public var maxFiles: Int32 {
+    get {return _storage._maxFiles}
+    set {_uniqueStorage()._maxFiles = newValue}
+  }
+
+  public var maxFileBytes: Int64 {
+    get {return _storage._maxFileBytes}
+    set {_uniqueStorage()._maxFileBytes = newValue}
+  }
+
+  public var capabilitiesLoaded: Bool {
+    get {return _storage._capabilitiesLoaded}
+    set {_uniqueStorage()._capabilitiesLoaded = newValue}
+  }
+
+  public var imageUploadBlockedReason: PBCoreText {
+    get {return _storage._imageUploadBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._imageUploadBlockedReason = newValue}
+  }
+  /// Returns true if `imageUploadBlockedReason` has been explicitly set.
+  public var hasImageUploadBlockedReason: Bool {return _storage._imageUploadBlockedReason != nil}
+  /// Clears the value of `imageUploadBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearImageUploadBlockedReason() {_uniqueStorage()._imageUploadBlockedReason = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1129,6 +1153,35 @@ public struct PBSessionHeaderView: @unchecked Sendable {
   /// Clears the value of `directChip`. Subsequent reads from it will return its default value.
   public mutating func clearDirectChip() {_uniqueStorage()._directChip = nil}
 
+  public var taskOwned: Bool {
+    get {return _storage._taskOwned}
+    set {_uniqueStorage()._taskOwned = newValue}
+  }
+
+  public var lookupFailed: Bool {
+    get {return _storage._lookupFailed}
+    set {_uniqueStorage()._lookupFailed = newValue}
+  }
+
+  public var lookupErrorText: PBCoreText {
+    get {return _storage._lookupErrorText ?? PBCoreText()}
+    set {_uniqueStorage()._lookupErrorText = newValue}
+  }
+  /// Returns true if `lookupErrorText` has been explicitly set.
+  public var hasLookupErrorText: Bool {return _storage._lookupErrorText != nil}
+  /// Clears the value of `lookupErrorText`. Subsequent reads from it will return its default value.
+  public mutating func clearLookupErrorText() {_uniqueStorage()._lookupErrorText = nil}
+
+  public var multipleMachines: Bool {
+    get {return _storage._multipleMachines}
+    set {_uniqueStorage()._multipleMachines = newValue}
+  }
+
+  public var shortPath: String {
+    get {return _storage._shortPath}
+    set {_uniqueStorage()._shortPath = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1432,6 +1485,66 @@ public struct PBSessionUsageEntryView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBSessionForkActionView: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var visible: Bool {
+    get {return _storage._visible}
+    set {_uniqueStorage()._visible = newValue}
+  }
+
+  public var enabled: Bool {
+    get {return _storage._enabled}
+    set {_uniqueStorage()._enabled = newValue}
+  }
+
+  public var busy: Bool {
+    get {return _storage._busy}
+    set {_uniqueStorage()._busy = newValue}
+  }
+
+  public var abandons: Bool {
+    get {return _storage._abandons}
+    set {_uniqueStorage()._abandons = newValue}
+  }
+
+  public var canAbandon: Bool {
+    get {return _storage._canAbandon}
+    set {_uniqueStorage()._canAbandon = newValue}
+  }
+
+  public var noteError: Bool {
+    get {return _storage._noteError}
+    set {_uniqueStorage()._noteError = newValue}
+  }
+
+  public var label: PBCoreText {
+    get {return _storage._label ?? PBCoreText()}
+    set {_uniqueStorage()._label = newValue}
+  }
+  /// Returns true if `label` has been explicitly set.
+  public var hasLabel: Bool {return _storage._label != nil}
+  /// Clears the value of `label`. Subsequent reads from it will return its default value.
+  public mutating func clearLabel() {_uniqueStorage()._label = nil}
+
+  public var note: PBCoreText {
+    get {return _storage._note ?? PBCoreText()}
+    set {_uniqueStorage()._note = newValue}
+  }
+  /// Returns true if `note` has been explicitly set.
+  public var hasNote: Bool {return _storage._note != nil}
+  /// Clears the value of `note`. Subsequent reads from it will return its default value.
+  public mutating func clearNote() {_uniqueStorage()._note = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
 public struct PBSessionActionsView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1646,6 +1759,29 @@ public struct PBSessionActionsView: @unchecked Sendable {
   /// Clears the value of `usageEntry`. Subsequent reads from it will return its default value.
   public mutating func clearUsageEntry() {_uniqueStorage()._usageEntry = nil}
 
+  public var forkAction: PBSessionForkActionView {
+    get {return _storage._forkAction ?? PBSessionForkActionView()}
+    set {_uniqueStorage()._forkAction = newValue}
+  }
+  /// Returns true if `forkAction` has been explicitly set.
+  public var hasForkAction: Bool {return _storage._forkAction != nil}
+  /// Clears the value of `forkAction`. Subsequent reads from it will return its default value.
+  public mutating func clearForkAction() {_uniqueStorage()._forkAction = nil}
+
+  public var modeLocked: Bool {
+    get {return _storage._modeLocked}
+    set {_uniqueStorage()._modeLocked = newValue}
+  }
+
+  public var modePermissionNotice: PBCoreText {
+    get {return _storage._modePermissionNotice ?? PBCoreText()}
+    set {_uniqueStorage()._modePermissionNotice = newValue}
+  }
+  /// Returns true if `modePermissionNotice` has been explicitly set.
+  public var hasModePermissionNotice: Bool {return _storage._modePermissionNotice != nil}
+  /// Clears the value of `modePermissionNotice`. Subsequent reads from it will return its default value.
+  public mutating func clearModePermissionNotice() {_uniqueStorage()._modePermissionNotice = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1737,6 +1873,20 @@ public struct PBSessionDockView: @unchecked Sendable {
   public var hasCommand: Bool {return _storage._command != nil}
   /// Clears the value of `command`. Subsequent reads from it will return its default value.
   public mutating func clearCommand() {_uniqueStorage()._command = nil}
+
+  public var isSkeleton: Bool {
+    get {return _storage._isSkeleton}
+    set {_uniqueStorage()._isSkeleton = newValue}
+  }
+
+  public var timeLeftPlain: PBCoreText {
+    get {return _storage._timeLeftPlain ?? PBCoreText()}
+    set {_uniqueStorage()._timeLeftPlain = newValue}
+  }
+  /// Returns true if `timeLeftPlain` has been explicitly set.
+  public var hasTimeLeftPlain: Bool {return _storage._timeLeftPlain != nil}
+  /// Clears the value of `timeLeftPlain`. Subsequent reads from it will return its default value.
+  public mutating func clearTimeLeftPlain() {_uniqueStorage()._timeLeftPlain = nil}
 
   public var detail: OneOf_Detail? {
     get {return _storage._detail}
@@ -2049,6 +2199,11 @@ public struct PBSessionTerminalPopupDockView: @unchecked Sendable {
     set {_uniqueStorage()._canGoTerminal = newValue}
   }
 
+  public var isTrustFolder: Bool {
+    get {return _storage._isTrustFolder}
+    set {_uniqueStorage()._isTrustFolder = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2197,6 +2352,11 @@ public struct PBSessionTrayItemView: @unchecked Sendable {
   public var serverBacked: Bool {
     get {return _storage._serverBacked}
     set {_uniqueStorage()._serverBacked = newValue}
+  }
+
+  public var isSkeleton: Bool {
+    get {return _storage._isSkeleton}
+    set {_uniqueStorage()._isSkeleton = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -2385,6 +2545,34 @@ public struct PBSessionComposerView: @unchecked Sendable {
     get {return _storage._retainedAttachmentRequestIds}
     set {_uniqueStorage()._retainedAttachmentRequestIds = newValue}
   }
+
+  public var defaultSendMode: PBSendMode {
+    get {return _storage._defaultSendMode}
+    set {_uniqueStorage()._defaultSendMode = newValue}
+  }
+
+  public var isDefaultPlaceholder: Bool {
+    get {return _storage._isDefaultPlaceholder}
+    set {_uniqueStorage()._isDefaultPlaceholder = newValue}
+  }
+
+  public var slashWarningTitle: PBCoreText {
+    get {return _storage._slashWarningTitle ?? PBCoreText()}
+    set {_uniqueStorage()._slashWarningTitle = newValue}
+  }
+  /// Returns true if `slashWarningTitle` has been explicitly set.
+  public var hasSlashWarningTitle: Bool {return _storage._slashWarningTitle != nil}
+  /// Clears the value of `slashWarningTitle`. Subsequent reads from it will return its default value.
+  public mutating func clearSlashWarningTitle() {_uniqueStorage()._slashWarningTitle = nil}
+
+  public var slashWarningText: PBCoreText {
+    get {return _storage._slashWarningText ?? PBCoreText()}
+    set {_uniqueStorage()._slashWarningText = newValue}
+  }
+  /// Returns true if `slashWarningText` has been explicitly set.
+  public var hasSlashWarningText: Bool {return _storage._slashWarningText != nil}
+  /// Clears the value of `slashWarningText`. Subsequent reads from it will return its default value.
+  public mutating func clearSlashWarningText() {_uniqueStorage()._slashWarningText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3886,7 +4074,7 @@ extension PBSessionCommandState: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionCapabilitiesView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_send\0\u{3}supports_images\0\u{3}supports_files\0\u{3}supports_send_modes\0\u{3}supports_shared_files\0\u{3}supports_always_allow\0\u{3}supports_steer\0\u{3}supports_compact\0\u{3}supports_fork\0\u{3}supports_model_switch\0\u{3}supports_mode_switch\0\u{3}supports_schedule\0\u{3}terminal_available\0\u{3}terminal_hint\0\u{3}max_images\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_send\0\u{3}supports_images\0\u{3}supports_files\0\u{3}supports_send_modes\0\u{3}supports_shared_files\0\u{3}supports_always_allow\0\u{3}supports_steer\0\u{3}supports_compact\0\u{3}supports_fork\0\u{3}supports_model_switch\0\u{3}supports_mode_switch\0\u{3}supports_schedule\0\u{3}terminal_available\0\u{3}terminal_hint\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}capabilities_loaded\0\u{3}image_upload_blocked_reason\0")
 
   fileprivate class _StorageClass {
     var _canSend: Bool = false
@@ -3904,6 +4092,10 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _terminalAvailable: Bool = false
     var _terminalHint: PBCoreText? = nil
     var _maxImages: Int32 = 0
+    var _maxFiles: Int32 = 0
+    var _maxFileBytes: Int64 = 0
+    var _capabilitiesLoaded: Bool = false
+    var _imageUploadBlockedReason: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3929,6 +4121,10 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _terminalAvailable = source._terminalAvailable
       _terminalHint = source._terminalHint
       _maxImages = source._maxImages
+      _maxFiles = source._maxFiles
+      _maxFileBytes = source._maxFileBytes
+      _capabilitiesLoaded = source._capabilitiesLoaded
+      _imageUploadBlockedReason = source._imageUploadBlockedReason
     }
   }
 
@@ -3962,6 +4158,10 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._terminalAvailable) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._terminalHint) }()
         case 15: try { try decoder.decodeSingularInt32Field(value: &_storage._maxImages) }()
+        case 16: try { try decoder.decodeSingularInt32Field(value: &_storage._maxFiles) }()
+        case 17: try { try decoder.decodeSingularInt64Field(value: &_storage._maxFileBytes) }()
+        case 18: try { try decoder.decodeSingularBoolField(value: &_storage._capabilitiesLoaded) }()
+        case 19: try { try decoder.decodeSingularMessageField(value: &_storage._imageUploadBlockedReason) }()
         default: break
         }
       }
@@ -4019,6 +4219,18 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._maxImages != 0 {
         try visitor.visitSingularInt32Field(value: _storage._maxImages, fieldNumber: 15)
       }
+      if _storage._maxFiles != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._maxFiles, fieldNumber: 16)
+      }
+      if _storage._maxFileBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._maxFileBytes, fieldNumber: 17)
+      }
+      if _storage._capabilitiesLoaded != false {
+        try visitor.visitSingularBoolField(value: _storage._capabilitiesLoaded, fieldNumber: 18)
+      }
+      try { if let v = _storage._imageUploadBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4043,6 +4255,10 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._terminalAvailable != rhs_storage._terminalAvailable {return false}
         if _storage._terminalHint != rhs_storage._terminalHint {return false}
         if _storage._maxImages != rhs_storage._maxImages {return false}
+        if _storage._maxFiles != rhs_storage._maxFiles {return false}
+        if _storage._maxFileBytes != rhs_storage._maxFileBytes {return false}
+        if _storage._capabilitiesLoaded != rhs_storage._capabilitiesLoaded {return false}
+        if _storage._imageUploadBlockedReason != rhs_storage._imageUploadBlockedReason {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4054,7 +4270,7 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionHeaderView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0\u{3}computer_reachability\0\u{3}direct_chip\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}found\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{1}missing\0\u{1}title\0\u{3}project_name\0\u{3}project_key\0\u{1}cwd\0\u{1}agent\0\u{3}agent_name\0\u{1}status\0\u{1}tone\0\u{3}status_text\0\u{3}live_summary\0\u{3}approval_mode\0\u{3}approval_mode_raw\0\u{3}approval_mode_label\0\u{3}terminal_mode_override\0\u{1}model\0\u{3}model_label\0\u{1}effort\0\u{3}effort_label\0\u{3}standard_context\0\u{3}model_unknown\0\u{3}has_context\0\u{3}context_percent\0\u{3}context_tokens\0\u{3}context_window\0\u{3}context_text\0\u{3}high_context_warning\0\u{3}machine_id\0\u{3}computer_name\0\u{3}computer_online\0\u{3}computer_unlinked\0\u{3}offline_since_ms\0\u{3}offline_text\0\u{3}conn_state\0\u{3}protocol_mismatch\0\u{3}daemon_protocol_version\0\u{3}client_protocol_version\0\u{3}protocol_mismatch_text\0\u{1}exited\0\u{3}ended_at_ms\0\u{3}ended_text\0\u{3}idle_closed\0\u{3}forked_from_id\0\u{3}forked_from_title\0\u{3}is_scheduled\0\u{3}scheduled_task_id\0\u{3}scheduled_title\0\u{3}scheduled_closed\0\u{1}capabilities\0\u{3}missing_text\0\u{3}computer_reachability\0\u{3}direct_chip\0\u{3}task_owned\0\u{3}lookup_failed\0\u{3}lookup_error_text\0\u{3}multiple_machines\0\u{3}short_path\0")
 
   fileprivate class _StorageClass {
     var _found: Bool = false
@@ -4112,6 +4328,11 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _missingText: PBCoreText? = nil
     var _computerReachability: PBComputerReachability = .unspecified
     var _directChip: PBSessionDirectChipView? = nil
+    var _taskOwned: Bool = false
+    var _lookupFailed: Bool = false
+    var _lookupErrorText: PBCoreText? = nil
+    var _multipleMachines: Bool = false
+    var _shortPath: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4177,6 +4398,11 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _missingText = source._missingText
       _computerReachability = source._computerReachability
       _directChip = source._directChip
+      _taskOwned = source._taskOwned
+      _lookupFailed = source._lookupFailed
+      _lookupErrorText = source._lookupErrorText
+      _multipleMachines = source._multipleMachines
+      _shortPath = source._shortPath
     }
   }
 
@@ -4250,6 +4476,11 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 53: try { try decoder.decodeSingularMessageField(value: &_storage._missingText) }()
         case 54: try { try decoder.decodeSingularEnumField(value: &_storage._computerReachability) }()
         case 55: try { try decoder.decodeSingularMessageField(value: &_storage._directChip) }()
+        case 56: try { try decoder.decodeSingularBoolField(value: &_storage._taskOwned) }()
+        case 57: try { try decoder.decodeSingularBoolField(value: &_storage._lookupFailed) }()
+        case 58: try { try decoder.decodeSingularMessageField(value: &_storage._lookupErrorText) }()
+        case 59: try { try decoder.decodeSingularBoolField(value: &_storage._multipleMachines) }()
+        case 60: try { try decoder.decodeSingularStringField(value: &_storage._shortPath) }()
         default: break
         }
       }
@@ -4427,6 +4658,21 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       try { if let v = _storage._directChip {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 55)
       } }()
+      if _storage._taskOwned != false {
+        try visitor.visitSingularBoolField(value: _storage._taskOwned, fieldNumber: 56)
+      }
+      if _storage._lookupFailed != false {
+        try visitor.visitSingularBoolField(value: _storage._lookupFailed, fieldNumber: 57)
+      }
+      try { if let v = _storage._lookupErrorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 58)
+      } }()
+      if _storage._multipleMachines != false {
+        try visitor.visitSingularBoolField(value: _storage._multipleMachines, fieldNumber: 59)
+      }
+      if !_storage._shortPath.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._shortPath, fieldNumber: 60)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4491,6 +4737,11 @@ extension PBSessionHeaderView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._missingText != rhs_storage._missingText {return false}
         if _storage._computerReachability != rhs_storage._computerReachability {return false}
         if _storage._directChip != rhs_storage._directChip {return false}
+        if _storage._taskOwned != rhs_storage._taskOwned {return false}
+        if _storage._lookupFailed != rhs_storage._lookupFailed {return false}
+        if _storage._lookupErrorText != rhs_storage._lookupErrorText {return false}
+        if _storage._multipleMachines != rhs_storage._multipleMachines {return false}
+        if _storage._shortPath != rhs_storage._shortPath {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5026,9 +5277,128 @@ extension PBSessionUsageEntryView: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 }
 
+extension PBSessionForkActionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionForkActionView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}visible\0\u{1}enabled\0\u{1}busy\0\u{1}abandons\0\u{3}can_abandon\0\u{3}note_error\0\u{1}label\0\u{1}note\0")
+
+  fileprivate class _StorageClass {
+    var _visible: Bool = false
+    var _enabled: Bool = false
+    var _busy: Bool = false
+    var _abandons: Bool = false
+    var _canAbandon: Bool = false
+    var _noteError: Bool = false
+    var _label: PBCoreText? = nil
+    var _note: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _visible = source._visible
+      _enabled = source._enabled
+      _busy = source._busy
+      _abandons = source._abandons
+      _canAbandon = source._canAbandon
+      _noteError = source._noteError
+      _label = source._label
+      _note = source._note
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularBoolField(value: &_storage._visible) }()
+        case 2: try { try decoder.decodeSingularBoolField(value: &_storage._enabled) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._busy) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._abandons) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._canAbandon) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._noteError) }()
+        case 7: try { try decoder.decodeSingularMessageField(value: &_storage._label) }()
+        case 8: try { try decoder.decodeSingularMessageField(value: &_storage._note) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._visible != false {
+        try visitor.visitSingularBoolField(value: _storage._visible, fieldNumber: 1)
+      }
+      if _storage._enabled != false {
+        try visitor.visitSingularBoolField(value: _storage._enabled, fieldNumber: 2)
+      }
+      if _storage._busy != false {
+        try visitor.visitSingularBoolField(value: _storage._busy, fieldNumber: 3)
+      }
+      if _storage._abandons != false {
+        try visitor.visitSingularBoolField(value: _storage._abandons, fieldNumber: 4)
+      }
+      if _storage._canAbandon != false {
+        try visitor.visitSingularBoolField(value: _storage._canAbandon, fieldNumber: 5)
+      }
+      if _storage._noteError != false {
+        try visitor.visitSingularBoolField(value: _storage._noteError, fieldNumber: 6)
+      }
+      try { if let v = _storage._label {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+      } }()
+      try { if let v = _storage._note {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+      } }()
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSessionForkActionView, rhs: PBSessionForkActionView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._visible != rhs_storage._visible {return false}
+        if _storage._enabled != rhs_storage._enabled {return false}
+        if _storage._busy != rhs_storage._busy {return false}
+        if _storage._abandons != rhs_storage._abandons {return false}
+        if _storage._canAbandon != rhs_storage._canAbandon {return false}
+        if _storage._noteError != rhs_storage._noteError {return false}
+        if _storage._label != rhs_storage._label {return false}
+        if _storage._note != rhs_storage._note {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionActionsView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_interrupt\0\u{1}interrupt\0\u{3}can_end\0\u{1}end\0\u{3}end_confirm_note\0\u{3}can_resume\0\u{1}resume\0\u{3}resume_note\0\u{3}can_rename\0\u{1}rename\0\u{3}can_fork\0\u{3}fork_blocked_reason\0\u{1}fork\0\u{3}can_compact\0\u{3}compact_blocked_reason\0\u{1}compact\0\u{3}can_switch_model\0\u{3}model_switch_blocked_reason\0\u{3}set_model\0\u{3}models_loading\0\u{3}models_loaded\0\u{3}models_error\0\u{3}model_choices\0\u{3}effort_choices\0\u{3}can_switch_mode\0\u{3}mode_switch_blocked_reason\0\u{3}set_mode\0\u{3}mode_choices\0\u{3}usage_entry\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_interrupt\0\u{1}interrupt\0\u{3}can_end\0\u{1}end\0\u{3}end_confirm_note\0\u{3}can_resume\0\u{1}resume\0\u{3}resume_note\0\u{3}can_rename\0\u{1}rename\0\u{3}can_fork\0\u{3}fork_blocked_reason\0\u{1}fork\0\u{3}can_compact\0\u{3}compact_blocked_reason\0\u{1}compact\0\u{3}can_switch_model\0\u{3}model_switch_blocked_reason\0\u{3}set_model\0\u{3}models_loading\0\u{3}models_loaded\0\u{3}models_error\0\u{3}model_choices\0\u{3}effort_choices\0\u{3}can_switch_mode\0\u{3}mode_switch_blocked_reason\0\u{3}set_mode\0\u{3}mode_choices\0\u{3}usage_entry\0\u{3}fork_action\0\u{3}mode_locked\0\u{3}mode_permission_notice\0")
 
   fileprivate class _StorageClass {
     var _canInterrupt: Bool = false
@@ -5060,6 +5430,9 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _setMode: PBSessionCommandState? = nil
     var _modeChoices: [PBSessionModeChoiceView] = []
     var _usageEntry: PBSessionUsageEntryView? = nil
+    var _forkAction: PBSessionForkActionView? = nil
+    var _modeLocked: Bool = false
+    var _modePermissionNotice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5099,6 +5472,9 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _setMode = source._setMode
       _modeChoices = source._modeChoices
       _usageEntry = source._usageEntry
+      _forkAction = source._forkAction
+      _modeLocked = source._modeLocked
+      _modePermissionNotice = source._modePermissionNotice
     }
   }
 
@@ -5146,6 +5522,9 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 27: try { try decoder.decodeSingularMessageField(value: &_storage._setMode) }()
         case 28: try { try decoder.decodeRepeatedMessageField(value: &_storage._modeChoices) }()
         case 29: try { try decoder.decodeSingularMessageField(value: &_storage._usageEntry) }()
+        case 30: try { try decoder.decodeSingularMessageField(value: &_storage._forkAction) }()
+        case 31: try { try decoder.decodeSingularBoolField(value: &_storage._modeLocked) }()
+        case 32: try { try decoder.decodeSingularMessageField(value: &_storage._modePermissionNotice) }()
         default: break
         }
       }
@@ -5245,6 +5624,15 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       try { if let v = _storage._usageEntry {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 29)
       } }()
+      try { if let v = _storage._forkAction {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+      } }()
+      if _storage._modeLocked != false {
+        try visitor.visitSingularBoolField(value: _storage._modeLocked, fieldNumber: 31)
+      }
+      try { if let v = _storage._modePermissionNotice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5283,6 +5671,9 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._setMode != rhs_storage._setMode {return false}
         if _storage._modeChoices != rhs_storage._modeChoices {return false}
         if _storage._usageEntry != rhs_storage._usageEntry {return false}
+        if _storage._forkAction != rhs_storage._forkAction {return false}
+        if _storage._modeLocked != rhs_storage._modeLocked {return false}
+        if _storage._modePermissionNotice != rhs_storage._modePermissionNotice {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5294,7 +5685,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_item\0\u{1}kind\0\u{3}item_id\0\u{3}observed_seq\0\u{3}more_count\0\u{1}title\0\u{1}summary\0\u{1}meta\0\u{3}time_left\0\u{3}deadline_ms\0\u{3}waiting_confirmation\0\u{1}command\0\u{2}\u{8}approval\0\u{1}question\0\u{1}plan\0\u{3}terminal_popup\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_item\0\u{1}kind\0\u{3}item_id\0\u{3}observed_seq\0\u{3}more_count\0\u{1}title\0\u{1}summary\0\u{1}meta\0\u{3}time_left\0\u{3}deadline_ms\0\u{3}waiting_confirmation\0\u{1}command\0\u{3}is_skeleton\0\u{3}time_left_plain\0\u{2}\u{6}approval\0\u{1}question\0\u{1}plan\0\u{3}terminal_popup\0")
 
   fileprivate class _StorageClass {
     var _hasItem_p: Bool = false
@@ -5309,6 +5700,8 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _deadlineMs: Int64 = 0
     var _waitingConfirmation: Bool = false
     var _command: PBSessionCommandState? = nil
+    var _isSkeleton: Bool = false
+    var _timeLeftPlain: PBCoreText? = nil
     var _detail: PBSessionDockView.OneOf_Detail?
 
       // This property is used as the initial default value for new instances of the type.
@@ -5332,6 +5725,8 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _deadlineMs = source._deadlineMs
       _waitingConfirmation = source._waitingConfirmation
       _command = source._command
+      _isSkeleton = source._isSkeleton
+      _timeLeftPlain = source._timeLeftPlain
       _detail = source._detail
     }
   }
@@ -5363,6 +5758,8 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 10: try { try decoder.decodeSingularInt64Field(value: &_storage._deadlineMs) }()
         case 11: try { try decoder.decodeSingularBoolField(value: &_storage._waitingConfirmation) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._command) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._isSkeleton) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._timeLeftPlain) }()
         case 20: try {
           var v: PBSessionApprovalDockView?
           var hadOneofValue = false
@@ -5463,6 +5860,12 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       try { if let v = _storage._command {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
       } }()
+      if _storage._isSkeleton != false {
+        try visitor.visitSingularBoolField(value: _storage._isSkeleton, fieldNumber: 13)
+      }
+      try { if let v = _storage._timeLeftPlain {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
       switch _storage._detail {
       case .approval?: try {
         guard case .approval(let v)? = _storage._detail else { preconditionFailure() }
@@ -5503,6 +5906,8 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._deadlineMs != rhs_storage._deadlineMs {return false}
         if _storage._waitingConfirmation != rhs_storage._waitingConfirmation {return false}
         if _storage._command != rhs_storage._command {return false}
+        if _storage._isSkeleton != rhs_storage._isSkeleton {return false}
+        if _storage._timeLeftPlain != rhs_storage._timeLeftPlain {return false}
         if _storage._detail != rhs_storage._detail {return false}
         return true
       }
@@ -5967,12 +6372,13 @@ extension PBSessionPlanDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionTerminalPopupDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}popup_title\0\u{1}hint\0\u{3}can_go_terminal\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}popup_title\0\u{1}hint\0\u{3}can_go_terminal\0\u{3}is_trust_folder\0")
 
   fileprivate class _StorageClass {
     var _popupTitle: PBCoreText? = nil
     var _hint: PBCoreText? = nil
     var _canGoTerminal: Bool = false
+    var _isTrustFolder: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5986,6 +6392,7 @@ extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._
       _popupTitle = source._popupTitle
       _hint = source._hint
       _canGoTerminal = source._canGoTerminal
+      _isTrustFolder = source._isTrustFolder
     }
   }
 
@@ -6007,6 +6414,7 @@ extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._
         case 1: try { try decoder.decodeSingularMessageField(value: &_storage._popupTitle) }()
         case 2: try { try decoder.decodeSingularMessageField(value: &_storage._hint) }()
         case 3: try { try decoder.decodeSingularBoolField(value: &_storage._canGoTerminal) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._isTrustFolder) }()
         default: break
         }
       }
@@ -6028,6 +6436,9 @@ extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._
       if _storage._canGoTerminal != false {
         try visitor.visitSingularBoolField(value: _storage._canGoTerminal, fieldNumber: 3)
       }
+      if _storage._isTrustFolder != false {
+        try visitor.visitSingularBoolField(value: _storage._isTrustFolder, fieldNumber: 4)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6040,6 +6451,7 @@ extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._
         if _storage._popupTitle != rhs_storage._popupTitle {return false}
         if _storage._hint != rhs_storage._hint {return false}
         if _storage._canGoTerminal != rhs_storage._canGoTerminal {return false}
+        if _storage._isTrustFolder != rhs_storage._isTrustFolder {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6051,7 +6463,7 @@ extension PBSessionTerminalPopupDockView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionTrayItemView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}slot_key\0\u{1}group\0\u{1}tone\0\u{1}activity\0\u{3}queue_number\0\u{3}show_spinner\0\u{1}text\0\u{3}source_label\0\u{3}foreign_dimmed\0\u{3}attachment_count\0\u{3}image_count\0\u{3}file_count\0\u{3}image_ids\0\u{3}file_ids\0\u{1}mode\0\u{3}reason_text\0\u{3}can_cancel\0\u{3}can_resume\0\u{3}can_retry\0\u{3}can_open_terminal\0\u{3}can_ignore\0\u{3}can_promote\0\u{3}can_restore\0\u{3}network_actions_disabled\0\u{3}server_backed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{3}slot_key\0\u{1}group\0\u{1}tone\0\u{1}activity\0\u{3}queue_number\0\u{3}show_spinner\0\u{1}text\0\u{3}source_label\0\u{3}foreign_dimmed\0\u{3}attachment_count\0\u{3}image_count\0\u{3}file_count\0\u{3}image_ids\0\u{3}file_ids\0\u{1}mode\0\u{3}reason_text\0\u{3}can_cancel\0\u{3}can_resume\0\u{3}can_retry\0\u{3}can_open_terminal\0\u{3}can_ignore\0\u{3}can_promote\0\u{3}can_restore\0\u{3}network_actions_disabled\0\u{3}server_backed\0\u{3}is_skeleton\0")
 
   fileprivate class _StorageClass {
     var _requestID: String = String()
@@ -6080,6 +6492,7 @@ extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _canRestore: Bool = false
     var _networkActionsDisabled: Bool = false
     var _serverBacked: Bool = false
+    var _isSkeleton: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6116,6 +6529,7 @@ extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _canRestore = source._canRestore
       _networkActionsDisabled = source._networkActionsDisabled
       _serverBacked = source._serverBacked
+      _isSkeleton = source._isSkeleton
     }
   }
 
@@ -6160,6 +6574,7 @@ extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 24: try { try decoder.decodeSingularBoolField(value: &_storage._canRestore) }()
         case 25: try { try decoder.decodeSingularBoolField(value: &_storage._networkActionsDisabled) }()
         case 26: try { try decoder.decodeSingularBoolField(value: &_storage._serverBacked) }()
+        case 27: try { try decoder.decodeSingularBoolField(value: &_storage._isSkeleton) }()
         default: break
         }
       }
@@ -6250,6 +6665,9 @@ extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._serverBacked != false {
         try visitor.visitSingularBoolField(value: _storage._serverBacked, fieldNumber: 26)
       }
+      if _storage._isSkeleton != false {
+        try visitor.visitSingularBoolField(value: _storage._isSkeleton, fieldNumber: 27)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6285,6 +6703,7 @@ extension PBSessionTrayItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._canRestore != rhs_storage._canRestore {return false}
         if _storage._networkActionsDisabled != rhs_storage._networkActionsDisabled {return false}
         if _storage._serverBacked != rhs_storage._serverBacked {return false}
+        if _storage._isSkeleton != rhs_storage._isSkeleton {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -6516,7 +6935,7 @@ extension PBSessionPendingTrayView: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionComposerView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{3}disabled_reason\0\u{1}placeholder\0\u{3}has_active_turn\0\u{3}supports_queue_mode\0\u{3}can_attach_images\0\u{3}can_attach_files\0\u{3}interrupt_visible\0\u{3}pending_tray\0\u{3}retained_attachment_request_ids\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{3}disabled_reason\0\u{1}placeholder\0\u{3}has_active_turn\0\u{3}supports_queue_mode\0\u{3}can_attach_images\0\u{3}can_attach_files\0\u{3}interrupt_visible\0\u{3}pending_tray\0\u{3}retained_attachment_request_ids\0\u{3}default_send_mode\0\u{3}is_default_placeholder\0\u{3}slash_warning_title\0\u{3}slash_warning_text\0")
 
   fileprivate class _StorageClass {
     var _enabled: Bool = false
@@ -6529,6 +6948,10 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _interruptVisible: Bool = false
     var _pendingTray: PBSessionPendingTrayView? = nil
     var _retainedAttachmentRequestIds: [String] = []
+    var _defaultSendMode: PBSendMode = .unspecified
+    var _isDefaultPlaceholder: Bool = false
+    var _slashWarningTitle: PBCoreText? = nil
+    var _slashWarningText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6549,6 +6972,10 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _interruptVisible = source._interruptVisible
       _pendingTray = source._pendingTray
       _retainedAttachmentRequestIds = source._retainedAttachmentRequestIds
+      _defaultSendMode = source._defaultSendMode
+      _isDefaultPlaceholder = source._isDefaultPlaceholder
+      _slashWarningTitle = source._slashWarningTitle
+      _slashWarningText = source._slashWarningText
     }
   }
 
@@ -6577,6 +7004,10 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 8: try { try decoder.decodeSingularBoolField(value: &_storage._interruptVisible) }()
         case 9: try { try decoder.decodeSingularMessageField(value: &_storage._pendingTray) }()
         case 10: try { try decoder.decodeRepeatedStringField(value: &_storage._retainedAttachmentRequestIds) }()
+        case 11: try { try decoder.decodeSingularEnumField(value: &_storage._defaultSendMode) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._isDefaultPlaceholder) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._slashWarningTitle) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._slashWarningText) }()
         default: break
         }
       }
@@ -6619,6 +7050,18 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._retainedAttachmentRequestIds.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._retainedAttachmentRequestIds, fieldNumber: 10)
       }
+      if _storage._defaultSendMode != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._defaultSendMode, fieldNumber: 11)
+      }
+      if _storage._isDefaultPlaceholder != false {
+        try visitor.visitSingularBoolField(value: _storage._isDefaultPlaceholder, fieldNumber: 12)
+      }
+      try { if let v = _storage._slashWarningTitle {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      try { if let v = _storage._slashWarningText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6638,6 +7081,10 @@ extension PBSessionComposerView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._interruptVisible != rhs_storage._interruptVisible {return false}
         if _storage._pendingTray != rhs_storage._pendingTray {return false}
         if _storage._retainedAttachmentRequestIds != rhs_storage._retainedAttachmentRequestIds {return false}
+        if _storage._defaultSendMode != rhs_storage._defaultSendMode {return false}
+        if _storage._isDefaultPlaceholder != rhs_storage._isDefaultPlaceholder {return false}
+        if _storage._slashWarningTitle != rhs_storage._slashWarningTitle {return false}
+        if _storage._slashWarningText != rhs_storage._slashWarningText {return false}
         return true
       }
       if !storagesAreEqual {return false}

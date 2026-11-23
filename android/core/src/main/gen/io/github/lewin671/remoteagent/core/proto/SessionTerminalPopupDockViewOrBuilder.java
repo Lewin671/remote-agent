@@ -37,4 +37,10 @@ public interface SessionTerminalPopupDockViewOrBuilder extends
    * @return The canGoTerminal.
    */
   boolean getCanGoTerminal();
+
+  /**
+   * <code>bool is_trust_folder = 4 [json_name = "isTrustFolder"];</code>
+   * @return The isTrustFolder.
+   */
+  boolean getIsTrustFolder();
 }

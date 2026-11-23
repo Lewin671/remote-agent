@@ -144,7 +144,7 @@ func (s settingsMachinesSorted) Less(i, j int) bool {
 	return s[i].ID < s[j].ID
 }
 
-func buildMachineListCards(st *State, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {
+func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
 		if m != nil {
@@ -153,6 +153,27 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 	}
 	clientVer := st.World.ClientVersion
 	sortutil.SortInterface(settingsMachinesSorted(sorted))
+
+	var inDir map[string]bool
+	var directReady map[string]bool
+	if syncView != nil {
+		if len(syncView.Devices) > 0 {
+			inDir = make(map[string]bool, len(syncView.Devices))
+			for _, d := range syncView.Devices {
+				if d != nil && d.DeviceId != "" {
+					inDir[d.DeviceId] = true
+				}
+			}
+		}
+		if len(syncView.Machines) > 0 {
+			directReady = make(map[string]bool, len(syncView.Machines))
+			for _, sm := range syncView.Machines {
+				if sm != nil && sm.MachineId != "" && sm.DirectReady {
+					directReady[sm.MachineId] = true
+				}
+			}
+		}
+	}
 
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	for _, m := range sorted {
@@ -226,16 +247,18 @@ func buildMachineListCards(st *State, machines []*lists.Machine, extra *Settings
 		}
 
 		card := &corev1.MachineListCardView{
-			MachineId:        m.ID,
-			Name:             lists.MachineName(m, m.ID),
-			Online:           online,
-			Member:           !unlinked,
-			ProtocolMismatch: mismatch,
-			StatusText:       statusTxt,
-			StatusDot:        statusDot,
-			StatusWarn:       statusWarn,
-			SubtitleParts:    subParts,
-			LastSeenMs:       m.LastSeenMs,
+			MachineId:         m.ID,
+			Name:              lists.MachineName(m, m.ID),
+			Online:            online,
+			Member:            !unlinked,
+			ProtocolMismatch:  mismatch,
+			StatusText:        statusTxt,
+			StatusDot:         statusDot,
+			StatusWarn:        statusWarn,
+			SubtitleParts:     subParts,
+			LastSeenMs:        m.LastSeenMs,
+			InDeviceDirectory: inDir[m.ID],
+			DirectReady:       directReady[m.ID],
 		}
 		if includeSummary {
 			card.QuotaSummaries = quotaSummaries
@@ -293,6 +316,7 @@ func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete boo
 			RoleLabel:         role,
 			LastUsedText:      lastUsed,
 			AddedText:         formatCalendarDay(d.CreatedMs, st.Cal),
+			Kind:              d.Kind,
 		}
 		if incomplete && onlyComplete {
 			unfinished = append(unfinished, row)
@@ -388,10 +412,24 @@ func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
 	}
 }
 
-func buildConnCheckSummary(st *State, cc ConnCheckState) *corev1.ConnCheckSummaryView {
+func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnCheckState) *corev1.ConnCheckSummaryView {
+	connState := mapSessionConnState(st.World.Connection)
+	isConnecting := st.World.Connection == lists.ConnConnecting || st.World.Connection == lists.ConnReconnecting
 	out := &corev1.ConnCheckSummaryView{
-		ServerState: cc.ServerState,
-		LatencyMs:   cc.LatencyMs,
+		ServerState:       cc.ServerState,
+		LatencyMs:         cc.LatencyMs,
+		ConnState:         connState,
+		NetworkAvailable:  syncView == nil || syncView.GetNetworkAvailable() || st.World.Connection != lists.ConnNoNetwork,
+		LivePushConnected: st.LivePushConnected || syncView.GetLivePushConnected(),
+		EverOnline:        syncView.GetEverOnline(),
+		Failures:          syncView.GetConnectFailures(),
+		ConnStartedAtMs:   syncView.GetConnectionStartedAtMs(),
+		ConnStep:          syncView.GetConnectionStep(),
+		DisplayGrace:      st.DisplayGrace || syncView.GetDisplayGrace(),
+		IsConnecting:      isConnecting,
+	}
+	if syncView != nil {
+		out.NetworkAvailable = syncView.GetNetworkAvailable()
 	}
 	if st != nil && st.ConnectionReasonText != nil {
 		out.LastFailureText = st.ConnectionReasonText
@@ -402,12 +440,16 @@ func buildConnCheckSummary(st *State, cc ConnCheckState) *corev1.ConnCheckSummar
 	switch st.World.Connection {
 	case lists.ConnNoNetwork:
 		out.StatusWord = text.Msg(text.KeyConnectionUnavailable)
+		out.BannerText = text.Msg(text.KeyConnectionNoNetwork)
 	case lists.ConnConnecting:
 		out.StatusWord = text.Msg(text.KeyConnectionConnectingConnCheckLabel)
+		out.BannerText = text.Msg(text.KeyConnectionConnectingConnCheck)
 	case lists.ConnReconnecting:
 		out.StatusWord = text.Msg(text.KeyConnectionReconnectingConnCheckLabel)
+		out.BannerText = text.Msg(text.KeyConnectionReconnectingConnCheck)
 	case lists.ConnOffline:
 		out.StatusWord = text.Msg(text.KeyConnectionUnreachable)
+		out.BannerText = text.Msg(text.KeyConnectionNoServer)
 	default:
 		switch cc.ServerState {
 		case corev1.ConnProbeState_CONN_PROBE_STATE_CHECKING:
@@ -506,7 +548,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		AuthorityName:     authName,
 		RecoveryPending:   syncView.GetRecoveryPending(),
 		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
-		Machines:          buildMachineListCards(st, st.World.Machines, extra, true),
+		Machines:          buildMachineListCards(st, syncView, st.World.Machines, extra, true),
 		CanAddDevice:      isMgr && !unlinked,
 		RecentClients:     recent,
 		HasMoreClients:    hasMore,
@@ -514,7 +556,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		Notifications:     buildNotificationsView(extra.Notifications),
 		Appearance:        buildAppearanceView(extra.Theme),
 		Update:            buildClientUpdateView(extra.Update, st.World.ClientVersion),
-		ConnCheck:         buildConnCheckSummary(st, extra.ConnCheck),
+		ConnCheck:         buildConnCheckSummary(st, syncView, extra.ConnCheck),
 		DiskReminders:     machine.BuildDiskReminders(st.World.Machines),
 		QuotaBanner:       quota.Banner(st.World.Machines, st.Cal.NowMs),
 		CanExitAccount:    syncView.GetSelfDeviceId() != "",
@@ -580,14 +622,17 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		secSummary = text.Msg(text.KeySettingsSecuritySummaryNonAuthority, text.Str("name", authName))
 	}
 	vm.Security = &corev1.SecuritySummaryView{
-		IsManager:         isMgr,
-		Unlinked:          unlinked,
-		AuthorityDeviceId: syncView.GetAuthorityDeviceId(),
-		AuthorityName:     authName,
-		RecoveryPending:   syncView.GetRecoveryPending(),
-		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
-		SummaryText:       secSummary,
-		RecoveryNotice:    vm.RecoveryBannerText,
+		IsManager:           isMgr,
+		Unlinked:            unlinked,
+		AuthorityDeviceId:   syncView.GetAuthorityDeviceId(),
+		AuthorityName:       authName,
+		RecoveryPending:     syncView.GetRecoveryPending(),
+		RecoveryReadyMs:     syncView.GetRecoveryReadyMs(),
+		SummaryText:         secSummary,
+		RecoveryNotice:      vm.RecoveryBannerText,
+		HasHandoffOffer:     syncView.GetHasHandoffOffer(),
+		RecoveryStatusStale: syncView.GetRecoveryStatusStale(),
+		LeaseEndMs:          syncView.GetLeaseEndMs(),
 	}
 	return vm
 }
@@ -606,6 +651,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	vm := &corev1.MachineSettingsViewModel{
 		MachineId: machineID,
 		Unlinked:  unlinked,
+		AppOnline: onlineWorld,
+		IsManager: isMgr,
 	}
 	if m == nil {
 		vm.Name = machine.ShortID(machineID)
@@ -1173,9 +1220,14 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		AuthorityDeviceId:  syncView.GetAuthorityDeviceId(),
 		AuthorityName:      authName,
 		CanAddDevice:       isMgr && !unlinked,
-		Computers:          buildMachineListCards(st, st.World.Machines, extra, false),
+		Computers:          buildMachineListCards(st, syncView, st.World.Machines, extra, false),
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
+		ErrorText:          syncView.GetDevicesErrorText(),
+		ClockSkewed:        st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
+		RecoveryPending:    syncView.GetRecoveryPending(),
+		LeaseEndMs:         syncView.GetLeaseEndMs(),
+		LoadFailed:         syncView.GetDevicesLoadFailed(),
 	}
 	if len(clients) > 0 {
 		vm.ClientCountText = text.Msg(text.KeySettingsClientsCount, text.Int("count", int64(len(clients))))

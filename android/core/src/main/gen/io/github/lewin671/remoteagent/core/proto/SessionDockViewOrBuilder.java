@@ -119,6 +119,23 @@ public interface SessionDockViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionCommandState getCommand();
 
   /**
+   * <code>bool is_skeleton = 13 [json_name = "isSkeleton"];</code>
+   * @return The isSkeleton.
+   */
+  boolean getIsSkeleton();
+
+  /**
+   * <code>.remoteagent.core.v1.Text time_left_plain = 14 [json_name = "timeLeftPlain"];</code>
+   * @return Whether the timeLeftPlain field is set.
+   */
+  boolean hasTimeLeftPlain();
+  /**
+   * <code>.remoteagent.core.v1.Text time_left_plain = 14 [json_name = "timeLeftPlain"];</code>
+   * @return The timeLeftPlain.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getTimeLeftPlain();
+
+  /**
    * <code>.remoteagent.core.v1.SessionApprovalDockView approval = 20 [json_name = "approval"];</code>
    * @return Whether the approval field is set.
    */

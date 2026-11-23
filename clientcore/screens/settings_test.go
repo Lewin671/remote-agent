@@ -471,4 +471,35 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	if loadingVM.GetAttachmentStorage().GetSummaryText().GetLiteral() != "—" {
 		t.Fatalf("expected AttachmentStorage.SummaryText='—' while storage missing, got %+v", loadingVM.GetAttachmentStorage().GetSummaryText())
 	}
+
+	// Verify Step 2 core fields on Settings / Devices / ConnCheck / MachineSettings.
+	sv.DevicesLoadFailed = true
+	sv.DevicesErrorText = text.Plain("devices rpc failed")
+	sv.HasHandoffOffer = true
+	sv.RecoveryStatusStale = true
+	sv.LeaseEndMs = now + 600_000
+	sv.NetworkAvailable = true
+	sv.EverOnline = true
+	sv.ConnectFailures = 2
+	sv.ConnectionStartedAtMs = now - 5_000
+	sv.ConnectionStep = text.Plain("step")
+	sv.Machines = []*corev1.SyncMachineView{{MachineId: "1234567890abcdef", DirectReady: true}}
+	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{DeviceId: "1234567890abcdef", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Trusted: true})
+	setVM := BuildSettings(st, sv, nil)
+	if !setVM.Security.HasHandoffOffer || !setVM.Security.RecoveryStatusStale || setVM.Security.LeaseEndMs != now+600_000 {
+		t.Fatalf("unexpected SecuritySummaryView fields: %+v", setVM.Security)
+	}
+	if !setVM.ConnCheck.NetworkAvailable || !setVM.ConnCheck.EverOnline || setVM.ConnCheck.Failures != 2 || setVM.ConnCheck.ConnStartedAtMs != now-5_000 {
+		t.Fatalf("unexpected ConnCheckSummaryView fields: %+v", setVM.ConnCheck)
+	}
+	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady {
+		t.Fatalf("expected InDeviceDirectory & DirectReady on machine card, got %+v", setVM.Machines)
+	}
+	devVM := BuildDevices(st, sv, nil)
+	if !devVM.LoadFailed || devVM.GetErrorText().GetLiteral() != "devices rpc failed" || devVM.LeaseEndMs != now+600_000 {
+		t.Fatalf("unexpected DevicesViewModel fields: %+v", devVM)
+	}
+	if !loadingVM.AppOnline {
+		t.Fatalf("expected MachineSettingsViewModel.AppOnline=true when connected")
+	}
 }

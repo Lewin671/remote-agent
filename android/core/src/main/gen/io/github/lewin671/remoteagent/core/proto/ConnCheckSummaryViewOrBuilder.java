@@ -59,4 +59,79 @@ public interface ConnCheckSummaryViewOrBuilder extends
    * @return The lastFailureText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getLastFailureText();
+
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @return The enum numeric value on the wire for connState.
+   */
+  int getConnStateValue();
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @return The connState.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnState getConnState();
+
+  /**
+   * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+   * @return The networkAvailable.
+   */
+  boolean getNetworkAvailable();
+
+  /**
+   * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+   * @return The livePushConnected.
+   */
+  boolean getLivePushConnected();
+
+  /**
+   * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+   * @return The everOnline.
+   */
+  boolean getEverOnline();
+
+  /**
+   * <code>int32 failures = 10 [json_name = "failures"];</code>
+   * @return The failures.
+   */
+  int getFailures();
+
+  /**
+   * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+   * @return The connStartedAtMs.
+   */
+  long getConnStartedAtMs();
+
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   * @return Whether the connStep field is set.
+   */
+  boolean hasConnStep();
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   * @return The connStep.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getConnStep();
+
+  /**
+   * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+   * @return The displayGrace.
+   */
+  boolean getDisplayGrace();
+
+  /**
+   * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+   * @return The isConnecting.
+   */
+  boolean getIsConnecting();
+
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   * @return Whether the bannerText field is set.
+   */
+  boolean hasBannerText();
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   * @return The bannerText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getBannerText();
 }

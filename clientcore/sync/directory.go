@@ -413,8 +413,14 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 		if ev.Error != "" || ev.WireSession == nil || ev.WireSession.SessionId == "" {
 			if sid != "" {
 				e.sessionByIDFailed[sid] = true
+				if ev.Error != "" {
+					e.sessionByIDErrors[sid] = ev.Error
+				} else {
+					delete(e.sessionByIDErrors, sid)
+				}
 			}
 			ctx.Dirty.Add(false, true, false)
+			ctx.Dirty.MarkSessionData()
 			return
 		}
 		e.openWireDirectoryBatchTag(ctx, nil, []*v1.RemoteSession{ev.WireSession}, nil, nil, dirBatchMeta{
@@ -425,11 +431,18 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 	if ev.Error != "" || ev.Session == nil || ev.Session.SessionId == "" {
 		if sid != "" {
 			e.sessionByIDFailed[sid] = true
+			if ev.Error != "" {
+				e.sessionByIDErrors[sid] = ev.Error
+			} else {
+				delete(e.sessionByIDErrors, sid)
+			}
 		}
 		ctx.Dirty.Add(false, true, false)
+		ctx.Dirty.MarkSessionData()
 		return
 	}
 	delete(e.sessionByIDFailed, sid)
+	delete(e.sessionByIDErrors, sid)
 	e.putSession(ctx, ev.Session, false)
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
@@ -459,6 +472,9 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 		return
 	}
 	if ev.Error != "" {
+		e.devicesLoadFailed = true
+		e.devicesErrorText = text.Plain(ev.Error)
+		ctx.Dirty.MarkSyncState()
 		return
 	}
 	if len(ev.WireDevices) > 0 || (e.secEngine != nil && e.secEngine.Locked() && len(ev.Devices) == 0) {
@@ -468,6 +484,8 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 		})
 		return
 	}
+	e.devicesLoadFailed = false
+	e.devicesErrorText = nil
 	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
 	ctx.Dirty.MarkAll()
 }

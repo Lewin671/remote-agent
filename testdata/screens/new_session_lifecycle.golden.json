@@ -150,7 +150,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.computer_offline",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            }
           }
         }
       }
@@ -385,7 +398,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.computer_offline",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            }
           }
         }
       }
@@ -634,7 +660,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.path_spaces",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "Workstation"
+                }
+              ]
+            }
           }
         }
       }
@@ -833,7 +872,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.path_spaces",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "Workstation"
+                }
+              ]
+            }
           }
         }
       }
@@ -1035,7 +1087,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.path_spaces",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "Workstation"
+                }
+              ]
+            }
           }
         }
       }
@@ -1201,7 +1266,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.path_spaces",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "Workstation"
+                }
+              ]
+            }
           }
         }
       }
@@ -1377,7 +1455,20 @@
               ],
               "canSelectAutoMode": true
             },
-            "autoIssue": "AUTO_ISSUE_KIND_NONE"
+            "autoIssue": "AUTO_ISSUE_KIND_NONE",
+            "capabilitiesLoaded": true,
+            "maxImages": 6,
+            "maxFiles": 6,
+            "maxFileBytes": "104857600",
+            "imageUploadBlockedReason": {
+              "key": "attachment.path_spaces",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "Workstation"
+                }
+              ]
+            }
           }
         }
       }

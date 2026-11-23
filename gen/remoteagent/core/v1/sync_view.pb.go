@@ -788,6 +788,14 @@ type SyncStateView struct {
 	ReachabilityUnknown    bool                   `protobuf:"varint,39,opt,name=reachability_unknown,json=reachabilityUnknown,proto3" json:"reachability_unknown,omitempty"`
 	TrustedMachineIds      []string               `protobuf:"bytes,40,rep,name=trusted_machine_ids,json=trustedMachineIds,proto3" json:"trusted_machine_ids,omitempty"`
 	ArchiveMachineIds      []string               `protobuf:"bytes,41,rep,name=archive_machine_ids,json=archiveMachineIds,proto3" json:"archive_machine_ids,omitempty"`
+	ConnectionStartedAtMs  int64                  `protobuf:"varint,42,opt,name=connection_started_at_ms,json=connectionStartedAtMs,proto3" json:"connection_started_at_ms,omitempty"`
+	NetworkAvailable       bool                   `protobuf:"varint,43,opt,name=network_available,json=networkAvailable,proto3" json:"network_available,omitempty"`
+	EverOnline             bool                   `protobuf:"varint,44,opt,name=ever_online,json=everOnline,proto3" json:"ever_online,omitempty"`
+	ConnectFailures        int32                  `protobuf:"varint,45,opt,name=connect_failures,json=connectFailures,proto3" json:"connect_failures,omitempty"`
+	RecoveryStatusStale    bool                   `protobuf:"varint,46,opt,name=recovery_status_stale,json=recoveryStatusStale,proto3" json:"recovery_status_stale,omitempty"`
+	DevicesLoadFailed      bool                   `protobuf:"varint,47,opt,name=devices_load_failed,json=devicesLoadFailed,proto3" json:"devices_load_failed,omitempty"`
+	DevicesErrorText       *Text                  `protobuf:"bytes,48,opt,name=devices_error_text,json=devicesErrorText,proto3" json:"devices_error_text,omitempty"`
+	HasHandoffOffer        bool                   `protobuf:"varint,49,opt,name=has_handoff_offer,json=hasHandoffOffer,proto3" json:"has_handoff_offer,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -1109,6 +1117,62 @@ func (x *SyncStateView) GetArchiveMachineIds() []string {
 	return nil
 }
 
+func (x *SyncStateView) GetConnectionStartedAtMs() int64 {
+	if x != nil {
+		return x.ConnectionStartedAtMs
+	}
+	return 0
+}
+
+func (x *SyncStateView) GetNetworkAvailable() bool {
+	if x != nil {
+		return x.NetworkAvailable
+	}
+	return false
+}
+
+func (x *SyncStateView) GetEverOnline() bool {
+	if x != nil {
+		return x.EverOnline
+	}
+	return false
+}
+
+func (x *SyncStateView) GetConnectFailures() int32 {
+	if x != nil {
+		return x.ConnectFailures
+	}
+	return 0
+}
+
+func (x *SyncStateView) GetRecoveryStatusStale() bool {
+	if x != nil {
+		return x.RecoveryStatusStale
+	}
+	return false
+}
+
+func (x *SyncStateView) GetDevicesLoadFailed() bool {
+	if x != nil {
+		return x.DevicesLoadFailed
+	}
+	return false
+}
+
+func (x *SyncStateView) GetDevicesErrorText() *Text {
+	if x != nil {
+		return x.DevicesErrorText
+	}
+	return nil
+}
+
+func (x *SyncStateView) GetHasHandoffOffer() bool {
+	if x != nil {
+		return x.HasHandoffOffer
+	}
+	return false
+}
+
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,
 // and transitional transcript events for the unmigrated Step 3 session screen.
 // Delete once Step 3 moves the session timeline/screen into Core.
@@ -1426,7 +1490,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bmeta_rev\x18\x06 \x01(\x04R\ametaRev\x12\x1f\n" +
 	"\vmeta_broken\x18\a \x01(\bR\n" +
 	"metaBroken\x12\x18\n" +
-	"\atrusted\x18\b \x01(\bR\atrusted\"\xb0\x0f\n" +
+	"\atrusted\x18\b \x01(\bR\atrusted\"\xbb\x12\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +
@@ -1475,7 +1539,16 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\rdisplay_grace\x18& \x01(\bR\fdisplayGrace\x121\n" +
 	"\x14reachability_unknown\x18' \x01(\bR\x13reachabilityUnknown\x12.\n" +
 	"\x13trusted_machine_ids\x18( \x03(\tR\x11trustedMachineIds\x12.\n" +
-	"\x13archive_machine_ids\x18) \x03(\tR\x11archiveMachineIds\"\xcb\a\n" +
+	"\x13archive_machine_ids\x18) \x03(\tR\x11archiveMachineIds\x127\n" +
+	"\x18connection_started_at_ms\x18* \x01(\x03R\x15connectionStartedAtMs\x12+\n" +
+	"\x11network_available\x18+ \x01(\bR\x10networkAvailable\x12\x1f\n" +
+	"\vever_online\x18, \x01(\bR\n" +
+	"everOnline\x12)\n" +
+	"\x10connect_failures\x18- \x01(\x05R\x0fconnectFailures\x122\n" +
+	"\x15recovery_status_stale\x18. \x01(\bR\x13recoveryStatusStale\x12.\n" +
+	"\x13devices_load_failed\x18/ \x01(\bR\x11devicesLoadFailed\x12G\n" +
+	"\x12devices_error_text\x180 \x01(\v2\x19.remoteagent.core.v1.TextR\x10devicesErrorText\x12*\n" +
+	"\x11has_handoff_offer\x181 \x01(\bR\x0fhasHandoffOffer\"\xcb\a\n" +
 	"\x0fSessionDataView\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
@@ -1561,18 +1634,19 @@ var file_remoteagent_core_v1_sync_view_proto_depIdxs = []int32{
 	14, // 15: remoteagent.core.v1.SyncStateView.session_list_error:type_name -> remoteagent.core.v1.Text
 	16, // 16: remoteagent.core.v1.SyncStateView.prefs:type_name -> remoteagent.v1.ProjectPrefs
 	5,  // 17: remoteagent.core.v1.SyncStateView.devices:type_name -> remoteagent.core.v1.SyncDeviceView
-	4,  // 18: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
-	14, // 19: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
-	14, // 20: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
-	17, // 21: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
-	10, // 22: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
-	2,  // 23: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
-	18, // 24: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	14, // 18: remoteagent.core.v1.SyncStateView.devices_error_text:type_name -> remoteagent.core.v1.Text
+	4,  // 19: remoteagent.core.v1.SessionDataView.session:type_name -> remoteagent.core.v1.SyncSessionView
+	14, // 20: remoteagent.core.v1.SessionDataView.error:type_name -> remoteagent.core.v1.Text
+	14, // 21: remoteagent.core.v1.SessionDataView.fetch_error:type_name -> remoteagent.core.v1.Text
+	17, // 22: remoteagent.core.v1.SessionDataView.projection:type_name -> remoteagent.core.v1.ProjectionState
+	10, // 23: remoteagent.core.v1.SessionDataView.live_snapshot:type_name -> remoteagent.v1.LiveSnapshot
+	2,  // 24: remoteagent.core.v1.SessionDataView.pending:type_name -> remoteagent.core.v1.SyncPendingAction
+	18, // 25: remoteagent.core.v1.SessionDataView.events:type_name -> remoteagent.v1.Event
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_sync_view_proto_init() }

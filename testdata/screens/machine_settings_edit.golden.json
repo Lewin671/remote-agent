@@ -1086,7 +1086,9 @@
                 }
               ]
             },
-            "shortId": "…0d956154"
+            "shortId": "…0d956154",
+            "appOnline": true,
+            "isManager": true
           }
         }
       }
@@ -1956,7 +1958,9 @@
                 }
               ]
             },
-            "shortId": "…0d956154"
+            "shortId": "…0d956154",
+            "appOnline": true,
+            "isManager": true
           }
         }
       }
@@ -2802,7 +2806,9 @@
                 }
               ]
             },
-            "shortId": "…0d956154"
+            "shortId": "…0d956154",
+            "appOnline": true,
+            "isManager": true
           }
         }
       }
@@ -3756,7 +3762,9 @@
                 }
               ]
             },
-            "shortId": "…0d956154"
+            "shortId": "…0d956154",
+            "appOnline": true,
+            "isManager": true
           }
         }
       }

@@ -3,6 +3,7 @@ package security
 import (
 	"crypto/sha256"
 	"slices"
+	"strings"
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -967,10 +968,32 @@ func (e *Engine) verifiedHandoffCandidates(devices []DeviceOfferInfo) []*corev1.
 			continue
 		}
 		if m, ok := e.head.Core.Member(d.ID); ok && m.Kind == devicesec.Client {
-			out = append(out, &corev1.SecurityHandoffCandidate{DeviceId: d.ID, RecoveryEd: slices.Clone(ed)})
+			out = append(out, &corev1.SecurityHandoffCandidate{
+				DeviceId:    d.ID,
+				RecoveryEd:  slices.Clone(ed),
+				DisplayName: handoffCandidateDisplayName(d.ID, d.Meta),
+			})
 		}
 	}
 	return out
+}
+
+func handoffCandidateDisplayName(id string, meta *v1.DeviceMeta) string {
+	if meta != nil {
+		if n := strings.TrimSpace(meta.Name); n != "" {
+			return n
+		}
+		if d := strings.TrimSpace(meta.Description); d != "" {
+			return d
+		}
+		if p := strings.TrimSpace(meta.Platform); p != "" {
+			return p
+		}
+	}
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
 }
 
 const (

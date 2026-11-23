@@ -405,9 +405,13 @@
                 "supportsModeSwitch": true,
                 "supportsSchedule": true,
                 "terminalAvailable": true,
-                "maxImages": 6
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true
               },
-              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/Code/app"
             },
             "actions": {
               "canInterrupt": true,
@@ -542,7 +546,16 @@
                   "switchAfterTurn": true
                 }
               ],
-              "usageEntry": {}
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.fork_after_turn"
+                }
+              }
             },
             "dock": {},
             "composer": {
@@ -648,6 +661,13 @@
                 ],
                 "totalCount": 2,
                 "failedCount": 2
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
               }
             },
             "timeline": {
@@ -776,9 +796,13 @@
                 "supportsModeSwitch": true,
                 "supportsSchedule": true,
                 "terminalAvailable": true,
-                "maxImages": 6
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true
               },
-              "computerReachability": "COMPUTER_REACHABILITY_ONLINE"
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/Code/app"
             },
             "actions": {
               "canInterrupt": true,
@@ -913,7 +937,16 @@
                   "switchAfterTurn": true
                 }
               ],
-              "usageEntry": {}
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "label": {
+                  "key": "session.fork"
+                },
+                "note": {
+                  "key": "session.fork_after_turn"
+                }
+              }
             },
             "dock": {},
             "composer": {
@@ -1017,6 +1050,13 @@
                 ],
                 "totalCount": 2,
                 "failedCount": 1
+              },
+              "defaultSendMode": "SEND_MODE_STEER",
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
               }
             },
             "timeline": {

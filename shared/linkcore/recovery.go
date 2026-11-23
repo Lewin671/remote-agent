@@ -113,6 +113,14 @@ func (r *Recovery) Take(now int64, b *Budget) bool {
 	return true
 }
 
+// Failures returns the number of consecutive failed attempts recorded since Ready.
+func (r *Recovery) Failures() int {
+	if r == nil {
+		return 0
+	}
+	return int(r.failures)
+}
+
 // Failed schedules the next attempt with full jitter; unit is uniform in [0,1).
 func (r *Recovery) Failed(now int64, unit float64) {
 	cap := min(int64(1000)<<min(r.failures, 5), 30000)

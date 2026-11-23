@@ -229,6 +229,326 @@ public  final class ConnCheckSummaryView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int CONN_STATE_FIELD_NUMBER = 6;
+  private int connState_;
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @return The enum numeric value on the wire for connState.
+   */
+  @java.lang.Override
+  public int getConnStateValue() {
+    return connState_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @return The connState.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.ConnState getConnState() {
+    io.github.lewin671.remoteagent.core.proto.ConnState result = io.github.lewin671.remoteagent.core.proto.ConnState.forNumber(connState_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.ConnState.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @param value The enum numeric value on the wire for connState to set.
+   */
+  private void setConnStateValue(int value) {
+      connState_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   * @param value The connState to set.
+   */
+  private void setConnState(io.github.lewin671.remoteagent.core.proto.ConnState value) {
+    connState_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+   */
+  private void clearConnState() {
+
+    connState_ = 0;
+  }
+
+  public static final int NETWORK_AVAILABLE_FIELD_NUMBER = 7;
+  private boolean networkAvailable_;
+  /**
+   * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+   * @return The networkAvailable.
+   */
+  @java.lang.Override
+  public boolean getNetworkAvailable() {
+    return networkAvailable_;
+  }
+  /**
+   * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+   * @param value The networkAvailable to set.
+   */
+  private void setNetworkAvailable(boolean value) {
+    
+    networkAvailable_ = value;
+  }
+  /**
+   * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+   */
+  private void clearNetworkAvailable() {
+
+    networkAvailable_ = false;
+  }
+
+  public static final int LIVE_PUSH_CONNECTED_FIELD_NUMBER = 8;
+  private boolean livePushConnected_;
+  /**
+   * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+   * @return The livePushConnected.
+   */
+  @java.lang.Override
+  public boolean getLivePushConnected() {
+    return livePushConnected_;
+  }
+  /**
+   * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+   * @param value The livePushConnected to set.
+   */
+  private void setLivePushConnected(boolean value) {
+    
+    livePushConnected_ = value;
+  }
+  /**
+   * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+   */
+  private void clearLivePushConnected() {
+
+    livePushConnected_ = false;
+  }
+
+  public static final int EVER_ONLINE_FIELD_NUMBER = 9;
+  private boolean everOnline_;
+  /**
+   * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+   * @return The everOnline.
+   */
+  @java.lang.Override
+  public boolean getEverOnline() {
+    return everOnline_;
+  }
+  /**
+   * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+   * @param value The everOnline to set.
+   */
+  private void setEverOnline(boolean value) {
+    
+    everOnline_ = value;
+  }
+  /**
+   * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+   */
+  private void clearEverOnline() {
+
+    everOnline_ = false;
+  }
+
+  public static final int FAILURES_FIELD_NUMBER = 10;
+  private int failures_;
+  /**
+   * <code>int32 failures = 10 [json_name = "failures"];</code>
+   * @return The failures.
+   */
+  @java.lang.Override
+  public int getFailures() {
+    return failures_;
+  }
+  /**
+   * <code>int32 failures = 10 [json_name = "failures"];</code>
+   * @param value The failures to set.
+   */
+  private void setFailures(int value) {
+    
+    failures_ = value;
+  }
+  /**
+   * <code>int32 failures = 10 [json_name = "failures"];</code>
+   */
+  private void clearFailures() {
+
+    failures_ = 0;
+  }
+
+  public static final int CONN_STARTED_AT_MS_FIELD_NUMBER = 11;
+  private long connStartedAtMs_;
+  /**
+   * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+   * @return The connStartedAtMs.
+   */
+  @java.lang.Override
+  public long getConnStartedAtMs() {
+    return connStartedAtMs_;
+  }
+  /**
+   * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+   * @param value The connStartedAtMs to set.
+   */
+  private void setConnStartedAtMs(long value) {
+    
+    connStartedAtMs_ = value;
+  }
+  /**
+   * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+   */
+  private void clearConnStartedAtMs() {
+
+    connStartedAtMs_ = 0L;
+  }
+
+  public static final int CONN_STEP_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text connStep_;
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   */
+  @java.lang.Override
+  public boolean hasConnStep() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getConnStep() {
+    return connStep_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : connStep_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setConnStep(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    connStep_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeConnStep(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (connStep_ != null &&
+        connStep_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      connStep_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(connStep_).mergeFrom(value).buildPartial();
+    } else {
+      connStep_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+   */
+  private void clearConnStep() {
+    connStep_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int DISPLAY_GRACE_FIELD_NUMBER = 13;
+  private boolean displayGrace_;
+  /**
+   * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+   * @return The displayGrace.
+   */
+  @java.lang.Override
+  public boolean getDisplayGrace() {
+    return displayGrace_;
+  }
+  /**
+   * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+   * @param value The displayGrace to set.
+   */
+  private void setDisplayGrace(boolean value) {
+    
+    displayGrace_ = value;
+  }
+  /**
+   * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+   */
+  private void clearDisplayGrace() {
+
+    displayGrace_ = false;
+  }
+
+  public static final int IS_CONNECTING_FIELD_NUMBER = 14;
+  private boolean isConnecting_;
+  /**
+   * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+   * @return The isConnecting.
+   */
+  @java.lang.Override
+  public boolean getIsConnecting() {
+    return isConnecting_;
+  }
+  /**
+   * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+   * @param value The isConnecting to set.
+   */
+  private void setIsConnecting(boolean value) {
+    
+    isConnecting_ = value;
+  }
+  /**
+   * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+   */
+  private void clearIsConnecting() {
+
+    isConnecting_ = false;
+  }
+
+  public static final int BANNER_TEXT_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text bannerText_;
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasBannerText() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getBannerText() {
+    return bannerText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : bannerText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    bannerText_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (bannerText_ != null &&
+        bannerText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      bannerText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(bannerText_).mergeFrom(value).buildPartial();
+    } else {
+      bannerText_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+   */
+  private void clearBannerText() {
+    bannerText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -541,6 +861,342 @@ public  final class ConnCheckSummaryView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+     * @return The enum numeric value on the wire for connState.
+     */
+    @java.lang.Override
+    public int getConnStateValue() {
+      return instance.getConnStateValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+     * @param value The connState to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConnStateValue(int value) {
+      copyOnWrite();
+      instance.setConnStateValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+     * @return The connState.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.ConnState getConnState() {
+      return instance.getConnState();
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+     * @param value The enum numeric value on the wire for connState to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConnState(io.github.lewin671.remoteagent.core.proto.ConnState value) {
+      copyOnWrite();
+      instance.setConnState(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.ConnState conn_state = 6 [json_name = "connState"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConnState() {
+      copyOnWrite();
+      instance.clearConnState();
+      return this;
+    }
+
+    /**
+     * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+     * @return The networkAvailable.
+     */
+    @java.lang.Override
+    public boolean getNetworkAvailable() {
+      return instance.getNetworkAvailable();
+    }
+    /**
+     * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+     * @param value The networkAvailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNetworkAvailable(boolean value) {
+      copyOnWrite();
+      instance.setNetworkAvailable(value);
+      return this;
+    }
+    /**
+     * <code>bool network_available = 7 [json_name = "networkAvailable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNetworkAvailable() {
+      copyOnWrite();
+      instance.clearNetworkAvailable();
+      return this;
+    }
+
+    /**
+     * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+     * @return The livePushConnected.
+     */
+    @java.lang.Override
+    public boolean getLivePushConnected() {
+      return instance.getLivePushConnected();
+    }
+    /**
+     * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+     * @param value The livePushConnected to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLivePushConnected(boolean value) {
+      copyOnWrite();
+      instance.setLivePushConnected(value);
+      return this;
+    }
+    /**
+     * <code>bool live_push_connected = 8 [json_name = "livePushConnected"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLivePushConnected() {
+      copyOnWrite();
+      instance.clearLivePushConnected();
+      return this;
+    }
+
+    /**
+     * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+     * @return The everOnline.
+     */
+    @java.lang.Override
+    public boolean getEverOnline() {
+      return instance.getEverOnline();
+    }
+    /**
+     * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+     * @param value The everOnline to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEverOnline(boolean value) {
+      copyOnWrite();
+      instance.setEverOnline(value);
+      return this;
+    }
+    /**
+     * <code>bool ever_online = 9 [json_name = "everOnline"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEverOnline() {
+      copyOnWrite();
+      instance.clearEverOnline();
+      return this;
+    }
+
+    /**
+     * <code>int32 failures = 10 [json_name = "failures"];</code>
+     * @return The failures.
+     */
+    @java.lang.Override
+    public int getFailures() {
+      return instance.getFailures();
+    }
+    /**
+     * <code>int32 failures = 10 [json_name = "failures"];</code>
+     * @param value The failures to set.
+     * @return This builder for chaining.
+     */
+    public Builder setFailures(int value) {
+      copyOnWrite();
+      instance.setFailures(value);
+      return this;
+    }
+    /**
+     * <code>int32 failures = 10 [json_name = "failures"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearFailures() {
+      copyOnWrite();
+      instance.clearFailures();
+      return this;
+    }
+
+    /**
+     * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+     * @return The connStartedAtMs.
+     */
+    @java.lang.Override
+    public long getConnStartedAtMs() {
+      return instance.getConnStartedAtMs();
+    }
+    /**
+     * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+     * @param value The connStartedAtMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConnStartedAtMs(long value) {
+      copyOnWrite();
+      instance.setConnStartedAtMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 conn_started_at_ms = 11 [json_name = "connStartedAtMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConnStartedAtMs() {
+      copyOnWrite();
+      instance.clearConnStartedAtMs();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    @java.lang.Override
+    public boolean hasConnStep() {
+      return instance.hasConnStep();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getConnStep() {
+      return instance.getConnStep();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    public Builder setConnStep(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setConnStep(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    public Builder setConnStep(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setConnStep(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    public Builder mergeConnStep(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeConnStep(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text conn_step = 12 [json_name = "connStep"];</code>
+     */
+    public Builder clearConnStep() {  copyOnWrite();
+      instance.clearConnStep();
+      return this;
+    }
+
+    /**
+     * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+     * @return The displayGrace.
+     */
+    @java.lang.Override
+    public boolean getDisplayGrace() {
+      return instance.getDisplayGrace();
+    }
+    /**
+     * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+     * @param value The displayGrace to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayGrace(boolean value) {
+      copyOnWrite();
+      instance.setDisplayGrace(value);
+      return this;
+    }
+    /**
+     * <code>bool display_grace = 13 [json_name = "displayGrace"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayGrace() {
+      copyOnWrite();
+      instance.clearDisplayGrace();
+      return this;
+    }
+
+    /**
+     * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+     * @return The isConnecting.
+     */
+    @java.lang.Override
+    public boolean getIsConnecting() {
+      return instance.getIsConnecting();
+    }
+    /**
+     * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+     * @param value The isConnecting to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsConnecting(boolean value) {
+      copyOnWrite();
+      instance.setIsConnecting(value);
+      return this;
+    }
+    /**
+     * <code>bool is_connecting = 14 [json_name = "isConnecting"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsConnecting() {
+      copyOnWrite();
+      instance.clearIsConnecting();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasBannerText() {
+      return instance.hasBannerText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getBannerText() {
+      return instance.getBannerText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    public Builder setBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setBannerText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    public Builder setBannerText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setBannerText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    public Builder mergeBannerText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeBannerText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text banner_text = 15 [json_name = "bannerText"];</code>
+     */
+    public Builder clearBannerText() {  copyOnWrite();
+      instance.clearBannerText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnCheckSummaryView)
   }
   @java.lang.Override
@@ -563,10 +1219,22 @@ public  final class ConnCheckSummaryView extends
             "statusWord_",
             "summaryText_",
             "lastFailureText_",
+            "connState_",
+            "networkAvailable_",
+            "livePushConnected_",
+            "everOnline_",
+            "failures_",
+            "connStartedAtMs_",
+            "connStep_",
+            "displayGrace_",
+            "isConnecting_",
+            "bannerText_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0004" +
-              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002";
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0000\u0000\u0001\f\u0002\u0004" +
+              "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\f\u0007\u0007\b\u0007" +
+              "\t\u0007\n\u0004\u000b\u0002\f\u1009\u0003\r\u0007\u000e\u0007\u000f\u1009\u0004" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -124,4 +124,16 @@ public interface MachineListCardViewOrBuilder extends
    * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
    */
   int getSubtitlePartsCount();
+
+  /**
+   * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+   * @return The inDeviceDirectory.
+   */
+  boolean getInDeviceDirectory();
+
+  /**
+   * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+   * @return The directReady.
+   */
+  boolean getDirectReady();
 }

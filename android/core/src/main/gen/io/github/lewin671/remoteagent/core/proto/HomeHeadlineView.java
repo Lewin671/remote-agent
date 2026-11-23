@@ -334,6 +334,32 @@ public  final class HomeHeadlineView extends
 
   }
 
+  public static final int IS_CONNECTING_FIELD_NUMBER = 10;
+  private boolean isConnecting_;
+  /**
+   * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+   * @return The isConnecting.
+   */
+  @java.lang.Override
+  public boolean getIsConnecting() {
+    return isConnecting_;
+  }
+  /**
+   * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+   * @param value The isConnecting to set.
+   */
+  private void setIsConnecting(boolean value) {
+    
+    isConnecting_ = value;
+  }
+  /**
+   * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+   */
+  private void clearIsConnecting() {
+
+    isConnecting_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.HomeHeadlineView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -760,6 +786,34 @@ public  final class HomeHeadlineView extends
       return this;
     }
 
+    /**
+     * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+     * @return The isConnecting.
+     */
+    @java.lang.Override
+    public boolean getIsConnecting() {
+      return instance.getIsConnecting();
+    }
+    /**
+     * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+     * @param value The isConnecting to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsConnecting(boolean value) {
+      copyOnWrite();
+      instance.setIsConnecting(value);
+      return this;
+    }
+    /**
+     * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsConnecting() {
+      copyOnWrite();
+      instance.clearIsConnecting();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeHeadlineView)
   }
   @java.lang.Override
@@ -786,10 +840,12 @@ public  final class HomeHeadlineView extends
             "detailsAction_",
             "unlinked_",
             "highlightArg_",
+            "isConnecting_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
-              "\u0004\u0004\u1009\u0001\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
+              "\u0004\u0004\u1009\u0001\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u0208\n\u0007" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

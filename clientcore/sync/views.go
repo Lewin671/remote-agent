@@ -242,6 +242,14 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		ReachabilityUnknown:    w.ReachabilityUnknown,
 		TrustedMachineIds:      trustedMachineIDs,
 		ArchiveMachineIds:      archiveMachineIDs,
+		ConnectionStartedAtMs:  e.connStartedAtMs,
+		NetworkAvailable:       e.networkAvailable,
+		EverOnline:             e.everReady,
+		ConnectFailures:        int32(e.recovery.Failures()),
+		RecoveryStatusStale:    e.security.RecoveryStatusStale,
+		DevicesLoadFailed:      e.devicesLoadFailed,
+		DevicesErrorText:       e.devicesErrorText,
+		HasHandoffOffer:        e.security.HasHandoffOffer,
 	}
 }
 

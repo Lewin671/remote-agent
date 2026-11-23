@@ -461,6 +461,48 @@ public  final class ClientRowView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int KIND_FIELD_NUMBER = 12;
+  private int kind_;
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  @java.lang.Override
+  public int getKindValue() {
+    return kind_;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.DeviceKind getKind() {
+    io.github.lewin671.remoteagent.proto.DeviceKind result = io.github.lewin671.remoteagent.proto.DeviceKind.forNumber(kind_);
+    return result == null ? io.github.lewin671.remoteagent.proto.DeviceKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @param value The enum numeric value on the wire for kind to set.
+   */
+  private void setKindValue(int value) {
+      kind_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @param value The kind to set.
+   */
+  private void setKind(io.github.lewin671.remoteagent.proto.DeviceKind value) {
+    kind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   */
+  private void clearKind() {
+
+    kind_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ClientRowView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1007,6 +1049,52 @@ public  final class ClientRowView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+     * @return The enum numeric value on the wire for kind.
+     */
+    @java.lang.Override
+    public int getKindValue() {
+      return instance.getKindValue();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+     * @param value The kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKindValue(int value) {
+      copyOnWrite();
+      instance.setKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+     * @return The kind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.DeviceKind getKind() {
+      return instance.getKind();
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+     * @param value The enum numeric value on the wire for kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKind(io.github.lewin671.remoteagent.proto.DeviceKind value) {
+      copyOnWrite();
+      instance.setKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearKind() {
+      copyOnWrite();
+      instance.clearKind();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ClientRowView)
   }
   @java.lang.Override
@@ -1035,11 +1123,12 @@ public  final class ClientRowView extends
             "roleLabel_",
             "lastUsedText_",
             "addedText_",
+            "kind_",
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0000" +
-              "\n\u1009\u0001\u000b\u1009\u0002";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0004\u0208\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0000\n\u1009\u0001" +
+              "\u000b\u1009\u0002\f\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

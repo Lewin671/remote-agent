@@ -488,6 +488,7 @@ message SecurityRecoveryInfo {
 message SecurityHandoffCandidate {
   string device_id = 1;
   bytes recovery_ed = 2;
+  string display_name = 3;
 }
 
 message SecurityExitAdvice {

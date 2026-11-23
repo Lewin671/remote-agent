@@ -147,6 +147,14 @@ message SyncStateView {
   bool reachability_unknown = 39;
   repeated string trusted_machine_ids = 40;
   repeated string archive_machine_ids = 41;
+  int64 connection_started_at_ms = 42;
+  bool network_available = 43;
+  bool ever_online = 44;
+  int32 connect_failures = 45;
+  bool recovery_status_stale = 46;
+  bool devices_load_failed = 47;
+  Text devices_error_text = 48;
+  bool has_handoff_offer = 49;
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,

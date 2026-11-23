@@ -983,7 +983,11 @@ func BuildScheduleDetail(st *State, machineID, taskID string, earlierLimit int) 
 	// Attention banner.
 	entry := schedule.TaskEntry{MachineID: machineID, Task: task}
 	attView := &corev1.ScheduleAttentionView{}
-	disabledAgentName := disabledNewSessionAgentName(st, entry)
+	disabledAgent, disabledAgentName := disabledNewSessionAgent(st, entry)
+	if disabledAgent != v1.Agent_AGENT_UNSPECIFIED {
+		attView.ShowEnableCliAction = true
+		attView.DisabledAgent = disabledAgent
+	}
 	if tg == schedule.GroupAttention {
 		attView.Show = true
 		if disabledAgentName != "" && strings.HasPrefix(task.Reason, "agent_disabled:") {
@@ -1928,20 +1932,25 @@ func BuildScheduleSessionStrip(st *State, sessionID string) *corev1.ScheduleSess
 	}
 }
 
-func disabledNewSessionAgentName(st *State, e schedule.TaskEntry) string {
+func disabledNewSessionAgent(st *State, e schedule.TaskEntry) (v1.Agent, string) {
 	if st == nil || e.Task == nil || e.Task.Spec.Target.Type != "new_session" {
-		return ""
+		return v1.Agent_AGENT_UNSPECIFIED, ""
 	}
 	if e.Task.Status == "completed" || e.Task.Status == "cancelled" {
-		return ""
+		return v1.Agent_AGENT_UNSPECIFIED, ""
 	}
 	mac := findMachine(st, e.MachineID)
 	if mac == nil || mac.Meta == nil {
-		return ""
+		return v1.Agent_AGENT_UNSPECIFIED, ""
 	}
 	ag := agentByIDString(e.Task.Spec.Target.Agent)
 	if lists.IsAgentDisabled(mac.Meta, ag) {
-		return lists.AgentInfo(ag).Name
+		return ag, lists.AgentInfo(ag).Name
 	}
-	return ""
+	return v1.Agent_AGENT_UNSPECIFIED, ""
+}
+
+func disabledNewSessionAgentName(st *State, e schedule.TaskEntry) string {
+	_, name := disabledNewSessionAgent(st, e)
+	return name
 }

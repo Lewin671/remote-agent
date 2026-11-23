@@ -214,7 +214,9 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 	e.security.ClockSkewed = snap.ClockSkewed
 	e.security.RecoveryPending = snap.RecoveryPending
 	e.security.RecoveryReadyMs = snap.RecoveryReadyMs
+	e.security.RecoveryStatusStale = snap.RecoveryStatusStale
 	e.security.RecoveryObjectsPending = snap.RecoveryObjectsPending
+	e.security.HasHandoffOffer = snap.HasHandoffOffer
 	e.security.NetworkGen = snap.NetworkGen
 	e.security.VerifiedNetGen = snap.VerifiedNetGen
 
@@ -917,10 +919,20 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		}
 		stepCtx.Dirty.Add(true, true, false)
 	case dirKindSessionByID:
-		if !e.running || len(outS) == 0 {
+		if !e.running {
+			return
+		}
+		if len(outS) == 0 {
+			if m.sid != "" {
+				e.sessionByIDFailed[m.sid] = true
+				delete(e.sessionByIDErrors, m.sid)
+			}
+			stepCtx.Dirty.Add(false, true, false)
+			stepCtx.Dirty.MarkSessionData()
 			return
 		}
 		delete(e.sessionByIDFailed, m.sid)
+		delete(e.sessionByIDErrors, m.sid)
 		e.putSessionDecoded(stepCtx, outS[0], false)
 		e.updateLivePollers(stepCtx)
 		stepCtx.Dirty.MarkAll()
@@ -928,6 +940,8 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if e.devicesApplyGen != m.devGen {
 			return
 		}
+		e.devicesLoadFailed = false
+		e.devicesErrorText = nil
 		e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), m.mp, m.sp, true)
 		stepCtx.Dirty.MarkAll()
 	case dirKindStreamMachine:

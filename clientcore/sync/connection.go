@@ -104,6 +104,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.directReady)
 		clear(e.sessionByIDOps)
 		clear(e.sessionByIDFailed)
+		clear(e.sessionByIDErrors)
+		e.devicesLoadFailed = false
+		e.devicesErrorText = nil
 		clear(e.lateDirectTickets)
 		clear(e.lateDirectDeadline)
 		for _, prep := range e.inFlightCmds {
@@ -174,6 +177,9 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 			return
 		}
 		clear(e.sessionByIDFailed)
+		clear(e.sessionByIDErrors)
+		e.devicesLoadFailed = false
+		e.devicesErrorText = nil
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")

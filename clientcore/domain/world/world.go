@@ -62,6 +62,8 @@ type SessionSnapshot struct {
 	Unlinked             bool
 	ReachabilityUnknown  bool
 	LookingUp            bool
+	LookupFailed         bool
+	LookupErrorText      *corev1.Text
 	ProtocolVersion      uint32
 	Session              *lists.Session
 	Machine              *lists.Machine

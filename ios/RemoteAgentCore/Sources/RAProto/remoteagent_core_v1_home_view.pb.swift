@@ -548,6 +548,11 @@ public struct PBCoreHomeHeadlineView: @unchecked Sendable {
     set {_uniqueStorage()._highlightArg = newValue}
   }
 
+  public var isConnecting: Bool {
+    get {return _storage._isConnecting}
+    set {_uniqueStorage()._isConnecting = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -582,6 +587,8 @@ public struct PBCoreHomeEmptyView: Sendable {
   public var canStartFirst: Bool = false
 
   public var canRetry: Bool = false
+
+  public var loading: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -689,6 +696,11 @@ public struct PBCoreAttentionCardView: @unchecked Sendable {
   public var hasAlwaysLabel: Bool {return _storage._alwaysLabel != nil}
   /// Clears the value of `alwaysLabel`. Subsequent reads from it will return its default value.
   public mutating func clearAlwaysLabel() {_uniqueStorage()._alwaysLabel = nil}
+
+  public var locked: Bool {
+    get {return _storage._locked}
+    set {_uniqueStorage()._locked = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1624,7 +1636,7 @@ extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeHeadlineView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}title\0\u{3}highlight_count\0\u{1}sub\0\u{3}sub_error\0\u{3}sub_path\0\u{3}details_action\0\u{1}unlinked\0\u{3}highlight_arg\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}title\0\u{3}highlight_count\0\u{1}sub\0\u{3}sub_error\0\u{3}sub_path\0\u{3}details_action\0\u{1}unlinked\0\u{3}highlight_arg\0\u{3}is_connecting\0")
 
   fileprivate class _StorageClass {
     var _kind: PBCoreHeadlineKind = .unspecified
@@ -1636,6 +1648,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
     var _detailsAction: Bool = false
     var _unlinked: Bool = false
     var _highlightArg: String = String()
+    var _isConnecting: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1655,6 +1668,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       _detailsAction = source._detailsAction
       _unlinked = source._unlinked
       _highlightArg = source._highlightArg
+      _isConnecting = source._isConnecting
     }
   }
 
@@ -1682,6 +1696,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         case 7: try { try decoder.decodeSingularBoolField(value: &_storage._detailsAction) }()
         case 8: try { try decoder.decodeSingularBoolField(value: &_storage._unlinked) }()
         case 9: try { try decoder.decodeSingularStringField(value: &_storage._highlightArg) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._isConnecting) }()
         default: break
         }
       }
@@ -1721,6 +1736,9 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       if !_storage._highlightArg.isEmpty {
         try visitor.visitSingularStringField(value: _storage._highlightArg, fieldNumber: 9)
       }
+      if _storage._isConnecting != false {
+        try visitor.visitSingularBoolField(value: _storage._isConnecting, fieldNumber: 10)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1739,6 +1757,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
         if _storage._detailsAction != rhs_storage._detailsAction {return false}
         if _storage._unlinked != rhs_storage._unlinked {return false}
         if _storage._highlightArg != rhs_storage._highlightArg {return false}
+        if _storage._isConnecting != rhs_storage._isConnecting {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -1750,7 +1769,7 @@ extension PBCoreHomeHeadlineView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HomeEmptyView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}message\0\u{1}command\0\u{3}ready_machine_id\0\u{3}ready_machine_name\0\u{3}can_add_device\0\u{3}can_start_first\0\u{3}can_retry\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{1}message\0\u{1}command\0\u{3}ready_machine_id\0\u{3}ready_machine_name\0\u{3}can_add_device\0\u{3}can_start_first\0\u{3}can_retry\0\u{1}loading\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1766,6 +1785,7 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 6: try { try decoder.decodeSingularBoolField(value: &self.canAddDevice) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.canStartFirst) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.canRetry) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.loading) }()
       default: break
       }
     }
@@ -1800,6 +1820,9 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if self.canRetry != false {
       try visitor.visitSingularBoolField(value: self.canRetry, fieldNumber: 8)
     }
+    if self.loading != false {
+      try visitor.visitSingularBoolField(value: self.loading, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1812,6 +1835,7 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     if lhs.canAddDevice != rhs.canAddDevice {return false}
     if lhs.canStartFirst != rhs.canStartFirst {return false}
     if lhs.canRetry != rhs.canRetry {return false}
+    if lhs.loading != rhs.loading {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1819,7 +1843,7 @@ extension PBCoreHomeEmptyView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttentionCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}approval_id\0\u{1}title\0\u{3}kind_text\0\u{1}where\0\u{1}time\0\u{1}hot\0\u{1}body\0\u{3}tool_name\0\u{3}is_command\0\u{1}truncated\0\u{3}always_kind\0\u{3}always_arg\0\u{3}always_label\0\u{1}locked\0")
 
   fileprivate class _StorageClass {
     var _sessionID: String = String()
@@ -1837,6 +1861,7 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _alwaysKind: PBCoreAlwaysAllowKind = .unspecified
     var _alwaysArg: String = String()
     var _alwaysLabel: PBCoreText? = nil
+    var _locked: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1862,6 +1887,7 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _alwaysKind = source._alwaysKind
       _alwaysArg = source._alwaysArg
       _alwaysLabel = source._alwaysLabel
+      _locked = source._locked
     }
   }
 
@@ -1895,6 +1921,7 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 13: try { try decoder.decodeSingularEnumField(value: &_storage._alwaysKind) }()
         case 14: try { try decoder.decodeSingularStringField(value: &_storage._alwaysArg) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._alwaysLabel) }()
+        case 16: try { try decoder.decodeSingularBoolField(value: &_storage._locked) }()
         default: break
         }
       }
@@ -1952,6 +1979,9 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
       try { if let v = _storage._alwaysLabel {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
       } }()
+      if _storage._locked != false {
+        try visitor.visitSingularBoolField(value: _storage._locked, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1976,6 +2006,7 @@ extension PBCoreAttentionCardView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._alwaysKind != rhs_storage._alwaysKind {return false}
         if _storage._alwaysArg != rhs_storage._alwaysArg {return false}
         if _storage._alwaysLabel != rhs_storage._alwaysLabel {return false}
+        if _storage._locked != rhs_storage._locked {return false}
         return true
       }
       if !storagesAreEqual {return false}

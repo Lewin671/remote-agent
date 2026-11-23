@@ -1679,4 +1679,83 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	if loadingVM.GetComposer().GetDisabledReason().GetKey() != text.KeyCommonLoading {
 		t.Fatalf("expected Composer.DisabledReason %q while LookingUp=true, got %+v", text.KeyCommonLoading, loadingVM.GetComposer().GetDisabledReason())
 	}
+
+	// Lookup failure with error must surface LookupFailed + LookupErrorText instead of spinning on Loading.
+	lookupErrVM := screens.BuildSessionView(
+		world.SessionSnapshot{Found: false, SessionsListed: false, LookingUp: false, LookupFailed: true, LookupErrorText: text.Plain("rpc timeout")},
+		screens.NewState(nil),
+		&corev1.SessionScreenRequest{SessionId: "s-err"},
+		screens.NewSessionUIState(),
+	)
+	if !lookupErrVM.GetHeader().GetLookupFailed() || lookupErrVM.GetHeader().GetLookupErrorText().GetLiteral() != "rpc timeout" {
+		t.Fatalf("expected LookupFailed with rpc timeout, got %+v", lookupErrVM.GetHeader())
+	}
+	if lookupErrVM.GetHeader().GetStatusText().GetKey() == text.KeyCommonLoading {
+		t.Fatalf("must not stay on common.loading when LookupFailed with error")
+	}
+
+	// Lookup not-found (LookupFailed without error) before SessionsListed must still mark Missing=true.
+	notFoundVM := screens.BuildSessionView(
+		world.SessionSnapshot{Found: false, SessionsListed: false, LookingUp: false, LookupFailed: true},
+		screens.NewState(nil),
+		&corev1.SessionScreenRequest{SessionId: "s-gone"},
+		screens.NewSessionUIState(),
+	)
+	if !notFoundVM.GetHeader().GetMissing() || !notFoundVM.GetHeader().GetLookupFailed() {
+		t.Fatalf("expected Missing=true & LookupFailed=true, got missing=%v failed=%v", notFoundVM.GetHeader().GetMissing(), notFoundVM.GetHeader().GetLookupFailed())
+	}
+
+	// Antigravity running turn must set DefaultSendMode=SEND_MODE_QUEUE (even though SupportsQueueMode=false).
+	agySt := screens.NewState(nil)
+	agySt.World.Connection = lists.ConnConnected
+	agySt.World.Machines = []*lists.Machine{
+		{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true, MaxFilesPerMessage: 4, MaxFileUploadBytes: 50 * 1024 * 1024}}},
+		{ID: "m2", Online: false, Meta: &v1.MachineMeta{Hostname: "Linux", ProtocolVersion: 17}},
+	}
+	agySess := &lists.Session{
+		ID:        "s-agy",
+		MachineID: "m1",
+		Info: &v1.Session{
+			Id:              "s-agy",
+			Cwd:             "/Users/me/work/repo",
+			Agent:           v1.Agent_AGENT_ANTIGRAVITY,
+			Status:          v1.SessionStatus_SESSION_STATUS_RUNNING,
+			ScheduledTaskId: "task-1",
+		},
+	}
+	agyVM := screens.BuildSessionView(
+		world.SessionSnapshot{
+			Found:           true,
+			SessionsListed:  true,
+			LiveLoaded:      true,
+			Conn:            lists.ConnConnected,
+			ProtocolVersion: 17,
+			Session:         agySess,
+			Machine:         agySt.World.Machines[0],
+			Projection: &corev1.ProjectionState{
+				Running: true,
+				PendingInputs: []*corev1.PendingInput{
+					{RequestId: "req-1", Text: "big\n…（remote-agent：内容过大，请在终端查看/回答）", Mode: v1.SendMode_SEND_MODE_QUEUE},
+				},
+			},
+		},
+		agySt,
+		&corev1.SessionScreenRequest{SessionId: "s-agy"},
+		screens.NewSessionUIState(),
+	)
+	if agyVM.GetComposer().GetDefaultSendMode() != v1.SendMode_SEND_MODE_QUEUE {
+		t.Fatalf("expected Antigravity running DefaultSendMode=QUEUE, got %v", agyVM.GetComposer().GetDefaultSendMode())
+	}
+	if !agyVM.GetHeader().GetTaskOwned() || !agyVM.GetHeader().GetMultipleMachines() || agyVM.GetHeader().GetShortPath() == "" {
+		t.Fatalf("expected TaskOwned, MultipleMachines, ShortPath, got %+v", agyVM.GetHeader())
+	}
+	if agyVM.GetHeader().GetCapabilities().GetMaxFiles() != 4 || agyVM.GetHeader().GetCapabilities().GetMaxFileBytes() != 50*1024*1024 || !agyVM.GetHeader().GetCapabilities().GetCapabilitiesLoaded() {
+		t.Fatalf("unexpected capabilities: %+v", agyVM.GetHeader().GetCapabilities())
+	}
+	if items := agyVM.GetComposer().GetPendingTray().GetOrderedItems(); len(items) != 1 || !items[0].GetIsSkeleton() {
+		t.Fatalf("expected IsSkeleton=true on skeleton tray item, got %+v", items)
+	}
+	if agyVM.GetComposer().GetSlashWarningTitle().GetKey() != text.KeyComposerSlashTitle || agyVM.GetComposer().GetSlashWarningText().GetKey() != text.KeyComposerSlashNote {
+		t.Fatalf("expected slash warning texts on composer")
+	}
 }

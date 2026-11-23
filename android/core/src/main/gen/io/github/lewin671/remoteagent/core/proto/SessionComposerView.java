@@ -413,6 +413,170 @@ public  final class SessionComposerView extends
     retainedAttachmentRequestIds_.add(value.toStringUtf8());
   }
 
+  public static final int DEFAULT_SEND_MODE_FIELD_NUMBER = 11;
+  private int defaultSendMode_;
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @return The enum numeric value on the wire for defaultSendMode.
+   */
+  @java.lang.Override
+  public int getDefaultSendModeValue() {
+    return defaultSendMode_;
+  }
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @return The defaultSendMode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SendMode getDefaultSendMode() {
+    io.github.lewin671.remoteagent.proto.SendMode result = io.github.lewin671.remoteagent.proto.SendMode.forNumber(defaultSendMode_);
+    return result == null ? io.github.lewin671.remoteagent.proto.SendMode.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @param value The enum numeric value on the wire for defaultSendMode to set.
+   */
+  private void setDefaultSendModeValue(int value) {
+      defaultSendMode_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @param value The defaultSendMode to set.
+   */
+  private void setDefaultSendMode(io.github.lewin671.remoteagent.proto.SendMode value) {
+    defaultSendMode_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   */
+  private void clearDefaultSendMode() {
+
+    defaultSendMode_ = 0;
+  }
+
+  public static final int IS_DEFAULT_PLACEHOLDER_FIELD_NUMBER = 12;
+  private boolean isDefaultPlaceholder_;
+  /**
+   * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+   * @return The isDefaultPlaceholder.
+   */
+  @java.lang.Override
+  public boolean getIsDefaultPlaceholder() {
+    return isDefaultPlaceholder_;
+  }
+  /**
+   * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+   * @param value The isDefaultPlaceholder to set.
+   */
+  private void setIsDefaultPlaceholder(boolean value) {
+    
+    isDefaultPlaceholder_ = value;
+  }
+  /**
+   * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+   */
+  private void clearIsDefaultPlaceholder() {
+
+    isDefaultPlaceholder_ = false;
+  }
+
+  public static final int SLASH_WARNING_TITLE_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text slashWarningTitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSlashWarningTitle() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSlashWarningTitle() {
+    return slashWarningTitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : slashWarningTitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSlashWarningTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    slashWarningTitle_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSlashWarningTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (slashWarningTitle_ != null &&
+        slashWarningTitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      slashWarningTitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(slashWarningTitle_).mergeFrom(value).buildPartial();
+    } else {
+      slashWarningTitle_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   */
+  private void clearSlashWarningTitle() {
+    slashWarningTitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int SLASH_WARNING_TEXT_FIELD_NUMBER = 14;
+  private io.github.lewin671.remoteagent.core.proto.Text slashWarningText_;
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSlashWarningText() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSlashWarningText() {
+    return slashWarningText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : slashWarningText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSlashWarningText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    slashWarningText_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSlashWarningText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (slashWarningText_ != null &&
+        slashWarningText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      slashWarningText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(slashWarningText_).mergeFrom(value).buildPartial();
+    } else {
+      slashWarningText_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   */
+  private void clearSlashWarningText() {
+    slashWarningText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionComposerView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -911,6 +1075,174 @@ public  final class SessionComposerView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+     * @return The enum numeric value on the wire for defaultSendMode.
+     */
+    @java.lang.Override
+    public int getDefaultSendModeValue() {
+      return instance.getDefaultSendModeValue();
+    }
+    /**
+     * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+     * @param value The defaultSendMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultSendModeValue(int value) {
+      copyOnWrite();
+      instance.setDefaultSendModeValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+     * @return The defaultSendMode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SendMode getDefaultSendMode() {
+      return instance.getDefaultSendMode();
+    }
+    /**
+     * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+     * @param value The enum numeric value on the wire for defaultSendMode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultSendMode(io.github.lewin671.remoteagent.proto.SendMode value) {
+      copyOnWrite();
+      instance.setDefaultSendMode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultSendMode() {
+      copyOnWrite();
+      instance.clearDefaultSendMode();
+      return this;
+    }
+
+    /**
+     * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+     * @return The isDefaultPlaceholder.
+     */
+    @java.lang.Override
+    public boolean getIsDefaultPlaceholder() {
+      return instance.getIsDefaultPlaceholder();
+    }
+    /**
+     * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+     * @param value The isDefaultPlaceholder to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsDefaultPlaceholder(boolean value) {
+      copyOnWrite();
+      instance.setIsDefaultPlaceholder(value);
+      return this;
+    }
+    /**
+     * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsDefaultPlaceholder() {
+      copyOnWrite();
+      instance.clearIsDefaultPlaceholder();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSlashWarningTitle() {
+      return instance.hasSlashWarningTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSlashWarningTitle() {
+      return instance.getSlashWarningTitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    public Builder setSlashWarningTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSlashWarningTitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    public Builder setSlashWarningTitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSlashWarningTitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    public Builder mergeSlashWarningTitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSlashWarningTitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+     */
+    public Builder clearSlashWarningTitle() {  copyOnWrite();
+      instance.clearSlashWarningTitle();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSlashWarningText() {
+      return instance.hasSlashWarningText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSlashWarningText() {
+      return instance.getSlashWarningText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    public Builder setSlashWarningText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSlashWarningText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    public Builder setSlashWarningText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSlashWarningText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    public Builder mergeSlashWarningText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSlashWarningText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+     */
+    public Builder clearSlashWarningText() {  copyOnWrite();
+      instance.clearSlashWarningText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionComposerView)
   }
   @java.lang.Override
@@ -938,11 +1270,15 @@ public  final class SessionComposerView extends
             "interruptVisible_",
             "pendingTray_",
             "retainedAttachmentRequestIds_",
+            "defaultSendMode_",
+            "isDefaultPlaceholder_",
+            "slashWarningTitle_",
+            "slashWarningText_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0001\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
-              "\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0002" +
-              "\n\u021a";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0001\u0000\u0001\u0007\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007" +
+              "\t\u1009\u0002\n\u021a\u000b\f\f\u0007\r\u1009\u0003\u000e\u1009\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

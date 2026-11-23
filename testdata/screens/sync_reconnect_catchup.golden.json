@@ -489,7 +489,8 @@
               "sub": {
                 "key": "connection.previous_below"
               },
-              "unlinked": true
+              "unlinked": true,
+              "isConnecting": true
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NONE"
@@ -652,7 +653,8 @@
               "sub": {
                 "key": "connection.previous_below"
               },
-              "unlinked": true
+              "unlinked": true,
+              "isConnecting": true
             },
             "empty": {
               "kind": "HOME_EMPTY_KIND_NONE"

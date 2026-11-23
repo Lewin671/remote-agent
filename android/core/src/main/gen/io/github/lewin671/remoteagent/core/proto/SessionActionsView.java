@@ -1339,6 +1339,128 @@ public  final class SessionActionsView extends
     bitField0_ = (bitField0_ & ~0x00008000);
   }
 
+  public static final int FORK_ACTION_FIELD_NUMBER = 30;
+  private io.github.lewin671.remoteagent.core.proto.SessionForkActionView forkAction_;
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   */
+  @java.lang.Override
+  public boolean hasForkAction() {
+    return ((bitField0_ & 0x00010000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SessionForkActionView getForkAction() {
+    return forkAction_ == null ? io.github.lewin671.remoteagent.core.proto.SessionForkActionView.getDefaultInstance() : forkAction_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setForkAction(io.github.lewin671.remoteagent.core.proto.SessionForkActionView value) {
+    value.getClass();  // minimal bytecode null check
+    forkAction_ = value;
+    bitField0_ |= 0x00010000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeForkAction(io.github.lewin671.remoteagent.core.proto.SessionForkActionView value) {
+    value.getClass();  // minimal bytecode null check
+    if (forkAction_ != null &&
+        forkAction_ != io.github.lewin671.remoteagent.core.proto.SessionForkActionView.getDefaultInstance()) {
+      forkAction_ =
+        io.github.lewin671.remoteagent.core.proto.SessionForkActionView.newBuilder(forkAction_).mergeFrom(value).buildPartial();
+    } else {
+      forkAction_ = value;
+    }
+    bitField0_ |= 0x00010000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   */
+  private void clearForkAction() {
+    forkAction_ = null;
+    bitField0_ = (bitField0_ & ~0x00010000);
+  }
+
+  public static final int MODE_LOCKED_FIELD_NUMBER = 31;
+  private boolean modeLocked_;
+  /**
+   * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+   * @return The modeLocked.
+   */
+  @java.lang.Override
+  public boolean getModeLocked() {
+    return modeLocked_;
+  }
+  /**
+   * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+   * @param value The modeLocked to set.
+   */
+  private void setModeLocked(boolean value) {
+    
+    modeLocked_ = value;
+  }
+  /**
+   * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+   */
+  private void clearModeLocked() {
+
+    modeLocked_ = false;
+  }
+
+  public static final int MODE_PERMISSION_NOTICE_FIELD_NUMBER = 32;
+  private io.github.lewin671.remoteagent.core.proto.Text modePermissionNotice_;
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasModePermissionNotice() {
+    return ((bitField0_ & 0x00020000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getModePermissionNotice() {
+    return modePermissionNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : modePermissionNotice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setModePermissionNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    modePermissionNotice_ = value;
+    bitField0_ |= 0x00020000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeModePermissionNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (modePermissionNotice_ != null &&
+        modePermissionNotice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      modePermissionNotice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(modePermissionNotice_).mergeFrom(value).buildPartial();
+    } else {
+      modePermissionNotice_ = value;
+    }
+    bitField0_ |= 0x00020000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   */
+  private void clearModePermissionNotice() {
+    modePermissionNotice_ = null;
+    bitField0_ = (bitField0_ & ~0x00020000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionActionsView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2774,6 +2896,128 @@ public  final class SessionActionsView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    @java.lang.Override
+    public boolean hasForkAction() {
+      return instance.hasForkAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SessionForkActionView getForkAction() {
+      return instance.getForkAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    public Builder setForkAction(io.github.lewin671.remoteagent.core.proto.SessionForkActionView value) {
+      copyOnWrite();
+      instance.setForkAction(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    public Builder setForkAction(
+        io.github.lewin671.remoteagent.core.proto.SessionForkActionView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setForkAction(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    public Builder mergeForkAction(io.github.lewin671.remoteagent.core.proto.SessionForkActionView value) {
+      copyOnWrite();
+      instance.mergeForkAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+     */
+    public Builder clearForkAction() {  copyOnWrite();
+      instance.clearForkAction();
+      return this;
+    }
+
+    /**
+     * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+     * @return The modeLocked.
+     */
+    @java.lang.Override
+    public boolean getModeLocked() {
+      return instance.getModeLocked();
+    }
+    /**
+     * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+     * @param value The modeLocked to set.
+     * @return This builder for chaining.
+     */
+    public Builder setModeLocked(boolean value) {
+      copyOnWrite();
+      instance.setModeLocked(value);
+      return this;
+    }
+    /**
+     * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearModeLocked() {
+      copyOnWrite();
+      instance.clearModeLocked();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasModePermissionNotice() {
+      return instance.hasModePermissionNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getModePermissionNotice() {
+      return instance.getModePermissionNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    public Builder setModePermissionNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setModePermissionNotice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    public Builder setModePermissionNotice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setModePermissionNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    public Builder mergeModePermissionNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeModePermissionNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+     */
+    public Builder clearModePermissionNotice() {  copyOnWrite();
+      instance.clearModePermissionNotice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionActionsView)
   }
   @java.lang.Override
@@ -2823,14 +3067,18 @@ public  final class SessionActionsView extends
             "modeChoices_",
             io.github.lewin671.remoteagent.core.proto.SessionModeChoiceView.class,
             "usageEntry_",
+            "forkAction_",
+            "modeLocked_",
+            "modePermissionNotice_",
           };
           java.lang.String info =
-              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0003\u0000\u0001\u0007\u0002\u1009" +
-              "\u0000\u0003\u0007\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007\u0007\u1009\u0003" +
-              "\b\u1009\u0004\t\u0007\n\u1009\u0005\u000b\u0007\f\u1009\u0006\r\u1009\u0007\u000e" +
-              "\u0007\u000f\u1009\b\u0010\u1009\t\u0011\u0007\u0012\u1009\n\u0013\u1009\u000b\u0014" +
-              "\u0007\u0015\u0007\u0016\u1009\f\u0017\u001b\u0018\u001b\u0019\u0007\u001a\u1009" +
-              "\r\u001b\u1009\u000e\u001c\u001b\u001d\u1009\u000f";
+              "\u0000 \u0000\u0001\u0001  \u0000\u0003\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
+              "\u0007\u0004\u1009\u0001\u0005\u1009\u0002\u0006\u0007\u0007\u1009\u0003\b\u1009" +
+              "\u0004\t\u0007\n\u1009\u0005\u000b\u0007\f\u1009\u0006\r\u1009\u0007\u000e\u0007" +
+              "\u000f\u1009\b\u0010\u1009\t\u0011\u0007\u0012\u1009\n\u0013\u1009\u000b\u0014\u0007" +
+              "\u0015\u0007\u0016\u1009\f\u0017\u001b\u0018\u001b\u0019\u0007\u001a\u1009\r\u001b" +
+              "\u1009\u000e\u001c\u001b\u001d\u1009\u000f\u001e\u1009\u0010\u001f\u0007 \u1009\u0011" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

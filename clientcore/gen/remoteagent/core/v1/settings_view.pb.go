@@ -161,19 +161,21 @@ func (m *SubtitleSegment) AppendMarshal(b []byte) []byte {
 }
 
 type MachineListCardView struct {
-	_                [0]func()
-	MachineId        string
-	Name             string
-	Online           bool
-	Member           bool
-	ProtocolMismatch int32
-	StatusText       *Text
-	QuotaSummaries   []*QuotaCliSection
-	LastSeenMs       int64
-	DirectRow        *ConnCheckDirectRowView
-	StatusDot        MachineStatusDot
-	StatusWarn       bool
-	SubtitleParts    []*SubtitleSegment
+	_                 [0]func()
+	MachineId         string
+	Name              string
+	Online            bool
+	Member            bool
+	ProtocolMismatch  int32
+	StatusText        *Text
+	QuotaSummaries    []*QuotaCliSection
+	LastSeenMs        int64
+	DirectRow         *ConnCheckDirectRowView
+	StatusDot         MachineStatusDot
+	StatusWarn        bool
+	SubtitleParts     []*SubtitleSegment
+	InDeviceDirectory bool
+	DirectReady       bool
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -248,6 +250,18 @@ func (m *MachineListCardView) GetSubtitleParts() []*SubtitleSegment {
 	}
 	return nil
 }
+func (m *MachineListCardView) GetInDeviceDirectory() bool {
+	if m != nil {
+		return m.InDeviceDirectory
+	}
+	return false
+}
+func (m *MachineListCardView) GetDirectReady() bool {
+	if m != nil {
+		return m.DirectReady
+	}
+	return false
+}
 
 var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -263,6 +277,8 @@ var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(MachineListCardView{}.StatusDot), Kind: litewire.KindInt32},
 		{Num: 11, Offset: unsafe.Offsetof(MachineListCardView{}.StatusWarn), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(MachineListCardView{}.SubtitleParts), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SubtitleSegment},
+		{Num: 13, Offset: unsafe.Offsetof(MachineListCardView{}.InDeviceDirectory), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(MachineListCardView{}.DirectReady), Kind: litewire.KindBool},
 	},
 }
 
@@ -287,6 +303,7 @@ type ClientRowView struct {
 	RoleLabel         *Text
 	LastUsedText      *Text
 	AddedText         *Text
+	Kind              v1.DeviceKind
 }
 
 func (m *ClientRowView) GetDeviceId() string {
@@ -355,6 +372,12 @@ func (m *ClientRowView) GetAddedText() *Text {
 	}
 	return nil
 }
+func (m *ClientRowView) GetKind() v1.DeviceKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
 
 var LitewireDesc_ClientRowView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -369,6 +392,7 @@ var LitewireDesc_ClientRowView = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(ClientRowView{}.RoleLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 10, Offset: unsafe.Offsetof(ClientRowView{}.LastUsedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 11, Offset: unsafe.Offsetof(ClientRowView{}.AddedText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 12, Offset: unsafe.Offsetof(ClientRowView{}.Kind), Kind: litewire.KindInt32},
 	},
 }
 
@@ -381,15 +405,18 @@ func (m *ClientRowView) AppendMarshal(b []byte) []byte {
 }
 
 type SecuritySummaryView struct {
-	_                 [0]func()
-	IsManager         bool
-	Unlinked          bool
-	AuthorityDeviceId string
-	AuthorityName     string
-	RecoveryPending   bool
-	RecoveryReadyMs   int64
-	SummaryText       *Text
-	RecoveryNotice    *Text
+	_                   [0]func()
+	IsManager           bool
+	Unlinked            bool
+	AuthorityDeviceId   string
+	AuthorityName       string
+	RecoveryPending     bool
+	RecoveryReadyMs     int64
+	SummaryText         *Text
+	RecoveryNotice      *Text
+	HasHandoffOffer     bool
+	RecoveryStatusStale bool
+	LeaseEndMs          int64
 }
 
 func (m *SecuritySummaryView) GetIsManager() bool {
@@ -440,6 +467,24 @@ func (m *SecuritySummaryView) GetRecoveryNotice() *Text {
 	}
 	return nil
 }
+func (m *SecuritySummaryView) GetHasHandoffOffer() bool {
+	if m != nil {
+		return m.HasHandoffOffer
+	}
+	return false
+}
+func (m *SecuritySummaryView) GetRecoveryStatusStale() bool {
+	if m != nil {
+		return m.RecoveryStatusStale
+	}
+	return false
+}
+func (m *SecuritySummaryView) GetLeaseEndMs() int64 {
+	if m != nil {
+		return m.LeaseEndMs
+	}
+	return 0
+}
 
 var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -451,6 +496,9 @@ var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SecuritySummaryView{}.RecoveryReadyMs), Kind: litewire.KindInt64},
 		{Num: 7, Offset: unsafe.Offsetof(SecuritySummaryView{}.SummaryText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 8, Offset: unsafe.Offsetof(SecuritySummaryView{}.RecoveryNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 9, Offset: unsafe.Offsetof(SecuritySummaryView{}.HasHandoffOffer), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(SecuritySummaryView{}.RecoveryStatusStale), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SecuritySummaryView{}.LeaseEndMs), Kind: litewire.KindInt64},
 	},
 }
 
@@ -772,12 +820,22 @@ func (m *ClientUpdateView) AppendMarshal(b []byte) []byte {
 }
 
 type ConnCheckSummaryView struct {
-	_               [0]func()
-	ServerState     ConnProbeState
-	LatencyMs       int32
-	StatusWord      *Text
-	SummaryText     *Text
-	LastFailureText *Text
+	_                 [0]func()
+	ServerState       ConnProbeState
+	LatencyMs         int32
+	StatusWord        *Text
+	SummaryText       *Text
+	LastFailureText   *Text
+	ConnState         ConnState
+	NetworkAvailable  bool
+	LivePushConnected bool
+	EverOnline        bool
+	Failures          int32
+	ConnStartedAtMs   int64
+	ConnStep          *Text
+	DisplayGrace      bool
+	IsConnecting      bool
+	BannerText        *Text
 }
 
 func (m *ConnCheckSummaryView) GetServerState() ConnProbeState {
@@ -810,6 +868,66 @@ func (m *ConnCheckSummaryView) GetLastFailureText() *Text {
 	}
 	return nil
 }
+func (m *ConnCheckSummaryView) GetConnState() ConnState {
+	if m != nil {
+		return m.ConnState
+	}
+	return 0
+}
+func (m *ConnCheckSummaryView) GetNetworkAvailable() bool {
+	if m != nil {
+		return m.NetworkAvailable
+	}
+	return false
+}
+func (m *ConnCheckSummaryView) GetLivePushConnected() bool {
+	if m != nil {
+		return m.LivePushConnected
+	}
+	return false
+}
+func (m *ConnCheckSummaryView) GetEverOnline() bool {
+	if m != nil {
+		return m.EverOnline
+	}
+	return false
+}
+func (m *ConnCheckSummaryView) GetFailures() int32 {
+	if m != nil {
+		return m.Failures
+	}
+	return 0
+}
+func (m *ConnCheckSummaryView) GetConnStartedAtMs() int64 {
+	if m != nil {
+		return m.ConnStartedAtMs
+	}
+	return 0
+}
+func (m *ConnCheckSummaryView) GetConnStep() *Text {
+	if m != nil {
+		return m.ConnStep
+	}
+	return nil
+}
+func (m *ConnCheckSummaryView) GetDisplayGrace() bool {
+	if m != nil {
+		return m.DisplayGrace
+	}
+	return false
+}
+func (m *ConnCheckSummaryView) GetIsConnecting() bool {
+	if m != nil {
+		return m.IsConnecting
+	}
+	return false
+}
+func (m *ConnCheckSummaryView) GetBannerText() *Text {
+	if m != nil {
+		return m.BannerText
+	}
+	return nil
+}
 
 var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -818,6 +936,16 @@ var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.StatusWord), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.SummaryText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 5, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.LastFailureText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.ConnState), Kind: litewire.KindInt32},
+		{Num: 7, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.NetworkAvailable), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.LivePushConnected), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.EverOnline), Kind: litewire.KindBool},
+		{Num: 10, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.Failures), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.ConnStartedAtMs), Kind: litewire.KindInt64},
+		{Num: 12, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.ConnStep), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.DisplayGrace), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.IsConnecting), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.BannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -2407,6 +2535,8 @@ type MachineSettingsViewModel struct {
 	ProjectCount                   int32
 	ProjectCountText               *Text
 	ShortId                        string
+	AppOnline                      bool
+	IsManager                      bool
 }
 
 func (m *MachineSettingsViewModel) GetMachineId() string {
@@ -2715,6 +2845,18 @@ func (m *MachineSettingsViewModel) GetShortId() string {
 	}
 	return ""
 }
+func (m *MachineSettingsViewModel) GetAppOnline() bool {
+	if m != nil {
+		return m.AppOnline
+	}
+	return false
+}
+func (m *MachineSettingsViewModel) GetIsManager() bool {
+	if m != nil {
+		return m.IsManager
+	}
+	return false
+}
 
 var LitewireDesc_MachineSettingsViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2769,6 +2911,8 @@ var LitewireDesc_MachineSettingsViewModel = litewire.MessageDesc{
 		{Num: 49, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.ProjectCount), Kind: litewire.KindInt32},
 		{Num: 50, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.ProjectCountText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 51, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.ShortId), Kind: litewire.KindString},
+		{Num: 52, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.AppOnline), Kind: litewire.KindBool},
+		{Num: 53, Offset: unsafe.Offsetof(MachineSettingsViewModel{}.IsManager), Kind: litewire.KindBool},
 	},
 }
 
@@ -2807,6 +2951,10 @@ type DevicesViewModel struct {
 	MachinesLoading    bool
 	EmptyComputersText *Text
 	ClientCountText    *Text
+	ClockSkewed        bool
+	RecoveryPending    bool
+	LeaseEndMs         int64
+	LoadFailed         bool
 }
 
 func (m *DevicesViewModel) GetIsManager() bool {
@@ -2893,6 +3041,30 @@ func (m *DevicesViewModel) GetClientCountText() *Text {
 	}
 	return nil
 }
+func (m *DevicesViewModel) GetClockSkewed() bool {
+	if m != nil {
+		return m.ClockSkewed
+	}
+	return false
+}
+func (m *DevicesViewModel) GetRecoveryPending() bool {
+	if m != nil {
+		return m.RecoveryPending
+	}
+	return false
+}
+func (m *DevicesViewModel) GetLeaseEndMs() int64 {
+	if m != nil {
+		return m.LeaseEndMs
+	}
+	return 0
+}
+func (m *DevicesViewModel) GetLoadFailed() bool {
+	if m != nil {
+		return m.LoadFailed
+	}
+	return false
+}
 
 var LitewireDesc_DevicesViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2910,6 +3082,10 @@ var LitewireDesc_DevicesViewModel = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(DevicesViewModel{}.MachinesLoading), Kind: litewire.KindBool},
 		{Num: 13, Offset: unsafe.Offsetof(DevicesViewModel{}.EmptyComputersText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 14, Offset: unsafe.Offsetof(DevicesViewModel{}.ClientCountText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(DevicesViewModel{}.ClockSkewed), Kind: litewire.KindBool},
+		{Num: 16, Offset: unsafe.Offsetof(DevicesViewModel{}.RecoveryPending), Kind: litewire.KindBool},
+		{Num: 17, Offset: unsafe.Offsetof(DevicesViewModel{}.LeaseEndMs), Kind: litewire.KindInt64},
+		{Num: 18, Offset: unsafe.Offsetof(DevicesViewModel{}.LoadFailed), Kind: litewire.KindBool},
 	},
 }
 

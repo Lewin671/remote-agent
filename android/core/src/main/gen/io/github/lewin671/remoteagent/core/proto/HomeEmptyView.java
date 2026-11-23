@@ -332,6 +332,32 @@ public  final class HomeEmptyView extends
     canRetry_ = false;
   }
 
+  public static final int LOADING_FIELD_NUMBER = 9;
+  private boolean loading_;
+  /**
+   * <code>bool loading = 9 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  @java.lang.Override
+  public boolean getLoading() {
+    return loading_;
+  }
+  /**
+   * <code>bool loading = 9 [json_name = "loading"];</code>
+   * @param value The loading to set.
+   */
+  private void setLoading(boolean value) {
+    
+    loading_ = value;
+  }
+  /**
+   * <code>bool loading = 9 [json_name = "loading"];</code>
+   */
+  private void clearLoading() {
+
+    loading_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.HomeEmptyView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -753,6 +779,34 @@ public  final class HomeEmptyView extends
       return this;
     }
 
+    /**
+     * <code>bool loading = 9 [json_name = "loading"];</code>
+     * @return The loading.
+     */
+    @java.lang.Override
+    public boolean getLoading() {
+      return instance.getLoading();
+    }
+    /**
+     * <code>bool loading = 9 [json_name = "loading"];</code>
+     * @param value The loading to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLoading(boolean value) {
+      copyOnWrite();
+      instance.setLoading(value);
+      return this;
+    }
+    /**
+     * <code>bool loading = 9 [json_name = "loading"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLoading() {
+      copyOnWrite();
+      instance.clearLoading();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HomeEmptyView)
   }
   @java.lang.Override
@@ -778,10 +832,11 @@ public  final class HomeEmptyView extends
             "canAddDevice_",
             "canStartFirst_",
             "canRetry_",
+            "loading_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
-              "\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0007\b\u0007";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\f\u0002\u1009\u0000\u0003" +
+              "\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0007\b\u0007\t\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -179,6 +179,7 @@ type HomeHeadlineView struct {
 	DetailsAction  bool
 	Unlinked       bool
 	HighlightArg   string
+	IsConnecting   bool
 }
 
 func (m *HomeHeadlineView) GetKind() HeadlineKind {
@@ -235,6 +236,12 @@ func (m *HomeHeadlineView) GetHighlightArg() string {
 	}
 	return ""
 }
+func (m *HomeHeadlineView) GetIsConnecting() bool {
+	if m != nil {
+		return m.IsConnecting
+	}
+	return false
+}
 
 var LitewireDesc_HomeHeadlineView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -247,6 +254,7 @@ var LitewireDesc_HomeHeadlineView = litewire.MessageDesc{
 		{Num: 7, Offset: unsafe.Offsetof(HomeHeadlineView{}.DetailsAction), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(HomeHeadlineView{}.Unlinked), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(HomeHeadlineView{}.HighlightArg), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(HomeHeadlineView{}.IsConnecting), Kind: litewire.KindBool},
 	},
 }
 
@@ -268,6 +276,7 @@ type HomeEmptyView struct {
 	CanAddDevice     bool
 	CanStartFirst    bool
 	CanRetry         bool
+	Loading          bool
 }
 
 func (m *HomeEmptyView) GetKind() HomeEmptyKind {
@@ -318,6 +327,12 @@ func (m *HomeEmptyView) GetCanRetry() bool {
 	}
 	return false
 }
+func (m *HomeEmptyView) GetLoading() bool {
+	if m != nil {
+		return m.Loading
+	}
+	return false
+}
 
 var LitewireDesc_HomeEmptyView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -329,6 +344,7 @@ var LitewireDesc_HomeEmptyView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(HomeEmptyView{}.CanAddDevice), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(HomeEmptyView{}.CanStartFirst), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(HomeEmptyView{}.CanRetry), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(HomeEmptyView{}.Loading), Kind: litewire.KindBool},
 	},
 }
 
@@ -357,6 +373,7 @@ type AttentionCardView struct {
 	AlwaysKind  AlwaysAllowKind
 	AlwaysArg   string
 	AlwaysLabel *Text
+	Locked      bool
 }
 
 func (m *AttentionCardView) GetSessionId() string {
@@ -449,6 +466,12 @@ func (m *AttentionCardView) GetAlwaysLabel() *Text {
 	}
 	return nil
 }
+func (m *AttentionCardView) GetLocked() bool {
+	if m != nil {
+		return m.Locked
+	}
+	return false
+}
 
 var LitewireDesc_AttentionCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -467,6 +490,7 @@ var LitewireDesc_AttentionCardView = litewire.MessageDesc{
 		{Num: 13, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysKind), Kind: litewire.KindInt32},
 		{Num: 14, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysArg), Kind: litewire.KindString},
 		{Num: 15, Offset: unsafe.Offsetof(AttentionCardView{}.AlwaysLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(AttentionCardView{}.Locked), Kind: litewire.KindBool},
 	},
 }
 

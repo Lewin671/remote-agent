@@ -281,6 +281,74 @@ public  final class ScheduleAttentionView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int SHOW_ENABLE_CLI_ACTION_FIELD_NUMBER = 8;
+  private boolean showEnableCliAction_;
+  /**
+   * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+   * @return The showEnableCliAction.
+   */
+  @java.lang.Override
+  public boolean getShowEnableCliAction() {
+    return showEnableCliAction_;
+  }
+  /**
+   * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+   * @param value The showEnableCliAction to set.
+   */
+  private void setShowEnableCliAction(boolean value) {
+    
+    showEnableCliAction_ = value;
+  }
+  /**
+   * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+   */
+  private void clearShowEnableCliAction() {
+
+    showEnableCliAction_ = false;
+  }
+
+  public static final int DISABLED_AGENT_FIELD_NUMBER = 9;
+  private int disabledAgent_;
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @return The enum numeric value on the wire for disabledAgent.
+   */
+  @java.lang.Override
+  public int getDisabledAgentValue() {
+    return disabledAgent_;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @return The disabledAgent.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Agent getDisabledAgent() {
+    io.github.lewin671.remoteagent.proto.Agent result = io.github.lewin671.remoteagent.proto.Agent.forNumber(disabledAgent_);
+    return result == null ? io.github.lewin671.remoteagent.proto.Agent.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @param value The enum numeric value on the wire for disabledAgent to set.
+   */
+  private void setDisabledAgentValue(int value) {
+      disabledAgent_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @param value The disabledAgent to set.
+   */
+  private void setDisabledAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+    disabledAgent_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   */
+  private void clearDisabledAgent() {
+
+    disabledAgent_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ScheduleAttentionView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -649,6 +717,80 @@ public  final class ScheduleAttentionView extends
       return this;
     }
 
+    /**
+     * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+     * @return The showEnableCliAction.
+     */
+    @java.lang.Override
+    public boolean getShowEnableCliAction() {
+      return instance.getShowEnableCliAction();
+    }
+    /**
+     * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+     * @param value The showEnableCliAction to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShowEnableCliAction(boolean value) {
+      copyOnWrite();
+      instance.setShowEnableCliAction(value);
+      return this;
+    }
+    /**
+     * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShowEnableCliAction() {
+      copyOnWrite();
+      instance.clearShowEnableCliAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+     * @return The enum numeric value on the wire for disabledAgent.
+     */
+    @java.lang.Override
+    public int getDisabledAgentValue() {
+      return instance.getDisabledAgentValue();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+     * @param value The disabledAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisabledAgentValue(int value) {
+      copyOnWrite();
+      instance.setDisabledAgentValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+     * @return The disabledAgent.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Agent getDisabledAgent() {
+      return instance.getDisabledAgent();
+    }
+    /**
+     * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+     * @param value The enum numeric value on the wire for disabledAgent to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisabledAgent(io.github.lewin671.remoteagent.proto.Agent value) {
+      copyOnWrite();
+      instance.setDisabledAgent(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisabledAgent() {
+      copyOnWrite();
+      instance.clearDisabledAgent();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ScheduleAttentionView)
   }
   @java.lang.Override
@@ -673,10 +815,12 @@ public  final class ScheduleAttentionView extends
             "primaryActionKind_",
             "primaryActionEnabled_",
             "primaryActionDisabledReason_",
+            "showEnableCliAction_",
+            "disabledAgent_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0007\u0002\u1009" +
-              "\u0000\u0003\u0007\u0004\u1009\u0001\u0005\f\u0006\u0007\u0007\u1009\u0002";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0007\u0002\u1009\u0000\u0003" +
+              "\u0007\u0004\u1009\u0001\u0005\f\u0006\u0007\u0007\u1009\u0002\b\u0007\t\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

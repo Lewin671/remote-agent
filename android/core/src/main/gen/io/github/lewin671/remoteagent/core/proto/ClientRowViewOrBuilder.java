@@ -114,4 +114,15 @@ public interface ClientRowViewOrBuilder extends
    * @return The addedText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getAddedText();
+
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  int getKindValue();
+  /**
+   * <code>.remoteagent.v1.DeviceKind kind = 12 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  io.github.lewin671.remoteagent.proto.DeviceKind getKind();
 }

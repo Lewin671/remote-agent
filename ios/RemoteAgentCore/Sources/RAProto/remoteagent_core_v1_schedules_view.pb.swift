@@ -1586,6 +1586,16 @@ public struct PBScheduleAttentionView: @unchecked Sendable {
   /// Clears the value of `primaryActionDisabledReason`. Subsequent reads from it will return its default value.
   public mutating func clearPrimaryActionDisabledReason() {_uniqueStorage()._primaryActionDisabledReason = nil}
 
+  public var showEnableCliAction: Bool {
+    get {return _storage._showEnableCliAction}
+    set {_uniqueStorage()._showEnableCliAction = newValue}
+  }
+
+  public var disabledAgent: PBAgent {
+    get {return _storage._disabledAgent}
+    set {_uniqueStorage()._disabledAgent = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -4692,7 +4702,7 @@ extension PBSchedulesViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ScheduleAttentionView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}show\0\u{1}message\0\u{3}show_primary_action\0\u{3}primary_action_label\0\u{3}primary_action_kind\0\u{3}primary_action_enabled\0\u{3}primary_action_disabled_reason\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}show\0\u{1}message\0\u{3}show_primary_action\0\u{3}primary_action_label\0\u{3}primary_action_kind\0\u{3}primary_action_enabled\0\u{3}primary_action_disabled_reason\0\u{3}show_enable_cli_action\0\u{3}disabled_agent\0")
 
   fileprivate class _StorageClass {
     var _show: Bool = false
@@ -4702,6 +4712,8 @@ extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._Message
     var _primaryActionKind: PBScheduleRecoveryActionKind = .unspecified
     var _primaryActionEnabled: Bool = false
     var _primaryActionDisabledReason: PBCoreText? = nil
+    var _showEnableCliAction: Bool = false
+    var _disabledAgent: PBAgent = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4719,6 +4731,8 @@ extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._Message
       _primaryActionKind = source._primaryActionKind
       _primaryActionEnabled = source._primaryActionEnabled
       _primaryActionDisabledReason = source._primaryActionDisabledReason
+      _showEnableCliAction = source._showEnableCliAction
+      _disabledAgent = source._disabledAgent
     }
   }
 
@@ -4744,6 +4758,8 @@ extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._Message
         case 5: try { try decoder.decodeSingularEnumField(value: &_storage._primaryActionKind) }()
         case 6: try { try decoder.decodeSingularBoolField(value: &_storage._primaryActionEnabled) }()
         case 7: try { try decoder.decodeSingularMessageField(value: &_storage._primaryActionDisabledReason) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._showEnableCliAction) }()
+        case 9: try { try decoder.decodeSingularEnumField(value: &_storage._disabledAgent) }()
         default: break
         }
       }
@@ -4777,6 +4793,12 @@ extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._Message
       try { if let v = _storage._primaryActionDisabledReason {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
       } }()
+      if _storage._showEnableCliAction != false {
+        try visitor.visitSingularBoolField(value: _storage._showEnableCliAction, fieldNumber: 8)
+      }
+      if _storage._disabledAgent != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._disabledAgent, fieldNumber: 9)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4793,6 +4815,8 @@ extension PBScheduleAttentionView: SwiftProtobuf.Message, SwiftProtobuf._Message
         if _storage._primaryActionKind != rhs_storage._primaryActionKind {return false}
         if _storage._primaryActionEnabled != rhs_storage._primaryActionEnabled {return false}
         if _storage._primaryActionDisabledReason != rhs_storage._primaryActionDisabledReason {return false}
+        if _storage._showEnableCliAction != rhs_storage._showEnableCliAction {return false}
+        if _storage._disabledAgent != rhs_storage._disabledAgent {return false}
         return true
       }
       if !storagesAreEqual {return false}

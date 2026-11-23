@@ -85,4 +85,10 @@ public interface HomeEmptyViewOrBuilder extends
    * @return The canRetry.
    */
   boolean getCanRetry();
+
+  /**
+   * <code>bool loading = 9 [json_name = "loading"];</code>
+   * @return The loading.
+   */
+  boolean getLoading();
 }

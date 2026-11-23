@@ -579,6 +579,58 @@ public  final class MachineListCardView extends
     subtitleParts_.remove(index);
   }
 
+  public static final int IN_DEVICE_DIRECTORY_FIELD_NUMBER = 13;
+  private boolean inDeviceDirectory_;
+  /**
+   * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+   * @return The inDeviceDirectory.
+   */
+  @java.lang.Override
+  public boolean getInDeviceDirectory() {
+    return inDeviceDirectory_;
+  }
+  /**
+   * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+   * @param value The inDeviceDirectory to set.
+   */
+  private void setInDeviceDirectory(boolean value) {
+    
+    inDeviceDirectory_ = value;
+  }
+  /**
+   * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+   */
+  private void clearInDeviceDirectory() {
+
+    inDeviceDirectory_ = false;
+  }
+
+  public static final int DIRECT_READY_FIELD_NUMBER = 14;
+  private boolean directReady_;
+  /**
+   * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+   * @return The directReady.
+   */
+  @java.lang.Override
+  public boolean getDirectReady() {
+    return directReady_;
+  }
+  /**
+   * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+   * @param value The directReady to set.
+   */
+  private void setDirectReady(boolean value) {
+    
+    directReady_ = value;
+  }
+  /**
+   * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+   */
+  private void clearDirectReady() {
+
+    directReady_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1258,6 +1310,62 @@ public  final class MachineListCardView extends
       return this;
     }
 
+    /**
+     * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+     * @return The inDeviceDirectory.
+     */
+    @java.lang.Override
+    public boolean getInDeviceDirectory() {
+      return instance.getInDeviceDirectory();
+    }
+    /**
+     * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+     * @param value The inDeviceDirectory to set.
+     * @return This builder for chaining.
+     */
+    public Builder setInDeviceDirectory(boolean value) {
+      copyOnWrite();
+      instance.setInDeviceDirectory(value);
+      return this;
+    }
+    /**
+     * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearInDeviceDirectory() {
+      copyOnWrite();
+      instance.clearInDeviceDirectory();
+      return this;
+    }
+
+    /**
+     * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+     * @return The directReady.
+     */
+    @java.lang.Override
+    public boolean getDirectReady() {
+      return instance.getDirectReady();
+    }
+    /**
+     * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+     * @param value The directReady to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectReady(boolean value) {
+      copyOnWrite();
+      instance.setDirectReady(value);
+      return this;
+    }
+    /**
+     * <code>bool direct_ready = 14 [json_name = "directReady"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectReady() {
+      copyOnWrite();
+      instance.clearDirectReady();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineListCardView)
   }
   @java.lang.Override
@@ -1289,11 +1397,13 @@ public  final class MachineListCardView extends
             "statusWarn_",
             "subtitleParts_",
             io.github.lewin671.remoteagent.core.proto.SubtitleSegment.class,
+            "inDeviceDirectory_",
+            "directReady_",
           };
           java.lang.String info =
-              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
-              "\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009\u0001\n\f" +
-              "\u000b\u0007\f\u001b";
+              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009" +
+              "\u0001\n\f\u000b\u0007\f\u001b\r\u0007\u000e\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

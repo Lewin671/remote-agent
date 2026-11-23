@@ -251,4 +251,10 @@ public interface SessionTrayItemViewOrBuilder extends
    * @return The serverBacked.
    */
   boolean getServerBacked();
+
+  /**
+   * <code>bool is_skeleton = 27 [json_name = "isSkeleton"];</code>
+   * @return The isSkeleton.
+   */
+  boolean getIsSkeleton();
 }

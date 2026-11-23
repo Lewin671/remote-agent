@@ -1019,34 +1019,44 @@ func (x *NewSessionModelPanelView) GetCanSelectAutoMode() bool {
 }
 
 type NewSessionViewModel struct {
-	state             protoimpl.MessageState    `protogen:"open.v1"`
-	ProjectSelectable bool                      `protobuf:"varint,1,opt,name=project_selectable,json=projectSelectable,proto3" json:"project_selectable,omitempty"`
-	ProjectKey        string                    `protobuf:"bytes,2,opt,name=project_key,json=projectKey,proto3" json:"project_key,omitempty"`
-	ProjectName       *Text                     `protobuf:"bytes,3,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
-	ShortPath         string                    `protobuf:"bytes,4,opt,name=short_path,json=shortPath,proto3" json:"short_path,omitempty"`
-	HasProjects       bool                      `protobuf:"varint,5,opt,name=has_projects,json=hasProjects,proto3" json:"has_projects,omitempty"`
-	Prompt            string                    `protobuf:"bytes,6,opt,name=prompt,proto3" json:"prompt,omitempty"`
-	Drafting          bool                      `protobuf:"varint,7,opt,name=drafting,proto3" json:"drafting,omitempty"`
-	Busy              bool                      `protobuf:"varint,8,opt,name=busy,proto3" json:"busy,omitempty"`
-	Settled           bool                      `protobuf:"varint,9,opt,name=settled,proto3" json:"settled,omitempty"`
-	Frozen            bool                      `protobuf:"varint,10,opt,name=frozen,proto3" json:"frozen,omitempty"`
-	Config            *NewSessionConfig         `protobuf:"bytes,11,opt,name=config,proto3" json:"config,omitempty"`
-	MachineName       string                    `protobuf:"bytes,12,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
-	MachineSelectable bool                      `protobuf:"varint,13,opt,name=machine_selectable,json=machineSelectable,proto3" json:"machine_selectable,omitempty"`
-	AgentName         string                    `protobuf:"bytes,14,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
-	AvailableAgents   []*AgentOptionView        `protobuf:"bytes,15,rep,name=available_agents,json=availableAgents,proto3" json:"available_agents,omitempty"`
-	ModelLabel        *Text                     `protobuf:"bytes,16,opt,name=model_label,json=modelLabel,proto3" json:"model_label,omitempty"`
-	EffortLabel       string                    `protobuf:"bytes,17,opt,name=effort_label,json=effortLabel,proto3" json:"effort_label,omitempty"`
-	DefaultMode       *DefaultModeInfo          `protobuf:"bytes,18,opt,name=default_mode,json=defaultMode,proto3" json:"default_mode,omitempty"`
-	LocationText      *Text                     `protobuf:"bytes,19,opt,name=location_text,json=locationText,proto3" json:"location_text,omitempty"`
-	Notices           []*NewSessionNoticeView   `protobuf:"bytes,20,rep,name=notices,proto3" json:"notices,omitempty"`
-	CanStart          bool                      `protobuf:"varint,21,opt,name=can_start,json=canStart,proto3" json:"can_start,omitempty"`
-	DisabledReason    *Text                     `protobuf:"bytes,22,opt,name=disabled_reason,json=disabledReason,proto3" json:"disabled_reason,omitempty"`
-	ModelPanel        *NewSessionModelPanelView `protobuf:"bytes,23,opt,name=model_panel,json=modelPanel,proto3" json:"model_panel,omitempty"`
-	ProjectRemoved    bool                      `protobuf:"varint,24,opt,name=project_removed,json=projectRemoved,proto3" json:"project_removed,omitempty"`
-	AutoIssue         AutoIssueKind             `protobuf:"varint,25,opt,name=auto_issue,json=autoIssue,proto3,enum=remoteagent.core.v1.AutoIssueKind" json:"auto_issue,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                    protoimpl.MessageState    `protogen:"open.v1"`
+	ProjectSelectable        bool                      `protobuf:"varint,1,opt,name=project_selectable,json=projectSelectable,proto3" json:"project_selectable,omitempty"`
+	ProjectKey               string                    `protobuf:"bytes,2,opt,name=project_key,json=projectKey,proto3" json:"project_key,omitempty"`
+	ProjectName              *Text                     `protobuf:"bytes,3,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
+	ShortPath                string                    `protobuf:"bytes,4,opt,name=short_path,json=shortPath,proto3" json:"short_path,omitempty"`
+	HasProjects              bool                      `protobuf:"varint,5,opt,name=has_projects,json=hasProjects,proto3" json:"has_projects,omitempty"`
+	Prompt                   string                    `protobuf:"bytes,6,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	Drafting                 bool                      `protobuf:"varint,7,opt,name=drafting,proto3" json:"drafting,omitempty"`
+	Busy                     bool                      `protobuf:"varint,8,opt,name=busy,proto3" json:"busy,omitempty"`
+	Settled                  bool                      `protobuf:"varint,9,opt,name=settled,proto3" json:"settled,omitempty"`
+	Frozen                   bool                      `protobuf:"varint,10,opt,name=frozen,proto3" json:"frozen,omitempty"`
+	Config                   *NewSessionConfig         `protobuf:"bytes,11,opt,name=config,proto3" json:"config,omitempty"`
+	MachineName              string                    `protobuf:"bytes,12,opt,name=machine_name,json=machineName,proto3" json:"machine_name,omitempty"`
+	MachineSelectable        bool                      `protobuf:"varint,13,opt,name=machine_selectable,json=machineSelectable,proto3" json:"machine_selectable,omitempty"`
+	AgentName                string                    `protobuf:"bytes,14,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	AvailableAgents          []*AgentOptionView        `protobuf:"bytes,15,rep,name=available_agents,json=availableAgents,proto3" json:"available_agents,omitempty"`
+	ModelLabel               *Text                     `protobuf:"bytes,16,opt,name=model_label,json=modelLabel,proto3" json:"model_label,omitempty"`
+	EffortLabel              string                    `protobuf:"bytes,17,opt,name=effort_label,json=effortLabel,proto3" json:"effort_label,omitempty"`
+	DefaultMode              *DefaultModeInfo          `protobuf:"bytes,18,opt,name=default_mode,json=defaultMode,proto3" json:"default_mode,omitempty"`
+	LocationText             *Text                     `protobuf:"bytes,19,opt,name=location_text,json=locationText,proto3" json:"location_text,omitempty"`
+	Notices                  []*NewSessionNoticeView   `protobuf:"bytes,20,rep,name=notices,proto3" json:"notices,omitempty"`
+	CanStart                 bool                      `protobuf:"varint,21,opt,name=can_start,json=canStart,proto3" json:"can_start,omitempty"`
+	DisabledReason           *Text                     `protobuf:"bytes,22,opt,name=disabled_reason,json=disabledReason,proto3" json:"disabled_reason,omitempty"`
+	ModelPanel               *NewSessionModelPanelView `protobuf:"bytes,23,opt,name=model_panel,json=modelPanel,proto3" json:"model_panel,omitempty"`
+	ProjectRemoved           bool                      `protobuf:"varint,24,opt,name=project_removed,json=projectRemoved,proto3" json:"project_removed,omitempty"`
+	AutoIssue                AutoIssueKind             `protobuf:"varint,25,opt,name=auto_issue,json=autoIssue,proto3,enum=remoteagent.core.v1.AutoIssueKind" json:"auto_issue,omitempty"`
+	PrefsBlocked             bool                      `protobuf:"varint,26,opt,name=prefs_blocked,json=prefsBlocked,proto3" json:"prefs_blocked,omitempty"`
+	PrefsBlockedReason       *Text                     `protobuf:"bytes,27,opt,name=prefs_blocked_reason,json=prefsBlockedReason,proto3" json:"prefs_blocked_reason,omitempty"`
+	CapabilitiesLoaded       bool                      `protobuf:"varint,28,opt,name=capabilities_loaded,json=capabilitiesLoaded,proto3" json:"capabilities_loaded,omitempty"`
+	SupportsImages           bool                      `protobuf:"varint,29,opt,name=supports_images,json=supportsImages,proto3" json:"supports_images,omitempty"`
+	SupportsFiles            bool                      `protobuf:"varint,30,opt,name=supports_files,json=supportsFiles,proto3" json:"supports_files,omitempty"`
+	MaxImages                int32                     `protobuf:"varint,31,opt,name=max_images,json=maxImages,proto3" json:"max_images,omitempty"`
+	MaxFiles                 int32                     `protobuf:"varint,32,opt,name=max_files,json=maxFiles,proto3" json:"max_files,omitempty"`
+	MaxFileBytes             int64                     `protobuf:"varint,33,opt,name=max_file_bytes,json=maxFileBytes,proto3" json:"max_file_bytes,omitempty"`
+	ImageUploadBlockedReason *Text                     `protobuf:"bytes,34,opt,name=image_upload_blocked_reason,json=imageUploadBlockedReason,proto3" json:"image_upload_blocked_reason,omitempty"`
+	DiskFull                 bool                      `protobuf:"varint,35,opt,name=disk_full,json=diskFull,proto3" json:"disk_full,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *NewSessionViewModel) Reset() {
@@ -1254,6 +1264,76 @@ func (x *NewSessionViewModel) GetAutoIssue() AutoIssueKind {
 	return AutoIssueKind_AUTO_ISSUE_KIND_UNSPECIFIED
 }
 
+func (x *NewSessionViewModel) GetPrefsBlocked() bool {
+	if x != nil {
+		return x.PrefsBlocked
+	}
+	return false
+}
+
+func (x *NewSessionViewModel) GetPrefsBlockedReason() *Text {
+	if x != nil {
+		return x.PrefsBlockedReason
+	}
+	return nil
+}
+
+func (x *NewSessionViewModel) GetCapabilitiesLoaded() bool {
+	if x != nil {
+		return x.CapabilitiesLoaded
+	}
+	return false
+}
+
+func (x *NewSessionViewModel) GetSupportsImages() bool {
+	if x != nil {
+		return x.SupportsImages
+	}
+	return false
+}
+
+func (x *NewSessionViewModel) GetSupportsFiles() bool {
+	if x != nil {
+		return x.SupportsFiles
+	}
+	return false
+}
+
+func (x *NewSessionViewModel) GetMaxImages() int32 {
+	if x != nil {
+		return x.MaxImages
+	}
+	return 0
+}
+
+func (x *NewSessionViewModel) GetMaxFiles() int32 {
+	if x != nil {
+		return x.MaxFiles
+	}
+	return 0
+}
+
+func (x *NewSessionViewModel) GetMaxFileBytes() int64 {
+	if x != nil {
+		return x.MaxFileBytes
+	}
+	return 0
+}
+
+func (x *NewSessionViewModel) GetImageUploadBlockedReason() *Text {
+	if x != nil {
+		return x.ImageUploadBlockedReason
+	}
+	return nil
+}
+
+func (x *NewSessionViewModel) GetDiskFull() bool {
+	if x != nil {
+		return x.DiskFull
+	}
+	return false
+}
+
 var File_remoteagent_core_v1_new_session_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
@@ -1328,7 +1408,7 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\fcontext_note\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\vcontextNote\x12#\n" +
 	"\rpanel_enabled\x18\r \x01(\bR\fpanelEnabled\x12O\n" +
 	"\x0fmachine_choices\x18\x0e \x03(\v2&.remoteagent.core.v1.MachineChoiceViewR\x0emachineChoices\x12/\n" +
-	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\xaa\t\n" +
+	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\xf6\f\n" +
 	"\x13NewSessionViewModel\x12-\n" +
 	"\x12project_selectable\x18\x01 \x01(\bR\x11projectSelectable\x12\x1f\n" +
 	"\vproject_key\x18\x02 \x01(\tR\n" +
@@ -1361,7 +1441,18 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"modelPanel\x12'\n" +
 	"\x0fproject_removed\x18\x18 \x01(\bR\x0eprojectRemoved\x12A\n" +
 	"\n" +
-	"auto_issue\x18\x19 \x01(\x0e2\".remoteagent.core.v1.AutoIssueKindR\tautoIssue*\x82\x01\n" +
+	"auto_issue\x18\x19 \x01(\x0e2\".remoteagent.core.v1.AutoIssueKindR\tautoIssue\x12#\n" +
+	"\rprefs_blocked\x18\x1a \x01(\bR\fprefsBlocked\x12K\n" +
+	"\x14prefs_blocked_reason\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\x12prefsBlockedReason\x12/\n" +
+	"\x13capabilities_loaded\x18\x1c \x01(\bR\x12capabilitiesLoaded\x12'\n" +
+	"\x0fsupports_images\x18\x1d \x01(\bR\x0esupportsImages\x12%\n" +
+	"\x0esupports_files\x18\x1e \x01(\bR\rsupportsFiles\x12\x1d\n" +
+	"\n" +
+	"max_images\x18\x1f \x01(\x05R\tmaxImages\x12\x1b\n" +
+	"\tmax_files\x18  \x01(\x05R\bmaxFiles\x12$\n" +
+	"\x0emax_file_bytes\x18! \x01(\x03R\fmaxFileBytes\x12X\n" +
+	"\x1bimage_upload_blocked_reason\x18\" \x01(\v2\x19.remoteagent.core.v1.TextR\x18imageUploadBlockedReason\x12\x1b\n" +
+	"\tdisk_full\x18# \x01(\bR\bdiskFull*\x82\x01\n" +
 	"\rAutoIssueKind\x12\x1f\n" +
 	"\x1bAUTO_ISSUE_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AUTO_ISSUE_KIND_NONE\x10\x01\x12\x19\n" +
@@ -1475,11 +1566,13 @@ var file_remoteagent_core_v1_new_session_view_proto_depIdxs = []int32{
 	14, // 32: remoteagent.core.v1.NewSessionViewModel.disabled_reason:type_name -> remoteagent.core.v1.Text
 	11, // 33: remoteagent.core.v1.NewSessionViewModel.model_panel:type_name -> remoteagent.core.v1.NewSessionModelPanelView
 	0,  // 34: remoteagent.core.v1.NewSessionViewModel.auto_issue:type_name -> remoteagent.core.v1.AutoIssueKind
-	35, // [35:35] is the sub-list for method output_type
-	35, // [35:35] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	14, // 35: remoteagent.core.v1.NewSessionViewModel.prefs_blocked_reason:type_name -> remoteagent.core.v1.Text
+	14, // 36: remoteagent.core.v1.NewSessionViewModel.image_upload_blocked_reason:type_name -> remoteagent.core.v1.Text
+	37, // [37:37] is the sub-list for method output_type
+	37, // [37:37] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_new_session_view_proto_init() }

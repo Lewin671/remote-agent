@@ -1119,6 +1119,310 @@ public  final class NewSessionViewModel extends
     autoIssue_ = 0;
   }
 
+  public static final int PREFS_BLOCKED_FIELD_NUMBER = 26;
+  private boolean prefsBlocked_;
+  /**
+   * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+   * @return The prefsBlocked.
+   */
+  @java.lang.Override
+  public boolean getPrefsBlocked() {
+    return prefsBlocked_;
+  }
+  /**
+   * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+   * @param value The prefsBlocked to set.
+   */
+  private void setPrefsBlocked(boolean value) {
+    
+    prefsBlocked_ = value;
+  }
+  /**
+   * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+   */
+  private void clearPrefsBlocked() {
+
+    prefsBlocked_ = false;
+  }
+
+  public static final int PREFS_BLOCKED_REASON_FIELD_NUMBER = 27;
+  private io.github.lewin671.remoteagent.core.proto.Text prefsBlockedReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPrefsBlockedReason() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getPrefsBlockedReason() {
+    return prefsBlockedReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : prefsBlockedReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrefsBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    prefsBlockedReason_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePrefsBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (prefsBlockedReason_ != null &&
+        prefsBlockedReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      prefsBlockedReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(prefsBlockedReason_).mergeFrom(value).buildPartial();
+    } else {
+      prefsBlockedReason_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+   */
+  private void clearPrefsBlockedReason() {
+    prefsBlockedReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
+  public static final int CAPABILITIES_LOADED_FIELD_NUMBER = 28;
+  private boolean capabilitiesLoaded_;
+  /**
+   * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+   * @return The capabilitiesLoaded.
+   */
+  @java.lang.Override
+  public boolean getCapabilitiesLoaded() {
+    return capabilitiesLoaded_;
+  }
+  /**
+   * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+   * @param value The capabilitiesLoaded to set.
+   */
+  private void setCapabilitiesLoaded(boolean value) {
+    
+    capabilitiesLoaded_ = value;
+  }
+  /**
+   * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+   */
+  private void clearCapabilitiesLoaded() {
+
+    capabilitiesLoaded_ = false;
+  }
+
+  public static final int SUPPORTS_IMAGES_FIELD_NUMBER = 29;
+  private boolean supportsImages_;
+  /**
+   * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+   * @return The supportsImages.
+   */
+  @java.lang.Override
+  public boolean getSupportsImages() {
+    return supportsImages_;
+  }
+  /**
+   * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+   * @param value The supportsImages to set.
+   */
+  private void setSupportsImages(boolean value) {
+    
+    supportsImages_ = value;
+  }
+  /**
+   * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+   */
+  private void clearSupportsImages() {
+
+    supportsImages_ = false;
+  }
+
+  public static final int SUPPORTS_FILES_FIELD_NUMBER = 30;
+  private boolean supportsFiles_;
+  /**
+   * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+   * @return The supportsFiles.
+   */
+  @java.lang.Override
+  public boolean getSupportsFiles() {
+    return supportsFiles_;
+  }
+  /**
+   * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+   * @param value The supportsFiles to set.
+   */
+  private void setSupportsFiles(boolean value) {
+    
+    supportsFiles_ = value;
+  }
+  /**
+   * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+   */
+  private void clearSupportsFiles() {
+
+    supportsFiles_ = false;
+  }
+
+  public static final int MAX_IMAGES_FIELD_NUMBER = 31;
+  private int maxImages_;
+  /**
+   * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+   * @return The maxImages.
+   */
+  @java.lang.Override
+  public int getMaxImages() {
+    return maxImages_;
+  }
+  /**
+   * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+   * @param value The maxImages to set.
+   */
+  private void setMaxImages(int value) {
+    
+    maxImages_ = value;
+  }
+  /**
+   * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+   */
+  private void clearMaxImages() {
+
+    maxImages_ = 0;
+  }
+
+  public static final int MAX_FILES_FIELD_NUMBER = 32;
+  private int maxFiles_;
+  /**
+   * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+   * @return The maxFiles.
+   */
+  @java.lang.Override
+  public int getMaxFiles() {
+    return maxFiles_;
+  }
+  /**
+   * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+   * @param value The maxFiles to set.
+   */
+  private void setMaxFiles(int value) {
+    
+    maxFiles_ = value;
+  }
+  /**
+   * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+   */
+  private void clearMaxFiles() {
+
+    maxFiles_ = 0;
+  }
+
+  public static final int MAX_FILE_BYTES_FIELD_NUMBER = 33;
+  private long maxFileBytes_;
+  /**
+   * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+   * @return The maxFileBytes.
+   */
+  @java.lang.Override
+  public long getMaxFileBytes() {
+    return maxFileBytes_;
+  }
+  /**
+   * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+   * @param value The maxFileBytes to set.
+   */
+  private void setMaxFileBytes(long value) {
+    
+    maxFileBytes_ = value;
+  }
+  /**
+   * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+   */
+  private void clearMaxFileBytes() {
+
+    maxFileBytes_ = 0L;
+  }
+
+  public static final int IMAGE_UPLOAD_BLOCKED_REASON_FIELD_NUMBER = 34;
+  private io.github.lewin671.remoteagent.core.proto.Text imageUploadBlockedReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasImageUploadBlockedReason() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getImageUploadBlockedReason() {
+    return imageUploadBlockedReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : imageUploadBlockedReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImageUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    imageUploadBlockedReason_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeImageUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (imageUploadBlockedReason_ != null &&
+        imageUploadBlockedReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      imageUploadBlockedReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(imageUploadBlockedReason_).mergeFrom(value).buildPartial();
+    } else {
+      imageUploadBlockedReason_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+   */
+  private void clearImageUploadBlockedReason() {
+    imageUploadBlockedReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
+  public static final int DISK_FULL_FIELD_NUMBER = 35;
+  private boolean diskFull_;
+  /**
+   * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+   * @return The diskFull.
+   */
+  @java.lang.Override
+  public boolean getDiskFull() {
+    return diskFull_;
+  }
+  /**
+   * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+   * @param value The diskFull to set.
+   */
+  private void setDiskFull(boolean value) {
+    
+    diskFull_ = value;
+  }
+  /**
+   * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+   */
+  private void clearDiskFull() {
+
+    diskFull_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.NewSessionViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2341,6 +2645,324 @@ public  final class NewSessionViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+     * @return The prefsBlocked.
+     */
+    @java.lang.Override
+    public boolean getPrefsBlocked() {
+      return instance.getPrefsBlocked();
+    }
+    /**
+     * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+     * @param value The prefsBlocked to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrefsBlocked(boolean value) {
+      copyOnWrite();
+      instance.setPrefsBlocked(value);
+      return this;
+    }
+    /**
+     * <code>bool prefs_blocked = 26 [json_name = "prefsBlocked"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrefsBlocked() {
+      copyOnWrite();
+      instance.clearPrefsBlocked();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPrefsBlockedReason() {
+      return instance.hasPrefsBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getPrefsBlockedReason() {
+      return instance.getPrefsBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    public Builder setPrefsBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setPrefsBlockedReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    public Builder setPrefsBlockedReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPrefsBlockedReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    public Builder mergePrefsBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergePrefsBlockedReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text prefs_blocked_reason = 27 [json_name = "prefsBlockedReason"];</code>
+     */
+    public Builder clearPrefsBlockedReason() {  copyOnWrite();
+      instance.clearPrefsBlockedReason();
+      return this;
+    }
+
+    /**
+     * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+     * @return The capabilitiesLoaded.
+     */
+    @java.lang.Override
+    public boolean getCapabilitiesLoaded() {
+      return instance.getCapabilitiesLoaded();
+    }
+    /**
+     * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+     * @param value The capabilitiesLoaded to set.
+     * @return This builder for chaining.
+     */
+    public Builder setCapabilitiesLoaded(boolean value) {
+      copyOnWrite();
+      instance.setCapabilitiesLoaded(value);
+      return this;
+    }
+    /**
+     * <code>bool capabilities_loaded = 28 [json_name = "capabilitiesLoaded"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearCapabilitiesLoaded() {
+      copyOnWrite();
+      instance.clearCapabilitiesLoaded();
+      return this;
+    }
+
+    /**
+     * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+     * @return The supportsImages.
+     */
+    @java.lang.Override
+    public boolean getSupportsImages() {
+      return instance.getSupportsImages();
+    }
+    /**
+     * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+     * @param value The supportsImages to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSupportsImages(boolean value) {
+      copyOnWrite();
+      instance.setSupportsImages(value);
+      return this;
+    }
+    /**
+     * <code>bool supports_images = 29 [json_name = "supportsImages"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSupportsImages() {
+      copyOnWrite();
+      instance.clearSupportsImages();
+      return this;
+    }
+
+    /**
+     * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+     * @return The supportsFiles.
+     */
+    @java.lang.Override
+    public boolean getSupportsFiles() {
+      return instance.getSupportsFiles();
+    }
+    /**
+     * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+     * @param value The supportsFiles to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSupportsFiles(boolean value) {
+      copyOnWrite();
+      instance.setSupportsFiles(value);
+      return this;
+    }
+    /**
+     * <code>bool supports_files = 30 [json_name = "supportsFiles"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSupportsFiles() {
+      copyOnWrite();
+      instance.clearSupportsFiles();
+      return this;
+    }
+
+    /**
+     * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+     * @return The maxImages.
+     */
+    @java.lang.Override
+    public int getMaxImages() {
+      return instance.getMaxImages();
+    }
+    /**
+     * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+     * @param value The maxImages to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxImages(int value) {
+      copyOnWrite();
+      instance.setMaxImages(value);
+      return this;
+    }
+    /**
+     * <code>int32 max_images = 31 [json_name = "maxImages"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxImages() {
+      copyOnWrite();
+      instance.clearMaxImages();
+      return this;
+    }
+
+    /**
+     * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+     * @return The maxFiles.
+     */
+    @java.lang.Override
+    public int getMaxFiles() {
+      return instance.getMaxFiles();
+    }
+    /**
+     * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+     * @param value The maxFiles to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFiles(int value) {
+      copyOnWrite();
+      instance.setMaxFiles(value);
+      return this;
+    }
+    /**
+     * <code>int32 max_files = 32 [json_name = "maxFiles"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFiles() {
+      copyOnWrite();
+      instance.clearMaxFiles();
+      return this;
+    }
+
+    /**
+     * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+     * @return The maxFileBytes.
+     */
+    @java.lang.Override
+    public long getMaxFileBytes() {
+      return instance.getMaxFileBytes();
+    }
+    /**
+     * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+     * @param value The maxFileBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFileBytes(long value) {
+      copyOnWrite();
+      instance.setMaxFileBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 max_file_bytes = 33 [json_name = "maxFileBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFileBytes() {
+      copyOnWrite();
+      instance.clearMaxFileBytes();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasImageUploadBlockedReason() {
+      return instance.hasImageUploadBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getImageUploadBlockedReason() {
+      return instance.getImageUploadBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    public Builder setImageUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setImageUploadBlockedReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    public Builder setImageUploadBlockedReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImageUploadBlockedReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    public Builder mergeImageUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeImageUploadBlockedReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text image_upload_blocked_reason = 34 [json_name = "imageUploadBlockedReason"];</code>
+     */
+    public Builder clearImageUploadBlockedReason() {  copyOnWrite();
+      instance.clearImageUploadBlockedReason();
+      return this;
+    }
+
+    /**
+     * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+     * @return The diskFull.
+     */
+    @java.lang.Override
+    public boolean getDiskFull() {
+      return instance.getDiskFull();
+    }
+    /**
+     * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+     * @param value The diskFull to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDiskFull(boolean value) {
+      copyOnWrite();
+      instance.setDiskFull(value);
+      return this;
+    }
+    /**
+     * <code>bool disk_full = 35 [json_name = "diskFull"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDiskFull() {
+      copyOnWrite();
+      instance.clearDiskFull();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.NewSessionViewModel)
   }
   @java.lang.Override
@@ -2385,13 +3007,24 @@ public  final class NewSessionViewModel extends
             "modelPanel_",
             "projectRemoved_",
             "autoIssue_",
+            "prefsBlocked_",
+            "prefsBlockedReason_",
+            "capabilitiesLoaded_",
+            "supportsImages_",
+            "supportsFiles_",
+            "maxImages_",
+            "maxFiles_",
+            "maxFileBytes_",
+            "imageUploadBlockedReason_",
+            "diskFull_",
           };
           java.lang.String info =
-              "\u0000\u0019\u0000\u0001\u0001\u0019\u0019\u0000\u0002\u0000\u0001\u0007\u0002\u0208" +
-              "\u0003\u1009\u0000\u0004\u0208\u0005\u0007\u0006\u0208\u0007\u0007\b\u0007\t\u0007" +
-              "\n\u0007\u000b\u1009\u0001\f\u0208\r\u0007\u000e\u0208\u000f\u001b\u0010\u1009\u0002" +
-              "\u0011\u0208\u0012\u1009\u0003\u0013\u1009\u0004\u0014\u001b\u0015\u0007\u0016\u1009" +
-              "\u0005\u0017\u1009\u0006\u0018\u0007\u0019\f";
+              "\u0000#\u0000\u0001\u0001##\u0000\u0002\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
+              "\u0000\u0004\u0208\u0005\u0007\u0006\u0208\u0007\u0007\b\u0007\t\u0007\n\u0007\u000b" +
+              "\u1009\u0001\f\u0208\r\u0007\u000e\u0208\u000f\u001b\u0010\u1009\u0002\u0011\u0208" +
+              "\u0012\u1009\u0003\u0013\u1009\u0004\u0014\u001b\u0015\u0007\u0016\u1009\u0005\u0017" +
+              "\u1009\u0006\u0018\u0007\u0019\f\u001a\u0007\u001b\u1009\u0007\u001c\u0007\u001d" +
+              "\u0007\u001e\u0007\u001f\u0004 \u0004!\u0002\"\u1009\b#\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

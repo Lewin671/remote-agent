@@ -158,4 +158,14 @@ message NewSessionViewModel {
   NewSessionModelPanelView model_panel = 23;
   bool project_removed = 24;
   AutoIssueKind auto_issue = 25;
+  bool prefs_blocked = 26;
+  Text prefs_blocked_reason = 27;
+  bool capabilities_loaded = 28;
+  bool supports_images = 29;
+  bool supports_files = 30;
+  int32 max_images = 31;
+  int32 max_files = 32;
+  int64 max_file_bytes = 33;
+  Text image_upload_blocked_reason = 34;
+  bool disk_full = 35;
 }

@@ -287,4 +287,32 @@ public interface SessionActionsViewOrBuilder extends
    * @return The usageEntry.
    */
   io.github.lewin671.remoteagent.core.proto.SessionUsageEntryView getUsageEntry();
+
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   * @return Whether the forkAction field is set.
+   */
+  boolean hasForkAction();
+  /**
+   * <code>.remoteagent.core.v1.SessionForkActionView fork_action = 30 [json_name = "forkAction"];</code>
+   * @return The forkAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.SessionForkActionView getForkAction();
+
+  /**
+   * <code>bool mode_locked = 31 [json_name = "modeLocked"];</code>
+   * @return The modeLocked.
+   */
+  boolean getModeLocked();
+
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   * @return Whether the modePermissionNotice field is set.
+   */
+  boolean hasModePermissionNotice();
+  /**
+   * <code>.remoteagent.core.v1.Text mode_permission_notice = 32 [json_name = "modePermissionNotice"];</code>
+   * @return The modePermissionNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getModePermissionNotice();
 }

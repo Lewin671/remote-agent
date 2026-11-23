@@ -195,7 +195,9 @@ type SecurityState struct {
 	ClockSkewed            bool
 	RecoveryPending        bool
 	RecoveryReadyMs        int64
+	RecoveryStatusStale    bool
 	RecoveryObjectsPending bool
+	HasHandoffOffer        bool
 	NetworkGen             uint64
 	VerifiedNetGen         uint64
 }
@@ -405,8 +407,11 @@ type Engine struct {
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
 	devicesSnapshotD   map[string]uint64
+	devicesLoadFailed  bool
+	devicesErrorText   *corev1.Text
 	sessionByIDOps     map[uint64]string
 	sessionByIDFailed  map[string]bool
+	sessionByIDErrors  map[string]string
 	machinePushes      map[string]uint64
 	sessionPushes      map[string]uint64
 	removedPushes      map[string]uint64
@@ -466,6 +471,7 @@ func NewEngine() *Engine {
 		listed:              make(map[string]bool),
 		sessionByIDOps:      make(map[uint64]string),
 		sessionByIDFailed:   make(map[string]bool),
+		sessionByIDErrors:   make(map[string]string),
 		machinePushes:       make(map[string]uint64),
 		sessionPushes:       make(map[string]uint64),
 		removedPushes:       make(map[string]uint64),

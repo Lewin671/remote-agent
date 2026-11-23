@@ -1639,6 +1639,236 @@ public  final class SyncStateView extends
     archiveMachineIds_.add(value.toStringUtf8());
   }
 
+  public static final int CONNECTION_STARTED_AT_MS_FIELD_NUMBER = 42;
+  private long connectionStartedAtMs_;
+  /**
+   * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+   * @return The connectionStartedAtMs.
+   */
+  @java.lang.Override
+  public long getConnectionStartedAtMs() {
+    return connectionStartedAtMs_;
+  }
+  /**
+   * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+   * @param value The connectionStartedAtMs to set.
+   */
+  private void setConnectionStartedAtMs(long value) {
+    
+    connectionStartedAtMs_ = value;
+  }
+  /**
+   * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+   */
+  private void clearConnectionStartedAtMs() {
+
+    connectionStartedAtMs_ = 0L;
+  }
+
+  public static final int NETWORK_AVAILABLE_FIELD_NUMBER = 43;
+  private boolean networkAvailable_;
+  /**
+   * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+   * @return The networkAvailable.
+   */
+  @java.lang.Override
+  public boolean getNetworkAvailable() {
+    return networkAvailable_;
+  }
+  /**
+   * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+   * @param value The networkAvailable to set.
+   */
+  private void setNetworkAvailable(boolean value) {
+    
+    networkAvailable_ = value;
+  }
+  /**
+   * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+   */
+  private void clearNetworkAvailable() {
+
+    networkAvailable_ = false;
+  }
+
+  public static final int EVER_ONLINE_FIELD_NUMBER = 44;
+  private boolean everOnline_;
+  /**
+   * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+   * @return The everOnline.
+   */
+  @java.lang.Override
+  public boolean getEverOnline() {
+    return everOnline_;
+  }
+  /**
+   * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+   * @param value The everOnline to set.
+   */
+  private void setEverOnline(boolean value) {
+    
+    everOnline_ = value;
+  }
+  /**
+   * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+   */
+  private void clearEverOnline() {
+
+    everOnline_ = false;
+  }
+
+  public static final int CONNECT_FAILURES_FIELD_NUMBER = 45;
+  private int connectFailures_;
+  /**
+   * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+   * @return The connectFailures.
+   */
+  @java.lang.Override
+  public int getConnectFailures() {
+    return connectFailures_;
+  }
+  /**
+   * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+   * @param value The connectFailures to set.
+   */
+  private void setConnectFailures(int value) {
+    
+    connectFailures_ = value;
+  }
+  /**
+   * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+   */
+  private void clearConnectFailures() {
+
+    connectFailures_ = 0;
+  }
+
+  public static final int RECOVERY_STATUS_STALE_FIELD_NUMBER = 46;
+  private boolean recoveryStatusStale_;
+  /**
+   * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+   * @return The recoveryStatusStale.
+   */
+  @java.lang.Override
+  public boolean getRecoveryStatusStale() {
+    return recoveryStatusStale_;
+  }
+  /**
+   * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+   * @param value The recoveryStatusStale to set.
+   */
+  private void setRecoveryStatusStale(boolean value) {
+    
+    recoveryStatusStale_ = value;
+  }
+  /**
+   * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+   */
+  private void clearRecoveryStatusStale() {
+
+    recoveryStatusStale_ = false;
+  }
+
+  public static final int DEVICES_LOAD_FAILED_FIELD_NUMBER = 47;
+  private boolean devicesLoadFailed_;
+  /**
+   * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+   * @return The devicesLoadFailed.
+   */
+  @java.lang.Override
+  public boolean getDevicesLoadFailed() {
+    return devicesLoadFailed_;
+  }
+  /**
+   * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+   * @param value The devicesLoadFailed to set.
+   */
+  private void setDevicesLoadFailed(boolean value) {
+    
+    devicesLoadFailed_ = value;
+  }
+  /**
+   * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+   */
+  private void clearDevicesLoadFailed() {
+
+    devicesLoadFailed_ = false;
+  }
+
+  public static final int DEVICES_ERROR_TEXT_FIELD_NUMBER = 48;
+  private io.github.lewin671.remoteagent.core.proto.Text devicesErrorText_;
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDevicesErrorText() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDevicesErrorText() {
+    return devicesErrorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : devicesErrorText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDevicesErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    devicesErrorText_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDevicesErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (devicesErrorText_ != null &&
+        devicesErrorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      devicesErrorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(devicesErrorText_).mergeFrom(value).buildPartial();
+    } else {
+      devicesErrorText_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+   */
+  private void clearDevicesErrorText() {
+    devicesErrorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int HAS_HANDOFF_OFFER_FIELD_NUMBER = 49;
+  private boolean hasHandoffOffer_;
+  /**
+   * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+   * @return The hasHandoffOffer.
+   */
+  @java.lang.Override
+  public boolean getHasHandoffOffer() {
+    return hasHandoffOffer_;
+  }
+  /**
+   * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+   * @param value The hasHandoffOffer to set.
+   */
+  private void setHasHandoffOffer(boolean value) {
+    
+    hasHandoffOffer_ = value;
+  }
+  /**
+   * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+   */
+  private void clearHasHandoffOffer() {
+
+    hasHandoffOffer_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncStateView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3414,6 +3644,249 @@ public  final class SyncStateView extends
       return this;
     }
 
+    /**
+     * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+     * @return The connectionStartedAtMs.
+     */
+    @java.lang.Override
+    public long getConnectionStartedAtMs() {
+      return instance.getConnectionStartedAtMs();
+    }
+    /**
+     * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+     * @param value The connectionStartedAtMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConnectionStartedAtMs(long value) {
+      copyOnWrite();
+      instance.setConnectionStartedAtMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 connection_started_at_ms = 42 [json_name = "connectionStartedAtMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConnectionStartedAtMs() {
+      copyOnWrite();
+      instance.clearConnectionStartedAtMs();
+      return this;
+    }
+
+    /**
+     * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+     * @return The networkAvailable.
+     */
+    @java.lang.Override
+    public boolean getNetworkAvailable() {
+      return instance.getNetworkAvailable();
+    }
+    /**
+     * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+     * @param value The networkAvailable to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNetworkAvailable(boolean value) {
+      copyOnWrite();
+      instance.setNetworkAvailable(value);
+      return this;
+    }
+    /**
+     * <code>bool network_available = 43 [json_name = "networkAvailable"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNetworkAvailable() {
+      copyOnWrite();
+      instance.clearNetworkAvailable();
+      return this;
+    }
+
+    /**
+     * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+     * @return The everOnline.
+     */
+    @java.lang.Override
+    public boolean getEverOnline() {
+      return instance.getEverOnline();
+    }
+    /**
+     * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+     * @param value The everOnline to set.
+     * @return This builder for chaining.
+     */
+    public Builder setEverOnline(boolean value) {
+      copyOnWrite();
+      instance.setEverOnline(value);
+      return this;
+    }
+    /**
+     * <code>bool ever_online = 44 [json_name = "everOnline"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearEverOnline() {
+      copyOnWrite();
+      instance.clearEverOnline();
+      return this;
+    }
+
+    /**
+     * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+     * @return The connectFailures.
+     */
+    @java.lang.Override
+    public int getConnectFailures() {
+      return instance.getConnectFailures();
+    }
+    /**
+     * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+     * @param value The connectFailures to set.
+     * @return This builder for chaining.
+     */
+    public Builder setConnectFailures(int value) {
+      copyOnWrite();
+      instance.setConnectFailures(value);
+      return this;
+    }
+    /**
+     * <code>int32 connect_failures = 45 [json_name = "connectFailures"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearConnectFailures() {
+      copyOnWrite();
+      instance.clearConnectFailures();
+      return this;
+    }
+
+    /**
+     * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+     * @return The recoveryStatusStale.
+     */
+    @java.lang.Override
+    public boolean getRecoveryStatusStale() {
+      return instance.getRecoveryStatusStale();
+    }
+    /**
+     * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+     * @param value The recoveryStatusStale to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRecoveryStatusStale(boolean value) {
+      copyOnWrite();
+      instance.setRecoveryStatusStale(value);
+      return this;
+    }
+    /**
+     * <code>bool recovery_status_stale = 46 [json_name = "recoveryStatusStale"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRecoveryStatusStale() {
+      copyOnWrite();
+      instance.clearRecoveryStatusStale();
+      return this;
+    }
+
+    /**
+     * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+     * @return The devicesLoadFailed.
+     */
+    @java.lang.Override
+    public boolean getDevicesLoadFailed() {
+      return instance.getDevicesLoadFailed();
+    }
+    /**
+     * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+     * @param value The devicesLoadFailed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDevicesLoadFailed(boolean value) {
+      copyOnWrite();
+      instance.setDevicesLoadFailed(value);
+      return this;
+    }
+    /**
+     * <code>bool devices_load_failed = 47 [json_name = "devicesLoadFailed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDevicesLoadFailed() {
+      copyOnWrite();
+      instance.clearDevicesLoadFailed();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDevicesErrorText() {
+      return instance.hasDevicesErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDevicesErrorText() {
+      return instance.getDevicesErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    public Builder setDevicesErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDevicesErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    public Builder setDevicesErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDevicesErrorText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    public Builder mergeDevicesErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDevicesErrorText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text devices_error_text = 48 [json_name = "devicesErrorText"];</code>
+     */
+    public Builder clearDevicesErrorText() {  copyOnWrite();
+      instance.clearDevicesErrorText();
+      return this;
+    }
+
+    /**
+     * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+     * @return The hasHandoffOffer.
+     */
+    @java.lang.Override
+    public boolean getHasHandoffOffer() {
+      return instance.getHasHandoffOffer();
+    }
+    /**
+     * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+     * @param value The hasHandoffOffer to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasHandoffOffer(boolean value) {
+      copyOnWrite();
+      instance.setHasHandoffOffer(value);
+      return this;
+    }
+    /**
+     * <code>bool has_handoff_offer = 49 [json_name = "hasHandoffOffer"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasHandoffOffer() {
+      copyOnWrite();
+      instance.clearHasHandoffOffer();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncStateView)
   }
   @java.lang.Override
@@ -3475,15 +3948,23 @@ public  final class SyncStateView extends
             "reachabilityUnknown_",
             "trustedMachineIds_",
             "archiveMachineIds_",
+            "connectionStartedAtMs_",
+            "networkAvailable_",
+            "everOnline_",
+            "connectFailures_",
+            "recoveryStatusStale_",
+            "devicesLoadFailed_",
+            "devicesErrorText_",
+            "hasHandoffOffer_",
           };
           java.lang.String info =
-              "\u0000)\u0000\u0001\u0001))\u0000\u0005\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
+              "\u00001\u0000\u0001\u000111\u0000\u0005\u0000\u0001\f\u0002\u1009\u0000\u0003\u1009" +
               "\u0001\u0004\u0002\u0005\u0007\u0006\u0007\u0007\u0007\b\u0208\t\u0208\n\u1009\u0002" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0007\u0010\u0002\u0011\u0007\u0012" +
               "\u0002\u0013\u0007\u0014\u000b\u0015\u001b\u0016\u0007\u0017\u001b\u0018\u0007\u0019" +
               "\u0007\u001a\u0007\u001b\u1009\u0003\u001c\u0007\u001d\u0007\u001e\u1009\u0004\u001f" +
               "\u0007 \u0007!\u0007\"\u0003#\u0007$\u1009\u0005%\u001b&\u0007\'\u0007(\u021a)\u021a" +
-              "";
+              "*\u0002+\u0007,\u0007-\u0004.\u0007/\u00070\u1009\u00061\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

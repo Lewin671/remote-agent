@@ -650,32 +650,42 @@ func (m *NewSessionModelPanelView) AppendMarshal(b []byte) []byte {
 }
 
 type NewSessionViewModel struct {
-	_                 [0]func()
-	ProjectSelectable bool
-	ProjectKey        string
-	ProjectName       *Text
-	ShortPath         string
-	HasProjects       bool
-	Prompt            string
-	Drafting          bool
-	Busy              bool
-	Settled           bool
-	Frozen            bool
-	Config            *NewSessionConfig
-	MachineName       string
-	MachineSelectable bool
-	AgentName         string
-	AvailableAgents   []*AgentOptionView
-	ModelLabel        *Text
-	EffortLabel       string
-	DefaultMode       *DefaultModeInfo
-	LocationText      *Text
-	Notices           []*NewSessionNoticeView
-	CanStart          bool
-	DisabledReason    *Text
-	ModelPanel        *NewSessionModelPanelView
-	ProjectRemoved    bool
-	AutoIssue         AutoIssueKind
+	_                        [0]func()
+	ProjectSelectable        bool
+	ProjectKey               string
+	ProjectName              *Text
+	ShortPath                string
+	HasProjects              bool
+	Prompt                   string
+	Drafting                 bool
+	Busy                     bool
+	Settled                  bool
+	Frozen                   bool
+	Config                   *NewSessionConfig
+	MachineName              string
+	MachineSelectable        bool
+	AgentName                string
+	AvailableAgents          []*AgentOptionView
+	ModelLabel               *Text
+	EffortLabel              string
+	DefaultMode              *DefaultModeInfo
+	LocationText             *Text
+	Notices                  []*NewSessionNoticeView
+	CanStart                 bool
+	DisabledReason           *Text
+	ModelPanel               *NewSessionModelPanelView
+	ProjectRemoved           bool
+	AutoIssue                AutoIssueKind
+	PrefsBlocked             bool
+	PrefsBlockedReason       *Text
+	CapabilitiesLoaded       bool
+	SupportsImages           bool
+	SupportsFiles            bool
+	MaxImages                int32
+	MaxFiles                 int32
+	MaxFileBytes             int64
+	ImageUploadBlockedReason *Text
+	DiskFull                 bool
 }
 
 func (m *NewSessionViewModel) GetProjectSelectable() bool {
@@ -828,6 +838,66 @@ func (m *NewSessionViewModel) GetAutoIssue() AutoIssueKind {
 	}
 	return 0
 }
+func (m *NewSessionViewModel) GetPrefsBlocked() bool {
+	if m != nil {
+		return m.PrefsBlocked
+	}
+	return false
+}
+func (m *NewSessionViewModel) GetPrefsBlockedReason() *Text {
+	if m != nil {
+		return m.PrefsBlockedReason
+	}
+	return nil
+}
+func (m *NewSessionViewModel) GetCapabilitiesLoaded() bool {
+	if m != nil {
+		return m.CapabilitiesLoaded
+	}
+	return false
+}
+func (m *NewSessionViewModel) GetSupportsImages() bool {
+	if m != nil {
+		return m.SupportsImages
+	}
+	return false
+}
+func (m *NewSessionViewModel) GetSupportsFiles() bool {
+	if m != nil {
+		return m.SupportsFiles
+	}
+	return false
+}
+func (m *NewSessionViewModel) GetMaxImages() int32 {
+	if m != nil {
+		return m.MaxImages
+	}
+	return 0
+}
+func (m *NewSessionViewModel) GetMaxFiles() int32 {
+	if m != nil {
+		return m.MaxFiles
+	}
+	return 0
+}
+func (m *NewSessionViewModel) GetMaxFileBytes() int64 {
+	if m != nil {
+		return m.MaxFileBytes
+	}
+	return 0
+}
+func (m *NewSessionViewModel) GetImageUploadBlockedReason() *Text {
+	if m != nil {
+		return m.ImageUploadBlockedReason
+	}
+	return nil
+}
+func (m *NewSessionViewModel) GetDiskFull() bool {
+	if m != nil {
+		return m.DiskFull
+	}
+	return false
+}
 
 var LitewireDesc_NewSessionViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -856,6 +926,16 @@ var LitewireDesc_NewSessionViewModel = litewire.MessageDesc{
 		{Num: 23, Offset: unsafe.Offsetof(NewSessionViewModel{}.ModelPanel), Kind: litewire.KindMessage, Sub: &LitewireDesc_NewSessionModelPanelView},
 		{Num: 24, Offset: unsafe.Offsetof(NewSessionViewModel{}.ProjectRemoved), Kind: litewire.KindBool},
 		{Num: 25, Offset: unsafe.Offsetof(NewSessionViewModel{}.AutoIssue), Kind: litewire.KindInt32},
+		{Num: 26, Offset: unsafe.Offsetof(NewSessionViewModel{}.PrefsBlocked), Kind: litewire.KindBool},
+		{Num: 27, Offset: unsafe.Offsetof(NewSessionViewModel{}.PrefsBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 28, Offset: unsafe.Offsetof(NewSessionViewModel{}.CapabilitiesLoaded), Kind: litewire.KindBool},
+		{Num: 29, Offset: unsafe.Offsetof(NewSessionViewModel{}.SupportsImages), Kind: litewire.KindBool},
+		{Num: 30, Offset: unsafe.Offsetof(NewSessionViewModel{}.SupportsFiles), Kind: litewire.KindBool},
+		{Num: 31, Offset: unsafe.Offsetof(NewSessionViewModel{}.MaxImages), Kind: litewire.KindInt32},
+		{Num: 32, Offset: unsafe.Offsetof(NewSessionViewModel{}.MaxFiles), Kind: litewire.KindInt32},
+		{Num: 33, Offset: unsafe.Offsetof(NewSessionViewModel{}.MaxFileBytes), Kind: litewire.KindInt64},
+		{Num: 34, Offset: unsafe.Offsetof(NewSessionViewModel{}.ImageUploadBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 35, Offset: unsafe.Offsetof(NewSessionViewModel{}.DiskFull), Kind: litewire.KindBool},
 	},
 }
 

@@ -299,6 +299,8 @@ message ScheduleAttentionView {
   ScheduleRecoveryActionKind primary_action_kind = 5;
   bool primary_action_enabled = 6;
   Text primary_action_disabled_reason = 7;
+  bool show_enable_cli_action = 8;
+  remoteagent.v1.Agent disabled_agent = 9;
 }
 
 message ScheduleActiveRunView {

@@ -2330,6 +2330,58 @@ public  final class MachineSettingsViewModel extends
 
   }
 
+  public static final int APP_ONLINE_FIELD_NUMBER = 52;
+  private boolean appOnline_;
+  /**
+   * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+   * @return The appOnline.
+   */
+  @java.lang.Override
+  public boolean getAppOnline() {
+    return appOnline_;
+  }
+  /**
+   * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+   * @param value The appOnline to set.
+   */
+  private void setAppOnline(boolean value) {
+    
+    appOnline_ = value;
+  }
+  /**
+   * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+   */
+  private void clearAppOnline() {
+
+    appOnline_ = false;
+  }
+
+  public static final int IS_MANAGER_FIELD_NUMBER = 53;
+  private boolean isManager_;
+  /**
+   * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+   * @return The isManager.
+   */
+  @java.lang.Override
+  public boolean getIsManager() {
+    return isManager_;
+  }
+  /**
+   * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+   * @param value The isManager to set.
+   */
+  private void setIsManager(boolean value) {
+    
+    isManager_ = value;
+  }
+  /**
+   * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+   */
+  private void clearIsManager() {
+
+    isManager_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.MachineSettingsViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4792,6 +4844,62 @@ public  final class MachineSettingsViewModel extends
       return this;
     }
 
+    /**
+     * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+     * @return The appOnline.
+     */
+    @java.lang.Override
+    public boolean getAppOnline() {
+      return instance.getAppOnline();
+    }
+    /**
+     * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+     * @param value The appOnline to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAppOnline(boolean value) {
+      copyOnWrite();
+      instance.setAppOnline(value);
+      return this;
+    }
+    /**
+     * <code>bool app_online = 52 [json_name = "appOnline"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAppOnline() {
+      copyOnWrite();
+      instance.clearAppOnline();
+      return this;
+    }
+
+    /**
+     * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+     * @return The isManager.
+     */
+    @java.lang.Override
+    public boolean getIsManager() {
+      return instance.getIsManager();
+    }
+    /**
+     * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+     * @param value The isManager to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIsManager(boolean value) {
+      copyOnWrite();
+      instance.setIsManager(value);
+      return this;
+    }
+    /**
+     * <code>bool is_manager = 53 [json_name = "isManager"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIsManager() {
+      copyOnWrite();
+      instance.clearIsManager();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineSettingsViewModel)
   }
   @java.lang.Override
@@ -4866,16 +4974,18 @@ public  final class MachineSettingsViewModel extends
             "projectCount_",
             "projectCountText_",
             "shortId_",
+            "appOnline_",
+            "isManager_",
           };
           java.lang.String info =
-              "\u00003\u0000\u0001\u000133\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
+              "\u00005\u0000\u0001\u000155\u0000\u0007\u0000\u0001\u0208\u0002\u0208\u0003\u0007" +
               "\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0004\b\u0007\t\u1009\u0000\n\u1009\u0001" +
               "\u000b\u0007\f\u001b\r\u001b\u000e\u1009\u0002\u000f\u001b\u0010\u0007\u0011\u0007" +
               "\u0012\u1009\u0003\u0013\u0007\u0014\u0007\u0015\u1009\u0004\u0016,\u0017\f\u0018" +
               "\u1009\u0005\u0019\u001b\u001a\u0004\u001b\u001b\u001c\u0004\u001d\u1009\u0006\u001e" +
               "\u001b\u001f\u1009\u0007 \u0007!\u0007\"\u0007#\u0007$\u1009\b%\u1009\t&\u1009\n" +
               "\'\f(\u1009\u000b)\f*\u1009\f+\u0007,\u0007-\u0003.\u0007/\u00070\u1009\r1\u0004" +
-              "2\u1009\u000e3\u0208";
+              "2\u1009\u000e3\u02084\u00075\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

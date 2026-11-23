@@ -3061,9 +3061,10 @@ func (m *SecurityRecoveryInfo) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityHandoffCandidate struct {
-	_          [0]func()
-	DeviceId   string
-	RecoveryEd []byte
+	_           [0]func()
+	DeviceId    string
+	RecoveryEd  []byte
+	DisplayName string
 }
 
 func (m *SecurityHandoffCandidate) GetDeviceId() string {
@@ -3078,11 +3079,18 @@ func (m *SecurityHandoffCandidate) GetRecoveryEd() []byte {
 	}
 	return nil
 }
+func (m *SecurityHandoffCandidate) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityHandoffCandidate = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityHandoffCandidate{}.DeviceId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityHandoffCandidate{}.RecoveryEd), Kind: litewire.KindBytes},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityHandoffCandidate{}.DisplayName), Kind: litewire.KindString},
 	},
 }
 

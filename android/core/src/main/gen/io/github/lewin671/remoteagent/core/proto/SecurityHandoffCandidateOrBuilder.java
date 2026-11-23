@@ -27,4 +27,16 @@ public interface SecurityHandoffCandidateOrBuilder extends
    * @return The recoveryEd.
    */
   com.google.protobuf.ByteString getRecoveryEd();
+
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  java.lang.String getDisplayName();
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  com.google.protobuf.ByteString
+      getDisplayNameBytes();
 }

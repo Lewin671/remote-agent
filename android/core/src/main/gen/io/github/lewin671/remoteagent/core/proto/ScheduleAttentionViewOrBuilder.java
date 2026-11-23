@@ -71,4 +71,21 @@ public interface ScheduleAttentionViewOrBuilder extends
    * @return The primaryActionDisabledReason.
    */
   io.github.lewin671.remoteagent.core.proto.Text getPrimaryActionDisabledReason();
+
+  /**
+   * <code>bool show_enable_cli_action = 8 [json_name = "showEnableCliAction"];</code>
+   * @return The showEnableCliAction.
+   */
+  boolean getShowEnableCliAction();
+
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @return The enum numeric value on the wire for disabledAgent.
+   */
+  int getDisabledAgentValue();
+  /**
+   * <code>.remoteagent.v1.Agent disabled_agent = 9 [json_name = "disabledAgent"];</code>
+   * @return The disabledAgent.
+   */
+  io.github.lewin671.remoteagent.proto.Agent getDisabledAgent();
 }

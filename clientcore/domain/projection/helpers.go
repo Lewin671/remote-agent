@@ -57,6 +57,11 @@ func isQuestionSkeleton(q *v1.QuestionAsked) bool {
 	return false
 }
 
+// IsQuestionSkeleton reports whether a pending QuestionAsked carries the skeleton marker.
+func IsQuestionSkeleton(q *v1.QuestionAsked) bool {
+	return isQuestionSkeleton(q)
+}
+
 // IsSkeleton reports whether an event carries SkeletonNote in its payload or rewritten IDs.
 func IsSkeleton(e *v1.Event) bool {
 	if e == nil {

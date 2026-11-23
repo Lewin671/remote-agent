@@ -103,4 +103,43 @@ public interface SessionComposerViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRetainedAttachmentRequestIdsBytes(int index);
+
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @return The enum numeric value on the wire for defaultSendMode.
+   */
+  int getDefaultSendModeValue();
+  /**
+   * <code>.remoteagent.v1.SendMode default_send_mode = 11 [json_name = "defaultSendMode"];</code>
+   * @return The defaultSendMode.
+   */
+  io.github.lewin671.remoteagent.proto.SendMode getDefaultSendMode();
+
+  /**
+   * <code>bool is_default_placeholder = 12 [json_name = "isDefaultPlaceholder"];</code>
+   * @return The isDefaultPlaceholder.
+   */
+  boolean getIsDefaultPlaceholder();
+
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   * @return Whether the slashWarningTitle field is set.
+   */
+  boolean hasSlashWarningTitle();
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_title = 13 [json_name = "slashWarningTitle"];</code>
+   * @return The slashWarningTitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSlashWarningTitle();
+
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   * @return Whether the slashWarningText field is set.
+   */
+  boolean hasSlashWarningText();
+  /**
+   * <code>.remoteagent.core.v1.Text slash_warning_text = 14 [json_name = "slashWarningText"];</code>
+   * @return The slashWarningText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSlashWarningText();
 }

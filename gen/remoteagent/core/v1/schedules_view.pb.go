@@ -2152,6 +2152,8 @@ type ScheduleAttentionView struct {
 	PrimaryActionKind           ScheduleRecoveryActionKind `protobuf:"varint,5,opt,name=primary_action_kind,json=primaryActionKind,proto3,enum=remoteagent.core.v1.ScheduleRecoveryActionKind" json:"primary_action_kind,omitempty"`
 	PrimaryActionEnabled        bool                       `protobuf:"varint,6,opt,name=primary_action_enabled,json=primaryActionEnabled,proto3" json:"primary_action_enabled,omitempty"`
 	PrimaryActionDisabledReason *Text                      `protobuf:"bytes,7,opt,name=primary_action_disabled_reason,json=primaryActionDisabledReason,proto3" json:"primary_action_disabled_reason,omitempty"`
+	ShowEnableCliAction         bool                       `protobuf:"varint,8,opt,name=show_enable_cli_action,json=showEnableCliAction,proto3" json:"show_enable_cli_action,omitempty"`
+	DisabledAgent               v1.Agent                   `protobuf:"varint,9,opt,name=disabled_agent,json=disabledAgent,proto3,enum=remoteagent.v1.Agent" json:"disabled_agent,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
@@ -2233,6 +2235,20 @@ func (x *ScheduleAttentionView) GetPrimaryActionDisabledReason() *Text {
 		return x.PrimaryActionDisabledReason
 	}
 	return nil
+}
+
+func (x *ScheduleAttentionView) GetShowEnableCliAction() bool {
+	if x != nil {
+		return x.ShowEnableCliAction
+	}
+	return false
+}
+
+func (x *ScheduleAttentionView) GetDisabledAgent() v1.Agent {
+	if x != nil {
+		return x.DisabledAgent
+	}
+	return v1.Agent(0)
 }
 
 type ScheduleActiveRunView struct {
@@ -6142,7 +6158,7 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\x14others_section_title\x18\x16 \x01(\v2\x19.remoteagent.core.v1.TextR\x12othersSectionTitle\x12)\n" +
 	"\x11can_mark_all_read\x18\x17 \x01(\bR\x0ecanMarkAllRead\x12.\n" +
 	"\x13selected_machine_id\x18\x18 \x01(\tR\x11selectedMachineId\x12(\n" +
-	"\x10selected_task_id\x18\x19 \x01(\tR\x0eselectedTaskId\"\xd4\x03\n" +
+	"\x10selected_task_id\x18\x19 \x01(\tR\x0eselectedTaskId\"\xc7\x04\n" +
 	"\x15ScheduleAttentionView\x12\x12\n" +
 	"\x04show\x18\x01 \x01(\bR\x04show\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12.\n" +
@@ -6150,7 +6166,9 @@ const file_remoteagent_core_v1_schedules_view_proto_rawDesc = "" +
 	"\x14primary_action_label\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\x12primaryActionLabel\x12_\n" +
 	"\x13primary_action_kind\x18\x05 \x01(\x0e2/.remoteagent.core.v1.ScheduleRecoveryActionKindR\x11primaryActionKind\x124\n" +
 	"\x16primary_action_enabled\x18\x06 \x01(\bR\x14primaryActionEnabled\x12^\n" +
-	"\x1eprimary_action_disabled_reason\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\x1bprimaryActionDisabledReason\"\xaf\x02\n" +
+	"\x1eprimary_action_disabled_reason\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\x1bprimaryActionDisabledReason\x123\n" +
+	"\x16show_enable_cli_action\x18\b \x01(\bR\x13showEnableCliAction\x12<\n" +
+	"\x0edisabled_agent\x18\t \x01(\x0e2\x15.remoteagent.v1.AgentR\rdisabledAgent\"\xaf\x02\n" +
 	"\x15ScheduleActiveRunView\x12\x1d\n" +
 	"\n" +
 	"has_active\x18\x01 \x01(\bR\thasActive\x12\x15\n" +
@@ -6765,9 +6783,9 @@ var file_remoteagent_core_v1_schedules_view_proto_goTypes = []any{
 	(*ScheduleFormUpdateTimingAction)(nil),     // 69: remoteagent.core.v1.ScheduleFormUpdateTimingAction
 	(*Text)(nil),                               // 70: remoteagent.core.v1.Text
 	(*ConnectionStatusView)(nil),               // 71: remoteagent.core.v1.ConnectionStatusView
-	(v1.ApprovalMode)(0),                       // 72: remoteagent.v1.ApprovalMode
-	(*ModelOptionView)(nil),                    // 73: remoteagent.core.v1.ModelOptionView
-	(v1.Agent)(0),                              // 74: remoteagent.v1.Agent
+	(v1.Agent)(0),                              // 72: remoteagent.v1.Agent
+	(v1.ApprovalMode)(0),                       // 73: remoteagent.v1.ApprovalMode
+	(*ModelOptionView)(nil),                    // 74: remoteagent.core.v1.ModelOptionView
 	(*AgentOptionView)(nil),                    // 75: remoteagent.core.v1.AgentOptionView
 }
 var file_remoteagent_core_v1_schedules_view_proto_depIdxs = []int32{
@@ -6817,105 +6835,106 @@ var file_remoteagent_core_v1_schedules_view_proto_depIdxs = []int32{
 	70,  // 43: remoteagent.core.v1.ScheduleAttentionView.primary_action_label:type_name -> remoteagent.core.v1.Text
 	9,   // 44: remoteagent.core.v1.ScheduleAttentionView.primary_action_kind:type_name -> remoteagent.core.v1.ScheduleRecoveryActionKind
 	70,  // 45: remoteagent.core.v1.ScheduleAttentionView.primary_action_disabled_reason:type_name -> remoteagent.core.v1.Text
-	3,   // 46: remoteagent.core.v1.ScheduleActiveRunView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
-	70,  // 47: remoteagent.core.v1.ScheduleActiveRunView.status_text:type_name -> remoteagent.core.v1.Text
-	70,  // 48: remoteagent.core.v1.ScheduleResultCardView.time_text:type_name -> remoteagent.core.v1.Text
-	70,  // 49: remoteagent.core.v1.ScheduleResultCardView.fallback_reason_text:type_name -> remoteagent.core.v1.Text
-	3,   // 50: remoteagent.core.v1.ScheduleRunRowView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
-	70,  // 51: remoteagent.core.v1.ScheduleRunRowView.notification_source_text:type_name -> remoteagent.core.v1.Text
-	70,  // 52: remoteagent.core.v1.ScheduleRunRowView.time_text:type_name -> remoteagent.core.v1.Text
-	70,  // 53: remoteagent.core.v1.ScheduleRunRowView.summary_text:type_name -> remoteagent.core.v1.Text
-	70,  // 54: remoteagent.core.v1.ScheduleHistoryGroupView.folded_title:type_name -> remoteagent.core.v1.Text
-	70,  // 55: remoteagent.core.v1.ScheduleHistoryGroupView.folded_summary:type_name -> remoteagent.core.v1.Text
-	31,  // 56: remoteagent.core.v1.ScheduleHistoryGroupView.runs:type_name -> remoteagent.core.v1.ScheduleRunRowView
-	70,  // 57: remoteagent.core.v1.ScheduleDetailViewModel.not_found_text:type_name -> remoteagent.core.v1.Text
-	70,  // 58: remoteagent.core.v1.ScheduleDetailViewModel.subtitle:type_name -> remoteagent.core.v1.Text
-	71,  // 59: remoteagent.core.v1.ScheduleDetailViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
-	70,  // 60: remoteagent.core.v1.ScheduleDetailViewModel.read_only_notice:type_name -> remoteagent.core.v1.Text
-	70,  // 61: remoteagent.core.v1.ScheduleDetailViewModel.machine_error:type_name -> remoteagent.core.v1.Text
-	23,  // 62: remoteagent.core.v1.ScheduleDetailViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
-	28,  // 63: remoteagent.core.v1.ScheduleDetailViewModel.attention:type_name -> remoteagent.core.v1.ScheduleAttentionView
-	29,  // 64: remoteagent.core.v1.ScheduleDetailViewModel.active_run:type_name -> remoteagent.core.v1.ScheduleActiveRunView
-	30,  // 65: remoteagent.core.v1.ScheduleDetailViewModel.result_card:type_name -> remoteagent.core.v1.ScheduleResultCardView
-	32,  // 66: remoteagent.core.v1.ScheduleDetailViewModel.earlier_groups:type_name -> remoteagent.core.v1.ScheduleHistoryGroupView
-	70,  // 67: remoteagent.core.v1.ScheduleDetailViewModel.earlier_count_text:type_name -> remoteagent.core.v1.Text
-	70,  // 68: remoteagent.core.v1.ScheduleDetailViewModel.view_all_text:type_name -> remoteagent.core.v1.Text
-	70,  // 69: remoteagent.core.v1.ScheduleDetailViewModel.empty_history_text:type_name -> remoteagent.core.v1.Text
-	70,  // 70: remoteagent.core.v1.ScheduleDetailViewModel.timing_text:type_name -> remoteagent.core.v1.Text
-	70,  // 71: remoteagent.core.v1.ScheduleDetailViewModel.limits_text:type_name -> remoteagent.core.v1.Text
-	4,   // 72: remoteagent.core.v1.ScheduleDetailViewModel.target_type:type_name -> remoteagent.core.v1.ScheduleTargetType
-	70,  // 73: remoteagent.core.v1.ScheduleDetailViewModel.target_label:type_name -> remoteagent.core.v1.Text
-	70,  // 74: remoteagent.core.v1.ScheduleDetailViewModel.target_value:type_name -> remoteagent.core.v1.Text
-	70,  // 75: remoteagent.core.v1.ScheduleDetailViewModel.permissions_text:type_name -> remoteagent.core.v1.Text
-	70,  // 76: remoteagent.core.v1.ScheduleDetailViewModel.creation_footer:type_name -> remoteagent.core.v1.Text
-	70,  // 77: remoteagent.core.v1.ScheduleDetailViewModel.run_once_footer:type_name -> remoteagent.core.v1.Text
-	5,   // 78: remoteagent.core.v1.ScheduleDetailViewModel.source:type_name -> remoteagent.core.v1.ScheduleSource
-	21,  // 79: remoteagent.core.v1.ScheduleDetailViewModel.takeover:type_name -> remoteagent.core.v1.ScheduleTakeoverView
-	22,  // 80: remoteagent.core.v1.ScheduleDetailViewModel.actions:type_name -> remoteagent.core.v1.ScheduleTaskActionsView
-	70,  // 81: remoteagent.core.v1.ScheduleDetailViewModel.menu_subtitle:type_name -> remoteagent.core.v1.Text
-	70,  // 82: remoteagent.core.v1.ScheduleJitterOptionView.label:type_name -> remoteagent.core.v1.Text
-	10,  // 83: remoteagent.core.v1.ScheduleTimingDraftView.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
-	70,  // 84: remoteagent.core.v1.ScheduleTimingDraftView.after_turn_hint:type_name -> remoteagent.core.v1.Text
-	11,  // 85: remoteagent.core.v1.ScheduleTimingDraftView.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
-	12,  // 86: remoteagent.core.v1.ScheduleTimingDraftView.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
-	70,  // 87: remoteagent.core.v1.ScheduleTimingDraftView.interval_hint:type_name -> remoteagent.core.v1.Text
-	70,  // 88: remoteagent.core.v1.ScheduleTimingDraftView.timing_error:type_name -> remoteagent.core.v1.Text
-	34,  // 89: remoteagent.core.v1.ScheduleTimingDraftView.jitter_options:type_name -> remoteagent.core.v1.ScheduleJitterOptionView
-	70,  // 90: remoteagent.core.v1.ScheduleTimingDraftView.jitter_label:type_name -> remoteagent.core.v1.Text
-	70,  // 91: remoteagent.core.v1.ScheduleTimingDraftView.jitter_hint:type_name -> remoteagent.core.v1.Text
-	70,  // 92: remoteagent.core.v1.ScheduleProjectOptionView.name:type_name -> remoteagent.core.v1.Text
-	70,  // 93: remoteagent.core.v1.ScheduleMachineOptionView.note:type_name -> remoteagent.core.v1.Text
-	72,  // 94: remoteagent.core.v1.ScheduleModeOptionView.mode:type_name -> remoteagent.v1.ApprovalMode
-	70,  // 95: remoteagent.core.v1.ScheduleModeOptionView.label:type_name -> remoteagent.core.v1.Text
-	70,  // 96: remoteagent.core.v1.ScheduleModeOptionView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	70,  // 97: remoteagent.core.v1.ScheduleModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
-	70,  // 98: remoteagent.core.v1.ScheduleModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
-	73,  // 99: remoteagent.core.v1.ScheduleModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
-	15,  // 100: remoteagent.core.v1.ScheduleFormNoticeView.kind:type_name -> remoteagent.core.v1.ScheduleFormNoticeKind
-	14,  // 101: remoteagent.core.v1.ScheduleFormNoticeView.severity:type_name -> remoteagent.core.v1.ScheduleFormNoticeSeverity
-	70,  // 102: remoteagent.core.v1.ScheduleFormNoticeView.text:type_name -> remoteagent.core.v1.Text
-	13,  // 103: remoteagent.core.v1.ScheduleFormViewModel.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
-	70,  // 104: remoteagent.core.v1.ScheduleFormViewModel.message_error:type_name -> remoteagent.core.v1.Text
-	70,  // 105: remoteagent.core.v1.ScheduleFormViewModel.title_placeholder:type_name -> remoteagent.core.v1.Text
-	70,  // 106: remoteagent.core.v1.ScheduleFormViewModel.timing_summary:type_name -> remoteagent.core.v1.Text
-	35,  // 107: remoteagent.core.v1.ScheduleFormViewModel.timing:type_name -> remoteagent.core.v1.ScheduleTimingDraftView
-	70,  // 108: remoteagent.core.v1.ScheduleFormViewModel.project_name:type_name -> remoteagent.core.v1.Text
-	36,  // 109: remoteagent.core.v1.ScheduleFormViewModel.project_choices:type_name -> remoteagent.core.v1.ScheduleProjectOptionView
-	37,  // 110: remoteagent.core.v1.ScheduleFormViewModel.machine_choices:type_name -> remoteagent.core.v1.ScheduleMachineOptionView
-	74,  // 111: remoteagent.core.v1.ScheduleFormViewModel.agent:type_name -> remoteagent.v1.Agent
-	75,  // 112: remoteagent.core.v1.ScheduleFormViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
-	70,  // 113: remoteagent.core.v1.ScheduleFormViewModel.model_label:type_name -> remoteagent.core.v1.Text
-	39,  // 114: remoteagent.core.v1.ScheduleFormViewModel.model_panel:type_name -> remoteagent.core.v1.ScheduleModelPanelView
-	72,  // 115: remoteagent.core.v1.ScheduleFormViewModel.approval_mode:type_name -> remoteagent.v1.ApprovalMode
-	70,  // 116: remoteagent.core.v1.ScheduleFormViewModel.approval_mode_label:type_name -> remoteagent.core.v1.Text
-	38,  // 117: remoteagent.core.v1.ScheduleFormViewModel.mode_choices:type_name -> remoteagent.core.v1.ScheduleModeOptionView
-	70,  // 118: remoteagent.core.v1.ScheduleFormViewModel.location_text:type_name -> remoteagent.core.v1.Text
-	70,  // 119: remoteagent.core.v1.ScheduleFormViewModel.submit_label:type_name -> remoteagent.core.v1.Text
-	70,  // 120: remoteagent.core.v1.ScheduleFormViewModel.submit_disabled_reason:type_name -> remoteagent.core.v1.Text
-	40,  // 121: remoteagent.core.v1.ScheduleFormViewModel.notices:type_name -> remoteagent.core.v1.ScheduleFormNoticeView
-	23,  // 122: remoteagent.core.v1.ScheduleFormViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
-	70,  // 123: remoteagent.core.v1.ScheduleSessionStripTaskView.timing_text:type_name -> remoteagent.core.v1.Text
-	70,  // 124: remoteagent.core.v1.ScheduleSessionStripTaskView.next_run_text:type_name -> remoteagent.core.v1.Text
-	1,   // 125: remoteagent.core.v1.ScheduleSessionStripTaskView.status:type_name -> remoteagent.core.v1.ScheduleTaskStatus
-	70,  // 126: remoteagent.core.v1.ScheduleSessionStripViewModel.summary_text:type_name -> remoteagent.core.v1.Text
-	42,  // 127: remoteagent.core.v1.ScheduleSessionStripViewModel.tasks:type_name -> remoteagent.core.v1.ScheduleSessionStripTaskView
-	46,  // 128: remoteagent.core.v1.ScheduleSaveSeenEffect.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
-	49,  // 129: remoteagent.core.v1.ScheduleDismissNotificationsEffect.runs:type_name -> remoteagent.core.v1.ScheduleNotificationRef
-	16,  // 130: remoteagent.core.v1.ScheduleNavigateEffect.route:type_name -> remoteagent.core.v1.ScheduleNavigateRoute
-	46,  // 131: remoteagent.core.v1.ScheduleSeenLoadedEvent.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
-	57,  // 132: remoteagent.core.v1.ScheduleMarkReadAction.tasks:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	8,   // 133: remoteagent.core.v1.ScheduleOperateAction.operation:type_name -> remoteagent.core.v1.ScheduleOperationKind
-	13,  // 134: remoteagent.core.v1.ScheduleFormOpenAction.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
-	74,  // 135: remoteagent.core.v1.ScheduleFormSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
-	72,  // 136: remoteagent.core.v1.ScheduleFormSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
-	10,  // 137: remoteagent.core.v1.ScheduleFormUpdateTimingAction.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
-	11,  // 138: remoteagent.core.v1.ScheduleFormUpdateTimingAction.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
-	12,  // 139: remoteagent.core.v1.ScheduleFormUpdateTimingAction.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
-	140, // [140:140] is the sub-list for method output_type
-	140, // [140:140] is the sub-list for method input_type
-	140, // [140:140] is the sub-list for extension type_name
-	140, // [140:140] is the sub-list for extension extendee
-	0,   // [0:140] is the sub-list for field type_name
+	72,  // 46: remoteagent.core.v1.ScheduleAttentionView.disabled_agent:type_name -> remoteagent.v1.Agent
+	3,   // 47: remoteagent.core.v1.ScheduleActiveRunView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
+	70,  // 48: remoteagent.core.v1.ScheduleActiveRunView.status_text:type_name -> remoteagent.core.v1.Text
+	70,  // 49: remoteagent.core.v1.ScheduleResultCardView.time_text:type_name -> remoteagent.core.v1.Text
+	70,  // 50: remoteagent.core.v1.ScheduleResultCardView.fallback_reason_text:type_name -> remoteagent.core.v1.Text
+	3,   // 51: remoteagent.core.v1.ScheduleRunRowView.status:type_name -> remoteagent.core.v1.ScheduleRunStatus
+	70,  // 52: remoteagent.core.v1.ScheduleRunRowView.notification_source_text:type_name -> remoteagent.core.v1.Text
+	70,  // 53: remoteagent.core.v1.ScheduleRunRowView.time_text:type_name -> remoteagent.core.v1.Text
+	70,  // 54: remoteagent.core.v1.ScheduleRunRowView.summary_text:type_name -> remoteagent.core.v1.Text
+	70,  // 55: remoteagent.core.v1.ScheduleHistoryGroupView.folded_title:type_name -> remoteagent.core.v1.Text
+	70,  // 56: remoteagent.core.v1.ScheduleHistoryGroupView.folded_summary:type_name -> remoteagent.core.v1.Text
+	31,  // 57: remoteagent.core.v1.ScheduleHistoryGroupView.runs:type_name -> remoteagent.core.v1.ScheduleRunRowView
+	70,  // 58: remoteagent.core.v1.ScheduleDetailViewModel.not_found_text:type_name -> remoteagent.core.v1.Text
+	70,  // 59: remoteagent.core.v1.ScheduleDetailViewModel.subtitle:type_name -> remoteagent.core.v1.Text
+	71,  // 60: remoteagent.core.v1.ScheduleDetailViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
+	70,  // 61: remoteagent.core.v1.ScheduleDetailViewModel.read_only_notice:type_name -> remoteagent.core.v1.Text
+	70,  // 62: remoteagent.core.v1.ScheduleDetailViewModel.machine_error:type_name -> remoteagent.core.v1.Text
+	23,  // 63: remoteagent.core.v1.ScheduleDetailViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
+	28,  // 64: remoteagent.core.v1.ScheduleDetailViewModel.attention:type_name -> remoteagent.core.v1.ScheduleAttentionView
+	29,  // 65: remoteagent.core.v1.ScheduleDetailViewModel.active_run:type_name -> remoteagent.core.v1.ScheduleActiveRunView
+	30,  // 66: remoteagent.core.v1.ScheduleDetailViewModel.result_card:type_name -> remoteagent.core.v1.ScheduleResultCardView
+	32,  // 67: remoteagent.core.v1.ScheduleDetailViewModel.earlier_groups:type_name -> remoteagent.core.v1.ScheduleHistoryGroupView
+	70,  // 68: remoteagent.core.v1.ScheduleDetailViewModel.earlier_count_text:type_name -> remoteagent.core.v1.Text
+	70,  // 69: remoteagent.core.v1.ScheduleDetailViewModel.view_all_text:type_name -> remoteagent.core.v1.Text
+	70,  // 70: remoteagent.core.v1.ScheduleDetailViewModel.empty_history_text:type_name -> remoteagent.core.v1.Text
+	70,  // 71: remoteagent.core.v1.ScheduleDetailViewModel.timing_text:type_name -> remoteagent.core.v1.Text
+	70,  // 72: remoteagent.core.v1.ScheduleDetailViewModel.limits_text:type_name -> remoteagent.core.v1.Text
+	4,   // 73: remoteagent.core.v1.ScheduleDetailViewModel.target_type:type_name -> remoteagent.core.v1.ScheduleTargetType
+	70,  // 74: remoteagent.core.v1.ScheduleDetailViewModel.target_label:type_name -> remoteagent.core.v1.Text
+	70,  // 75: remoteagent.core.v1.ScheduleDetailViewModel.target_value:type_name -> remoteagent.core.v1.Text
+	70,  // 76: remoteagent.core.v1.ScheduleDetailViewModel.permissions_text:type_name -> remoteagent.core.v1.Text
+	70,  // 77: remoteagent.core.v1.ScheduleDetailViewModel.creation_footer:type_name -> remoteagent.core.v1.Text
+	70,  // 78: remoteagent.core.v1.ScheduleDetailViewModel.run_once_footer:type_name -> remoteagent.core.v1.Text
+	5,   // 79: remoteagent.core.v1.ScheduleDetailViewModel.source:type_name -> remoteagent.core.v1.ScheduleSource
+	21,  // 80: remoteagent.core.v1.ScheduleDetailViewModel.takeover:type_name -> remoteagent.core.v1.ScheduleTakeoverView
+	22,  // 81: remoteagent.core.v1.ScheduleDetailViewModel.actions:type_name -> remoteagent.core.v1.ScheduleTaskActionsView
+	70,  // 82: remoteagent.core.v1.ScheduleDetailViewModel.menu_subtitle:type_name -> remoteagent.core.v1.Text
+	70,  // 83: remoteagent.core.v1.ScheduleJitterOptionView.label:type_name -> remoteagent.core.v1.Text
+	10,  // 84: remoteagent.core.v1.ScheduleTimingDraftView.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
+	70,  // 85: remoteagent.core.v1.ScheduleTimingDraftView.after_turn_hint:type_name -> remoteagent.core.v1.Text
+	11,  // 86: remoteagent.core.v1.ScheduleTimingDraftView.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
+	12,  // 87: remoteagent.core.v1.ScheduleTimingDraftView.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
+	70,  // 88: remoteagent.core.v1.ScheduleTimingDraftView.interval_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 89: remoteagent.core.v1.ScheduleTimingDraftView.timing_error:type_name -> remoteagent.core.v1.Text
+	34,  // 90: remoteagent.core.v1.ScheduleTimingDraftView.jitter_options:type_name -> remoteagent.core.v1.ScheduleJitterOptionView
+	70,  // 91: remoteagent.core.v1.ScheduleTimingDraftView.jitter_label:type_name -> remoteagent.core.v1.Text
+	70,  // 92: remoteagent.core.v1.ScheduleTimingDraftView.jitter_hint:type_name -> remoteagent.core.v1.Text
+	70,  // 93: remoteagent.core.v1.ScheduleProjectOptionView.name:type_name -> remoteagent.core.v1.Text
+	70,  // 94: remoteagent.core.v1.ScheduleMachineOptionView.note:type_name -> remoteagent.core.v1.Text
+	73,  // 95: remoteagent.core.v1.ScheduleModeOptionView.mode:type_name -> remoteagent.v1.ApprovalMode
+	70,  // 96: remoteagent.core.v1.ScheduleModeOptionView.label:type_name -> remoteagent.core.v1.Text
+	70,  // 97: remoteagent.core.v1.ScheduleModeOptionView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	70,  // 98: remoteagent.core.v1.ScheduleModelPanelView.models_error:type_name -> remoteagent.core.v1.Text
+	70,  // 99: remoteagent.core.v1.ScheduleModelPanelView.default_model_label:type_name -> remoteagent.core.v1.Text
+	74,  // 100: remoteagent.core.v1.ScheduleModelPanelView.models:type_name -> remoteagent.core.v1.ModelOptionView
+	15,  // 101: remoteagent.core.v1.ScheduleFormNoticeView.kind:type_name -> remoteagent.core.v1.ScheduleFormNoticeKind
+	14,  // 102: remoteagent.core.v1.ScheduleFormNoticeView.severity:type_name -> remoteagent.core.v1.ScheduleFormNoticeSeverity
+	70,  // 103: remoteagent.core.v1.ScheduleFormNoticeView.text:type_name -> remoteagent.core.v1.Text
+	13,  // 104: remoteagent.core.v1.ScheduleFormViewModel.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
+	70,  // 105: remoteagent.core.v1.ScheduleFormViewModel.message_error:type_name -> remoteagent.core.v1.Text
+	70,  // 106: remoteagent.core.v1.ScheduleFormViewModel.title_placeholder:type_name -> remoteagent.core.v1.Text
+	70,  // 107: remoteagent.core.v1.ScheduleFormViewModel.timing_summary:type_name -> remoteagent.core.v1.Text
+	35,  // 108: remoteagent.core.v1.ScheduleFormViewModel.timing:type_name -> remoteagent.core.v1.ScheduleTimingDraftView
+	70,  // 109: remoteagent.core.v1.ScheduleFormViewModel.project_name:type_name -> remoteagent.core.v1.Text
+	36,  // 110: remoteagent.core.v1.ScheduleFormViewModel.project_choices:type_name -> remoteagent.core.v1.ScheduleProjectOptionView
+	37,  // 111: remoteagent.core.v1.ScheduleFormViewModel.machine_choices:type_name -> remoteagent.core.v1.ScheduleMachineOptionView
+	72,  // 112: remoteagent.core.v1.ScheduleFormViewModel.agent:type_name -> remoteagent.v1.Agent
+	75,  // 113: remoteagent.core.v1.ScheduleFormViewModel.available_agents:type_name -> remoteagent.core.v1.AgentOptionView
+	70,  // 114: remoteagent.core.v1.ScheduleFormViewModel.model_label:type_name -> remoteagent.core.v1.Text
+	39,  // 115: remoteagent.core.v1.ScheduleFormViewModel.model_panel:type_name -> remoteagent.core.v1.ScheduleModelPanelView
+	73,  // 116: remoteagent.core.v1.ScheduleFormViewModel.approval_mode:type_name -> remoteagent.v1.ApprovalMode
+	70,  // 117: remoteagent.core.v1.ScheduleFormViewModel.approval_mode_label:type_name -> remoteagent.core.v1.Text
+	38,  // 118: remoteagent.core.v1.ScheduleFormViewModel.mode_choices:type_name -> remoteagent.core.v1.ScheduleModeOptionView
+	70,  // 119: remoteagent.core.v1.ScheduleFormViewModel.location_text:type_name -> remoteagent.core.v1.Text
+	70,  // 120: remoteagent.core.v1.ScheduleFormViewModel.submit_label:type_name -> remoteagent.core.v1.Text
+	70,  // 121: remoteagent.core.v1.ScheduleFormViewModel.submit_disabled_reason:type_name -> remoteagent.core.v1.Text
+	40,  // 122: remoteagent.core.v1.ScheduleFormViewModel.notices:type_name -> remoteagent.core.v1.ScheduleFormNoticeView
+	23,  // 123: remoteagent.core.v1.ScheduleFormViewModel.mutation:type_name -> remoteagent.core.v1.ScheduleMutationView
+	70,  // 124: remoteagent.core.v1.ScheduleSessionStripTaskView.timing_text:type_name -> remoteagent.core.v1.Text
+	70,  // 125: remoteagent.core.v1.ScheduleSessionStripTaskView.next_run_text:type_name -> remoteagent.core.v1.Text
+	1,   // 126: remoteagent.core.v1.ScheduleSessionStripTaskView.status:type_name -> remoteagent.core.v1.ScheduleTaskStatus
+	70,  // 127: remoteagent.core.v1.ScheduleSessionStripViewModel.summary_text:type_name -> remoteagent.core.v1.Text
+	42,  // 128: remoteagent.core.v1.ScheduleSessionStripViewModel.tasks:type_name -> remoteagent.core.v1.ScheduleSessionStripTaskView
+	46,  // 129: remoteagent.core.v1.ScheduleSaveSeenEffect.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
+	49,  // 130: remoteagent.core.v1.ScheduleDismissNotificationsEffect.runs:type_name -> remoteagent.core.v1.ScheduleNotificationRef
+	16,  // 131: remoteagent.core.v1.ScheduleNavigateEffect.route:type_name -> remoteagent.core.v1.ScheduleNavigateRoute
+	46,  // 132: remoteagent.core.v1.ScheduleSeenLoadedEvent.tokens:type_name -> remoteagent.core.v1.ScheduleSeenToken
+	57,  // 133: remoteagent.core.v1.ScheduleMarkReadAction.tasks:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	8,   // 134: remoteagent.core.v1.ScheduleOperateAction.operation:type_name -> remoteagent.core.v1.ScheduleOperationKind
+	13,  // 135: remoteagent.core.v1.ScheduleFormOpenAction.mode:type_name -> remoteagent.core.v1.ScheduleFormMode
+	72,  // 136: remoteagent.core.v1.ScheduleFormSelectAgentAction.agent:type_name -> remoteagent.v1.Agent
+	73,  // 137: remoteagent.core.v1.ScheduleFormSelectModelAction.mode:type_name -> remoteagent.v1.ApprovalMode
+	10,  // 138: remoteagent.core.v1.ScheduleFormUpdateTimingAction.kind:type_name -> remoteagent.core.v1.ScheduleTimingKind
+	11,  // 139: remoteagent.core.v1.ScheduleFormUpdateTimingAction.unit:type_name -> remoteagent.core.v1.ScheduleIntervalUnit
+	12,  // 140: remoteagent.core.v1.ScheduleFormUpdateTimingAction.end:type_name -> remoteagent.core.v1.ScheduleTimingEnd
+	141, // [141:141] is the sub-list for method output_type
+	141, // [141:141] is the sub-list for method input_type
+	141, // [141:141] is the sub-list for extension type_name
+	141, // [141:141] is the sub-list for extension extendee
+	0,   // [0:141] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_schedules_view_proto_init() }

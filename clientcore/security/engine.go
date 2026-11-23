@@ -70,7 +70,9 @@ type Snapshot struct {
 	ClockSkewed            bool
 	RecoveryPending        bool
 	RecoveryReadyMs        int64
+	RecoveryStatusStale    bool
 	RecoveryObjectsPending bool
+	HasHandoffOffer        bool
 	NetworkGen             uint64
 	VerifiedNetGen         uint64
 }
@@ -741,6 +743,15 @@ func (e *Engine) Snapshot() Snapshot {
 		RecoveryObjectsPending: e.recoveryObjectsPending,
 		NetworkGen:             e.netGen,
 		VerifiedNetGen:         e.verifiedNetGen,
+	}
+	if e.wf != nil {
+		snap.RecoveryStatusStale = e.wf.recoveryStatusStale
+		for _, d := range e.wf.devicesSnap {
+			if d.ID == e.selfDeviceID && d.Meta != nil && len(d.Meta.HandoffRecoveryEd) == 32 {
+				snap.HasHandoffOffer = true
+				break
+			}
+		}
 	}
 	if !e.loaded || !e.hasHead {
 		return snap

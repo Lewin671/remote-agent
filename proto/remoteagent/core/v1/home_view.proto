@@ -64,6 +64,7 @@ message HomeHeadlineView {
   bool details_action = 7;
   bool unlinked = 8;
   string highlight_arg = 9;
+  bool is_connecting = 10;
 }
 
 enum HomeEmptyKind {
@@ -87,6 +88,7 @@ message HomeEmptyView {
   bool can_add_device = 6;
   bool can_start_first = 7;
   bool can_retry = 8;
+  bool loading = 9;
 }
 
 enum EndedGroupKind {
@@ -130,6 +132,7 @@ message AttentionCardView {
   AlwaysAllowKind always_kind = 13;
   string always_arg = 14;
   Text always_label = 15;
+  bool locked = 16;
 }
 
 message AttentionRowView {

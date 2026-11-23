@@ -1569,6 +1569,8 @@ public struct PBSecurityHandoffCandidate: Sendable {
 
   public var recoveryEd: Data = Data()
 
+  public var displayName: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5050,7 +5052,7 @@ extension PBSecurityRecoveryInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBSecurityHandoffCandidate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityHandoffCandidate"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}recovery_ed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}recovery_ed\0\u{3}display_name\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5060,6 +5062,7 @@ extension PBSecurityHandoffCandidate: SwiftProtobuf.Message, SwiftProtobuf._Mess
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
       case 2: try { try decoder.decodeSingularBytesField(value: &self.recoveryEd) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
       default: break
       }
     }
@@ -5072,12 +5075,16 @@ extension PBSecurityHandoffCandidate: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if !self.recoveryEd.isEmpty {
       try visitor.visitSingularBytesField(value: self.recoveryEd, fieldNumber: 2)
     }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSecurityHandoffCandidate, rhs: PBSecurityHandoffCandidate) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.recoveryEd != rhs.recoveryEd {return false}
+    if lhs.displayName != rhs.displayName {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

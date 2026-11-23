@@ -84,4 +84,10 @@ public interface HomeHeadlineViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getHighlightArgBytes();
+
+  /**
+   * <code>bool is_connecting = 10 [json_name = "isConnecting"];</code>
+   * @return The isConnecting.
+   */
+  boolean getIsConnecting();
 }

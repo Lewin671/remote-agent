@@ -17,6 +17,7 @@ public  final class SecurityHandoffCandidate extends
   private SecurityHandoffCandidate() {
     deviceId_ = "";
     recoveryEd_ = com.google.protobuf.ByteString.EMPTY;
+    displayName_ = "";
   }
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
@@ -91,6 +92,54 @@ public  final class SecurityHandoffCandidate extends
   private void clearRecoveryEd() {
 
     recoveryEd_ = getDefaultInstance().getRecoveryEd();
+  }
+
+  public static final int DISPLAY_NAME_FIELD_NUMBER = 3;
+  private java.lang.String displayName_;
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  @java.lang.Override
+  public java.lang.String getDisplayName() {
+    return displayName_;
+  }
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisplayNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(displayName_);
+  }
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @param value The displayName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    displayName_ = value;
+  }
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   */
+  private void clearDisplayName() {
+
+    displayName_ = getDefaultInstance().getDisplayName();
+  }
+  /**
+   * <code>string display_name = 3 [json_name = "displayName"];</code>
+   * @param value The bytes for displayName to set.
+   */
+  private void setDisplayNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    displayName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityHandoffCandidate parseFrom(
@@ -267,6 +316,55 @@ public  final class SecurityHandoffCandidate extends
       return this;
     }
 
+    /**
+     * <code>string display_name = 3 [json_name = "displayName"];</code>
+     * @return The displayName.
+     */
+    @java.lang.Override
+    public java.lang.String getDisplayName() {
+      return instance.getDisplayName();
+    }
+    /**
+     * <code>string display_name = 3 [json_name = "displayName"];</code>
+     * @return The bytes for displayName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisplayNameBytes() {
+      return instance.getDisplayNameBytes();
+    }
+    /**
+     * <code>string display_name = 3 [json_name = "displayName"];</code>
+     * @param value The displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisplayName(value);
+      return this;
+    }
+    /**
+     * <code>string display_name = 3 [json_name = "displayName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayName() {
+      copyOnWrite();
+      instance.clearDisplayName();
+      return this;
+    }
+    /**
+     * <code>string display_name = 3 [json_name = "displayName"];</code>
+     * @param value The bytes for displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisplayNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityHandoffCandidate)
   }
   @java.lang.Override
@@ -285,10 +383,11 @@ public  final class SecurityHandoffCandidate extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "deviceId_",
             "recoveryEd_",
+            "displayName_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\n" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\n" +
+              "\u0003\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

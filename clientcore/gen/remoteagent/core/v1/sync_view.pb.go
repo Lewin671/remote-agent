@@ -656,6 +656,14 @@ type SyncStateView struct {
 	ReachabilityUnknown    bool
 	TrustedMachineIds      []string
 	ArchiveMachineIds      []string
+	ConnectionStartedAtMs  int64
+	NetworkAvailable       bool
+	EverOnline             bool
+	ConnectFailures        int32
+	RecoveryStatusStale    bool
+	DevicesLoadFailed      bool
+	DevicesErrorText       *Text
+	HasHandoffOffer        bool
 }
 
 func (m *SyncStateView) GetConnection() ConnState {
@@ -904,6 +912,54 @@ func (m *SyncStateView) GetArchiveMachineIds() []string {
 	}
 	return nil
 }
+func (m *SyncStateView) GetConnectionStartedAtMs() int64 {
+	if m != nil {
+		return m.ConnectionStartedAtMs
+	}
+	return 0
+}
+func (m *SyncStateView) GetNetworkAvailable() bool {
+	if m != nil {
+		return m.NetworkAvailable
+	}
+	return false
+}
+func (m *SyncStateView) GetEverOnline() bool {
+	if m != nil {
+		return m.EverOnline
+	}
+	return false
+}
+func (m *SyncStateView) GetConnectFailures() int32 {
+	if m != nil {
+		return m.ConnectFailures
+	}
+	return 0
+}
+func (m *SyncStateView) GetRecoveryStatusStale() bool {
+	if m != nil {
+		return m.RecoveryStatusStale
+	}
+	return false
+}
+func (m *SyncStateView) GetDevicesLoadFailed() bool {
+	if m != nil {
+		return m.DevicesLoadFailed
+	}
+	return false
+}
+func (m *SyncStateView) GetDevicesErrorText() *Text {
+	if m != nil {
+		return m.DevicesErrorText
+	}
+	return nil
+}
+func (m *SyncStateView) GetHasHandoffOffer() bool {
+	if m != nil {
+		return m.HasHandoffOffer
+	}
+	return false
+}
 
 var LitewireDesc_SyncStateView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -948,6 +1004,14 @@ var LitewireDesc_SyncStateView = litewire.MessageDesc{
 		{Num: 39, Offset: unsafe.Offsetof(SyncStateView{}.ReachabilityUnknown), Kind: litewire.KindBool},
 		{Num: 40, Offset: unsafe.Offsetof(SyncStateView{}.TrustedMachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 		{Num: 41, Offset: unsafe.Offsetof(SyncStateView{}.ArchiveMachineIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 42, Offset: unsafe.Offsetof(SyncStateView{}.ConnectionStartedAtMs), Kind: litewire.KindInt64},
+		{Num: 43, Offset: unsafe.Offsetof(SyncStateView{}.NetworkAvailable), Kind: litewire.KindBool},
+		{Num: 44, Offset: unsafe.Offsetof(SyncStateView{}.EverOnline), Kind: litewire.KindBool},
+		{Num: 45, Offset: unsafe.Offsetof(SyncStateView{}.ConnectFailures), Kind: litewire.KindInt32},
+		{Num: 46, Offset: unsafe.Offsetof(SyncStateView{}.RecoveryStatusStale), Kind: litewire.KindBool},
+		{Num: 47, Offset: unsafe.Offsetof(SyncStateView{}.DevicesLoadFailed), Kind: litewire.KindBool},
+		{Num: 48, Offset: unsafe.Offsetof(SyncStateView{}.DevicesErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 49, Offset: unsafe.Offsetof(SyncStateView{}.HasHandoffOffer), Kind: litewire.KindBool},
 	},
 }
 

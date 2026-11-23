@@ -26,6 +26,7 @@ public  final class SessionHeaderView extends
     forkedFromId_ = "";
     scheduledTaskId_ = "";
     scheduledTitle_ = "";
+    shortPath_ = "";
   }
   private int bitField0_;
   public static final int FOUND_FIELD_NUMBER = 1;
@@ -2124,6 +2125,180 @@ public  final class SessionHeaderView extends
   private void clearDirectChip() {
     directChip_ = null;
     bitField0_ = (bitField0_ & ~0x00004000);
+  }
+
+  public static final int TASK_OWNED_FIELD_NUMBER = 56;
+  private boolean taskOwned_;
+  /**
+   * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  @java.lang.Override
+  public boolean getTaskOwned() {
+    return taskOwned_;
+  }
+  /**
+   * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+   * @param value The taskOwned to set.
+   */
+  private void setTaskOwned(boolean value) {
+    
+    taskOwned_ = value;
+  }
+  /**
+   * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+   */
+  private void clearTaskOwned() {
+
+    taskOwned_ = false;
+  }
+
+  public static final int LOOKUP_FAILED_FIELD_NUMBER = 57;
+  private boolean lookupFailed_;
+  /**
+   * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+   * @return The lookupFailed.
+   */
+  @java.lang.Override
+  public boolean getLookupFailed() {
+    return lookupFailed_;
+  }
+  /**
+   * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+   * @param value The lookupFailed to set.
+   */
+  private void setLookupFailed(boolean value) {
+    
+    lookupFailed_ = value;
+  }
+  /**
+   * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+   */
+  private void clearLookupFailed() {
+
+    lookupFailed_ = false;
+  }
+
+  public static final int LOOKUP_ERROR_TEXT_FIELD_NUMBER = 58;
+  private io.github.lewin671.remoteagent.core.proto.Text lookupErrorText_;
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLookupErrorText() {
+    return ((bitField0_ & 0x00008000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getLookupErrorText() {
+    return lookupErrorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : lookupErrorText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLookupErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    lookupErrorText_ = value;
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeLookupErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (lookupErrorText_ != null &&
+        lookupErrorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      lookupErrorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(lookupErrorText_).mergeFrom(value).buildPartial();
+    } else {
+      lookupErrorText_ = value;
+    }
+    bitField0_ |= 0x00008000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   */
+  private void clearLookupErrorText() {
+    lookupErrorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00008000);
+  }
+
+  public static final int MULTIPLE_MACHINES_FIELD_NUMBER = 59;
+  private boolean multipleMachines_;
+  /**
+   * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+   * @return The multipleMachines.
+   */
+  @java.lang.Override
+  public boolean getMultipleMachines() {
+    return multipleMachines_;
+  }
+  /**
+   * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+   * @param value The multipleMachines to set.
+   */
+  private void setMultipleMachines(boolean value) {
+    
+    multipleMachines_ = value;
+  }
+  /**
+   * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+   */
+  private void clearMultipleMachines() {
+
+    multipleMachines_ = false;
+  }
+
+  public static final int SHORT_PATH_FIELD_NUMBER = 60;
+  private java.lang.String shortPath_;
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @return The shortPath.
+   */
+  @java.lang.Override
+  public java.lang.String getShortPath() {
+    return shortPath_;
+  }
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @return The bytes for shortPath.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getShortPathBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(shortPath_);
+  }
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @param value The shortPath to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setShortPath(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    shortPath_ = value;
+  }
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   */
+  private void clearShortPath() {
+
+    shortPath_ = getDefaultInstance().getShortPath();
+  }
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @param value The bytes for shortPath to set.
+   */
+  private void setShortPathBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    shortPath_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionHeaderView parseFrom(
@@ -4387,6 +4562,186 @@ public  final class SessionHeaderView extends
       return this;
     }
 
+    /**
+     * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+     * @return The taskOwned.
+     */
+    @java.lang.Override
+    public boolean getTaskOwned() {
+      return instance.getTaskOwned();
+    }
+    /**
+     * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+     * @param value The taskOwned to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTaskOwned(boolean value) {
+      copyOnWrite();
+      instance.setTaskOwned(value);
+      return this;
+    }
+    /**
+     * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTaskOwned() {
+      copyOnWrite();
+      instance.clearTaskOwned();
+      return this;
+    }
+
+    /**
+     * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+     * @return The lookupFailed.
+     */
+    @java.lang.Override
+    public boolean getLookupFailed() {
+      return instance.getLookupFailed();
+    }
+    /**
+     * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+     * @param value The lookupFailed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLookupFailed(boolean value) {
+      copyOnWrite();
+      instance.setLookupFailed(value);
+      return this;
+    }
+    /**
+     * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLookupFailed() {
+      copyOnWrite();
+      instance.clearLookupFailed();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLookupErrorText() {
+      return instance.hasLookupErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getLookupErrorText() {
+      return instance.getLookupErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    public Builder setLookupErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setLookupErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    public Builder setLookupErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLookupErrorText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    public Builder mergeLookupErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeLookupErrorText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+     */
+    public Builder clearLookupErrorText() {  copyOnWrite();
+      instance.clearLookupErrorText();
+      return this;
+    }
+
+    /**
+     * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+     * @return The multipleMachines.
+     */
+    @java.lang.Override
+    public boolean getMultipleMachines() {
+      return instance.getMultipleMachines();
+    }
+    /**
+     * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+     * @param value The multipleMachines to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMultipleMachines(boolean value) {
+      copyOnWrite();
+      instance.setMultipleMachines(value);
+      return this;
+    }
+    /**
+     * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMultipleMachines() {
+      copyOnWrite();
+      instance.clearMultipleMachines();
+      return this;
+    }
+
+    /**
+     * <code>string short_path = 60 [json_name = "shortPath"];</code>
+     * @return The shortPath.
+     */
+    @java.lang.Override
+    public java.lang.String getShortPath() {
+      return instance.getShortPath();
+    }
+    /**
+     * <code>string short_path = 60 [json_name = "shortPath"];</code>
+     * @return The bytes for shortPath.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getShortPathBytes() {
+      return instance.getShortPathBytes();
+    }
+    /**
+     * <code>string short_path = 60 [json_name = "shortPath"];</code>
+     * @param value The shortPath to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShortPath(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setShortPath(value);
+      return this;
+    }
+    /**
+     * <code>string short_path = 60 [json_name = "shortPath"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearShortPath() {
+      copyOnWrite();
+      instance.clearShortPath();
+      return this;
+    }
+    /**
+     * <code>string short_path = 60 [json_name = "shortPath"];</code>
+     * @param value The bytes for shortPath to set.
+     * @return This builder for chaining.
+     */
+    public Builder setShortPathBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setShortPathBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionHeaderView)
   }
   @java.lang.Override
@@ -4459,16 +4814,22 @@ public  final class SessionHeaderView extends
             "missingText_",
             "computerReachability_",
             "directChip_",
+            "taskOwned_",
+            "lookupFailed_",
+            "lookupErrorText_",
+            "multipleMachines_",
+            "shortPath_",
           };
           java.lang.String info =
-              "\u00007\u0000\u0001\u000177\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
+              "\u0000<\u0000\u0001\u0001<<\u0000\u0000\u0000\u0001\u0007\u0002\u0007\u0003\u0007" +
               "\u0004\u0007\u0005\u1009\u0000\u0006\u1009\u0001\u0007\u0208\b\u0208\t\f\n\u0208" +
               "\u000b\f\f\f\r\u1009\u0002\u000e\u1009\u0003\u000f\f\u0010\u0208\u0011\u1009\u0004" +
               "\u0012\u0007\u0013\u0208\u0014\u0208\u0015\u0208\u0016\u1009\u0005\u0017\u0007\u0018" +
               "\u0007\u0019\u0007\u001a\u0004\u001b\u0002\u001c\u0002\u001d\u1009\u0006\u001e\u0007" +
               "\u001f\u0208 \u1009\u0007!\u0007\"\u0007#\u0002$\u1009\b%\f&\u0007\'\u000b(\u000b" +
               ")\u1009\t*\u0007+\u0002,\u1009\n-\u0007.\u0208/\u1009\u000b0\u00071\u02082\u0208" +
-              "3\u00074\u1009\f5\u1009\r6\f7\u1009\u000e";
+              "3\u00074\u1009\f5\u1009\r6\f7\u1009\u000e8\u00079\u0007:\u1009\u000f;\u0007<\u0208" +
+              "";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

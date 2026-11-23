@@ -571,6 +571,50 @@ public struct PBCoreSyncStateView: @unchecked Sendable {
     set {_uniqueStorage()._archiveMachineIds = newValue}
   }
 
+  public var connectionStartedAtMs: Int64 {
+    get {return _storage._connectionStartedAtMs}
+    set {_uniqueStorage()._connectionStartedAtMs = newValue}
+  }
+
+  public var networkAvailable: Bool {
+    get {return _storage._networkAvailable}
+    set {_uniqueStorage()._networkAvailable = newValue}
+  }
+
+  public var everOnline: Bool {
+    get {return _storage._everOnline}
+    set {_uniqueStorage()._everOnline = newValue}
+  }
+
+  public var connectFailures: Int32 {
+    get {return _storage._connectFailures}
+    set {_uniqueStorage()._connectFailures = newValue}
+  }
+
+  public var recoveryStatusStale: Bool {
+    get {return _storage._recoveryStatusStale}
+    set {_uniqueStorage()._recoveryStatusStale = newValue}
+  }
+
+  public var devicesLoadFailed: Bool {
+    get {return _storage._devicesLoadFailed}
+    set {_uniqueStorage()._devicesLoadFailed = newValue}
+  }
+
+  public var devicesErrorText: PBCoreText {
+    get {return _storage._devicesErrorText ?? PBCoreText()}
+    set {_uniqueStorage()._devicesErrorText = newValue}
+  }
+  /// Returns true if `devicesErrorText` has been explicitly set.
+  public var hasDevicesErrorText: Bool {return _storage._devicesErrorText != nil}
+  /// Clears the value of `devicesErrorText`. Subsequent reads from it will return its default value.
+  public mutating func clearDevicesErrorText() {_uniqueStorage()._devicesErrorText = nil}
+
+  public var hasHandoffOffer_p: Bool {
+    get {return _storage._hasHandoffOffer_p}
+    set {_uniqueStorage()._hasHandoffOffer_p = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1341,7 +1385,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncStateView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{3}trusted_machine_ids\0\u{3}archive_machine_ids\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}connection\0\u{3}connection_reason\0\u{3}connection_step\0\u{3}disconnected_at_ms\0\u{3}live_push_connected\0\u{1}unlinked\0\u{3}is_manager\0\u{3}self_device_id\0\u{3}authority_device_id\0\u{3}manager_name\0\u{3}account_control_lost\0\u{3}account_clock_skewed\0\u{1}removed\0\u{3}security_loaded\0\u{3}is_member\0\u{3}lease_end_ms\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_objects_pending\0\u{3}client_protocol_version\0\u{1}machines\0\u{3}machines_listed\0\u{1}sessions\0\u{3}sessions_listed\0\u{3}live_loaded\0\u{3}has_more_sessions\0\u{3}next_cursor\0\u{3}loading_more_sessions\0\u{3}session_list_failed\0\u{3}session_list_error\0\u{3}prefs_loaded\0\u{3}prefs_load_failed\0\u{3}prefs_broken\0\u{3}prefs_revision\0\u{3}prefs_syncing\0\u{1}prefs\0\u{1}devices\0\u{3}display_grace\0\u{3}reachability_unknown\0\u{3}trusted_machine_ids\0\u{3}archive_machine_ids\0\u{3}connection_started_at_ms\0\u{3}network_available\0\u{3}ever_online\0\u{3}connect_failures\0\u{3}recovery_status_stale\0\u{3}devices_load_failed\0\u{3}devices_error_text\0\u{3}has_handoff_offer\0")
 
   fileprivate class _StorageClass {
     var _connection: PBCoreConnState = .unspecified
@@ -1385,6 +1429,14 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
     var _reachabilityUnknown: Bool = false
     var _trustedMachineIds: [String] = []
     var _archiveMachineIds: [String] = []
+    var _connectionStartedAtMs: Int64 = 0
+    var _networkAvailable: Bool = false
+    var _everOnline: Bool = false
+    var _connectFailures: Int32 = 0
+    var _recoveryStatusStale: Bool = false
+    var _devicesLoadFailed: Bool = false
+    var _devicesErrorText: PBCoreText? = nil
+    var _hasHandoffOffer_p: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1436,6 +1488,14 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       _reachabilityUnknown = source._reachabilityUnknown
       _trustedMachineIds = source._trustedMachineIds
       _archiveMachineIds = source._archiveMachineIds
+      _connectionStartedAtMs = source._connectionStartedAtMs
+      _networkAvailable = source._networkAvailable
+      _everOnline = source._everOnline
+      _connectFailures = source._connectFailures
+      _recoveryStatusStale = source._recoveryStatusStale
+      _devicesLoadFailed = source._devicesLoadFailed
+      _devicesErrorText = source._devicesErrorText
+      _hasHandoffOffer_p = source._hasHandoffOffer_p
     }
   }
 
@@ -1495,6 +1555,14 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         case 39: try { try decoder.decodeSingularBoolField(value: &_storage._reachabilityUnknown) }()
         case 40: try { try decoder.decodeRepeatedStringField(value: &_storage._trustedMachineIds) }()
         case 41: try { try decoder.decodeRepeatedStringField(value: &_storage._archiveMachineIds) }()
+        case 42: try { try decoder.decodeSingularInt64Field(value: &_storage._connectionStartedAtMs) }()
+        case 43: try { try decoder.decodeSingularBoolField(value: &_storage._networkAvailable) }()
+        case 44: try { try decoder.decodeSingularBoolField(value: &_storage._everOnline) }()
+        case 45: try { try decoder.decodeSingularInt32Field(value: &_storage._connectFailures) }()
+        case 46: try { try decoder.decodeSingularBoolField(value: &_storage._recoveryStatusStale) }()
+        case 47: try { try decoder.decodeSingularBoolField(value: &_storage._devicesLoadFailed) }()
+        case 48: try { try decoder.decodeSingularMessageField(value: &_storage._devicesErrorText) }()
+        case 49: try { try decoder.decodeSingularBoolField(value: &_storage._hasHandoffOffer_p) }()
         default: break
         }
       }
@@ -1630,6 +1698,30 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       if !_storage._archiveMachineIds.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._archiveMachineIds, fieldNumber: 41)
       }
+      if _storage._connectionStartedAtMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._connectionStartedAtMs, fieldNumber: 42)
+      }
+      if _storage._networkAvailable != false {
+        try visitor.visitSingularBoolField(value: _storage._networkAvailable, fieldNumber: 43)
+      }
+      if _storage._everOnline != false {
+        try visitor.visitSingularBoolField(value: _storage._everOnline, fieldNumber: 44)
+      }
+      if _storage._connectFailures != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._connectFailures, fieldNumber: 45)
+      }
+      if _storage._recoveryStatusStale != false {
+        try visitor.visitSingularBoolField(value: _storage._recoveryStatusStale, fieldNumber: 46)
+      }
+      if _storage._devicesLoadFailed != false {
+        try visitor.visitSingularBoolField(value: _storage._devicesLoadFailed, fieldNumber: 47)
+      }
+      try { if let v = _storage._devicesErrorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 48)
+      } }()
+      if _storage._hasHandoffOffer_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasHandoffOffer_p, fieldNumber: 49)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1680,6 +1772,14 @@ extension PBCoreSyncStateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
         if _storage._reachabilityUnknown != rhs_storage._reachabilityUnknown {return false}
         if _storage._trustedMachineIds != rhs_storage._trustedMachineIds {return false}
         if _storage._archiveMachineIds != rhs_storage._archiveMachineIds {return false}
+        if _storage._connectionStartedAtMs != rhs_storage._connectionStartedAtMs {return false}
+        if _storage._networkAvailable != rhs_storage._networkAvailable {return false}
+        if _storage._everOnline != rhs_storage._everOnline {return false}
+        if _storage._connectFailures != rhs_storage._connectFailures {return false}
+        if _storage._recoveryStatusStale != rhs_storage._recoveryStatusStale {return false}
+        if _storage._devicesLoadFailed != rhs_storage._devicesLoadFailed {return false}
+        if _storage._devicesErrorText != rhs_storage._devicesErrorText {return false}
+        if _storage._hasHandoffOffer_p != rhs_storage._hasHandoffOffer_p {return false}
         return true
       }
       if !storagesAreEqual {return false}

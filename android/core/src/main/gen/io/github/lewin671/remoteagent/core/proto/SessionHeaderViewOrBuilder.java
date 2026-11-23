@@ -510,4 +510,45 @@ public interface SessionHeaderViewOrBuilder extends
    * @return The directChip.
    */
   io.github.lewin671.remoteagent.core.proto.SessionDirectChipView getDirectChip();
+
+  /**
+   * <code>bool task_owned = 56 [json_name = "taskOwned"];</code>
+   * @return The taskOwned.
+   */
+  boolean getTaskOwned();
+
+  /**
+   * <code>bool lookup_failed = 57 [json_name = "lookupFailed"];</code>
+   * @return The lookupFailed.
+   */
+  boolean getLookupFailed();
+
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   * @return Whether the lookupErrorText field is set.
+   */
+  boolean hasLookupErrorText();
+  /**
+   * <code>.remoteagent.core.v1.Text lookup_error_text = 58 [json_name = "lookupErrorText"];</code>
+   * @return The lookupErrorText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getLookupErrorText();
+
+  /**
+   * <code>bool multiple_machines = 59 [json_name = "multipleMachines"];</code>
+   * @return The multipleMachines.
+   */
+  boolean getMultipleMachines();
+
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @return The shortPath.
+   */
+  java.lang.String getShortPath();
+  /**
+   * <code>string short_path = 60 [json_name = "shortPath"];</code>
+   * @return The bytes for shortPath.
+   */
+  com.google.protobuf.ByteString
+      getShortPathBytes();
 }

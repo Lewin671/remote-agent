@@ -671,6 +671,32 @@ public  final class AttentionCardView extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int LOCKED_FIELD_NUMBER = 16;
+  private boolean locked_;
+  /**
+   * <code>bool locked = 16 [json_name = "locked"];</code>
+   * @return The locked.
+   */
+  @java.lang.Override
+  public boolean getLocked() {
+    return locked_;
+  }
+  /**
+   * <code>bool locked = 16 [json_name = "locked"];</code>
+   * @param value The locked to set.
+   */
+  private void setLocked(boolean value) {
+    
+    locked_ = value;
+  }
+  /**
+   * <code>bool locked = 16 [json_name = "locked"];</code>
+   */
+  private void clearLocked() {
+
+    locked_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttentionCardView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1427,6 +1453,34 @@ public  final class AttentionCardView extends
       return this;
     }
 
+    /**
+     * <code>bool locked = 16 [json_name = "locked"];</code>
+     * @return The locked.
+     */
+    @java.lang.Override
+    public boolean getLocked() {
+      return instance.getLocked();
+    }
+    /**
+     * <code>bool locked = 16 [json_name = "locked"];</code>
+     * @param value The locked to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLocked(boolean value) {
+      copyOnWrite();
+      instance.setLocked(value);
+      return this;
+    }
+    /**
+     * <code>bool locked = 16 [json_name = "locked"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLocked() {
+      copyOnWrite();
+      instance.clearLocked();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttentionCardView)
   }
   @java.lang.Override
@@ -1459,11 +1513,13 @@ public  final class AttentionCardView extends
             "alwaysKind_",
             "alwaysArg_",
             "alwaysLabel_",
+            "locked_",
           };
           java.lang.String info =
-              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u1009\u0000\u0005\u1009\u0001\u0006\u1009\u0002\u0007\u1009\u0003" +
-              "\b\u0007\t\u0208\n\u0208\u000b\u0007\f\u0007\r\f\u000e\u0208\u000f\u1009\u0004";
+              "\b\u0007\t\u0208\n\u0208\u000b\u0007\f\u0007\r\f\u000e\u0208\u000f\u1009\u0004\u0010" +
+              "\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

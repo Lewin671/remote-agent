@@ -382,22 +382,26 @@ func (m *SessionCommandState) AppendMarshal(b []byte) []byte {
 }
 
 type SessionCapabilitiesView struct {
-	_                   [0]func()
-	CanSend             bool
-	SupportsImages      bool
-	SupportsFiles       bool
-	SupportsSendModes   bool
-	SupportsSharedFiles bool
-	SupportsAlwaysAllow bool
-	SupportsSteer       bool
-	SupportsCompact     bool
-	SupportsFork        bool
-	SupportsModelSwitch bool
-	SupportsModeSwitch  bool
-	SupportsSchedule    bool
-	TerminalAvailable   bool
-	TerminalHint        *Text
-	MaxImages           int32
+	_                        [0]func()
+	CanSend                  bool
+	SupportsImages           bool
+	SupportsFiles            bool
+	SupportsSendModes        bool
+	SupportsSharedFiles      bool
+	SupportsAlwaysAllow      bool
+	SupportsSteer            bool
+	SupportsCompact          bool
+	SupportsFork             bool
+	SupportsModelSwitch      bool
+	SupportsModeSwitch       bool
+	SupportsSchedule         bool
+	TerminalAvailable        bool
+	TerminalHint             *Text
+	MaxImages                int32
+	MaxFiles                 int32
+	MaxFileBytes             int64
+	CapabilitiesLoaded       bool
+	ImageUploadBlockedReason *Text
 }
 
 func (m *SessionCapabilitiesView) GetCanSend() bool {
@@ -490,6 +494,30 @@ func (m *SessionCapabilitiesView) GetMaxImages() int32 {
 	}
 	return 0
 }
+func (m *SessionCapabilitiesView) GetMaxFiles() int32 {
+	if m != nil {
+		return m.MaxFiles
+	}
+	return 0
+}
+func (m *SessionCapabilitiesView) GetMaxFileBytes() int64 {
+	if m != nil {
+		return m.MaxFileBytes
+	}
+	return 0
+}
+func (m *SessionCapabilitiesView) GetCapabilitiesLoaded() bool {
+	if m != nil {
+		return m.CapabilitiesLoaded
+	}
+	return false
+}
+func (m *SessionCapabilitiesView) GetImageUploadBlockedReason() *Text {
+	if m != nil {
+		return m.ImageUploadBlockedReason
+	}
+	return nil
+}
 
 var LitewireDesc_SessionCapabilitiesView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -508,6 +536,10 @@ var LitewireDesc_SessionCapabilitiesView = litewire.MessageDesc{
 		{Num: 13, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.TerminalAvailable), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.TerminalHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 15, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxImages), Kind: litewire.KindInt32},
+		{Num: 16, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxFiles), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxFileBytes), Kind: litewire.KindInt64},
+		{Num: 18, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.CapabilitiesLoaded), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.ImageUploadBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -576,6 +608,11 @@ type SessionHeaderView struct {
 	MissingText           *Text
 	ComputerReachability  ComputerReachability
 	DirectChip            *SessionDirectChipView
+	TaskOwned             bool
+	LookupFailed          bool
+	LookupErrorText       *Text
+	MultipleMachines      bool
+	ShortPath             string
 }
 
 func (m *SessionHeaderView) GetFound() bool {
@@ -908,6 +945,36 @@ func (m *SessionHeaderView) GetDirectChip() *SessionDirectChipView {
 	}
 	return nil
 }
+func (m *SessionHeaderView) GetTaskOwned() bool {
+	if m != nil {
+		return m.TaskOwned
+	}
+	return false
+}
+func (m *SessionHeaderView) GetLookupFailed() bool {
+	if m != nil {
+		return m.LookupFailed
+	}
+	return false
+}
+func (m *SessionHeaderView) GetLookupErrorText() *Text {
+	if m != nil {
+		return m.LookupErrorText
+	}
+	return nil
+}
+func (m *SessionHeaderView) GetMultipleMachines() bool {
+	if m != nil {
+		return m.MultipleMachines
+	}
+	return false
+}
+func (m *SessionHeaderView) GetShortPath() string {
+	if m != nil {
+		return m.ShortPath
+	}
+	return ""
+}
 
 var LitewireDesc_SessionHeaderView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -966,6 +1033,11 @@ var LitewireDesc_SessionHeaderView = litewire.MessageDesc{
 		{Num: 53, Offset: unsafe.Offsetof(SessionHeaderView{}.MissingText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 54, Offset: unsafe.Offsetof(SessionHeaderView{}.ComputerReachability), Kind: litewire.KindInt32},
 		{Num: 55, Offset: unsafe.Offsetof(SessionHeaderView{}.DirectChip), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionDirectChipView},
+		{Num: 56, Offset: unsafe.Offsetof(SessionHeaderView{}.TaskOwned), Kind: litewire.KindBool},
+		{Num: 57, Offset: unsafe.Offsetof(SessionHeaderView{}.LookupFailed), Kind: litewire.KindBool},
+		{Num: 58, Offset: unsafe.Offsetof(SessionHeaderView{}.LookupErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 59, Offset: unsafe.Offsetof(SessionHeaderView{}.MultipleMachines), Kind: litewire.KindBool},
+		{Num: 60, Offset: unsafe.Offsetof(SessionHeaderView{}.ShortPath), Kind: litewire.KindString},
 	},
 }
 
@@ -1411,6 +1483,88 @@ func (m *SessionUsageEntryView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionUsageEntryView)
 }
 
+type SessionForkActionView struct {
+	_          [0]func()
+	Visible    bool
+	Enabled    bool
+	Busy       bool
+	Abandons   bool
+	CanAbandon bool
+	NoteError  bool
+	Label      *Text
+	Note       *Text
+}
+
+func (m *SessionForkActionView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *SessionForkActionView) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *SessionForkActionView) GetBusy() bool {
+	if m != nil {
+		return m.Busy
+	}
+	return false
+}
+func (m *SessionForkActionView) GetAbandons() bool {
+	if m != nil {
+		return m.Abandons
+	}
+	return false
+}
+func (m *SessionForkActionView) GetCanAbandon() bool {
+	if m != nil {
+		return m.CanAbandon
+	}
+	return false
+}
+func (m *SessionForkActionView) GetNoteError() bool {
+	if m != nil {
+		return m.NoteError
+	}
+	return false
+}
+func (m *SessionForkActionView) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *SessionForkActionView) GetNote() *Text {
+	if m != nil {
+		return m.Note
+	}
+	return nil
+}
+
+var LitewireDesc_SessionForkActionView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SessionForkActionView{}.Visible), Kind: litewire.KindBool},
+		{Num: 2, Offset: unsafe.Offsetof(SessionForkActionView{}.Enabled), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SessionForkActionView{}.Busy), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionForkActionView{}.Abandons), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(SessionForkActionView{}.CanAbandon), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SessionForkActionView{}.NoteError), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionForkActionView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 8, Offset: unsafe.Offsetof(SessionForkActionView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *SessionForkActionView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SessionForkActionView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionForkActionView)
+}
+
 type SessionActionsView struct {
 	_                        [0]func()
 	CanInterrupt             bool
@@ -1442,6 +1596,9 @@ type SessionActionsView struct {
 	SetMode                  *SessionCommandState
 	ModeChoices              []*SessionModeChoiceView
 	UsageEntry               *SessionUsageEntryView
+	ForkAction               *SessionForkActionView
+	ModeLocked               bool
+	ModePermissionNotice     *Text
 }
 
 func (m *SessionActionsView) GetCanInterrupt() bool {
@@ -1618,6 +1775,24 @@ func (m *SessionActionsView) GetUsageEntry() *SessionUsageEntryView {
 	}
 	return nil
 }
+func (m *SessionActionsView) GetForkAction() *SessionForkActionView {
+	if m != nil {
+		return m.ForkAction
+	}
+	return nil
+}
+func (m *SessionActionsView) GetModeLocked() bool {
+	if m != nil {
+		return m.ModeLocked
+	}
+	return false
+}
+func (m *SessionActionsView) GetModePermissionNotice() *Text {
+	if m != nil {
+		return m.ModePermissionNotice
+	}
+	return nil
+}
 
 var LitewireDesc_SessionActionsView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1650,6 +1825,9 @@ var LitewireDesc_SessionActionsView = litewire.MessageDesc{
 		{Num: 27, Offset: unsafe.Offsetof(SessionActionsView{}.SetMode), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
 		{Num: 28, Offset: unsafe.Offsetof(SessionActionsView{}.ModeChoices), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SessionModeChoiceView},
 		{Num: 29, Offset: unsafe.Offsetof(SessionActionsView{}.UsageEntry), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionUsageEntryView},
+		{Num: 30, Offset: unsafe.Offsetof(SessionActionsView{}.ForkAction), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionForkActionView},
+		{Num: 31, Offset: unsafe.Offsetof(SessionActionsView{}.ModeLocked), Kind: litewire.KindBool},
+		{Num: 32, Offset: unsafe.Offsetof(SessionActionsView{}.ModePermissionNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -1675,6 +1853,8 @@ type SessionDockView struct {
 	DeadlineMs          int64
 	WaitingConfirmation bool
 	Command             *SessionCommandState
+	IsSkeleton          bool
+	TimeLeftPlain       *Text
 	Detail              isSessionDockView_Detail
 }
 
@@ -1785,6 +1965,18 @@ func (m *SessionDockView) GetCommand() *SessionCommandState {
 	}
 	return nil
 }
+func (m *SessionDockView) GetIsSkeleton() bool {
+	if m != nil {
+		return m.IsSkeleton
+	}
+	return false
+}
+func (m *SessionDockView) GetTimeLeftPlain() *Text {
+	if m != nil {
+		return m.TimeLeftPlain
+	}
+	return nil
+}
 func (m *SessionDockView) GetApproval() *SessionApprovalDockView {
 	if x, ok := m.GetDetail().(*SessionDockView_Approval); ok && x != nil {
 		return x.Approval
@@ -1824,6 +2016,8 @@ var LitewireDesc_SessionDockView = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(SessionDockView{}.DeadlineMs), Kind: litewire.KindInt64},
 		{Num: 11, Offset: unsafe.Offsetof(SessionDockView{}.WaitingConfirmation), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(SessionDockView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},
+		{Num: 13, Offset: unsafe.Offsetof(SessionDockView{}.IsSkeleton), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SessionDockView{}.TimeLeftPlain), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: litewire.Number(1), Kind: litewire.KindCustom},
 	},
 }
@@ -2265,6 +2459,7 @@ type SessionTerminalPopupDockView struct {
 	PopupTitle    *Text
 	Hint          *Text
 	CanGoTerminal bool
+	IsTrustFolder bool
 }
 
 func (m *SessionTerminalPopupDockView) GetPopupTitle() *Text {
@@ -2285,12 +2480,19 @@ func (m *SessionTerminalPopupDockView) GetCanGoTerminal() bool {
 	}
 	return false
 }
+func (m *SessionTerminalPopupDockView) GetIsTrustFolder() bool {
+	if m != nil {
+		return m.IsTrustFolder
+	}
+	return false
+}
 
 var LitewireDesc_SessionTerminalPopupDockView = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.PopupTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 2, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.Hint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 3, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.CanGoTerminal), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SessionTerminalPopupDockView{}.IsTrustFolder), Kind: litewire.KindBool},
 	},
 }
 
@@ -2330,6 +2532,7 @@ type SessionTrayItemView struct {
 	CanRestore             bool
 	NetworkActionsDisabled bool
 	ServerBacked           bool
+	IsSkeleton             bool
 }
 
 func (m *SessionTrayItemView) GetRequestId() string {
@@ -2488,6 +2691,12 @@ func (m *SessionTrayItemView) GetServerBacked() bool {
 	}
 	return false
 }
+func (m *SessionTrayItemView) GetIsSkeleton() bool {
+	if m != nil {
+		return m.IsSkeleton
+	}
+	return false
+}
 
 var LitewireDesc_SessionTrayItemView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2517,6 +2726,7 @@ var LitewireDesc_SessionTrayItemView = litewire.MessageDesc{
 		{Num: 24, Offset: unsafe.Offsetof(SessionTrayItemView{}.CanRestore), Kind: litewire.KindBool},
 		{Num: 25, Offset: unsafe.Offsetof(SessionTrayItemView{}.NetworkActionsDisabled), Kind: litewire.KindBool},
 		{Num: 26, Offset: unsafe.Offsetof(SessionTrayItemView{}.ServerBacked), Kind: litewire.KindBool},
+		{Num: 27, Offset: unsafe.Offsetof(SessionTrayItemView{}.IsSkeleton), Kind: litewire.KindBool},
 	},
 }
 
@@ -2730,6 +2940,10 @@ type SessionComposerView struct {
 	InterruptVisible             bool
 	PendingTray                  *SessionPendingTrayView
 	RetainedAttachmentRequestIds []string
+	DefaultSendMode              v1.SendMode
+	IsDefaultPlaceholder         bool
+	SlashWarningTitle            *Text
+	SlashWarningText             *Text
 }
 
 func (m *SessionComposerView) GetEnabled() bool {
@@ -2792,6 +3006,30 @@ func (m *SessionComposerView) GetRetainedAttachmentRequestIds() []string {
 	}
 	return nil
 }
+func (m *SessionComposerView) GetDefaultSendMode() v1.SendMode {
+	if m != nil {
+		return m.DefaultSendMode
+	}
+	return 0
+}
+func (m *SessionComposerView) GetIsDefaultPlaceholder() bool {
+	if m != nil {
+		return m.IsDefaultPlaceholder
+	}
+	return false
+}
+func (m *SessionComposerView) GetSlashWarningTitle() *Text {
+	if m != nil {
+		return m.SlashWarningTitle
+	}
+	return nil
+}
+func (m *SessionComposerView) GetSlashWarningText() *Text {
+	if m != nil {
+		return m.SlashWarningText
+	}
+	return nil
+}
 
 var LitewireDesc_SessionComposerView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2805,6 +3043,10 @@ var LitewireDesc_SessionComposerView = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(SessionComposerView{}.InterruptVisible), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(SessionComposerView{}.PendingTray), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionPendingTrayView},
 		{Num: 10, Offset: unsafe.Offsetof(SessionComposerView{}.RetainedAttachmentRequestIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 11, Offset: unsafe.Offsetof(SessionComposerView{}.DefaultSendMode), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(SessionComposerView{}.IsDefaultPlaceholder), Kind: litewire.KindBool},
+		{Num: 13, Offset: unsafe.Offsetof(SessionComposerView{}.SlashWarningTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SessionComposerView{}.SlashWarningText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

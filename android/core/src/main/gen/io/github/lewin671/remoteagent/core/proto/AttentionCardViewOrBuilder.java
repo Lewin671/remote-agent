@@ -165,4 +165,10 @@ public interface AttentionCardViewOrBuilder extends
    * @return The alwaysLabel.
    */
   io.github.lewin671.remoteagent.core.proto.Text getAlwaysLabel();
+
+  /**
+   * <code>bool locked = 16 [json_name = "locked"];</code>
+   * @return The locked.
+   */
+  boolean getLocked();
 }
