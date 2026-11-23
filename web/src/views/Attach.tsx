@@ -1,46 +1,57 @@
-import * as i18n from "../i18n";
-// Choosing images for a message: the ＋ button (the system's picker:
-// library, camera, files), dropping or pasting on wide screens, and the
-// tray of chosen images above the text with each one's upload. A computer
-// that takes files also gets videos from the library: they go as files
-// (session-files.md 从相册选视频), drawn in the tray among the images.
-
 import { memo, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
-import { Tray, type TrayItem } from "../attach";
-import { imageFailureLine, imageProblem, originalImageHint } from "../image-problem";
-import { DraftImageViewer } from "./Images";
+import { Tray, type CandidateEntry, type TrayItem } from "../attach";
+import { getCoreHost } from "../core/host";
+import { renderText } from "../core/text";
+import * as i18n from "../i18n";
+import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
 import { clock } from "../model";
+import { useGrow } from "../motion";
 import type { Remote } from "../remote";
 import { Banner } from "../ui";
-import { useGrow } from "../motion";
+import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import { FileChip } from "./Files";
-import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
+import { DraftImageViewer } from "./Images";
 
 export interface TrayCapabilities {
+  sessionId?: string;
   maxImages: number;
   maxFiles: number;
-  maxFileBytes: bigint | number;
   supportsFiles: boolean;
+  galleryAcceptMime?: string;
+  originalImageHint?: string;
+  fileMetadataNotice?: string;
   blocked: string;
+  fileBlocked?: string;
 }
 
 /** The tray of a draft (a session's input, or a project's new-session
  * card), kept on the Remote so it survives leaving the page. */
 export function useTray(remote: Remote, key: string, machineId: string, caps: TrayCapabilities): Tray {
-  const max = caps.maxImages > 0 ? caps.maxImages : 6;
   let t = remote.trays.get(key);
+  const evaluate = (req: Parameters<NonNullable<Tray["evaluate"]>>[0]) =>
+    getCoreHost(remote).evalAttachments(req);
   if (!t) {
-    t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => { remote.persistDraft(key); remote.touch(); }, max);
+    t = new Tray(
+      remote.prepareImage,
+      (m, p, progress, started) => remote.uploadImage(m, p, progress, started),
+      () => { remote.persistDraft(key); remote.touch(); },
+      caps.maxImages,
+      evaluate,
+    );
     t.machineId = machineId;
     remote.trays.set(key, t);
     void remote.restoreDraft(key, t).catch(() => undefined);
   }
-  t.max = max;
+  t.evaluate = evaluate;
+  t.sessionId = caps.sessionId ?? "";
+  t.max = caps.maxImages;
   t.fileSupported = caps.supportsFiles;
-  t.maxFiles = caps.maxFiles > 0 ? caps.maxFiles : 6;
-  t.maxFileBytes = Number(caps.maxFileBytes) > 0 ? Number(caps.maxFileBytes) : 100 * 1024 * 1024;
+  t.maxFiles = caps.maxFiles;
+  t.galleryAcceptMime = caps.galleryAcceptMime ?? "";
+  t.originalImageHint = caps.originalImageHint ?? "";
+  t.fileMetadataNotice = caps.fileMetadataNotice ?? "";
+  t.fileBlocked = caps.fileBlocked ?? "";
   const tray = t;
   useEffect(() => { void remote.restoreDraft(key, tray).catch(() => undefined); }, [remote, key, tray]);
   useEffect(() => {
@@ -65,7 +76,7 @@ export function useTray(remote: Remote, key: string, machineId: string, caps: Tr
   return tray;
 }
 
-/** Image files in a drop or a paste. */
+/** Files in a drop, paste, or file input change event. */
 export function attachmentFiles(list: FileList | DataTransferItemList | null | undefined): File[] {
   if (!list) return [];
   const out: File[] = [];
@@ -76,26 +87,13 @@ export function attachmentFiles(list: FileList | DataTransferItemList | null | u
   return out;
 }
 
-/** Whether a chosen file is a video, which goes as a file and shows in
- * the tray beside the images. */
-export function isVideo(f: Blob): boolean {
-  return f.type.startsWith("video/");
-}
-
-/** What the library picker offers: images, and videos too when the
- * computer takes files. */
-export function mediaAccept(fileSupported: boolean): string {
-  return fileSupported ? "image/*,video/*" : "image/*";
-}
-
-/** Files chosen from the library into the tray: images as images, the
- * rest (videos) as files, which checks their size and count as it takes
- * them, and says so when the computer cannot take files. */
-export function addMedia(tray: Tray, files: File[]) {
-  const images = files.filter((f) => f.type.startsWith("image/"));
-  const other = files.filter((f) => !f.type.startsWith("image/"));
-  if (images.length) tray.add(images);
-  if (other.length) tray.addFiles(other);
+function filesToCandidates(files: readonly File[]): CandidateEntry[] {
+  return files.map((f) => ({
+    file: f,
+    name: f.name,
+    mimeType: f.type,
+    sizeBytes: f.size,
+  }));
 }
 
 /** ＋ opens the library at once; when the machine offers file uploads it
@@ -110,23 +108,21 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
   useComposerMenuDismiss(open, wrap, () => setOpen(false));
   const pick = (file: boolean) => {
     setOpen(false);
-    if (blocked) return onBlocked(blocked);
-    const filesFull = tray.files().length >= tray.maxFiles;
-    // The library is full only when neither another image nor a video fits.
-    if (file ? filesFull : tray.full() && (!tray.fileSupported || filesFull)) return onBlocked(file ? i18n.t("attachment.max_files", { count: tray.maxFiles }) : i18n.t("attachment.max_images", { count: tray.max }));
+    const reason = tray.checkPickBlocked(file, blocked);
+    if (reason) return onBlocked(reason);
     (file ? files : input).current?.click();
   };
   return <span className="attach-wrap" ref={wrap}>
-    <button disabled={tray.restoring} className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? i18n.t("new_session.ios_attach") : i18n.t("image.add")} aria-expanded={tray.fileSupported ? open : undefined}
+    <button disabled={tray.restoring} className={className + (blocked || (!tray.fileSupported && tray.full()) ? " off" : "")} aria-label={tray.fileSupported ? i18n.t("new_session.ios_attach") : i18n.t("image.add")} aria-expanded={tray.fileSupported ? open : undefined}
       onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
     {open && (
       <div className="attach-menu glass" role="menu">
         <button role="menuitem" onClick={() => pick(false)}><ImageIcon />{i18n.t("attachment.photos_videos")}</button>
         <button role="menuitem" onClick={() => pick(true)}><FileIcon />{i18n.t("attachment.file")}</button>
-        <p>{i18n.t("attachment.metadata")}</p>
+        {tray.fileMetadataNotice && <p>{tray.fileMetadataNotice}</p>}
       </div>
     )}
-    <FilePickers tray={tray} fileSupported={tray.fileSupported} media={input} files={files} />
+    <FilePickers tray={tray} accept={tray.galleryAcceptMime} media={input} files={files} />
   </span>;
 }
 
@@ -134,10 +130,10 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
  * again each time it draws it, which the browser sees as a change of
  * the page: they are drawn apart from the button, which draws with every
  * keystroke in the message, and only when something they depend on changes. */
-const FilePickers = memo(function FilePickers({ tray, fileSupported, media, files }: { tray: Tray; fileSupported: boolean; media: RefObject<HTMLInputElement | null>; files: RefObject<HTMLInputElement | null> }) {
+const FilePickers = memo(function FilePickers({ tray, accept, media, files }: { tray: Tray; accept: string; media: RefObject<HTMLInputElement | null>; files: RefObject<HTMLInputElement | null> }) {
   return <>
-    <input ref={media} type="file" accept={mediaAccept(fileSupported)} multiple hidden onChange={(e) => { addMedia(tray, attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
-    <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+    <input ref={media} type="file" accept={accept} multiple hidden onChange={(e) => { tray.addCandidates(filesToCandidates(attachmentFiles(e.currentTarget.files)), false); e.currentTarget.value = ""; }} />
+    <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addCandidates(filesToCandidates(attachmentFiles(e.currentTarget.files)), true); e.currentTarget.value = ""; }} />
   </>;
 });
 
@@ -150,7 +146,8 @@ function Thumb({ item, index, count, onOpen, onRemove }: { item: TrayItem; index
     return () => URL.revokeObjectURL(u);
   }, [item.thumb]);
   const busy = item.state === "preparing" || item.state === "uploading";
-  const state = item.state === "failed" ? i18n.t("attachment.failure", { reason: imageProblem(item.error ?? "").message })
+  const problemText = renderText(item.problem?.message);
+  const state = item.state === "failed" ? i18n.t("attachment.failure", { reason: problemText })
     : item.state === "preparing" ? i18n.t("image.preparing") : item.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.uploaded");
   return (
     <span className="draft-thumb">
@@ -187,8 +184,9 @@ function VideoThumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () 
   }, [item.file]);
   const busy = item.state === "preparing" || item.state === "uploading";
   const read = typeof length === "number";
+  const label = item.displayName || item.name || "";
   return (
-    <span className={"pic tthumb video" + (length === "unknown" ? " plain" : "")} title={item.name}>
+    <span className={"pic tthumb video" + (length === "unknown" ? " plain" : "")} title={label}>
       {url && length !== "unknown" && (
         <video
           src={url + "#t=0.1"}
@@ -206,7 +204,7 @@ function VideoThumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () 
       {length === "unknown" && (
         <span className="vname">
           <FileIcon />
-          <span>{item.name}</span>
+          <span>{label}</span>
         </span>
       )}
       {read && <span className="dur">{clock(length * 1000)}</span>}
@@ -221,7 +219,7 @@ function VideoThumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () 
         <button className="badge retry" onClick={onRetry} title={item.error}>
           {i18n.t("common.retry")}</button>
       )}
-      <button className="x" onClick={onRemove} aria-label={i18n.t("attachment.remove_video", { name: item.name ?? "" }).trim()}>
+      <button className="x" onClick={onRemove} aria-label={i18n.t("attachment.remove_video", { name: label }).trim()}>
         <X />
       </button>
     </span>
@@ -248,10 +246,11 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
   const images = tray.images();
   // Videos from the library sit among the images, in the order chosen;
   // other files are chips.
-  const thumbs = tray.items.filter((i) => i.kind !== "file" || isVideo(i.file));
-  const files = tray.files().filter((i) => !isVideo(i.file));
+  const thumbs = tray.items.filter((i) => i.kind !== "file" || i.isVideo);
+  const files = tray.files().filter((i) => !i.isVideo);
   const failed = images.filter((i) => i.state === "failed");
   const failedFiles = tray.files().filter((i) => i.state === "failed");
+  const failureSummary = renderText(tray.failureSummary);
   return (
     <div className="attachments" ref={ref}>
       {thumbs.length > 0 && (
@@ -285,13 +284,27 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
           </div>
         </>
       )}
-      {tray.original && images.length > 0 && <div className="att-hint">{originalImageHint()}</div>}
-      {files.length > 0 && <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>}
-      {tray.files().length > 0 && <div className="att-hint">{i18n.t("attachment.metadata")}</div>}
+      {tray.original && images.length > 0 && tray.originalImageHint && <div className="att-hint">{tray.originalImageHint}</div>}
+      {files.length > 0 && (
+        <div className="file-chips">
+          {files.map((i) => (
+            <FileChip
+              key={i.key}
+              file={{ name: i.name!, displayName: i.displayName, sizeText: i.formattedSize }}
+              state={i.state}
+              progress={i.progress}
+              error={i.error}
+              onRetry={() => tray.retry(i.key)}
+              onRemove={() => tray.remove(i.key)}
+            />
+          ))}
+        </div>
+      )}
+      {tray.files().length > 0 && tray.fileMetadataNotice && <div className="att-hint">{tray.fileMetadataNotice}</div>}
       {failedFiles.length > 0 && <Banner kind="err">{i18n.t("attachment.failed_send_hint", { reason: failedFiles[0].error ?? "" })}</Banner>}
-      {failed.length > 0 && (
+      {failed.length > 0 && failureSummary && (
         <Banner kind="err">
-          {imageFailureLine(failed.map(i => i.error ?? ""))}
+          {failureSummary}
         </Banner>
       )}
       {tray.note && <Banner>{tray.note}</Banner>}
@@ -301,17 +314,20 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
   );
 }
 
-/** Drop and paste on a card: images join the tray. */
+/** Drop and paste on a card: candidates are routed and validated synchronously via Core AttachmentEval. */
 export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: string) => void) {
   const [over, setOver] = useState(false);
-  const take = (files: File[]) => {
-    if (!files.length) return false;
-    if (blocked) onBlocked(blocked);
-    else {
-      const images = files.filter((f) => f.type.startsWith("image/"));
-      const other = files.filter((f) => !f.type.startsWith("image/"));
-      if (images.length) tray.add(images);
-      if (other.length) tray.addFiles(other);
+  const takeEntries = (entries: CandidateEntry[]) => {
+    if (!entries.length) return false;
+    if (blocked) {
+      onBlocked(blocked);
+      return true;
+    }
+    const hadDirectory = entries.some((e) => e.isDirectory);
+    const notice = tray.addCandidates(entries, false);
+    if (hadDirectory && notice) {
+      tray.note = "";
+      onBlocked(notice);
     }
     return true;
   };
@@ -328,16 +344,26 @@ export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: strin
       onDrop: (e: DragEvent) => {
         setOver(false);
         const items = Array.from(e.dataTransfer.items ?? []);
-        const folders = items.filter((item) => item.kind === "file" && item.webkitGetAsEntry?.()?.isDirectory);
-        if (folders.length) {
-          e.preventDefault();
-          onBlocked(i18n.t("attachment.zip_folder"));
-          const files = items.filter((item) => !folders.includes(item));
-          take(attachmentFiles(files as unknown as DataTransferItemList));
-        } else if (take(attachmentFiles(e.dataTransfer.files))) e.preventDefault();
+        const entries: CandidateEntry[] = items.length
+          ? items
+              .filter((item) => item.kind === "file")
+              .map((item) => {
+                const isDirectory = !!item.webkitGetAsEntry?.()?.isDirectory;
+                const file = isDirectory ? undefined : item.getAsFile() ?? undefined;
+                return {
+                  file,
+                  name: file?.name ?? "folder",
+                  mimeType: file?.type ?? "",
+                  sizeBytes: file?.size ?? 0,
+                  isDirectory,
+                };
+              })
+              .filter((entry) => entry.isDirectory || entry.file)
+          : filesToCandidates(attachmentFiles(e.dataTransfer.files));
+        if (takeEntries(entries)) e.preventDefault();
       },
       onPaste: (e: ClipboardEvent) => {
-        if (take(attachmentFiles(e.clipboardData.items))) e.preventDefault();
+        if (takeEntries(filesToCandidates(attachmentFiles(e.clipboardData.items)))) e.preventDefault();
       },
     },
   };

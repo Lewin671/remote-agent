@@ -1,4 +1,4 @@
-import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Tray, TrayItem } from "../attach";
 import { newRequestID, UnsupportedHistoryError } from "../crypto";
@@ -89,7 +89,6 @@ import {
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
   ProjectSetSearchActionSchema,
-  RetrySessionEventsActionSchema,
   ScreenSchema,
   ScreenTarget,
   type Screen,
@@ -123,6 +122,10 @@ import {
   type TokenResultEvent,
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
+import {
+  AttachmentEvalScreenRequestSchema,
+  type AttachmentEvalViewModel,
+} from "../gen/remoteagent/core/v1/attachments_view_pb";
 import {
   SecurityConfigEventSchema,
   SecurityErrorCode,
@@ -216,19 +219,26 @@ import {
   type SchedulesViewModel,
 } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import {
+  SessionImageViewerCloseActionSchema,
+  SessionImageViewerNavigateActionSchema,
+  SessionImageViewerOpenActionSchema,
   SessionOpenActionSchema,
   SessionQuestionStepActionSchema,
   SessionRefreshHistoryActionSchema,
+  SessionRetryLoadActionSchema,
   SessionScreenRequestSchema,
   SessionSlotActionSchema,
   SessionSubmitCommandActionSchema,
   SessionTrayItemActionSchema,
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
+  SharedFileLocalStateEventSchema,
   type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
+  type SharedFileLocalStateUpdate,
 } from "../gen/remoteagent/core/v1/session_view_pb";
+import { bindSharedFiles } from "../shared-files";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -807,6 +817,7 @@ export class CoreHost {
   private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
   private unsubscribeLocale?: () => void;
+  private unbindSharedFiles?: () => void;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
   private pendingEvents: Array<{ ev: Event; onProcessed?: () => void }> = [];
@@ -873,6 +884,9 @@ export class CoreHost {
           this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
       });
+      this.unbindSharedFiles = bindSharedFiles(this.remote, (updates, opts) =>
+        this.reportSharedFileState(updates, opts),
+      );
     }
 
     this.dispatch(
@@ -1161,14 +1175,68 @@ export class CoreHost {
   }
 
   retrySession(sessionId: string) {
-    if (!sessionId) return;
-    this.ensureSession(sessionId);
-    this.retryEvents(sessionId);
+    if (sessionId) this.emit({ case: "sessionRetryLoad", value: create(SessionRetryLoadActionSchema, { sessionId }) });
   }
 
   retryEvents(sessionId: string) {
-    if (sessionId) this.emit({ case: "retrySessionEvents", value: create(RetrySessionEventsActionSchema, { sessionId }) });
+    this.retrySession(sessionId);
   }
+
+  reportSharedFileState(
+    updates: SharedFileLocalStateUpdate[],
+    opts?: { replaceAll?: boolean; clearSessionId?: string },
+  ) {
+    if (this.closed) return;
+    if (!updates.length && !opts?.replaceAll && !opts?.clearSessionId) return;
+    this.emit({
+      case: "sharedFileLocalState",
+      value: create(SharedFileLocalStateEventSchema, {
+        updates,
+        replaceAll: !!opts?.replaceAll,
+        clearSessionId: opts?.clearSessionId ?? "",
+      }),
+    });
+  }
+
+  sessionImageViewerOpen = (
+    sessionId: string,
+    opts: { seq?: bigint; imageIndex?: number; viewerIndex?: number },
+  ) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerOpen",
+      value: create(SessionImageViewerOpenActionSchema, {
+        sessionId,
+        seq: opts.seq ?? 0n,
+        imageIndex: opts.imageIndex ?? 0,
+        viewerIndex: opts.viewerIndex ?? 0,
+      }),
+    });
+  };
+
+  sessionImageViewerNavigate = (
+    sessionId: string,
+    opts: { delta?: number; setIndex?: boolean; index?: number },
+  ) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerNavigate",
+      value: create(SessionImageViewerNavigateActionSchema, {
+        sessionId,
+        delta: opts.delta ?? 0,
+        setIndex: !!opts.setIndex,
+        index: opts.index ?? 0,
+      }),
+    });
+  };
+
+  sessionImageViewerClose = (sessionId: string) => {
+    if (!sessionId) return;
+    this.emit({
+      case: "sessionImageViewerClose",
+      value: create(SessionImageViewerCloseActionSchema, { sessionId }),
+    });
+  };
 
   // --- Screen Intents ---
 
@@ -1988,6 +2056,15 @@ export class CoreHost {
     const value = this.queryView<NewSessionViewModel>({ case: "newSession", value: create(NewSessionScreenRequestSchema, { projectKey }) }, "newSession");
     this.newSessionCache = { version: ver, key: projectKey, vm: value };
     return value;
+  }
+
+  evalAttachments(
+    req: MessageInitShape<typeof AttachmentEvalScreenRequestSchema>,
+  ): AttachmentEvalViewModel {
+    return this.queryView<AttachmentEvalViewModel>(
+      { case: "attachmentEval", value: create(AttachmentEvalScreenRequestSchema, req) },
+      "attachmentEval",
+    );
   }
 
   viewSyncState(): SyncStateView {
@@ -2940,6 +3017,8 @@ export class CoreHost {
     if (this.closed) return;
     this.unsubscribeLocale?.();
     this.unsubscribeLocale = undefined;
+    this.unbindSharedFiles?.();
+    this.unbindSharedFiles = undefined;
     this.stop();
     this.closed = true;
     this.pendingEvents = [];

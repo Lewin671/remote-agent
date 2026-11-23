@@ -484,6 +484,27 @@ public struct PBAttachmentEvalViewModel: @unchecked Sendable {
   /// Clears the value of `failureSummary`. Subsequent reads from it will return its default value.
   public mutating func clearFailureSummary() {_uniqueStorage()._failureSummary = nil}
 
+  /// Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+  /// per-message limit is reached); unset when picking is allowed. Shells show this
+  /// instead of composing their own limit text.
+  public var imagesPickBlockedReason: PBCoreText {
+    get {return _storage._imagesPickBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._imagesPickBlockedReason = newValue}
+  }
+  /// Returns true if `imagesPickBlockedReason` has been explicitly set.
+  public var hasImagesPickBlockedReason: Bool {return _storage._imagesPickBlockedReason != nil}
+  /// Clears the value of `imagesPickBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearImagesPickBlockedReason() {_uniqueStorage()._imagesPickBlockedReason = nil}
+
+  public var filesPickBlockedReason: PBCoreText {
+    get {return _storage._filesPickBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._filesPickBlockedReason = newValue}
+  }
+  /// Returns true if `filesPickBlockedReason` has been explicitly set.
+  public var hasFilesPickBlockedReason: Bool {return _storage._filesPickBlockedReason != nil}
+  /// Clears the value of `filesPickBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearFilesPickBlockedReason() {_uniqueStorage()._filesPickBlockedReason = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -777,7 +798,7 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentEvalViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}library_room\0\u{3}can_pick_images\0\u{3}can_pick_files\0\u{3}can_pick_gallery\0\u{3}image_upload_blocked_reason\0\u{3}file_upload_blocked_reason\0\u{3}gallery_blocked_reason\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0\u{1}decisions\0\u{1}notice\0\u{1}problems\0\u{3}failure_summary\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}library_room\0\u{3}can_pick_images\0\u{3}can_pick_files\0\u{3}can_pick_gallery\0\u{3}image_upload_blocked_reason\0\u{3}file_upload_blocked_reason\0\u{3}gallery_blocked_reason\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0\u{1}decisions\0\u{1}notice\0\u{1}problems\0\u{3}failure_summary\0\u{3}images_pick_blocked_reason\0\u{3}files_pick_blocked_reason\0")
 
   fileprivate class _StorageClass {
     var _capabilitiesLoaded: Bool = false
@@ -804,6 +825,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _notice: PBCoreText? = nil
     var _problems: [PBImageProblemView] = []
     var _failureSummary: PBCoreText? = nil
+    var _imagesPickBlockedReason: PBCoreText? = nil
+    var _filesPickBlockedReason: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -838,6 +861,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _notice = source._notice
       _problems = source._problems
       _failureSummary = source._failureSummary
+      _imagesPickBlockedReason = source._imagesPickBlockedReason
+      _filesPickBlockedReason = source._filesPickBlockedReason
     }
   }
 
@@ -880,6 +905,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 22: try { try decoder.decodeSingularMessageField(value: &_storage._notice) }()
         case 23: try { try decoder.decodeRepeatedMessageField(value: &_storage._problems) }()
         case 24: try { try decoder.decodeSingularMessageField(value: &_storage._failureSummary) }()
+        case 25: try { try decoder.decodeSingularMessageField(value: &_storage._imagesPickBlockedReason) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._filesPickBlockedReason) }()
         default: break
         }
       }
@@ -964,6 +991,12 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._failureSummary {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
       } }()
+      try { if let v = _storage._imagesPickBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+      } }()
+      try { if let v = _storage._filesPickBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -997,6 +1030,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._notice != rhs_storage._notice {return false}
         if _storage._problems != rhs_storage._problems {return false}
         if _storage._failureSummary != rhs_storage._failureSummary {return false}
+        if _storage._imagesPickBlockedReason != rhs_storage._imagesPickBlockedReason {return false}
+        if _storage._filesPickBlockedReason != rhs_storage._filesPickBlockedReason {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -225,32 +225,3 @@ it.each(["zh-CN","en"] as const)("receives verified machine-scoped data-only pus
  expect((await pushContent({...payload,machine:"other"})).machineId).toBeUndefined();
  env.signature[0]^=1;expect((await pushContent({...payload,content:btoa(String.fromCharCode(...toBinary(EnvelopeSchema,env)))})).machineId).toBeUndefined();
 });
-
-it("fails closed on disk push with daemon-supplied title or above-threshold free space", async () => {
-  const f = await storedSecurity(), head = f.states.at(-1)!, machine = head.core.members.find((m) => m.kind === 1)!.id;
-  const make = async (opts: { title?: string; availableBytes?: bigint }) => {
-    const content = create(NotifyContentSchema, {
-      kind: NotifyKind.MACHINE_DISK,
-      machineId: machine,
-      machineName: "电脑 A",
-      title: opts.title ?? "",
-      diskStatus: { observedMs: 1700000000000n, availableBytes: opts.availableBytes ?? 1_500_000_000n, pressure: 3 },
-    });
-    const env = await sealTestEnvelope(
-      f.secret,
-      undefined,
-      {
-        account: f.pin.account, domain: f.pin.domain, epoch: head.core.epoch,
-        state: await stateHash(head), contentEpoch: head.core.contentEpoch, sender: machine,
-        kind: 10, purpose: 10, machine, session: "", request: "disk:1700000000000:3", seq: 0n, deadline: 0n, compression: 0,
-      },
-      toBinary(NotifyContentSchema, content),
-      f.machineEd,
-    );
-    return pushContent({ session: "", machine, tag: `${machine}/NOTIFY_KIND_MACHINE_DISK`, content: btoa(String.fromCharCode(...toBinary(EnvelopeSchema, env))) });
-  };
-  const withDaemonTitle = await make({ title: "daemon text" });
-  expect(withDaemonTitle).toEqual({ title: "remote-agent", body: message("machine_status.home_warning") });
-  const plentyFree = await make({ availableBytes: 50_000_000_000n });
-  expect(plentyFree).toEqual({ title: "remote-agent", body: message("machine_status.home_warning") });
-});

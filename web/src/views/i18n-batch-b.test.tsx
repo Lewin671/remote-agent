@@ -5,10 +5,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { getCoreHost } from "../core/host";
 import { localeStore, t, useLocale } from "../i18n";
-import * as i18n from "../i18n";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { ApprovalMode, OriginKind, OriginSchema, type EventSchema } from "../gen/remoteagent/v1/event_pb";
-import { imageFailureLine, imageProblemKind } from "../image-problem";
 import skeletonCorpus from "../../../testdata/projection/skeletons.json";
 import { SessionPage } from "./Session";
 import { useRemote } from "../ui";
@@ -111,16 +109,6 @@ it.each(["zh-CN", "en"] as const)("resumes the same paused queue item in %s", as
     case: "resumeInput",
     value: { sessionId: "s-multi", requestId: "q-paused" },
   });
-});
-
-it("aggregates image failures by stable category and localizes the matching single cause", () => {
-  const format = vi.spyOn(i18n, "t").mockReturnValue("same translation");
-  imageFailureLine(["decode error", "offline"]);
-  expect(format).toHaveBeenLastCalledWith("image.attach_failed", { count: 2 });
-  format.mockClear(); imageFailureLine(["decode error", "unsupported PNG"]);
-  expect(format).toHaveBeenLastCalledWith("image.cannot_read_this_image_try_jpeg_or_png_instead");
-  expect(imageProblemKind("decode error")).toBe(imageProblemKind("unsupported PNG"));
-  expect(imageProblemKind("decode error")).not.toBe(imageProblemKind("offline"));
 });
 
 it.each([0, 1, 2, 1000])("formats image count plurals in en (%i)", count => {

@@ -11,17 +11,20 @@ import {
   SessionInputNoticeKind,
   SessionNoteKind,
   SessionNoteTone,
+  SharedFileWebPreviewKind,
   type SessionActionsView,
   type SessionCommandState,
   type SessionHeaderView,
   type SessionNotifyReceiptItem,
   type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
+  type SessionSharedFileItem,
   type SessionTimelineItem,
+  type SessionViewerImageView,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ConnState, SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
-import { Agent, ApprovalMode, SendMode, SharedFileSchema, type ImageRef, type SharedFile } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SendMode, type ImageRef } from "../gen/remoteagent/v1/event_pb";
 import {
   CommandSchema,
   type Command,
@@ -38,22 +41,29 @@ import {
   X,
   Zap,
 } from "../icons";
-import { splitPlaceholders, timelineImages } from "../imageview";
 import { Markdown } from "../markdown";
 import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
-import { shortenPath } from "../model";
 import { type Remote } from "../remote";
-import { previewBlobForFile, saveBlobAsDownload, sharedFilesOf } from "../shared-files";
+import { saveBlobAsDownload, sharedFilesOf } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
 import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
 import { Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
-import { FileChips } from "./Files";
+import { FileChip, FileChips } from "./Files";
 import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
-import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
+import {
+  GenCard,
+  ImageStrip,
+  ImageViewer,
+  LocalThumbs,
+  OpenImage,
+  ViewerImagesMeta,
+  viewerImageKey,
+  type ImageAnchor,
+} from "./Images";
 import { PendingTray, type LocalSendAttachments } from "./Queue";
 import { RememberDetails, RowState, useRowExpanded } from "./RowState";
 import { ScheduleCreate, ScheduleStrip } from "./pages";
@@ -319,6 +329,9 @@ export interface SessionScreenViewProps {
   onRefreshModels?: () => void;
   onExpandGroup: (groupId: string) => void;
   onScheduleRevealed?: () => void;
+  onOpenImageViewer?: (anchor: ImageAnchor) => void;
+  onNavigateImageViewer?: (delta: number) => void;
+  onCloseImageViewer?: () => void;
 }
 
 const noopStr = (_id: string) => undefined;
@@ -370,6 +383,9 @@ export function SessionScreenView({
   onRefreshModels,
   onExpandGroup,
   onScheduleRevealed,
+  onOpenImageViewer,
+  onNavigateImageViewer,
+  onCloseImageViewer,
 }: SessionScreenViewProps) {
   const sid = vm.sessionId;
   const header = vm.header;
@@ -602,39 +618,94 @@ export function SessionScreenView({
   const composerElRef = externalComposerRef ?? internalComposerRef;
   const { seen: dockSeen, closed: dockClosed } = getDockState(remote);
 
-  const [viewing, setViewing] = useState<number | undefined>(undefined);
   const [viewingShared, setViewingShared] = useState<SharedFilePreviewTarget | undefined>(undefined);
   const items = timeline?.items ?? EMPTY_ITEMS;
-  const pictures = useMemo(() => timelineImages(items), [items]);
+  const viewerImages = timeline?.viewerImages;
+  const viewerMetaByKey = useMemo(() => {
+    const map = new Map<string, SessionViewerImageView>();
+    for (const v of viewerImages ?? []) {
+      map.set(viewerImageKey(v.seq, v.eventImageIndex), v);
+    }
+    return map;
+  }, [viewerImages]);
+  const previewRefsByKey = useMemo(() => {
+    const map = new Map<string, ImageRef>();
+    const visit = (list: readonly SessionTimelineItem[]) => {
+      for (const item of list) {
+        switch (item.kind.case) {
+          case "userMessage":
+            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
+            break;
+          case "toolCall": {
+            const seq = item.kind.value.seq || item.seq;
+            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
+            break;
+          }
+          case "toolGroup":
+            for (const call of item.kind.value.calls) {
+              const seq = call.seq || item.seq;
+              call.images.forEach((ref, i) => map.set(viewerImageKey(seq, i), ref));
+            }
+            break;
+          case "generatedImages":
+            item.kind.value.images.forEach((ref, i) => map.set(viewerImageKey(item.seq, i), ref));
+            break;
+          case "quietScheduledGroup":
+            visit(item.kind.value.items);
+            break;
+        }
+      }
+    };
+    visit(items);
+    return map;
+  }, [items]);
   const openImage = useCallback(
-    (ref: ImageRef) => {
-      const i = pictures.findIndex((p) => p.ref === ref);
-      if (i >= 0) setViewing(i);
+    (anchor: ImageAnchor) => {
+      onOpenImageViewer?.(anchor);
     },
-    [pictures],
+    [onOpenImageViewer],
   );
+  const imageViewer = vm.imageViewer;
+  const currentViewerPreview = imageViewer?.currentImage
+    ? previewRefsByKey.get(viewerImageKey(imageViewer.currentImage.seq, imageViewer.currentImage.eventImageIndex))
+    : undefined;
 
-  const openSharedFile = useCallback((file: SharedFile, blob: Blob) => {
-    const preview = previewBlobForFile(blob, file.name);
-    if (!preview) {
-      saveBlobAsDownload(blob, file.name);
+  const openSharedFile = useCallback((file: SessionSharedFileItem, blob: Blob) => {
+    if (
+      file.webPreviewKind === SharedFileWebPreviewKind.UNSPECIFIED ||
+      !file.webPreviewMime
+    ) {
+      saveBlobAsDownload(blob, file.displayName || file.name);
       return;
     }
     setViewingShared({
       file,
       blob,
-      kind: preview.kind,
-      previewBlob: preview.blob,
-      path: file.path,
+      kind: file.webPreviewKind,
+      previewBlob: new Blob([blob], { type: file.webPreviewMime }),
     });
   }, []);
+
+  const sharedItemsById = useMemo(() => {
+    const map = new Map<string, SessionSharedFileItem>();
+    for (const item of items) {
+      if (item.kind.case === "sharedFiles") {
+        for (const f of item.kind.value.files) map.set(f.fileId, f);
+      }
+    }
+    return map;
+  }, [items]);
+  const sharedItemsRef = useRef(sharedItemsById);
+  sharedItemsRef.current = sharedItemsById;
 
   useEffect(() => {
     if (!remote) return;
     const files = sharedFilesOf(remote);
     files.setCurrentSession(sid);
     files.setAutoOpenHandler((targetSid, file, blob) => {
-      if (targetSid === sid) openSharedFile(file, blob);
+      if (targetSid !== sid) return;
+      const item = sharedItemsRef.current.get(file.fileId);
+      if (item) openSharedFile(item, blob);
     });
     return () => {
       files.setCurrentSession(undefined);
@@ -1097,7 +1168,8 @@ export function SessionScreenView({
 
   return (
     <SharedFileViewContext.Provider value={sharedFileCtx}>
-      <OpenImage.Provider value={openImage}>
+      <ViewerImagesMeta.Provider value={viewerMetaByKey}>
+        <OpenImage.Provider value={openImage}>
         <div className={"session" + (tab === "term" && !wide ? " termmode" : "")} ref={rootRef}>
           {headerBar}
           {remote && <ConnBar remote={remote} />}
@@ -1219,24 +1291,22 @@ export function SessionScreenView({
               }
             />
           )}
-          {viewing !== undefined && remote && (
+          {imageViewer?.open && (
             <ImageViewer
               remote={remote}
               sid={sid}
-              images={pictures}
-              start={viewing}
-              agent={agentLabel}
+              viewer={imageViewer}
+              previewRef={currentViewerPreview}
               title={title}
               wide={wide}
-              onClose={() => setViewing(undefined)}
-              showPath={(p) => shortenPath(p, header?.cwd ?? "", "")}
+              onNavigate={(delta) => onNavigateImageViewer?.(delta)}
+              onClose={() => onCloseImageViewer?.()}
             />
           )}
           {viewingShared && remote && (
             <SharedFilePreviewOverlay
               remote={remote}
               sessionId={sid}
-              agentName={agentLabel}
               wide={wide}
               target={viewingShared}
               onClose={() => setViewingShared(undefined)}
@@ -1285,6 +1355,7 @@ export function SessionScreenView({
           )}
         </div>
       </OpenImage.Provider>
+      </ViewerImagesMeta.Provider>
     </SharedFileViewContext.Provider>
   );
 }
@@ -1343,12 +1414,17 @@ export function SessionPage({
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const attachWhy = renderText(caps?.imageUploadBlockedReason);
+  const fileWhy = renderText(caps?.fileUploadBlockedReason);
   const tray = useTray(remote, sessionId, machineId, {
+    sessionId,
     maxImages: caps?.maxImages ?? 0,
     maxFiles: caps?.maxFiles ?? 0,
-    maxFileBytes: caps?.maxFileBytes ?? 0n,
     supportsFiles: !!caps?.supportsFiles,
+    galleryAcceptMime: caps?.galleryAcceptMime || undefined,
+    originalImageHint: renderText(caps?.originalImageHint),
+    fileMetadataNotice: renderText(caps?.fileMetadataNotice),
     blocked: attachWhy,
+    fileBlocked: fileWhy,
   });
   const drop = useDropPaste(tray, attachWhy, toastRef.current);
   const stash = getSendAttachments(remote);
@@ -1370,13 +1446,12 @@ export function SessionPage({
         eff.fileIds.map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
       pendingRestoreFiles.current.delete(eff.requestId);
       if (files.length) {
-        const fileIssue = remote.fileUploadIssue(machineId);
-        if (fileIssue) {
-          toastRef.current(fileIssue);
+        if (fileWhy) {
+          toastRef.current(fileWhy);
           return;
         }
       }
-      if (tray.files().length + files.length > tray.maxFiles) {
+      if (!tray.canFit(0, files.length).files) {
         toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
         return;
       }
@@ -1405,7 +1480,7 @@ export function SessionPage({
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
     });
-  }, [host, remote, sessionId, machineId, tray, stash]);
+  }, [host, remote, sessionId, machineId, fileWhy, tray, stash]);
 
   useEffect(() => {
     return host.onResendAttachments(sessionId, async (eff: SessionResendAttachmentsEffect) => {
@@ -1574,18 +1649,17 @@ export function SessionPage({
     }
     if (!mountedSession.current) return;
     if (files.length) {
-      const fileIssue = remote.fileUploadIssue(machineId);
-      if (fileIssue) {
-        toastRef.current(fileIssue);
+      if (fileWhy) {
+        toastRef.current(fileWhy);
         return;
       }
-      if (tray.files().length + files.length > tray.maxFiles) {
+      if (!tray.canFit(0, files.length).files) {
         toastRef.current(i18n.t("composer.restore_files_full", { count: files.length }));
         return;
       }
       pendingRestoreFiles.current.set(reqId, files);
     }
-    if ((it?.imageIds.length ?? 0) > 0 && tray.images().length + it!.imageIds.length > tray.max) {
+    if ((it?.imageIds.length ?? 0) > 0 && !tray.canFit(it!.imageIds.length, 0).images) {
       toastRef.current(
         i18n.t("composer.restore_images_full", { existing: tray.images().length, count: it!.imageIds.length }),
       );
@@ -1674,6 +1748,22 @@ export function SessionPage({
     [],
   );
   const onScheduleRevealed = useCallback(() => host.clearScheduleFocus(sessionId), [host, sessionId]);
+  const onOpenImageViewer = useCallback(
+    (anchor: ImageAnchor) => host.sessionImageViewerOpen(sessionId, anchor),
+    [host, sessionId],
+  );
+  const onNavigateImageViewer = useCallback(
+    (delta: number) => host.sessionImageViewerNavigate(sessionId, { delta }),
+    [host, sessionId],
+  );
+  const onCloseImageViewer = useCallback(() => host.sessionImageViewerClose(sessionId), [host, sessionId]);
+  const viewerOpenRef = useRef(false);
+  viewerOpenRef.current = !!vm.imageViewer?.open;
+  useEffect(() => {
+    return () => {
+      if (viewerOpenRef.current) host.sessionImageViewerClose(sessionId);
+    };
+  }, [host, sessionId]);
 
   return (
     <SessionScreenView
@@ -1723,6 +1813,9 @@ export function SessionPage({
       onRefreshModels={onRefreshModels}
       onExpandGroup={onExpandGroup}
       onScheduleRevealed={onScheduleRevealed}
+      onOpenImageViewer={onOpenImageViewer}
+      onNavigateImageViewer={onNavigateImageViewer}
+      onCloseImageViewer={onCloseImageViewer}
     />
   );
 }
@@ -1993,7 +2086,6 @@ const ChatBody = memo(function ChatBody({
   );
 
   const online = header?.computerOnline ?? true;
-  const mname = renderText(header?.computerName);
   const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
 
   const renderEntry = useCallback(
@@ -2006,7 +2098,6 @@ const ChatBody = memo(function ChatBody({
           lostAt={remote?.lostAt}
           awaitingApproval={awaitingApprovalTool}
           remote={remote}
-          machineName={mname}
           hasSharedFiles={hasSharedFiles}
           locale={locale}
           onTerminal={onTerminal}
@@ -2016,7 +2107,7 @@ const ChatBody = memo(function ChatBody({
         />
       </RowState>
     ),
-    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, mname, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
+    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
   );
 
   return (
@@ -2175,7 +2266,6 @@ const TimelineRow = memo(function TimelineRow({
   lostAt,
   awaitingApproval,
   remote,
-  machineName,
   hasSharedFiles,
   locale: _locale,
   localAttachments,
@@ -2189,7 +2279,6 @@ const TimelineRow = memo(function TimelineRow({
   lostAt?: number;
   awaitingApproval: boolean;
   remote?: Remote;
-  machineName: string;
   hasSharedFiles: boolean;
   locale: string;
   localAttachments?: Map<string, LocalSendAttachments>;
@@ -2200,29 +2289,22 @@ const TimelineRow = memo(function TimelineRow({
   switch (item.kind.case) {
     case "userMessage": {
       const m = item.kind.value;
-      const files = m.files.map((f, i) => ({
-        fileId: f.path || f.name || String(i),
-        name: f.name,
-        sizeBytes: f.sizeBytes,
-        path: f.path,
-      }));
-      const segs = splitPlaceholders(m.text, m.images);
       const caption = renderText(m.originCaption);
       return (
         <div className="me" data-msg-id={item.id}>
-          <ImageStrip refs={m.images} numbered />
-          <FileChips files={files} />
+          <ImageStrip refs={m.images} seq={item.seq} numbered />
+          <FileChips files={m.files} />
           {m.isScheduled ? (
             <ScheduleText key={item.id} text={m.text} meta={caption} />
           ) : (
-            segs.length > 0 && (
+            m.textSegments.length > 0 && (
               <div className="mo-text">
-                {segs.map((x, i) =>
-                  "text" in x ? (
-                    <span key={i}>{x.text}</span>
+                {m.textSegments.map((seg, i) =>
+                  seg.kind.case === "text" ? (
+                    <span key={i}>{seg.kind.value}</span>
                   ) : (
                     <span key={i} className="ichip">
-                      {i18n.t("image.placeholder", { index: x.image })}
+                      {renderText(seg.imageLabel)}
                     </span>
                   ),
                 )}
@@ -2257,45 +2339,44 @@ const TimelineRow = memo(function TimelineRow({
       return (
         <ToolCallView
           item={item.kind.value}
+          itemSeq={item.seq}
           online={online}
           lostAt={lostAt}
           awaitingApproval={awaitingApproval}
         />
       );
     case "toolGroup":
-      return <ToolGroupView group={item.kind.value} />;
+      return <ToolGroupView group={item.kind.value} itemSeq={item.seq} />;
     case "sharedFiles": {
       const sf = item.kind.value;
-      if (hasSharedFiles && remote) {
-        const files = sf.files.map((f) =>
-          create(SharedFileSchema, {
-            path: f.path,
-            name: f.name,
-            sizeBytes: f.sizeBytes,
-            fileId: f.fileId,
-          }),
-        );
+      if (hasSharedFiles) {
         return (
           <SharedFileCards
             remote={remote}
             sessionId={sessionId}
-            files={files}
-            machineName={machineName}
+            files={sf.files}
           />
         );
       }
       return (
-        <FileChips
-          files={sf.files.map((f, i) => ({
-            fileId: f.fileId || f.path || f.name || String(i),
-            name: f.name,
-            sizeBytes: f.sizeBytes,
-          }))}
-        />
+        <div className="file-chips">
+          {sf.files.map((f, i) => (
+            <FileChip
+              key={f.fileId || f.path || f.name || String(i)}
+              file={{
+                name: f.name,
+                displayName: f.displayName,
+                nameHead: f.nameHead,
+                nameTail: f.nameTail,
+                sizeText: renderText(f.sizeText),
+              }}
+            />
+          ))}
+        </div>
       );
     }
     case "generatedImages":
-      return <GenCard refs={item.kind.value.images} prompt={item.kind.value.revisedPrompt} />;
+      return <GenCard refs={item.kind.value.images} seq={item.seq} prompt={item.kind.value.revisedPrompt} />;
     case "asyncQuestion": {
       const aq = item.kind.value;
       return (

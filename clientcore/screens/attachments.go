@@ -73,6 +73,11 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		}
 	}
 
+	canPickImages := imagesAllowed && req.CurrentImages < caps.MaxImages
+	canPickFiles := filesAllowed && req.CurrentFiles < caps.MaxFiles
+	imagesPickBlocked := pickBlockedReason(canPickImages, caps.SupportsImages, caps.ImageUploadBlockedReason, text.KeyAttachmentMaxImages, caps.MaxImages)
+	filesPickBlocked := pickBlockedReason(canPickFiles, caps.SupportsFiles, caps.FileUploadBlockedReason, text.KeyAttachmentMaxFiles, caps.MaxFiles)
+
 	decisions, notice := attachments.EvaluateCandidates(caps, req.CurrentImages, req.CurrentFiles, req.Candidates)
 
 	var problems []*corev1.ImageProblemView
@@ -97,8 +102,8 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		GalleryAllowsVideo:       caps.SupportsFiles,
 		GalleryAcceptMime:        attachments.GalleryAcceptMime(caps.SupportsFiles),
 		LibraryRoom:              room,
-		CanPickImages:            imagesAllowed && req.CurrentImages < caps.MaxImages,
-		CanPickFiles:             filesAllowed && req.CurrentFiles < caps.MaxFiles,
+		CanPickImages:            canPickImages,
+		CanPickFiles:             canPickFiles,
 		CanPickGallery:           (imagesAllowed || filesAllowed) && room > 0,
 		ImageUploadBlockedReason: caps.ImageUploadBlockedReason,
 		FileUploadBlockedReason:  caps.FileUploadBlockedReason,
@@ -108,6 +113,24 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		Decisions:                decisions,
 		Notice:                   notice,
 		Problems:                 problems,
+		ImagesPickBlockedReason:  imagesPickBlocked,
+		FilesPickBlockedReason:   filesPickBlocked,
 		FailureSummary:           summary,
+	}
+}
+
+// pickBlockedReason explains why a picker is disabled: the machine-level reason when the
+// machine cannot accept that kind, otherwise the per-message limit. Nil when picking is
+// allowed or the kind is unsupported without a reason (the shell hides the picker then).
+func pickBlockedReason(canPick, supported bool, capReason *corev1.Text, limitKey string, limit int32) *corev1.Text {
+	switch {
+	case canPick:
+		return nil
+	case capReason != nil:
+		return capReason
+	case !supported:
+		return nil
+	default:
+		return text.Msg(limitKey, text.Int("count", int64(limit)))
 	}
 }

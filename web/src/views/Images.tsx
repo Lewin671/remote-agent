@@ -2,15 +2,9 @@ import * as i18n from "../i18n";
 import { t } from "../i18n";
 // Pictures in a session (client-v2 会话里的图片): previews under messages
 // and tool rows, the card of a generated image, and the viewer that
-// fetches the display copy on demand. Decrypted bytes are shown as blob:
-// URLs, each revoked as soon as nothing shows it.
+// fetches the display copy on demand. Viewer indexing, paging, source
+// labels, paths, and empty state come from Core's SessionImageViewerView.
 
-import { useRowExpanded } from "./RowState";
-import { create } from "@bufbuild/protobuf";
-import { ImageFormat, ImageRefSchema } from "../gen/remoteagent/v1/event_pb";
-import type { Tray, TrayItem } from "../attach";
-import { imageProblem } from "../image-problem";
-import { saveBlobAsDownload } from "../shared-files";
 import {
   createContext,
   useContext,
@@ -20,25 +14,39 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import type { Tray, TrayItem } from "../attach";
+import { renderText } from "../core/text";
+import type {
+  SessionImageViewerView,
+  SessionViewerImageView,
+} from "../gen/remoteagent/core/v1/session_view_pb";
 import type { ImageRef } from "../gen/remoteagent/v1/event_pb";
-import { ImageSync } from "../gen/remoteagent/v1/event_pb";
-import { hhmm } from "../model";
-import {
-  aspectOf,
-  baseName,
-  extOf,
-  matchesFormat,
-  mimeOf,
-  sizeText,
-  type SessionImage,
-} from "../imageview";
-import { errorText, type ImageResult, type Remote } from "../remote";
-import { Exp, GlassButton, useDialogFocus, useEscape, useRemote } from "../ui";
+import { ImageFormat, ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { ChevronLeft, ChevronRight, X } from "../icons";
+import { matchesFormat, mimeOf } from "../imageview";
+import { hhmm } from "../model";
+import { errorText, type ImageResult, type Remote } from "../remote";
+import { saveBlobAsDownload } from "../shared-files";
+import { Exp, GlassButton, useDialogFocus, useEscape, useRemote } from "../ui";
+import { useRowExpanded } from "./RowState";
 
-/** Opens the viewer at a picture; provided by the session page. */
-export const OpenImage = createContext<(ref: ImageRef) => void>(
+export interface ImageAnchor {
+  seq: bigint;
+  imageIndex: number;
+}
+
+export function viewerImageKey(seq: bigint, imageIndex: number): string {
+  return `${seq}:${imageIndex}`;
+}
+
+/** Opens the session image viewer anchored to an event image; provided by SessionScreenView. */
+export const OpenImage = createContext<(anchor: ImageAnchor) => void>(
   () => undefined,
+);
+
+/** Map of (seq, eventImageIndex) -> Core SessionViewerImageView for chat thumbnails and GenCard. */
+export const ViewerImagesMeta = createContext<ReadonlyMap<string, SessionViewerImageView>>(
+  new Map(),
 );
 
 /** A blob: URL for bytes, made while mounted and revoked after. Made in
@@ -81,6 +89,7 @@ function usePreview(ref: ImageRef): string | undefined {
 /** One preview, laid out at its own proportions before it loads. */
 export function Pic({
   image: r,
+  meta,
   height = 96,
   number,
   badge,
@@ -88,6 +97,7 @@ export function Pic({
   className = "",
 }: {
   image: ImageRef;
+  meta?: SessionViewerImageView;
   height?: number;
   number?: number;
   badge?: string;
@@ -95,10 +105,13 @@ export function Pic({
   className?: string;
 }) {
   const url = usePreview(r);
-  // height 0: as wide as the chat, at the image's proportions.
+  const aspect = height
+    ? (meta?.clampedAspectRatio || meta?.aspectRatio || 4 / 3)
+    : (meta?.aspectRatio || 4 / 3);
   const style: CSSProperties = height
-    ? previewGeometry(aspectOf(r), height)
-    : { aspectRatio: String(aspectOf(r)) };
+    ? previewGeometry(aspect, height)
+    : { aspectRatio: String(aspect) };
+  const name = meta?.displayName || (r.path ? r.path.split(/[\\/]/).pop() || r.path : "");
   if (r.sync === ImageSync.NAME_ONLY || (!url && r.sync !== ImageSync.SYNCED))
     return (
       <button
@@ -111,7 +124,7 @@ export function Pic({
         onClick={onOpen}
         aria-label={i18n.t("image.unsynced")}
       >
-        {i18n.t("image.unsynced")}{r.path && <code>{baseName(r.path)}</code>}
+        {i18n.t("image.unsynced")}{name && <code>{name}</code>}
       </button>
     );
   return (
@@ -119,7 +132,7 @@ export function Pic({
       className={"pic " + className}
       style={style}
       onClick={onOpen}
-      aria-label={r.path ? i18n.t("image.named", { name: baseName(r.path) }) : i18n.t("image.title")}
+      aria-label={name ? i18n.t("image.named", { name }) : i18n.t("image.title")}
     >
       {url && <img src={url} alt="" draggable={false} />}
       {number ? <span className="n">{number}</span> : null}
@@ -133,40 +146,50 @@ export function Pic({
 /** A row of previews: at most four, the rest folded into +N. */
 export function ImageStrip({
   refs,
+  seq = 0n,
+  anchors,
   numbered,
   className = "",
   height,
 }: {
   refs: ImageRef[];
+  seq?: bigint;
+  anchors?: readonly ImageAnchor[];
   numbered?: boolean;
   className?: string;
   height?: number;
 }) {
   const open = useContext(OpenImage);
+  const metaMap = useContext(ViewerImagesMeta);
   if (!refs.length) return null;
   const shown = refs.slice(0, 4);
   const more = refs.length - shown.length;
   return (
     <span className={"pics " + className}>
-      {shown.map((r, i) => (
-        <span key={i} className="picwrap">
-          <Pic
-            image={r}
-            height={height}
-            number={numbered && r.cliIndex ? r.cliIndex : undefined}
-            onOpen={() => open(r)}
-          />
-          {more > 0 && i === shown.length - 1 && (
-            <button
-              className="more"
-              onClick={() => open(r)}
-              aria-label={i18n.t("image.more", { count: more })}
-            >
-              +{more}
-            </button>
-          )}
-        </span>
-      ))}
+      {shown.map((r, i) => {
+        const anchor = anchors?.[i] ?? { seq, imageIndex: i };
+        const meta = metaMap.get(viewerImageKey(anchor.seq, anchor.imageIndex));
+        return (
+          <span key={i} className="picwrap">
+            <Pic
+              image={r}
+              meta={meta}
+              height={height}
+              number={numbered && r.cliIndex ? r.cliIndex : undefined}
+              onOpen={() => open(anchor)}
+            />
+            {more > 0 && i === shown.length - 1 && (
+              <button
+                className="more"
+                onClick={() => open(anchor)}
+                aria-label={i18n.t("image.more", { count: more })}
+              >
+                +{more}
+              </button>
+            )}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -174,33 +197,42 @@ export function ImageStrip({
 /** An image the agent made: full width, with its rewritten prompt. */
 export function GenCard({
   refs,
+  seq = 0n,
   prompt,
 }: {
   refs: ImageRef[];
+  seq?: bigint;
   prompt: string;
 }) {
   const open = useContext(OpenImage);
+  const metaMap = useContext(ViewerImagesMeta);
   const [shown, setShown] = useRowExpanded("image-prompt");
   return (
     <>
-      {refs.map((r, i) => (
-        <div key={i} className="gen-card">
-          <Pic image={r} className="lg" height={0} onOpen={() => open(r)} />
-          <div className="meta">
-            <span>{i18n.t("image.generated")}{sizeText(r) && ` · ${sizeText(r)}`}</span>
-            {prompt && i === 0 && (
-              <button
-                className="link"
-                onClick={() => setShown(!shown)}
-                aria-expanded={shown}
-              >
-                {i18n.t("image.prompt")}<Exp up={shown} />
-              </button>
-            )}
+      {refs.map((r, i) => {
+        const anchor = { seq, imageIndex: i };
+        const meta = metaMap.get(viewerImageKey(seq, i));
+        const label = renderText(meta?.sourceLabel) || i18n.t("image.generated");
+        const size = meta?.sizeText ?? "";
+        return (
+          <div key={i} className="gen-card">
+            <Pic image={r} meta={meta} className="lg" height={0} onOpen={() => open(anchor)} />
+            <div className="meta">
+              <span>{label}{size && ` · ${size}`}</span>
+              {prompt && i === 0 && (
+                <button
+                  className="link"
+                  onClick={() => setShown(!shown)}
+                  aria-expanded={shown}
+                >
+                  {i18n.t("image.prompt")}<Exp up={shown} />
+                </button>
+              )}
+            </div>
+            {shown && i === 0 && <div className="gen-prompt">{prompt}</div>}
           </div>
-          {shown && i === 0 && <div className="gen-prompt">{prompt}</div>}
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -225,9 +257,9 @@ type Load =
 
 /** Fetches the display copy of the picture shown, once per picture. */
 function useDisplay(
-  remote: Remote,
+  remote: Remote | undefined,
   sid: string,
-  img: SessionImage | undefined,
+  img: SessionViewerImageView | undefined,
   attempt: number,
   local?: TrayItem,
 ): Load {
@@ -240,19 +272,21 @@ function useDisplay(
     const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format];
     return { kind: "ok", blob: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: mimeOf(format) }), width: p.width, height: p.height, format };
   }, [local?.key, local?.prepared, local?.state]);
+  const imageId = img?.ref?.imageId ?? "";
+  const sync = img?.ref?.sync ?? ImageSync.UNSPECIFIED;
+  const hasDisplayCopy = !!img?.hasDisplayCopy;
   useEffect(() => {
     if (local) return;
-    if (!img) return;
-    const r = img.ref;
-    if (r.sync === ImageSync.NAME_ONLY) return setState({ kind: "name-only" });
-    if (r.sync !== ImageSync.SYNCED || !r.imageId)
-      return setState({ kind: "preview-only" });
-    const cached = remote.cachedImage(sid, r.imageId);
+    if (!img?.ref) return;
+    if (sync === ImageSync.NAME_ONLY) return setState({ kind: "name-only" });
+    if (!hasDisplayCopy || !imageId) return setState({ kind: "preview-only" });
+    if (!remote) return setState({ kind: "idle" });
+    const cached = remote.cachedImage(sid, imageId);
     if (cached) return setState(cached);
     if (remote.conn !== "online") return setState({ kind: "offline" });
     let alive = true;
     setState({ kind: "loading" });
-    remote.getImage(sid, r.imageId).then(
+    remote.getImage(sid, imageId).then(
       (res) => alive && setState(res),
       (e) =>
         alive &&
@@ -265,14 +299,8 @@ function useDisplay(
       alive = false;
     };
     // Offline, it waits for the connection and then fetches by itself.
-  }, [remote, sid, local ? undefined : img, attempt, remote.conn === "online", local?.prepared, local?.state]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, sid, local ? undefined : imageId, sync, hasDisplayCopy, attempt, remote?.conn === "online"]); // eslint-disable-line react-hooks/exhaustive-deps
   return localLoad ?? state;
-}
-
-function sourceText(img: SessionImage, agent: string): string {
-  if (img.kind === "generated") return i18n.t("image.generated");
-  if (img.kind === "tool") return i18n.t("image.tool_source", { agent });
-  return i18n.t("image.user_source");
 }
 
 /** What to say over the picture while its display copy is not shown. */
@@ -300,74 +328,135 @@ function loadNote(l: Load): string {
   return "";
 }
 
-/** The viewer: the session's pictures one at a time. The preview shows
- * enlarged at once and gives way to the display copy when it arrives. */
+/** The viewer: Core-driven session pictures (via SessionImageViewerView),
+ * a downloaded shared-file image, or local draft pictures. */
 export function ImageViewer({
   remote,
-  sid,
-  images,
-  start,
-  agent,
-  title,
+  sid = "",
+  viewer,
+  previewRef,
+  title = "",
   wide,
+  onNavigate,
   onClose,
-  showPath = (p) => p,
   draft,
+  draftStart = 0,
   sharedFile,
 }: {
-  remote: Remote;
-  sid: string;
-  images: SessionImage[];
-  start: number;
-  agent: string;
-  title: string;
+  remote?: Remote;
+  sid?: string;
+  viewer?: SessionImageViewerView;
+  previewRef?: ImageRef;
+  title?: string;
   wide: boolean;
+  onNavigate?: (delta: number) => void;
   onClose: () => void;
-  // Paths as the chat writes them: relative to the session's folder.
-  showPath?: (path: string) => string;
   draft?: Tray;
+  draftStart?: number;
   sharedFile?: { blob: Blob; name: string; path: string; sizeText: string };
 }) {
-  const [i, setI] = useState(start);
+  const [draftIdx, setDraftIdx] = useState(draftStart);
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState("");
-  const index = images.length > 0 ? Math.min(i, images.length - 1) : 0;
-  const img = images[index];
-  const local = draft?.images()[index];
-  const problem = local?.state === "failed" ? imageProblem(local.error ?? "") : undefined;
+  const [zoom, setZoom] = useState(1);
+
+  const draftImages = draft?.images() ?? [];
+  const draftIndex = draftImages.length > 0 ? Math.min(draftIdx, draftImages.length - 1) : 0;
+  const local = draft ? draftImages[draftIndex] : undefined;
+  const problem = local?.state === "failed" ? local.problem : undefined;
+
+  const img = !sharedFile && !draft ? viewer?.currentImage : undefined;
+  const hasPrev = draft ? draftIndex > 0 : !!viewer?.hasPrev;
+  const hasNext = draft ? draftIndex < draftImages.length - 1 : !!viewer?.hasNext;
+  const positionText = draft
+    ? `${draftIndex + 1} / ${draftImages.length}`
+    : renderText(viewer?.positionText);
+  const activeKey = sharedFile
+    ? `sf:${sharedFile.name}`
+    : draft
+      ? `draft:${draftIndex}`
+      : `session:${viewer?.currentIndex ?? 0}`;
+
+  useEffect(() => {
+    setZoom(1);
+    setNote("");
+  }, [activeKey]);
+
   const fetched = useDisplay(remote, sid, img, attempt, local);
   const load: Load = sharedFile
     ? { kind: "ok", blob: sharedFile.blob, width: 0, height: 0, format: ImageFormat.UNSPECIFIED }
     : fetched;
   const full = useObjectUrl(load.kind === "ok" ? load.blob : undefined);
-  const preview = usePreview(img?.ref ?? NO_REF);
-  const go = (d: number) => {
+  const preview = usePreview(previewRef ?? img?.ref ?? NO_REF);
+
+  const step = (d: number) => {
+    if (d < 0 && !hasPrev) return;
+    if (d > 0 && !hasNext) return;
     setNote("");
-    setI((x) => Math.max(0, Math.min(images.length - 1, x + d)));
+    if (draft) {
+      setDraftIdx((x) => Math.max(0, Math.min(draftImages.length - 1, x + d)));
+    } else {
+      onNavigate?.(d);
+    }
   };
+
   useEscape(onClose);
   const box = useRef<HTMLDivElement>(null);
   useDialogFocus(box);
   useEffect(() => {
+    if (sharedFile) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") go(-1);
-      else if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
   });
-  // Swipes: sideways to page, down to close. Two fingers zoom.
-  const touch = useRef<{ x: number; y: number; d?: number } | undefined>(
-    undefined,
-  );
-  const [zoom, setZoom] = useState(1);
-  useEffect(() => setZoom(1), [i]);
-  if (!img && !sharedFile) return null;
+
+  // Swipes: sideways to page (dispatched on pointerup/settle), down to close. Two fingers zoom.
+  const touch = useRef<{ x: number; y: number; d?: number } | undefined>(undefined);
+
+  if (!sharedFile && !draft && (!viewer || viewer.totalCount === 0 || !img)) {
+    const emptyText = renderText(viewer?.emptyText) || i18n.t("image.viewer_empty");
+    return (
+      <div
+        className={wide ? "lightbox" : "viewer"}
+        role="dialog"
+        aria-modal="true"
+        aria-label={i18n.t("image.view")}
+        ref={box}
+      >
+        <div className={wide ? "lb-top" : "vbar"}>
+          {!wide && (
+            <GlassButton label={i18n.t("common.close")} onClick={onClose}>
+              <X />
+            </GlassButton>
+          )}
+          <span>{emptyText}</span>
+          {wide ? (
+            <GlassButton label={i18n.t("common.close")} onClick={onClose}>
+              <X />
+            </GlassButton>
+          ) : (
+            <span />
+          )}
+        </div>
+        <div className="vimg">
+          <div className="vnote">{emptyText}</div>
+        </div>
+      </div>
+    );
+  }
+  if (draft && !local) return null;
+
+  const sourceLabel = draft
+    ? i18n.t("image.draft")
+    : renderText(img?.sourceLabel);
   const name = sharedFile
     ? sharedFile.name
-    : img.ref.path
-      ? baseName(img.ref.path)
-      : `image-${i + 1}.${extOf(load.kind === "ok" ? load.format : img.ref.format)}`;
+    : draft
+      ? (local?.file instanceof File ? local.file.name : `image-${draftIndex + 1}.jpg`)
+      : img?.displayName || `image-${(viewer?.currentIndex ?? 0) + 1}.${img?.fileExtension || "jpg"}`;
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
     // Agent-sent files are always saved as application/octet-stream, never with the preview MIME.
@@ -416,13 +505,13 @@ export function ImageViewer({
       className="vimg"
       onPointerDown={(e) => (touch.current = { x: e.clientX, y: e.clientY })}
       onPointerUp={(e) => {
-        const t = touch.current;
+        const pt = touch.current;
         touch.current = undefined;
-        if (!t || zoom > 1) return;
-        const dx = e.clientX - t.x;
-        const dy = e.clientY - t.y;
-        if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy))
-          go(dx < 0 ? 1 : -1);
+        if (!pt || zoom > 1) return;
+        const dx = e.clientX - pt.x;
+        const dy = e.clientY - pt.y;
+        if (!sharedFile && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy))
+          step(dx < 0 ? 1 : -1);
         else if (!wide && dy > 90) onClose();
       }}
       onTouchMove={(e) => {
@@ -431,9 +520,9 @@ export function ImageViewer({
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY,
         );
-        const t = touch.current ?? { x: 0, y: 0 };
-        if (t.d) setZoom((z) => Math.max(1, Math.min(4, (z * d) / t.d!)));
-        touch.current = { ...t, d };
+        const pt = touch.current ?? { x: 0, y: 0 };
+        if (pt.d) setZoom((z) => Math.max(1, Math.min(4, (z * d) / pt.d!)));
+        touch.current = { ...pt, d };
       }}
       onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
     >
@@ -458,6 +547,8 @@ export function ImageViewer({
       )}
     </div>
   );
+  const tsMs = img ? Number(img.timestampMs) : 0;
+  const metaTail = [img?.sizeText ?? "", title, tsMs ? hhmm(tsMs) : ""].filter(Boolean).join(" · ");
   const info = (() => {
     if (sharedFile) {
       return (
@@ -466,7 +557,7 @@ export function ImageViewer({
           {sharedFile.path && (
             <>
               {" · "}
-              <code>{showPath(sharedFile.path)}</code>
+              <code>{sharedFile.path}</code>
             </>
           )}
           {" · "}
@@ -477,25 +568,27 @@ export function ImageViewer({
     if (local) {
       return (
         <>
-          <b>{i18n.t("image.position", { index: index + 1, count: images.length })}</b>
+          <b>{i18n.t("image.position", { index: draftIndex + 1, count: draftImages.length })}</b>
           {local.file instanceof File && <div>{local.file.name}</div>}
-          <div>{problem?.message ?? (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
+          <div>{(problem && renderText(problem.message)) || (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
         </>
       );
     }
     return (
       <>
-        {sourceText(img, agent)}
-        {img.ref.path && (
+        {sourceLabel}
+        {img?.displayPath && (
           <>
             {" · "}
-            <code>{showPath(img.ref.path)}</code>
+            <code>{img.displayPath}</code>
           </>
         )}
-        {" · "}
-        {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
-          .filter(Boolean)
-          .join(" · ")}
+        {metaTail && (
+          <>
+            {" · "}
+            {metaTail}
+          </>
+        )}
       </>
     );
   })();
@@ -511,7 +604,7 @@ export function ImageViewer({
       >
         <div className="lb-top">
           <span>
-            {sharedFile ? sharedFile.name : `${index + 1} / ${images.length} · ${draft ? i18n.t("image.draft") : sourceText(img, agent)}`}
+            {sharedFile ? sharedFile.name : `${positionText} · ${sourceLabel}`}
           </span>
           <GlassButton label={i18n.t("common.close")} onClick={onClose}>
             <X />
@@ -519,32 +612,32 @@ export function ImageViewer({
         </div>
         <div className="lb-mid">
           {!sharedFile && (
-          <GlassButton label={i18n.t("image.previous")} onClick={() => go(-1)} disabled={i === 0}>
-            <ChevronLeft />
-          </GlassButton>
+            <GlassButton label={i18n.t("image.previous")} onClick={() => step(-1)} disabled={!hasPrev}>
+              <ChevronLeft />
+            </GlassButton>
           )}
           <div className="lb-img">{picture}</div>
           {!sharedFile && (
-          <GlassButton label={i18n.t("image.next")} onClick={() => go(1)} disabled={i >= images.length - 1}>
-            <ChevronRight />
-          </GlassButton>
+            <GlassButton label={i18n.t("image.next")} onClick={() => step(1)} disabled={!hasNext}>
+              <ChevronRight />
+            </GlassButton>
           )}
         </div>
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
           {note && <span className="lb-note">{note}</span>}
           {draft ? draftActions : <>
-          <button className="glass" onClick={save} disabled={!full}>
-            {t("common.save")}
-          </button>
-          <button
-            className="glass"
-            onClick={() => void copy()}
-            disabled={!blob || typeof ClipboardItem === "undefined"}
-          >
-            {t("common.copy")}
-          </button>
-          <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
+            <button className="glass" onClick={save} disabled={!full}>
+              {t("common.save")}
+            </button>
+            <button
+              className="glass"
+              onClick={() => void copy()}
+              disabled={!blob || typeof ClipboardItem === "undefined"}
+            >
+              {t("common.copy")}
+            </button>
+            <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
           </>}
         </div>
       </div>
@@ -562,7 +655,7 @@ export function ImageViewer({
           <X />
         </GlassButton>
         <b>
-          {sharedFile ? sharedFile.name : `${index + 1} / ${images.length}`}
+          {sharedFile ? sharedFile.name : positionText}
         </b>
         <span />
       </div>
@@ -571,32 +664,28 @@ export function ImageViewer({
         {sharedFile && (
           <div>
             <b>{sharedFile.name}</b>
-            {sharedFile.path && <code>{showPath(sharedFile.path)}</code>}
+            {sharedFile.path && <code>{sharedFile.path}</code>}
             <div>{sharedFile.sizeText}</div>
           </div>
         )}
         {!sharedFile && local && info}
-        {!sharedFile && !local && (
+        {!sharedFile && !local && img && (
           <div>
-            <b>{sourceText(img, agent)}</b>
-            {img.ref.path && <code>{showPath(img.ref.path)}</code>}
-            <div>
-              {[sizeText(img.ref), title, img.time ? hhmm(img.time) : ""]
-                .filter(Boolean)
-                .join(" · ")}
-            </div>
-            {img.prompt && <div className="vprompt">{img.prompt}</div>}
+            <b>{sourceLabel}</b>
+            {img.displayPath && <code>{img.displayPath}</code>}
+            {metaTail && <div>{metaTail}</div>}
+            {img.revisedPrompt && <div className="vprompt">{img.revisedPrompt}</div>}
           </div>
         )}
         {note && <div>{note}</div>}
       </div>
       <div className="vact">
         {draft ? draftActions : <>
-        <button className="glass" onClick={save} disabled={!full}>
-          {t("common.save")}
-        </button>
-        {canShare && <button className="glass" onClick={() => void share()}>{i18n.t("image.share")}</button>}
-        <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
+          <button className="glass" onClick={save} disabled={!full}>
+            {t("common.save")}
+          </button>
+          {canShare && <button className="glass" onClick={() => void share()}>{i18n.t("image.share")}</button>}
+          <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
         </>}
       </div>
     </div>
@@ -606,11 +695,16 @@ export function ImageViewer({
 /** Draft and message pictures use the same zooming, paging and dialog. Only
  * their source/available actions differ; drafts never fetch a server image. */
 export function DraftImageViewer({ remote, tray, start, onClose }: { remote: Remote; tray: Tray; start: number; onClose: () => void }) {
-  const images: SessionImage[] = tray.images().map((item) => ({
-    ref: create(ImageRefSchema, { imageId: item.key, path: item.file instanceof File ? item.file.name : "", width: item.prepared?.width, height: item.prepared?.height }),
-    seq: 0n, time: 0, kind: "user",
-  }));
-  return <ImageViewer remote={remote} sid="" images={images} start={start} agent="" title={i18n.t("image.draft")} wide={matchMedia("(min-width: 900px)").matches} onClose={onClose} draft={tray} />;
+  return (
+    <ImageViewer
+      remote={remote}
+      title={i18n.t("image.draft")}
+      wide={matchMedia("(min-width: 900px)").matches}
+      onClose={onClose}
+      draft={tray}
+      draftStart={start}
+    />
+  );
 }
 
 async function toPng(blob: Blob): Promise<Blob> {

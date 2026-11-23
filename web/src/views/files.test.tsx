@@ -4,7 +4,6 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
-import { SentFileSchema } from "../gen/remoteagent/v1/event_pb";
 import {
   SessionPendingTrayViewSchema,
   SessionTrayGroupKind,
@@ -16,16 +15,35 @@ import {
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { PendingTray } from "./Queue";
 import { Tray } from "../attach";
+import { createTestAttachmentEval, type TestMachineCaps } from "../test/attachment-eval";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { FileChip } from "./Files";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
 let host: HTMLElement;
-afterEach(() => { act(() => root?.unmount()); host?.remove(); vi.restoreAllMocks(); });
+const evalHosts: Array<{ close: () => void }> = [];
+afterEach(() => {
+  act(() => root?.unmount());
+  host?.remove();
+  while (evalHosts.length) evalHosts.pop()!.close();
+  vi.restoreAllMocks();
+});
 function mount(node: React.ReactNode) { host = document.createElement("div"); document.body.append(host); root = createRoot(host); act(() => root!.render(node)); }
-function tray() {
-  const t = new Tray(async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 }), async (_m, p) => ({ imageId: p.format === "file" ? "" : "i", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined);
-  t.machineId = "mac"; t.fileSupported = true; return t;
+function tray(caps: TestMachineCaps = { fileUpload: true }) {
+  const evalHost = createTestAttachmentEval(["mac"], caps);
+  evalHosts.push(evalHost);
+  const t = new Tray(
+    async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 }),
+    async (_m, p) => ({ imageId: p.format === "file" ? "" : "i", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }),
+    () => undefined,
+    6,
+    evalHost.evaluate,
+  );
+  t.machineId = "mac";
+  t.fileSupported = !!caps.fileUpload;
+  t.galleryAcceptMime = caps.fileUpload ? "image/*,video/*" : "image/*";
+  t.maxFiles = caps.maxFiles ?? 6;
+  return Object.assign(t, { setCaps: evalHost.setCaps });
 }
 it("offers 照片和视频 / 文件, and selecting an image under 文件 never compresses it", async () => {
   const t = tray(); const prepare = vi.spyOn(t as unknown as { prepare: () => Promise<unknown> }, "prepare");
@@ -51,7 +69,7 @@ it("does not draw the hidden file inputs again when the button is drawn again", 
   expect(host.querySelectorAll("input[type=file]")).toHaveLength(2);
 });
 it("keeps the old direct image picker without file capability", async () => {
-  const t = tray(); t.fileSupported = false; mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
+  const t = tray({ fileUpload: false }); mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   const click = vi.spyOn(host.querySelector<HTMLInputElement>('input[accept]')!, "click");
   await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
   expect(click).toHaveBeenCalledOnce(); expect(host.querySelector('[role="menu"]')).toBeNull();
@@ -70,7 +88,7 @@ it("routes mixed drops and non-image paste into independent trays", async () => 
   expect(t.images()).toHaveLength(1); expect(t.files().map((f) => f.name)).toEqual(["x.csv", "x.zip"]);
 });
 it("uses one chip for progress, failed retry/remove and sent files", async () => {
-  const file = create(SentFileSchema, { fileId: "f", name: "报告 very-long-name.pdf", sizeBytes: 1024n });
+  const file = { fileId: "f", name: "报告 very-long-name.pdf", displayName: "报告 very-long-name.pdf", nameHead: "报告 very-long-n", nameTail: "ame.pdf", sizeText: "1.0 KB" };
   const retry = vi.fn(); const remove = vi.fn();
   mount(<FileChip file={file} state="failed" error="连接中断" onRetry={retry} onRemove={remove} />);
   expect(host.textContent).toContain("1.0 KB"); expect(host.textContent).toContain(message("attachment.upload_failed"));
@@ -210,13 +228,13 @@ it("says at once that a video over the file limit is too big, and uploads nothin
   expect(t.note).toContain(message("attachment.named_size_limit", {"name":"long.mp4","limit":100}));
   expect(upload).not.toHaveBeenCalled();
   // At the file count limit, a video is not taken either.
-  t.maxFiles = 1;
+  t.setCaps({ fileUpload: true, maxFiles: 1 });
   await choose("照片和视频", [sized("a.mp4", "video/mp4", 10), sized("b.mp4", "video/mp4", 10)]);
   expect(t.files().map((f) => f.name)).toEqual(["a.mp4"]);
   expect(t.note).toContain(message("attachment.max_files", {"count":1}));
 });
 it("offers only images from the library when the computer cannot take files", async () => {
-  const t = tray(); t.fileSupported = false;
+  const t = tray({ fileUpload: false });
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   expect(host.querySelector(`[aria-label="${message("image.add")}"]`)).toBeTruthy();
   // ＋ opens the library at once, which lists images only.

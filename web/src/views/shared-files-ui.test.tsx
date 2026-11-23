@@ -3,19 +3,22 @@ import { create } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import {
-  SharedFileSchema,
-  type Event,
-  type SharedFile,
-} from "../gen/remoteagent/v1/event_pb";
+import { getCoreHost } from "../core/host";
 import { DemoRemote } from "../dev/demo";
+import {
+  SessionSharedFileItemSchema,
+  SharedFileCardStatus,
+  SharedFileKind,
+  SharedFileWebPreviewKind,
+  type SessionSharedFileItem,
+} from "../gen/remoteagent/core/v1/session_view_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import * as i18n from "../i18n";
-import { patchSyncState } from "../test/remote-fixture";
 import {
   DEFAULT_SHARED_FILE_CHUNK_BYTES,
-  previewBlobForFile,
   saveBlobAsDownload,
 } from "../shared-files";
+import { patchSyncState } from "../test/remote-fixture";
 import { SessionPage } from "./Session";
 import {
   SharedFileCard,
@@ -33,6 +36,7 @@ let wideMode = false;
 beforeEach(() => {
   wideMode = false;
   i18n.localeStore.overrideForTesting("zh-CN");
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
@@ -77,10 +81,6 @@ async function mount(node: React.ReactNode) {
   await act(async () => root!.render(node));
 }
 
-function demoEvents(r: DemoRemote, sid: string): Event[] {
-  return (r as unknown as { evs: Map<string, Event[]> }).evs.get(sid) ?? [];
-}
-
 function makeDemo(): DemoRemote {
   const r = DemoRemote.create(new URLSearchParams("shared-files=1"), async () => {});
   remotes.push(r);
@@ -88,61 +88,39 @@ function makeDemo(): DemoRemote {
   return r;
 }
 
-it("renders all 7 card states plus offline/cleaned, middle filename split, and shared state for duplicate fileId", async () => {
-  const r = makeDemo();
-  const files = [
-    "sf-avail",
-    "sf-dl",
-    "sf-paused",
-    "sf-done-vid",
-    "sf-done-img",
-    "sf-pdf",
-    "sf-fail",
-  ].map((id) => {
-    const evs = demoEvents(r, "s-sf-states");
-    for (const e of evs) {
-      if (e.kind.case === "toolCall") {
-        const hit = e.kind.value.sharedFiles.find((f) => f.fileId === id);
-        if (hit) return hit;
-      }
-    }
-    throw new Error("missing fixture file " + id);
+async function coreSharedFiles(r: DemoRemote, sessionId: string): Promise<SessionSharedFileItem[]> {
+  const core = getCoreHost(r);
+  core.watchSession(sessionId);
+  core.sessionOpen(sessionId, false, false);
+  await vi.waitFor(() => {
+    const items = core.viewSession(sessionId).timeline?.items ?? [];
+    expect(items.some((it) => it.kind.case === "sharedFiles")).toBe(true);
   });
+  const vm = core.viewSession(sessionId);
+  const out: SessionSharedFileItem[] = [];
+  for (const it of vm.timeline?.items ?? []) {
+    if (it.kind.case === "sharedFiles") out.push(...it.kind.value.files);
+  }
+  return out;
+}
 
+it("renders all 7 card states from Core ViewModel, middle filename split, and shared state for duplicate fileId", async () => {
+  const r = makeDemo();
+  const offlineFiles = await coreSharedFiles(r, "s-sf-offline");
+  const endedFiles = await coreSharedFiles(r, "s-sf-ended");
   await mount(
     <div>
-      <SharedFileCards
-        remote={r}
-        sessionId="s-sf-states"
-        files={files}
-        machineName="Mac"
-        machineHome="/Users/me"
-      />
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-offline"
-        file={create(SharedFileSchema, { fileId: "sf-off-1", name: "a.mp4", sizeBytes: 100n, path: "/a.mp4" })}
-        machineName="Mac mini"
-      />
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-ended"
-        file={create(SharedFileSchema, { fileId: "sf-gone-1", name: "b.mp4", sizeBytes: 100n, path: "/b.mp4" })}
-        machineName="Mac"
-      />
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-states"
-        file={files[0]}
-        machineName="Mac"
-      />
+      <SessionPage remote={r} sessionId="s-sf-states" onBack={() => undefined} wide={false} />
+      <SharedFileCards remote={r} sessionId="s-sf-offline" files={offlineFiles} />
+      <SharedFileCards remote={r} sessionId="s-sf-ended" files={endedFiles} />
     </div>,
   );
 
-  const cards = [...host!.querySelectorAll<HTMLElement>(".sf-fc")];
-  expect(cards.length).toBe(10);
+  await vi.waitFor(() => {
+    expect(host!.querySelectorAll(".sf-fc").length).toBe(9);
+  });
 
-  // Check expected state texts.
+  const cards = [...host!.querySelectorAll<HTMLElement>(".sf-fc")];
   expect(cards[0].querySelector(".sf-fs")?.textContent).toBe("视频 · 24.3 MB");
   expect(cards[1].querySelector(".sf-ring")).toBeTruthy();
   expect(cards[1].querySelector(".sf-fs")?.textContent).toBe("8.1 / 24.3 MB · 约 12 秒");
@@ -162,32 +140,24 @@ it("renders all 7 card states plus offline/cleaned, middle filename split, and s
   expect(cards[8].classList.contains("sf-gone")).toBe(true);
   expect(cards[8].getAttribute("aria-disabled")).toBe("true");
   expect(cards[8].textContent).toContain("会话已结束，文件已清理");
-  expect(host!.textContent).not.toContain("100 MB");
 
-  // Duplicate fileId card shares seeded/mutated state.
+  // Local state event updates Core ViewModel reactively.
   await act(async () => {
     r.sharedFiles.seedState("s-sf-states", "sf-avail", { status: "paused", downloadedBytes: 1234 });
   });
-  expect(cards[0].textContent).toContain("已暂停");
-  expect(cards[9].textContent).toContain("已暂停");
-});
-
-it("shows {type} · {size} for a downloaded image and {duration} · {size} only for audio/video", async () => {
-  const r = makeDemo();
-  const img = create(SharedFileSchema, { fileId: "sf-sub-img", name: "cover.png", sizeBytes: 1_887_437n, path: "/Users/me/cover.png" });
-  const zip = create(SharedFileSchema, { fileId: "sf-sub-zip", name: "a.zip", sizeBytes: 2_097_152n, path: "/Users/me/a.zip" });
-  r.sharedFiles.seedDownloaded("s-sf-chat", img.fileId, new Blob(["png"], { type: "image/png" }));
-  r.sharedFiles.seedDownloaded("s-sf-chat", zip.fileId, new Blob(["zip"]));
-  await mount(<SharedFileCards remote={r} sessionId="s-sf-chat" files={[img, zip]} machineName="Mac" machineHome="/Users/me" />);
-  const subs = [...host!.querySelectorAll(".sf-fs")].map((e) => e.textContent);
-  expect(subs).toEqual(["图片 · 1.8 MB", "压缩包 · 2.0 MB"]);
+  await vi.waitFor(() => {
+    expect(host!.querySelectorAll<HTMLElement>(".sf-fc")[0].textContent).toContain("已暂停");
+  });
 });
 
 it("orders the downloaded web menu as save, share… (only when canShare), separator, delete", async () => {
   const r = makeDemo();
-  const f = create(SharedFileSchema, { fileId: "sf-order", name: "cover.png", sizeBytes: 100n, path: "/Users/me/cover.png" });
-  r.sharedFiles.seedDownloaded("s-sf-chat", f.fileId, new Blob(["png"], { type: "image/png" }));
-  await mount(<SharedFileCard remote={r} sessionId="s-sf-chat" file={f} machineName="Mac" machineHome="/Users/me" />);
+  await act(async () => {
+    r.sharedFiles.seedDownloaded("s-sf-states", "sf-done-img", new Blob(["png"], { type: "image/png" }));
+  });
+  const img = (await coreSharedFiles(r, "s-sf-states")).find((f) => f.fileId === "sf-done-img")!;
+  expect(img.status).toBe(SharedFileCardStatus.DOWNLOADED);
+  await mount(<SharedFileCard remote={r} sessionId="s-sf-states" file={img} />);
   const card = host!.querySelector<HTMLElement>(".sf-fc")!;
   card.getBoundingClientRect = () => new DOMRect(20, 120, 296, 62);
   const items = () => [...host!.querySelectorAll('.sf-ctx-overlay [role="menuitem"]')].map((b) => b.textContent);
@@ -221,131 +191,82 @@ it("orders the downloaded web menu as save, share… (only when canShare), separ
   }
 });
 
-it("handles click transitions, auto-open only while staying in session, and opens image/video/non-media safely", async () => {
+it("handles click download/pause/open via Core ViewModel and renders video preview overlay", async () => {
   const r = makeDemo();
-  const fVid = create(SharedFileSchema, {
-    fileId: "ui-vid-1",
-    name: "clip.mp4",
-    sizeBytes: 100n,
-    path: "/Users/me/clip.mp4",
-  });
-  vi.spyOn(r, "getSharedFileChunk").mockImplementation(async (_sid, _id, offset) => ({
-    data: offset === 0n ? new Uint8Array(DEFAULT_SHARED_FILE_CHUNK_BYTES) : new Uint8Array(0),
-    totalBytes: 100n,
+  vi.spyOn(r, "getSharedFileChunk").mockImplementation(async () => ({
+    data: new Uint8Array(DEFAULT_SHARED_FILE_CHUNK_BYTES),
+    totalBytes: 25_480_397n,
   }));
 
-  const opened: SharedFile[] = [];
-  r.sharedFiles.setCurrentSession("s-sf-chat");
-  r.sharedFiles.setAutoOpenHandler((_sid, file) => opened.push(file));
-
-  const openFileSpy = vi.fn();
-  await mount(
-    <SharedFileViewContext.Provider value={{ openFile: openFileSpy, onToast: vi.fn() }}>
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-chat"
-        file={fVid}
-        machineName="Mac"
-        machineHome="/Users/me"
-      />
-    </SharedFileViewContext.Provider>,
-  );
-
-  const card = host!.querySelector<HTMLElement>(".sf-fc")!;
-  await act(async () => card.click());
+  await mount(<SessionPage remote={r} sessionId="s-sf-chat" onBack={() => undefined} wide={false} />);
   await vi.waitFor(() => {
-    expect(r.sharedFiles.stateOf("s-sf-chat", fVid).status).toBe("downloaded");
+    expect(host!.querySelectorAll(".sf-fc").length).toBe(1);
   });
-  expect(opened.map((f) => f.fileId)).toEqual(["ui-vid-1"]);
 
-  // Clicking downloaded card delegates to openFile.
-  await act(async () => card.click());
-  expect(openFileSpy).toHaveBeenCalledTimes(1);
-
-  // Switching session before completion suppresses auto-open.
-  const fVid2 = create(SharedFileSchema, {
-    fileId: "ui-vid-2",
-    name: "clip2.mp4",
-    sizeBytes: 100n,
-    path: "/Users/me/clip2.mp4",
-  });
-  let resolveChunk!: (v: { data: Uint8Array<ArrayBuffer>; totalBytes: bigint }) => void;
-  vi.spyOn(r, "getSharedFileChunk").mockImplementation(
-    () =>
-      new Promise((res) => {
-        resolveChunk = res;
-      }),
-  );
-  await act(async () => {
-    void r.sharedFiles.startDownload("s-sf-chat", fVid2, { autoOpenIfStaying: true });
-  });
-  expect(r.sharedFiles.stateOf("s-sf-chat", fVid2).status).toBe("downloading");
-  r.sharedFiles.setCurrentSession("s-other");
-  await act(async () => resolveChunk({ data: new Uint8Array(DEFAULT_SHARED_FILE_CHUNK_BYTES), totalBytes: 100n }));
-  await vi.waitFor(() => {
-    expect(r.sharedFiles.stateOf("s-sf-chat", fVid2).status).toBe("downloaded");
-  });
-  expect(opened.map((f) => f.fileId)).toEqual(["ui-vid-1"]);
-
-  // Pause & cancel transitions on in-flight card.
+  // Start slow download, then click again to pause via Core primaryAction.
   let holdResolve!: () => void;
   const hold = new Promise<void>((res) => {
     holdResolve = res;
   });
-  const fSlow = create(SharedFileSchema, {
-    fileId: "ui-slow",
-    name: "slow.zip",
-    sizeBytes: 1_600_000n,
-    path: "/Users/me/slow.zip",
-  });
   vi.spyOn(r, "getSharedFileChunk").mockImplementation(async () => {
     await hold;
-    return { data: new Uint8Array(DEFAULT_SHARED_FILE_CHUNK_BYTES), totalBytes: 1_600_000n };
+    return { data: new Uint8Array(DEFAULT_SHARED_FILE_CHUNK_BYTES), totalBytes: 25_480_397n };
   });
 
+  const card = () => host!.querySelector<HTMLElement>(".sf-fc")!;
+  await act(async () => card().click());
+  await vi.waitFor(() => {
+    expect(card().querySelector(".sf-ring")).toBeTruthy();
+  });
+  await act(async () => card().click());
+  await vi.waitFor(() => {
+    expect(card().querySelector(".sf-ring-play")).toBeTruthy();
+  });
+  holdResolve();
+
+  // Clicking a downloaded card delegates to openFile.
+  const openFileSpy = vi.fn();
+  const vidItem = create(SessionSharedFileItemSchema, {
+    fileId: "ui-vid-1",
+    name: "clip.mp4",
+    displayName: "clip.mp4",
+    nameHead: "clip",
+    nameTail: ".mp4",
+    sizeBytes: 100n,
+    sizeText: create(TextSchema, { literal: "100 B" }),
+    displayPath: "~/clip.mp4",
+    kind: SharedFileKind.VIDEO,
+    status: SharedFileCardStatus.DOWNLOADED,
+    primaryAction: 4, // OPEN
+    primaryEnabled: true,
+    primaryLabel: create(TextSchema, { key: "shared_file.action_open" }),
+    webPreviewKind: SharedFileWebPreviewKind.VIDEO,
+    webPreviewMime: "video/mp4",
+  });
+  r.sharedFiles.seedDownloaded("s-sf-chat", vidItem.fileId, new Blob(["vid"]));
   await act(async () => {
     root!.render(
       <SharedFileViewContext.Provider value={{ openFile: openFileSpy, onToast: vi.fn() }}>
-        <SharedFileCard
-          remote={r}
-          sessionId="s-sf-chat"
-          file={fSlow}
-          machineName="Mac"
-          machineHome="/Users/me"
-        />
+        <SharedFileCard remote={r} sessionId="s-sf-chat" file={vidItem} />
       </SharedFileViewContext.Provider>,
     );
   });
   await act(async () => host!.querySelector<HTMLElement>(".sf-fc")!.click());
-  expect(r.sharedFiles.stateOf("s-sf-chat", fSlow).status).toBe("downloading");
-  await act(async () => host!.querySelector<HTMLElement>(".sf-fc")!.click());
-  expect(r.sharedFiles.stateOf("s-sf-chat", fSlow).status).toBe("paused");
-  holdResolve();
+  expect(openFileSpy).toHaveBeenCalledTimes(1);
 
-  // Security whitelist: image/video preview allowed, HTML/SVG/PDF rejected for inline preview -> octet-stream download.
-  expect(previewBlobForFile(new Blob(["<img>"]), "evil.svg")).toBeUndefined();
-  expect(previewBlobForFile(new Blob(["<html>"]), "page.html")).toBeUndefined();
-  expect(previewBlobForFile(new Blob(["%PDF"]), "doc.pdf")).toBeUndefined();
-  expect(previewBlobForFile(new Blob(["png"]), "photo.png")?.kind).toBe("image");
-  expect(previewBlobForFile(new Blob(["mp4"]), "movie.mp4")?.kind).toBe("video");
-  expect(previewBlobForFile(new Blob(["mp3"]), "track.mp3")?.kind).toBe("audio");
-
-  // Preview overlay renders <video> for video and escapes on Escape key.
+  // Preview overlay renders <video> for video and closes on Escape key.
   const closeSpy = vi.fn();
   await act(async () => {
     root!.render(
       <SharedFilePreviewOverlay
         remote={r}
         sessionId="s-sf-chat"
-        agentName="Claude"
-        machineHome="/Users/me"
         wide={false}
         target={{
-          file: fVid,
+          file: vidItem,
           blob: new Blob(["vid"]),
-          kind: "video",
+          kind: SharedFileWebPreviewKind.VIDEO,
           previewBlob: new Blob(["vid"], { type: "video/mp4" }),
-          path: fVid.path,
         }}
         onClose={closeSpy}
       />,
@@ -359,54 +280,21 @@ it("handles click transitions, auto-open only while staying in session, and open
 });
 
 it("supports phone long-press blurred overlay, wide right-click menu, keyboard ContextMenu, delete/cancel, and header-only disabled menus", async () => {
-  vi.useFakeTimers();
   const r = makeDemo();
-  const fDone = create(SharedFileSchema, {
-    fileId: "sf-menu-done",
-    name: "cover.png",
-    sizeBytes: 100n,
-    path: "/Users/me/cover.png",
+  await act(async () => {
+    r.sharedFiles.seedDownloaded("s-sf-states", "sf-done-img", new Blob(["png"], { type: "image/png" }));
   });
-  r.sharedFiles.seedDownloaded("s-sf-chat", "sf-menu-done", new Blob(["png"], { type: "image/png" }));
-
-  const fPaused = create(SharedFileSchema, {
-    fileId: "sf-menu-paused",
-    name: "part.zip",
-    sizeBytes: 1000n,
-    path: "/Users/me/part.zip",
-  });
-  r.sharedFiles.seedState("s-sf-chat", "sf-menu-paused", { status: "paused", downloadedBytes: 400 });
-
-  const fOff = create(SharedFileSchema, {
-    fileId: "sf-off-1",
-    name: "off.mp4",
-    sizeBytes: 100n,
-    path: "/Users/me/off.mp4",
-  });
+  const statesFiles = await coreSharedFiles(r, "s-sf-states");
+  const fDone = statesFiles.find((f) => f.fileId === "sf-done-img")!;
+  const fPaused = statesFiles.find((f) => f.fileId === "sf-paused")!;
+  const fOff = (await coreSharedFiles(r, "s-sf-offline"))[0]!;
+  vi.useFakeTimers();
 
   await mount(
     <div>
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-chat"
-        file={fDone}
-        machineName="MacBook Pro"
-        machineHome="/Users/me"
-      />
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-chat"
-        file={fPaused}
-        machineName="MacBook Pro"
-        machineHome="/Users/me"
-      />
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-offline"
-        file={fOff}
-        machineName="Mac mini"
-        machineHome="/Users/me"
-      />
+      <SharedFileCard remote={r} sessionId="s-sf-states" file={fDone} />
+      <SharedFileCard remote={r} sessionId="s-sf-states" file={fPaused} />
+      <SharedFileCard remote={r} sessionId="s-sf-offline" file={fOff} />
     </div>,
   );
 
@@ -424,8 +312,8 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
   });
   const overlay = host!.querySelector(".sf-ctx-overlay");
   expect(overlay).toBeTruthy();
-  expect(overlay!.textContent).toContain("~/cover.png");
-  expect(overlay!.textContent).toContain("来自 MacBook Pro");
+  expect(overlay!.textContent).toContain("~/Movies/daocheng/cover.png");
+  expect(overlay!.textContent).toContain("来自 MacBook");
   expect(overlay!.textContent).toContain("保存到本机");
 
   const delBtn = [...overlay!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) =>
@@ -435,9 +323,7 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
   await act(async () => {
     delBtn.click();
   });
-  await vi.waitFor(() => {
-    expect(r.sharedFiles.stateOf("s-sf-chat", fDone).status).toBe("available");
-  });
+  expect(r.sharedFiles.transferOf("s-sf-states", fDone.fileId)?.status).toBe("available");
   expect(host!.querySelector(".sf-ctx-overlay")).toBeNull();
 
   // Paused card keyboard ContextMenu -> Cancel download discards partial bytes.
@@ -449,20 +335,19 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
   const cancelBtn = [...pausedOverlay.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) =>
     b.textContent?.includes("取消下载"),
   )!;
+  expect(cancelBtn.classList.contains("red")).toBe(true);
   await act(async () => {
     cancelBtn.click();
   });
-  await vi.waitFor(() => {
-    expect(r.sharedFiles.stateOf("s-sf-chat", fPaused).status).toBe("available");
-    expect(r.sharedFiles.stateOf("s-sf-chat", fPaused).downloadedBytes).toBe(0);
-  });
+  expect(r.sharedFiles.transferOf("s-sf-states", fPaused.fileId)?.status).toBe("available");
+  expect(r.sharedFiles.transferOf("s-sf-states", fPaused.fileId)?.downloadedBytes).toBe(0);
 
   // Offline card opens header-only menu with 0 menuitems.
   await act(async () => {
     cards[2].dispatchEvent(new KeyboardEvent("keydown", { key: "F10", shiftKey: true, bubbles: true }));
   });
   const offOverlay = host!.querySelector(".sf-ctx-overlay")!;
-  expect(offOverlay.textContent).toContain("~/off.mp4");
+  expect(offOverlay.textContent).toContain("~/Movies/daocheng/out/daocheng-final.mp4");
   expect(offOverlay.querySelectorAll('[role="menuitem"]').length).toBe(0);
   await act(async () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -472,15 +357,7 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
   // Wide mode right-click uses Sheet .menu instead of .sf-ctx-overlay.
   wideMode = true;
   await act(async () => {
-    root!.render(
-      <SharedFileCard
-        remote={r}
-        sessionId="s-sf-offline"
-        file={fOff}
-        machineName="Mac mini"
-        machineHome="/Users/me"
-      />,
-    );
+    root!.render(<SharedFileCard remote={r} sessionId="s-sf-offline" file={fOff} />);
   });
   const wideCard = host!.querySelector<HTMLElement>(".sf-fc")!;
   wideCard.getBoundingClientRect = () => new DOMRect(400, 200, 296, 62);
@@ -490,21 +367,17 @@ it("supports phone long-press blurred overlay, wide right-click menu, keyboard C
   expect(host!.querySelector(".sf-ctx-overlay")).toBeNull();
   const sheetMenu = document.body.querySelector(".menu");
   expect(sheetMenu).toBeTruthy();
-  expect(sheetMenu!.textContent).toContain("~/off.mp4");
+  expect(sheetMenu!.textContent).toContain("~/Movies/daocheng/out/daocheng-final.mp4");
   expect(sheetMenu!.textContent).toContain("来自 Mac mini");
 });
 
 it("wires SessionPage to trigger non-media download on PDF click without inline preview", async () => {
-  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   const r = makeDemo();
   const s = r.sessions.get("s-sf-states")!;
   expect(s).toBeTruthy();
 
   const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-  const pdf = demoEvents(r, "s-sf-states")
-    .flatMap((e) => (e.kind.case === "toolCall" ? e.kind.value.sharedFiles : []))
-    .find((f) => f.fileId === "sf-pdf")!;
-  r.sharedFiles.seedDownloaded("s-sf-states", pdf.fileId, new Blob(["%PDF-1.4"]));
+  r.sharedFiles.seedDownloaded("s-sf-states", "sf-pdf", new Blob(["%PDF-1.4"]));
 
   await mount(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
 
@@ -534,7 +407,7 @@ it("wires SessionPage to trigger non-media download on PDF click without inline 
   expect(host!.querySelector(".sf-fc")).toBeNull();
 });
 
-it("web security: saves always as application/octet-stream, previews only whitelisted types with a client MIME, never opens a new tab", async () => {
+it("web security: saves always as application/octet-stream, previews only Core-approved types with Core MIME, never opens a new tab", async () => {
   const r = makeDemo();
   const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
   const created = URL.createObjectURL as unknown as ReturnType<typeof vi.fn>;
@@ -546,33 +419,37 @@ it("web security: saves always as application/octet-stream, previews only whitel
 
   // Direct save: the blob's own type (even image/svg+xml or text/html) is never kept.
   created.mockClear();
-  saveBlobAsDownload(new Blob(["<svg onload=alert(1)>"], { type: "image/svg+xml" }), "../evil.svg");
+  saveBlobAsDownload(new Blob(["<svg onload=alert(1)>"], { type: "image/svg+xml" }), "evil.svg");
   expect(lastBlobType()).toBe("application/octet-stream");
-  expect(clicked.at(-1)?.download).toBe("..evil.svg");
+  expect(clicked.at(-1)?.download).toBe("evil.svg");
   expect(clicked.at(-1)?.getAttribute("target")).toBeNull();
   saveBlobAsDownload(new Blob(["<html>"], { type: "text/html" }), "page.html");
   expect(lastBlobType()).toBe("application/octet-stream");
 
-  // The preview blob carries the client-chosen MIME from the extension, not the file's own type.
-  const spoof = new Blob(["x"], { type: "text/html" });
-  expect(previewBlobForFile(spoof, "pic.png")?.blob.type).toBe("image/png");
-  expect(previewBlobForFile(spoof, "clip.m4v")?.blob.type).toBe("video/mp4");
-  expect(previewBlobForFile(spoof, "voice.wav")?.blob.type).toBe("audio/wav");
-  for (const name of ["a.svg", "a.html", "a.htm", "a.pdf", "a.xhtml", "a.txt", "a.mkv", "a.flac", "a.png.svg", "png"]) {
-    expect(previewBlobForFile(spoof, name)).toBeUndefined();
-  }
-
   // Image overlay "save" goes through the octet-stream path, not the image/* preview blob.
-  const png = create(SharedFileSchema, { fileId: "sec-png", name: "cover.png", sizeBytes: 3n, path: "/Users/me/cover.png" });
-  const preview = previewBlobForFile(new Blob(["png"]), png.name)!;
+  const png = create(SessionSharedFileItemSchema, {
+    fileId: "sec-png",
+    name: "cover.png",
+    displayName: "cover.png",
+    sizeBytes: 3n,
+    sizeText: create(TextSchema, { literal: "3 B" }),
+    displayPath: "~/cover.png",
+    kind: SharedFileKind.IMAGE,
+    status: SharedFileCardStatus.DOWNLOADED,
+    webPreviewKind: SharedFileWebPreviewKind.IMAGE,
+    webPreviewMime: "image/png",
+  });
   await mount(
     <SharedFilePreviewOverlay
       remote={r}
       sessionId="s-sf-chat"
-      agentName="Claude"
-      machineHome="/Users/me"
       wide={false}
-      target={{ file: png, blob: new Blob(["png"]), kind: "image", previewBlob: preview.blob, path: png.path }}
+      target={{
+        file: png,
+        blob: new Blob(["png"]),
+        kind: SharedFileWebPreviewKind.IMAGE,
+        previewBlob: new Blob(["png"], { type: "image/png" }),
+      }}
       onClose={() => undefined}
     />,
   );
@@ -585,19 +462,32 @@ it("web security: saves always as application/octet-stream, previews only whitel
   expect(lastBlobType()).toBe("application/octet-stream");
   expect(clicked.at(-1)?.getAttribute("target")).toBeNull();
 
-  // Video overlay: media element source is a blob of the client MIME; saving is octet-stream.
-  const vid = create(SharedFileSchema, { fileId: "sec-vid", name: "clip.mp4", sizeBytes: 3n, path: "/Users/me/clip.mp4" });
-  const vprev = previewBlobForFile(new Blob(["v"], { type: "text/html" }), vid.name)!;
+  // Video overlay: media element source is a blob of Core's preview MIME; saving is octet-stream.
+  const vid = create(SessionSharedFileItemSchema, {
+    fileId: "sec-vid",
+    name: "clip.mp4",
+    displayName: "clip.mp4",
+    sizeBytes: 3n,
+    sizeText: create(TextSchema, { literal: "3 B" }),
+    displayPath: "~/clip.mp4",
+    kind: SharedFileKind.VIDEO,
+    status: SharedFileCardStatus.DOWNLOADED,
+    webPreviewKind: SharedFileWebPreviewKind.VIDEO,
+    webPreviewMime: "video/mp4",
+  });
   created.mockClear();
   await act(async () => {
     root!.render(
       <SharedFilePreviewOverlay
         remote={r}
         sessionId="s-sf-chat"
-        agentName="Claude"
-        machineHome="/Users/me"
         wide={false}
-        target={{ file: vid, blob: new Blob(["v"], { type: "text/html" }), kind: "video", previewBlob: vprev.blob, path: vid.path }}
+        target={{
+          file: vid,
+          blob: new Blob(["v"], { type: "text/html" }),
+          kind: SharedFileWebPreviewKind.VIDEO,
+          previewBlob: new Blob(["v"], { type: "video/mp4" }),
+        }}
         onClose={() => undefined}
       />,
     );

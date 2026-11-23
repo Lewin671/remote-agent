@@ -1,16 +1,27 @@
 import { t as message } from "./i18n";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Tray, type Prepared } from "./attach";
+import { createTestAttachmentEval, type TestMachineCaps } from "./test/attachment-eval";
+
+const evalHosts: Array<{ close: () => void }> = [];
+function makeEval(caps: TestMachineCaps = {}) {
+  const h = createTestAttachmentEval(undefined, caps);
+  evalHosts.push(h);
+  return h;
+}
 
 // These uploads and decoders are local promises. Advance their timers instead
 // of waiting 50 ms at every vi.waitFor poll. Real network suites keep real time.
 beforeEach(() => { vi.useFakeTimers(); });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => {
+  while (evalHosts.length) evalHosts.pop()!.close();
+  vi.useRealTimers();
+});
 
 const png = (n = 10): Prepared => ({ bytes: new Uint8Array(n), format: "png", width: 2, height: 1 });
 const file = (name: string) => new Blob([name], { type: "image/png" });
 
-function setup(opts: { failUpload?: (n: number) => boolean; slow?: boolean } = {}) {
+function setup(opts: { failUpload?: (n: number) => boolean; slow?: boolean; fileUpload?: boolean } = {}) {
   const uploads: { machine: string; n: number }[] = [];
   let n = 0;
   const prepare = vi.fn(async (_f: Blob, original: boolean) => png(original ? 100 : 10));
@@ -20,11 +31,13 @@ function setup(opts: { failUpload?: (n: number) => boolean; slow?: boolean } = {
     if (opts.slow) await new Promise((r) => setTimeout(r, 30));
     progress(p.bytes.length, p.bytes.length);
     if (opts.failUpload?.(i)) throw new Error("连接超时");
-    return { imageId: "id" + i, expiresMs: Number.MAX_SAFE_INTEGER };
+    return { imageId: p.format === "file" ? "" : "id" + i, fileId: p.format === "file" ? "f" + i : undefined, expiresMs: Number.MAX_SAFE_INTEGER };
   });
-  const tray = new Tray(prepare, upload, () => undefined);
+  const evalHost = makeEval({ fileUpload: opts.fileUpload });
+  const tray = new Tray(prepare, upload, () => undefined, 6, evalHost.evaluate);
   tray.machineId = "mac";
-  return { tray, uploads, prepare, upload };
+  if (opts.fileUpload) tray.fileSupported = true;
+  return { tray, uploads, prepare, upload, evalHost };
 }
 
 describe("images waiting to be sent", () => {
@@ -92,6 +105,8 @@ it("tells the machine to drop an image that was removed or replaced", async () =
       return { imageId: id, expiresMs: Number.MAX_SAFE_INTEGER };
     },
     () => undefined,
+    6,
+    makeEval().evaluate,
   );
   tray.machineId = "mac";
   tray.add([file("a"), file("b")]);
@@ -118,6 +133,8 @@ it("never sends the compressed bytes when 原图 is on and the original failed (
       return { imageId: "id" + uploaded.length, expiresMs: Number.MAX_SAFE_INTEGER };
     },
     () => undefined,
+    6,
+    makeEval().evaluate,
   );
   tray.machineId = "mac";
   tray.add([file("a")]);
@@ -170,8 +187,9 @@ it("serializes bitmap preparation across drafts and skips superseded queued work
     return png(original ? 100 : 10);
   });
   const upload = vi.fn(async () => ({ imageId: "id", expiresMs: Number.MAX_SAFE_INTEGER }));
-  const first = new Tray(prepare, upload, () => undefined);
-  const second = new Tray(prepare, upload, () => undefined);
+  const ev = makeEval().evaluate;
+  const first = new Tray(prepare, upload, () => undefined, 6, ev);
+  const second = new Tray(prepare, upload, () => undefined, 6, ev);
   first.machineId = second.machineId = "m";
   first.add([file("a"), file("b")]);
   await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
@@ -194,7 +212,7 @@ it("serializes bitmap preparation across drafts and skips superseded queued work
 
 it("continues preparing the next image after a failed decoder", async () => {
   let n = 0;
-  const tray = new Tray(async () => { if (++n === 1) throw new Error("bad"); return png(); }, async () => ({ imageId: "ok", expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined);
+  const tray = new Tray(async () => { if (++n === 1) throw new Error("bad"); return png(); }, async () => ({ imageId: "ok", expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined, 6, makeEval().evaluate);
   tray.machineId = "m";
   tray.add([file("bad"), file("good")]);
   await vi.waitFor(() => expect(tray.items.map((it) => it.state)).toEqual(["failed", "done"]));
@@ -224,7 +242,7 @@ it("expires at the exact deadline and uploads fresh bytes without preparing them
     vi.setSystemTime(1000);
     let uploads = 0;
     const prepared = vi.fn(async () => png());
-    const tray = new Tray(prepared, async () => ({ imageId: "image-" + ++uploads, expiresMs: Date.now() + 100 }), () => undefined);
+    const tray = new Tray(prepared, async () => ({ imageId: "image-" + ++uploads, expiresMs: Date.now() + 100 }), () => undefined, 6, makeEval().evaluate);
     tray.machineId = "m";
     tray.add([file("a")]);
     // The serial preparation and upload consist only of microtasks.
@@ -256,7 +274,7 @@ it("puts the original option and source file back, then prepares in that mode", 
 it("sends files as-is, keeps image and file limits independent, and frees upload buffers", async () => {
   const prepare = vi.fn(async () => png());
   const seen: Prepared[] = [];
-  const tray = new Tray(prepare, async (_m, p) => { seen.push(p); return { imageId: p.format === "file" ? "" : "img", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }; }, () => undefined);
+  const tray = new Tray(prepare, async (_m, p) => { seen.push(p); return { imageId: p.format === "file" ? "" : "img", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }; }, () => undefined, 6, makeEval({ fileUpload: true }).evaluate);
   tray.fileSupported = true; tray.machineId = "mac";
   tray.add(Array.from({ length: 6 }, () => file("img")));
   const raw = new File(["EXIF\x00data"], "photo.png", { type: "image/png" });
@@ -274,11 +292,11 @@ it("sends files as-is, keeps image and file limits independent, and frees upload
 });
 
 it("rejects unsupported, oversized and long-named files before reading any bytes", () => {
-  const { tray, upload } = setup();
+  const { tray, upload, evalHost } = setup();
   const source = new File(["data"], "x.csv");
   const read = vi.spyOn(source, "arrayBuffer");
   tray.addFiles([source]); expect(tray.note).toBe(message("attachment.update_required"));
-  tray.fileSupported = true; tray.maxFileBytes = 3;
+  tray.fileSupported = true; evalHost.setCaps({ fileUpload: true, maxFileBytes: 3 });
   tray.addFiles([source]); expect(tray.note).toContain("超过单个文件");
   tray.addFiles([new File([], "中".repeat(86))]); expect(tray.note).toBe(message("attachment.filename_limit"));
   expect(tray.items).toHaveLength(0); expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
@@ -290,7 +308,7 @@ it("retries failed files, reuploads after expiry and machine switch, and restore
   const tray = new Tray(async () => png(), async (m) => {
     machines.push(m); if (++n === 1) throw new Error("网络中断");
     return { imageId: "", fileId: "f" + n, expiresMs: Date.now() + 60000 };
-  }, () => undefined);
+  }, () => undefined, 6, makeEval({ fileUpload: true }).evaluate);
   tray.fileSupported = true; tray.machineId = "mac";
   const source = new File(["x,y"], "data.csv"); tray.addFiles([source]);
   await vi.waitFor(() => expect(tray.failed()).toBe(true)); expect(tray.ready()).toBe(false);
@@ -308,7 +326,7 @@ it("retries failed files, reuploads after expiry and machine switch, and restore
 it("explains unreadable dropped file entries and never uploads substituted empty bytes", async () => {
   const source = new File([], "unreadable");
   vi.spyOn(source, "arrayBuffer").mockRejectedValue(new Error("EISDIR"));
-  const { tray, upload } = setup(); tray.fileSupported = true;
+  const { tray, upload } = setup({ fileUpload: true });
   tray.addFiles([source]);
   await vi.waitFor(() => expect(tray.failed()).toBe(true));
   expect(tray.items[0].error).toBe(message("attachment.read_failed"));
@@ -321,13 +339,14 @@ it.each(["retarget", "retry", "expiry", "restore", "remove"])("invalidates file 
   const aborted: string[] = [];
   let release!: () => void;
   let n = 0;
+  const ev = makeEval({ fileUpload: true }).evaluate;
   const make = (blocked = false) => {
     const tray = new Tray(async () => png(), async (_m, _p, _progress, started) => {
       const id = "f" + ++n;
       started?.(() => { aborted.push(id); expect(tray.ready()).toBe(false); expect(tray.fileIds()).not.toContain(id); });
       if (blocked) await new Promise<void>((resolve) => { release = resolve; });
       return { imageId: "", fileId: id, expiresMs: Number.MAX_SAFE_INTEGER };
-    }, () => undefined);
+    }, () => undefined, 6, ev);
     tray.machineId = "A"; tray.fileSupported = true;
     return tray;
   };
@@ -360,4 +379,18 @@ it("rejects file restoration synchronously when the refreshed capability is off"
   expect(tray.note).toContain(message("session.update_computer"));
   expect(tray.items).toHaveLength(0);
   expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
+});
+
+it("blocks opening pickers at the limit and blocks sending when a draft exceeds lowered caps", async () => {
+  const { tray, evalHost } = setup({ fileUpload: true });
+  evalHost.setCaps({ fileUpload: true, maxImages: 2, maxFiles: 1 });
+  tray.add([file("a"), file("b")]);
+  tray.addFiles([new File(["x"], "one.txt", { type: "text/plain" })]);
+  await vi.waitFor(() => expect(tray.ready()).toBe(true));
+  expect(tray.checkPickBlocked(true, "")).toBe(message("attachment.max_files", { count: 1 }));
+  expect(tray.checkPickBlocked(false, "")).toBe(message("attachment.max_images", { count: 2 }));
+  expect(tray.checkSendBlocked()).toBe("");
+  // Lower the computer's image cap below the already-uploaded draft.
+  evalHost.setCaps({ fileUpload: true, maxImages: 1, maxFiles: 1 });
+  expect(tray.checkSendBlocked()).toBe(message("attachment.images_limit", { limit: 1, count: 1 }));
 });

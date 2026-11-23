@@ -99,15 +99,18 @@ function CommandRow({ name, title, text, className = "single", mark, meta }: { n
 
 export function ToolCallView({
   item,
+  itemSeq = 0n,
   online = true,
   lostAt,
   awaitingApproval = false,
 }: {
   item: SessionToolCallItem;
+  itemSeq?: bigint;
   online?: boolean;
   lostAt?: number;
   awaitingApproval?: boolean;
 }) {
+  const imageSeq = item.seq || itemSeq;
   const since = Number(item.sinceMs);
   const frozenAt = Number(item.frozenAtMs);
   const isRunning = item.status === SessionToolStatus.RUNNING;
@@ -159,7 +162,7 @@ export function ToolCallView({
           mark={<span className="sp faint" role="img" aria-label={i18n.t("tools.background")}><LoaderCircle /></span>}
           meta={<span className="muted">{label}</span>}
         />
-        <ImageStrip refs={item.images} className="under-tool" />
+        <ImageStrip refs={item.images} seq={imageSeq} className="under-tool" />
       </>
     );
   }
@@ -179,14 +182,17 @@ export function ToolCallView({
           </>
         }
       />
-      <ImageStrip refs={item.images} className="under-tool" />
+      <ImageStrip refs={item.images} seq={imageSeq} className="under-tool" />
     </>
   );
 }
 
-export function ToolGroupView({ group }: { group: SessionToolGroupItem }) {
+export function ToolGroupView({ group, itemSeq = 0n }: { group: SessionToolGroupItem; itemSeq?: bigint }) {
   const [open, setOpen] = useRowExpanded("tools");
   const images = group.calls.flatMap((c) => c.images);
+  const anchors = group.calls.flatMap((c) =>
+    c.images.map((_, i) => ({ seq: c.seq || itemSeq, imageIndex: i })),
+  );
   return (
     <>
       <div>
@@ -203,7 +209,7 @@ export function ToolGroupView({ group }: { group: SessionToolGroupItem }) {
           </div>
         )}
       </div>
-      <ImageStrip refs={images} className="under-tool" />
+      <ImageStrip refs={images} anchors={anchors} className="under-tool" />
     </>
   );
 }

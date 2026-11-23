@@ -2,7 +2,6 @@
 import { afterEach, expect, it } from "vitest";
 import vectors from "./locale-vectors.json";
 import { localeStore, resolveLocale, t } from "./index";
-import { imageFailureLine } from "../image-problem";
 
 afterEach(() => { localeStore.overrideForTesting(); localStorage.removeItem("ra.language"); });
 it("uses the shared language matching contract", () => {
@@ -15,12 +14,11 @@ it("pins stage 0 to Chinese, including saved English and English system preferen
 });
 it("renders reviewed-source Chinese byte for byte and draft English only with an override", () => {
   expect(t("common.copy")).toBe("复制");
-  expect(imageFailureLine(["pixels", "decode"])).toBe("2 张图没加上，点图片看原因");
+  expect(t("image.attach_failed", { count: 2 })).toBe("2 张图没加上，点图片看原因");
   localeStore.overrideForTesting("en");
   expect(t("common.copy")).toBe("Copy");
-  expect(imageFailureLine(["pixels", "decode"])).toBe("2 images could not be attached. Tap an image for details.");
-  // Error interpretation and retryability stay independent of language.
-  expect(imageFailureLine(["pixels", "pixels"])).toBe(t("image.image_dimensions_are_too_large_resize_it_and_retry"));
+  expect(t("image.attach_failed", { count: 2 })).toBe("2 images could not be attached. Tap an image for details.");
+  expect(t("image.image_dimensions_are_too_large_resize_it_and_retry")).toBe("Image dimensions are too large. Resize it and retry.");
 });
 it("selects native plural categories for zero, one, two and a large count", () => {
   expect(t("image.attach_failed", { count: 1 }, "en")).toBe("1 image could not be attached. Tap it for details.");

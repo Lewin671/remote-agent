@@ -1,13 +1,23 @@
-import { ImageError } from "./imagecodec/error";
+import { create, type MessageInitShape } from "@bufbuild/protobuf";
+import { renderText } from "./core/text";
+import {
+  AttachmentCandidateInputSchema,
+  AttachmentCandidateRoute,
+  ImageProblemInputSchema,
+  ImageProblemKind,
+  type AttachmentEvalScreenRequestSchema,
+  type AttachmentEvalViewModel,
+  type ImageProblemInput,
+  type ImageProblemView,
+} from "./gen/remoteagent/core/v1/attachments_view_pb";
+import type { Text } from "./gen/remoteagent/core/v1/text_pb";
 import * as i18n from "./i18n";
-export function fileUploadUpdateRequired(): string { return i18n.t("attachment.update_required"); }
+import { ImageError } from "./imagecodec/error";
 
-// Images chosen to go with a message (architecture §17 从客户端发图片):
-// each is prepared on this device (compressed, or the original with its
-// metadata removed) and uploaded to the machine on its own as soon as it
-// is chosen. The message can go only once every image is on the machine;
-// a failed image stays marked until it is retried or removed, so a
-// message never goes out with fewer images than shown.
+// Images and files chosen to go with a message (architecture §17):
+// Core evaluates candidate routing, count/size/filename limits, and image error
+// classification via AttachmentEval; Tray owns local preparation, chunked
+// upload orchestration, generation invalidation, and draft caching.
 
 export interface Prepared {
   bytes: Uint8Array;
@@ -24,9 +34,24 @@ export interface UploadedImage { imageId: string; fileId?: string; expiresMs: nu
 
 export type Upload = (machineId: string, p: Prepared, progress: (done: number, total: number) => void, started?: (abort: () => void) => void) => Promise<UploadedImage>;
 
+export type AttachmentEvaluator = (
+  req: MessageInitShape<typeof AttachmentEvalScreenRequestSchema>,
+) => AttachmentEvalViewModel;
+
+export interface CandidateEntry {
+  file?: Blob;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  isDirectory?: boolean;
+}
+
 export interface TrayItem {
   kind?: "file";
+  isVideo?: boolean;
   name?: string;
+  displayName?: string;
+  formattedSize?: string;
   fileId?: string;
   key: string;
   file: Blob; // as chosen, for preparing again
@@ -39,6 +64,8 @@ export interface TrayItem {
   expiresMs?: number;
   machineId?: string; // where imageId is
   error?: string;
+  problemInput?: ImageProblemInput;
+  problem?: ImageProblemView;
   bytes?: number;
   // Put back with no bytes of its own (after a refresh, say): its old ID
   // cannot prove the file is still there. It must be chosen again.
@@ -60,6 +87,30 @@ async function prepareSerial<T>(current: () => boolean, work: () => Promise<T>):
   finally { release(); }
 }
 
+function imageProblemInputFromError(e: unknown): ImageProblemInput {
+  if (e instanceof ImageError) {
+    const explicitKind =
+      e.problem === "original_too_large"
+        ? ImageProblemKind.ORIGINAL_TOO_LARGE
+        : e.problem === "dimensions"
+          ? ImageProblemKind.DIMENSIONS
+          : ImageProblemKind.DECODE;
+    return create(ImageProblemInputSchema, {
+      explicitKind,
+      rawDiagnostic: e.detail,
+    });
+  }
+  const code =
+    e && typeof e === "object" && typeof (e as { code?: unknown }).code === "string"
+      ? (e as { code: string }).code
+      : "";
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  return create(ImageProblemInputSchema, {
+    errorCode: code,
+    rawDiagnostic: msg,
+  });
+}
+
 let keys = 0;
 
 export class Tray {
@@ -67,10 +118,16 @@ export class Tray {
   restoring = false;
   original = false;
   note = "";
+  sessionId = "";
   machineId = "";
   fileSupported = false;
-  maxFiles = 6;
-  maxFileBytes = 100 * 1024 * 1024;
+  maxFiles = 0;
+  galleryAcceptMime = "";
+  originalImageHint = "";
+  fileMetadataNotice = "";
+  fileBlocked = "";
+  failureSummary?: Text;
+  evaluate?: AttachmentEvaluator;
   // Called when images are first chosen, as typing the first letter is: a
   // new session's draft then holds its project and settings.
   onAdd?: () => void;
@@ -82,30 +139,195 @@ export class Tray {
     private prepare: Prepare,
     private upload: Upload,
     private onChange: () => void,
-    public max = 6,
-  ) {}
+    public max = 0,
+    evaluate?: AttachmentEvaluator,
+  ) {
+    this.evaluate = evaluate;
+  }
 
-  /** Adds files in the order chosen, up to max in all. */
-  add(files: Blob[]) {
-    if (this.restoring) return;
-    const room = Math.max(0, this.max - this.images().length);
-    const taken = files.slice(0, room);
-    if (taken.length) this.onAdd?.();
-    const left = files.length - taken.length;
-    this.note = left > 0 ? i18n.t("attachment.images_limit", { limit: this.max, count: left }) : "";
-    for (const file of taken) {
-      const item: TrayItem = { key: "t" + ++keys, file, state: "preparing", progress: 0, thumb: file };
-      this.items.push(item);
-      void this.run(item, true);
-    }
+  private syncLimits(ev: AttachmentEvalViewModel) {
+    this.max = ev.maxImages;
+    this.maxFiles = ev.maxFiles;
+    this.fileSupported = ev.supportsFiles;
+    this.galleryAcceptMime = ev.galleryAcceptMime;
+    this.originalImageHint = renderText(ev.originalImageHint);
+    this.fileMetadataNotice = renderText(ev.fileMetadataNotice);
+    this.fileBlocked = renderText(ev.fileUploadBlockedReason);
+  }
+
+  setNote(text: string) {
+    this.note = text;
     this.onChange();
+  }
+
+  /** Evaluates whether the gallery or file picker can be opened right now via Core AttachmentEval. */
+  checkPickBlocked(forFiles: boolean, fallbackBlocked: string): string {
+    if (!this.evaluate) return fallbackBlocked;
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: this.images().length,
+      currentFiles: this.files().length,
+    });
+    this.syncLimits(ev);
+    if (forFiles) {
+      if (ev.canPickFiles) return "";
+      return renderText(ev.filesPickBlockedReason) || fallbackBlocked;
+    }
+    if (ev.canPickGallery) return "";
+    return renderText(ev.galleryBlockedReason) || fallbackBlocked;
+  }
+
+  /** Re-evaluates all queued attachments against Core AttachmentEval before sending. */
+  checkSendBlocked(): string {
+    if (!this.items.length || !this.evaluate) return "";
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: 0,
+      currentFiles: 0,
+      candidates: this.items.map((item, idx) =>
+        create(AttachmentCandidateInputSchema, {
+          name:
+            item.kind === "file"
+              ? (item.name ?? "")
+              : item.file instanceof File && item.file.name
+                ? item.file.name
+                : `image-${idx + 1}.png`,
+          mimeType:
+            item.kind === "file"
+              ? item.file.type
+              : item.prepared
+                ? "image/" + item.prepared.format
+                : item.file.type || "image/png",
+          sizeBytes: BigInt(Math.max(0, Math.floor(item.bytes ?? item.file.size))),
+          sizeUnknown: false,
+          forceFile: item.kind === "file",
+        }),
+      ),
+    });
+    this.syncLimits(ev);
+    const rejected = ev.decisions.find((d) => !d.accepted);
+    if (!rejected) return "";
+    return renderText(ev.notice) || renderText(rejected.rejectReason);
+  }
+
+  /** Checks against Core AttachmentEval whether adding the given counts fits in the current draft. */
+  canFit(addImages: number, addFiles: number): { images: boolean; files: boolean } {
+    if (this.evaluate) {
+      const ev = this.evaluate({
+        machineId: this.machineId,
+        sessionId: this.sessionId,
+        currentImages: this.images().length,
+        currentFiles: this.files().length,
+      });
+      this.syncLimits(ev);
+    }
+    return {
+      images: this.images().length + addImages <= this.max,
+      files: this.files().length + addFiles <= this.maxFiles,
+    };
+  }
+
+  /** Evaluates a picked/dropped/pasted batch synchronously via Core AttachmentEval and queues accepted items. */
+  addCandidates(entries: readonly CandidateEntry[], forceFile: boolean): string {
+    if (this.restoring || !entries.length) return "";
+    if (!this.evaluate) {
+      return "";
+    }
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: this.images().length,
+      currentFiles: this.files().length,
+      candidates: entries.map((c) =>
+        create(AttachmentCandidateInputSchema, {
+          name: c.name,
+          mimeType: c.mimeType,
+          sizeBytes: BigInt(Math.max(0, Math.floor(c.sizeBytes))),
+          sizeUnknown: false,
+          isDirectory: !!c.isDirectory,
+          forceFile,
+        }),
+      ),
+    });
+    this.syncLimits(ev);
+
+    let added = false;
+    ev.decisions.forEach((d, idx) => {
+      const entry = entries[idx];
+      if (!d.accepted || !entry?.file) return;
+      if (d.route === AttachmentCandidateRoute.IMAGE) {
+        const item: TrayItem = {
+          key: "t" + ++keys,
+          file: entry.file,
+          state: "preparing",
+          progress: 0,
+          thumb: entry.file,
+        };
+        this.items.push(item);
+        added = true;
+        void this.run(item, true);
+      } else if (
+        d.route === AttachmentCandidateRoute.VIDEO_FILE ||
+        d.route === AttachmentCandidateRoute.FILE
+      ) {
+        const item: TrayItem = {
+          key: "t" + ++keys,
+          file: entry.file,
+          kind: "file",
+          isVideo: d.route === AttachmentCandidateRoute.VIDEO_FILE || d.isVideo,
+          name: entry.name,
+          displayName: d.displayName || entry.name,
+          formattedSize: d.formattedSize,
+          bytes: entry.sizeBytes,
+          state: "preparing",
+          progress: 0,
+        };
+        this.items.push(item);
+        added = true;
+        void this.run(item, true);
+      }
+    });
+
+    if (added) this.onAdd?.();
+    const notice = renderText(ev.notice);
+    this.note = notice;
+    this.onChange();
+    return notice;
+  }
+
+  /** Convenience wrapper for adding image blobs (delegates to Core AttachmentEval). */
+  add(files: Blob[]) {
+    this.addCandidates(
+      files.map((f, idx) => ({
+        file: f,
+        name: f instanceof File && f.name ? f.name : `image-${idx + 1}.png`,
+        mimeType: f.type || "image/png",
+        sizeBytes: f.size,
+      })),
+      false,
+    );
+  }
+
+  /** Convenience wrapper for adding explicit file picker selections (forceFile = true). */
+  addFiles(files: File[]) {
+    this.addCandidates(
+      files.map((f) => ({
+        file: f,
+        name: f.name,
+        mimeType: f.type,
+        sizeBytes: f.size,
+      })),
+      true,
+    );
   }
 
   /** Images put back from a message that was not sent. Local bytes are
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
   restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
-    if (this.restoring || this.images().length + images.length > this.max) return false;
+    if (this.restoring || !this.canFit(images.length, 0).images) return false;
     if (!this.images().length) this.original = original;
     for (const im of images) {
       const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };
@@ -120,30 +342,58 @@ export class Tray {
   files(): TrayItem[] { return this.items.filter((i) => i.kind === "file"); }
   fileIds(): string[] { return this.files().map((i) => i.fileId!).filter(Boolean); }
 
-  addFiles(files: File[]) {
-    if (this.restoring) return;
-    if (!this.fileSupported) { this.note = fileUploadUpdateRequired(); this.onChange(); return; }
-    const notes: string[] = [];
-    let added = false;
-    for (const file of files) {
-      if (this.files().length >= this.maxFiles) { notes.push(i18n.t("attachment.max_files", { count: this.maxFiles })); break; }
-      if (file.size > this.maxFileBytes) { notes.push(i18n.t("attachment.named_size_limit", { name: file.name, limit: Math.round(this.maxFileBytes / 1024 / 1024) })); continue; }
-      if (!file.name || new TextEncoder().encode(file.name).length > 255) { notes.push(i18n.t("attachment.filename_limit")); continue; }
-      const item: TrayItem = { key: "t" + ++keys, file, kind: "file", name: file.name, bytes: file.size, state: "preparing", progress: 0 };
-      this.items.push(item); added = true; void this.run(item, true);
-    }
-    if (added) this.onAdd?.();
-    this.note = notes.join("；"); this.onChange();
+  private evalFileMeta(items: readonly { name: string; mimeType: string; sizeBytes: number }[]) {
+    if (!this.evaluate || !items.length) return undefined;
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: 0,
+      currentFiles: 0,
+      candidates: items.map((f) =>
+        create(AttachmentCandidateInputSchema, {
+          name: f.name,
+          mimeType: f.mimeType,
+          sizeBytes: BigInt(Math.max(0, Math.floor(f.sizeBytes))),
+          forceFile: true,
+        }),
+      ),
+    });
+    this.syncLimits(ev);
+    return ev;
   }
 
   restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
-    if (files.length && !this.fileSupported) { this.note = fileUploadUpdateRequired(); this.onChange(); return false; }
-    if (this.files().length + files.length > this.maxFiles) return false;
-    for (const f of files) {
-      const item: TrayItem = { key: "t" + ++keys, kind: "file", name: f.name, bytes: f.size, fileId: f.fileId, file: f.file ?? new Blob(), state: "preparing", progress: 0, remoteOnly: !f.file };
-      this.items.push(item); void this.run(item, true);
+    const meta = this.evalFileMeta(
+      files.map((f) => ({ name: f.name, mimeType: f.file?.type ?? "", sizeBytes: f.size })),
+    );
+    const blocked = renderText(meta?.fileUploadBlockedReason) || this.fileBlocked;
+    if (files.length && (!this.fileSupported || blocked)) {
+      this.note = blocked;
+      this.onChange();
+      return false;
     }
-    this.onChange(); return true;
+    if (this.files().length + files.length > this.maxFiles) return false;
+    files.forEach((f, idx) => {
+      const d = meta?.decisions[idx];
+      const item: TrayItem = {
+        key: "t" + ++keys,
+        kind: "file",
+        isVideo: d?.isVideo ?? false,
+        name: f.name,
+        displayName: d?.displayName || f.name,
+        formattedSize: d?.formattedSize,
+        bytes: f.size,
+        fileId: f.fileId,
+        file: f.file ?? new Blob(),
+        state: "preparing",
+        progress: 0,
+        remoteOnly: !f.file,
+      };
+      this.items.push(item);
+      void this.run(item, true);
+    });
+    this.onChange();
+    return true;
   }
 
   remove(key: string) {
@@ -152,6 +402,7 @@ export class Tray {
     if (item) this.invalidate(item);
     this.gen.delete(key);
     this.note = "";
+    this.syncProblems();
     this.onChange();
   }
 
@@ -193,6 +444,7 @@ export class Tray {
     for (const item of taken) this.gen.delete(item.key);
     this.note = "";
     if (!this.items.length) this.original = false;
+    this.syncProblems();
     this.onChange();
   }
 
@@ -202,11 +454,12 @@ export class Tray {
     this.gen.clear();
     this.note = "";
     this.original = false;
+    this.failureSummary = undefined;
     this.onChange();
   }
 
   full(): boolean {
-    return this.images().length >= this.max;
+    return this.max > 0 && this.images().length >= this.max;
   }
 
   /** Every image is on the current machine. */
@@ -218,7 +471,27 @@ export class Tray {
   hydrate(items: { file: Blob; name?: string; kind?: "file" }[], original: boolean) {
     this.original = original;
     this.restoring = false;
-    this.items = items.map(i => ({ ...i, key: "t" + ++keys, state: "preparing", progress: 0, thumb: i.kind ? undefined : i.file, bytes: i.file.size }));
+    const fileItems = items.filter((i) => i.kind === "file");
+    const fileMeta = this.evalFileMeta(
+      fileItems.map((i) => ({ name: i.name ?? "", mimeType: i.file.type, sizeBytes: i.file.size })),
+    );
+    let fileIdx = 0;
+    this.items = items.map((i) => {
+      if (i.kind === "file") {
+        const d = fileMeta?.decisions[fileIdx++];
+        return {
+          ...i,
+          key: "t" + ++keys,
+          isVideo: d?.isVideo ?? false,
+          displayName: d?.displayName || i.name,
+          formattedSize: d?.formattedSize,
+          state: "preparing",
+          progress: 0,
+          bytes: i.file.size,
+        };
+      }
+      return { ...i, key: "t" + ++keys, state: "preparing", progress: 0, thumb: i.file, bytes: i.file.size };
+    });
     for (const item of this.items) void this.run(item, true);
     this.onChange();
   }
@@ -247,22 +520,72 @@ export class Tray {
     return this.images().reduce((n, i) => n + (i.bytes ?? 0), 0);
   }
 
+  /** Classifies all currently failed images once via Core AttachmentEval and caches the result. */
+  private syncProblems() {
+    const failed = this.images().filter((i) => i.state === "failed");
+    if (!failed.length) {
+      this.failureSummary = undefined;
+      return;
+    }
+    if (!this.evaluate) return;
+    const ev = this.evaluate({
+      machineId: this.machineId,
+      sessionId: this.sessionId,
+      currentImages: this.images().length,
+      currentFiles: this.files().length,
+      problems: failed.map(
+        (i) =>
+          i.problemInput ??
+          create(ImageProblemInputSchema, {
+            rawDiagnostic: i.error ?? "",
+          }),
+      ),
+    });
+    failed.forEach((item, idx) => {
+      item.problem = ev.problems[idx];
+    });
+    this.failureSummary = ev.failureSummary;
+  }
+
   // Invalidate before abort callbacks or either shared queue can yield. An old
   // result can never restore readiness, even on a rapid machine A → B → A.
   private invalidate(item: TrayItem): number {
     const g = (this.gen.get(item.key) ?? 0) + 1;
     this.gen.set(item.key, g);
     const abort = item.abort;
-    Object.assign(item, { state: "preparing", progress: 0, error: undefined, imageId: undefined, fileId: undefined, expiresMs: undefined, machineId: undefined, abort: undefined });
+    Object.assign(item, {
+      state: "preparing",
+      progress: 0,
+      error: undefined,
+      problemInput: undefined,
+      problem: undefined,
+      imageId: undefined,
+      fileId: undefined,
+      expiresMs: undefined,
+      machineId: undefined,
+      abort: undefined,
+    });
     abort?.();
     return g;
   }
 
   private async run(item: TrayItem, prepare: boolean) {
     const g = this.invalidate(item);
+    this.syncProblems();
     this.onChange();
     if (item.remoteOnly) {
-      Object.assign(item, { state: "failed", error: item.kind === "file" ? i18n.t("attachment.file_missing") : "source_missing" });
+      if (item.kind === "file") {
+        Object.assign(item, { state: "failed", error: i18n.t("attachment.file_missing") });
+      } else {
+        Object.assign(item, {
+          state: "failed",
+          error: "source_missing",
+          problemInput: create(ImageProblemInputSchema, {
+            explicitKind: ImageProblemKind.SOURCE_MISSING,
+          }),
+        });
+        this.syncProblems();
+      }
       this.onChange();
       return;
     }
@@ -270,6 +593,9 @@ export class Tray {
     const set = (patch: Partial<TrayItem>) => {
       if (!current()) return;
       Object.assign(item, patch);
+      if (item.kind !== "file" && patch.state !== undefined) {
+        this.syncProblems();
+      }
       this.onChange();
     };
     const machineId = this.machineId;
@@ -282,17 +608,27 @@ export class Tray {
     }
     try {
       if (!current()) return;
-      if (item.kind === "file" && !this.fileSupported) throw new Error(fileUploadUpdateRequired());
-      if (item.kind === "file" && item.file.size > this.maxFileBytes) throw new Error(i18n.t("attachment.size_limit", { limit: Math.round(this.maxFileBytes / 1024 / 1024) }));
+      if (item.kind === "file") {
+        const check = this.evalFileMeta([
+          { name: item.name ?? "", mimeType: item.file.type, sizeBytes: item.file.size },
+        ]);
+        if (!this.fileSupported || check?.fileUploadBlockedReason) {
+          throw new Error(renderText(check?.fileUploadBlockedReason) || this.fileBlocked);
+        }
+        const decision = check?.decisions[0];
+        if (decision && !decision.accepted) {
+          throw new Error(renderText(decision.rejectReason) || renderText(check?.notice));
+        }
+      }
       if (prepare || !this.fresh(item)) {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
-        set({ state: "preparing", progress: 0, error: undefined, imageId: undefined, fileId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
+        set({ state: "preparing", progress: 0, error: undefined, problemInput: undefined, problem: undefined, imageId: undefined, fileId: undefined, machineId: undefined, prepared: undefined, preparedOriginal: undefined });
         const p = await prepareSerial(current, async () => item.kind === "file" ? { bytes: new Uint8Array(await readAttachment(item.file)), format: "file" as const, fileName: item.name, width: 0, height: 0 } : this.prepare(item.file, original));
         if (!current() || !p) return;
         set({ prepared: p, preparedOriginal: original, bytes: p.bytes.length, thumb: item.kind === "file" ? undefined : new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: "image/" + p.format }) });
       }
-      set({ state: "uploading", progress: 0, error: undefined, imageId: undefined, fileId: undefined, machineId: undefined });
+      set({ state: "uploading", progress: 0, error: undefined, problemInput: undefined, problem: undefined, imageId: undefined, fileId: undefined, machineId: undefined });
       const uploaded = await this.upload(
         machineId,
         item.prepared!,
@@ -305,12 +641,20 @@ export class Tray {
       );
       set({ state: "done", progress: 1, imageId: uploaded.imageId, fileId: uploaded.fileId, expiresMs: uploaded.expiresMs, machineId, ...(item.kind === "file" ? { prepared: undefined } : {}) });
     } catch (e) {
-      set({ state: "failed", error: e instanceof ImageError ? e.problem : e instanceof Error ? e.message : String(e) });
+      if (item.kind === "file") {
+        set({ state: "failed", error: e instanceof Error ? e.message : String(e) });
+      } else {
+        set({
+          state: "failed",
+          error: e instanceof ImageError ? e.problem : e instanceof Error ? e.message : String(e),
+          problemInput: imageProblemInputFromError(e),
+        });
+      }
     } finally { if (item.kind === "file" && current()) item.prepared = undefined; release?.(); }
   }
 }
 
 async function readAttachment(file: Blob): Promise<ArrayBuffer> {
- try { return await file.arrayBuffer(); }
- catch { throw new Error(i18n.t("attachment.read_failed")); }
+  try { return await file.arrayBuffer(); }
+  catch { throw new Error(i18n.t("attachment.read_failed")); }
 }

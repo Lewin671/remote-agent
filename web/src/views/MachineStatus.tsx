@@ -191,10 +191,13 @@ function Curve({ chart, tone, stale, reduced, moving, onScrub, onClearScrub }: {
     else if (e.key === "ArrowRight" && chart.hasScrub) { stepSample(1); e.preventDefault(); }
     else if (e.key === "Escape" && chart.hasScrub) { onClearScrub(); e.preventDefault(); }
   };
+  const scrubText = chart.scrubValueText
+    ? chart.scrubUnit === "%" ? `${chart.scrubValueText}%` : [chart.scrubValueText, chart.scrubUnit].filter(Boolean).join(" ")
+    : "";
   return (
     <div className="ms-plot" ref={plot} role="slider" tabIndex={0} aria-valuemin={0} aria-valuemax={Math.max(0, rawPoints.length - 1)}
       aria-valuenow={chart.hasScrub ? chart.scrubIndex : Math.max(0, rawPoints.length - 1)}
-      aria-valuetext={chart.hasScrub ? `${renderText(chart.scrubValue)} (${renderText(chart.scrubAge)})` : undefined}
+      aria-valuetext={chart.hasScrub ? `${scrubText} (${renderText(chart.scrubAge)})` : undefined}
       aria-label={renderText(chart.a11ySummary)} onPointerDown={onPointer} onPointerMove={onPointer}
       onPointerUp={onClearScrub} onPointerCancel={onClearScrub} onPointerLeave={onClearScrub} onKeyDown={onKey}>
       <svg viewBox={`0 0 ${width} ${HEIGHT}`} preserveAspectRatio="none" aria-hidden="true">
@@ -228,13 +231,8 @@ function Hero({ vm, main, moving, reduced, onScrub, onClearScrub }: {
   const tone = isCpu ? "" : (PRESSURE_TONE[mem?.pressure ?? 0] ?? "");
   let headMain = "—", headUnit = "";
   if (chart?.hasScrub) {
-    const scrubPt = chart.points[chart.scrubIndex];
-    if (isCpu && scrubPt) {
-      headMain = String(Math.round(scrubPt.value));
-      headUnit = "%";
-    } else {
-      headMain = renderText(chart.scrubValue) || "—";
-    }
+    headMain = chart.scrubValueText || "—";
+    headUnit = chart.scrubUnit || "";
   } else if (isCpu) {
     headMain = cpu?.valueText || "—";
     headUnit = cpu?.unit || "";

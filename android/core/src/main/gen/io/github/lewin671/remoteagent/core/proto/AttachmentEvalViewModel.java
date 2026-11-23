@@ -989,6 +989,132 @@ public  final class AttachmentEvalViewModel extends
     bitField0_ = (bitField0_ & ~0x00000040);
   }
 
+  public static final int IMAGES_PICK_BLOCKED_REASON_FIELD_NUMBER = 25;
+  private io.github.lewin671.remoteagent.core.proto.Text imagesPickBlockedReason_;
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasImagesPickBlockedReason() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getImagesPickBlockedReason() {
+    return imagesPickBlockedReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : imagesPickBlockedReason_;
+  }
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setImagesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    imagesPickBlockedReason_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeImagesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (imagesPickBlockedReason_ != null &&
+        imagesPickBlockedReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      imagesPickBlockedReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(imagesPickBlockedReason_).mergeFrom(value).buildPartial();
+    } else {
+      imagesPickBlockedReason_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <pre>
+   * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+   * per-message limit is reached); unset when picking is allowed. Shells show this
+   * instead of composing their own limit text.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+   */
+  private void clearImagesPickBlockedReason() {
+    imagesPickBlockedReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
+  public static final int FILES_PICK_BLOCKED_REASON_FIELD_NUMBER = 26;
+  private io.github.lewin671.remoteagent.core.proto.Text filesPickBlockedReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFilesPickBlockedReason() {
+    return ((bitField0_ & 0x00000100) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFilesPickBlockedReason() {
+    return filesPickBlockedReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : filesPickBlockedReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFilesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    filesPickBlockedReason_ = value;
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFilesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (filesPickBlockedReason_ != null &&
+        filesPickBlockedReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      filesPickBlockedReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(filesPickBlockedReason_).mergeFrom(value).buildPartial();
+    } else {
+      filesPickBlockedReason_ = value;
+    }
+    bitField0_ |= 0x00000100;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+   */
+  private void clearFilesPickBlockedReason() {
+    filesPickBlockedReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000100);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2085,6 +2211,136 @@ public  final class AttachmentEvalViewModel extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasImagesPickBlockedReason() {
+      return instance.hasImagesPickBlockedReason();
+    }
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getImagesPickBlockedReason() {
+      return instance.getImagesPickBlockedReason();
+    }
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    public Builder setImagesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setImagesPickBlockedReason(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    public Builder setImagesPickBlockedReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setImagesPickBlockedReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    public Builder mergeImagesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeImagesPickBlockedReason(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Why can_pick_images / can_pick_files is false (machine cannot accept, or the
+     * per-message limit is reached); unset when picking is allowed. Shells show this
+     * instead of composing their own limit text.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text images_pick_blocked_reason = 25 [json_name = "imagesPickBlockedReason"];</code>
+     */
+    public Builder clearImagesPickBlockedReason() {  copyOnWrite();
+      instance.clearImagesPickBlockedReason();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFilesPickBlockedReason() {
+      return instance.hasFilesPickBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFilesPickBlockedReason() {
+      return instance.getFilesPickBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    public Builder setFilesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFilesPickBlockedReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    public Builder setFilesPickBlockedReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFilesPickBlockedReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    public Builder mergeFilesPickBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFilesPickBlockedReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text files_pick_blocked_reason = 26 [json_name = "filesPickBlockedReason"];</code>
+     */
+    public Builder clearFilesPickBlockedReason() {  copyOnWrite();
+      instance.clearFilesPickBlockedReason();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentEvalViewModel)
   }
   @java.lang.Override
@@ -2128,13 +2384,15 @@ public  final class AttachmentEvalViewModel extends
             "problems_",
             io.github.lewin671.remoteagent.core.proto.ImageProblemView.class,
             "failureSummary_",
+            "imagesPickBlockedReason_",
+            "filesPickBlockedReason_",
           };
           java.lang.String info =
-              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0002\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\u0004\u0005\u0004\u0006\u0002\u0007\u0004\b\u0208\t\u0002\n\u0007" +
               "\u000b\u0208\f\u0004\r\u0007\u000e\u0007\u000f\u0007\u0010\u1009\u0000\u0011\u1009" +
               "\u0001\u0012\u1009\u0002\u0013\u1009\u0003\u0014\u1009\u0004\u0015\u001b\u0016\u1009" +
-              "\u0005\u0017\u001b\u0018\u1009\u0006";
+              "\u0005\u0017\u001b\u0018\u1009\u0006\u0019\u1009\u0007\u001a\u1009\b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
