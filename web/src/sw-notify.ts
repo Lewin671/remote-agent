@@ -2,6 +2,7 @@ import "../../build/core/web/wasm_exec.js";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { RemoteAgentCore } from "./core/projection";
 import { readV4RecordForNotify } from "./core/security-store-v4";
+import { renderText } from "./core/text";
 import {
   EffectBatchSchema,
   EventSchema,
@@ -12,10 +13,9 @@ import {
   SecurityOpenNotifyEventSchema,
   type SecurityNotifyOpenedEffect,
 } from "./gen/remoteagent/core/v1/security_pb";
-import { EnvelopeSchema, HeaderSchema } from "./gen/remoteagent/v1/envelope_pb";
+import { EnvelopeSchema } from "./gen/remoteagent/v1/envelope_pb";
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import * as l10n from "./i18n";
-import { machineDiskNotice } from "./machine-notifications";
 
 const MAX_PAYLOAD = 3993;
 const SHELL_CACHE = "shell-v1";
@@ -62,9 +62,11 @@ async function openNotifyViaCore(
   recordBlob: Uint8Array,
   xPrivate: CryptoKey,
   env: ReturnType<typeof fromBinary<typeof EnvelopeSchema>>,
+  expectedKind: NotifyKind,
   sessionId: string,
   machineId: string,
   tag: string,
+  eventKey: string,
 ): Promise<SecurityNotifyOpenedEffect> {
   const appCore = core.newAppCore();
   try {
@@ -83,6 +85,8 @@ async function openNotifyViaCore(
             sessionId,
             tag,
             machineId,
+            expectedKind,
+            eventKey,
           }),
         },
       }),
@@ -139,65 +143,76 @@ async function openNotifyViaCore(
 export async function pushContent(d: PushData): Promise<{ title: string; body: string; machineId?: string; tag?: string }> {
   const generic = { title: "remote-agent", body: typeof d.body === "string" ? d.body : "" };
   if (typeof d.tag !== "string") return generic;
-  const scheduled = d.tag.endsWith("/NOTIFY_KIND_SCHEDULED");
-  const turnEnded = d.tag.endsWith("/NOTIFY_KIND_TURN_ENDED");
-  const disk = d.tag.endsWith("/NOTIFY_KIND_MACHINE_DISK");
-  if (!scheduled && !turnEnded && !disk) return generic;
-  if (disk) generic.body = l10n.t("machine_status.home_warning");
-  if (scheduled) generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
+  const expectedKind = d.tag.endsWith("/NOTIFY_KIND_SCHEDULED")
+    ? NotifyKind.SCHEDULED
+    : d.tag.endsWith("/NOTIFY_KIND_TURN_ENDED")
+      ? NotifyKind.TURN_ENDED
+      : d.tag.endsWith("/NOTIFY_KIND_MACHINE_DISK")
+        ? NotifyKind.MACHINE_DISK
+        : NotifyKind.UNSPECIFIED;
+  if (expectedKind === NotifyKind.UNSPECIFIED) return generic;
+  if (expectedKind === NotifyKind.MACHINE_DISK) generic.body = l10n.t("machine_status.home_warning");
+  if (expectedKind === NotifyKind.SCHEDULED) generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
   try {
     if (typeof d.content !== "string" || !d.content.length ||
         new TextEncoder().encode(JSON.stringify(d)).length > MAX_PAYLOAD) return generic;
     const core = await ensureSwCore();
     const env = fromBinary(EnvelopeSchema, Uint8Array.from(atob(d.content), (c) => c.charCodeAt(0)));
-    const ph = fromBinary(HeaderSchema, env.header);
-    if (ph.sessionId !== (d.session ?? "")) throw new Error("session mismatch");
     const v4 = await readV4RecordForNotify();
     if (!v4) throw new Error("missing v4 record");
+
+    const sessionId = d.session ?? "";
+    let eventKey = "";
+    if (expectedKind === NotifyKind.SCHEDULED) {
+      const prefix = `${sessionId}/`;
+      const suffix = "/NOTIFY_KIND_SCHEDULED";
+      if (d.tag.startsWith(prefix) && d.tag.endsWith(suffix) && d.tag.length > prefix.length + suffix.length) {
+        eventKey = d.tag.slice(prefix.length, d.tag.length - suffix.length);
+      }
+    }
 
     const opened = await openNotifyViaCore(
       core,
       v4.recordBlob,
       v4.xPrivate,
       env,
-      d.session ?? "",
+      expectedKind,
+      sessionId,
       d.machine ?? "",
       d.tag,
+      eventKey,
     );
-    if (opened.error || !opened.content) throw new Error(opened.error || "open notify failed");
+    const display = opened.display;
+    if (opened.error || !display?.valid) {
+      if (expectedKind !== NotifyKind.TURN_ENDED && display?.genericBody) {
+        return { title: "remote-agent", body: renderText(display.genericBody) };
+      }
+      return generic;
+    }
     if (opened.verifyRecordUnchanged) {
       const check = await readV4RecordForNotify();
       if (!check || check.revision !== v4.revision) throw new Error("stale");
     }
 
-    const c = opened.content;
-    const openedHeader = fromBinary(HeaderSchema, opened.headerBytes.byteLength ? opened.headerBytes : env.header);
-    if (disk) {
-      const notice = machineDiskNotice(c);
-      if (!notice || d.tag !== notice.tag || d.machine !== notice.machineId || openedHeader.sessionId || openedHeader.requestId !== `disk:${c.diskStatus!.observedMs}:${c.diskStatus!.pressure}`) {
-        throw new Error("disk check failed");
-      }
-      return notice;
+    if (display.kind === NotifyKind.MACHINE_DISK) {
+      return {
+        title: renderText(display.title),
+        body: renderText(display.body),
+        machineId: display.machineId,
+        tag: display.tag,
+      };
     }
-    if (turnEnded) {
-      if (c.kind !== NotifyKind.TURN_ENDED || c.approval || c.sourceEventSeq <= 0n ||
-          openedHeader.requestId !== `notify:${NotifyKind.TURN_ENDED}:${c.sourceEventSeq}` ||
-          d.tag !== `${c.sessionId}/NOTIFY_KIND_TURN_ENDED`) {
-        throw new Error("turn check failed");
-      }
-      if (c.sharedFileCount > 0) {
-        const suffix = l10n.t("shared_file.notification_files", { count: c.sharedFileCount });
+    if (display.kind === NotifyKind.TURN_ENDED) {
+      if (display.sharedFileCount > 0 && display.sharedFilesSuffix) {
+        const suffix = renderText(display.sharedFilesSuffix);
         return { ...generic, body: generic.body ? `${generic.body} ${suffix}` : suffix };
       }
       return generic;
     }
-    if (c.kind !== NotifyKind.SCHEDULED || c.approval || c.sourceEventSeq <= 0n ||
-        openedHeader.requestId !== `scheduled:${c.sourceEventSeq}` ||
-        d.tag !== `${c.sessionId}/scheduled:${c.sourceEventSeq}/NOTIFY_KIND_SCHEDULED` ||
-        !c.title.trim() || [...c.title].length > 60 || !c.text.trim() || [...c.text].length > 200) {
-      throw new Error("scheduled check failed");
+    if (display.kind === NotifyKind.SCHEDULED) {
+      return { title: renderText(display.title), body: renderText(display.body) };
     }
-    return { title: c.title, body: c.text };
+    return generic;
   } catch {
     return generic;
   }
