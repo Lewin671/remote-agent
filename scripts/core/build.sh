@@ -12,7 +12,27 @@ CORE_ROOT="$ROOT/clientcore"
 cd_published_core() {
   local link
   link="/tmp/remote-agent-core-$(printf '%s' "$ROOT" | shasum | cut -c1-8)"
-  ln -sfn "$ROOT" "$link"
+  python3 - "$ROOT" "$link" <<'PY'
+import os, sys, uuid
+
+target, link = sys.argv[1], sys.argv[2]
+try:
+    if os.path.islink(link) and os.readlink(link) == target:
+        sys.exit(0)
+except OSError:
+    pass
+
+tmp = f"{link}.{os.getpid()}.{uuid.uuid4().hex[:8]}"
+os.symlink(target, tmp)
+try:
+    os.replace(tmp, link)
+except BaseException:
+    try:
+        os.unlink(tmp)
+    except OSError:
+        pass
+    raise
+PY
   cd "$link/clientcore"
 }
 OUT_ROOT="${RA_CORE_OUT:-$ROOT/build/core}"
