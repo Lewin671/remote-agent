@@ -1422,7 +1422,6 @@ object ScreenGoldenLoader {
                     d.obj("title")?.let { setTitle(parseText(it)) }
                     d.obj("summary")?.let { setSummary(parseText(it)) }
                     d.obj("meta")?.let { setMeta(parseText(it)) }
-                    d.obj("timeLeft")?.let { setTimeLeft(parseText(it)) }
                     d.obj("timeLeftPlain")?.let { setTimeLeftPlain(parseText(it)) }
                     d.obj("command")?.let { setCommand(parseCommandState(it)) }
                     d.obj("approval")?.let { ap ->

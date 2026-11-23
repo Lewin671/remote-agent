@@ -1881,7 +1881,6 @@ type SessionDockView struct {
 	Title               *Text
 	Summary             *Text
 	Meta                *Text
-	TimeLeft            *Text
 	DeadlineMs          int64
 	WaitingConfirmation bool
 	Command             *SessionCommandState
@@ -1973,12 +1972,6 @@ func (m *SessionDockView) GetMeta() *Text {
 	}
 	return nil
 }
-func (m *SessionDockView) GetTimeLeft() *Text {
-	if m != nil {
-		return m.TimeLeft
-	}
-	return nil
-}
 func (m *SessionDockView) GetDeadlineMs() int64 {
 	if m != nil {
 		return m.DeadlineMs
@@ -2044,7 +2037,6 @@ var LitewireDesc_SessionDockView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SessionDockView{}.Title), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 7, Offset: unsafe.Offsetof(SessionDockView{}.Summary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 8, Offset: unsafe.Offsetof(SessionDockView{}.Meta), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 9, Offset: unsafe.Offsetof(SessionDockView{}.TimeLeft), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 10, Offset: unsafe.Offsetof(SessionDockView{}.DeadlineMs), Kind: litewire.KindInt64},
 		{Num: 11, Offset: unsafe.Offsetof(SessionDockView{}.WaitingConfirmation), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(SessionDockView{}.Command), Kind: litewire.KindMessage, Sub: &LitewireDesc_SessionCommandState},

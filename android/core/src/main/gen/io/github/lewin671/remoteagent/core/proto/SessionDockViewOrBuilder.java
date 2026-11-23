@@ -85,17 +85,6 @@ public interface SessionDockViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.Text getMeta();
 
   /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   * @return Whether the timeLeft field is set.
-   */
-  boolean hasTimeLeft();
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   * @return The timeLeft.
-   */
-  io.github.lewin671.remoteagent.core.proto.Text getTimeLeft();
-
-  /**
    * <code>int64 deadline_ms = 10 [json_name = "deadlineMs"];</code>
    * @return The deadlineMs.
    */

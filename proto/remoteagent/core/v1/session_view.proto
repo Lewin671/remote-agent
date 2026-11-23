@@ -291,6 +291,8 @@ enum SessionDockKind {
 }
 
 message SessionDockView {
+  reserved 9;
+  reserved "time_left";
   bool has_item = 1;
   SessionDockKind kind = 2;
   string item_id = 3;
@@ -300,7 +302,6 @@ message SessionDockView {
   Text title = 6;
   Text summary = 7;
   Text meta = 8;
-  Text time_left = 9;
   int64 deadline_ms = 10;
   bool waiting_confirmation = 11;
 

@@ -1124,11 +1124,9 @@ func buildSessionDock(
 			remSec := (deadlineMs - st.Cal.NowMs + 999) / 1000
 			if remSec >= 60 {
 				mins := lists.MinutesLeft(deadlineMs, st.Cal.NowMs)
-				out.TimeLeft = text.Msg(text.KeyApprovalAndroidMinutesMeta, text.Int("count", mins))
 				out.TimeLeftPlain = text.Msg(text.KeyHomeIosApprovalRemaining, text.Int("count", mins))
 			} else {
-				out.TimeLeft = text.Msg(text.KeyApprovalSecondsLeft, text.Int("count", remSec))
-				out.TimeLeftPlain = out.TimeLeft
+				out.TimeLeftPlain = text.Msg(text.KeyApprovalSecondsLeft, text.Int("count", remSec))
 			}
 		}
 

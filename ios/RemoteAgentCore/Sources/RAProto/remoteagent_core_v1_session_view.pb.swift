@@ -1882,15 +1882,6 @@ public struct PBSessionDockView: @unchecked Sendable {
   /// Clears the value of `meta`. Subsequent reads from it will return its default value.
   public mutating func clearMeta() {_uniqueStorage()._meta = nil}
 
-  public var timeLeft: PBCoreText {
-    get {return _storage._timeLeft ?? PBCoreText()}
-    set {_uniqueStorage()._timeLeft = newValue}
-  }
-  /// Returns true if `timeLeft` has been explicitly set.
-  public var hasTimeLeft: Bool {return _storage._timeLeft != nil}
-  /// Clears the value of `timeLeft`. Subsequent reads from it will return its default value.
-  public mutating func clearTimeLeft() {_uniqueStorage()._timeLeft = nil}
-
   public var deadlineMs: Int64 {
     get {return _storage._deadlineMs}
     set {_uniqueStorage()._deadlineMs = newValue}
@@ -5749,7 +5740,7 @@ extension PBSessionActionsView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionDockView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_item\0\u{1}kind\0\u{3}item_id\0\u{3}observed_seq\0\u{3}more_count\0\u{1}title\0\u{1}summary\0\u{1}meta\0\u{3}time_left\0\u{3}deadline_ms\0\u{3}waiting_confirmation\0\u{1}command\0\u{3}is_skeleton\0\u{3}time_left_plain\0\u{2}\u{6}approval\0\u{1}question\0\u{1}plan\0\u{3}terminal_popup\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}has_item\0\u{1}kind\0\u{3}item_id\0\u{3}observed_seq\0\u{3}more_count\0\u{1}title\0\u{1}summary\0\u{1}meta\0\u{4}\u{2}deadline_ms\0\u{3}waiting_confirmation\0\u{1}command\0\u{3}is_skeleton\0\u{3}time_left_plain\0\u{2}\u{6}approval\0\u{1}question\0\u{1}plan\0\u{3}terminal_popup\0\u{b}time_left\0\u{c}\u{9}\u{1}")
 
   fileprivate class _StorageClass {
     var _hasItem_p: Bool = false
@@ -5760,7 +5751,6 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _title: PBCoreText? = nil
     var _summary: PBCoreText? = nil
     var _meta: PBCoreText? = nil
-    var _timeLeft: PBCoreText? = nil
     var _deadlineMs: Int64 = 0
     var _waitingConfirmation: Bool = false
     var _command: PBSessionCommandState? = nil
@@ -5785,7 +5775,6 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _title = source._title
       _summary = source._summary
       _meta = source._meta
-      _timeLeft = source._timeLeft
       _deadlineMs = source._deadlineMs
       _waitingConfirmation = source._waitingConfirmation
       _command = source._command
@@ -5818,7 +5807,6 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._title) }()
         case 7: try { try decoder.decodeSingularMessageField(value: &_storage._summary) }()
         case 8: try { try decoder.decodeSingularMessageField(value: &_storage._meta) }()
-        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._timeLeft) }()
         case 10: try { try decoder.decodeSingularInt64Field(value: &_storage._deadlineMs) }()
         case 11: try { try decoder.decodeSingularBoolField(value: &_storage._waitingConfirmation) }()
         case 12: try { try decoder.decodeSingularMessageField(value: &_storage._command) }()
@@ -5912,9 +5900,6 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       try { if let v = _storage._meta {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
       } }()
-      try { if let v = _storage._timeLeft {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
-      } }()
       if _storage._deadlineMs != 0 {
         try visitor.visitSingularInt64Field(value: _storage._deadlineMs, fieldNumber: 10)
       }
@@ -5966,7 +5951,6 @@ extension PBSessionDockView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._title != rhs_storage._title {return false}
         if _storage._summary != rhs_storage._summary {return false}
         if _storage._meta != rhs_storage._meta {return false}
-        if _storage._timeLeft != rhs_storage._timeLeft {return false}
         if _storage._deadlineMs != rhs_storage._deadlineMs {return false}
         if _storage._waitingConfirmation != rhs_storage._waitingConfirmation {return false}
         if _storage._command != rhs_storage._command {return false}

@@ -377,54 +377,6 @@ public  final class SessionDockView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
-  public static final int TIME_LEFT_FIELD_NUMBER = 9;
-  private io.github.lewin671.remoteagent.core.proto.Text timeLeft_;
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   */
-  @java.lang.Override
-  public boolean hasTimeLeft() {
-    return ((bitField0_ & 0x00000008) != 0);
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.Text getTimeLeft() {
-    return timeLeft_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : timeLeft_;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setTimeLeft(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    timeLeft_ = value;
-    bitField0_ |= 0x00000008;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   */
-  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
-  private void mergeTimeLeft(io.github.lewin671.remoteagent.core.proto.Text value) {
-    value.getClass();  // minimal bytecode null check
-    if (timeLeft_ != null &&
-        timeLeft_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
-      timeLeft_ =
-        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(timeLeft_).mergeFrom(value).buildPartial();
-    } else {
-      timeLeft_ = value;
-    }
-    bitField0_ |= 0x00000008;
-  }
-  /**
-   * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-   */
-  private void clearTimeLeft() {
-    timeLeft_ = null;
-    bitField0_ = (bitField0_ & ~0x00000008);
-  }
-
   public static final int DEADLINE_MS_FIELD_NUMBER = 10;
   private long deadlineMs_;
   /**
@@ -484,7 +436,7 @@ public  final class SessionDockView extends
    */
   @java.lang.Override
   public boolean hasCommand() {
-    return ((bitField0_ & 0x00000010) != 0);
+    return ((bitField0_ & 0x00000008) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.SessionCommandState command = 12 [json_name = "command"];</code>
@@ -500,7 +452,7 @@ public  final class SessionDockView extends
   private void setCommand(io.github.lewin671.remoteagent.core.proto.SessionCommandState value) {
     value.getClass();  // minimal bytecode null check
     command_ = value;
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.SessionCommandState command = 12 [json_name = "command"];</code>
@@ -515,14 +467,14 @@ public  final class SessionDockView extends
     } else {
       command_ = value;
     }
-    bitField0_ |= 0x00000010;
+    bitField0_ |= 0x00000008;
   }
   /**
    * <code>.remoteagent.core.v1.SessionCommandState command = 12 [json_name = "command"];</code>
    */
   private void clearCommand() {
     command_ = null;
-    bitField0_ = (bitField0_ & ~0x00000010);
+    bitField0_ = (bitField0_ & ~0x00000008);
   }
 
   public static final int IS_SKELETON_FIELD_NUMBER = 13;
@@ -558,7 +510,7 @@ public  final class SessionDockView extends
    */
   @java.lang.Override
   public boolean hasTimeLeftPlain() {
-    return ((bitField0_ & 0x00000020) != 0);
+    return ((bitField0_ & 0x00000010) != 0);
   }
   /**
    * <code>.remoteagent.core.v1.Text time_left_plain = 14 [json_name = "timeLeftPlain"];</code>
@@ -574,7 +526,7 @@ public  final class SessionDockView extends
   private void setTimeLeftPlain(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     timeLeftPlain_ = value;
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text time_left_plain = 14 [json_name = "timeLeftPlain"];</code>
@@ -589,14 +541,14 @@ public  final class SessionDockView extends
     } else {
       timeLeftPlain_ = value;
     }
-    bitField0_ |= 0x00000020;
+    bitField0_ |= 0x00000010;
   }
   /**
    * <code>.remoteagent.core.v1.Text time_left_plain = 14 [json_name = "timeLeftPlain"];</code>
    */
   private void clearTimeLeftPlain() {
     timeLeftPlain_ = null;
-    bitField0_ = (bitField0_ & ~0x00000020);
+    bitField0_ = (bitField0_ & ~0x00000010);
   }
 
   public static final int APPROVAL_FIELD_NUMBER = 20;
@@ -1237,53 +1189,6 @@ public  final class SessionDockView extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    @java.lang.Override
-    public boolean hasTimeLeft() {
-      return instance.hasTimeLeft();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.Text getTimeLeft() {
-      return instance.getTimeLeft();
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    public Builder setTimeLeft(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.setTimeLeft(value);
-      return this;
-      }
-    /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    public Builder setTimeLeft(
-        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
-      copyOnWrite();
-      instance.setTimeLeft(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    public Builder mergeTimeLeft(io.github.lewin671.remoteagent.core.proto.Text value) {
-      copyOnWrite();
-      instance.mergeTimeLeft(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.Text time_left = 9 [json_name = "timeLeft"];</code>
-     */
-    public Builder clearTimeLeft() {  copyOnWrite();
-      instance.clearTimeLeft();
-      return this;
-    }
-
-    /**
      * <code>int64 deadline_ms = 10 [json_name = "deadlineMs"];</code>
      * @return The deadlineMs.
      */
@@ -1680,7 +1585,6 @@ public  final class SessionDockView extends
             "title_",
             "summary_",
             "meta_",
-            "timeLeft_",
             "deadlineMs_",
             "waitingConfirmation_",
             "command_",
@@ -1692,10 +1596,10 @@ public  final class SessionDockView extends
             io.github.lewin671.remoteagent.core.proto.SessionTerminalPopupDockView.class,
           };
           java.lang.String info =
-              "\u0000\u0012\u0001\u0001\u0001\u0017\u0012\u0000\u0000\u0000\u0001\u0007\u0002\f" +
+              "\u0000\u0011\u0001\u0001\u0001\u0017\u0011\u0000\u0000\u0000\u0001\u0007\u0002\f" +
               "\u0003\u0208\u0004\u0003\u0005\u0004\u0006\u1009\u0000\u0007\u1009\u0001\b\u1009" +
-              "\u0002\t\u1009\u0003\n\u0002\u000b\u0007\f\u1009\u0004\r\u0007\u000e\u1009\u0005" +
-              "\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000";
+              "\u0002\n\u0002\u000b\u0007\f\u1009\u0003\r\u0007\u000e\u1009\u0004\u0014<\u0000\u0015" +
+              "<\u0000\u0016<\u0000\u0017<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
