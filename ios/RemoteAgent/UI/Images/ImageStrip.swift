@@ -8,6 +8,7 @@
 // It also hosts what ＋ opens, so the boxes need nothing but the tap.
 import PhotosUI
 import RACore
+import RAProto
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -39,9 +40,28 @@ struct ImageStrip: View {
         var byteLimit: Int64
     }
 
+    private struct FailureEvalKey: Equatable {
+        var machine: String?
+        var locale: String
+        var failed: [FailedEntry]
+        struct FailedEntry: Equatable {
+            var id: String
+            var input: PBImageProblemInput
+        }
+    }
+
     var body: some View {
         let draft = center.draft(key)
         let notice = center.notices[key]?.text
+        let failedEntries: [FailureEvalKey.FailedEntry] = draft.photos.compactMap { img in
+            if case .failed(let why) = img.state {
+                return FailureEvalKey.FailedEntry(id: img.id, input: why.input)
+            }
+            return nil
+        }
+        let failures = failedEntries.isEmpty ? "" : (center.failureSummaries[key] ?? "")
+        let originalHint = caps.originalImageHint
+        let metadataNotice = caps.fileMetadataNotice
         VStack(alignment: .leading, spacing: 0) {
             if let error = draft.restoreError {
                 Banner(error, tone: .error, action: L10n.commonRetry()) { center.retryDraft(key) }
@@ -51,37 +71,42 @@ struct ImageStrip: View {
             } else {
                 tray(draft)
                 meta(draft)
-                let failed = draft.photos.compactMap { img -> ImageProblem? in
-                    if case .failed(let why) = img.state { return why.problem }
-                    return nil
-                }
-                let failures = imageFailureLine(failed)
                 if let text = failures.isEmpty ? notice ?? (draft.notice.isEmpty ? nil : draft.notice) : failures
                 {
                     line(text, DS.orangeInk)
                 }
                 let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
                 if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: L10n.commonIosNoteSeparator()), DS.ink2) }
-                if draft.original { line(originalImageHint, DS.ink2) }
+                if draft.original, !originalHint.isEmpty { line(originalHint, DS.ink2) }
             }
             if !draft.documents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(draft.documents) { item in
                         if let file = item.file {
-                            FileChip(name: file.name, size: file.size, state: item.state,
-                                     retry: { center.retry(key, item) }, remove: { center.remove(key, item) })
+                            FileChip(
+                                name: file.displayName ?? file.name,
+                                sizeText: file.formattedSize ?? "",
+                                state: item.state,
+                                retry: { center.retry(key, item) },
+                                remove: { center.remove(key, item) }
+                            )
                         }
                     }
-                    Text(L10n.attachmentMetadata()).font(.footnote).ink(DS.ink2)
+                    if !metadataNotice.isEmpty {
+                        Text(metadataNotice).font(.footnote).ink(DS.ink2)
+                    }
                     Text(L10n.attachmentIosFileCount(count: Int(draft.documents.count), limit: Int(caps.maxFiles))).font(.footnote).ink(DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(ImagePickerHost(center: center, key: key, caps: caps, focus: focus))
+        .modifier(ImagePickerHost(center: center, key: key, machineId: machineId, caps: caps, focus: focus))
         .fullScreenCover(item: $viewing) { pick in DraftImageViewer(center: center, key: key, start: pick.index) { viewing = nil } }
         .debugSignal("images.preview") { if !draft.photos.isEmpty { viewing = DraftImageSelection(index: 0) } }
+        .task(id: FailureEvalKey(machine: machineId, locale: MessageLocale.current, failed: failedEntries)) {
+            await center.refreshProblems(key, machineId: machineId)
+        }
         .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: caps.supportsFiles, fileLimit: caps.maxFiles, byteLimit: caps.maxFileBytes), initial: true) { _, aim in
             center.aim(key, at: aim.machine, blocked: aim.blocked, caps: caps)
         }
@@ -114,7 +139,8 @@ struct ImageStrip: View {
             HStack(spacing: 0) {
                 ForEach(Array(draft.photos.enumerated()), id: \.element.id) { i, img in
                     DraftThumb(
-                        image: img, thumb: center.thumb(img), side: side, index: i + 1, count: draft.photos.count,
+                        image: img, thumb: center.thumb(img), problem: center.evaluatedProblems[img.id],
+                        side: side, index: i + 1, count: draft.photos.count,
                         showProgress: draft.original,
                         onOpen: { viewing = DraftImageSelection(index: i) },
                         onRemove: {
@@ -182,6 +208,7 @@ struct DraftThumbGeometry {
 private struct DraftThumb: View {
     let image: PendingImage
     let thumb: UIImage?
+    let problem: PBImageProblemView?
     let side: CGFloat
     let index: Int
     let count: Int
@@ -210,7 +237,7 @@ private struct DraftThumb: View {
             .buttonStyle(.plain).padding(.top, geometry.thumbnail.minY)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(L10n.imagePosition(count: Int(count), index: Int(index)))
-            .accessibilityValue(draftImageState(image))
+            .accessibilityValue(draftImageState(image, problem: problem))
             .accessibilityHint(failed ? L10n.imageIosActionsHint() : L10n.imageIosViewFull())
             .accessibilityAction(named: L10n.imageRemoveIndex(index: Int(index)), onRemove)
             Button(action: onRemove) {
@@ -260,15 +287,14 @@ private struct DraftThumb: View {
 private struct ImagePickerHost: ViewModifier {
     let center: ImageCenter
     let key: String
+    let machineId: String?
     let caps: AttachmentCapabilities
     let focus: FocusState<Bool>.Binding?
-    private var max: Int { caps.maxImages }
-    private var blocked: String? { caps.imageUploadBlocked }
     // Native pickers can resign the editor without reliably restoring it.
     // Keep the pre-presentation intent, including an intentionally hidden keyboard.
     @State private var focusBeforePicker: Bool?
-    /// 从相册选择 was chosen in the menu: the picker comes up once the menu is down.
-    @State private var next: ImageCenter.Pick?
+    /// Action to run after the menu cover dismisses.
+    @State private var nextAction: (@MainActor () -> Void)?
 
     private enum NativePicker: String, Identifiable {
         case photos, documents
@@ -286,25 +312,24 @@ private struct ImagePickerHost: ViewModifier {
         // Observe focus during rendering, before the presentation modifier
         // transfers first-responder ownership to a native picker.
         let editorFocused = focus?.wrappedValue ?? false
-        let draft = center.draft(key)
         // Videos go as files where the computer takes files (session-files.md 「从相册选视频」).
-        let videos = caps.supportsFiles
-        let room = Swift.max(max - draft.photos.count + (videos ? Swift.max(caps.maxFiles - draft.documents.count, 0) : 0), 1)
+        let videos = caps.galleryAllowsVideo
+        let room = center.libraryRooms[key] ?? 1
         content
             .actionMenu(
                 isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),
                 actions: center.picking[key] == .attachments ? [
                     SheetAction(L10n.imageTitle()) {
-                        next = .photos
-                        if center.draft(key).photos.count >= max {
-                            center.say(key, .maxImages(max))
-                            next = nil
-                        } else if UIPasteboard.general.hasImages { next = .choose }
+                        nextAction = { center.library(key, machineId: machineId, caps: caps, offerPaste: true) }
                     },
-                    SheetAction(L10n.attachmentFile()) { next = .documents },
+                    SheetAction(L10n.attachmentFile()) {
+                        nextAction = { center.documents(key, machineId: machineId, caps: caps) }
+                    },
                 ] : [
-                    SheetAction(L10n.attachmentIosChoosePhotos()) { next = .photos },
-                    SheetAction(L10n.attachmentIosPasteClipboard()) { center.paste(key, max: max) },
+                    SheetAction(L10n.attachmentIosChoosePhotos()) {
+                        nextAction = { center.library(key, machineId: machineId, caps: caps) }
+                    },
+                    SheetAction(L10n.attachmentIosPasteClipboard()) { center.paste(key, machineId: machineId) },
                 ]
             )
             .onChange(of: center.picking[key]) { previous, now in
@@ -313,12 +338,12 @@ private struct ImagePickerHost: ViewModifier {
                         focusBeforePicker = editorFocused
                     }
                     if now == .photos || now == .documents, let focus { focus.wrappedValue = false }
-                } else if let show = next {
-                    next = nil
+                } else if let action = nextAction {
+                    nextAction = nil
                     Task {
                         // One presentation at a time: the menu's cover has to be gone first.
                         try? await Task.sleep(for: .milliseconds(350))
-                        center.picking[key] = show
+                        action()
                     }
                 } else if previous != .photos && previous != .documents {
                     restoreEditor()
@@ -338,16 +363,14 @@ private struct ImagePickerHost: ViewModifier {
                 case .photos:
                     LibraryPicker(limit: room, videos: videos) { items in
                         center.picking[key] = nil
-                        let providers = items.map(\.itemProvider)
-                        let moving = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
-                        let still = providers.filter { !$0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
-                        if !still.isEmpty { center.add(key, still.map { .library($0) }, max: max) }
-                        if !moving.isEmpty { center.addVideos(key, moving, caps: caps) }
+                        if !items.isEmpty {
+                            center.addLibraryItems(key, items.map(\.itemProvider), machineId: machineId, caps: caps)
+                        }
                     }.ignoresSafeArea()
                 case .documents:
                     DocumentPicker { urls in
                         center.picking[key] = nil
-                        if !urls.isEmpty { center.addFiles(key, urls, caps: caps) }
+                        if !urls.isEmpty { center.addFiles(key, urls, machineId: machineId, caps: caps) }
                     }.ignoresSafeArea()
                 }
             }
@@ -365,7 +388,9 @@ struct OutgoingImageThumbs: View {
         VStack(alignment: .leading, spacing: 6) {
             if showFiles {
                 ForEach(message.images.filter(\.isFile)) { item in
-                    if let file = item.file { FileChip(name: file.name, size: file.size) }
+                    if let file = item.file {
+                        FileChip(name: file.displayName ?? file.name, sizeText: file.formattedSize ?? "")
+                    }
                 }
             }
         }

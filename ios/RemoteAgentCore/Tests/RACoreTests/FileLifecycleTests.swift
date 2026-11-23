@@ -133,7 +133,7 @@ private struct FileMachineChannel: UploadChannel {
         try Data(repeating: 65, count: 8192).write(to: url)
         let img = PendingImage(id: "picked", uri: nil)
         img.file = try PickedFile(url: url)
-        img.state = .failed(error: AttachmentFailure(kind: .offline))
+        img.state = .failed(error: AttachmentFailure(kind: .uploadFailed))
         return (url, img)
     }
     private func driver(_ server: FileMachine, _ draft: ImageDraft) -> ImageUploads {
@@ -371,20 +371,21 @@ private struct FileMachineChannel: UploadChannel {
         #expect(restored.documents.first?.file?.bookmark == renewed.bookmark)
         #expect(try restored.documents.first?.file?.digest().count == 32)
         draft.restoring = true
-        #expect(draft.attach([], max: 6), "text-only restore does not wait for attachment loading")
+        #expect(draft.attach([]), "text-only restore does not wait for attachment loading")
         let remote = PendingImage(id: "remote", uri: nil)
         remote.file = PickedFile(remote: .with { $0.name = "remote.txt"; $0.sizeBytes = 1 })
         #expect(!remote.hasSource)
         let emptyDisk = MemoryFiles(), placeholders = ImageDraft(key: "p", files: emptyDisk, saves: nil)
-        #expect(placeholders.attach([remote], max: 6))
+        #expect(placeholders.attach([remote]))
         #expect(placeholders.toSend(machineId: "a").isEmpty)
         #expect(!emptyDisk.keys.contains { $0.hasSuffix(".file") })
     }
 
-    @Test func foldersAndChangedLengthsHaveSpecificMessages() throws {
+    @Test func foldersAreMarkedDirectoryAndChangedLengthsHaveSpecificMessages() throws {
         let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url) }
-        do { _ = try PickedFile(url: url.deletingLastPathComponent()); Issue.record("folder accepted") }
-        catch { #expect(errorText(error) == L10n.attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd()) }
+        let inspected = try PickedFile.inspect(url: url.deletingLastPathComponent())
+        #expect(inspected.isDirectory && inspected.bookmark == nil)
+        #expect(throws: (any Error).self) { _ = try PickedFile(url: url.deletingLastPathComponent()) }
         try Data([1]).write(to: url)
         do { _ = try img.file?.digest(); Issue.record("changed length accepted") }
         catch { #expect(errorText(error) == L10n.attachmentIosTheFileChangedAfterSelectionSelectItAgain()) }

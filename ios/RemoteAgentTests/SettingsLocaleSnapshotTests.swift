@@ -46,9 +46,7 @@ import UIKit
                         VStack(alignment: .leading, spacing: 16) {
                             Text(L10n.securityAccountSecurity())
                             Text(errorText(SecurityFailure.lease))
-                            ForEach(["20 MB", "pixels", "source missing", "decode", "storage full", "offline", "opaque"], id: \.self) { raw in
-                                Text(rawImageProblem(raw).message)
-                            }
+                            Text(L10n.imageThisImageCouldNotBeProcessed())
                         }.padding(16)
                     }))
                 ]

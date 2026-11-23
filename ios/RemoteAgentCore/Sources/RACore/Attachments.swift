@@ -259,7 +259,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
-        img.state = .failed(error: AttachmentFailure(kind: .offline, detail: img.isFile ? L10nMessage.attachmentIosVerifyTheFileOnTheComputer() : nil))
+        img.state = .failed(error: AttachmentFailure(kind: .uploadFailed, detail: img.isFile ? L10nMessage.attachmentIosVerifyTheFileOnTheComputer() : nil))
         return img
     }
 }
@@ -267,21 +267,14 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
 /// Product-owned notices retain structured arguments until their display boundary.
 public enum AttachmentNotice: Equatable, Sendable {
     case raw(String)
-    case maxImages(Int), maxFiles(Int), filesDropped(Int), clipboardEmpty
-    case maxImagesDropped(limit: Int, count: Int)
-    case restoreUnavailable, restoreImages(have: Int, count: Int, limit: Int), restoreFiles(Int), notSaved
+    case clipboardEmpty
+    case restoreUnavailable, notSaved
 
     public var text: String {
         switch self {
         case .raw(let text): return text
-        case .maxImages(let count): return L10n.attachmentMaxImages(count: count)
-        case .maxFiles(let count): return L10n.attachmentMaxFiles(count: count)
-        case .filesDropped(let count): return L10n.attachmentIosFilesLimitNotice(limit: count)
         case .clipboardEmpty: return L10n.attachmentIosClipboardEmpty()
-        case .maxImagesDropped(let limit, let count): return L10n.attachmentImagesLimit(count: count, limit: limit)
         case .restoreUnavailable: return L10n.attachmentIosRestoreUnavailable()
-        case .restoreImages(let have, let count, let limit): return L10n.attachmentIosRestoreImagesLimit(count: count, have: have, limit: limit)
-        case .restoreFiles(let count): return L10n.attachmentIosRestoreFilesLimit(count: count)
         case .notSaved: return L10n.attachmentIosNotSaved()
         }
     }
@@ -326,14 +319,6 @@ public final class ImageDraft {
         self.key = key
         self.files = files
         self.saves = saves
-    }
-
-    /// Which of a pick go in, in the order picked: as many as fit under
-    /// `max`, with `notice` saying how many did not.
-    public func admit<T>(_ picked: [T], max: Int) -> [T] {
-        let (taken, left) = takePicked(have: photos.count, picked: picked, max: max)
-        noticeMessage = left > 0 ? .maxImagesDropped(limit: max, count: left) : .raw("")
-        return taken
     }
 
     /// Adds images just picked, still to be prepared, and keeps their order.
@@ -490,12 +475,6 @@ public final class ImageDraft {
         }
     }
 
-    /// Files remain blocked after a machine switch until the new machine declares support.
-    public func filesAllowed(for caps: AttachmentCapabilities) -> Bool {
-        documents.isEmpty || (caps.supportsFiles && documents.count <= caps.maxFiles
-            && documents.allSatisfy { ($0.file?.size ?? 0) <= caps.maxFileBytes })
-    }
-
     public func ready(machineId: String?) -> Bool {
         guard let machineId else { return false }
         return !restoring && restoreError == nil && !images.isEmpty && images.allSatisfy { $0.readyFor(machineId) }
@@ -524,35 +503,21 @@ public final class ImageDraft {
         settle()
     }
 
-    /// Puts images back, e.g. from a message that was not submitted. Nothing
-    /// is dropped: when they do not fit with what is here already, nothing
-    /// is put back and `notice` says why. Returns whether they went in.
+    /// Puts images back, e.g. from a message that was not submitted.
+    /// Callers validate capacity and capability via Core `AttachmentEval` before calling `attach`.
     /// `wereOriginal` nil keeps what the draft has.
     @discardableResult
-    public func canFit(_ back: [PendingImage], max: Int, maxFiles: Int = 6) -> Bool {
+    public func attach(_ back: [PendingImage], wereOriginal: Bool? = nil) -> Bool {
         if back.isEmpty { return true }
         guard !restoring, restoreError == nil else { noticeMessage = .restoreUnavailable; return false }
-        let backPhotos = back.filter { !$0.isFile }.count
-        if photos.count + backPhotos > max {
-            noticeMessage = .restoreImages(have: photos.count, count: backPhotos, limit: max)
-            return false
-        }
-        if documents.count + back.filter(\.isFile).count > maxFiles {
-            noticeMessage = .restoreFiles(maxFiles)
-            return false
-        }
-        return true
-    }
-
-    @discardableResult
-    public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
-        if back.isEmpty { return true }
-        guard canFit(back, max: max, maxFiles: maxFiles) else { return false }
         if photos.isEmpty { original = wereOriginal ?? original }
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
             img.invalidate(retiring: !img.isFile)
-            img.state = .failed(error: AttachmentFailure(kind: img.isFile && !img.hasSource ? .sourceMissing : .offline, detail: img.isFile && !img.hasSource ? L10nMessage.attachmentFileMissing() : nil))
+            let fileDetail: LocalizedMessage? = img.isFile
+                ? (img.hasSource ? L10nMessage.imageIosNeedsUploadingToTheComputerAgain() : L10nMessage.attachmentFileMissing())
+                : nil
+            img.state = .failed(error: AttachmentFailure(kind: img.isFile && !img.hasSource ? .sourceMissing : .uploadFailed, detail: fileDetail))
             images.append(img)
         }
         persist()

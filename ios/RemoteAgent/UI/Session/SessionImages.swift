@@ -100,15 +100,20 @@ enum SessionImages {
 
     /// Checks before asking Core to restore an outgoing/canceled message whether its images fit back into the draft.
     static func canPutBack(
-        requestId: String, files: [PBSessionFileRefView] = [], session: String, caps: AttachmentCapabilities = AttachmentCapabilities(), remote: Remote
-    ) -> Bool {
+        requestId: String, files: [PBSessionFileRefView] = [], session: String, remote: Remote
+    ) async -> Bool {
         let center = ImageCenter.of(remote)
         if let o = center.heldOutgoing(session, requestId: requestId) {
-            return center.canPutBack(sid: session, max: caps.maxImages, maxFiles: caps.maxFiles, o)
+            return await center.canPutBack(sid: session, o)
         }
         guard !files.isEmpty else { return true }
-        guard caps.supportsFiles else { return false }
-        return center.draft(ImageCenter.sessionKey(session)).documents.count + files.count <= caps.maxFiles
+        let items = files.map { ref -> PendingImage in
+            let item = PendingImage(id: newRequestId(), uri: nil)
+            item.file = PickedFile(remote: .with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes })
+            return item
+        }
+        let dummy = Outgoing(requestId: requestId, text: "", imageIds: [], fileIds: [], images: items, mode: .queue)
+        return await center.canPutBack(sid: session, dummy)
     }
 
     /// A message that was not submitted goes back into its session's box, text and images, for the user to
@@ -116,11 +121,11 @@ enum SessionImages {
     /// and the strip says why.
     @discardableResult
     static func putBack(
-        _ message: Outgoing, session: String, caps: AttachmentCapabilities = AttachmentCapabilities(), remote: Remote, store: SessionStore,
+        _ message: Outgoing, session: String, remote: Remote, store: SessionStore,
         releaseFailure: Bool = false
-    ) -> Bool {
-        guard ImageCenter.of(remote).putBack(
-            sid: session, max: caps.maxImages, maxFiles: caps.maxFiles, message, releaseFailure: releaseFailure
+    ) async -> Bool {
+        guard await ImageCenter.of(remote).putBack(
+            sid: session, message, releaseFailure: releaseFailure
         ) else { return false }
         store.appendToDraft(session, message.text)
         return true
@@ -130,12 +135,12 @@ enum SessionImages {
     /// local images held for `requestID` and appending `text` to the session draft.
     @discardableResult
     static func applyRestore(
-        _ effect: PBSessionRestoreComposerEffect, session: String, caps: AttachmentCapabilities = AttachmentCapabilities(), remote: Remote, store: SessionStore
-    ) -> Bool {
+        _ effect: PBSessionRestoreComposerEffect, session: String, remote: Remote, store: SessionStore
+    ) async -> Bool {
         let center = ImageCenter.of(remote)
         if let o = center.heldOutgoing(session, requestId: effect.requestID) {
-            guard center.putBack(
-                sid: session, max: caps.maxImages, maxFiles: caps.maxFiles, o, releaseFailure: true
+            guard await center.putBack(
+                sid: session, o, releaseFailure: true
             ) else { return false }
         }
         if !effect.text.isEmpty {

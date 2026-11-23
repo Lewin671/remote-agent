@@ -262,12 +262,8 @@ struct PendingTrayView: View {
                 .buttonStyle(.plain)
 
                 if expanded && (item.canPromote || item.canRestore) {
-                    let canPutBackAttachments = SessionImages.canPutBack(
-                        requestId: item.requestID, files: [], session: sessionID, caps: caps, remote: context.remote
-                    )
                     let hasHeldLocal = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: item.requestID) != nil
-                    let restoreReady = canPutBackAttachments
-                        && ((item.imageCount == 0 && item.fileCount == 0 && !item.foreignDimmed) || hasHeldLocal)
+                    let restoreReady = (item.imageCount == 0 && item.fileCount == 0 && !item.foreignDimmed) || hasHeldLocal
                     HStack(spacing: 18) {
                         if item.canPromote {
                             Button {
@@ -287,10 +283,12 @@ struct PendingTrayView: View {
                         if item.canRestore && restoreReady {
                             Button {
                                 SessionHaptics.tap()
-                                guard SessionImages.canPutBack(
-                                    requestId: item.requestID, files: [], session: sessionID, caps: caps, remote: context.remote
-                                ) else { return }
-                                Task { await context.coreHost.restoreTrayItem(sessionID: sessionID, requestID: item.requestID) }
+                                Task {
+                                    guard await SessionImages.canPutBack(
+                                        requestId: item.requestID, files: [], session: sessionID, remote: context.remote
+                                    ) else { return }
+                                    await context.coreHost.restoreTrayItem(sessionID: sessionID, requestID: item.requestID)
+                                }
                             } label: {
                                 Text(L10n.composerRestore())
                                     .font(.subheadline)

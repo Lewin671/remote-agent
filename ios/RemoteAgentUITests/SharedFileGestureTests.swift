@@ -57,7 +57,7 @@ final class SharedFileGestureTests: XCTestCase {
         // The control reads as the action it does.
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "打开")).firstMatch.exists)
         card.press(forDuration: 0.8)
-        for item in ["存到相册", "存到「文件」", "分享…", "删除本机副本"] {
+        for item in ["存到相册", "保存到本机", "分享…", "用其他应用打开", "删除本机副本"] {
             XCTAssertTrue(app.buttons[item].present(timeout: 5), item)
         }
         XCTAssertTrue(app.staticTexts["来自 MacBook"].exists)

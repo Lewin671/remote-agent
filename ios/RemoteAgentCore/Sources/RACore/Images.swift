@@ -9,9 +9,6 @@
 import Foundation
 import RAProto
 
-/// At most this many images go with one message, whatever the daemon says or the picker allowed.
-public let maxImages = 6
-
 /// An original may be this large at most (architecture §17).
 public let maxOriginalBytes: Int64 = 20 * 1024 * 1024
 
@@ -39,14 +36,6 @@ private func detect(_ b: Bytes) -> PBImageFormat? {
 
 /// The format of encoded image bytes, by their signature; nil for anything else (HEIC and the like).
 public func detectFormat(_ data: Data) -> PBImageFormat? { detect(Bytes(data.prefix(12))) }
-
-/// Which images of a pick are taken: the first ones up to `max` in all, in
-/// the order picked, and how many were left out. The system picker may not
-/// enforce a count (its fallback does not), so the app does.
-public func takePicked<T>(have: Int, picked: [T], max: Int = maxImages) -> (taken: [T], left: Int) {
-    let room = Swift.max(max - have, 0)
-    return (Array(picked.prefix(room)), Swift.max(picked.count - room, 0))
-}
 
 private func u16(_ b: Bytes, _ i: Int, le: Bool) -> Int? {
     guard i >= 0, i + 2 <= b.count else { return nil }
@@ -140,7 +129,7 @@ private func keepJpegSegment(_ b: Bytes, marker: Int, start: Int, end: Int) -> B
 }
 
 private func stripJpeg(_ b: Bytes) throws -> Bytes {
-    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg())
+    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg(), problemKind: .decode)
     if detect(b) != .jpeg { throw bad }
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -231,7 +220,7 @@ private func pngOrientation(_ b: Bytes) -> Int {
 public func pngOrientation(_ data: Data) -> Int { pngOrientation(Bytes(data)) }
 
 private func stripPng(_ b: Bytes) throws -> Bytes {
-    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng()) }
+    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng(), problemKind: .decode) }
     let drop: Set<String> = ["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -270,7 +259,7 @@ private func webpOrientation(_ b: Bytes) -> Int {
 public func webpOrientation(_ data: Data) -> Int { webpOrientation(Bytes(data)) }
 
 private func stripWebp(_ b: Bytes) throws -> Bytes {
-    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp()) }
+    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp(), problemKind: .decode) }
     var out = Bytes()
     out.reserveCapacity(b.count)
     out.append(contentsOf: b[0..<12])
@@ -297,8 +286,8 @@ private func stripWebp(_ b: Bytes) throws -> Bytes {
 public func stripWebp(_ data: Data) throws -> Data { Data(try stripWebp(Bytes(data))) }
 
 private func stripGif(_ b: Bytes) throws -> Bytes {
-    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif()) }
-    let cut = UserError(L10nMessage.imageIosGifIsTruncated())
+    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode) }
+    let cut = UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
     var out = Bytes()
     out.reserveCapacity(b.count)
     var i = 13
@@ -342,7 +331,7 @@ private func stripGif(_ b: Bytes) throws -> Bytes {
             if keep { out.append(contentsOf: b[i..<j]) }
             i = j
         default:
-            throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock())
+            throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock(), problemKind: .decode)
         }
     }
     throw cut
@@ -461,7 +450,7 @@ public func uploadImage(
     retries: Int = 3,
     onProgress: (Int64, Int64) -> Void = { _, _ in }
 ) async throws -> UploadedImage {
-    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat()) }
+    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat(), problemKind: .decode) }
     let bytes = Data(data)
     let total = Int64(bytes.count)
     var tries = 0
@@ -510,49 +499,6 @@ public func uploadImage(
     return UploadedImage(imageId: st.imageID, expiresMs: st.expiresMs)
 }
 
-// --- images in a session ---
-
-/// What kind of event shows an image.
-public enum SessionImageKind: Sendable { case userMessage, toolCall, imageGenerated }
-
-/// One image as it appears in a session: the ref, the event it is in, and what shows it.
-public struct SessionImage: Equatable, Sendable {
-    public var ref: PBImageRef
-    public var seq: UInt64
-    public var kind: SessionImageKind
-    public var toolTitle: String
-
-    public init(ref: PBImageRef, seq: UInt64, kind: SessionImageKind, toolTitle: String = "") {
-        self.ref = ref
-        self.seq = seq
-        self.kind = kind
-        self.toolTitle = toolTitle
-    }
-}
-
-private let placeholder = Rx("\\[Image #(\(Jre.digit)+)\\]")
-private let leadingPlaceholder = Rx("\\A\(Jre.space)*\\[Image #(\(Jre.digit)+)\\]")
-
-/// A user message's text as shown next to its images. When the message is
-/// its images followed by text, the leading "[Image #N]" placeholders are
-/// dropped: the numbered previews stand for them. When the text refers to
-/// images further in, every placeholder reads "图 N" so the references keep
-/// their meaning. Placeholders the message has no image for, e.g. typed as
-/// text, stay as written.
-public func imageText(_ text: String, refs: [PBImageRef]) -> String {
-    let known = Set(refs.map { Int($0.cliIndex) }.filter { $0 > 0 })
-    if known.isEmpty { return text }
-    // A number too large to be an image's index is no image's (Kotlin's toInt throws on one).
-    func isKnown(_ m: Rx.Match) -> Bool { Int(m.text(1)).map(known.contains) ?? false }
-    var t = text
-    while let m = leadingPlaceholder.find(t), isKnown(m) {
-        t = (t as NSString).substring(from: m.range.location + m.range.length)
-    }
-    let laterRefs = placeholder.findAll(t).contains(where: isKnown)
-    let base = laterRefs ? text : t.jvmTrimStart()
-    return placeholder.replace(base) { m in isKnown(m) ? L10n.imageIosPlaceholderIndex(index: m.text(1)) : m.value }
-}
-
 /// Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB.
 public let maxDecodePixels: Int64 = 40_000_000
 
@@ -562,7 +508,7 @@ public let maxDecodePixels: Int64 = 40_000_000
 /// than needed for a long side of `minLong` (0: as large as the budget
 /// allows).
 public func decodeSample(w: Int, h: Int, minLong: Int, pixelBudget: Int64) throws -> Int {
-    guard w > 0 && h > 0 else { throw UserError(L10nMessage.imageIosImageHasNoDimensions()) }
+    guard w > 0 && h > 0 else { throw UserError(L10nMessage.imageIosImageHasNoDimensions(), problemKind: .dimensions) }
     var s = 1
     if minLong > 0 { while max(w, h) / (s * 2) >= minLong { s *= 2 } }
     // A budget below one pixel can never be met; the smallest picture is what is left.

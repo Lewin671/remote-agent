@@ -114,9 +114,9 @@ enum TestPictures {
 
     @Test func aFileTooLargeToReadIsRefusedInWords() throws {
         try checkPicked(bytes: 80 * 1024 * 1024, original: false)
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))) { try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)) { try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false) }
         try checkPicked(bytes: 60 * 1024 * 1024, original: true)
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 60))) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 60), kind: .dimensions)) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true) }
     }
 
     @Test func aPickedFileTooLargeIsRefusedBeforeItIsRead() throws {
@@ -132,7 +132,7 @@ enum TestPictures {
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
         try handle.close()
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))) { try readPicked(large) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)) { try readPicked(large) }
         try FileHandle(forWritingTo: large).truncate(atOffset: UInt64(pickedReadLimit(original: false)))
         #expect(try readPicked(large).count == 80 * 1024 * 1024)
     }

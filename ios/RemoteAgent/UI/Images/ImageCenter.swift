@@ -88,9 +88,9 @@ final class ImageCenter {
     @ObservationIgnored private static var centers: [ObjectIdentifier: ImageCenter] = [:]
 
     /// Called when an account comes into use. `live` false is sample data: nothing is uploaded.
-    static func install(remote: Remote, files: any RACore.SealedFiles, live: Bool = true) {
+    static func install(remote: Remote, coreHost: CoreHost? = nil, files: any RACore.SealedFiles, live: Bool = true) {
         centers[ObjectIdentifier(remote)]?.close()
-        centers[ObjectIdentifier(remote)] = ImageCenter(remote: remote, files: files, live: live)
+        centers[ObjectIdentifier(remote)] = ImageCenter(remote: remote, coreHost: coreHost, files: files, live: live)
     }
 
     /// Called when the account is left: jobs stop, and what was held in memory goes.
@@ -101,7 +101,7 @@ final class ImageCenter {
     /// The images of the account `remote` syncs. One that was never installed (a test's) keeps nothing on disk.
     static func of(_ remote: Remote) -> ImageCenter {
         if let c = centers[ObjectIdentifier(remote)] { return c }
-        let c = ImageCenter(remote: remote, files: VolatileFiles(), live: true)
+        let c = ImageCenter(remote: remote, coreHost: nil, files: VolatileFiles(), live: true)
         centers[ObjectIdentifier(remote)] = c
         return c
     }
@@ -110,6 +110,9 @@ final class ImageCenter {
 
     @ObservationIgnored let remote: Remote
     @ObservationIgnored let live: Bool
+    @ObservationIgnored private let coreHost: CoreHost?
+    @ObservationIgnored private var fallbackCore: CoreClient?
+    @ObservationIgnored private var fallbackLocale = ""
     @ObservationIgnored private let files: any RACore.SealedFiles
     @ObservationIgnored private let records: OutgoingRecords
     @ObservationIgnored private(set) var uploads: ImageUploads!
@@ -150,6 +153,10 @@ final class ImageCenter {
     #endif
 
     private var thumbs: [String: UIImage] = [:]
+    /// Cached Core `AttachmentEval` outputs (never queried inside SwiftUI `body`).
+    private(set) var evaluatedProblems: [String: PBImageProblemView] = [:]
+    private(set) var failureSummaries: [String: String] = [:]
+    private(set) var libraryRooms: [String: Int] = [:]
     struct Notice: Identifiable {
         let id = UUID()
         let message: AttachmentNotice
@@ -159,8 +166,9 @@ final class ImageCenter {
     private(set) var outgoingRestoreErrors: [String: String] = [:]
     var picking: [String: Pick] = [:]
 
-    private init(remote: Remote, files: any RACore.SealedFiles, live: Bool) {
+    private init(remote: Remote, coreHost: CoreHost?, files: any RACore.SealedFiles, live: Bool) {
         self.remote = remote
+        self.coreHost = coreHost
         self.files = files
         self.live = live
         records = OutgoingRecords(files: files)
@@ -199,6 +207,11 @@ final class ImageCenter {
         kept.removeAll()
         restoredOutgoing.removeAll()
         thumbs.removeAll()
+        evaluatedProblems.removeAll()
+        failureSummaries.removeAll()
+        libraryRooms.removeAll()
+        fallbackCore?.close()
+        fallbackCore = nil
         viewed.clear()
         previews.removeAllObjects()
     }
@@ -214,6 +227,8 @@ final class ImageCenter {
         draft?.clear()
         images.forEach { $0.release() }; forget(images)
         targets[key] = nil
+        failureSummaries[key] = nil
+        libraryRooms[key] = nil
         let files = files, records = records
         Task.detached { try? files.clearFolder(key); try? records.removeSession(sid) }
     }
@@ -248,6 +263,176 @@ final class ImageCenter {
 
     static func sessionKey(_ sid: String) -> String { "session:\(sid)" }
     static func projectKey(_ project: String) -> String { "new:\(project)" }
+    static func sessionID(from key: String) -> String {
+        key.hasPrefix("session:") ? String(key.dropFirst("session:".count)) : ""
+    }
+
+    // MARK: Core AttachmentEval
+
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) async -> PBAttachmentEvalViewModel {
+        if let coreHost {
+            return await coreHost.evaluateAttachments(request)
+        }
+        let locale = MessageLocale.current
+        let client: CoreClient
+        if let existing = fallbackCore {
+            client = existing
+        } else if let created = try? CoreClient() {
+            fallbackCore = created
+            client = created
+        } else {
+            return PBAttachmentEvalViewModel()
+        }
+        if fallbackLocale != locale {
+            fallbackLocale = locale
+            _ = try? client.dispatch(.with { $0.localeChanged.uiLocale = locale })
+        }
+        return (try? client.view(.with { $0.attachmentEval = request }).attachmentEval) ?? PBAttachmentEvalViewModel()
+    }
+
+    private func evalRequest(
+        key: String,
+        machineId: String? = nil,
+        currentImages: Int32? = nil,
+        currentFiles: Int32? = nil,
+        candidates: [PBAttachmentCandidateInput] = [],
+        problems: [PBImageProblemInput] = []
+    ) -> PBAttachmentEvalScreenRequest {
+        let d = draft(key)
+        return .with {
+            $0.machineID = machineId ?? targets[key] ?? ""
+            $0.sessionID = Self.sessionID(from: key)
+            $0.currentImages = currentImages ?? Int32(d.photos.count)
+            $0.currentFiles = currentFiles ?? Int32(d.documents.count)
+            $0.candidates = candidates
+            $0.problems = problems
+        }
+    }
+
+    static func candidates(for items: [PendingImage]) -> [PBAttachmentCandidateInput] {
+        items.enumerated().map { idx, item in
+            .with {
+                if let file = item.file {
+                    $0.name = file.name
+                    $0.sizeBytes = file.size
+                    $0.sizeUnknown = false
+                    $0.isDirectory = false
+                    $0.forceFile = true
+                } else {
+                    $0.name = "image-\(idx + 1).png"
+                    $0.mimeType = "image/png"
+                    $0.forceFile = false
+                }
+            }
+        }
+    }
+
+    static func rejectionReason(from eval: PBAttachmentEvalViewModel) -> String {
+        if eval.hasNotice {
+            let text = eval.notice.rendered()
+            if !text.isEmpty { return text }
+        }
+        if let first = eval.decisions.first(where: { !$0.accepted && $0.hasRejectReason }) {
+            let text = first.rejectReason.rendered()
+            if !text.isEmpty { return text }
+        }
+        if eval.hasFilesPickBlockedReason {
+            let text = eval.filesPickBlockedReason.rendered()
+            if !text.isEmpty { return text }
+        }
+        if eval.hasImagesPickBlockedReason {
+            let text = eval.imagesPickBlockedReason.rendered()
+            if !text.isEmpty { return text }
+        }
+        if eval.hasFileUploadBlockedReason {
+            let text = eval.fileUploadBlockedReason.rendered()
+            if !text.isEmpty { return text }
+        }
+        if eval.hasImageUploadBlockedReason {
+            let text = eval.imageUploadBlockedReason.rendered()
+            if !text.isEmpty { return text }
+        }
+        return ""
+    }
+
+    /// Re-evaluates all items currently in `key` against the target machine's Core limits.
+    func evaluateDraft(_ key: String, machineId: String? = nil) async -> (allowed: Bool, eval: PBAttachmentEvalViewModel, reason: String) {
+        let items = draft(key).images
+        let cands = Self.candidates(for: items)
+        let eval = await evaluateAttachments(
+            evalRequest(key: key, machineId: machineId, currentImages: 0, currentFiles: 0, candidates: cands)
+        )
+        let allowed = items.isEmpty || (eval.decisions.count == cands.count && eval.decisions.allSatisfy(\.accepted))
+        return (allowed, eval, allowed ? "" : Self.rejectionReason(from: eval))
+    }
+
+    /// Re-evaluates all document items currently in `key` against the target machine's Core limits.
+    func evaluateDraftDocuments(_ key: String, machineId: String? = nil) async -> (allowed: Bool, eval: PBAttachmentEvalViewModel, reason: String) {
+        let docs = draft(key).documents
+        let cands = Self.candidates(for: docs)
+        let eval = await evaluateAttachments(
+            evalRequest(key: key, machineId: machineId, currentImages: 0, currentFiles: 0, candidates: cands)
+        )
+        let allowed = docs.isEmpty || (eval.decisions.count == cands.count && eval.decisions.allSatisfy(\.accepted))
+        return (allowed, eval, allowed ? "" : Self.rejectionReason(from: eval))
+    }
+
+    /// Classifies all currently failed photos in `key` via Core and caches the per-image
+    /// problems and single summary line (never called from SwiftUI `body`).
+    func refreshProblems(_ key: String, machineId: String? = nil) async {
+        let d = draft(key)
+        var failedIDs: [String] = []
+        var inputs: [PBImageProblemInput] = []
+        for img in d.photos {
+            if case .failed(let why) = img.state {
+                failedIDs.append(img.id)
+                inputs.append(why.input)
+            } else {
+                evaluatedProblems[img.id] = nil
+            }
+        }
+        guard !inputs.isEmpty else {
+            failureSummaries[key] = nil
+            return
+        }
+        let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, problems: inputs))
+        guard !closed else { return }
+        for (id, problem) in zip(failedIDs, eval.problems) {
+            evaluatedProblems[id] = problem
+        }
+        failureSummaries[key] = eval.hasFailureSummary ? eval.failureSummary.rendered() : nil
+    }
+
+    private func hydrateRestoredFileMetadata(_ key: String) async {
+        let d = draft(key)
+        let missing = d.documents.filter { $0.file?.formattedSize == nil }
+        guard !missing.isEmpty else { return }
+        let candidates: [PBAttachmentCandidateInput] = missing.compactMap { item in
+            guard let file = item.file else { return nil }
+            return .with {
+                $0.name = file.name
+                $0.sizeBytes = file.size
+                $0.forceFile = true
+            }
+        }
+        let eval = await evaluateAttachments(evalRequest(key: key, candidates: candidates))
+        guard !closed else { return }
+        for (item, decision) in zip(missing, eval.decisions) {
+            guard var file = item.file else { continue }
+            if !decision.displayName.isEmpty { file.displayName = decision.displayName }
+            if !decision.formattedSize.isEmpty { file.formattedSize = decision.formattedSize }
+            item.file = file
+        }
+    }
+
+    private static func imageMimeType(for provider: NSItemProvider) -> String {
+        for identifier in provider.registeredTypeIdentifiers {
+            if let type = UTType(identifier), type.conforms(to: .image), let mime = type.preferredMIMEType {
+                return mime
+            }
+        }
+        return "image/jpeg"
+    }
 
     /// A draft's images, restored from the sealed store when first asked for.
     func draft(_ key: String) -> ImageDraft {
@@ -272,6 +457,7 @@ final class ImageCenter {
             catch { return } // ImageDraft retains the failure and blocks disk writes until retry.
             guard let self, !closed, !Task.isCancelled else { return }
             for img in d.images { makeThumb(img) }
+            await hydrateRestoredFileMetadata(key)
         }
     }
 
@@ -317,16 +503,35 @@ final class ImageCenter {
                 }
             }
         }
-        let allowed = d.filesAllowed(for: caps)
-        if !allowed {
+        if !caps.supportsFiles {
             for item in d.documents where item.hasSource {
                 item.invalidate()
-                item.state = .failed(error: AttachmentFailure(kind: .failed, detail: caps.supportsFiles ? L10nMessage.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10nMessage.imageIosThisComputerDoesNotSupportFileUploads()))
+                let detail = caps.fileUploadBlocked.map { LocalizedMessage(raw: $0) }
+                item.state = .failed(error: AttachmentFailure(kind: .processingFailed, detail: detail))
             }
         }
         if let machineId, !blocked {
-            for item in d.toSend(machineId: machineId) where !item.isFile || allowed {
+            for item in d.toSend(machineId: machineId) where !item.isFile {
                 uploads.upload(item, machineId: machineId)
+            }
+            if !d.documents.isEmpty {
+                Task { [weak self] in
+                    guard let self, !closed, targets[key] == machineId, !blockedKeys.contains(key) else { return }
+                    let check = await evaluateDraftDocuments(key, machineId: machineId)
+                    guard !closed, targets[key] == machineId, !blockedKeys.contains(key) else { return }
+                    let current = draft(key)
+                    if !check.allowed {
+                        let detail = check.reason.isEmpty ? nil : LocalizedMessage(raw: check.reason)
+                        for item in current.documents where item.hasSource {
+                            item.invalidate()
+                            item.state = .failed(error: AttachmentFailure(kind: .processingFailed, detail: detail))
+                        }
+                        return
+                    }
+                    for item in current.toSend(machineId: machineId) where item.isFile {
+                        uploads.upload(item, machineId: machineId)
+                    }
+                }
             }
         }
     }
@@ -339,130 +544,266 @@ final class ImageCenter {
     }
 
     /// ＋ was tapped.
-    func plus(_ key: String, blocked: String?, max: Int, filesSupported: Bool = false) {
-        if let blocked {
+    func plus(_ key: String, machineId: String? = nil, caps: AttachmentCapabilities = AttachmentCapabilities()) {
+        if let blocked = caps.imageUploadBlocked {
             say(key, blocked)
-        } else if filesSupported {
+            return
+        }
+        if caps.supportsFiles {
             picking[key] = .attachments
-        } else if draft(key).photos.count >= max {
-            say(key, .maxImages(max))
-        } else {
+            return
+        }
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId))
+            guard !closed else { return }
+            libraryRooms[key] = max(Int(eval.libraryRoom), 1)
+            guard eval.canPickImages else {
+                if eval.hasImagesPickBlockedReason {
+                    say(key, eval.imagesPickBlockedReason.rendered())
+                }
+                return
+            }
             // Asking whether the clipboard has an image does not read it, so nothing is asked of the user yet.
             picking[key] = UIPasteboard.general.hasImages ? .choose : .photos
         }
     }
 
-    /// 照片和视频 was chosen: the library, unless neither another image nor (where the computer takes files) a video fits.
-    func library(_ key: String, blocked: String?, max: Int, caps: AttachmentCapabilities) {
-        if let blocked { return say(key, blocked) }
-        let d = draft(key)
-        let imagesFull = d.photos.count >= max
-        let filesFull = !caps.supportsFiles || d.documents.count >= caps.maxFiles
-        if imagesFull && filesFull { return say(key, .maxImages(max)) }
-        picking[key] = .photos
-    }
-
-    /// 文件 was chosen: the document picker, while another file fits.
-    func documents(_ key: String, blocked: String?, caps: AttachmentCapabilities) {
-        if let blocked { return say(key, blocked) }
-        if let why = caps.fileUploadBlocked { return say(key, why) }
-        let limit = caps.maxFiles
-        if draft(key).documents.count >= limit { return say(key, .maxFiles(limit)) }
-        picking[key] = .documents
-    }
-
-    /// Adds what was picked, as many as fit, and starts preparing them.
-    func add(_ key: String, _ picked: [Source], max: Int) {
-        let draft = draft(key)
-        if draft.restoring {
-            Task { [weak self] in
-                await self?.restoredDraft(key)
-                guard let self, !closed else { return }
-                add(key, picked, max: max)
+    /// 照片和视频 was chosen: evaluated via Core `AttachmentEval` for room and block reasons.
+    func library(_ key: String, machineId: String? = nil, caps: AttachmentCapabilities = AttachmentCapabilities(), offerPaste: Bool = false) {
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId))
+            guard !closed else { return }
+            libraryRooms[key] = max(Int(eval.libraryRoom), 1)
+            guard eval.canPickGallery else {
+                if eval.hasGalleryBlockedReason {
+                    say(key, eval.galleryBlockedReason.rendered())
+                }
+                return
             }
-            return
+            picking[key] = (offerPaste && UIPasteboard.general.hasImages) ? .choose : .photos
         }
-        let taken = draft.admit(picked, max: max)
-        let uris = taken.map { _ in "picked:\(newRequestId())" }
-        for (uri, source) in zip(uris, taken) { sources[uri] = source }
-        uploads.add(draft, uris: uris, machine: machine(key))
     }
 
-    /// Import a document's persistent grant, off the UI thread. Its bytes stay at the source.
-    func addFiles(_ key: String, _ urls: [URL], caps: AttachmentCapabilities) {
-        guard let blocked = caps.fileUploadBlocked else {
-            let limit = caps.maxFiles
-            let bytes = caps.maxFileBytes
+    /// 文件 was chosen: evaluated via Core `AttachmentEval` for file limits and block reasons.
+    func documents(_ key: String, machineId: String? = nil, caps: AttachmentCapabilities = AttachmentCapabilities()) {
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId))
+            guard !closed else { return }
+            guard eval.canPickFiles else {
+                if eval.hasFilesPickBlockedReason {
+                    say(key, eval.filesPickBlockedReason.rendered())
+                }
+                return
+            }
+            picking[key] = .documents
+        }
+    }
+
+    /// Adds picked/pasted image sources after Core `AttachmentEval` routing and admission.
+    func add(_ key: String, _ picked: [Source], machineId: String? = nil) {
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            await restoredDraft(key)
+            guard !closed else { return }
+            let candidates: [PBAttachmentCandidateInput] = picked.enumerated().map { idx, source in
+                .with {
+                    switch source {
+                    case .library(let p), .provider(let p):
+                        $0.name = p.suggestedName ?? "image-\(idx + 1).jpg"
+                        $0.mimeType = Self.imageMimeType(for: p)
+                    case .data:
+                        $0.name = "image-\(idx + 1).png"
+                        $0.mimeType = "image/png"
+                    }
+                    $0.forceFile = false
+                }
+            }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: candidates))
+            guard !closed else { return }
             let d = draft(key)
-            Task {
-                await restoredDraft(key)
-                // A video's copy that does not make it into the draft is deleted at once.
-                var left = urls[...]
-                defer { left.forEach { LibraryVideos.discard($0) } }
-                guard !closed else { return }
-                while let url = left.first {
-                    guard !closed else { return }
-                    if d.documents.count >= limit {
-                        say(key, .filesDropped(limit))
-                        break
-                    }
+            var accepted: [Source] = []
+            for (source, decision) in zip(picked, eval.decisions) where decision.accepted && decision.route == .image {
+                accepted.append(source)
+            }
+            d.notice = eval.hasNotice ? eval.notice.rendered() : ""
+            guard !accepted.isEmpty else { return }
+            let uris = accepted.map { _ in "picked:\(newRequestId())" }
+            for (uri, source) in zip(uris, accepted) { sources[uri] = source }
+            uploads.add(d, uris: uris, machine: machine(key))
+        }
+    }
+
+    /// Mixed photo/video library selection: routes images and videos together via Core `AttachmentEval`
+    /// (`force_file = false`), discarding any rejected video temp copy immediately.
+    func addLibraryItems(_ key: String, _ providers: [NSItemProvider], machineId: String? = nil, caps: AttachmentCapabilities) {
+        guard !providers.isEmpty else { return }
+        Task { [weak self] in
+            guard let self, !closed else { return }
+            await restoredDraft(key)
+            guard !closed else { return }
+            enum PreparedItem {
+                case image(NSItemProvider, PBAttachmentCandidateInput)
+                case video(PickedFileInspection, PBAttachmentCandidateInput)
+            }
+            var items: [PreparedItem] = []
+            var copyFailed = false
+            for (idx, provider) in providers.enumerated() {
+                if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                     do {
-                        let file = try await Task.detached { try PickedFile(url: url, maxBytes: bytes) }.value
-                        guard !closed else { return }
-                        guard d.documents.count < limit else {
-                            say(key, .maxFiles(limit))
-                            break
+                        let video: LibraryVideo = try await withCheckedThrowingContinuation { done in
+                            _ = provider.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
                         }
-                        left.removeFirst()
-                        let item = PendingImage(id: newRequestId(), uri: nil)
-                        item.file = file
-                        item.state = .failed(error: AttachmentFailure(kind: .offline, detail: L10nMessage.imageIosNeedsUploadingToTheComputerAgain()))
-                        d.append([item])
-                        if let target = self.machine(key)(), d.filesAllowed(for: fileCaps[key] ?? AttachmentCapabilities()) { uploads.upload(item, machineId: target) }
+                        let inspection = try await Task.detached { try PickedFile.inspect(url: video.url) }.value
+                        items.append(.video(inspection, inspection.candidate(forceFile: false)))
                     } catch {
-                        say(key, errorText(error))
-                        LibraryVideos.discard(left.removeFirst())
+                        copyFailed = true
+                    }
+                } else {
+                    let candidate = PBAttachmentCandidateInput.with {
+                        $0.name = provider.suggestedName ?? "image-\(idx + 1).jpg"
+                        $0.mimeType = Self.imageMimeType(for: provider)
+                        $0.forceFile = false
+                    }
+                    items.append(.image(provider, candidate))
+                }
+            }
+            guard !closed else {
+                for item in items { if case .video(let insp, _) = item { LibraryVideos.discard(insp.url) } }
+                return
+            }
+            let candidates = items.map { item -> PBAttachmentCandidateInput in
+                switch item {
+                case .image(_, let c), .video(_, let c): return c
+                }
+            }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: candidates))
+            guard !closed else {
+                for item in items { if case .video(let insp, _) = item { LibraryVideos.discard(insp.url) } }
+                return
+            }
+            let d = draft(key)
+            var imageSources: [Source] = []
+            var acceptedFiles: [PendingImage] = []
+            for (item, decision) in zip(items, eval.decisions) {
+                switch item {
+                case .image(let provider, _):
+                    if decision.accepted && decision.route == .image {
+                        imageSources.append(.library(provider))
+                    }
+                case .video(let inspection, _):
+                    if decision.accepted && (decision.route == .videoFile || decision.route == .file),
+                       let picked = try? inspection.makePickedFile(displayName: decision.displayName, formattedSize: decision.formattedSize) {
+                        let pending = PendingImage(id: newRequestId(), uri: nil)
+                        pending.file = picked
+                        pending.state = .failed(error: AttachmentFailure(kind: .uploadFailed, detail: L10nMessage.imageIosNeedsUploadingToTheComputerAgain()))
+                        acceptedFiles.append(pending)
+                    } else {
+                        LibraryVideos.discard(inspection.url)
                     }
                 }
             }
+            if eval.hasNotice {
+                say(key, eval.notice.rendered())
+            } else if copyFailed {
+                say(key, L10n.imageIosCannotReadThisVideoSelectItAgain())
+            }
+            if !imageSources.isEmpty {
+                let uris = imageSources.map { _ in "picked:\(newRequestId())" }
+                for (uri, source) in zip(uris, imageSources) { sources[uri] = source }
+                uploads.add(d, uris: uris, machine: machine(key))
+            }
+            if !acceptedFiles.isEmpty {
+                d.append(acceptedFiles)
+                if let target = self.machine(key)() {
+                    for item in acceptedFiles { uploads.upload(item, machineId: target) }
+                }
+            }
+        }
+    }
+
+    /// Import documents from the explicit File picker (`force_file = true`) via Core `AttachmentEval`.
+    /// Even images picked from Files are routed as files unchanged. Rejected copies are discarded at once.
+    func addFiles(_ key: String, _ urls: [URL], machineId: String? = nil, caps: AttachmentCapabilities) {
+        guard !urls.isEmpty else { return }
+        if let blocked = caps.fileUploadBlocked {
+            urls.forEach { LibraryVideos.discard($0) }
+            say(key, blocked)
             return
         }
-        urls.forEach { LibraryVideos.discard($0) }
-        say(key, blocked)
-    }
-
-    /// Videos from the library, which go as files: each is copied out of the
-    /// library into this app's temporary folder, and that copy is what the
-    /// draft keeps and uploads. One past the size limit is refused here, as
-    /// a picked document is, before anything is sent.
-    func addVideos(_ key: String, _ items: [NSItemProvider], caps: AttachmentCapabilities) {
-        if let blocked = caps.fileUploadBlocked { return say(key, blocked) }
-        Task {
-            var urls: [URL] = []
-            for item in items {
+        Task { [weak self] in
+            guard let self, !closed else {
+                urls.forEach { LibraryVideos.discard($0) }
+                return
+            }
+            await restoredDraft(key)
+            guard !closed else {
+                urls.forEach { LibraryVideos.discard($0) }
+                return
+            }
+            var inspected: [PickedFileInspection] = []
+            var firstReadError: Error?
+            for url in urls {
                 do {
-                    let video: LibraryVideo = try await withCheckedThrowingContinuation { done in
-                        _ = item.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
-                    }
-                    urls.append(video.url)
+                    let info = try await Task.detached { try PickedFile.inspect(url: url) }.value
+                    inspected.append(info)
                 } catch {
-                    say(key, L10n.imageIosCannotReadThisVideoSelectItAgain())
+                    if firstReadError == nil { firstReadError = error }
+                    LibraryVideos.discard(url)
                 }
             }
-            guard !closed, !urls.isEmpty else { return urls.forEach { LibraryVideos.discard($0) } }
-            addFiles(key, urls, caps: caps)
+            guard !closed else {
+                inspected.forEach { LibraryVideos.discard($0.url) }
+                return
+            }
+            guard !inspected.isEmpty else {
+                if let firstReadError { say(key, errorText(firstReadError)) }
+                return
+            }
+            let candidates = inspected.map { $0.candidate(forceFile: true) }
+            let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: candidates))
+            guard !closed else {
+                inspected.forEach { LibraryVideos.discard($0.url) }
+                return
+            }
+            let d = draft(key)
+            var accepted: [PendingImage] = []
+            for (info, decision) in zip(inspected, eval.decisions) {
+                if decision.accepted && (decision.route == .file || decision.route == .videoFile),
+                   let file = try? info.makePickedFile(displayName: decision.displayName, formattedSize: decision.formattedSize) {
+                    let item = PendingImage(id: newRequestId(), uri: nil)
+                    item.file = file
+                    item.state = .failed(error: AttachmentFailure(kind: .uploadFailed, detail: L10nMessage.imageIosNeedsUploadingToTheComputerAgain()))
+                    accepted.append(item)
+                } else {
+                    LibraryVideos.discard(info.url)
+                }
+            }
+            if eval.hasNotice {
+                say(key, eval.notice.rendered())
+            } else if let firstReadError {
+                say(key, errorText(firstReadError))
+            }
+            if !accepted.isEmpty {
+                d.append(accepted)
+                if let target = self.machine(key)() {
+                    for item in accepted { uploads.upload(item, machineId: target) }
+                }
+            }
         }
     }
 
-    /// Adds the images on the clipboard.
-    func paste(_ key: String, max: Int) {
+    /// Adds the images on the clipboard via Core `AttachmentEval`.
+    func paste(_ key: String, machineId: String? = nil) {
         let providers = UIPasteboard.general.itemProviders.filter {
             $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
         }
         if providers.isEmpty {
             say(key, .clipboardEmpty)
         } else {
-            add(key, providers.map { .provider($0) }, max: max)
+            add(key, providers.map { .provider($0) }, machineId: machineId)
         }
     }
 
@@ -472,9 +813,19 @@ final class ImageCenter {
             img.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return
         }
-        if img.isFile, !draft(key).filesAllowed(for: fileCaps[key] ?? AttachmentCapabilities()) {
-            img.invalidate()
-            img.state = .failed(error: AttachmentFailure(kind: .failed, detail: L10nMessage.imageIosThisComputerDoesNotSupportTheseFilesCheckTheir()))
+        if img.isFile {
+            Task { [weak self] in
+                guard let self, !closed else { return }
+                let check = await evaluateDraftDocuments(key, machineId: targets[key])
+                guard !closed else { return }
+                if !check.allowed {
+                    img.invalidate()
+                    let detail = check.reason.isEmpty ? nil : LocalizedMessage(raw: check.reason)
+                    img.state = .failed(error: AttachmentFailure(kind: .processingFailed, detail: detail))
+                    return
+                }
+                uploads.retry(draft(key), img, machine: machine(key))
+            }
             return
         }
         uploads.retry(draft(key), img, machine: machine(key))
@@ -502,6 +853,7 @@ final class ImageCenter {
         for img in images {
             if img.isFile { LibraryVideos.discard(img.file) }
             thumbs[img.id] = nil
+            evaluatedProblems[img.id] = nil
             if let uri = img.uri { sources[uri] = nil }
         }
     }
@@ -517,7 +869,7 @@ final class ImageCenter {
         defer {
             if readers.isEmpty { reading = false } else { readers.removeFirst().resume() }
         }
-        let unreadable = AttachmentFailure(kind: .unreadable)
+        let unreadable = AttachmentFailure(kind: .decode)
         guard let source = sources[uri] else { throw AttachmentFailure(kind: .sourceMissing) }
         let data: Data
         switch source {
@@ -590,6 +942,7 @@ final class ImageCenter {
             Task { done(.failure(UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending()))) }
             return true
         }
+        let key = Self.sessionKey(sid)
         let original = draft.original
         let o = Outgoing(
             requestId: newRequestId(), text: text, imageIds: draft.ids(machineId: machineId), fileIds: draft.fileIds(machineId: machineId),
@@ -597,6 +950,15 @@ final class ImageCenter {
         let record = o.record
         let records = records
         Task {
+            if coreHost != nil {
+                let check = await evaluateDraft(key, machineId: machineId)
+                if !check.allowed {
+                    let reason = check.reason
+                    if !reason.isEmpty { say(key, reason) }
+                    done(.failure(UserError(reason)))
+                    return
+                }
+            }
             let kept: Result<Void, Error> = await Task.detached {
                 Result {
                     try (keep ?? { try records.save(sid: $0, $1, original: $2) })(
@@ -613,6 +975,16 @@ final class ImageCenter {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
                 done(.failure(UserError(closed ? L10nMessage.attachmentIosSignedOutOfTheAccount() : L10nMessage.imageIosSessionRemoved())))
                 return
+            }
+            if coreHost != nil {
+                let check = await evaluateDraft(key, machineId: machineId)
+                if !check.allowed {
+                    try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
+                    let reason = check.reason
+                    if !reason.isEmpty { say(key, reason) }
+                    done(.failure(UserError(reason)))
+                    return
+                }
             }
             do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }
             catch {
@@ -686,7 +1058,7 @@ final class ImageCenter {
                     let clone = PendingImage(id: RACore.newRequestId(), uri: img.uri)
                     if img.isFile {
                         guard let file = img.file, file.hasSource else {
-                            throw AttachmentFailure(kind: .sourceMissing)
+                            throw AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing())
                         }
                         let up = try await uploadFile(ch, transferId: tid, source: file)
                         var copied = file
@@ -786,26 +1158,59 @@ final class ImageCenter {
         }
     }
 
-    func canPutBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing) -> Bool {
-        guard canRestoreFiles(sid, hasFiles: !o.fileIds.isEmpty || o.images.contains(where: \.isFile)) else { return false }
+    private func evaluatePutBack(sid: String, items: [PendingImage]) async -> Bool {
+        if items.isEmpty { return true }
+        let key = Self.sessionKey(sid)
+        let d = draft(key)
+        guard !d.restoring, d.restoreError == nil else {
+            d.noticeMessage = .restoreUnavailable
+            return false
+        }
+        let hasFiles = items.contains(where: \.isFile)
+        if coreHost == nil {
+            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
+        }
+        let machineId = remote.current.sessions[sid]?.machineId ?? targets[key] ?? ""
+        let cands = Self.candidates(for: items)
+        let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: cands))
+        guard eval.decisions.count == cands.count, eval.decisions.allSatisfy(\.accepted) else {
+            let reason = Self.rejectionReason(from: eval)
+            if !reason.isEmpty {
+                d.notice = reason
+                say(key, reason)
+            }
+            return false
+        }
+        return true
+    }
+
+    func canPutBack(sid: String, _ o: Outgoing) async -> Bool {
+        let hasFiles = !o.fileIds.isEmpty || o.images.contains(where: \.isFile)
+        if coreHost == nil {
+            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
+        }
         if o.images.isEmpty { return true }
-        let draft = draft(Self.sessionKey(sid))
-        return draft.canFit(o.images, max: max, maxFiles: maxFiles)
+        return await evaluatePutBack(sid: sid, items: o.images)
     }
 
     /// Puts a message's images back into its session's draft; false when they do not fit, and then nothing moved.
-    func putBack(sid: String, max: Int, maxFiles: Int = 6, _ o: Outgoing, releaseFailure: Bool = false) -> Bool {
-        guard canRestoreFiles(sid, hasFiles: !o.fileIds.isEmpty || o.images.contains(where: \.isFile)) else { return false }
-        adoptRestored(sid, requestId: o.requestId)
+    func putBack(sid: String, _ o: Outgoing, releaseFailure: Bool = false) async -> Bool {
+        let hasFiles = !o.fileIds.isEmpty || o.images.contains(where: \.isFile)
+        if coreHost == nil {
+            guard canRestoreFiles(sid, hasFiles: hasFiles) else { return false }
+        }
         if o.images.isEmpty {
+            adoptRestored(sid, requestId: o.requestId)
             release(sid, o)
             return true
         }
+        guard await evaluatePutBack(sid: sid, items: o.images) else { return false }
+        adoptRestored(sid, requestId: o.requestId)
         let draft = draft(Self.sessionKey(sid))
         if o.state == .failed || releaseFailure {
             for img in o.images { img.releaseUploadProtection(requestId: o.requestId) }
         }
-        guard draft.attach(o.images, max: max, maxFiles: maxFiles, wereOriginal: o.original) else { return false }
+        guard draft.attach(o.images, wereOriginal: o.original) else { return false }
         letGo(sid, o)
         // Its images live on in the draft. Its record goes once they are on disk there: until then it is the
         // only copy a reclaimed process would find.
@@ -819,18 +1224,18 @@ final class ImageCenter {
         catch { say(Self.sessionKey(sid), errorText(error)); return false }
     }
 
-    /// History can hold remote-only files. Check capability before creating
+    /// History can hold remote-only files. Evaluate via Core `AttachmentEval` before creating
     /// placeholders or appending any part of the message to the composer.
     @discardableResult
-    func putBack(sid: String, text: String, files: [PBSentFile], store: SessionStore, caps: AttachmentCapabilities = AttachmentCapabilities()) -> Bool {
-        guard canRestoreFiles(sid, hasFiles: !files.isEmpty) else { return false }
+    func putBack(sid: String, text: String, files: [PBSentFile], store: SessionStore) async -> Bool {
         let picked = files.map { file in
             let item = PendingImage(id: newRequestId(), uri: nil)
             item.file = PickedFile(remote: file)
             item.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return item
         }
-        guard draft(Self.sessionKey(sid)).attach(picked, max: caps.maxImages, maxFiles: caps.maxFiles) else { return false }
+        guard await evaluatePutBack(sid: sid, items: picked) else { return false }
+        guard draft(Self.sessionKey(sid)).attach(picked) else { return false }
         store.appendToDraft(sid, text)
         return true
     }
@@ -894,7 +1299,7 @@ final class ImageCenter {
     #if DEBUG
         /// Resolve a debug pick when the signal arrives, after project settings have loaded.
         func debugAddFiles(_ key: String, _ urls: [URL]) {
-            addFiles(key, urls, caps: fileCaps[key] ?? AttachmentCapabilities())
+            addFiles(key, urls, machineId: targets[key], caps: fileCaps[key] ?? AttachmentCapabilities())
         }
 
         /// Shows a message with images as it would stand after sending, for sample data.

@@ -44,13 +44,13 @@ import Testing
         let p = readyFile(), o = Outgoing(requestId: "original-request", text: "restore this", fileIds: ["file-1"], images: [p])
         o.state = .failed; try OutgoingRecords(files: files).save(sid: "s", o.record, original: false)
         center.restoreOutgoing("s"); await center.restoredOutgoing("s")
-        #expect(!SessionImages.canPutBack(
+        #expect(await !SessionImages.canPutBack(
             requestId: o.requestId,
             files: [.with { $0.name = "report.csv" }],
-            session: "s", caps: AttachmentCapabilities(supportsFiles: false), remote: remote))
+            session: "s", remote: remote))
         let restored: Bool
-        if direct { restored = center.putBack(sid: "s", max: 6, o) }
-        else { restored = SessionImages.putBack(o, session: "s", caps: AttachmentCapabilities(supportsFiles: false), remote: remote, store: store) }
+        if direct { restored = await center.putBack(sid: "s", o) }
+        else { restored = await SessionImages.putBack(o, session: "s", remote: remote, store: store) }
         #expect(!restored && draft.images.isEmpty && p.imageId == "file-1")
         #expect(store.draft("s") == "existing text" && center.restoredOutgoing["s"]?.first?.requestId == o.requestId)
         #expect(try OutgoingRecords(files: files).load(sid: "s").count == 1)
@@ -62,11 +62,11 @@ import Testing
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
         let center = ImageCenter.of(remote), store = SessionStore(), draft = center.draft("session:s")
         await center.restoredDraft(draft.key); store.setDraft("s", "existing")
-        #expect(!center.putBack(sid: "s", text: "restore", files: [.with { $0.name = "report.csv"; $0.fileID = "file-1" }], store: store))
+        #expect(await !center.putBack(sid: "s", text: "restore", files: [.with { $0.name = "report.csv"; $0.fileID = "file-1" }], store: store))
         #expect(draft.images.isEmpty && store.draft("s") == "existing")
         #expect(center.notices[draft.key]?.text.contains("更新") == true)
         // Empty attachments still permit restoring a plain text message.
-        #expect(center.putBack(sid: "s", text: "plain", files: [], store: store))
+        #expect(await center.putBack(sid: "s", text: "plain", files: [], store: store))
         #expect(store.draft("s") == "existing\nplain")
     }
 

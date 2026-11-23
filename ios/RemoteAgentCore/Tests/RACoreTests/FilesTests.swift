@@ -61,43 +61,46 @@ private actor FileReceiver: UploadChannel {
     private func pending(_ source: PickedFile) -> PendingImage {
         let p = PendingImage(id: newRequestId(), uri: nil)
         p.file = source
-        p.state = .failed(error: AttachmentFailure(kind: .offline))
+        p.state = .failed(error: AttachmentFailure(kind: .uploadFailed))
         return p
     }
 
     @Test func supportIsExplicitAndLimitsUseCoreCapabilities() throws {
-        #expect(!AttachmentCapabilities(supportsFiles: false).supportsFiles)
-        #expect(AttachmentCapabilities(supportsFiles: false).fileUploadBlocked == L10n.imageIosThisComputerDoesNotSupportFileUploads())
-        #expect(caps().maxFiles == 2)
-        #expect(caps().maxFileBytes == 10)
-        let (folder, file) = try source(11)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        let d = ImageDraft(key: "new:project", files: MemoryFiles(), saves: nil)
-        d.append([pending(file)])
-        #expect(!d.filesAllowed(for: caps()))
-        #expect(!d.filesAllowed(for: caps(supported: false)))
-        #expect(throws: (any Error).self) { try PickedFile(url: folder.appendingPathComponent("report.csv"), maxBytes: 10) }
+        let pbCaps = PBSessionCapabilitiesView.with {
+            $0.capabilitiesLoaded = true
+            $0.supportsImages = true
+            $0.supportsFiles = false
+            $0.maxImages = 6
+            $0.maxFiles = 2
+            $0.maxFileBytes = 10
+            $0.maxFileNameBytes = 255
+            $0.maxFileSizeText = "10 B"
+            $0.galleryAllowsVideo = false
+            $0.fileUploadBlockedReason = .with { $0.key = "attachment.update_required" }
+            $0.originalImageHint = .with { $0.key = "image.original_hint" }
+            $0.fileMetadataNotice = .with { $0.key = "attachment.metadata" }
+        }
+        let converted = AttachmentCapabilities(pbCaps)
+        #expect(!converted.supportsFiles && !converted.galleryAllowsVideo)
+        #expect(converted.fileUploadBlocked == L10n.attachmentUpdateRequired())
+        #expect(converted.originalImageHint == L10n.imageOriginalHint())
+        #expect(converted.fileMetadataNotice == L10n.attachmentMetadata())
+        #expect(converted.maxFiles == 2 && converted.maxFileBytes == 10 && converted.maxFileSizeText == "10 B")
     }
 
-    @Test func the100MiBBoundaryIsCheckedBeforeReadingBytes() throws {
+    @Test func the100MiBBoundaryIsInspectedWithoutReadingBytes() throws {
+        let boundary: Int64 = 100 * 1024 * 1024
         let (folder, source) = try source()
         defer { try? FileManager.default.removeItem(at: folder) }
         let url = folder.appendingPathComponent(source.name)
         let handle = try FileHandle(forWritingTo: url)
         defer { try? handle.close() }
-        try handle.truncate(atOffset: UInt64(maxFileBytes))
-        #expect(try PickedFile(url: url).size == maxFileBytes)
-        try handle.truncate(atOffset: UInt64(maxFileBytes + 1))
-        #expect(throws: (any Error).self) { try PickedFile(url: url) }
-    }
-
-    @Test func namesKeepExtensionsAndUnicodeAndSizesAreReadable() {
-        #expect(fileChipName("数据.csv") == "数据.csv")
-        let name = String(repeating: "报表", count: 40) + ".csv"
-        let short = fileChipName(name, maxCharacters: 20)
-        #expect(short.count == 20 && short.contains("…") && short.hasSuffix(".csv"))
-        #expect(fileSize(0) == "0 B")
-        #expect(fileSize(2048) == "2.0 KB")
+        try handle.truncate(atOffset: UInt64(boundary))
+        let atLimit = try PickedFile.inspect(url: url)
+        #expect(atLimit.sizeBytes == boundary && !atLimit.isDirectory && !atLimit.sizeUnknown)
+        try handle.truncate(atOffset: UInt64(boundary + 1))
+        let overLimit = try PickedFile.inspect(url: url)
+        #expect(overLimit.sizeBytes == boundary + 1)
     }
 
     @Test func documentsRestoreWithoutCopyingTheirContentsToTheImageStore() throws {
@@ -126,14 +129,10 @@ private actor FileReceiver: UploadChannel {
         #expect(item.transferId != transfer && item.imageId == nil && item.machineId == nil, "expiry invalidates the old completion synchronously")
     }
 
-    @Test func filesCountSeparatelyAndRestoreForcesUploadWhileUnknownRequestsKeepIDs() throws {
+    @Test func restoreForcesUploadWhileUnknownRequestsKeepIDs() throws {
         let (folder, file) = try source()
         defer { try? FileManager.default.removeItem(at: folder) }
         let store = MemoryFiles()
-        let d = ImageDraft(key: "s", files: store, saves: nil)
-        d.append((0..<6).map { _ in pending(file) })
-        #expect(d.admit([1, 2, 3], max: 2) == [1, 2])
-        #expect(!d.attach([pending(file)], max: 6))
         let p = pending(file)
         p.imageId = "first-file-id"; p.machineId = "mac"; p.state = .ready; p.expiresMs = Int64.max
         let o = Outgoing(requestId: "request", text: "", fileIds: ["first-file-id"], images: [p], mode: .queue)
@@ -142,7 +141,7 @@ private actor FileReceiver: UploadChannel {
         let r = try #require(records.load(sid: "session").first)
         #expect(r.state == .unknown && r.fileIds == ["first-file-id"] && r.mode == .queue)
         let input = ImageDraft(key: "back", files: store, saves: nil)
-        #expect(input.attach(r.images, max: 6))
+        #expect(input.attach(r.images))
         #expect(r.images.first?.imageId == nil)
         #expect(r.fileIds == ["first-file-id"])
         input.remove(try #require(input.documents.first))

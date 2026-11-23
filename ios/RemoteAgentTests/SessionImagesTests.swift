@@ -24,6 +24,24 @@ import UIKit
     private let spy = SubmitSpy()
     private let sid = "s1"
 
+    private func centerWithCore() async throws -> (ImageCenter, CoreHost) {
+        var state = RemoteState()
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = true
+        })
+        state.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: remote.account, defaults: UserDefaults(suiteName: "ra-si-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        await host.seedDemo(state: state)
+        ImageCenter.install(remote: remote, coreHost: host, files: files)
+        return (ImageCenter.of(remote), host)
+    }
+
     private func center() -> ImageCenter {
         ImageCenter.install(remote: remote, files: files)
         return ImageCenter.of(remote)
@@ -255,7 +273,7 @@ import UIKit
     }
 
     @Test func aMessageTheSessionEndedOnKeepsItsImagesToBePutBack() async throws {
-        let c = center()
+        let (c, host) = try await centerWithCore(); defer { host.close() }
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append([ready("a")])
         _ = await send(c, "看图")
@@ -271,13 +289,13 @@ import UIKit
             $0.requestID = o.requestId
             $0.text = "看图"
         }
-        #expect(SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
+        #expect(await SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
         #expect(store.draft(sid) == "看图" && c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(draft.images.map(\.id) == ["a"] && draft.images[0].processed != nil)
     }
 
     @Test func aMessageNotSubmittedGoesBackIntoTheBoxWithItsImages() async throws {
-        let c = center()
+        let (c, host) = try await centerWithCore(); defer { host.close() }
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append([ready("a"), ready("b")])
         _ = await send(c, "看图")
@@ -286,12 +304,12 @@ import UIKit
         o.state = .failed
         store.setDraft(sid, "已经在写的")
 
-        #expect(SessionImages.putBack(o, session: sid, remote: remote, store: store))
+        #expect(await SessionImages.putBack(o, session: sid, remote: remote, store: store))
         #expect(c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
         #expect(draft.images.map(\.id) == ["a", "b"])
-        #expect(draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .offline)) && $0.processed != nil })
+        #expect(draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .uploadFailed)) && $0.processed != nil })
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
@@ -315,7 +333,20 @@ import UIKit
             func clearFolder(_ folder: String) { inner.clearFolder(folder) }
         }
         let files = Cramped()
-        ImageCenter.install(remote: remote, files: files)
+        var state = RemoteState()
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+        })
+        state.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: remote.account, defaults: UserDefaults(suiteName: "ra-cramped-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        defer { host.close() }
+        await host.seedDemo(state: state)
+        ImageCenter.install(remote: remote, coreHost: host, files: files)
         let c = ImageCenter.of(remote)
         let key = ImageCenter.sessionKey(sid)
         let draft = c.draft(key)
@@ -327,7 +358,7 @@ import UIKit
 
         // The box cannot keep the image it gets back: the message's record is the only copy on disk.
         files.full = key
-        #expect(SessionImages.putBack(o, session: sid, remote: remote, store: store))
+        #expect(await SessionImages.putBack(o, session: sid, remote: remote, store: store))
         await eventually("the box said so") { draft.notice.hasPrefix("这张图未保存到手机") }
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
@@ -340,7 +371,7 @@ import UIKit
     }
 
     @Test func imagesThatDoNotFitNextToTheOnesInTheBoxStayWithTheirMessage() async throws {
-        let c = center()
+        let (c, host) = try await centerWithCore(); defer { host.close() }
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append((1...4).map { ready("m\($0)") })
         _ = await send(c, "四张")
@@ -349,23 +380,23 @@ import UIKit
         o.state = .failed
         draft.append((1...3).map { ready("n\($0)") })
 
-        #expect(!SessionImages.canPutBack(requestId: o.requestId, session: sid, remote: remote))
-        #expect(!SessionImages.putBack(o, session: sid, remote: remote, store: store))
+        #expect(await !SessionImages.canPutBack(requestId: o.requestId, session: sid, remote: remote))
+        #expect(await !SessionImages.putBack(o, session: sid, remote: remote, store: store))
         // Nothing moved: the message is still there to retry or to put back later.
         #expect(c.heldOutgoing(sid, requestId: o.requestId) != nil && store.draft(sid).isEmpty)
         #expect(draft.images.count == 3)
-        #expect(draft.notice == "输入框里已有 3 张图，放回这 4 张会超过 6 张。先移除一些再放回")
+        #expect(draft.notice.contains("一条消息最多 6 张"))
         #expect(try OutgoingRecords(files: files).load(sid: sid).count == 1)
     }
 
-    @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() {
+    @Test func aMessageWithoutImagesGoesBackAsItsTextAlone() async {
         _ = center()
         let effect = PBSessionRestoreComposerEffect.with {
             $0.sessionID = sid
             $0.requestID = "text-only"
             $0.text = "只有文字"
         }
-        #expect(SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
+        #expect(await SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
         #expect(store.draft(sid) == "只有文字")
     }
 
@@ -404,7 +435,7 @@ import UIKit
     @Test(arguments: ["session:test", "project:/work/example"])
     func theButtonsFollowTheDraft(key: String) async {
         let c = center()
-        let context = ComposerAttachments(remote: remote, key: key, machineId: "mac", blocked: nil, limit: 6)
+        let context = ComposerAttachments(remote: remote, key: key, machineId: "mac", caps: AttachmentCapabilities(supportsImages: true, maxImages: 6))
         _ = c.draft(key)
         await c.restoredDraft(key)
         #expect(!context.hasImages && context.ready)
@@ -415,18 +446,74 @@ import UIKit
         c.remove(key, waiting)
         #expect(context.ready)
         // On another computer they are not there.
-        let other = ComposerAttachments(remote: remote, key: key, machineId: "vps", blocked: nil, limit: 6)
+        let other = ComposerAttachments(remote: remote, key: key, machineId: "vps", caps: AttachmentCapabilities(supportsImages: true, maxImages: 6))
         #expect(!other.ready)
     }
 
-    @Test func plusSaysWhyItAddsNothing() {
-        let c = center()
+    @Test func sendingOverLimitDraftIsBlockedByCoreAttachmentEval() async throws {
+        let (c, host) = try await centerWithCore(); defer { host.close() }
         let key = ImageCenter.sessionKey(sid)
-        c.plus(key, blocked: "MacBook 离线，连上后才能添加图片", max: 6)
+        let draft = c.draft(key)
+        await c.restoredDraft(key)
+        draft.append((1...7).map { ready("over-\($0)") })
+        let result = await send(c, "七张")
+        guard case .failure(let error)? = result else {
+            Issue.record("expected over-limit draft send to fail via Core AttachmentEval")
+            return
+        }
+        #expect(errorText(error).contains("一条消息最多 6 张"))
+        #expect(c.notices[key]?.text.contains("一条消息最多 6 张") == true)
+        #expect(spy.sent.isEmpty && draft.images.count == 7)
+    }
+
+    #if DEBUG
+    @Test func plusSaysWhyItAddsNothing() async throws {
+        var state = RemoteState()
+        state.machines["mac"] = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = false
+        })
+        state.machines["mac-files"] = MachineView(id: "mac-files", online: true, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacPro"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = true
+            $0.capabilities.maxFilesPerMessage = 6
+        })
+        state.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        await remote.showForTest(state: state)
+        let host = try CoreHost.live(
+            remote: remote, account: remote.account, defaults: UserDefaults(suiteName: "ra-plus-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        defer { host.close() }
+        await host.seedDemo(state: state)
+        ImageCenter.install(remote: remote, coreHost: host, files: files, live: false)
+        defer { ImageCenter.remove(remote) }
+
+        let c = ImageCenter.of(remote)
+        let key = ImageCenter.sessionKey(sid)
+        c.plus(key, machineId: "mac", caps: AttachmentCapabilities(imageUploadBlocked: L10n.attachmentComputerOffline(name: "MacBook")))
         #expect(c.notices[key]?.text == L10n.attachmentComputerOffline(name: "MacBook") && c.picking[key] == nil)
         c.draft(key).append((1...6).map { ready("i\($0)") })
-        c.plus(key, blocked: nil, max: 6)
-        #expect(c.notices[key]?.text == L10n.attachmentMaxImages(count: 6) && c.picking[key] == nil)
+        c.plus(key, machineId: "mac", caps: AttachmentCapabilities(supportsFiles: false))
+        await eventually("max images notice from Core imagesPickBlockedReason") {
+            c.notices[key]?.text == L10n.attachmentMaxImages(count: 6) && c.picking[key] == nil
+        }
+        c.documents(key, machineId: "mac", caps: AttachmentCapabilities(supportsFiles: false))
+        await eventually("files unsupported notice from Core filesPickBlockedReason") {
+            c.notices[key]?.text == L10n.attachmentUpdateRequired() && c.picking[key] == nil
+        }
+        let fileItems = (1...6).map { idx -> PendingImage in
+            let item = PendingImage(id: "doc-\(idx)", uri: nil)
+            item.file = PickedFile(remote: .with { $0.name = "f\(idx).txt"; $0.sizeBytes = 10 })
+            return item
+        }
+        c.draft(key).append(fileItems)
+        c.documents(key, machineId: "mac-files", caps: AttachmentCapabilities(supportsFiles: true))
+        await eventually("max files notice from Core filesPickBlockedReason") {
+            c.notices[key]?.text == L10n.attachmentMaxFiles(count: 6) && c.picking[key] == nil
+        }
         let noticeID = c.notices[key]!.id
         c.clearNotice(key, id: UUID())
         #expect(c.notices[key] != nil)
@@ -435,17 +522,25 @@ import UIKit
     }
 
     @Test func pickedFilesArePreparedAndTheExtraOnesAreLeftOut() async throws {
-        let c = center()
+        let (c, host) = try await centerWithCore()
+        defer { host.close(); ImageCenter.remove(remote) }
         let key = ImageCenter.sessionKey(sid)
         _ = c.draft(key)
         await c.restoredDraft(key)
-        // Not pictures: what matters here is how many go in, and what is said of the rest and of each.
-        c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, max: 6)
+        // Not pictures: Core admits 6 and sets notice for the extra 2; preparing fails with structured .decode.
+        c.add(key, (1...8).map { .data(Data("not a picture \($0)".utf8)) }, machineId: "mac")
         let draft = c.draft(key)
-        #expect(draft.images.count == 6)
-        #expect(draft.notice == "一条消息最多 6 张，多选的 2 张没有加入")
-        await eventually("each says it could not be read") { draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .unreadable)) } }
+        await eventually("6 admitted with Core notice") {
+            draft.images.count == 6 && draft.notice == "一条消息最多 6 张，多选的 2 张没有加入"
+        }
+        await eventually("each says it could not be read") {
+            draft.images.allSatisfy { $0.state == .failed(error: AttachmentFailure(kind: .decode)) }
+        }
+        await c.refreshProblems(key, machineId: "mac")
+        #expect(c.failureSummaries[key] == L10n.imageCannotReadThisImageTryJpegOrPngInstead())
+        #expect(draft.photos.allSatisfy { c.evaluatedProblems[$0.id]?.kind == .decode })
     }
+    #endif
 
     /// What the photo picker hands over is a file: it is read whole unless it is too large, and then not at all.
     @Test func aPickedPhotoIsReadFromItsFileUnlessItIsTooLarge() async throws {
@@ -468,7 +563,7 @@ import UIKit
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
         try handle.close()
-        #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))))
+        #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)))
     }
 
     @Test func theSealedStoreKeepsADraftWithoutItsPixelsInTheClear() async throws {

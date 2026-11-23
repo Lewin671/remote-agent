@@ -189,6 +189,8 @@ extension ServerTests {
                     notifyRecord: notifyBlob,
                     machineID: daemon.id,
                     tag: expectedTag,
+                    showContent: true,
+                    locked: false,
                     locale: "en"
                 )
                 #expect(noticeEn?.machineID == daemon.id)
@@ -199,16 +201,19 @@ extension ServerTests {
                     notifyRecord: notifyBlob,
                     machineID: daemon.id,
                     tag: expectedTag,
+                    showContent: true,
+                    locked: false,
                     locale: "zh-CN"
                 )
                 #expect(noticeZh?.title == "Notify Mac 磁盘快满了，只剩 1.5 GB")
 
-                // Locked state must redact detail to generic_body.
+                // Locked state must redact detail to full_generic_body.
                 let lockedNotice = try receiveMachineDiskNotification(
                     envelope: envData,
                     notifyRecord: notifyBlob,
                     machineID: daemon.id,
                     tag: expectedTag,
+                    showContent: true,
                     locked: true,
                     locale: "en"
                 )
@@ -221,6 +226,8 @@ extension ServerTests {
                     notifyRecord: notifyBlob,
                     machineID: daemon.id,
                     tag: "wrong-tag",
+                    showContent: true,
+                    locked: false,
                     locale: "en"
                 )
                 #expect(wrongTag == nil)
@@ -233,6 +240,8 @@ extension ServerTests {
                         notifyRecord: notifyBlob,
                         machineID: daemon.id,
                         tag: expectedTag,
+                        showContent: true,
+                        locked: false,
                         locale: "en"
                     )
                 }

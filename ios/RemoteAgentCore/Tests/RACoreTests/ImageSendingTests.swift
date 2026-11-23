@@ -98,7 +98,7 @@ private final class FakeSources: @unchecked Sendable {
     func prepare(_ uri: String, _ original: Bool) throws -> Processed {
         try lock.withLock {
             counts[uri, default: 0] += 1
-            if broken.contains(uri) { throw UserError(L10nMessage.imageIosCannotDecodeThisImage()) }
+            if broken.contains(uri) { throw UserError(L10nMessage.imageIosCannotDecodeThisImage(), problemKind: .decode) }
             return Processed(bytes: Self.png, format: .png, width: original ? 4000 : 2048, height: 10, note: original ? "原" : "")
         }
     }
@@ -149,7 +149,7 @@ private final class FakeSources: @unchecked Sendable {
         let (u, d) = (uploads(), draft())
         let img = u.add(d, uris: ["picked:a"], machine: { nil })[0]
         await settled(img)
-        #expect(img.state == .failed(error: AttachmentFailure(kind: .failed)))
+        #expect(img.state == .failed(error: AttachmentFailure(kind: .processingFailed)))
         #expect(img.processed != nil)
         u.retry(d, img, machine: { "mac" })
         await settled(img)
@@ -163,7 +163,7 @@ private final class FakeSources: @unchecked Sendable {
         sources.breakIt("picked:a")
         let img = u.add(d, uris: ["picked:a"], machine: { "mac" })[0]
         await settled(img)
-        #expect(img.state == .failed(error: AttachmentFailure(kind: .unreadable)))
+        #expect(img.state == .failed(error: AttachmentFailure(kind: .decode)))
         #expect(img.processed == nil)
         sources.mend("picked:a")
         u.retry(d, img, machine: { "mac" })
@@ -176,7 +176,7 @@ private final class FakeSources: @unchecked Sendable {
         await machines.fail("resource_exhausted", "电脑上传目录已满")
         let img = u.add(d, uris: ["picked:a"], machine: { "mac" })[0]
         await settled(img)
-        #expect(img.state == .failed(error: AttachmentFailure(kind: .storage)))
+        #expect(img.state == .failed(error: AttachmentFailure(input: .with { $0.errorCode = "resource_exhausted" })))
         #expect(!d.ready(machineId: "mac"))
         await machines.mend()
         u.retry(d, img, machine: { "mac" })
@@ -235,7 +235,7 @@ private final class FakeSources: @unchecked Sendable {
         let d = draft()
         try d.restore()
         #expect(d.images.map(\.id) == [img.id])
-        #expect(d.images[0].state == .failed(error: AttachmentFailure(kind: .offline)))
+        #expect(d.images[0].state == .failed(error: AttachmentFailure(kind: .uploadFailed)))
         u.sendAll(d, machineId: "mac")
         await settled(d.images[0])
         #expect(d.ready(machineId: "mac"))

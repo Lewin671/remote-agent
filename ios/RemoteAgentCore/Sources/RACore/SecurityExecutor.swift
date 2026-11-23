@@ -341,7 +341,8 @@ public func openNotifyDisplayViaCore(
     machineId: String = "",
     sessionId: String = "",
     tag: String = "",
-    eventKey: String = ""
+    eventKey: String = "",
+    fallbackBody: String? = nil
 ) throws -> PBSecurityNotifyDisplay? {
     guard expectedKind != .unspecified else { return nil }
     let core = try CoreClient()
@@ -360,6 +361,9 @@ public func openNotifyDisplayViaCore(
             $0.sessionID = sessionId
             $0.tag = tag
             $0.eventKey = eventKey
+            if let fallbackBody {
+                $0.fallbackBody = fallbackBody
+            }
         }
     })
     for eff in batch.effects {

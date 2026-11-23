@@ -36,39 +36,105 @@ enum SharedFileDebug {
         return out
     }()
 
-    static func card(for file: PBSharedFile) -> SharedFileCard? {
-        guard let word = forced[file.fileID] else { return nil }
-        let parts = word.split(separator: ":").map(String.init)
-        let total = file.sizeBytes
-        let done = Int64(Double(total) * (parts.count > 1 ? Double(parts[1]) ?? 0.33 : 0.33))
-        switch parts[0] {
-        case "available": return .available
-        case "downloading": return .downloading(done: done, total: total, etaSeconds: nil)
-        case "downloadingEta": return .downloading(done: done, total: total, etaSeconds: 12)
-        case "paused": return .paused(done: done, total: total)
-        case "downloaded": return .downloaded(durationMs: 102_000)
-        case "downloadedNoDuration": return .downloaded(durationMs: nil)
-        case "failed": return .failed(.disconnected)
-        case "failedChecksum": return .failed(.checksum)
-        case "failedFull": return .failed(.diskFull)
-        case "offline": return .offline
-        case "cleaned": return .cleaned
-        default: return nil
+    static var hasForcedStates: Bool { !forced.isEmpty }
+
+    /// Produces a `PBSharedFileLocalStateEvent` driving Core into each forced debug state for demo sessions.
+    static func localStateEvent(for sessionEvents: [String: [PBEvent]]) -> PBSharedFileLocalStateEvent? {
+        guard !forced.isEmpty else { return nil }
+        var updates: [PBSharedFileLocalStateUpdate] = []
+        for (sid, events) in sessionEvents {
+            for ev in events {
+                guard case .toolCall(let tc)? = ev.kind else { continue }
+                for f in tc.sharedFiles {
+                    guard let word = forced[f.fileID] else { continue }
+                    let parts = word.split(separator: ":").map(String.init)
+                    let total = f.sizeBytes
+                    let done = Int64(Double(total) * (parts.count > 1 ? Double(parts[1]) ?? 0.33 : 0.33))
+                    var u = PBSharedFileLocalStateUpdate()
+                    u.sessionID = sid
+                    u.fileID = f.fileID
+                    switch parts[0] {
+                    case "available":
+                        u.status = .unspecified
+                    case "downloading":
+                        u.status = .downloading
+                        u.downloadedBytes = done
+                    case "downloadingEta":
+                        u.status = .downloading
+                        u.downloadedBytes = done
+                        u.hasEta_p = true
+                        u.etaSeconds = 12
+                    case "paused":
+                        u.status = .paused
+                        u.downloadedBytes = done
+                    case "downloaded":
+                        u.status = .downloaded
+                        u.hasDuration_p = true
+                        u.durationMs = 102_000
+                    case "downloadedNoDuration":
+                        u.status = .downloaded
+                    case "failed":
+                        u.status = .failed
+                        u.failureKind = .disconnected
+                    case "failedChecksum":
+                        u.status = .failed
+                        u.failureKind = .checksumMismatch
+                    case "failedFull":
+                        u.status = .failed
+                        u.failureKind = .phoneStorageFull
+                    case "cleaned":
+                        u.status = .cleanedUp
+                    default:
+                        continue
+                    }
+                    updates.append(u)
+                }
+            }
         }
+        guard !updates.isEmpty else { return nil }
+        return .with {
+            $0.replaceAll = true
+            $0.updates = updates
+        }
+    }
+
+    /// Demo-only per-card offline override when an online demo session (`sample-files-states`) displays
+    /// both online and offline cards side by side via `-sharedFileCards id=offline`.
+    static func overrideItem(_ item: PBSessionSharedFileItem) -> PBSessionSharedFileItem {
+        guard forced[item.fileID] == "offline" else { return item }
+        var copy = item
+        copy.status = .offline
+        copy.subtitle = .with { $0.key = "shared_file.subtitle_offline" }
+        copy.subtitleIsError = false
+        copy.primaryAction = .download
+        copy.primaryLabel = .with { $0.key = "shared_file.action_download" }
+        copy.primaryEnabled = false
+        copy.primaryDisabledReason = .with { $0.key = "shared_file.subtitle_offline" }
+        copy.menuItems = []
+        copy.a11YLabel = .with {
+            $0.key = "shared_file.a11y_card"
+            $0.args = [
+                .with { $0.name = "name"; $0.strValue = item.displayName },
+                .with { $0.name = "kind"; $0.textValue = item.kindLabel },
+                .with { $0.name = "size"; $0.textValue = item.sizeText },
+                .with { $0.name = "state"; $0.textValue = .with { $0.key = "shared_file.subtitle_offline" } },
+            ]
+        }
+        return copy
     }
 
     private static let menuFor = value("-sharedFileMenu")
 
     @MainActor
-    static func autoMenu(for file: PBSharedFile, open: @MainActor () -> Void) async {
-        guard menuFor == file.fileID else { return }
+    static func autoMenu(for item: PBSessionSharedFileItem, open: @MainActor () -> Void) async {
+        guard menuFor == item.fileID else { return }
         try? await Task.sleep(nanoseconds: 2_500_000_000)
         open()
     }
 
     /// Pictures like those of the mockup's `.thumb` (a video) and `.thumb2` (a picture), drawn here.
     @MainActor
-    static func thumbnail(for kind: SharedFileKind, name: String) -> UIImage? {
+    static func thumbnail(for kind: PBSharedFileKind, name: String) -> UIImage? {
         let (colors, locations, from, to): ([UIColor], [CGFloat], CGPoint, CGPoint)
         switch kind {
         case .video:
@@ -131,7 +197,7 @@ extension SharedFileDebug {
 
         func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
             try await Task.sleep(nanoseconds: 700_000_000)
-            guard let data = files[fileId] else { throw CommandError("not_found", "no such file", fromDaemon: true, readOnly: true,outcome:.executed) }
+            guard let data = files[fileId] else { throw CommandError("not_found", "no such file", fromDaemon: true, readOnly: true, outcome: .executed) }
             var block = Data(count: blockBytes)
             let from = Int(offset), take = max(0, min(blockBytes, data.count - from))
             if take > 0 { block.replaceSubrange(0..<take, with: data[from..<from + take]) }
@@ -140,10 +206,13 @@ extension SharedFileDebug {
     }
 
     @MainActor
-    static func fakeCenter(root: URL) -> SharedFileCenter {
+    static func fakeCenter(
+        root: URL,
+        report: @escaping @Sendable (PBSharedFileLocalStateEvent) async -> Void = { _ in }
+    ) -> SharedFileCenter {
         let files = Dictionary(uniqueKeysWithValues: fakes.map { ($0.id, $0.data) })
         let store = SharedFileStore(root: root, fetcher: FakeComputer(files: files, blockBytes: defaultSharedFileBlockBytes), isMachineOnline: { _ in true })
-        return SharedFileCenter(store: store)
+        return SharedFileCenter(store: store, report: report)
     }
 }
 

@@ -419,10 +419,7 @@ struct ChatPane: View {
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : defaultAgent,
             frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
-            session: sessionID,
-            machine: header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: header.machineID),
-            machineOnline: online,
-            sessionExited: header.exited
+            session: sessionID
         )
         let jump = context.sessionStore.scheduledJump(sessionID)
         let ready = vm != nil && (!tl.loading || tl.loaded || !rows.isEmpty)
@@ -502,18 +499,15 @@ struct ChatPane: View {
                 image: { seq, index in nav.open(.image(session: sessionID, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
                 putBack: { requestId, text, files in
-                    let caps = AttachmentCapabilities(
-                        header.capabilities,
-                        hasMachine: !header.machineID.isEmpty,
-                        online: header.computerOnline && !header.computerUnlinked && header.connState == .connected
-                    )
-                    if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
-                        SessionImages.putBack(o, session: sessionID, caps: caps, remote: context.remote, store: context.sessionStore)
-                    } else {
-                        let pbFiles = files.map { ref in
-                            PBSentFile.with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes }
+                    Task {
+                        if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
+                            await SessionImages.putBack(o, session: sessionID, remote: context.remote, store: context.sessionStore)
+                        } else {
+                            let pbFiles = files.map { ref in
+                                PBSentFile.with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes }
+                            }
+                            await ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore)
                         }
-                        ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore, caps: caps)
                     }
                 },
                 toggleGroup: onToggleGroup,
@@ -585,7 +579,7 @@ struct ChatPane: View {
             let failure = tl.hasError ? tl.error.rendered() : tl.fetchError.rendered()
             items.append(ChatCollectionItem("chat-fetch-error") {
                 Banner(L10n.sessionIosHistoryFailed(reason: failure), tone: .error, action: L10n.commonRetry()) {
-                    Task { await context.coreHost.loadEarlierSessionHistory(sessionID) }
+                    Task { await context.coreHost.retryLoadSession(sessionID) }
                 }
                 .padding(.horizontal, chatMargin).padding(.vertical, 8)
             })

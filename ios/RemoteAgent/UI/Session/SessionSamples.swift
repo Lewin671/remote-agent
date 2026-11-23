@@ -121,6 +121,9 @@ enum SessionSamples {
         }
         await remote.showForTest(state: state)
         await coreHost.appendDemoSessionData(state: state, events: eventsMap, modelLists: modelLists)
+        if let forced = SharedFileDebug.localStateEvent(for: eventsMap) {
+            await coreHost.reportSharedFileLocalState(forced)
+        }
         await local(coreHost)
     }
 

@@ -5,6 +5,7 @@ import SwiftUI
 struct PagedImageViewer<Picture: View, Info: View>: View {
     let count: Int
     @Binding var selection: Int
+    var positionText: String? = nil
     let empty: String
     let onClose: () -> Void
     let picture: (Int, Binding<CGFloat>) -> Picture
@@ -35,7 +36,7 @@ struct PagedImageViewer<Picture: View, Info: View>: View {
         .overlay(alignment: .top) {
             ZStack {
                 if count > 0 {
-                    Text("\(page + 1) / \(count)").font(.body).ink(ViewerInk.text)
+                    Text(positionText?.isEmpty == false ? positionText! : "\(page + 1) / \(count)").font(.body).ink(ViewerInk.text)
                         .accessibilityLabel(L10n.imageIosPage(count: Int(count), index: Int(page + 1)))
                 }
                 HStack {

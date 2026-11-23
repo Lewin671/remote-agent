@@ -92,12 +92,12 @@ enum ImageDebug {
         switch state {
         case "crowded":
             center.debugShow(
-                key, [ready(1), ready(2), sample(3, .uploading(progress: 0.4)), sample(4, .processing), sample(5, .failed(error: AttachmentFailure(kind: .storage))), ready(6)],
+                key, [ready(1), ready(2), sample(3, .uploading(progress: 0.4)), sample(4, .processing), sample(5, .failed(error: AttachmentFailure(kind: .storageFull))), ready(6)],
                 notice: "一条消息最多 6 张，多选的 2 张没有加入")
         case "uploading":
             center.debugShow(key, [ready(1), sample(2, .uploading(progress: 0.6)), sample(3, .processing)])
         case "failed":
-            center.debugShow(key, [ready(1), sample(2, .failed(error: AttachmentFailure(kind: .offline)))])
+            center.debugShow(key, [ready(1), sample(2, .failed(error: AttachmentFailure(kind: .uploadFailed)))])
         case "original":
             center.debugShow(
                 key,
@@ -127,10 +127,10 @@ enum ImageDebug {
         center.debugShow(sid, message("img-out-2", "", .failed, images: [3, 4, 5, 6, 7], error: "电脑不在线，指令没有发出"))
     }
 
-    /// With sample data there is no server to fetch a display copy from: the state asked for, or what the event's sync says.
-    static func viewerSample(_ ref: PBImageRef, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
+    /// With sample data there is no server to fetch a display copy from: the state asked for, or what Core's `hasDisplayCopy_p` says.
+    static func viewerSample(_ image: PBSessionViewerImageView, previewRef: PBImageRef?, center: ImageCenter, online: Bool) async -> (state: BigImage, image: ViewedImage?)? {
         guard !center.live else { return nil }
-        switch value("-viewerState") ?? (hasDisplayCopy(ref) ? "ready" : "notSynced") {
+        switch value("-viewerState") ?? (image.hasDisplayCopy_p ? "ready" : "notSynced") {
         case "loading":
             try? await Task.sleep(for: .seconds(3600))
             return (.loading, nil)
@@ -141,7 +141,7 @@ enum ImageDebug {
         case "corrupt": return (.corrupt(why: "图片内容和格式对不上"), nil)
         default:
             try? await Task.sleep(for: .milliseconds(300))
-            return (.ready, sharp(ref))
+            return (.ready, sharp(previewRef ?? image.ref))
         }
     }
 
@@ -181,9 +181,9 @@ private struct ImageDraftDebug: ViewModifier {
                 ImageDebug.seed(center, key: key, machine: machine)
                 if let session { ImageDebug.outgoing(center, sid: session.id) }
                 let documents = ImageDebug.documentURLs()
-                if !documents.isEmpty { center.addFiles(key, documents, caps: caps) }
+                if !documents.isEmpty { center.addFiles(key, documents, machineId: machine, caps: caps) }
                 let files = ImageDebug.launchFiles()
-                if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
+                if !files.isEmpty { center.add(key, files.map { .data($0) }, machineId: machine) }
             }
             .debugSignal("files.add") {
                 let paths = UserDefaults.standard.string(forKey: "debug.filePaths") ?? ""
@@ -192,9 +192,9 @@ private struct ImageDraftDebug: ViewModifier {
             }
             .debugSignal("images.add") {
                 let files = ImageDebug.files(UserDefaults.standard.string(forKey: "debug.imagePaths") ?? "")
-                if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
+                if !files.isEmpty { center.add(key, files.map { .data($0) }, machineId: machine) }
             }
-            .debugSignal("images.pick") { center.plus(key, blocked: blocked, max: max, filesSupported: caps.supportsFiles) }
+            .debugSignal("images.pick") { center.plus(key, machineId: machine, caps: caps) }
             .debugSignal("images.original") { center.setOriginal(key, !center.draft(key).original) }
             .debugSignal("images.retry") {
                 for img in center.draft(key).images {

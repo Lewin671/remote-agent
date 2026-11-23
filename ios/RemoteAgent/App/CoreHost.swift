@@ -425,7 +425,7 @@ actor CoreHost: SyncEngine {
         hooksInstalled = true
         await executor.installCoreHooks(Remote.CoreHooks(
             onFetchSession: { [weak self] sid in
-                await self?.dispatch { $0.fetchSession.sessionID = sid }
+                await self?.dispatch { $0.sessionRetryLoad.sessionID = sid }
             },
             onRefresh: { [weak self] in
                 await self?.reconnectNowAsync()
@@ -1329,11 +1329,58 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func fetchSession(_ sid: String) async {
+    func retryLoadSession(_ sid: String) async {
         guard !closed, !sid.isEmpty else { return }
         await dispatch {
-            $0.fetchSession.sessionID = sid
+            $0.sessionRetryLoad.sessionID = sid
         }
+    }
+
+    func reportSharedFileLocalState(_ event: PBSharedFileLocalStateEvent) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.sharedFileLocalState = event
+        }
+    }
+
+    func openSessionImageViewer(sessionID: String, seq: UInt64, imageIndex: Int32 = 0, viewerIndex: Int32 = 0) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerOpen = .with {
+                $0.sessionID = sessionID
+                $0.seq = seq
+                $0.imageIndex = imageIndex
+                $0.viewerIndex = viewerIndex
+            }
+        }
+    }
+
+    func navigateSessionImageViewer(sessionID: String, delta: Int32 = 0, setIndex: Bool = false, index: Int32 = 0) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerNavigate = .with {
+                $0.sessionID = sessionID
+                $0.delta = delta
+                $0.setIndex = setIndex
+                $0.index = index
+            }
+        }
+    }
+
+    func closeSessionImageViewer(sessionID: String) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sessionImageViewerClose = .with {
+                $0.sessionID = sessionID
+            }
+        }
+    }
+
+    func evaluateAttachments(_ request: PBAttachmentEvalScreenRequest) -> PBAttachmentEvalViewModel {
+        guard !closed else { return PBAttachmentEvalViewModel() }
+        return (try? client.view(PBCoreScreen.with {
+            $0.attachmentEval = request
+        }).attachmentEval) ?? PBAttachmentEvalViewModel()
     }
 
     func submitSessionCommand(

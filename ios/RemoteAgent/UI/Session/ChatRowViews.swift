@@ -31,9 +31,6 @@ struct ChatEnv: Equatable, Sendable {
     var frozenAt: Int64 = 0
     /// Shared files transfer context.
     var session = ""
-    var machine = ""
-    var machineOnline = true
-    var sessionExited = false
 }
 
 /// Row actions routed through `ChatPane` into `Navigator` or `CoreHost`.
@@ -84,13 +81,11 @@ struct ChatRowView: View, Equatable {
         switch tlItem.kind {
         case .userMessage(let m):
             let caption: String? = m.hasOriginCaption ? m.originCaption.rendered().nilIfEmpty : nil
+            let displayText = userMessageDisplayText(m)
             if !m.scheduledRunID.isEmpty {
-                ScheduledUserMessage(text: m.text, caption: caption)
+                ScheduledUserMessage(text: displayText ?? m.text, caption: caption)
             } else {
-                ChatBubble(
-                    m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text,
-                    caption: caption
-                ) {
+                ChatBubble(displayText, caption: caption) {
                     FileChips(refs: m.files)
                     if !m.images.isEmpty {
                         ChatImageRow(m.images) { actions.image(tlItem.seq, $0) }.padding(.bottom, 4)
@@ -98,7 +93,7 @@ struct ChatRowView: View, Equatable {
                 }
                 .messageMenu(m.text, actions: actions)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? L10n.imageTitle() : L10n.attachmentFile()) : m.text)
+                .accessibilityLabel((displayText ?? m.text).isEmpty ? (m.files.isEmpty ? L10n.imageTitle() : L10n.attachmentFile()) : (displayText ?? m.text))
                 .accessibilityValue(caption ?? L10n.sessionIosYourMessage())
             }
 
@@ -145,7 +140,8 @@ struct ChatRowView: View, Equatable {
                     TimelineToolRow(call: t, env: env)
                 }
                 if !t.images.isEmpty {
-                    ChatImageRow(t.images) { actions.image(tlItem.seq, $0) }.padding(.leading, 21).padding(.bottom, 6)
+                    let callSeq = t.seq > 0 ? t.seq : tlItem.seq
+                    ChatImageRow(t.images) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                 }
             }
             .padding(.horizontal, chatMargin)
@@ -230,6 +226,20 @@ struct ChatRowView: View, Equatable {
         case nil:
             EmptyView()
         }
+    }
+
+    private func userMessageDisplayText(_ m: PBSessionUserMessageItem) -> String? {
+        if !m.textSegments.isEmpty {
+            let rendered = m.textSegments.map { seg -> String in
+                switch seg.kind {
+                case .text(let s)?: return s
+                case .imageIndex?: return seg.imageLabel.rendered()
+                case nil: return ""
+                }
+            }.joined()
+            return rendered.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : rendered
+        }
+        return m.text.jvmIsBlank && (!m.images.isEmpty || !m.files.isEmpty) ? nil : m.text
     }
 
     private func erasedBody(_ item: PBSessionTimelineItem) -> AnyView {
@@ -720,16 +730,23 @@ private struct ToolGroupRow: View {
                                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                         }
                         if !call.images.isEmpty {
-                            ChatImageRow(call.images) { actions.image(seq, $0) }.padding(.leading, 21).padding(.bottom, 6)
+                            let callSeq = call.seq > 0 ? call.seq : seq
+                            ChatImageRow(call.images) { actions.image(callSeq, $0) }.padding(.leading, 21).padding(.bottom, 6)
                         }
                     }
                 }
                 .padding(.leading, 12)
             } else {
-                let all = group.calls.flatMap(\.images)
-                if !all.isEmpty {
-                    ChatImageRow(all) { actions.image(seq, $0) }
-                        .padding(.leading, 21).padding(.bottom, 6)
+                let indexed: [(seq: UInt64, index: Int, ref: PBImageRef)] = group.calls.flatMap { call in
+                    let callSeq = call.seq > 0 ? call.seq : seq
+                    return call.images.enumerated().map { (callSeq, $0.offset, $0.element) }
+                }
+                if !indexed.isEmpty {
+                    ChatImageRow(indexed.map(\.ref)) { i in
+                        guard indexed.indices.contains(i) else { return }
+                        actions.image(indexed[i].seq, indexed[i].index)
+                    }
+                    .padding(.leading, 21).padding(.bottom, 6)
                 }
             }
         }

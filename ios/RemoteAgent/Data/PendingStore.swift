@@ -96,7 +96,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
             let file = dir.appending(path: name)
             let replacing = Int64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             guard ImageDiskPolicy.bytes(directory) - replacing + Int64(sealed.count) <= limit else {
-                throw UserError(L10nMessage.attachmentIosThisPhoneSPendingImageStorageIsFullSend())
+                throw UserError(L10nMessage.attachmentIosThisPhoneSPendingImageStorageIsFullSend(), problemKind: .storageFull)
             }
             do {
                 try sealed.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
