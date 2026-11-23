@@ -525,7 +525,7 @@ func (c *Core) handleSharedFileStartDownload(ctx *sync.StepContext, act *corev1.
 	entry.failureKind = corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_UNSPECIFIED
 	entry.failureDetail = ""
 	entry.failureText = nil
-	entry.autoOpen = act.AutoOpenIfStaying && (mgr.visibleSessionID == "" || mgr.visibleSessionID == sid)
+	entry.autoOpen = act.AutoOpenIfStaying && mgr.visibleSessionID == sid
 	entry.deliverOnly = mgr.localCacheMaxBytes > 0 && file.SizeBytes > mgr.localCacheMaxBytes
 	entry.pausedPendingWriteOpID = 0
 
@@ -923,7 +923,7 @@ func (c *Core) handleSharedFileVerifyAndCommitResult(ev *corev1.SharedFileVerify
 		return nil
 	}
 
-	autoOpen := entry.autoOpen && (mgr.visibleSessionID == "" || mgr.visibleSessionID == key.sessionID)
+	autoOpen := entry.autoOpen && mgr.visibleSessionID == key.sessionID
 	entry.autoOpen = false
 	deliverOnly := entry.deliverOnly
 	displayName := entry.displayName

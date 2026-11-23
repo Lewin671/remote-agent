@@ -390,6 +390,12 @@ func TestSharedFileDownloadMultiChunkProgressAndETA(t *testing.T) {
 		Sha256:    sfTestHash(0xaa),
 	})
 
+	// Shell marks session visible before starting download -> auto_open ticket is valid.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SharedFileSetVisibleSession{
+			SharedFileSetVisibleSession: &corev1.SharedFileSetVisibleSessionAction{SessionId: h.sessionID},
+		},
+	})
 	// Start download -> InspectDisk for full 2500 bytes.
 	eff := h.dispatch(&corev1.Event{
 		Event: &corev1.Event_SharedFileStartDownload{
@@ -1354,6 +1360,11 @@ func TestSharedFileDownloadLocalCacheMaxBytesCap(t *testing.T) {
 			},
 		},
 	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SharedFileSetVisibleSession{
+			SharedFileSetVisibleSession: &corev1.SharedFileSetVisibleSessionAction{SessionId: h.sessionID},
+		},
+	})
 
 	runFile := func(fid string, size int64) (*corev1.SharedFileVerifyAndCommitEffect, *corev1.SharedFileCompletedEffect) {
 		eff := h.dispatch(&corev1.Event{
@@ -1531,6 +1542,43 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 				}
 			})
 		}
+
+		t.Run("auto-open requires explicit visible session (unset visibleSessionID yields false)", func(t *testing.T) {
+			h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-ao-unset", Name: "pic.png", SizeBytes: 64, Sha256: sfTestHash(0xe2)})
+			eff := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileStartDownload{
+					SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{
+						SessionId:         h.sessionID,
+						FileId:            "f-ao-unset",
+						AutoOpenIfStaying: true,
+					},
+				},
+			})
+			insp := findInspectDisk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileDiskInspected{
+					SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-ao-unset", Known: false},
+				},
+			})
+			dc, _ := findDispatchChunk(eff)
+			eff = h.deliverChunkOK(dc, bytes.Repeat([]byte{1}, 64), 64)
+			wc := findWriteChunk(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileWriteChunkResult{
+					SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc.GetOpId(), SessionId: h.sessionID, FileId: "f-ao-unset", Ok: true},
+				},
+			})
+			vc := findVerifyCommit(eff)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+					SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{OpId: vc.GetOpId(), SessionId: h.sessionID, FileId: "f-ao-unset", Ok: true},
+				},
+			})
+			comp := findCompleted(eff)
+			if comp == nil || comp.GetAutoOpen() {
+				t.Fatalf("expected auto_open=false when visibleSessionID was never set, got %+v", comp)
+			}
+		})
 	})
 
 	t.Run("delete local, forget session, and clear all emit storage cleanup effects", func(t *testing.T) {
