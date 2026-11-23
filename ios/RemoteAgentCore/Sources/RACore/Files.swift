@@ -6,8 +6,81 @@ import RAProto
 public let maxFiles = 6
 public let maxFileBytes: Int64 = 100 * 1024 * 1024
 
-public func fileSupported(_ machine: MachineView?) -> Bool { capabilities(machine)?.fileUpload == true }
 public var fileCapabilityUpdate: String { L10n.attachmentIosThisComputerHasNotDeclaredFileUploadSupportUpdate() }
+
+/// Core-supplied attachment capabilities for a session or new-session composer.
+public struct AttachmentCapabilities: Equatable, Sendable {
+    public var capabilitiesLoaded: Bool
+    public var supportsImages: Bool
+    public var supportsFiles: Bool
+    public var maxImages: Int
+    public var maxFiles: Int
+    public var maxFileBytes: Int64
+    public var imageUploadBlocked: String?
+    public var online: Bool
+    public var hasMachine: Bool
+
+    public init(
+        capabilitiesLoaded: Bool = true,
+        supportsImages: Bool = true,
+        supportsFiles: Bool = false,
+        maxImages: Int = RACore.maxImages,
+        maxFiles: Int = RACore.maxFiles,
+        maxFileBytes: Int64 = RACore.maxFileBytes,
+        imageUploadBlocked: String? = nil,
+        online: Bool = true,
+        hasMachine: Bool = true
+    ) {
+        self.capabilitiesLoaded = capabilitiesLoaded
+        self.supportsImages = supportsImages
+        self.supportsFiles = supportsFiles
+        self.maxImages = maxImages > 0 ? maxImages : RACore.maxImages
+        self.maxFiles = maxFiles > 0 ? maxFiles : RACore.maxFiles
+        self.maxFileBytes = maxFileBytes > 0 ? maxFileBytes : RACore.maxFileBytes
+        self.imageUploadBlocked = imageUploadBlocked
+        self.online = online
+        self.hasMachine = hasMachine
+    }
+
+    public init(_ caps: PBSessionCapabilitiesView, hasMachine: Bool = true, online: Bool = true) {
+        let reason = caps.hasImageUploadBlockedReason ? caps.imageUploadBlockedReason.rendered() : ""
+        self.init(
+            capabilitiesLoaded: caps.capabilitiesLoaded,
+            supportsImages: caps.supportsImages,
+            supportsFiles: caps.supportsFiles,
+            maxImages: Int(caps.maxImages),
+            maxFiles: Int(caps.maxFiles),
+            maxFileBytes: caps.maxFileBytes,
+            imageUploadBlocked: reason.isEmpty ? nil : reason,
+            online: online,
+            hasMachine: hasMachine
+        )
+    }
+
+    public init(_ vm: PBCoreNewSessionViewModel) {
+        let reason = vm.hasImageUploadBlockedReason ? vm.imageUploadBlockedReason.rendered() : ""
+        let hasMachine = !vm.config.machineID.isEmpty
+        let selectedOnline = vm.modelPanel.machineChoices.first(where: \.selected)?.online ?? true
+        let offlineNotice = vm.notices.contains { $0.kind == .machineOffline || $0.kind == .noOnlineMachines }
+        self.init(
+            capabilitiesLoaded: vm.capabilitiesLoaded,
+            supportsImages: vm.supportsImages,
+            supportsFiles: vm.supportsFiles,
+            maxImages: Int(vm.maxImages),
+            maxFiles: Int(vm.maxFiles),
+            maxFileBytes: vm.maxFileBytes,
+            imageUploadBlocked: reason.isEmpty ? nil : reason,
+            online: hasMachine && selectedOnline && !offlineNotice,
+            hasMachine: hasMachine
+        )
+    }
+
+    public var fileUploadBlocked: String? {
+        guard hasMachine else { return L10n.attachmentIosChooseMachine() }
+        guard supportsFiles else { return L10n.imageIosThisComputerDoesNotSupportFileUploads() }
+        return online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
+    }
+}
 
 /// Inspect the immutable command, including already prepared retries.
 func requiresFileCapability(_ command: PBCommand) -> Bool {
@@ -23,23 +96,10 @@ extension Remote {
     /// Current advertised metadata is the only capability authority. No metadata
     /// means no file permission; never downgrade a file request to text.
     public nonisolated func requireFileCapability(machineId: String, hasFiles: Bool) throws {
-        if hasFiles && !fileSupported(state.value.machines[machineId]) {
+        if hasFiles && capabilities(state.value.machines[machineId])?.fileUpload != true {
             throw CommandError("file_upload_unsupported", fileCapabilityUpdate)
         }
     }
-}
-public func fileLimit(for machine: MachineView?) -> Int {
-    let n = Int(capabilities(machine)?.maxFilesPerMessage ?? 0)
-    return n > 0 ? min(n, maxFiles) : maxFiles
-}
-public func fileByteLimit(for machine: MachineView?) -> Int64 {
-    let n = capabilities(machine)?.maxFileUploadBytes ?? 0
-    return n > 0 ? min(n, maxFileBytes) : maxFileBytes
-}
-public func fileUploadBlocked(_ machine: MachineView?, online: Bool) -> String? {
-    guard let machine else { return L10n.attachmentIosChooseMachine() }
-    guard fileSupported(machine) else { return L10n.imageIosThisComputerDoesNotSupportFileUploads() }
-    return machine.pathState.reachable && online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
 }
 public func fileSize(_ bytes: Int64) -> String {
     if bytes < 1024 { return "\(bytes) B" }

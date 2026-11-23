@@ -122,7 +122,10 @@ struct SessionScreen: View {
                 sessionBody(vm: vm, header: header)
             } else {
                 SessionAbsent(header: header, online: state.conn == .online) {
-                    Task { await context.coreHost.openSession(id, refreshModels: false) }
+                    Task {
+                        await context.coreHost.fetchSession(id)
+                        await context.coreHost.openSession(id, refreshModels: false)
+                    }
                 }
                 .navBar(L10n.homeSessionsTab())
             }
@@ -132,9 +135,14 @@ struct SessionScreen: View {
         .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
             let matching = restores.filter { $0.effect.sessionID == id }
             guard !matching.isEmpty else { return }
+            let caps = AttachmentCapabilities(
+                header.capabilities,
+                hasMachine: !header.machineID.isEmpty,
+                online: header.computerOnline && !header.computerUnlinked && header.connState == .online
+            )
             for item in matching {
                 SessionImages.applyRestore(
-                    item.effect, session: id, state: model.state, remote: context.remote, store: context.sessionStore
+                    item.effect, session: id, caps: caps, remote: context.remote, store: context.sessionStore
                 )
             }
             context.core.consumeComposerRestores(Set(matching.map(\.id)))
@@ -223,8 +231,7 @@ struct SessionScreen: View {
         }
         .tint(DS.blue)
         .task(id: header.scheduledTaskID) {
-            let taskOwned = model.state.sessions[id]?.info?.taskOwned == true
-            guard taskOwned, !header.scheduledTaskID.isEmpty,
+            guard header.taskOwned, !header.scheduledTaskID.isEmpty,
                   nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: machineID, id: header.scheduledTaskID)) else { return }
             nav.path.insert(.schedule(machine: machineID, id: header.scheduledTaskID), at: max(0, nav.path.count - 1))
         }
@@ -324,14 +331,14 @@ struct SessionScreen: View {
             let computerText = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
             let projectText = header.hasProjectName ? header.projectName.rendered() : projectName(header.projectKey)
             let parts = [header.agentName.isEmpty ? agentName(header.agent) : header.agentName, projectText]
-                + (state.machines.count > 1 ? [computerText] : [])
+                + (header.multipleMachines ? [computerText] : [])
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     AgentMark(header.agent, style: .headline, named: true)
                     Text(parts.filter { !$0.isEmpty }.joined(separator: " · "))
                 }
                 .font(.headline).foregroundStyle(DS.ink)
-                Text(shortPath(header.cwd)).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
+                Text(header.shortPath.isEmpty ? shortPath(header.cwd) : header.shortPath).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
             }
         }
         .onChange(of: actions.fork.status) { old, new in
@@ -342,7 +349,11 @@ struct SessionScreen: View {
         .kitSheet(item: $sheet) { which in
             switch which {
             case .mode: SessionModeSheet(sessionID: id, startConfirm: SessionDebug.shows("confirmFull")) { sheet = nil }
-            case .model: SessionModelSheet(sessionID: id) { sheet = nil }
+            case .model:
+                SessionModelSheet(sessionID: id, onUsage: {
+                    sheet = nil
+                    nav.open(.usage(machine: header.machineID, agent: header.agent, model: header.model))
+                }) { sheet = nil }
             }
         }
         .kitSheet(item: $projectSettings) { request in
@@ -445,7 +456,8 @@ struct SessionScreen: View {
 
     private func groups(header: PBSessionHeaderView, actions: PBSessionActionsView, live: Bool) -> [[SheetAction]] {
         let forkCmd = actions.fork
-        let forking = forkCmd.status == .pending || forkCmd.busy
+        let forkAction = actions.forkAction
+        let forking = forkAction.busy || forkCmd.status == .pending
         let running = header.status == .running || header.status == .starting
         var settings: [SheetAction] = []
         var list: [SheetAction] = []
@@ -497,37 +509,21 @@ struct SessionScreen: View {
         if actions.canRename {
             list.append(SheetAction(L10n.sessionRename(), enabled: !forking) { afterMenu { rename = true } })
         }
-        if header.capabilities.supportsFork {
-            let forkErr = commandErrorText(forkCmd)
-            if forking {
-                list.append(SheetAction(L10n.sessionForking(), enabled: true, busy: true, keepOpen: true) {})
-            } else if !actions.canFork {
-                list.append(SheetAction(
-                    L10n.sessionFork(),
-                    enabled: false,
-                    note: actions.forkBlockedReason.rendered(),
-                    noteError: false,
-                    keepOpen: true
-                ) {})
-            } else if forkCmd.expired && forkCmd.canAbandon {
-                list.append(SheetAction(
-                    L10n.sessionAbandonFork(),
-                    enabled: true,
-                    note: L10n.sessionForkExpired(),
-                    noteError: true,
-                    keepOpen: true
-                ) {
+        if forkAction.visible {
+            let forkLabel = forkAction.hasLabel ? forkAction.label.rendered() : L10n.sessionFork()
+            let forkNote = forkAction.hasNote ? forkAction.note.rendered() : ""
+            list.append(SheetAction(
+                forkLabel,
+                enabled: forkAction.enabled || forkAction.busy,
+                busy: forkAction.busy,
+                note: forkNote,
+                noteError: forkAction.noteError,
+                keepOpen: true
+            ) {
+                guard !forkAction.busy, forkAction.enabled else { return }
+                if forkAction.abandons && forkAction.canAbandon {
                     Task { await context.coreHost.abandonSessionCommand(sessionID: id, slotKey: forkCmd.slotKey) }
-                })
-            } else {
-                let note = forkCmd.frozen ? L10n.sessionForkUnknown() : (forkErr.isEmpty ? "" : L10n.sessionForkFailed(reason: forkErr))
-                list.append(SheetAction(
-                    L10n.sessionFork(),
-                    enabled: true,
-                    note: note,
-                    noteError: !note.isEmpty,
-                    keepOpen: true
-                ) {
+                } else {
                     Task {
                         await context.coreHost.submitSessionCommand(
                             sessionID: id,
@@ -536,8 +532,8 @@ struct SessionScreen: View {
                             slotKey: forkCmd.slotKey
                         )
                     }
-                })
-            }
+                }
+            })
         }
         if running && actions.canInterrupt {
             list.append(SheetAction(L10n.sessionInterrupt(), danger: true, enabled: !forking) {
@@ -570,12 +566,13 @@ private struct SessionAbsent: View {
             VStack(spacing: 0) {
                 ConnectionBar()
                 Spacer(minLength: 24)
-                if header.missing {
-                    Text(header.missingText.rendered()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
-                } else if header.hasMissingText && !header.missingText.rendered().isEmpty {
-                    Text(header.missingText.rendered()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                if header.lookupFailed {
+                    let message = header.hasLookupErrorText ? header.lookupErrorText.rendered() : header.missingText.rendered()
+                    Text(message.isEmpty ? L10n.sessionIosMissing() : message).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                     TextAction(L10n.commonRetry(), alignment: .center, action: onRetry)
+                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
+                } else if header.missing {
+                    Text(header.missingText.rendered()).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                     TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
                 } else {
                     Mark(Mark.progress, color: DS.ink2, size: 22, relativeTo: .body)

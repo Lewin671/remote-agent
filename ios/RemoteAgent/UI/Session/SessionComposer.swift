@@ -154,12 +154,11 @@ struct SessionComposer: View {
     private var machineID: String { header.machineID }
 
     private var images: ComposerAttachments {
-        ComposerAttachments(state: model.state, key: ImageCenter.sessionKey(sessionID), machineId: machineID, remote: context.remote)
+        ComposerAttachments(sessionID: sessionID, header: header, remote: context.remote)
     }
 
-    private func send(_ requested: PBSendMode) {
+    private func send(_ mode: PBSendMode) {
         guard composer.enabled else { return }
-        let mode: PBSendMode = (composer.hasActiveTurn_p && composer.supportsQueueMode && requested == .queue) ? .queue : .steer
         let store = context.sessionStore
         let message = store.draft(sessionID).jvmTrim()
         let images = images
@@ -233,7 +232,7 @@ struct SessionComposer: View {
                 text: Binding(get: { store.draft(sessionID) }, set: { store.setDraft(sessionID, $0) }),
                 placeholder: placeholder,
                 canSend: canSend,
-                onSend: { send(.steer) },
+                onSend: { send(composer.defaultSendMode) },
                 attach: AttachMenu(images: images),
                 onQueue: composer.hasActiveTurn_p && composer.supportsQueueMode ? { send(.queue) } : nil,
                 onInterrupt: composer.interruptVisible ? { sendInterrupt() } : nil,
@@ -245,7 +244,7 @@ struct SessionComposer: View {
             ) {
                 PendingTrayView(
                     sessionID: sessionID,
-                    state: model.state,
+                    caps: images.caps,
                     tray: tray,
                     keyboardOpen: keyboardOpen,
                     maxHeight: maxTrayHeight,
@@ -256,8 +255,10 @@ struct SessionComposer: View {
             }
             Color.clear.frame(height: 0)
                 .debugSignal("session.draft") { store.setDraft(sessionID, SessionDebug.text) }
-                .debugSignal("session.send") { send(.steer) }
-                .debugSignal("session.queue") { send(.queue) }
+                .debugSignal("session.send") { send(composer.defaultSendMode) }
+                .debugSignal("session.queue") {
+                    send((composer.hasActiveTurn_p && composer.supportsQueueMode) ? .queue : composer.defaultSendMode)
+                }
                 .debugSignal("session.interrupt") { sendInterrupt() }
             if !notice.isEmpty { Notice(notice, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
             if let error = store.draftErrors[sessionID] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
@@ -265,7 +266,8 @@ struct SessionComposer: View {
                 Notice(L10n.sessionIosInterruptFailed(reason: interruptError), tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
             }
             if slashWarning(text) {
-                Text(slashWarningText).font(.footnote).foregroundStyle(DS.orangeInk)
+                let warningText = composer.hasSlashWarningText ? composer.slashWarningText.rendered() : L10n.composerSlashNote()
+                Text(warningText).font(.footnote).foregroundStyle(DS.orangeInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, DS.Space.xl).padding(.bottom, 6)
             }

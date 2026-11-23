@@ -33,7 +33,7 @@ struct ApprovalTarget {
         self.observedSeq = dock.observedSeq
         self.head = a.commandPreview.isEmpty ? a.toolName : a.commandPreview
         self.truncated = a.bodyTruncated
-        self.isSkeleton = a.isSkeleton
+        self.isSkeleton = dock.isSkeleton
         self.expired = false
         self.commandState = dock.hasCommand ? dock.command : nil
         self.canAlwaysAllow = a.canAlwaysAllow
@@ -238,11 +238,12 @@ struct ApprovalSubmitted: View {
 /// What an approval would run, whole, and why: the dock's and the page's content, rendered from Core's `PBSessionApprovalDockView`.
 struct ApprovalContent: View {
     let approval: PBSessionApprovalDockView
+    var isSkeleton = false
     var denying = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if approval.isSkeleton {
+            if isSkeleton {
                 Text(L10n.sessionSkeleton()).font(.subheadline).foregroundStyle(DS.ink2)
             } else {
                 CommandBlock(approval.body).accessibilityLabel(L10n.listStateIosCommandLabel(command: approval.body))

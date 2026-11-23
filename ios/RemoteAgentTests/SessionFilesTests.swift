@@ -87,8 +87,8 @@ import Testing
         let (remote, center) = try center()
         defer { ImageCenter.remove(remote) }
         let (copy, _) = try video()
-        let offline = MachineView(id: "mac", online: false, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
-        center.addFiles("session:video", [copy], machine: offline, online: true)
+        let offline = AttachmentCapabilities(supportsFiles: true, online: false)
+        center.addFiles("session:video", [copy], caps: offline)
         #expect(!FileManager.default.fileExists(atPath: copy.path))
     }
 
@@ -105,11 +105,11 @@ import Testing
         draft.append([p])
         let timer = Task<Void, Never> { try? await Task.sleep(for: .seconds(3600)) }
         p.refreshJob = timer
-        let machine = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = false })
-        center.aim(draft.key, at: "mac", blocked: true, machine: machine)
+        let unsupported = AttachmentCapabilities(supportsFiles: false)
+        center.aim(draft.key, at: "mac", blocked: true, caps: unsupported)
         #expect(timer.isCancelled)
         #expect(!p.readyFor("mac"))
-        #expect(!draft.filesAllowed(for: machine))
+        #expect(!draft.filesAllowed(for: unsupported))
     }
 
     @Test func fileOnlySessionMessagePersistsAndRestoresWithOriginalRequest() async throws {

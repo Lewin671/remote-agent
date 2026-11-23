@@ -120,7 +120,7 @@ final class ImageCenter {
     @ObservationIgnored private var readers: [CheckedContinuation<Void, Never>] = []
     /// The machine each draft's images go to now.
     @ObservationIgnored private var targets: [String: String] = [:]
-    @ObservationIgnored private var fileMachines: [String: MachineView] = [:]
+    @ObservationIgnored private var fileCaps: [String: AttachmentCapabilities] = [:]
     @ObservationIgnored private var blockedKeys = Set<String>()
     @ObservationIgnored private var aimedKeys = Set<String>()
     /// Messages with images held for thumbnails and clean disk release while Core owns delivery.
@@ -297,12 +297,12 @@ final class ImageCenter {
     }
 
     /// The machine a draft's images go to from now on; they are sent there when it can take them.
-    func aim(_ key: String, at machineId: String?, blocked: Bool, machine: MachineView? = nil) {
+    func aim(_ key: String, at machineId: String?, blocked: Bool, caps: AttachmentCapabilities = AttachmentCapabilities()) {
         let known = aimedKeys.contains(key)
         let changed = known && targets[key] != machineId
         if machineId != nil { aimedKeys.insert(key) }
         targets[key] = machineId
-        fileMachines[key] = machine
+        fileCaps[key] = caps
         if blocked { blockedKeys.insert(key) } else { blockedKeys.remove(key) }
         #if DEBUG
             if frozen { return }
@@ -317,11 +317,11 @@ final class ImageCenter {
                 }
             }
         }
-        let allowed = d.filesAllowed(for: machine)
+        let allowed = d.filesAllowed(for: caps)
         if !allowed {
             for item in d.documents where item.hasSource {
                 item.invalidate()
-                item.state = .failed(error: AttachmentFailure(kind: .failed, detail: fileSupported(machine) ? L10nMessage.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10nMessage.imageIosThisComputerDoesNotSupportFileUploads()))
+                item.state = .failed(error: AttachmentFailure(kind: .failed, detail: caps.supportsFiles ? L10nMessage.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10nMessage.imageIosThisComputerDoesNotSupportFileUploads()))
             }
         }
         if let machineId, !blocked {
@@ -353,20 +353,20 @@ final class ImageCenter {
     }
 
     /// 照片和视频 was chosen: the library, unless neither another image nor (where the computer takes files) a video fits.
-    func library(_ key: String, blocked: String?, max: Int, machine: MachineView?) {
+    func library(_ key: String, blocked: String?, max: Int, caps: AttachmentCapabilities) {
         if let blocked { return say(key, blocked) }
         let d = draft(key)
         let imagesFull = d.photos.count >= max
-        let filesFull = !fileSupported(machine) || d.documents.count >= fileLimit(for: machine)
+        let filesFull = !caps.supportsFiles || d.documents.count >= caps.maxFiles
         if imagesFull && filesFull { return say(key, .maxImages(max)) }
         picking[key] = .photos
     }
 
     /// 文件 was chosen: the document picker, while another file fits.
-    func documents(_ key: String, blocked: String?, machine: MachineView?) {
+    func documents(_ key: String, blocked: String?, caps: AttachmentCapabilities) {
         if let blocked { return say(key, blocked) }
-        if let why = fileUploadBlocked(machine, online: true) { return say(key, why) }
-        let limit = fileLimit(for: machine)
+        if let why = caps.fileUploadBlocked { return say(key, why) }
+        let limit = caps.maxFiles
         if draft(key).documents.count >= limit { return say(key, .maxFiles(limit)) }
         picking[key] = .documents
     }
@@ -389,10 +389,10 @@ final class ImageCenter {
     }
 
     /// Import a document's persistent grant, off the UI thread. Its bytes stay at the source.
-    func addFiles(_ key: String, _ urls: [URL], machine: MachineView?, online: Bool) {
-        guard let blocked = fileUploadBlocked(machine, online: online) else {
-            let limit = fileLimit(for: machine)
-            let bytes = fileByteLimit(for: machine)
+    func addFiles(_ key: String, _ urls: [URL], caps: AttachmentCapabilities) {
+        guard let blocked = caps.fileUploadBlocked else {
+            let limit = caps.maxFiles
+            let bytes = caps.maxFileBytes
             let d = draft(key)
             Task {
                 await restoredDraft(key)
@@ -418,7 +418,7 @@ final class ImageCenter {
                         item.file = file
                         item.state = .failed(error: AttachmentFailure(kind: .offline, detail: L10nMessage.imageIosNeedsUploadingToTheComputerAgain()))
                         d.append([item])
-                        if let target = self.machine(key)(), d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
+                        if let target = self.machine(key)(), d.filesAllowed(for: fileCaps[key] ?? AttachmentCapabilities()) { uploads.upload(item, machineId: target) }
                     } catch {
                         say(key, errorText(error))
                         LibraryVideos.discard(left.removeFirst())
@@ -435,8 +435,8 @@ final class ImageCenter {
     /// library into this app's temporary folder, and that copy is what the
     /// draft keeps and uploads. One past the size limit is refused here, as
     /// a picked document is, before anything is sent.
-    func addVideos(_ key: String, _ items: [NSItemProvider], machine: MachineView?, online: Bool) {
-        if let blocked = fileUploadBlocked(machine, online: online) { return say(key, blocked) }
+    func addVideos(_ key: String, _ items: [NSItemProvider], caps: AttachmentCapabilities) {
+        if let blocked = caps.fileUploadBlocked { return say(key, blocked) }
         Task {
             var urls: [URL] = []
             for item in items {
@@ -450,7 +450,7 @@ final class ImageCenter {
                 }
             }
             guard !closed, !urls.isEmpty else { return urls.forEach { LibraryVideos.discard($0) } }
-            addFiles(key, urls, machine: machine, online: online)
+            addFiles(key, urls, caps: caps)
         }
     }
 
@@ -472,7 +472,7 @@ final class ImageCenter {
             img.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return
         }
-        if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
+        if img.isFile, !draft(key).filesAllowed(for: fileCaps[key] ?? AttachmentCapabilities()) {
             img.invalidate()
             img.state = .failed(error: AttachmentFailure(kind: .failed, detail: L10nMessage.imageIosThisComputerDoesNotSupportTheseFilesCheckTheir()))
             return
@@ -822,16 +822,15 @@ final class ImageCenter {
     /// History can hold remote-only files. Check capability before creating
     /// placeholders or appending any part of the message to the composer.
     @discardableResult
-    func putBack(sid: String, text: String, files: [PBSentFile], store: SessionStore) -> Bool {
+    func putBack(sid: String, text: String, files: [PBSentFile], store: SessionStore, caps: AttachmentCapabilities = AttachmentCapabilities()) -> Bool {
         guard canRestoreFiles(sid, hasFiles: !files.isEmpty) else { return false }
-        let machine = remote.current.sessions[sid].flatMap { remote.current.machines[$0.machineId] }
         let picked = files.map { file in
             let item = PendingImage(id: newRequestId(), uri: nil)
             item.file = PickedFile(remote: file)
             item.state = .failed(error: AttachmentFailure(kind: .sourceMissing, detail: L10nMessage.attachmentFileMissing()))
             return item
         }
-        guard draft(Self.sessionKey(sid)).attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) else { return false }
+        guard draft(Self.sessionKey(sid)).attach(picked, max: caps.maxImages, maxFiles: caps.maxFiles) else { return false }
         store.appendToDraft(sid, text)
         return true
     }
@@ -895,7 +894,7 @@ final class ImageCenter {
     #if DEBUG
         /// Resolve a debug pick when the signal arrives, after project settings have loaded.
         func debugAddFiles(_ key: String, _ urls: [URL]) {
-            addFiles(key, urls, machine: fileMachines[key], online: remote.current.peer(fileMachines[key]?.id).ready)
+            addFiles(key, urls, caps: fileCaps[key] ?? AttachmentCapabilities())
         }
 
         /// Shows a message with images as it would stand after sending, for sample data.

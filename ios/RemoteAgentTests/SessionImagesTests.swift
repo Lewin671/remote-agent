@@ -271,7 +271,7 @@ import UIKit
             $0.requestID = o.requestId
             $0.text = "看图"
         }
-        #expect(SessionImages.applyRestore(effect, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
         #expect(store.draft(sid) == "看图" && c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(draft.images.map(\.id) == ["a"] && draft.images[0].processed != nil)
     }
@@ -286,7 +286,7 @@ import UIKit
         o.state = .failed
         store.setDraft(sid, "已经在写的")
 
-        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(SessionImages.putBack(o, session: sid, remote: remote, store: store))
         #expect(c.heldOutgoing(sid, requestId: o.requestId) == nil)
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
@@ -327,7 +327,7 @@ import UIKit
 
         // The box cannot keep the image it gets back: the message's record is the only copy on disk.
         files.full = key
-        #expect(SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(SessionImages.putBack(o, session: sid, remote: remote, store: store))
         await eventually("the box said so") { draft.notice.hasPrefix("这张图未保存到手机") }
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(try OutgoingRecords(files: files).load(sid: sid).map(\.requestId) == [o.requestId])
@@ -349,8 +349,8 @@ import UIKit
         o.state = .failed
         draft.append((1...3).map { ready("n\($0)") })
 
-        #expect(!SessionImages.canPutBack(requestId: o.requestId, session: sid, state: RemoteState(), remote: remote))
-        #expect(!SessionImages.putBack(o, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(!SessionImages.canPutBack(requestId: o.requestId, session: sid, remote: remote))
+        #expect(!SessionImages.putBack(o, session: sid, remote: remote, store: store))
         // Nothing moved: the message is still there to retry or to put back later.
         #expect(c.heldOutgoing(sid, requestId: o.requestId) != nil && store.draft(sid).isEmpty)
         #expect(draft.images.count == 3)
@@ -365,7 +365,7 @@ import UIKit
             $0.requestID = "text-only"
             $0.text = "只有文字"
         }
-        #expect(SessionImages.applyRestore(effect, session: sid, state: RemoteState(), remote: remote, store: store))
+        #expect(SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
         #expect(store.draft(sid) == "只有文字")
     }
 

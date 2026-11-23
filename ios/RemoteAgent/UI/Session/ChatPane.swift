@@ -502,13 +502,18 @@ struct ChatPane: View {
                 image: { seq, index in nav.open(.image(session: sessionID, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
                 putBack: { requestId, text, files in
+                    let caps = AttachmentCapabilities(
+                        header.capabilities,
+                        hasMachine: !header.machineID.isEmpty,
+                        online: header.computerOnline && !header.computerUnlinked && header.connState == .online
+                    )
                     if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
-                        SessionImages.putBack(o, session: sessionID, state: model.state, remote: context.remote, store: context.sessionStore)
+                        SessionImages.putBack(o, session: sessionID, caps: caps, remote: context.remote, store: context.sessionStore)
                     } else {
                         let pbFiles = files.map { ref in
                             PBSentFile.with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes }
                         }
-                        ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore)
+                        ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore, caps: caps)
                     }
                 },
                 toggleGroup: onToggleGroup,

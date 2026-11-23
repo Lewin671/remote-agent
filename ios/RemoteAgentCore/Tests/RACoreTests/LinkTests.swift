@@ -65,7 +65,7 @@ extension ServerTests {
                 let state = linkedState(w.daemon.id)
                 await remote.showForTest(state: state)
                 #expect(state.peer(w.daemon.id).available)
-                #expect(fileSupported(state.machines[w.daemon.id]))
+                #expect(capabilities(state.machines[w.daemon.id])?.fileUpload == true)
                 #expect(protocolMismatch(state.machines[w.daemon.id]) == nil)
                 #expect(state.peer(w.daemon.id).canProbe(false))
                 let command = PBCommand.with { $0.createSession.cwd = "/work/example"; $0.createSession.fileIds = ["original-file"] }

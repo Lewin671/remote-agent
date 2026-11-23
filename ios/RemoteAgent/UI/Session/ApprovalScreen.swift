@@ -21,7 +21,7 @@ struct ApprovalScreen: View {
         let titleText = header.flatMap { $0.found ? $0.title.rendered() : nil } ?? L10n.approvalDetails()
         Ticking { now in
             let urgent = (matchingDock?.deadlineMs ?? 0) > 0 && (matchingDock?.deadlineMs ?? 0) - now < 60_000
-            let leftText = matchingDock.flatMap { $0.hasTimeLeft ? $0.timeLeft.rendered() : nil } ?? ""
+            let leftText = matchingDock.flatMap { $0.hasTimeLeftPlain ? $0.timeLeftPlain.rendered() : nil } ?? ""
             let subtitle = header?.found == true
                 ? titleText + (leftText.isEmpty ? "" : " · \(leftText)")
                 : nil
@@ -29,7 +29,7 @@ struct ApprovalScreen: View {
                 VStack(spacing: 0) {
                     ConnectionBar()
                     if let dock = matchingDock {
-                        if dock.approval.isSkeleton {
+                        if dock.isSkeleton {
                             PageNote(L10n.sessionSkeleton())
                         } else {
                             let target = ApprovalTarget(
@@ -45,7 +45,7 @@ struct ApprovalScreen: View {
                                     } else {
                                         DarkCard {
                                             DarkCardHead(kind: dock.approval.commandPreview.isEmpty ? dock.approval.toolName : dock.approval.commandPreview)
-                                            ApprovalContent(approval: dock.approval, denying: denying).textSelection(.enabled).padding(.top, 14)
+                                            ApprovalContent(approval: dock.approval, isSkeleton: dock.isSkeleton, denying: denying).textSelection(.enabled).padding(.top, 14)
                                             ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
                                                 .padding(.top, 16)
                                         }

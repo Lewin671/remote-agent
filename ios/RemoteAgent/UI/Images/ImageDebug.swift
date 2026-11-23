@@ -170,10 +170,10 @@ private struct ImageDraftDebug: ViewModifier {
     let center: ImageCenter
     let key: String
     let machine: String?
-    let blocked: String?
-    let max: Int
+    let caps: AttachmentCapabilities
     var session: (id: String, store: SessionStore)?
-    var fileMachine: MachineView?
+    private var blocked: String? { caps.imageUploadBlocked }
+    private var max: Int { caps.maxImages }
 
     func body(content: Content) -> some View {
         content
@@ -181,7 +181,7 @@ private struct ImageDraftDebug: ViewModifier {
                 ImageDebug.seed(center, key: key, machine: machine)
                 if let session { ImageDebug.outgoing(center, sid: session.id) }
                 let documents = ImageDebug.documentURLs()
-                if !documents.isEmpty { center.addFiles(key, documents, machine: fileMachine, online: blocked == nil) }
+                if !documents.isEmpty { center.addFiles(key, documents, caps: caps) }
                 let files = ImageDebug.launchFiles()
                 if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
             }
@@ -194,7 +194,7 @@ private struct ImageDraftDebug: ViewModifier {
                 let files = ImageDebug.files(UserDefaults.standard.string(forKey: "debug.imagePaths") ?? "")
                 if !files.isEmpty { center.add(key, files.map { .data($0) }, max: max) }
             }
-            .debugSignal("images.pick") { center.plus(key, blocked: blocked, max: max, filesSupported: fileSupported(fileMachine)) }
+            .debugSignal("images.pick") { center.plus(key, blocked: blocked, max: max, filesSupported: caps.supportsFiles) }
             .debugSignal("images.original") { center.setOriginal(key, !center.draft(key).original) }
             .debugSignal("images.retry") {
                 for img in center.draft(key).images {
@@ -220,7 +220,7 @@ extension View {
     func imageDraftDebug(_ attachments: ComposerAttachments, session: (id: String, store: SessionStore)?) -> some View {
         modifier(ImageDraftDebug(
             center: attachments.center, key: attachments.key, machine: attachments.machineId,
-            blocked: attachments.blocked, max: attachments.limit, session: session, fileMachine: attachments.machine))
+            caps: attachments.caps, session: session))
     }
 }
 #else

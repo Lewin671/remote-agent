@@ -188,22 +188,6 @@ public func needsUpload(_ img: PendingImage, machineId: String, now: Int64 = Int
     return !img.needsProcessing && img.hasSource && !img.readyFor(machineId, now: now) && !uploadingThere
 }
 
-/// Whether a machine takes images, and if not, why, in words.
-public func uploadBlocked(_ m: MachineView?, online: Bool, name: String) -> String? {
-    guard let m else { return L10n.attachmentIosChooseMachine() }
-    guard let caps = capabilities(m) else { return L10n.attachmentComputerUnread(name: name) }
-    // The daemon's folder has spaces in its path, which the CLIs do not take.
-    if !caps.imageUpload { return L10n.attachmentPathSpaces(name: name) }
-    if !m.pathState.reachable || !online { return L10n.attachmentComputerOffline(name: name) }
-    return nil
-}
-
-/// The most images a message may carry to this machine: six, or fewer if the daemon says so.
-public func imageLimit(for m: MachineView?) -> Int {
-    guard let n = capabilities(m).map({ Int($0.maxImagesPerMessage) }), n >= 1, n < maxImages else { return maxImages }
-    return n
-}
-
 private let orderName = "order"
 
 /// An image as the store keeps it.
@@ -507,9 +491,9 @@ public final class ImageDraft {
     }
 
     /// Files remain blocked after a machine switch until the new machine declares support.
-    public func filesAllowed(for machine: MachineView?) -> Bool {
-        documents.isEmpty || (fileSupported(machine) && documents.count <= fileLimit(for: machine)
-            && documents.allSatisfy { ($0.file?.size ?? 0) <= fileByteLimit(for: machine) })
+    public func filesAllowed(for caps: AttachmentCapabilities) -> Bool {
+        documents.isEmpty || (caps.supportsFiles && documents.count <= caps.maxFiles
+            && documents.allSatisfy { ($0.file?.size ?? 0) <= caps.maxFileBytes })
     }
 
     public func ready(machineId: String?) -> Bool {

@@ -8,7 +8,7 @@ import SwiftUI
 
 struct PendingTrayView: View {
     let sessionID: String
-    let state: RemoteState
+    let caps: AttachmentCapabilities
     let tray: PBSessionPendingTrayView
     let keyboardOpen: Bool
     var maxHeight: CGFloat = 340
@@ -243,7 +243,7 @@ struct PendingTrayView: View {
 
                 if expanded && (item.canPromote || item.canRestore) {
                     let canPutBackAttachments = SessionImages.canPutBack(
-                        requestId: item.requestID, files: [], session: sessionID, state: state, remote: context.remote
+                        requestId: item.requestID, files: [], session: sessionID, caps: caps, remote: context.remote
                     )
                     let hasHeldLocal = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: item.requestID) != nil
                     let restoreReady = canPutBackAttachments
@@ -268,7 +268,7 @@ struct PendingTrayView: View {
                             Button {
                                 SessionHaptics.tap()
                                 guard SessionImages.canPutBack(
-                                    requestId: item.requestID, files: [], session: sessionID, state: state, remote: context.remote
+                                    requestId: item.requestID, files: [], session: sessionID, caps: caps, remote: context.remote
                                 ) else { return }
                                 Task { await context.coreHost.restoreTrayItem(sessionID: sessionID, requestID: item.requestID) }
                             } label: {

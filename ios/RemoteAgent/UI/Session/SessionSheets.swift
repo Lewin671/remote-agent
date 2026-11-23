@@ -98,7 +98,7 @@ struct SessionModeSheet: View {
                 Text(L10n.modesCurrentTerminal(mode: outside)).font(.footnote).ink(DS.ink2).padding(.bottom, 4)
             }
             ForEach(Array(choices.enumerated()), id: \.offset) { i, choice in
-                let off = !choice.available
+                let off = actions.modeLocked || !choice.available
                 let reason = choice.hasUnavailableReason ? choice.unavailableReason.rendered() : ""
                 let note = choice.hasNote ? choice.note.rendered() : ""
                 let help = off && !reason.isEmpty ? reason : note
@@ -119,6 +119,10 @@ struct SessionModeSheet: View {
                             }
                         }
                 )
+            }
+            if actions.hasModePermissionNotice {
+                let notice = actions.modePermissionNotice.rendered()
+                if !notice.isEmpty { Hint(notice) }
             }
             Hint(outside.map { L10n.modesIosOutsideNote(mode: $0) } ?? L10n.sessionOnlyCurrent())
             if running { Hint(L10n.modesSwitching()) }
@@ -157,6 +161,7 @@ struct SessionModeSheet: View {
 /// 会话设置: context and 压缩, the model and its reasoning effort.
 struct SessionModelSheet: View {
     let sessionID: String
+    var onUsage: (() -> Void)? = nil
     let onClose: () -> Void
     @Environment(AccountContext.self) private var context
     @State private var all = false
@@ -247,6 +252,40 @@ struct SessionModelSheet: View {
                 Hint(!blockedNote.isEmpty ? blockedNote : (running ? L10n.sessionIosChangeIdle() : L10n.sessionIosEffortNote()))
                 if modelRunning { Hint(L10n.modesSwitching()) }
                 if !modelRunning && !modelError.isEmpty { Hint(L10n.modesSwitchFailed(reason: modelError), color: DS.red) }
+            }
+            if actions.hasUsageEntry && actions.usageEntry.visible {
+                let entry = actions.usageEntry
+                FieldLabel(L10n.usageTitle())
+                if entry.loading {
+                    LoadingRow(inset: 0)
+                } else {
+                    let valueStr: String = {
+                        if entry.hasData && entry.hasTotalTokensText {
+                            let s = entry.totalTokensText.rendered()
+                            if !s.isEmpty { return s }
+                        }
+                        return entry.hasValueText ? entry.valueText.rendered() : ""
+                    }()
+                    let descStr: String = {
+                        if entry.hasFormattedSubtitle {
+                            let s = entry.formattedSubtitle.rendered()
+                            if !s.isEmpty { return s }
+                        }
+                        return entry.hasSubtitle ? entry.subtitle.rendered() : ""
+                    }()
+                    ListItem(
+                        L10n.usageTitle(),
+                        desc: descStr,
+                        enabled: entry.supported && onUsage != nil,
+                        small: valueStr.isEmpty ? nil : valueStr,
+                        last: true,
+                        onTap: entry.supported ? onUsage : nil
+                    )
+                    if entry.hasFootnote {
+                        let foot = entry.footnote.rendered()
+                        if !foot.isEmpty { Hint(foot) }
+                    }
+                }
             }
         }
         .onChange(of: actions.modelChoices, initial: true) { _, choices in

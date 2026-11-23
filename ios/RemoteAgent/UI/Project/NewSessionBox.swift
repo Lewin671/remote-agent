@@ -31,9 +31,8 @@ struct NewSessionBox: View {
         let state = model.state
         let machineId = vm.config.machineID.isEmpty ? nil : vm.config.machineID
         let images = ComposerAttachments(
-            state: state,
+            newSession: vm,
             key: ImageCenter.projectKey(vm.projectKey.ifEmpty(key)),
-            machineId: machineId,
             remote: context.remote
         )
         NewSessionContent(

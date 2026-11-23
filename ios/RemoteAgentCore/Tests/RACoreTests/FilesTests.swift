@@ -55,10 +55,8 @@ private actor FileReceiver: UploadChannel {
         try Data(repeating: 65, count: count).write(to: url)
         return (folder, try PickedFile(url: url))
     }
-    private func machine(supported: Bool = true) -> MachineView {
-        var m = MachineView(id: "mac", online: true, lastSeenMs: 0, meta: PBMachineMeta())
-        m.meta?.capabilities = .with { $0.fileUpload = supported; $0.maxFilesPerMessage = 2; $0.maxFileUploadBytes = 10 }
-        return m
+    private func caps(supported: Bool = true) -> AttachmentCapabilities {
+        AttachmentCapabilities(supportsFiles: supported, maxFiles: 2, maxFileBytes: 10)
     }
     private func pending(_ source: PickedFile) -> PendingImage {
         let p = PendingImage(id: newRequestId(), uri: nil)
@@ -67,18 +65,17 @@ private actor FileReceiver: UploadChannel {
         return p
     }
 
-    @Test func supportIsExplicitAndLimitsUseTheMachinesAdvertisement() throws {
-        #expect(!fileSupported(nil))
-        #expect(!fileSupported(machine(supported: false)))
-        #expect(fileUploadBlocked(machine(supported: false), online: true) == L10n.imageIosThisComputerDoesNotSupportFileUploads())
-        #expect(fileLimit(for: machine()) == 2)
-        #expect(fileByteLimit(for: machine()) == 10)
+    @Test func supportIsExplicitAndLimitsUseCoreCapabilities() throws {
+        #expect(!AttachmentCapabilities(supportsFiles: false).supportsFiles)
+        #expect(AttachmentCapabilities(supportsFiles: false).fileUploadBlocked == L10n.imageIosThisComputerDoesNotSupportFileUploads())
+        #expect(caps().maxFiles == 2)
+        #expect(caps().maxFileBytes == 10)
         let (folder, file) = try source(11)
         defer { try? FileManager.default.removeItem(at: folder) }
         let d = ImageDraft(key: "new:project", files: MemoryFiles(), saves: nil)
         d.append([pending(file)])
-        #expect(!d.filesAllowed(for: machine()))
-        #expect(!d.filesAllowed(for: machine(supported: false)))
+        #expect(!d.filesAllowed(for: caps()))
+        #expect(!d.filesAllowed(for: caps(supported: false)))
         #expect(throws: (any Error).self) { try PickedFile(url: folder.appendingPathComponent("report.csv"), maxBytes: 10) }
     }
 

@@ -52,8 +52,6 @@ func slashWarning(_ text: String) -> Bool {
     text.drop { $0.isWhitespace }.hasPrefix("/")
 }
 
-var slashWarningText: String { L10n.composerSlashNote() }
-
 // MARK: Telling VoiceOver what arrived
 
 struct LiveAnnouncer: Equatable, Sendable {

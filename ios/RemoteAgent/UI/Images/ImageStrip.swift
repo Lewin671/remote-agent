@@ -17,11 +17,12 @@ struct ImageStrip: View {
     let key: String
     /// The computer the message goes to; nil while none is chosen.
     let machineId: String?
-    /// Why that computer takes no images now, in words; nil when it does.
-    let blocked: String?
-    let max: Int
-    var machine: MachineView? = nil
+    /// Core-supplied attachment capabilities for the current target.
+    var caps: AttachmentCapabilities = AttachmentCapabilities()
     var focus: FocusState<Bool>.Binding? = nil
+
+    private var blocked: String? { caps.imageUploadBlocked }
+    private var max: Int { caps.maxImages }
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewing: DraftImageSelection?
@@ -72,20 +73,20 @@ struct ImageStrip: View {
                         }
                     }
                     Text(L10n.attachmentMetadata()).font(.footnote).ink(DS.ink2)
-                    Text(L10n.attachmentIosFileCount(count: Int(draft.documents.count), limit: Int(fileLimit(for: machine)))).font(.footnote).ink(DS.ink2)
+                    Text(L10n.attachmentIosFileCount(count: Int(draft.documents.count), limit: Int(caps.maxFiles))).font(.footnote).ink(DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .modifier(ImagePickerHost(center: center, key: key, max: max, machine: machine, blocked: blocked, focus: focus))
+        .modifier(ImagePickerHost(center: center, key: key, caps: caps, focus: focus))
         .fullScreenCover(item: $viewing) { pick in DraftImageViewer(center: center, key: key, start: pick.index) { viewing = nil } }
         .debugSignal("images.preview") { if !draft.photos.isEmpty { viewing = DraftImageSelection(index: 0) } }
-        .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: fileSupported(machine), fileLimit: fileLimit(for: machine), byteLimit: fileByteLimit(for: machine)), initial: true) { _, aim in
-            center.aim(key, at: aim.machine, blocked: aim.blocked, machine: machine)
+        .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: caps.supportsFiles, fileLimit: caps.maxFiles, byteLimit: caps.maxFileBytes), initial: true) { _, aim in
+            center.aim(key, at: aim.machine, blocked: aim.blocked, caps: caps)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil, machine: machine) }
+            if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil, caps: caps) }
         }
         // A reason is said for a moment, not kept under the box.
         .task(id: center.notices[key]?.id) {
@@ -259,10 +260,10 @@ private struct DraftThumb: View {
 private struct ImagePickerHost: ViewModifier {
     let center: ImageCenter
     let key: String
-    let max: Int
-    let machine: MachineView?
-    let blocked: String?
+    let caps: AttachmentCapabilities
     let focus: FocusState<Bool>.Binding?
+    private var max: Int { caps.maxImages }
+    private var blocked: String? { caps.imageUploadBlocked }
     // Native pickers can resign the editor without reliably restoring it.
     // Keep the pre-presentation intent, including an intentionally hidden keyboard.
     @State private var focusBeforePicker: Bool?
@@ -287,8 +288,8 @@ private struct ImagePickerHost: ViewModifier {
         let editorFocused = focus?.wrappedValue ?? false
         let draft = center.draft(key)
         // Videos go as files where the computer takes files (session-files.md 「从相册选视频」).
-        let videos = fileSupported(machine)
-        let room = Swift.max(max - draft.photos.count + (videos ? Swift.max(fileLimit(for: machine) - draft.documents.count, 0) : 0), 1)
+        let videos = caps.supportsFiles
+        let room = Swift.max(max - draft.photos.count + (videos ? Swift.max(caps.maxFiles - draft.documents.count, 0) : 0), 1)
         content
             .actionMenu(
                 isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),
@@ -341,12 +342,12 @@ private struct ImagePickerHost: ViewModifier {
                         let moving = providers.filter { $0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
                         let still = providers.filter { !$0.hasItemConformingToTypeIdentifier(UTType.movie.identifier) }
                         if !still.isEmpty { center.add(key, still.map { .library($0) }, max: max) }
-                        if !moving.isEmpty { center.addVideos(key, moving, machine: machine, online: blocked == nil) }
+                        if !moving.isEmpty { center.addVideos(key, moving, caps: caps) }
                     }.ignoresSafeArea()
                 case .documents:
                     DocumentPicker { urls in
                         center.picking[key] = nil
-                        if !urls.isEmpty { center.addFiles(key, urls, machine: machine, online: blocked == nil) }
+                        if !urls.isEmpty { center.addFiles(key, urls, caps: caps) }
                     }.ignoresSafeArea()
                 }
             }

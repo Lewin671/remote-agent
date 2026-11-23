@@ -1309,6 +1309,13 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func fetchSession(_ sid: String) async {
+        guard !closed, !sid.isEmpty else { return }
+        await dispatch {
+            $0.fetchSession.sessionID = sid
+        }
+    }
+
     func submitSessionCommand(
         sessionID: String,
         command: PBCommand,

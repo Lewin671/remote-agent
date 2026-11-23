@@ -305,21 +305,4 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         #expect(try OutgoingRecords(files: files).load(sid: "s").first?.mode == .queue)
         #expect(try OutgoingRecords(files: files).load(sid: "other").isEmpty)
     }
-
-    @Test func aMachineSaysWhetherAndHowManyImagesItTakes() {
-        func m(online: Bool = true, _ caps: PBMachineCapabilities?) -> MachineView {
-            MachineView(id: "m", online: online, lastSeenMs: 0, meta: .with { if let caps { $0.capabilities = caps } })
-        }
-        let ok = PBMachineCapabilities.with { $0.imageUpload = true; $0.maxImagesPerMessage = 4 }
-        #expect(uploadBlocked(nil, online: true, name: "mac") == L10n.attachmentIosChooseMachine())
-        #expect(uploadBlocked(m(nil), online: true, name: "mac") == "还没读到 mac 的信息，稍后才能添加图片")
-        #expect(uploadBlocked(m(PBMachineCapabilities()), online: true, name: "mac") == "mac 上 remote-agent 的目录路径带空格，不能发图片")
-        #expect(uploadBlocked(m(online: false, ok), online: true, name: "mac") == "mac 离线，连上后才能添加图片")
-        #expect(uploadBlocked(m(ok), online: false, name: "mac") == "mac 离线，连上后才能添加图片")
-        #expect(uploadBlocked(m(ok), online: true, name: "mac") == nil)
-        #expect(imageLimit(for: m(ok)) == 4)
-        #expect(imageLimit(for: m(.with { $0.maxImagesPerMessage = 9 })) == 6)
-        #expect(imageLimit(for: m(PBMachineCapabilities())) == 6)
-        #expect(imageLimit(for: nil) == 6)
-    }
 }

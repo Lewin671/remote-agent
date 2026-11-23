@@ -293,7 +293,7 @@ struct ApprovalDock: View {
             } else {
                 Ticking(every: 15) { now in
                     let urgent = dock.deadlineMs > 0 && dock.deadlineMs - now < 60_000
-                    let timeText = dock.hasTimeLeft ? dock.timeLeft.rendered() : ""
+                    let timeText = dock.hasTimeLeftPlain ? dock.timeLeftPlain.rendered() : ""
                     let openTitle = approval.commandPreview.isEmpty ? approval.toolName : approval.commandPreview
                     PendingDock(
                         label: dock.title.rendered(),
@@ -304,9 +304,9 @@ struct ApprovalDock: View {
                         open: $open,
                         onOpen: onOpen
                     ) {
-                        ApprovalContent(approval: approval, denying: denying)
+                        ApprovalContent(approval: approval, isSkeleton: dock.isSkeleton, denying: denying)
                     } actions: {
-                        if !approval.isSkeleton {
+                        if !dock.isSkeleton {
                             ApprovalDecision(target: target, denying: $denying, chosen: $chosen)
                         }
                     }
@@ -386,8 +386,7 @@ struct QuestionBody: View {
     }
 
     var body: some View {
-        let isSkeletonQuestion = qDock.totalQuestions == 0 && cur.questionText.isEmpty && cur.options.isEmpty
-        if isSkeletonQuestion {
+        if dock.isSkeleton {
             if part == .content { Text(L10n.sessionSkeleton()).font(.subheadline).ink(DS.ink2) }
         } else {
             Group {
@@ -569,7 +568,7 @@ struct PlanDock: View {
 
     var body: some View {
         let plan = dock.plan
-        if plan.markdown.isEmpty {
+        if dock.isSkeleton {
             Text(L10n.sessionSkeleton()).font(.subheadline).ink(DS.ink2)
         } else {
             PendingDock(

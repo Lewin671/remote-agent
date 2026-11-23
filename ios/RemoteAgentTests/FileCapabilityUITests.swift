@@ -47,10 +47,10 @@ import Testing
         #expect(!SessionImages.canPutBack(
             requestId: o.requestId,
             files: [.with { $0.name = "report.csv" }],
-            session: "s", state: state(support: false), remote: remote))
+            session: "s", caps: AttachmentCapabilities(supportsFiles: false), remote: remote))
         let restored: Bool
         if direct { restored = center.putBack(sid: "s", max: 6, o) }
-        else { restored = SessionImages.putBack(o, session: "s", state: state(support: false), remote: remote, store: store) }
+        else { restored = SessionImages.putBack(o, session: "s", caps: AttachmentCapabilities(supportsFiles: false), remote: remote, store: store) }
         #expect(!restored && draft.images.isEmpty && p.imageId == "file-1")
         #expect(store.draft("s") == "existing text" && center.restoredOutgoing["s"]?.first?.requestId == o.requestId)
         #expect(try OutgoingRecords(files: files).load(sid: "s").count == 1)
