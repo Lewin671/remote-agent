@@ -645,15 +645,6 @@ enum SharedFileWebPreviewKind {
   SHARED_FILE_WEB_PREVIEW_KIND_AUDIO = 3;
 }
 
-enum SharedFileTransferStatus {
-  SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED = 0;
-  SHARED_FILE_TRANSFER_STATUS_DOWNLOADING = 1;
-  SHARED_FILE_TRANSFER_STATUS_PAUSED = 2;
-  SHARED_FILE_TRANSFER_STATUS_DOWNLOADED = 3;
-  SHARED_FILE_TRANSFER_STATUS_FAILED = 4;
-  SHARED_FILE_TRANSFER_STATUS_CLEANED_UP = 5;
-}
-
 enum SharedFileFailureKind {
   SHARED_FILE_FAILURE_KIND_UNSPECIFIED = 0;
   SHARED_FILE_FAILURE_KIND_DISCONNECTED = 1;
@@ -942,30 +933,6 @@ message SessionRefreshHistoryAction {
 // SessionRetryLoadAction retries loading a session that failed lookup or event sync.
 message SessionRetryLoadAction {
   string session_id = 1;
-}
-
-// SharedFileLocalStateUpdate reports shell-owned download/cache/media metadata for one shared file.
-message SharedFileLocalStateUpdate {
-  string session_id = 1;
-  string file_id = 2;
-  SharedFileTransferStatus status = 3;
-  int64 downloaded_bytes = 4;
-  bool has_eta = 5;
-  int64 eta_seconds = 6;
-  bool waiting_reconnect = 7;
-  bool has_duration = 8;
-  int64 duration_ms = 9;
-  SharedFileFailureKind failure_kind = 10;
-  string failure_detail = 11;
-  // When true, preserves existing transfer status/bytes/failure and only updates duration_ms.
-  bool metadata_only = 12;
-}
-
-// SharedFileLocalStateEvent delivers one or more local shared-file state updates from shell to Core.
-message SharedFileLocalStateEvent {
-  repeated SharedFileLocalStateUpdate updates = 1;
-  bool replace_all = 2;
-  string clear_session_id = 3;
 }
 
 // SessionImageViewerOpenAction opens the session image viewer anchored to an event image or viewer index.

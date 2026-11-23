@@ -600,7 +600,6 @@ message Event {
     SessionTraySessionAction session_cancel_all_paused = 213;
     SessionTraySessionAction session_undo_cancel = 214;
     SessionRetryLoadAction session_retry_load = 215;
-    SharedFileLocalStateEvent shared_file_local_state = 216;
     SessionImageViewerOpenAction session_image_viewer_open = 217;
     SessionImageViewerNavigateAction session_image_viewer_navigate = 218;
     SessionImageViewerCloseAction session_image_viewer_close = 219;
@@ -688,6 +687,8 @@ message Event {
     SecurityWorkflowActionEvent security_action = 464;
     SecurityOpenNotifyEvent security_open_notify = 465;
   }
+  reserved 216;
+  reserved "shared_file_local_state";
   int64 now_ms = 98;
   int64 mono_ms = 99;
   repeated string random_ids = 100;

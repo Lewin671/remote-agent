@@ -1965,12 +1965,28 @@ func TestSessionRetryLoadAction(t *testing.T) {
 	}
 }
 
-func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
+func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 	c := New()
 	defer c.Close()
 
+	const (
+		fileSize   int64 = 10 * 1024 * 1024
+		chunkBytes int32 = 2 * 1024 * 1024
+	)
+
+	c.Dispatch(&corev1.Event{
+		NowMs:  890,
+		MonoMs: 890,
+		Event: &corev1.Event_EntropyProvided{
+			EntropyProvided: &corev1.EntropyProvided{
+				RandomIds:  []string{"sf-r1", "sf-r2", "sf-r3", "sf-r4", "sf-r5", "sf-r6"},
+				UnitFloats: []float64{0.5, 0.5, 0.5, 0.5},
+			},
+		},
+	})
 	effStart := c.Dispatch(&corev1.Event{
-		NowMs: 900,
+		NowMs:  900,
+		MonoMs: 900,
 		Event: &corev1.Event_SyncLifecycle{
 			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
 		},
@@ -1982,7 +1998,8 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 		}
 	}
 	effTok := c.Dispatch(&corev1.Event{
-		NowMs: 910,
+		NowMs:  910,
+		MonoMs: 910,
 		Event: &corev1.Event_TokenResult{
 			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok", ExpiresMs: 60_000},
 		},
@@ -1994,15 +2011,17 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 		}
 	}
 	c.Dispatch(&corev1.Event{
-		NowMs: 920,
+		NowMs:  920,
+		MonoMs: 920,
 		Event: &corev1.Event_StreamReady{
 			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920},
 		},
 	})
 
-	hash := []byte{1, 2, 3, 4}
+	hash := sfTestHash(0x01)
 	c.Dispatch(&corev1.Event{
-		NowMs: 1000,
+		NowMs:  1000,
+		MonoMs: 1000,
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Security: &corev1.DemoSecurity{
@@ -2020,7 +2039,10 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 							Hostname:        "Studio",
 							Home:            "/Users/me",
 							ProtocolVersion: 17,
-							Capabilities:    &v1.MachineCapabilities{SharedFiles: true},
+							Capabilities: &v1.MachineCapabilities{
+								SharedFiles:          true,
+								SharedFileChunkBytes: chunkBytes,
+							},
 						},
 					},
 				},
@@ -2047,7 +2069,7 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 												FileId:    "f1",
 												Name:      "demo-clip.mp4",
 												Path:      "/Users/me/proj/demo-clip.mp4",
-												SizeBytes: 10 * 1024 * 1024,
+												SizeBytes: fileSize,
 												Sha256:    hash,
 											},
 										},
@@ -2062,6 +2084,7 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 	})
 
 	getCard := func() *corev1.SessionSharedFileItem {
+		t.Helper()
 		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-sf"}}})
 		if err != nil {
 			t.Fatalf("View failed: %v", err)
@@ -2073,110 +2096,225 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 		return items[0].GetSharedFiles().GetFiles()[0]
 	}
 
+	scanLocal := func(nowMs int64, entries ...*corev1.SharedFileLocalEntry) {
+		t.Helper()
+		effCfg := c.Dispatch(&corev1.Event{
+			NowMs:  nowMs,
+			MonoMs: nowMs,
+			Event: &corev1.Event_SharedFileConfig{
+				SharedFileConfig: &corev1.SharedFileConfigEvent{
+					StorageFullKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
+					ScanLocal:       true,
+				},
+			},
+		})
+		var scanOp uint64
+		for _, ef := range effCfg.GetEffects() {
+			if sc := ef.GetSharedFileScanLocal(); sc != nil {
+				scanOp = sc.GetOpId()
+			}
+		}
+		if scanOp == 0 {
+			t.Fatalf("expected SharedFileScanLocalEffect")
+		}
+		c.Dispatch(&corev1.Event{
+			NowMs:  nowMs + 10,
+			MonoMs: nowMs + 10,
+			Event: &corev1.Event_SharedFileLocalScanned{
+				SharedFileLocalScanned: &corev1.SharedFileLocalScannedEvent{
+					OpId:    scanOp,
+					Entries: entries,
+				},
+			},
+		})
+	}
+
 	// Initially available (demo world is connected + machine online).
 	c0 := getCard()
 	if c0.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE ||
 		c0.GetDisplayPath() != "~/proj/demo-clip.mp4" ||
 		c0.GetSizeText().GetLiteral() != "10.0 MB" ||
-		len(c0.GetSha256()) != 4 {
+		len(c0.GetSha256()) != 32 {
 		t.Fatalf("unexpected initial card: %+v", c0)
 	}
 
-	// Shell reports downloading with ETA -> emits SESSION render and updates card.
-	effDL := c.Dispatch(&corev1.Event{
-		NowMs: 1100,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{
-						SessionId:       "s-sf",
-						FileId:          "f1",
-						Status:          corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING,
-						DownloadedBytes: 2 * 1024 * 1024,
-						HasEta:          true,
-						EtaSeconds:      65,
+	// Start download, inspect disk, deliver first 2 MiB chunk after 16s -> emits SESSION render and updates card with ETA.
+	effStartDL := c.Dispatch(&corev1.Event{
+		NowMs:  2000,
+		MonoMs: 2000,
+		Event: &corev1.Event_SharedFileStartDownload{
+			SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{
+				SessionId: "s-sf",
+				FileId:    "f1",
+			},
+		},
+	})
+	insp := findInspectDisk(effStartDL)
+	if insp == nil {
+		t.Fatalf("expected SharedFileInspectDiskEffect")
+	}
+	effDisp := c.Dispatch(&corev1.Event{
+		NowMs:  2050,
+		MonoMs: 2050,
+		Event: &corev1.Event_SharedFileDiskInspected{
+			SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{
+				OpId:           insp.GetOpId(),
+				SessionId:      "s-sf",
+				FileId:         "f1",
+				Known:          true,
+				AvailableBytes: 100 * 1024 * 1024,
+			},
+		},
+	})
+	dc, _ := findDispatchChunk(effDisp)
+	if dc == nil {
+		t.Fatalf("expected GetSharedFileChunk dispatch")
+	}
+	effChunk := c.Dispatch(&corev1.Event{
+		NowMs:  17_900,
+		MonoMs: 17_900,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.GetRequestId(),
+				AttemptId:         dc.GetAttemptId(),
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "executed",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "executed",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_GetSharedFileChunk{
+						GetSharedFileChunk: &v1.GetSharedFileChunkResponse{
+							Data:       make([]byte, chunkBytes),
+							TotalBytes: sfUint64(uint64(fileSize)),
+						},
 					},
 				},
 			},
 		},
 	})
-	if len(effDL.GetEffects()) == 0 {
-		t.Fatalf("expected render effect after SharedFileLocalStateEvent")
+	wc := findWriteChunk(effChunk)
+	if wc == nil {
+		t.Fatalf("expected SharedFileWriteChunkEffect")
+	}
+	effDL := c.Dispatch(&corev1.Event{
+		NowMs:  18_000,
+		MonoMs: 18_000,
+		Event: &corev1.Event_SharedFileWriteChunkResult{
+			SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{
+				OpId:      wc.GetOpId(),
+				SessionId: "s-sf",
+				FileId:    "f1",
+				Ok:        true,
+			},
+		},
+	})
+	hasSessionRender := false
+	for _, ef := range effDL.GetEffects() {
+		if r := ef.GetRender(); r != nil {
+			for _, sc := range r.GetScreens() {
+				if sc == corev1.ScreenTarget_SCREEN_TARGET_SESSION {
+					hasSessionRender = true
+				}
+			}
+		}
+	}
+	if !hasSessionRender {
+		t.Fatalf("expected SCREEN_TARGET_SESSION render effect after chunk write, got %+v", effDL.GetEffects())
 	}
 	c1 := getCard()
 	if c1.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING ||
+		c1.GetDownloadedBytes() != int64(chunkBytes) ||
 		c1.GetSubtitle().GetKey() != text.KeySharedFileSubtitleDownloadingEta ||
 		c1.GetPrimaryAction() != corev1.SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_PAUSE {
 		t.Fatalf("unexpected downloading card: %+v", c1)
 	}
 
-	// Shell reports downloaded, then metadata-only duration update -> preserves DOWNLOADED and adds duration subtitle.
+	// Pause download -> card enters PAUSED with RESUME primary action and preserves downloaded bytes.
 	c.Dispatch(&corev1.Event{
-		NowMs: 1200,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
-				},
-			},
+		NowMs:  18_100,
+		MonoMs: 18_100,
+		Event: &corev1.Event_SharedFilePauseDownload{
+			SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: "s-sf", FileId: "f1"},
 		},
 	})
+	cPaused := getCard()
+	if cPaused.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED ||
+		cPaused.GetDownloadedBytes() != int64(chunkBytes) ||
+		cPaused.GetSubtitle().GetKey() != text.KeySharedFileSubtitlePaused ||
+		cPaused.GetPrimaryAction() != corev1.SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_RESUME {
+		t.Fatalf("unexpected paused card: %+v", cPaused)
+	}
+
+	// Local scan reports downloaded copy, then duration probe arrives -> preserves DOWNLOADED and adds duration subtitle.
+	scanLocal(18_200, &corev1.SharedFileLocalEntry{
+		SessionId:         "s-sf",
+		FileId:            "f1",
+		Completed:         true,
+		BytesOnDisk:       fileSize,
+		ExpectedSizeBytes: fileSize,
+	})
 	c.Dispatch(&corev1.Event{
-		NowMs: 1250,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", MetadataOnly: true, HasDuration: true, DurationMs: 92_000},
-				},
+		NowMs:  18_250,
+		MonoMs: 18_250,
+		Event: &corev1.Event_SharedFileDurationProbed{
+			SharedFileDurationProbed: &corev1.SharedFileDurationProbedEvent{
+				SessionId:  "s-sf",
+				FileId:     "f1",
+				DurationMs: 92_000,
 			},
 		},
 	})
 	c2 := getCard()
 	if c2.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED ||
 		c2.GetDurationText() != "1:32" ||
-		c2.GetSubtitle().GetKey() != text.KeySharedFileSubtitleMediaSize {
+		c2.GetSubtitle().GetKey() != text.KeySharedFileSubtitleMediaSize ||
+		c2.GetPrimaryAction() != corev1.SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_OPEN {
 		t.Fatalf("unexpected downloaded card with duration: %+v", c2)
 	}
 
-	// Shell deletes local copy (status=UNSPECIFIED) -> returns to AVAILABLE.
-	c.Dispatch(&corev1.Event{
-		NowMs: 1300,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED},
-				},
-			},
+	// Delete local copy -> emits DeleteLocalEffect and returns to AVAILABLE.
+	effDel := c.Dispatch(&corev1.Event{
+		NowMs:  18_300,
+		MonoMs: 18_300,
+		Event: &corev1.Event_SharedFileDeleteLocal{
+			SharedFileDeleteLocal: &corev1.SharedFileDeleteLocalAction{SessionId: "s-sf", FileId: "f1"},
 		},
 	})
+	if findDeleteLocal(effDel) == nil {
+		t.Fatalf("expected SharedFileDeleteLocalEffect")
+	}
 	c3 := getCard()
 	if c3.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
-		t.Fatalf("expected AVAILABLE after clearing local copy, got %v", c3.GetStatus())
+		t.Fatalf("expected AVAILABLE after deleting local copy, got %v", c3.GetStatus())
 	}
 
-	// Out-of-order metadata_only arriving BEFORE transfer state must be retained and merged when DOWNLOADED arrives.
+	// Out-of-order duration probe arriving BEFORE transfer state must be retained and merged when DOWNLOADED arrives.
 	c.Dispatch(&corev1.Event{
-		NowMs: 1350,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", MetadataOnly: true, HasDuration: true, DurationMs: 61_000},
-				},
+		NowMs:  18_350,
+		MonoMs: 18_350,
+		Event: &corev1.Event_SharedFileDurationProbed{
+			SharedFileDurationProbed: &corev1.SharedFileDurationProbedEvent{
+				SessionId:  "s-sf",
+				FileId:     "f1",
+				DurationMs: 61_000,
 			},
 		},
 	})
 	if cPre := getCard(); cPre.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
-		t.Fatalf("metadata_only alone should leave status AVAILABLE, got %v", cPre.GetStatus())
+		t.Fatalf("duration probe alone should leave status AVAILABLE, got %v", cPre.GetStatus())
 	}
-	c.Dispatch(&corev1.Event{
-		NowMs: 1400,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
-				},
-			},
-		},
+	scanLocal(18_400, &corev1.SharedFileLocalEntry{
+		SessionId:         "s-sf",
+		FileId:            "f1",
+		Completed:         true,
+		BytesOnDisk:       fileSize,
+		ExpectedSizeBytes: fileSize,
 	})
 	if cMerged := getCard(); cMerged.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED ||
 		cMerged.GetDurationText() != "1:01" ||
@@ -2184,40 +2322,53 @@ func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
 		t.Fatalf("expected pre-arrived duration merged into DOWNLOADED card: %+v", cMerged)
 	}
 
-	// Standalone clear_session_id (without replace_all) clears that session's local shared file state.
-	c.Dispatch(&corev1.Event{
-		NowMs: 1450,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				ClearSessionId: "s-sf",
-			},
+	// Forget session clears that session's local shared file state and emits DeleteSessionEffect.
+	effForget := c.Dispatch(&corev1.Event{
+		NowMs:  18_450,
+		MonoMs: 18_450,
+		Event: &corev1.Event_SharedFileForgetSession{
+			SharedFileForgetSession: &corev1.SharedFileForgetSessionAction{SessionId: "s-sf"},
 		},
 	})
+	hasDeleteSession := false
+	for _, ef := range effForget.GetEffects() {
+		if ds := ef.GetSharedFileDeleteSession(); ds != nil && ds.GetSessionId() == "s-sf" {
+			hasDeleteSession = true
+		}
+	}
+	if !hasDeleteSession {
+		t.Fatalf("expected SharedFileDeleteSessionEffect")
+	}
 	if cCleared := getCard(); cCleared.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
-		t.Fatalf("expected AVAILABLE after standalone clear_session_id, got %v", cCleared.GetStatus())
+		t.Fatalf("expected AVAILABLE after forget session, got %v", cCleared.GetStatus())
 	}
 
-	// replace_all without clear_session_id clears all sessions then applies updates.
-	c.Dispatch(&corev1.Event{
-		NowMs: 1500,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				Updates: []*corev1.SharedFileLocalStateUpdate{
-					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
-				},
-			},
+	// Clear all clears all sessions' local shared file state and emits ClearAllEffect.
+	scanLocal(18_500, &corev1.SharedFileLocalEntry{
+		SessionId:         "s-sf",
+		FileId:            "f1",
+		Completed:         true,
+		BytesOnDisk:       fileSize,
+		ExpectedSizeBytes: fileSize,
+	})
+	effClear := c.Dispatch(&corev1.Event{
+		NowMs:  18_550,
+		MonoMs: 18_550,
+		Event: &corev1.Event_SharedFileClearAll{
+			SharedFileClearAll: &corev1.SharedFileClearAllAction{},
 		},
 	})
-	c.Dispatch(&corev1.Event{
-		NowMs: 1550,
-		Event: &corev1.Event_SharedFileLocalState{
-			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
-				ReplaceAll: true,
-			},
-		},
-	})
+	hasClearAll := false
+	for _, ef := range effClear.GetEffects() {
+		if ef.GetSharedFileClearAll() != nil {
+			hasClearAll = true
+		}
+	}
+	if !hasClearAll {
+		t.Fatalf("expected SharedFileClearAllEffect")
+	}
 	if cReplaced := getCard(); cReplaced.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
-		t.Fatalf("expected AVAILABLE after global replace_all, got %v", cReplaced.GetStatus())
+		t.Fatalf("expected AVAILABLE after clear all, got %v", cReplaced.GetStatus())
 	}
 }
 

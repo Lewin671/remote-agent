@@ -198,49 +198,49 @@ func TestResolveCardStatusPriority(t *testing.T) {
 	}{
 		{
 			name:      "downloaded beats offline and exited",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
+			local:     &LocalState{Status: TransferStatusDownloaded},
 			available: true, online: false, exited: true,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED,
 		},
 		{
 			name:      "downloading beats exited",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING, DownloadedBytes: 100},
+			local:     &LocalState{Status: TransferStatusDownloading, DownloadedBytes: 100},
 			available: true, online: true, exited: true,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING,
 		},
 		{
 			name:      "exited beats paused",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED, DownloadedBytes: 100},
+			local:     &LocalState{Status: TransferStatusPaused, DownloadedBytes: 100},
 			available: true, online: true, exited: true,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED,
 		},
 		{
 			name:      "not_found cleaned_up beats paused",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP},
+			local:     &LocalState{Status: TransferStatusCleanedUp},
 			available: true, online: true, exited: false,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED,
 		},
 		{
 			name:      "paused with partial bytes beats offline",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED, DownloadedBytes: 1024},
+			local:     &LocalState{Status: TransferStatusPaused, DownloadedBytes: 1024},
 			available: true, online: false, exited: false,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED,
 		},
 		{
 			name:      "paused with 0 bytes yields offline when computer offline",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED, DownloadedBytes: 0},
+			local:     &LocalState{Status: TransferStatusPaused, DownloadedBytes: 0},
 			available: true, online: false, exited: false,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_OFFLINE,
 		},
 		{
 			name:      "offline beats failed",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED, FailureKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_DISCONNECTED},
+			local:     &LocalState{Status: TransferStatusFailed, FailureKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_DISCONNECTED},
 			available: true, online: false, exited: false,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_OFFLINE,
 		},
 		{
 			name:      "failed shown when online",
-			local:     &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED, FailureKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH},
+			local:     &LocalState{Status: TransferStatusFailed, FailureKind: corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH},
 			available: true, online: true, exited: false,
 			want: corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_FAILED,
 		},
@@ -279,7 +279,7 @@ func TestBuildCardMenusAndActions(t *testing.T) {
 	// 1. Paused while offline -> Resume disabled with offline reason; Cancel enabled.
 	pausedOff := BuildCard(CardInput{
 		File:        videoFile,
-		Local:       &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED, DownloadedBytes: 8 * mibBytes},
+		Local:       &LocalState{Status: TransferStatusPaused, DownloadedBytes: 8 * mibBytes},
 		MachineName: "MacBook",
 		MachineHome: "/Users/me",
 		Online:      false,
@@ -299,7 +299,7 @@ func TestBuildCardMenusAndActions(t *testing.T) {
 	// 2. Downloaded video with duration -> duration subtitle & album save menu item first.
 	dl := BuildCard(CardInput{
 		File:        videoFile,
-		Local:       &LocalState{Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED, HasDuration: true, DurationMs: 102_000},
+		Local:       &LocalState{Status: TransferStatusDownloaded, HasDuration: true, DurationMs: 102_000},
 		MachineName: "MacBook",
 		MachineHome: "/Users/me",
 		Online:      false,
@@ -326,7 +326,7 @@ func TestBuildCardMenusAndActions(t *testing.T) {
 	failedPartial := BuildCard(CardInput{
 		File: videoFile,
 		Local: &LocalState{
-			Status:          corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED,
+			Status:          TransferStatusFailed,
 			DownloadedBytes: 4 * mibBytes,
 			FailureKind:     corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL,
 		},

@@ -36,9 +36,21 @@ type Classification struct {
 	WebPreviewMime    string
 }
 
+// TransferStatus represents the core-owned transfer/cache lifecycle state of one shared file.
+type TransferStatus uint8
+
+const (
+	TransferStatusUnspecified TransferStatus = iota
+	TransferStatusDownloading
+	TransferStatusPaused
+	TransferStatusDownloaded
+	TransferStatusFailed
+	TransferStatusCleanedUp
+)
+
 // LocalState holds transfer progress, cache presence, and media metadata for one shared file.
 type LocalState struct {
-	Status           corev1.SharedFileTransferStatus
+	Status           TransferStatus
 	DownloadedBytes  int64
 	HasEta           bool
 	EtaSeconds       int64
@@ -377,28 +389,28 @@ func FormatEta(seconds int64) *corev1.Text {
 //  6. FAILED
 //  7. AVAILABLE
 func ResolveCardStatus(local *LocalState, available, online, sessionExited bool) corev1.SharedFileCardStatus {
-	var st corev1.SharedFileTransferStatus
+	var st TransferStatus
 	var dl int64
 	if local != nil {
 		st = local.Status
 		dl = local.DownloadedBytes
 	}
-	if st == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED {
+	if st == TransferStatusDownloaded {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED
 	}
-	if st == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
+	if st == TransferStatusDownloading {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING
 	}
-	if sessionExited || st == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP || !available {
+	if sessionExited || st == TransferStatusCleanedUp || !available {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED
 	}
-	if st == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED && (online || dl > 0) {
+	if st == TransferStatusPaused && (online || dl > 0) {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED
 	}
 	if !online {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_OFFLINE
 	}
-	if st == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED {
+	if st == TransferStatusFailed {
 		return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_FAILED
 	}
 	return corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE
@@ -493,7 +505,7 @@ func BuildCard(in CardInput) *corev1.SessionSharedFileItem {
 		a11yState = subtitle
 
 	case corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_OFFLINE:
-		if in.Local != nil && in.Local.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED {
+		if in.Local != nil && in.Local.Status == TransferStatusFailed {
 			downloaded = clampBytes(in.Local.DownloadedBytes, total)
 			progress = byteProgress(downloaded, total)
 		}

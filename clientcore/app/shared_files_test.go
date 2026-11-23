@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -2210,7 +2211,7 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 			t.Fatalf("duration-only UNSPECIFIED entry must not emit DeletePartial on session exit")
 		}
 		entry := h.core.m.sharedFiles.entries[sfKey{sessionID: h.sessionID, fileID: "f-duro"}]
-		if entry == nil || entry.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED {
+		if entry == nil || entry.status != sharedfiles.TransferStatusUnspecified {
 			t.Fatalf("reconcile must leave duration-only entry as UNSPECIFIED, got %+v", entry)
 		}
 	})

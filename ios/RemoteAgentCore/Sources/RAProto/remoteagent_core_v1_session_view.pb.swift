@@ -451,56 +451,6 @@ public enum PBSharedFileWebPreviewKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
-public enum PBSharedFileTransferStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
-  public typealias RawValue = Int
-  case unspecified // = 0
-  case downloading // = 1
-  case paused // = 2
-  case downloaded // = 3
-  case failed // = 4
-  case cleanedUp // = 5
-  case UNRECOGNIZED(Int)
-
-  public init() {
-    self = .unspecified
-  }
-
-  public init?(rawValue: Int) {
-    switch rawValue {
-    case 0: self = .unspecified
-    case 1: self = .downloading
-    case 2: self = .paused
-    case 3: self = .downloaded
-    case 4: self = .failed
-    case 5: self = .cleanedUp
-    default: self = .UNRECOGNIZED(rawValue)
-    }
-  }
-
-  public var rawValue: Int {
-    switch self {
-    case .unspecified: return 0
-    case .downloading: return 1
-    case .paused: return 2
-    case .downloaded: return 3
-    case .failed: return 4
-    case .cleanedUp: return 5
-    case .UNRECOGNIZED(let i): return i
-    }
-  }
-
-  // The compiler won't synthesize support with the UNRECOGNIZED case.
-  public static let allCases: [PBSharedFileTransferStatus] = [
-    .unspecified,
-    .downloading,
-    .paused,
-    .downloaded,
-    .failed,
-    .cleanedUp,
-  ]
-
-}
-
 public enum PBSharedFileFailureKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -4632,59 +4582,6 @@ public struct PBSessionRetryLoadAction: Sendable {
   public init() {}
 }
 
-/// SharedFileLocalStateUpdate reports shell-owned download/cache/media metadata for one shared file.
-public struct PBSharedFileLocalStateUpdate: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var sessionID: String = String()
-
-  public var fileID: String = String()
-
-  public var status: PBSharedFileTransferStatus = .unspecified
-
-  public var downloadedBytes: Int64 = 0
-
-  public var hasEta_p: Bool = false
-
-  public var etaSeconds: Int64 = 0
-
-  public var waitingReconnect: Bool = false
-
-  public var hasDuration_p: Bool = false
-
-  public var durationMs: Int64 = 0
-
-  public var failureKind: PBSharedFileFailureKind = .unspecified
-
-  public var failureDetail: String = String()
-
-  /// When true, preserves existing transfer status/bytes/failure and only updates duration_ms.
-  public var metadataOnly: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-/// SharedFileLocalStateEvent delivers one or more local shared-file state updates from shell to Core.
-public struct PBSharedFileLocalStateEvent: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var updates: [PBSharedFileLocalStateUpdate] = []
-
-  public var replaceAll: Bool = false
-
-  public var clearSessionID_p: String = String()
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
 /// SessionImageViewerOpenAction opens the session image viewer anchored to an event image or viewer index.
 public struct PBSessionImageViewerOpenAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -4822,10 +4719,6 @@ extension PBSharedFileKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSharedFileWebPreviewKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_WEB_PREVIEW_KIND_UNSPECIFIED\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_IMAGE\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_VIDEO\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_AUDIO\0")
-}
-
-extension PBSharedFileTransferStatus: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED\0\u{1}SHARED_FILE_TRANSFER_STATUS_DOWNLOADING\0\u{1}SHARED_FILE_TRANSFER_STATUS_PAUSED\0\u{1}SHARED_FILE_TRANSFER_STATUS_DOWNLOADED\0\u{1}SHARED_FILE_TRANSFER_STATUS_FAILED\0\u{1}SHARED_FILE_TRANSFER_STATUS_CLEANED_UP\0")
 }
 
 extension PBSharedFileFailureKind: SwiftProtobuf._ProtoNameProviding {
@@ -11149,131 +11042,6 @@ extension PBSessionRetryLoadAction: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
   public static func ==(lhs: PBSessionRetryLoadAction, rhs: PBSessionRetryLoadAction) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBSharedFileLocalStateUpdate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SharedFileLocalStateUpdate"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}file_id\0\u{1}status\0\u{3}downloaded_bytes\0\u{3}has_eta\0\u{3}eta_seconds\0\u{3}waiting_reconnect\0\u{3}has_duration\0\u{3}duration_ms\0\u{3}failure_kind\0\u{3}failure_detail\0\u{3}metadata_only\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
-      case 3: try { try decoder.decodeSingularEnumField(value: &self.status) }()
-      case 4: try { try decoder.decodeSingularInt64Field(value: &self.downloadedBytes) }()
-      case 5: try { try decoder.decodeSingularBoolField(value: &self.hasEta_p) }()
-      case 6: try { try decoder.decodeSingularInt64Field(value: &self.etaSeconds) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.waitingReconnect) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.hasDuration_p) }()
-      case 9: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
-      case 10: try { try decoder.decodeSingularEnumField(value: &self.failureKind) }()
-      case 11: try { try decoder.decodeSingularStringField(value: &self.failureDetail) }()
-      case 12: try { try decoder.decodeSingularBoolField(value: &self.metadataOnly) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
-    }
-    if !self.fileID.isEmpty {
-      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 2)
-    }
-    if self.status != .unspecified {
-      try visitor.visitSingularEnumField(value: self.status, fieldNumber: 3)
-    }
-    if self.downloadedBytes != 0 {
-      try visitor.visitSingularInt64Field(value: self.downloadedBytes, fieldNumber: 4)
-    }
-    if self.hasEta_p != false {
-      try visitor.visitSingularBoolField(value: self.hasEta_p, fieldNumber: 5)
-    }
-    if self.etaSeconds != 0 {
-      try visitor.visitSingularInt64Field(value: self.etaSeconds, fieldNumber: 6)
-    }
-    if self.waitingReconnect != false {
-      try visitor.visitSingularBoolField(value: self.waitingReconnect, fieldNumber: 7)
-    }
-    if self.hasDuration_p != false {
-      try visitor.visitSingularBoolField(value: self.hasDuration_p, fieldNumber: 8)
-    }
-    if self.durationMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 9)
-    }
-    if self.failureKind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.failureKind, fieldNumber: 10)
-    }
-    if !self.failureDetail.isEmpty {
-      try visitor.visitSingularStringField(value: self.failureDetail, fieldNumber: 11)
-    }
-    if self.metadataOnly != false {
-      try visitor.visitSingularBoolField(value: self.metadataOnly, fieldNumber: 12)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBSharedFileLocalStateUpdate, rhs: PBSharedFileLocalStateUpdate) -> Bool {
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.fileID != rhs.fileID {return false}
-    if lhs.status != rhs.status {return false}
-    if lhs.downloadedBytes != rhs.downloadedBytes {return false}
-    if lhs.hasEta_p != rhs.hasEta_p {return false}
-    if lhs.etaSeconds != rhs.etaSeconds {return false}
-    if lhs.waitingReconnect != rhs.waitingReconnect {return false}
-    if lhs.hasDuration_p != rhs.hasDuration_p {return false}
-    if lhs.durationMs != rhs.durationMs {return false}
-    if lhs.failureKind != rhs.failureKind {return false}
-    if lhs.failureDetail != rhs.failureDetail {return false}
-    if lhs.metadataOnly != rhs.metadataOnly {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBSharedFileLocalStateEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SharedFileLocalStateEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}updates\0\u{3}replace_all\0\u{3}clear_session_id\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.updates) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.replaceAll) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.clearSessionID_p) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.updates.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.updates, fieldNumber: 1)
-    }
-    if self.replaceAll != false {
-      try visitor.visitSingularBoolField(value: self.replaceAll, fieldNumber: 2)
-    }
-    if !self.clearSessionID_p.isEmpty {
-      try visitor.visitSingularStringField(value: self.clearSessionID_p, fieldNumber: 3)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBSharedFileLocalStateEvent, rhs: PBSharedFileLocalStateEvent) -> Bool {
-    if lhs.updates != rhs.updates {return false}
-    if lhs.replaceAll != rhs.replaceAll {return false}
-    if lhs.clearSessionID_p != rhs.clearSessionID_p {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -5181,7 +5181,6 @@ type Event struct {
 	//	*Event_SessionCancelAllPaused
 	//	*Event_SessionUndoCancel
 	//	*Event_SessionRetryLoad
-	//	*Event_SharedFileLocalState
 	//	*Event_SessionImageViewerOpen
 	//	*Event_SessionImageViewerNavigate
 	//	*Event_SessionImageViewerClose
@@ -6090,15 +6089,6 @@ func (x *Event) GetSessionRetryLoad() *SessionRetryLoadAction {
 	if x != nil {
 		if x, ok := x.Event.(*Event_SessionRetryLoad); ok {
 			return x.SessionRetryLoad
-		}
-	}
-	return nil
-}
-
-func (x *Event) GetSharedFileLocalState() *SharedFileLocalStateEvent {
-	if x != nil {
-		if x, ok := x.Event.(*Event_SharedFileLocalState); ok {
-			return x.SharedFileLocalState
 		}
 	}
 	return nil
@@ -7240,10 +7230,6 @@ type Event_SessionRetryLoad struct {
 	SessionRetryLoad *SessionRetryLoadAction `protobuf:"bytes,215,opt,name=session_retry_load,json=sessionRetryLoad,proto3,oneof"`
 }
 
-type Event_SharedFileLocalState struct {
-	SharedFileLocalState *SharedFileLocalStateEvent `protobuf:"bytes,216,opt,name=shared_file_local_state,json=sharedFileLocalState,proto3,oneof"`
-}
-
 type Event_SessionImageViewerOpen struct {
 	SessionImageViewerOpen *SessionImageViewerOpenAction `protobuf:"bytes,217,opt,name=session_image_viewer_open,json=sessionImageViewerOpen,proto3,oneof"`
 }
@@ -7754,8 +7740,6 @@ func (*Event_SessionCancelAllPaused) isEvent_Event() {}
 func (*Event_SessionUndoCancel) isEvent_Event() {}
 
 func (*Event_SessionRetryLoad) isEvent_Event() {}
-
-func (*Event_SharedFileLocalState) isEvent_Event() {}
 
 func (*Event_SessionImageViewerOpen) isEvent_Event() {}
 
@@ -11279,7 +11263,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"projectKey\x12.\n" +
 	"\x13auto_mode_supported\x18\x02 \x01(\bR\x11autoModeSupported\x12\x1b\n" +
 	"\timage_ids\x18\x03 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\xe2\x87\x01\n" +
+	"\bfile_ids\x18\x04 \x03(\tR\afileIds\"\x99\x87\x01\n" +
 	"\x05Event\x12I\n" +
 	"\rclock_updated\x18\x01 \x01(\v2\".remoteagent.core.v1.LocalCalendarH\x00R\fclockUpdated\x12Q\n" +
 	"\x10entropy_provided\x18\x02 \x01(\v2$.remoteagent.core.v1.EntropyProvidedH\x00R\x0fentropyProvided\x12Q\n" +
@@ -11371,8 +11355,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\x18session_resume_tray_item\x18\xd4\x01 \x01(\v2*.remoteagent.core.v1.SessionTrayItemActionH\x00R\x15sessionResumeTrayItem\x12k\n" +
 	"\x19session_cancel_all_paused\x18\xd5\x01 \x01(\v2-.remoteagent.core.v1.SessionTraySessionActionH\x00R\x16sessionCancelAllPaused\x12`\n" +
 	"\x13session_undo_cancel\x18\xd6\x01 \x01(\v2-.remoteagent.core.v1.SessionTraySessionActionH\x00R\x11sessionUndoCancel\x12\\\n" +
-	"\x12session_retry_load\x18\xd7\x01 \x01(\v2+.remoteagent.core.v1.SessionRetryLoadActionH\x00R\x10sessionRetryLoad\x12h\n" +
-	"\x17shared_file_local_state\x18\xd8\x01 \x01(\v2..remoteagent.core.v1.SharedFileLocalStateEventH\x00R\x14sharedFileLocalState\x12o\n" +
+	"\x12session_retry_load\x18\xd7\x01 \x01(\v2+.remoteagent.core.v1.SessionRetryLoadActionH\x00R\x10sessionRetryLoad\x12o\n" +
 	"\x19session_image_viewer_open\x18\xd9\x01 \x01(\v21.remoteagent.core.v1.SessionImageViewerOpenActionH\x00R\x16sessionImageViewerOpen\x12{\n" +
 	"\x1dsession_image_viewer_navigate\x18\xda\x01 \x01(\v25.remoteagent.core.v1.SessionImageViewerNavigateActionH\x00R\x1asessionImageViewerNavigate\x12r\n" +
 	"\x1asession_image_viewer_close\x18\xdb\x01 \x01(\v22.remoteagent.core.v1.SessionImageViewerCloseActionH\x00R\x17sessionImageViewerClose\x12[\n" +
@@ -11463,7 +11446,7 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"random_ids\x18d \x03(\tR\trandomIds\x12\x1f\n" +
 	"\vunit_floats\x18e \x03(\x01R\n" +
 	"unitFloatsB\a\n" +
-	"\x05event\"K\n" +
+	"\x05eventJ\x06\b\xd8\x01\x10\xd9\x01R\x17shared_file_local_state\"K\n" +
 	"\fRenderEffect\x12;\n" +
 	"\ascreens\x18\x01 \x03(\x0e2!.remoteagent.core.v1.ScreenTargetR\ascreens\"^\n" +
 	"\x10OpenStreamEffect\x12\x15\n" +
@@ -11942,124 +11925,123 @@ var file_remoteagent_core_v1_app_proto_goTypes = []any{
 	(*SessionTrayItemAction)(nil),                // 174: remoteagent.core.v1.SessionTrayItemAction
 	(*SessionTraySessionAction)(nil),             // 175: remoteagent.core.v1.SessionTraySessionAction
 	(*SessionRetryLoadAction)(nil),               // 176: remoteagent.core.v1.SessionRetryLoadAction
-	(*SharedFileLocalStateEvent)(nil),            // 177: remoteagent.core.v1.SharedFileLocalStateEvent
-	(*SessionImageViewerOpenAction)(nil),         // 178: remoteagent.core.v1.SessionImageViewerOpenAction
-	(*SessionImageViewerNavigateAction)(nil),     // 179: remoteagent.core.v1.SessionImageViewerNavigateAction
-	(*SessionImageViewerCloseAction)(nil),        // 180: remoteagent.core.v1.SessionImageViewerCloseAction
-	(*SharedFileConfigEvent)(nil),                // 181: remoteagent.core.v1.SharedFileConfigEvent
-	(*SharedFileLocalScannedEvent)(nil),          // 182: remoteagent.core.v1.SharedFileLocalScannedEvent
-	(*SharedFileStartDownloadAction)(nil),        // 183: remoteagent.core.v1.SharedFileStartDownloadAction
-	(*SharedFilePauseDownloadAction)(nil),        // 184: remoteagent.core.v1.SharedFilePauseDownloadAction
-	(*SharedFileCancelDownloadAction)(nil),       // 185: remoteagent.core.v1.SharedFileCancelDownloadAction
-	(*SharedFileDeleteLocalAction)(nil),          // 186: remoteagent.core.v1.SharedFileDeleteLocalAction
-	(*SharedFileSetVisibleSessionAction)(nil),    // 187: remoteagent.core.v1.SharedFileSetVisibleSessionAction
-	(*SharedFileForgetSessionAction)(nil),        // 188: remoteagent.core.v1.SharedFileForgetSessionAction
-	(*SharedFileDurationProbedEvent)(nil),        // 189: remoteagent.core.v1.SharedFileDurationProbedEvent
-	(*SharedFileLocalMissingEvent)(nil),          // 190: remoteagent.core.v1.SharedFileLocalMissingEvent
-	(*SharedFileClearAllAction)(nil),             // 191: remoteagent.core.v1.SharedFileClearAllAction
-	(*SharedFileDiskInspectedEvent)(nil),         // 192: remoteagent.core.v1.SharedFileDiskInspectedEvent
-	(*SharedFileWriteChunkResultEvent)(nil),      // 193: remoteagent.core.v1.SharedFileWriteChunkResultEvent
-	(*SharedFileVerifyAndCommitResultEvent)(nil), // 194: remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent
-	(*ScheduleCacheLoadedEvent)(nil),             // 195: remoteagent.core.v1.ScheduleCacheLoadedEvent
-	(*ScheduleSeenLoadedEvent)(nil),              // 196: remoteagent.core.v1.ScheduleSeenLoadedEvent
-	(*ScheduleLocalContextEvent)(nil),            // 197: remoteagent.core.v1.ScheduleLocalContextEvent
-	(*ScheduleStringAction)(nil),                 // 198: remoteagent.core.v1.ScheduleStringAction
-	(*ScheduleBoolAction)(nil),                   // 199: remoteagent.core.v1.ScheduleBoolAction
-	(*ScheduleTaskRef)(nil),                      // 200: remoteagent.core.v1.ScheduleTaskRef
-	(*ScheduleMarkReadAction)(nil),               // 201: remoteagent.core.v1.ScheduleMarkReadAction
-	(*ScheduleTaskBoolAction)(nil),               // 202: remoteagent.core.v1.ScheduleTaskBoolAction
-	(*ScheduleTaskStringAction)(nil),             // 203: remoteagent.core.v1.ScheduleTaskStringAction
-	(*ScheduleOperateAction)(nil),                // 204: remoteagent.core.v1.ScheduleOperateAction
-	(*ScheduleMutationRef)(nil),                  // 205: remoteagent.core.v1.ScheduleMutationRef
-	(*ScheduleFormOpenAction)(nil),               // 206: remoteagent.core.v1.ScheduleFormOpenAction
-	(*ScheduleFormBoolAction)(nil),               // 207: remoteagent.core.v1.ScheduleFormBoolAction
-	(*ScheduleFormStringAction)(nil),             // 208: remoteagent.core.v1.ScheduleFormStringAction
-	(*ScheduleFormSelectProjectAction)(nil),      // 209: remoteagent.core.v1.ScheduleFormSelectProjectAction
-	(*ScheduleFormSelectAgentAction)(nil),        // 210: remoteagent.core.v1.ScheduleFormSelectAgentAction
-	(*ScheduleFormSelectModelAction)(nil),        // 211: remoteagent.core.v1.ScheduleFormSelectModelAction
-	(*ScheduleFormUpdateTimingAction)(nil),       // 212: remoteagent.core.v1.ScheduleFormUpdateTimingAction
-	(*TransportConfigEvent)(nil),                 // 213: remoteagent.core.v1.TransportConfigEvent
-	(*DirectSignalReceivedEvent)(nil),            // 214: remoteagent.core.v1.DirectSignalReceivedEvent
-	(*DirectSignalDeliveryEvent)(nil),            // 215: remoteagent.core.v1.DirectSignalDeliveryEvent
-	(*DirectPcCreatedEvent)(nil),                 // 216: remoteagent.core.v1.DirectPcCreatedEvent
-	(*DirectPcDescriptionEvent)(nil),             // 217: remoteagent.core.v1.DirectPcDescriptionEvent
-	(*DirectPcRemoteSetEvent)(nil),               // 218: remoteagent.core.v1.DirectPcRemoteSetEvent
-	(*DirectPcCandidatesAddedEvent)(nil),         // 219: remoteagent.core.v1.DirectPcCandidatesAddedEvent
-	(*DirectPcLocalCandidateEvent)(nil),          // 220: remoteagent.core.v1.DirectPcLocalCandidateEvent
-	(*DirectPcStateEvent)(nil),                   // 221: remoteagent.core.v1.DirectPcStateEvent
-	(*DirectPcStunErrorEvent)(nil),               // 222: remoteagent.core.v1.DirectPcStunErrorEvent
-	(*DirectPcClosedEvent)(nil),                  // 223: remoteagent.core.v1.DirectPcClosedEvent
-	(*DirectDcStateEvent)(nil),                   // 224: remoteagent.core.v1.DirectDcStateEvent
-	(*DirectDcStatsEvent)(nil),                   // 225: remoteagent.core.v1.DirectDcStatsEvent
-	(*DirectRetryNowAction)(nil),                 // 226: remoteagent.core.v1.DirectRetryNowAction
-	(*DirectRefreshDiagnosticsAction)(nil),       // 227: remoteagent.core.v1.DirectRefreshDiagnosticsAction
-	(*DirectBulkTransferBeginEvent)(nil),         // 228: remoteagent.core.v1.DirectBulkTransferBeginEvent
-	(*DirectBulkTransferDoneEvent)(nil),          // 229: remoteagent.core.v1.DirectBulkTransferDoneEvent
-	(*TerminalStreamEvent)(nil),                  // 230: remoteagent.core.v1.TerminalStreamEvent
-	(*DirectPreferencesLoadedEvent)(nil),         // 231: remoteagent.core.v1.DirectPreferencesLoadedEvent
-	(*SecurityConfigEvent)(nil),                  // 232: remoteagent.core.v1.SecurityConfigEvent
-	(*SecurityKeySignedEvent)(nil),               // 233: remoteagent.core.v1.SecurityKeySignedEvent
-	(*SecurityKeyAgreedEvent)(nil),               // 234: remoteagent.core.v1.SecurityKeyAgreedEvent
-	(*SecurityCryptoBatchDoneEvent)(nil),         // 235: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
-	(*SecurityOpRequestEvent)(nil),               // 236: remoteagent.core.v1.SecurityOpRequestEvent
-	(*SeedDemoWorldEvent)(nil),                   // 237: remoteagent.core.v1.SeedDemoWorldEvent
-	(*SecurityKeyGeneratedEvent)(nil),            // 238: remoteagent.core.v1.SecurityKeyGeneratedEvent
-	(*SecurityKeyEncapsulatedEvent)(nil),         // 239: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	(*SecurityStorageResultEvent)(nil),           // 240: remoteagent.core.v1.SecurityStorageResultEvent
-	(*SecurityRpcResultEvent)(nil),               // 241: remoteagent.core.v1.SecurityRpcResultEvent
-	(*SecurityForegroundEvent)(nil),              // 242: remoteagent.core.v1.SecurityForegroundEvent
-	(*SecurityWorkflowActionEvent)(nil),          // 243: remoteagent.core.v1.SecurityWorkflowActionEvent
-	(*SecurityOpenNotifyEvent)(nil),              // 244: remoteagent.core.v1.SecurityOpenNotifyEvent
-	(*CacheWriteStoredEvents)(nil),               // 245: remoteagent.core.v1.CacheWriteStoredEvents
-	(CommandRouteLeg)(0),                         // 246: remoteagent.core.v1.CommandRouteLeg
-	(*ScheduleMachinePollEffect)(nil),            // 247: remoteagent.core.v1.ScheduleMachinePollEffect
-	(*DirectPreferenceEffect)(nil),               // 248: remoteagent.core.v1.DirectPreferenceEffect
-	(*RenameClientEffect)(nil),                   // 249: remoteagent.core.v1.RenameClientEffect
-	(*CheckUpdatesEffect)(nil),                   // 250: remoteagent.core.v1.CheckUpdatesEffect
-	(*PersistClientPrefsEffect)(nil),             // 251: remoteagent.core.v1.PersistClientPrefsEffect
-	(*PrepareCleanupSessionEffect)(nil),          // 252: remoteagent.core.v1.PrepareCleanupSessionEffect
-	(*UsageCacheWriteEffect)(nil),                // 253: remoteagent.core.v1.UsageCacheWriteEffect
-	(*SessionRestoreComposerEffect)(nil),         // 254: remoteagent.core.v1.SessionRestoreComposerEffect
-	(*SessionResendAttachmentsEffect)(nil),       // 255: remoteagent.core.v1.SessionResendAttachmentsEffect
-	(*SharedFileScanLocalEffect)(nil),            // 256: remoteagent.core.v1.SharedFileScanLocalEffect
-	(*SharedFileInspectDiskEffect)(nil),          // 257: remoteagent.core.v1.SharedFileInspectDiskEffect
-	(*SharedFileWriteChunkEffect)(nil),           // 258: remoteagent.core.v1.SharedFileWriteChunkEffect
-	(*SharedFileVerifyAndCommitEffect)(nil),      // 259: remoteagent.core.v1.SharedFileVerifyAndCommitEffect
-	(*SharedFileDeletePartialEffect)(nil),        // 260: remoteagent.core.v1.SharedFileDeletePartialEffect
-	(*SharedFileDeleteLocalEffect)(nil),          // 261: remoteagent.core.v1.SharedFileDeleteLocalEffect
-	(*SharedFileDeleteSessionEffect)(nil),        // 262: remoteagent.core.v1.SharedFileDeleteSessionEffect
-	(*SharedFileClearAllEffect)(nil),             // 263: remoteagent.core.v1.SharedFileClearAllEffect
-	(*SharedFileCompletedEffect)(nil),            // 264: remoteagent.core.v1.SharedFileCompletedEffect
-	(*ScheduleReadCacheEffect)(nil),              // 265: remoteagent.core.v1.ScheduleReadCacheEffect
-	(*ScheduleDeleteCacheEffect)(nil),            // 266: remoteagent.core.v1.ScheduleDeleteCacheEffect
-	(*ScheduleLoadSeenEffect)(nil),               // 267: remoteagent.core.v1.ScheduleLoadSeenEffect
-	(*ScheduleSaveSeenEffect)(nil),               // 268: remoteagent.core.v1.ScheduleSaveSeenEffect
-	(*ScheduleDismissNotificationsEffect)(nil),   // 269: remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	(*ScheduleNavigateEffect)(nil),               // 270: remoteagent.core.v1.ScheduleNavigateEffect
-	(*DirectSignalSendEffect)(nil),               // 271: remoteagent.core.v1.DirectSignalSendEffect
-	(*DirectPcCreateEffect)(nil),                 // 272: remoteagent.core.v1.DirectPcCreateEffect
-	(*DirectPcDescribeEffect)(nil),               // 273: remoteagent.core.v1.DirectPcDescribeEffect
-	(*DirectPcSetRemoteEffect)(nil),              // 274: remoteagent.core.v1.DirectPcSetRemoteEffect
-	(*DirectPcAddCandidatesEffect)(nil),          // 275: remoteagent.core.v1.DirectPcAddCandidatesEffect
-	(*DirectPcConfirmEffect)(nil),                // 276: remoteagent.core.v1.DirectPcConfirmEffect
-	(*DirectPcCloseEffect)(nil),                  // 277: remoteagent.core.v1.DirectPcCloseEffect
-	(*DirectDcReadStatsEffect)(nil),              // 278: remoteagent.core.v1.DirectDcReadStatsEffect
-	(*DirectBulkRouteEffect)(nil),                // 279: remoteagent.core.v1.DirectBulkRouteEffect
-	(*TerminalReopenEffect)(nil),                 // 280: remoteagent.core.v1.TerminalReopenEffect
-	(*DirectRetryNowResultEffect)(nil),           // 281: remoteagent.core.v1.DirectRetryNowResultEffect
-	(*SecurityKeySignEffect)(nil),                // 282: remoteagent.core.v1.SecurityKeySignEffect
-	(*SecurityKeyAgreeEffect)(nil),               // 283: remoteagent.core.v1.SecurityKeyAgreeEffect
-	(*SecurityCryptoBatchEffect)(nil),            // 284: remoteagent.core.v1.SecurityCryptoBatchEffect
-	(*SecurityOpResultEffect)(nil),               // 285: remoteagent.core.v1.SecurityOpResultEffect
-	(*SecurityKeyGenerateEffect)(nil),            // 286: remoteagent.core.v1.SecurityKeyGenerateEffect
-	(*SecurityKeyEncapsulateEffect)(nil),         // 287: remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	(*SecurityKeyDiscardEffect)(nil),             // 288: remoteagent.core.v1.SecurityKeyDiscardEffect
-	(*SecurityStorageEffect)(nil),                // 289: remoteagent.core.v1.SecurityStorageEffect
-	(*SecurityRpcEffect)(nil),                    // 290: remoteagent.core.v1.SecurityRpcEffect
-	(*SecurityWorkflowResultEffect)(nil),         // 291: remoteagent.core.v1.SecurityWorkflowResultEffect
-	(*SecurityStatusChangedEffect)(nil),          // 292: remoteagent.core.v1.SecurityStatusChangedEffect
-	(*SecurityNotifyOpenedEffect)(nil),           // 293: remoteagent.core.v1.SecurityNotifyOpenedEffect
-	(*SecurityTokenUpdatedEffect)(nil),           // 294: remoteagent.core.v1.SecurityTokenUpdatedEffect
+	(*SessionImageViewerOpenAction)(nil),         // 177: remoteagent.core.v1.SessionImageViewerOpenAction
+	(*SessionImageViewerNavigateAction)(nil),     // 178: remoteagent.core.v1.SessionImageViewerNavigateAction
+	(*SessionImageViewerCloseAction)(nil),        // 179: remoteagent.core.v1.SessionImageViewerCloseAction
+	(*SharedFileConfigEvent)(nil),                // 180: remoteagent.core.v1.SharedFileConfigEvent
+	(*SharedFileLocalScannedEvent)(nil),          // 181: remoteagent.core.v1.SharedFileLocalScannedEvent
+	(*SharedFileStartDownloadAction)(nil),        // 182: remoteagent.core.v1.SharedFileStartDownloadAction
+	(*SharedFilePauseDownloadAction)(nil),        // 183: remoteagent.core.v1.SharedFilePauseDownloadAction
+	(*SharedFileCancelDownloadAction)(nil),       // 184: remoteagent.core.v1.SharedFileCancelDownloadAction
+	(*SharedFileDeleteLocalAction)(nil),          // 185: remoteagent.core.v1.SharedFileDeleteLocalAction
+	(*SharedFileSetVisibleSessionAction)(nil),    // 186: remoteagent.core.v1.SharedFileSetVisibleSessionAction
+	(*SharedFileForgetSessionAction)(nil),        // 187: remoteagent.core.v1.SharedFileForgetSessionAction
+	(*SharedFileDurationProbedEvent)(nil),        // 188: remoteagent.core.v1.SharedFileDurationProbedEvent
+	(*SharedFileLocalMissingEvent)(nil),          // 189: remoteagent.core.v1.SharedFileLocalMissingEvent
+	(*SharedFileClearAllAction)(nil),             // 190: remoteagent.core.v1.SharedFileClearAllAction
+	(*SharedFileDiskInspectedEvent)(nil),         // 191: remoteagent.core.v1.SharedFileDiskInspectedEvent
+	(*SharedFileWriteChunkResultEvent)(nil),      // 192: remoteagent.core.v1.SharedFileWriteChunkResultEvent
+	(*SharedFileVerifyAndCommitResultEvent)(nil), // 193: remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent
+	(*ScheduleCacheLoadedEvent)(nil),             // 194: remoteagent.core.v1.ScheduleCacheLoadedEvent
+	(*ScheduleSeenLoadedEvent)(nil),              // 195: remoteagent.core.v1.ScheduleSeenLoadedEvent
+	(*ScheduleLocalContextEvent)(nil),            // 196: remoteagent.core.v1.ScheduleLocalContextEvent
+	(*ScheduleStringAction)(nil),                 // 197: remoteagent.core.v1.ScheduleStringAction
+	(*ScheduleBoolAction)(nil),                   // 198: remoteagent.core.v1.ScheduleBoolAction
+	(*ScheduleTaskRef)(nil),                      // 199: remoteagent.core.v1.ScheduleTaskRef
+	(*ScheduleMarkReadAction)(nil),               // 200: remoteagent.core.v1.ScheduleMarkReadAction
+	(*ScheduleTaskBoolAction)(nil),               // 201: remoteagent.core.v1.ScheduleTaskBoolAction
+	(*ScheduleTaskStringAction)(nil),             // 202: remoteagent.core.v1.ScheduleTaskStringAction
+	(*ScheduleOperateAction)(nil),                // 203: remoteagent.core.v1.ScheduleOperateAction
+	(*ScheduleMutationRef)(nil),                  // 204: remoteagent.core.v1.ScheduleMutationRef
+	(*ScheduleFormOpenAction)(nil),               // 205: remoteagent.core.v1.ScheduleFormOpenAction
+	(*ScheduleFormBoolAction)(nil),               // 206: remoteagent.core.v1.ScheduleFormBoolAction
+	(*ScheduleFormStringAction)(nil),             // 207: remoteagent.core.v1.ScheduleFormStringAction
+	(*ScheduleFormSelectProjectAction)(nil),      // 208: remoteagent.core.v1.ScheduleFormSelectProjectAction
+	(*ScheduleFormSelectAgentAction)(nil),        // 209: remoteagent.core.v1.ScheduleFormSelectAgentAction
+	(*ScheduleFormSelectModelAction)(nil),        // 210: remoteagent.core.v1.ScheduleFormSelectModelAction
+	(*ScheduleFormUpdateTimingAction)(nil),       // 211: remoteagent.core.v1.ScheduleFormUpdateTimingAction
+	(*TransportConfigEvent)(nil),                 // 212: remoteagent.core.v1.TransportConfigEvent
+	(*DirectSignalReceivedEvent)(nil),            // 213: remoteagent.core.v1.DirectSignalReceivedEvent
+	(*DirectSignalDeliveryEvent)(nil),            // 214: remoteagent.core.v1.DirectSignalDeliveryEvent
+	(*DirectPcCreatedEvent)(nil),                 // 215: remoteagent.core.v1.DirectPcCreatedEvent
+	(*DirectPcDescriptionEvent)(nil),             // 216: remoteagent.core.v1.DirectPcDescriptionEvent
+	(*DirectPcRemoteSetEvent)(nil),               // 217: remoteagent.core.v1.DirectPcRemoteSetEvent
+	(*DirectPcCandidatesAddedEvent)(nil),         // 218: remoteagent.core.v1.DirectPcCandidatesAddedEvent
+	(*DirectPcLocalCandidateEvent)(nil),          // 219: remoteagent.core.v1.DirectPcLocalCandidateEvent
+	(*DirectPcStateEvent)(nil),                   // 220: remoteagent.core.v1.DirectPcStateEvent
+	(*DirectPcStunErrorEvent)(nil),               // 221: remoteagent.core.v1.DirectPcStunErrorEvent
+	(*DirectPcClosedEvent)(nil),                  // 222: remoteagent.core.v1.DirectPcClosedEvent
+	(*DirectDcStateEvent)(nil),                   // 223: remoteagent.core.v1.DirectDcStateEvent
+	(*DirectDcStatsEvent)(nil),                   // 224: remoteagent.core.v1.DirectDcStatsEvent
+	(*DirectRetryNowAction)(nil),                 // 225: remoteagent.core.v1.DirectRetryNowAction
+	(*DirectRefreshDiagnosticsAction)(nil),       // 226: remoteagent.core.v1.DirectRefreshDiagnosticsAction
+	(*DirectBulkTransferBeginEvent)(nil),         // 227: remoteagent.core.v1.DirectBulkTransferBeginEvent
+	(*DirectBulkTransferDoneEvent)(nil),          // 228: remoteagent.core.v1.DirectBulkTransferDoneEvent
+	(*TerminalStreamEvent)(nil),                  // 229: remoteagent.core.v1.TerminalStreamEvent
+	(*DirectPreferencesLoadedEvent)(nil),         // 230: remoteagent.core.v1.DirectPreferencesLoadedEvent
+	(*SecurityConfigEvent)(nil),                  // 231: remoteagent.core.v1.SecurityConfigEvent
+	(*SecurityKeySignedEvent)(nil),               // 232: remoteagent.core.v1.SecurityKeySignedEvent
+	(*SecurityKeyAgreedEvent)(nil),               // 233: remoteagent.core.v1.SecurityKeyAgreedEvent
+	(*SecurityCryptoBatchDoneEvent)(nil),         // 234: remoteagent.core.v1.SecurityCryptoBatchDoneEvent
+	(*SecurityOpRequestEvent)(nil),               // 235: remoteagent.core.v1.SecurityOpRequestEvent
+	(*SeedDemoWorldEvent)(nil),                   // 236: remoteagent.core.v1.SeedDemoWorldEvent
+	(*SecurityKeyGeneratedEvent)(nil),            // 237: remoteagent.core.v1.SecurityKeyGeneratedEvent
+	(*SecurityKeyEncapsulatedEvent)(nil),         // 238: remoteagent.core.v1.SecurityKeyEncapsulatedEvent
+	(*SecurityStorageResultEvent)(nil),           // 239: remoteagent.core.v1.SecurityStorageResultEvent
+	(*SecurityRpcResultEvent)(nil),               // 240: remoteagent.core.v1.SecurityRpcResultEvent
+	(*SecurityForegroundEvent)(nil),              // 241: remoteagent.core.v1.SecurityForegroundEvent
+	(*SecurityWorkflowActionEvent)(nil),          // 242: remoteagent.core.v1.SecurityWorkflowActionEvent
+	(*SecurityOpenNotifyEvent)(nil),              // 243: remoteagent.core.v1.SecurityOpenNotifyEvent
+	(*CacheWriteStoredEvents)(nil),               // 244: remoteagent.core.v1.CacheWriteStoredEvents
+	(CommandRouteLeg)(0),                         // 245: remoteagent.core.v1.CommandRouteLeg
+	(*ScheduleMachinePollEffect)(nil),            // 246: remoteagent.core.v1.ScheduleMachinePollEffect
+	(*DirectPreferenceEffect)(nil),               // 247: remoteagent.core.v1.DirectPreferenceEffect
+	(*RenameClientEffect)(nil),                   // 248: remoteagent.core.v1.RenameClientEffect
+	(*CheckUpdatesEffect)(nil),                   // 249: remoteagent.core.v1.CheckUpdatesEffect
+	(*PersistClientPrefsEffect)(nil),             // 250: remoteagent.core.v1.PersistClientPrefsEffect
+	(*PrepareCleanupSessionEffect)(nil),          // 251: remoteagent.core.v1.PrepareCleanupSessionEffect
+	(*UsageCacheWriteEffect)(nil),                // 252: remoteagent.core.v1.UsageCacheWriteEffect
+	(*SessionRestoreComposerEffect)(nil),         // 253: remoteagent.core.v1.SessionRestoreComposerEffect
+	(*SessionResendAttachmentsEffect)(nil),       // 254: remoteagent.core.v1.SessionResendAttachmentsEffect
+	(*SharedFileScanLocalEffect)(nil),            // 255: remoteagent.core.v1.SharedFileScanLocalEffect
+	(*SharedFileInspectDiskEffect)(nil),          // 256: remoteagent.core.v1.SharedFileInspectDiskEffect
+	(*SharedFileWriteChunkEffect)(nil),           // 257: remoteagent.core.v1.SharedFileWriteChunkEffect
+	(*SharedFileVerifyAndCommitEffect)(nil),      // 258: remoteagent.core.v1.SharedFileVerifyAndCommitEffect
+	(*SharedFileDeletePartialEffect)(nil),        // 259: remoteagent.core.v1.SharedFileDeletePartialEffect
+	(*SharedFileDeleteLocalEffect)(nil),          // 260: remoteagent.core.v1.SharedFileDeleteLocalEffect
+	(*SharedFileDeleteSessionEffect)(nil),        // 261: remoteagent.core.v1.SharedFileDeleteSessionEffect
+	(*SharedFileClearAllEffect)(nil),             // 262: remoteagent.core.v1.SharedFileClearAllEffect
+	(*SharedFileCompletedEffect)(nil),            // 263: remoteagent.core.v1.SharedFileCompletedEffect
+	(*ScheduleReadCacheEffect)(nil),              // 264: remoteagent.core.v1.ScheduleReadCacheEffect
+	(*ScheduleDeleteCacheEffect)(nil),            // 265: remoteagent.core.v1.ScheduleDeleteCacheEffect
+	(*ScheduleLoadSeenEffect)(nil),               // 266: remoteagent.core.v1.ScheduleLoadSeenEffect
+	(*ScheduleSaveSeenEffect)(nil),               // 267: remoteagent.core.v1.ScheduleSaveSeenEffect
+	(*ScheduleDismissNotificationsEffect)(nil),   // 268: remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	(*ScheduleNavigateEffect)(nil),               // 269: remoteagent.core.v1.ScheduleNavigateEffect
+	(*DirectSignalSendEffect)(nil),               // 270: remoteagent.core.v1.DirectSignalSendEffect
+	(*DirectPcCreateEffect)(nil),                 // 271: remoteagent.core.v1.DirectPcCreateEffect
+	(*DirectPcDescribeEffect)(nil),               // 272: remoteagent.core.v1.DirectPcDescribeEffect
+	(*DirectPcSetRemoteEffect)(nil),              // 273: remoteagent.core.v1.DirectPcSetRemoteEffect
+	(*DirectPcAddCandidatesEffect)(nil),          // 274: remoteagent.core.v1.DirectPcAddCandidatesEffect
+	(*DirectPcConfirmEffect)(nil),                // 275: remoteagent.core.v1.DirectPcConfirmEffect
+	(*DirectPcCloseEffect)(nil),                  // 276: remoteagent.core.v1.DirectPcCloseEffect
+	(*DirectDcReadStatsEffect)(nil),              // 277: remoteagent.core.v1.DirectDcReadStatsEffect
+	(*DirectBulkRouteEffect)(nil),                // 278: remoteagent.core.v1.DirectBulkRouteEffect
+	(*TerminalReopenEffect)(nil),                 // 279: remoteagent.core.v1.TerminalReopenEffect
+	(*DirectRetryNowResultEffect)(nil),           // 280: remoteagent.core.v1.DirectRetryNowResultEffect
+	(*SecurityKeySignEffect)(nil),                // 281: remoteagent.core.v1.SecurityKeySignEffect
+	(*SecurityKeyAgreeEffect)(nil),               // 282: remoteagent.core.v1.SecurityKeyAgreeEffect
+	(*SecurityCryptoBatchEffect)(nil),            // 283: remoteagent.core.v1.SecurityCryptoBatchEffect
+	(*SecurityOpResultEffect)(nil),               // 284: remoteagent.core.v1.SecurityOpResultEffect
+	(*SecurityKeyGenerateEffect)(nil),            // 285: remoteagent.core.v1.SecurityKeyGenerateEffect
+	(*SecurityKeyEncapsulateEffect)(nil),         // 286: remoteagent.core.v1.SecurityKeyEncapsulateEffect
+	(*SecurityKeyDiscardEffect)(nil),             // 287: remoteagent.core.v1.SecurityKeyDiscardEffect
+	(*SecurityStorageEffect)(nil),                // 288: remoteagent.core.v1.SecurityStorageEffect
+	(*SecurityRpcEffect)(nil),                    // 289: remoteagent.core.v1.SecurityRpcEffect
+	(*SecurityWorkflowResultEffect)(nil),         // 290: remoteagent.core.v1.SecurityWorkflowResultEffect
+	(*SecurityStatusChangedEffect)(nil),          // 291: remoteagent.core.v1.SecurityStatusChangedEffect
+	(*SecurityNotifyOpenedEffect)(nil),           // 292: remoteagent.core.v1.SecurityNotifyOpenedEffect
+	(*SecurityTokenUpdatedEffect)(nil),           // 293: remoteagent.core.v1.SecurityTokenUpdatedEffect
 }
 var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	6,   // 0: remoteagent.core.v1.Screen.home:type_name -> remoteagent.core.v1.HomeScreenRequest
@@ -12244,186 +12226,185 @@ var file_remoteagent_core_v1_app_proto_depIdxs = []int32{
 	175, // 179: remoteagent.core.v1.Event.session_cancel_all_paused:type_name -> remoteagent.core.v1.SessionTraySessionAction
 	175, // 180: remoteagent.core.v1.Event.session_undo_cancel:type_name -> remoteagent.core.v1.SessionTraySessionAction
 	176, // 181: remoteagent.core.v1.Event.session_retry_load:type_name -> remoteagent.core.v1.SessionRetryLoadAction
-	177, // 182: remoteagent.core.v1.Event.shared_file_local_state:type_name -> remoteagent.core.v1.SharedFileLocalStateEvent
-	178, // 183: remoteagent.core.v1.Event.session_image_viewer_open:type_name -> remoteagent.core.v1.SessionImageViewerOpenAction
-	179, // 184: remoteagent.core.v1.Event.session_image_viewer_navigate:type_name -> remoteagent.core.v1.SessionImageViewerNavigateAction
-	180, // 185: remoteagent.core.v1.Event.session_image_viewer_close:type_name -> remoteagent.core.v1.SessionImageViewerCloseAction
-	181, // 186: remoteagent.core.v1.Event.shared_file_config:type_name -> remoteagent.core.v1.SharedFileConfigEvent
-	182, // 187: remoteagent.core.v1.Event.shared_file_local_scanned:type_name -> remoteagent.core.v1.SharedFileLocalScannedEvent
-	183, // 188: remoteagent.core.v1.Event.shared_file_start_download:type_name -> remoteagent.core.v1.SharedFileStartDownloadAction
-	184, // 189: remoteagent.core.v1.Event.shared_file_pause_download:type_name -> remoteagent.core.v1.SharedFilePauseDownloadAction
-	185, // 190: remoteagent.core.v1.Event.shared_file_cancel_download:type_name -> remoteagent.core.v1.SharedFileCancelDownloadAction
-	186, // 191: remoteagent.core.v1.Event.shared_file_delete_local:type_name -> remoteagent.core.v1.SharedFileDeleteLocalAction
-	187, // 192: remoteagent.core.v1.Event.shared_file_set_visible_session:type_name -> remoteagent.core.v1.SharedFileSetVisibleSessionAction
-	188, // 193: remoteagent.core.v1.Event.shared_file_forget_session:type_name -> remoteagent.core.v1.SharedFileForgetSessionAction
-	189, // 194: remoteagent.core.v1.Event.shared_file_duration_probed:type_name -> remoteagent.core.v1.SharedFileDurationProbedEvent
-	190, // 195: remoteagent.core.v1.Event.shared_file_local_missing:type_name -> remoteagent.core.v1.SharedFileLocalMissingEvent
-	191, // 196: remoteagent.core.v1.Event.shared_file_clear_all:type_name -> remoteagent.core.v1.SharedFileClearAllAction
-	192, // 197: remoteagent.core.v1.Event.shared_file_disk_inspected:type_name -> remoteagent.core.v1.SharedFileDiskInspectedEvent
-	193, // 198: remoteagent.core.v1.Event.shared_file_write_chunk_result:type_name -> remoteagent.core.v1.SharedFileWriteChunkResultEvent
-	194, // 199: remoteagent.core.v1.Event.shared_file_verify_and_commit_result:type_name -> remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent
-	195, // 200: remoteagent.core.v1.Event.schedule_cache_loaded:type_name -> remoteagent.core.v1.ScheduleCacheLoadedEvent
-	196, // 201: remoteagent.core.v1.Event.schedule_seen_loaded:type_name -> remoteagent.core.v1.ScheduleSeenLoadedEvent
-	197, // 202: remoteagent.core.v1.Event.schedule_local_context:type_name -> remoteagent.core.v1.ScheduleLocalContextEvent
-	198, // 203: remoteagent.core.v1.Event.schedule_refresh:type_name -> remoteagent.core.v1.ScheduleStringAction
-	198, // 204: remoteagent.core.v1.Event.schedule_set_visible_session:type_name -> remoteagent.core.v1.ScheduleStringAction
-	199, // 205: remoteagent.core.v1.Event.schedule_list_open:type_name -> remoteagent.core.v1.ScheduleBoolAction
-	200, // 206: remoteagent.core.v1.Event.schedule_select_task:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	199, // 207: remoteagent.core.v1.Event.schedule_toggle_ended:type_name -> remoteagent.core.v1.ScheduleBoolAction
-	201, // 208: remoteagent.core.v1.Event.schedule_mark_read:type_name -> remoteagent.core.v1.ScheduleMarkReadAction
-	202, // 209: remoteagent.core.v1.Event.schedule_mark_unread:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	200, // 210: remoteagent.core.v1.Event.schedule_detail_open:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	200, // 211: remoteagent.core.v1.Event.schedule_detail_hide:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	200, // 212: remoteagent.core.v1.Event.schedule_detail_close:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	200, // 213: remoteagent.core.v1.Event.schedule_detail_show_latest_result:type_name -> remoteagent.core.v1.ScheduleTaskRef
-	203, // 214: remoteagent.core.v1.Event.schedule_detail_toggle_quiet_group:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	202, // 215: remoteagent.core.v1.Event.schedule_detail_show_all_runs:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	203, // 216: remoteagent.core.v1.Event.schedule_detail_open_run:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	204, // 217: remoteagent.core.v1.Event.schedule_operate:type_name -> remoteagent.core.v1.ScheduleOperateAction
-	203, // 218: remoteagent.core.v1.Event.schedule_rename:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	202, // 219: remoteagent.core.v1.Event.schedule_set_notify:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
-	203, // 220: remoteagent.core.v1.Event.schedule_update_message:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
-	205, // 221: remoteagent.core.v1.Event.schedule_abandon_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
-	205, // 222: remoteagent.core.v1.Event.schedule_retry_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
-	206, // 223: remoteagent.core.v1.Event.schedule_form_open:type_name -> remoteagent.core.v1.ScheduleFormOpenAction
-	207, // 224: remoteagent.core.v1.Event.schedule_form_close:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	208, // 225: remoteagent.core.v1.Event.schedule_form_set_message:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	208, // 226: remoteagent.core.v1.Event.schedule_form_set_title:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	207, // 227: remoteagent.core.v1.Event.schedule_form_set_notify:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	209, // 228: remoteagent.core.v1.Event.schedule_form_select_project:type_name -> remoteagent.core.v1.ScheduleFormSelectProjectAction
-	208, // 229: remoteagent.core.v1.Event.schedule_form_select_machine:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	210, // 230: remoteagent.core.v1.Event.schedule_form_select_agent:type_name -> remoteagent.core.v1.ScheduleFormSelectAgentAction
-	211, // 231: remoteagent.core.v1.Event.schedule_form_select_model:type_name -> remoteagent.core.v1.ScheduleFormSelectModelAction
-	212, // 232: remoteagent.core.v1.Event.schedule_form_update_timing:type_name -> remoteagent.core.v1.ScheduleFormUpdateTimingAction
-	207, // 233: remoteagent.core.v1.Event.schedule_form_submit:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
-	208, // 234: remoteagent.core.v1.Event.schedule_form_retry_models:type_name -> remoteagent.core.v1.ScheduleFormStringAction
-	213, // 235: remoteagent.core.v1.Event.transport_config:type_name -> remoteagent.core.v1.TransportConfigEvent
-	214, // 236: remoteagent.core.v1.Event.direct_signal_received:type_name -> remoteagent.core.v1.DirectSignalReceivedEvent
-	215, // 237: remoteagent.core.v1.Event.direct_signal_delivery:type_name -> remoteagent.core.v1.DirectSignalDeliveryEvent
-	216, // 238: remoteagent.core.v1.Event.direct_pc_created:type_name -> remoteagent.core.v1.DirectPcCreatedEvent
-	217, // 239: remoteagent.core.v1.Event.direct_pc_description:type_name -> remoteagent.core.v1.DirectPcDescriptionEvent
-	218, // 240: remoteagent.core.v1.Event.direct_pc_remote_set:type_name -> remoteagent.core.v1.DirectPcRemoteSetEvent
-	219, // 241: remoteagent.core.v1.Event.direct_pc_candidates_added:type_name -> remoteagent.core.v1.DirectPcCandidatesAddedEvent
-	220, // 242: remoteagent.core.v1.Event.direct_pc_local_candidate:type_name -> remoteagent.core.v1.DirectPcLocalCandidateEvent
-	221, // 243: remoteagent.core.v1.Event.direct_pc_state:type_name -> remoteagent.core.v1.DirectPcStateEvent
-	222, // 244: remoteagent.core.v1.Event.direct_pc_stun_error:type_name -> remoteagent.core.v1.DirectPcStunErrorEvent
-	223, // 245: remoteagent.core.v1.Event.direct_pc_closed:type_name -> remoteagent.core.v1.DirectPcClosedEvent
-	224, // 246: remoteagent.core.v1.Event.direct_dc_state:type_name -> remoteagent.core.v1.DirectDcStateEvent
-	225, // 247: remoteagent.core.v1.Event.direct_dc_stats:type_name -> remoteagent.core.v1.DirectDcStatsEvent
-	226, // 248: remoteagent.core.v1.Event.direct_retry_now:type_name -> remoteagent.core.v1.DirectRetryNowAction
-	227, // 249: remoteagent.core.v1.Event.direct_refresh_diagnostics:type_name -> remoteagent.core.v1.DirectRefreshDiagnosticsAction
-	228, // 250: remoteagent.core.v1.Event.direct_bulk_transfer_begin:type_name -> remoteagent.core.v1.DirectBulkTransferBeginEvent
-	229, // 251: remoteagent.core.v1.Event.direct_bulk_transfer_done:type_name -> remoteagent.core.v1.DirectBulkTransferDoneEvent
-	230, // 252: remoteagent.core.v1.Event.terminal_stream:type_name -> remoteagent.core.v1.TerminalStreamEvent
-	231, // 253: remoteagent.core.v1.Event.direct_preferences_loaded:type_name -> remoteagent.core.v1.DirectPreferencesLoadedEvent
-	232, // 254: remoteagent.core.v1.Event.security_config:type_name -> remoteagent.core.v1.SecurityConfigEvent
-	233, // 255: remoteagent.core.v1.Event.security_key_signed:type_name -> remoteagent.core.v1.SecurityKeySignedEvent
-	234, // 256: remoteagent.core.v1.Event.security_key_agreed:type_name -> remoteagent.core.v1.SecurityKeyAgreedEvent
-	235, // 257: remoteagent.core.v1.Event.security_crypto_batch_done:type_name -> remoteagent.core.v1.SecurityCryptoBatchDoneEvent
-	236, // 258: remoteagent.core.v1.Event.security_op_request:type_name -> remoteagent.core.v1.SecurityOpRequestEvent
-	237, // 259: remoteagent.core.v1.Event.seed_demo_world:type_name -> remoteagent.core.v1.SeedDemoWorldEvent
-	238, // 260: remoteagent.core.v1.Event.security_key_generated:type_name -> remoteagent.core.v1.SecurityKeyGeneratedEvent
-	239, // 261: remoteagent.core.v1.Event.security_key_encapsulated:type_name -> remoteagent.core.v1.SecurityKeyEncapsulatedEvent
-	240, // 262: remoteagent.core.v1.Event.security_storage_result:type_name -> remoteagent.core.v1.SecurityStorageResultEvent
-	241, // 263: remoteagent.core.v1.Event.security_rpc_result:type_name -> remoteagent.core.v1.SecurityRpcResultEvent
-	242, // 264: remoteagent.core.v1.Event.security_foreground:type_name -> remoteagent.core.v1.SecurityForegroundEvent
-	243, // 265: remoteagent.core.v1.Event.security_action:type_name -> remoteagent.core.v1.SecurityWorkflowActionEvent
-	244, // 266: remoteagent.core.v1.Event.security_open_notify:type_name -> remoteagent.core.v1.SecurityOpenNotifyEvent
-	3,   // 267: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
-	1,   // 268: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	1,   // 269: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
-	74,  // 270: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
-	75,  // 271: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
-	77,  // 272: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
-	135, // 273: remoteagent.core.v1.CacheWriteEffect.write_machine:type_name -> remoteagent.v1.Machine
-	136, // 274: remoteagent.core.v1.CacheWriteEffect.write_session:type_name -> remoteagent.v1.RemoteSession
-	136, // 275: remoteagent.core.v1.CacheWriteEffect.keep_session_owner:type_name -> remoteagent.v1.RemoteSession
-	245, // 276: remoteagent.core.v1.CacheWriteEffect.write_stored_events:type_name -> remoteagent.core.v1.CacheWriteStoredEvents
-	137, // 277: remoteagent.core.v1.CacheWriteEffect.write_prefs:type_name -> remoteagent.v1.AccountPrefsObject
-	140, // 278: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
-	134, // 279: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
-	142, // 280: remoteagent.core.v1.PutAccountPrefsRpc.sealed_envelope:type_name -> remoteagent.v1.Envelope
-	80,  // 281: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
-	81,  // 282: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
-	82,  // 283: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
-	83,  // 284: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
-	84,  // 285: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
-	85,  // 286: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
-	86,  // 287: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
-	4,   // 288: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
-	246, // 289: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
-	142, // 290: remoteagent.core.v1.DispatchCommandEffect.sealed_envelope:type_name -> remoteagent.v1.Envelope
-	5,   // 291: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
-	67,  // 292: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
-	68,  // 293: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
-	69,  // 294: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
-	70,  // 295: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
-	71,  // 296: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
-	72,  // 297: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
-	73,  // 298: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
-	76,  // 299: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
-	78,  // 300: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
-	79,  // 301: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
-	87,  // 302: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
-	88,  // 303: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
-	89,  // 304: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
-	90,  // 305: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
-	91,  // 306: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
-	92,  // 307: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
-	247, // 308: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
-	248, // 309: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
-	249, // 310: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
-	250, // 311: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
-	251, // 312: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
-	252, // 313: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
-	253, // 314: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
-	254, // 315: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
-	255, // 316: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
-	256, // 317: remoteagent.core.v1.Effect.shared_file_scan_local:type_name -> remoteagent.core.v1.SharedFileScanLocalEffect
-	257, // 318: remoteagent.core.v1.Effect.shared_file_inspect_disk:type_name -> remoteagent.core.v1.SharedFileInspectDiskEffect
-	258, // 319: remoteagent.core.v1.Effect.shared_file_write_chunk:type_name -> remoteagent.core.v1.SharedFileWriteChunkEffect
-	259, // 320: remoteagent.core.v1.Effect.shared_file_verify_and_commit:type_name -> remoteagent.core.v1.SharedFileVerifyAndCommitEffect
-	260, // 321: remoteagent.core.v1.Effect.shared_file_delete_partial:type_name -> remoteagent.core.v1.SharedFileDeletePartialEffect
-	261, // 322: remoteagent.core.v1.Effect.shared_file_delete_local:type_name -> remoteagent.core.v1.SharedFileDeleteLocalEffect
-	262, // 323: remoteagent.core.v1.Effect.shared_file_delete_session:type_name -> remoteagent.core.v1.SharedFileDeleteSessionEffect
-	263, // 324: remoteagent.core.v1.Effect.shared_file_clear_all:type_name -> remoteagent.core.v1.SharedFileClearAllEffect
-	264, // 325: remoteagent.core.v1.Effect.shared_file_completed:type_name -> remoteagent.core.v1.SharedFileCompletedEffect
-	265, // 326: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
-	266, // 327: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
-	267, // 328: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
-	268, // 329: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
-	269, // 330: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
-	270, // 331: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
-	271, // 332: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
-	272, // 333: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
-	273, // 334: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
-	274, // 335: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
-	275, // 336: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
-	276, // 337: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
-	277, // 338: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
-	278, // 339: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
-	279, // 340: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
-	280, // 341: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
-	281, // 342: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
-	282, // 343: remoteagent.core.v1.Effect.security_key_sign:type_name -> remoteagent.core.v1.SecurityKeySignEffect
-	283, // 344: remoteagent.core.v1.Effect.security_key_agree:type_name -> remoteagent.core.v1.SecurityKeyAgreeEffect
-	284, // 345: remoteagent.core.v1.Effect.security_crypto_batch:type_name -> remoteagent.core.v1.SecurityCryptoBatchEffect
-	285, // 346: remoteagent.core.v1.Effect.security_op_result:type_name -> remoteagent.core.v1.SecurityOpResultEffect
-	286, // 347: remoteagent.core.v1.Effect.security_key_generate:type_name -> remoteagent.core.v1.SecurityKeyGenerateEffect
-	287, // 348: remoteagent.core.v1.Effect.security_key_encapsulate:type_name -> remoteagent.core.v1.SecurityKeyEncapsulateEffect
-	288, // 349: remoteagent.core.v1.Effect.security_key_discard:type_name -> remoteagent.core.v1.SecurityKeyDiscardEffect
-	289, // 350: remoteagent.core.v1.Effect.security_storage:type_name -> remoteagent.core.v1.SecurityStorageEffect
-	290, // 351: remoteagent.core.v1.Effect.security_rpc:type_name -> remoteagent.core.v1.SecurityRpcEffect
-	291, // 352: remoteagent.core.v1.Effect.security_workflow_result:type_name -> remoteagent.core.v1.SecurityWorkflowResultEffect
-	292, // 353: remoteagent.core.v1.Effect.security_status_changed:type_name -> remoteagent.core.v1.SecurityStatusChangedEffect
-	293, // 354: remoteagent.core.v1.Effect.security_notify_opened:type_name -> remoteagent.core.v1.SecurityNotifyOpenedEffect
-	294, // 355: remoteagent.core.v1.Effect.security_token_updated:type_name -> remoteagent.core.v1.SecurityTokenUpdatedEffect
-	93,  // 356: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
-	357, // [357:357] is the sub-list for method output_type
-	357, // [357:357] is the sub-list for method input_type
-	357, // [357:357] is the sub-list for extension type_name
-	357, // [357:357] is the sub-list for extension extendee
-	0,   // [0:357] is the sub-list for field type_name
+	177, // 182: remoteagent.core.v1.Event.session_image_viewer_open:type_name -> remoteagent.core.v1.SessionImageViewerOpenAction
+	178, // 183: remoteagent.core.v1.Event.session_image_viewer_navigate:type_name -> remoteagent.core.v1.SessionImageViewerNavigateAction
+	179, // 184: remoteagent.core.v1.Event.session_image_viewer_close:type_name -> remoteagent.core.v1.SessionImageViewerCloseAction
+	180, // 185: remoteagent.core.v1.Event.shared_file_config:type_name -> remoteagent.core.v1.SharedFileConfigEvent
+	181, // 186: remoteagent.core.v1.Event.shared_file_local_scanned:type_name -> remoteagent.core.v1.SharedFileLocalScannedEvent
+	182, // 187: remoteagent.core.v1.Event.shared_file_start_download:type_name -> remoteagent.core.v1.SharedFileStartDownloadAction
+	183, // 188: remoteagent.core.v1.Event.shared_file_pause_download:type_name -> remoteagent.core.v1.SharedFilePauseDownloadAction
+	184, // 189: remoteagent.core.v1.Event.shared_file_cancel_download:type_name -> remoteagent.core.v1.SharedFileCancelDownloadAction
+	185, // 190: remoteagent.core.v1.Event.shared_file_delete_local:type_name -> remoteagent.core.v1.SharedFileDeleteLocalAction
+	186, // 191: remoteagent.core.v1.Event.shared_file_set_visible_session:type_name -> remoteagent.core.v1.SharedFileSetVisibleSessionAction
+	187, // 192: remoteagent.core.v1.Event.shared_file_forget_session:type_name -> remoteagent.core.v1.SharedFileForgetSessionAction
+	188, // 193: remoteagent.core.v1.Event.shared_file_duration_probed:type_name -> remoteagent.core.v1.SharedFileDurationProbedEvent
+	189, // 194: remoteagent.core.v1.Event.shared_file_local_missing:type_name -> remoteagent.core.v1.SharedFileLocalMissingEvent
+	190, // 195: remoteagent.core.v1.Event.shared_file_clear_all:type_name -> remoteagent.core.v1.SharedFileClearAllAction
+	191, // 196: remoteagent.core.v1.Event.shared_file_disk_inspected:type_name -> remoteagent.core.v1.SharedFileDiskInspectedEvent
+	192, // 197: remoteagent.core.v1.Event.shared_file_write_chunk_result:type_name -> remoteagent.core.v1.SharedFileWriteChunkResultEvent
+	193, // 198: remoteagent.core.v1.Event.shared_file_verify_and_commit_result:type_name -> remoteagent.core.v1.SharedFileVerifyAndCommitResultEvent
+	194, // 199: remoteagent.core.v1.Event.schedule_cache_loaded:type_name -> remoteagent.core.v1.ScheduleCacheLoadedEvent
+	195, // 200: remoteagent.core.v1.Event.schedule_seen_loaded:type_name -> remoteagent.core.v1.ScheduleSeenLoadedEvent
+	196, // 201: remoteagent.core.v1.Event.schedule_local_context:type_name -> remoteagent.core.v1.ScheduleLocalContextEvent
+	197, // 202: remoteagent.core.v1.Event.schedule_refresh:type_name -> remoteagent.core.v1.ScheduleStringAction
+	197, // 203: remoteagent.core.v1.Event.schedule_set_visible_session:type_name -> remoteagent.core.v1.ScheduleStringAction
+	198, // 204: remoteagent.core.v1.Event.schedule_list_open:type_name -> remoteagent.core.v1.ScheduleBoolAction
+	199, // 205: remoteagent.core.v1.Event.schedule_select_task:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	198, // 206: remoteagent.core.v1.Event.schedule_toggle_ended:type_name -> remoteagent.core.v1.ScheduleBoolAction
+	200, // 207: remoteagent.core.v1.Event.schedule_mark_read:type_name -> remoteagent.core.v1.ScheduleMarkReadAction
+	201, // 208: remoteagent.core.v1.Event.schedule_mark_unread:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	199, // 209: remoteagent.core.v1.Event.schedule_detail_open:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	199, // 210: remoteagent.core.v1.Event.schedule_detail_hide:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	199, // 211: remoteagent.core.v1.Event.schedule_detail_close:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	199, // 212: remoteagent.core.v1.Event.schedule_detail_show_latest_result:type_name -> remoteagent.core.v1.ScheduleTaskRef
+	202, // 213: remoteagent.core.v1.Event.schedule_detail_toggle_quiet_group:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	201, // 214: remoteagent.core.v1.Event.schedule_detail_show_all_runs:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	202, // 215: remoteagent.core.v1.Event.schedule_detail_open_run:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	203, // 216: remoteagent.core.v1.Event.schedule_operate:type_name -> remoteagent.core.v1.ScheduleOperateAction
+	202, // 217: remoteagent.core.v1.Event.schedule_rename:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	201, // 218: remoteagent.core.v1.Event.schedule_set_notify:type_name -> remoteagent.core.v1.ScheduleTaskBoolAction
+	202, // 219: remoteagent.core.v1.Event.schedule_update_message:type_name -> remoteagent.core.v1.ScheduleTaskStringAction
+	204, // 220: remoteagent.core.v1.Event.schedule_abandon_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
+	204, // 221: remoteagent.core.v1.Event.schedule_retry_mutation:type_name -> remoteagent.core.v1.ScheduleMutationRef
+	205, // 222: remoteagent.core.v1.Event.schedule_form_open:type_name -> remoteagent.core.v1.ScheduleFormOpenAction
+	206, // 223: remoteagent.core.v1.Event.schedule_form_close:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	207, // 224: remoteagent.core.v1.Event.schedule_form_set_message:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	207, // 225: remoteagent.core.v1.Event.schedule_form_set_title:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	206, // 226: remoteagent.core.v1.Event.schedule_form_set_notify:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	208, // 227: remoteagent.core.v1.Event.schedule_form_select_project:type_name -> remoteagent.core.v1.ScheduleFormSelectProjectAction
+	207, // 228: remoteagent.core.v1.Event.schedule_form_select_machine:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	209, // 229: remoteagent.core.v1.Event.schedule_form_select_agent:type_name -> remoteagent.core.v1.ScheduleFormSelectAgentAction
+	210, // 230: remoteagent.core.v1.Event.schedule_form_select_model:type_name -> remoteagent.core.v1.ScheduleFormSelectModelAction
+	211, // 231: remoteagent.core.v1.Event.schedule_form_update_timing:type_name -> remoteagent.core.v1.ScheduleFormUpdateTimingAction
+	206, // 232: remoteagent.core.v1.Event.schedule_form_submit:type_name -> remoteagent.core.v1.ScheduleFormBoolAction
+	207, // 233: remoteagent.core.v1.Event.schedule_form_retry_models:type_name -> remoteagent.core.v1.ScheduleFormStringAction
+	212, // 234: remoteagent.core.v1.Event.transport_config:type_name -> remoteagent.core.v1.TransportConfigEvent
+	213, // 235: remoteagent.core.v1.Event.direct_signal_received:type_name -> remoteagent.core.v1.DirectSignalReceivedEvent
+	214, // 236: remoteagent.core.v1.Event.direct_signal_delivery:type_name -> remoteagent.core.v1.DirectSignalDeliveryEvent
+	215, // 237: remoteagent.core.v1.Event.direct_pc_created:type_name -> remoteagent.core.v1.DirectPcCreatedEvent
+	216, // 238: remoteagent.core.v1.Event.direct_pc_description:type_name -> remoteagent.core.v1.DirectPcDescriptionEvent
+	217, // 239: remoteagent.core.v1.Event.direct_pc_remote_set:type_name -> remoteagent.core.v1.DirectPcRemoteSetEvent
+	218, // 240: remoteagent.core.v1.Event.direct_pc_candidates_added:type_name -> remoteagent.core.v1.DirectPcCandidatesAddedEvent
+	219, // 241: remoteagent.core.v1.Event.direct_pc_local_candidate:type_name -> remoteagent.core.v1.DirectPcLocalCandidateEvent
+	220, // 242: remoteagent.core.v1.Event.direct_pc_state:type_name -> remoteagent.core.v1.DirectPcStateEvent
+	221, // 243: remoteagent.core.v1.Event.direct_pc_stun_error:type_name -> remoteagent.core.v1.DirectPcStunErrorEvent
+	222, // 244: remoteagent.core.v1.Event.direct_pc_closed:type_name -> remoteagent.core.v1.DirectPcClosedEvent
+	223, // 245: remoteagent.core.v1.Event.direct_dc_state:type_name -> remoteagent.core.v1.DirectDcStateEvent
+	224, // 246: remoteagent.core.v1.Event.direct_dc_stats:type_name -> remoteagent.core.v1.DirectDcStatsEvent
+	225, // 247: remoteagent.core.v1.Event.direct_retry_now:type_name -> remoteagent.core.v1.DirectRetryNowAction
+	226, // 248: remoteagent.core.v1.Event.direct_refresh_diagnostics:type_name -> remoteagent.core.v1.DirectRefreshDiagnosticsAction
+	227, // 249: remoteagent.core.v1.Event.direct_bulk_transfer_begin:type_name -> remoteagent.core.v1.DirectBulkTransferBeginEvent
+	228, // 250: remoteagent.core.v1.Event.direct_bulk_transfer_done:type_name -> remoteagent.core.v1.DirectBulkTransferDoneEvent
+	229, // 251: remoteagent.core.v1.Event.terminal_stream:type_name -> remoteagent.core.v1.TerminalStreamEvent
+	230, // 252: remoteagent.core.v1.Event.direct_preferences_loaded:type_name -> remoteagent.core.v1.DirectPreferencesLoadedEvent
+	231, // 253: remoteagent.core.v1.Event.security_config:type_name -> remoteagent.core.v1.SecurityConfigEvent
+	232, // 254: remoteagent.core.v1.Event.security_key_signed:type_name -> remoteagent.core.v1.SecurityKeySignedEvent
+	233, // 255: remoteagent.core.v1.Event.security_key_agreed:type_name -> remoteagent.core.v1.SecurityKeyAgreedEvent
+	234, // 256: remoteagent.core.v1.Event.security_crypto_batch_done:type_name -> remoteagent.core.v1.SecurityCryptoBatchDoneEvent
+	235, // 257: remoteagent.core.v1.Event.security_op_request:type_name -> remoteagent.core.v1.SecurityOpRequestEvent
+	236, // 258: remoteagent.core.v1.Event.seed_demo_world:type_name -> remoteagent.core.v1.SeedDemoWorldEvent
+	237, // 259: remoteagent.core.v1.Event.security_key_generated:type_name -> remoteagent.core.v1.SecurityKeyGeneratedEvent
+	238, // 260: remoteagent.core.v1.Event.security_key_encapsulated:type_name -> remoteagent.core.v1.SecurityKeyEncapsulatedEvent
+	239, // 261: remoteagent.core.v1.Event.security_storage_result:type_name -> remoteagent.core.v1.SecurityStorageResultEvent
+	240, // 262: remoteagent.core.v1.Event.security_rpc_result:type_name -> remoteagent.core.v1.SecurityRpcResultEvent
+	241, // 263: remoteagent.core.v1.Event.security_foreground:type_name -> remoteagent.core.v1.SecurityForegroundEvent
+	242, // 264: remoteagent.core.v1.Event.security_action:type_name -> remoteagent.core.v1.SecurityWorkflowActionEvent
+	243, // 265: remoteagent.core.v1.Event.security_open_notify:type_name -> remoteagent.core.v1.SecurityOpenNotifyEvent
+	3,   // 266: remoteagent.core.v1.RenderEffect.screens:type_name -> remoteagent.core.v1.ScreenTarget
+	1,   // 267: remoteagent.core.v1.ScheduleTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	1,   // 268: remoteagent.core.v1.CancelTimerEffect.kind:type_name -> remoteagent.core.v1.TimerKind
+	74,  // 269: remoteagent.core.v1.CacheReadEffect.bootstrap:type_name -> remoteagent.core.v1.CacheReadBootstrap
+	75,  // 270: remoteagent.core.v1.CacheReadEffect.events:type_name -> remoteagent.core.v1.CacheReadEvents
+	77,  // 271: remoteagent.core.v1.CacheWriteEffect.set_session_open:type_name -> remoteagent.core.v1.CacheSessionOpen
+	135, // 272: remoteagent.core.v1.CacheWriteEffect.write_machine:type_name -> remoteagent.v1.Machine
+	136, // 273: remoteagent.core.v1.CacheWriteEffect.write_session:type_name -> remoteagent.v1.RemoteSession
+	136, // 274: remoteagent.core.v1.CacheWriteEffect.keep_session_owner:type_name -> remoteagent.v1.RemoteSession
+	244, // 275: remoteagent.core.v1.CacheWriteEffect.write_stored_events:type_name -> remoteagent.core.v1.CacheWriteStoredEvents
+	137, // 276: remoteagent.core.v1.CacheWriteEffect.write_prefs:type_name -> remoteagent.v1.AccountPrefsObject
+	140, // 277: remoteagent.core.v1.FetchSessionsPageRpc.after:type_name -> remoteagent.v1.SessionCursor
+	134, // 278: remoteagent.core.v1.PutAccountPrefsRpc.next_prefs:type_name -> remoteagent.v1.ProjectPrefs
+	142, // 279: remoteagent.core.v1.PutAccountPrefsRpc.sealed_envelope:type_name -> remoteagent.v1.Envelope
+	80,  // 280: remoteagent.core.v1.RpcEffect.fetch_lists:type_name -> remoteagent.core.v1.FetchListsRpc
+	81,  // 281: remoteagent.core.v1.RpcEffect.fetch_sessions_page:type_name -> remoteagent.core.v1.FetchSessionsPageRpc
+	82,  // 282: remoteagent.core.v1.RpcEffect.fetch_session_by_id:type_name -> remoteagent.core.v1.FetchSessionByIdRpc
+	83,  // 283: remoteagent.core.v1.RpcEffect.get_events:type_name -> remoteagent.core.v1.GetEventsRpc
+	84,  // 284: remoteagent.core.v1.RpcEffect.get_account_prefs:type_name -> remoteagent.core.v1.GetAccountPrefsRpc
+	85,  // 285: remoteagent.core.v1.RpcEffect.put_account_prefs:type_name -> remoteagent.core.v1.PutAccountPrefsRpc
+	86,  // 286: remoteagent.core.v1.RpcEffect.fetch_devices:type_name -> remoteagent.core.v1.FetchDevicesRpc
+	4,   // 287: remoteagent.core.v1.DispatchCommandEffect.route_hint:type_name -> remoteagent.core.v1.CommandRouteHint
+	245, // 288: remoteagent.core.v1.DispatchCommandEffect.route_leg:type_name -> remoteagent.core.v1.CommandRouteLeg
+	142, // 289: remoteagent.core.v1.DispatchCommandEffect.sealed_envelope:type_name -> remoteagent.v1.Envelope
+	5,   // 290: remoteagent.core.v1.NavigateEffect.route:type_name -> remoteagent.core.v1.NavigateRoute
+	67,  // 291: remoteagent.core.v1.Effect.render:type_name -> remoteagent.core.v1.RenderEffect
+	68,  // 292: remoteagent.core.v1.Effect.open_stream:type_name -> remoteagent.core.v1.OpenStreamEffect
+	69,  // 293: remoteagent.core.v1.Effect.close_stream:type_name -> remoteagent.core.v1.CloseStreamEffect
+	70,  // 294: remoteagent.core.v1.Effect.ensure_token:type_name -> remoteagent.core.v1.EnsureTokenEffect
+	71,  // 295: remoteagent.core.v1.Effect.discard_token:type_name -> remoteagent.core.v1.DiscardTokenEffect
+	72,  // 296: remoteagent.core.v1.Effect.schedule_timer:type_name -> remoteagent.core.v1.ScheduleTimerEffect
+	73,  // 297: remoteagent.core.v1.Effect.cancel_timer:type_name -> remoteagent.core.v1.CancelTimerEffect
+	76,  // 298: remoteagent.core.v1.Effect.cache_read:type_name -> remoteagent.core.v1.CacheReadEffect
+	78,  // 299: remoteagent.core.v1.Effect.cache_write:type_name -> remoteagent.core.v1.CacheWriteEffect
+	79,  // 300: remoteagent.core.v1.Effect.cache_delete:type_name -> remoteagent.core.v1.CacheDeleteEffect
+	87,  // 301: remoteagent.core.v1.Effect.rpc:type_name -> remoteagent.core.v1.RpcEffect
+	88,  // 302: remoteagent.core.v1.Effect.dispatch_command:type_name -> remoteagent.core.v1.DispatchCommandEffect
+	89,  // 303: remoteagent.core.v1.Effect.save_home_scope:type_name -> remoteagent.core.v1.SaveHomeScopeEffect
+	90,  // 304: remoteagent.core.v1.Effect.navigate:type_name -> remoteagent.core.v1.NavigateEffect
+	91,  // 305: remoteagent.core.v1.Effect.attachments_settled:type_name -> remoteagent.core.v1.AttachmentsSettledEffect
+	92,  // 306: remoteagent.core.v1.Effect.request_entropy:type_name -> remoteagent.core.v1.RequestEntropyEffect
+	246, // 307: remoteagent.core.v1.Effect.schedule_machine_poll:type_name -> remoteagent.core.v1.ScheduleMachinePollEffect
+	247, // 308: remoteagent.core.v1.Effect.direct_preference:type_name -> remoteagent.core.v1.DirectPreferenceEffect
+	248, // 309: remoteagent.core.v1.Effect.rename_client:type_name -> remoteagent.core.v1.RenameClientEffect
+	249, // 310: remoteagent.core.v1.Effect.check_updates:type_name -> remoteagent.core.v1.CheckUpdatesEffect
+	250, // 311: remoteagent.core.v1.Effect.persist_client_prefs:type_name -> remoteagent.core.v1.PersistClientPrefsEffect
+	251, // 312: remoteagent.core.v1.Effect.prepare_cleanup_session:type_name -> remoteagent.core.v1.PrepareCleanupSessionEffect
+	252, // 313: remoteagent.core.v1.Effect.usage_cache_write:type_name -> remoteagent.core.v1.UsageCacheWriteEffect
+	253, // 314: remoteagent.core.v1.Effect.session_restore_composer:type_name -> remoteagent.core.v1.SessionRestoreComposerEffect
+	254, // 315: remoteagent.core.v1.Effect.session_resend_attachments:type_name -> remoteagent.core.v1.SessionResendAttachmentsEffect
+	255, // 316: remoteagent.core.v1.Effect.shared_file_scan_local:type_name -> remoteagent.core.v1.SharedFileScanLocalEffect
+	256, // 317: remoteagent.core.v1.Effect.shared_file_inspect_disk:type_name -> remoteagent.core.v1.SharedFileInspectDiskEffect
+	257, // 318: remoteagent.core.v1.Effect.shared_file_write_chunk:type_name -> remoteagent.core.v1.SharedFileWriteChunkEffect
+	258, // 319: remoteagent.core.v1.Effect.shared_file_verify_and_commit:type_name -> remoteagent.core.v1.SharedFileVerifyAndCommitEffect
+	259, // 320: remoteagent.core.v1.Effect.shared_file_delete_partial:type_name -> remoteagent.core.v1.SharedFileDeletePartialEffect
+	260, // 321: remoteagent.core.v1.Effect.shared_file_delete_local:type_name -> remoteagent.core.v1.SharedFileDeleteLocalEffect
+	261, // 322: remoteagent.core.v1.Effect.shared_file_delete_session:type_name -> remoteagent.core.v1.SharedFileDeleteSessionEffect
+	262, // 323: remoteagent.core.v1.Effect.shared_file_clear_all:type_name -> remoteagent.core.v1.SharedFileClearAllEffect
+	263, // 324: remoteagent.core.v1.Effect.shared_file_completed:type_name -> remoteagent.core.v1.SharedFileCompletedEffect
+	264, // 325: remoteagent.core.v1.Effect.schedule_read_cache:type_name -> remoteagent.core.v1.ScheduleReadCacheEffect
+	265, // 326: remoteagent.core.v1.Effect.schedule_delete_cache:type_name -> remoteagent.core.v1.ScheduleDeleteCacheEffect
+	266, // 327: remoteagent.core.v1.Effect.schedule_load_seen:type_name -> remoteagent.core.v1.ScheduleLoadSeenEffect
+	267, // 328: remoteagent.core.v1.Effect.schedule_save_seen:type_name -> remoteagent.core.v1.ScheduleSaveSeenEffect
+	268, // 329: remoteagent.core.v1.Effect.schedule_dismiss_notifications:type_name -> remoteagent.core.v1.ScheduleDismissNotificationsEffect
+	269, // 330: remoteagent.core.v1.Effect.schedule_navigate:type_name -> remoteagent.core.v1.ScheduleNavigateEffect
+	270, // 331: remoteagent.core.v1.Effect.direct_signal_send:type_name -> remoteagent.core.v1.DirectSignalSendEffect
+	271, // 332: remoteagent.core.v1.Effect.direct_pc_create:type_name -> remoteagent.core.v1.DirectPcCreateEffect
+	272, // 333: remoteagent.core.v1.Effect.direct_pc_describe:type_name -> remoteagent.core.v1.DirectPcDescribeEffect
+	273, // 334: remoteagent.core.v1.Effect.direct_pc_set_remote:type_name -> remoteagent.core.v1.DirectPcSetRemoteEffect
+	274, // 335: remoteagent.core.v1.Effect.direct_pc_add_candidates:type_name -> remoteagent.core.v1.DirectPcAddCandidatesEffect
+	275, // 336: remoteagent.core.v1.Effect.direct_pc_confirm:type_name -> remoteagent.core.v1.DirectPcConfirmEffect
+	276, // 337: remoteagent.core.v1.Effect.direct_pc_close:type_name -> remoteagent.core.v1.DirectPcCloseEffect
+	277, // 338: remoteagent.core.v1.Effect.direct_dc_read_stats:type_name -> remoteagent.core.v1.DirectDcReadStatsEffect
+	278, // 339: remoteagent.core.v1.Effect.direct_bulk_route:type_name -> remoteagent.core.v1.DirectBulkRouteEffect
+	279, // 340: remoteagent.core.v1.Effect.terminal_reopen:type_name -> remoteagent.core.v1.TerminalReopenEffect
+	280, // 341: remoteagent.core.v1.Effect.direct_retry_now_result:type_name -> remoteagent.core.v1.DirectRetryNowResultEffect
+	281, // 342: remoteagent.core.v1.Effect.security_key_sign:type_name -> remoteagent.core.v1.SecurityKeySignEffect
+	282, // 343: remoteagent.core.v1.Effect.security_key_agree:type_name -> remoteagent.core.v1.SecurityKeyAgreeEffect
+	283, // 344: remoteagent.core.v1.Effect.security_crypto_batch:type_name -> remoteagent.core.v1.SecurityCryptoBatchEffect
+	284, // 345: remoteagent.core.v1.Effect.security_op_result:type_name -> remoteagent.core.v1.SecurityOpResultEffect
+	285, // 346: remoteagent.core.v1.Effect.security_key_generate:type_name -> remoteagent.core.v1.SecurityKeyGenerateEffect
+	286, // 347: remoteagent.core.v1.Effect.security_key_encapsulate:type_name -> remoteagent.core.v1.SecurityKeyEncapsulateEffect
+	287, // 348: remoteagent.core.v1.Effect.security_key_discard:type_name -> remoteagent.core.v1.SecurityKeyDiscardEffect
+	288, // 349: remoteagent.core.v1.Effect.security_storage:type_name -> remoteagent.core.v1.SecurityStorageEffect
+	289, // 350: remoteagent.core.v1.Effect.security_rpc:type_name -> remoteagent.core.v1.SecurityRpcEffect
+	290, // 351: remoteagent.core.v1.Effect.security_workflow_result:type_name -> remoteagent.core.v1.SecurityWorkflowResultEffect
+	291, // 352: remoteagent.core.v1.Effect.security_status_changed:type_name -> remoteagent.core.v1.SecurityStatusChangedEffect
+	292, // 353: remoteagent.core.v1.Effect.security_notify_opened:type_name -> remoteagent.core.v1.SecurityNotifyOpenedEffect
+	293, // 354: remoteagent.core.v1.Effect.security_token_updated:type_name -> remoteagent.core.v1.SecurityTokenUpdatedEffect
+	93,  // 355: remoteagent.core.v1.EffectBatch.effects:type_name -> remoteagent.core.v1.Effect
+	356, // [356:356] is the sub-list for method output_type
+	356, // [356:356] is the sub-list for method input_type
+	356, // [356:356] is the sub-list for extension type_name
+	356, // [356:356] is the sub-list for extension extendee
+	0,   // [0:356] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_app_proto_init() }
@@ -12589,7 +12570,6 @@ func file_remoteagent_core_v1_app_proto_init() {
 		(*Event_SessionCancelAllPaused)(nil),
 		(*Event_SessionUndoCancel)(nil),
 		(*Event_SessionRetryLoad)(nil),
-		(*Event_SharedFileLocalState)(nil),
 		(*Event_SessionImageViewerOpen)(nil),
 		(*Event_SessionImageViewerNavigate)(nil),
 		(*Event_SessionImageViewerClose)(nil),

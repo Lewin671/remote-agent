@@ -540,7 +540,7 @@
                       {
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "sha256": "AQIDBA==",
+                        "sha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
                         "nameTail": "026.mp4",
@@ -605,7 +605,7 @@
                       {
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "sha256": "BQYHCA==",
+                        "sha256": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ=",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
                         "nameTail": "tes.docx",
@@ -824,6 +824,199 @@
       "effects": {
         "effects": [
           {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "3",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "3",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileScanLocal": {
+              "opId": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileInspectDisk": {
+              "opId": "2",
+              "sessionId": "s-media",
+              "fileId": "sf-video",
+              "requiredBytes": "7872512"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-1",
+              "attemptId": "r-2",
+              "machineId": "m1",
+              "sessionId": "s-media",
+              "deadlineMs": "1791078121050",
+              "commandBytes": "ggIYCgdzLW1lZGlhEghzZi12aWRlbxiAwJ8BoAYR",
+              "routeHint": "COMMAND_ROUTE_HINT_BULK",
+              "bulkFileKey": "s-media/sf-video",
+              "bulkBytes": "8192",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileWriteChunk": {
+              "opId": "3",
+              "sessionId": "s-media",
+              "fileId": "sf-video",
+              "displayName": "product-walkthrough-recording-2026.mp4",
+              "offset": "2613248",
+              "data": "QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE=",
+              "totalSizeBytes": "10485760",
+              "chunkBytes": 8192,
+              "committedOffset": "2621440",
+              "expectedSha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA="
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "requestEntropy": {
+              "minIds": 16
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-3",
+              "attemptId": "r-4",
+              "machineId": "m1",
+              "sessionId": "s-media",
+              "deadlineMs": "1791078124000",
+              "commandBytes": "ggIYCgdzLW1lZGlhEghzZi12aWRlbxiAgKABoAYR",
+              "routeHint": "COMMAND_ROUTE_HINT_BULK",
+              "bulkFileKey": "s-media/sf-video",
+              "bulkBytes": "8192",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "2"
+            }
+          },
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_SESSION"
@@ -861,10 +1054,11 @@
                 "literal": "Studio"
               },
               "computerOnline": true,
-              "connState": "CONN_STATE_CONNECTING",
+              "connState": "CONN_STATE_CONNECTED",
               "daemonProtocolVersion": 17,
               "clientProtocolVersion": 17,
               "capabilities": {
+                "canSend": true,
                 "supportsImages": true,
                 "supportsFiles": true,
                 "supportsSendModes": true,
@@ -879,12 +1073,6 @@
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
                 "capabilitiesLoaded": true,
-                "imageUploadBlockedReason": {
-                  "key": "attachment.disconnected"
-                },
-                "fileUploadBlockedReason": {
-                  "key": "attachment.disconnected_files"
-                },
                 "galleryAllowsVideo": true,
                 "galleryAcceptMime": "image/*,video/*",
                 "maxFileNameBytes": 255,
@@ -905,6 +1093,7 @@
                 "slotKey": "interrupt:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canEnd": true,
               "end": {
                 "slotKey": "stop:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -935,28 +1124,27 @@
                   }
                 ]
               },
+              "canRename": true,
               "rename": {
                 "slotKey": "rename:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "forkBlockedReason": {
-                "key": "session.android_fork_connected"
-              },
+              "canFork": true,
               "fork": {
                 "slotKey": "fork:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canCompact": true,
               "compact": {
                 "slotKey": "compact:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "modelSwitchBlockedReason": {
-                "key": "session.switch_connected"
-              },
+              "canSwitchModel": true,
               "setModel": {
                 "slotKey": "set_model:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canSwitchMode": true,
               "setMode": {
                 "slotKey": "set_mode:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -969,7 +1157,8 @@
                   },
                   "note": {
                     "key": "modes.ask_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_AUTO",
@@ -984,7 +1173,8 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_PLAN",
@@ -993,7 +1183,8 @@
                   },
                   "note": {
                     "key": "modes.ask_generic_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_FULL_ACCESS",
@@ -1008,32 +1199,29 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 }
               ],
               "usageEntry": {},
               "forkAction": {
                 "visible": true,
+                "enabled": true,
                 "label": {
                   "key": "session.fork"
-                },
-                "note": {
-                  "key": "session.android_fork_connected"
                 }
               }
             },
             "dock": {},
             "composer": {
-              "disabledReason": {
-                "key": "composer.ios_connect_send"
-              },
+              "enabled": true,
               "placeholder": {
                 "key": "composer.message"
               },
               "supportsQueueMode": true,
-              "pendingTray": {
-                "offline": true
-              },
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "pendingTray": {},
               "defaultSendMode": "SEND_MODE_STEER",
               "isDefaultPlaceholder": true,
               "slashWarningTitle": {
@@ -1178,7 +1366,7 @@
                       {
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "sha256": "AQIDBA==",
+                        "sha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
                         "nameTail": "026.mp4",
@@ -1218,7 +1406,7 @@
                                 "args": [
                                   {
                                     "name": "count",
-                                    "intValue": "2"
+                                    "intValue": "48"
                                   }
                                 ]
                               }
@@ -1283,7 +1471,7 @@
                       {
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "sha256": "BQYHCA==",
+                        "sha256": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ=",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
                         "nameTail": "tes.docx",
@@ -1559,6 +1747,43 @@
       "effects": {
         "effects": [
           {
+            "sharedFileScanLocal": {
+              "opId": "4"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
             "render": {
               "screens": [
                 "SCREEN_TARGET_MACHINE_STATUS",
@@ -1612,10 +1837,11 @@
                 "literal": "Studio"
               },
               "computerOnline": true,
-              "connState": "CONN_STATE_CONNECTING",
+              "connState": "CONN_STATE_CONNECTED",
               "daemonProtocolVersion": 17,
               "clientProtocolVersion": 17,
               "capabilities": {
+                "canSend": true,
                 "supportsImages": true,
                 "supportsFiles": true,
                 "supportsSendModes": true,
@@ -1630,12 +1856,6 @@
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
                 "capabilitiesLoaded": true,
-                "imageUploadBlockedReason": {
-                  "key": "attachment.disconnected"
-                },
-                "fileUploadBlockedReason": {
-                  "key": "attachment.disconnected_files"
-                },
                 "galleryAllowsVideo": true,
                 "galleryAcceptMime": "image/*,video/*",
                 "maxFileNameBytes": 255,
@@ -1656,6 +1876,7 @@
                 "slotKey": "interrupt:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canEnd": true,
               "end": {
                 "slotKey": "stop:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -1686,28 +1907,27 @@
                   }
                 ]
               },
+              "canRename": true,
               "rename": {
                 "slotKey": "rename:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "forkBlockedReason": {
-                "key": "session.android_fork_connected"
-              },
+              "canFork": true,
               "fork": {
                 "slotKey": "fork:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canCompact": true,
               "compact": {
                 "slotKey": "compact:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "modelSwitchBlockedReason": {
-                "key": "session.switch_connected"
-              },
+              "canSwitchModel": true,
               "setModel": {
                 "slotKey": "set_model:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canSwitchMode": true,
               "setMode": {
                 "slotKey": "set_mode:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -1720,7 +1940,8 @@
                   },
                   "note": {
                     "key": "modes.ask_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_AUTO",
@@ -1735,7 +1956,8 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_PLAN",
@@ -1744,7 +1966,8 @@
                   },
                   "note": {
                     "key": "modes.ask_generic_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_FULL_ACCESS",
@@ -1759,32 +1982,29 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 }
               ],
               "usageEntry": {},
               "forkAction": {
                 "visible": true,
+                "enabled": true,
                 "label": {
                   "key": "session.fork"
-                },
-                "note": {
-                  "key": "session.android_fork_connected"
                 }
               }
             },
             "dock": {},
             "composer": {
-              "disabledReason": {
-                "key": "composer.ios_connect_send"
-              },
+              "enabled": true,
               "placeholder": {
                 "key": "composer.message"
               },
               "supportsQueueMode": true,
-              "pendingTray": {
-                "offline": true
-              },
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "pendingTray": {},
               "defaultSendMode": "SEND_MODE_STEER",
               "isDefaultPlaceholder": true,
               "slashWarningTitle": {
@@ -1929,7 +2149,7 @@
                       {
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "sha256": "AQIDBA==",
+                        "sha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
                         "nameTail": "026.mp4",
@@ -2044,7 +2264,7 @@
                       {
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "sha256": "BQYHCA==",
+                        "sha256": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ=",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
                         "nameTail": "tes.docx",
@@ -2351,10 +2571,11 @@
                 "literal": "Studio"
               },
               "computerOnline": true,
-              "connState": "CONN_STATE_CONNECTING",
+              "connState": "CONN_STATE_CONNECTED",
               "daemonProtocolVersion": 17,
               "clientProtocolVersion": 17,
               "capabilities": {
+                "canSend": true,
                 "supportsImages": true,
                 "supportsFiles": true,
                 "supportsSendModes": true,
@@ -2369,12 +2590,6 @@
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
                 "capabilitiesLoaded": true,
-                "imageUploadBlockedReason": {
-                  "key": "attachment.disconnected"
-                },
-                "fileUploadBlockedReason": {
-                  "key": "attachment.disconnected_files"
-                },
                 "galleryAllowsVideo": true,
                 "galleryAcceptMime": "image/*,video/*",
                 "maxFileNameBytes": 255,
@@ -2395,6 +2610,7 @@
                 "slotKey": "interrupt:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canEnd": true,
               "end": {
                 "slotKey": "stop:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -2425,28 +2641,27 @@
                   }
                 ]
               },
+              "canRename": true,
               "rename": {
                 "slotKey": "rename:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "forkBlockedReason": {
-                "key": "session.android_fork_connected"
-              },
+              "canFork": true,
               "fork": {
                 "slotKey": "fork:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canCompact": true,
               "compact": {
                 "slotKey": "compact:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "modelSwitchBlockedReason": {
-                "key": "session.switch_connected"
-              },
+              "canSwitchModel": true,
               "setModel": {
                 "slotKey": "set_model:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canSwitchMode": true,
               "setMode": {
                 "slotKey": "set_mode:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -2459,7 +2674,8 @@
                   },
                   "note": {
                     "key": "modes.ask_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_AUTO",
@@ -2474,7 +2690,8 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_PLAN",
@@ -2483,7 +2700,8 @@
                   },
                   "note": {
                     "key": "modes.ask_generic_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_FULL_ACCESS",
@@ -2498,32 +2716,29 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 }
               ],
               "usageEntry": {},
               "forkAction": {
                 "visible": true,
+                "enabled": true,
                 "label": {
                   "key": "session.fork"
-                },
-                "note": {
-                  "key": "session.android_fork_connected"
                 }
               }
             },
             "dock": {},
             "composer": {
-              "disabledReason": {
-                "key": "composer.ios_connect_send"
-              },
+              "enabled": true,
               "placeholder": {
                 "key": "composer.message"
               },
               "supportsQueueMode": true,
-              "pendingTray": {
-                "offline": true
-              },
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "pendingTray": {},
               "defaultSendMode": "SEND_MODE_STEER",
               "isDefaultPlaceholder": true,
               "slashWarningTitle": {
@@ -2668,7 +2883,7 @@
                       {
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "sha256": "AQIDBA==",
+                        "sha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
                         "nameTail": "026.mp4",
@@ -2783,7 +2998,7 @@
                       {
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "sha256": "BQYHCA==",
+                        "sha256": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ=",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
                         "nameTail": "tes.docx",
@@ -3089,10 +3304,11 @@
                 "literal": "Studio"
               },
               "computerOnline": true,
-              "connState": "CONN_STATE_CONNECTING",
+              "connState": "CONN_STATE_CONNECTED",
               "daemonProtocolVersion": 17,
               "clientProtocolVersion": 17,
               "capabilities": {
+                "canSend": true,
                 "supportsImages": true,
                 "supportsFiles": true,
                 "supportsSendModes": true,
@@ -3107,12 +3323,6 @@
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
                 "capabilitiesLoaded": true,
-                "imageUploadBlockedReason": {
-                  "key": "attachment.disconnected"
-                },
-                "fileUploadBlockedReason": {
-                  "key": "attachment.disconnected_files"
-                },
                 "galleryAllowsVideo": true,
                 "galleryAcceptMime": "image/*,video/*",
                 "maxFileNameBytes": 255,
@@ -3133,6 +3343,7 @@
                 "slotKey": "interrupt:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canEnd": true,
               "end": {
                 "slotKey": "stop:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -3163,28 +3374,27 @@
                   }
                 ]
               },
+              "canRename": true,
               "rename": {
                 "slotKey": "rename:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "forkBlockedReason": {
-                "key": "session.android_fork_connected"
-              },
+              "canFork": true,
               "fork": {
                 "slotKey": "fork:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canCompact": true,
               "compact": {
                 "slotKey": "compact:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
-              "modelSwitchBlockedReason": {
-                "key": "session.switch_connected"
-              },
+              "canSwitchModel": true,
               "setModel": {
                 "slotKey": "set_model:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
               },
+              "canSwitchMode": true,
               "setMode": {
                 "slotKey": "set_mode:s-media",
                 "status": "SESSION_COMMAND_STATUS_IDLE"
@@ -3197,7 +3407,8 @@
                   },
                   "note": {
                     "key": "modes.ask_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_AUTO",
@@ -3212,7 +3423,8 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_PLAN",
@@ -3221,7 +3433,8 @@
                   },
                   "note": {
                     "key": "modes.ask_generic_desc"
-                  }
+                  },
+                  "available": true
                 },
                 {
                   "mode": "APPROVAL_MODE_FULL_ACCESS",
@@ -3236,32 +3449,29 @@
                         "strValue": "Codex"
                       }
                     ]
-                  }
+                  },
+                  "available": true
                 }
               ],
               "usageEntry": {},
               "forkAction": {
                 "visible": true,
+                "enabled": true,
                 "label": {
                   "key": "session.fork"
-                },
-                "note": {
-                  "key": "session.android_fork_connected"
                 }
               }
             },
             "dock": {},
             "composer": {
-              "disabledReason": {
-                "key": "composer.ios_connect_send"
-              },
+              "enabled": true,
               "placeholder": {
                 "key": "composer.message"
               },
               "supportsQueueMode": true,
-              "pendingTray": {
-                "offline": true
-              },
+              "canAttachImages": true,
+              "canAttachFiles": true,
+              "pendingTray": {},
               "defaultSendMode": "SEND_MODE_STEER",
               "isDefaultPlaceholder": true,
               "slashWarningTitle": {
@@ -3406,7 +3616,7 @@
                       {
                         "sizeBytes": "10485760",
                         "fileId": "sf-video",
-                        "sha256": "AQIDBA==",
+                        "sha256": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=",
                         "displayName": "product-walkthrough-recording-2026.mp4",
                         "nameHead": "product-walkthrough-recording-2",
                         "nameTail": "026.mp4",
@@ -3521,7 +3731,7 @@
                       {
                         "sizeBytes": "262144",
                         "fileId": "sf-doc",
-                        "sha256": "BQYHCA==",
+                        "sha256": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ=",
                         "displayName": "design-notes.docx",
                         "nameHead": "design-no",
                         "nameTail": "tes.docx",
@@ -3783,6 +3993,45 @@
     {
       "effects": {
         "effects": [
+          {
+            "rpc": {
+              "opId": "5",
+              "getEvents": {
+                "sessionId": "s-media",
+                "afterSeq": "4",
+                "limit": 500
+              }
+            }
+          },
+          {
+            "requestEntropy": {
+              "minIds": 16
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "r-5",
+              "attemptId": "r-6",
+              "machineId": "m1",
+              "deadlineMs": "1791078124450",
+              "commandBytes": "qgECCAGgBhE=",
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "3"
+            }
+          },
+          {
+            "dispatchCommand": {
+              "requestId": "core-1",
+              "attemptId": "core-2",
+              "machineId": "m1",
+              "deadlineMs": "1791078124450",
+              "commandBytes": "ugEAoAYR",
+              "routeHint": "COMMAND_ROUTE_HINT_READ",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "4"
+            }
+          },
           {
             "render": {
               "screens": [
