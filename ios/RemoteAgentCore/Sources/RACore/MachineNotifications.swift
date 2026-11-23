@@ -10,26 +10,32 @@ public struct MachineDiskNotice: Equatable, Sendable {
     public let title: String
     public let body: String
 }
-public func machineDiskNotice(_ c: PBNotifyContent, locale: String = MessageLocale.current) -> MachineDiskNotice? {
-    guard c.kind == .machineDisk, c.sessionID.isEmpty, !c.machineID.isEmpty, !c.machineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-          c.title.isEmpty, c.text.isEmpty, !c.hasApproval, c.hasDiskStatus else { return nil }
-    let disk=c.diskStatus, critical=diskPressureCritical(c.diskStatus)
-    guard (critical || disk.pressure == .warning), disk.availableBytes < (critical ? 2_000_000_000 : 10_000_000_000) else { return nil }
-    let formatter=NumberFormatter();formatter.locale=Locale(identifier:locale);formatter.minimumFractionDigits=1;formatter.maximumFractionDigits=1
-    let number=formatter.string(from:NSNumber(value:Double(disk.availableBytes)/1e9))!
-    let size=L10n.machineStatusSizeGb(size:number,locale:locale)
-    return MachineDiskNotice(machineID:c.machineID,tag:c.machineID+"/NOTIFY_KIND_MACHINE_DISK",
-        title:critical ? L10n.machineStatusNotifyCritical(computer:c.machineName,size:size,locale:locale) : L10n.machineStatusNotifyWarning(computer:c.machineName,size:size,locale:locale),
-        body:critical ? L10n.machineStatusNotifyCriticalBody(locale:locale) : L10n.machineStatusNotifyWarningBody(locale:locale))
-}
-private func diskPressureCritical(_ disk: PBDiskStatus) -> Bool { disk.pressure == .critical }
 /// iOS currently has no OS push delivery adapter. This RACore receiver is the
-/// verified envelope -> localized notification + machine destination boundary.
-public func receiveMachineDiskNotification(envelope: Data, notifyRecord: Data, locale: String = MessageLocale.current) throws -> MachineDiskNotice? {
-    guard let c = try openNotifyEnvelopeViaCore(notifyBlob: notifyRecord, envelope: PBEnvelope(serializedBytes: envelope)) else {
+/// verified envelope -> Core-validated `SecurityNotifyDisplay` -> localized notification + machine destination boundary.
+public func receiveMachineDiskNotification(
+    envelope: Data,
+    notifyRecord: Data,
+    machineID: String,
+    tag: String,
+    showContent: Bool = true,
+    locked: Bool = false,
+    nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+    locale: String = MessageLocale.current
+) throws -> MachineDiskNotice? {
+    guard let display = try openNotifyDisplayViaCore(
+        notifyBlob: notifyRecord,
+        envelope: PBEnvelope(serializedBytes: envelope),
+        expectedKind: .machineDisk,
+        nowMs: nowMs,
+        machineId: machineID,
+        tag: tag
+    ), display.valid else {
         return nil
     }
-    return machineDiskNotice(c, locale: locale)
+    let detailed = !locked && (showContent || display.showDetailedByDefault)
+    let title = detailed ? display.title.rendered(locale: locale) : "remote-agent"
+    let body = detailed ? display.body.rendered(locale: locale) : display.genericBody.rendered(locale: locale)
+    return MachineDiskNotice(machineID: display.machineID, tag: display.tag, title: title, body: body)
 }
 extension Remote {
     public func setMachinePushTarget(type: PBPushType, target: String, kinds: [PBNotifyKind]) async throws -> PBSetPushTargetResponse {

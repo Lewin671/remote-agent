@@ -330,15 +330,20 @@ public final class SecurityExecutor: @unchecked Sendable {
     }
 }
 
-/// Decodes and verifies a push notification `PBEnvelope` using Go `clientcore` (`notify_blob`)
+/// Decodes, verifies, and projects a push notification `PBEnvelope` using Go `clientcore` (`notify_blob`)
 /// in a short-lived sandboxed `CoreClient` without needing unlocked device private keys.
-public func openNotifyEnvelopeViaCore(
+/// Fail-closed: returns `nil` whenever `expectedKind` is unspecified or Core marks `display.valid == false`.
+public func openNotifyDisplayViaCore(
     notifyBlob: Data,
     envelope: PBEnvelope,
+    expectedKind: PBNotifyKind,
     nowMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+    machineId: String = "",
     sessionId: String = "",
-    tag: String = ""
-) throws -> PBNotifyContent? {
+    tag: String = "",
+    eventKey: String = ""
+) throws -> PBSecurityNotifyDisplay? {
+    guard expectedKind != .unspecified else { return nil }
     let core = try CoreClient()
     defer { core.close() }
     let batch = try core.dispatch(PBCoreEvent.with {
@@ -349,14 +354,21 @@ public func openNotifyEnvelopeViaCore(
             $0.opID = 1
             $0.notifyBlob = notifyBlob
             $0.envelope = envelope
+            $0.nowMs = nowMs
+            $0.expectedKind = expectedKind
+            $0.machineID = machineId
+            $0.sessionID = sessionId
+            $0.tag = tag
+            $0.eventKey = eventKey
         }
     })
     for eff in batch.effects {
         if case .securityNotifyOpened(let res)? = eff.effect, res.opID == 1 {
             if !res.error.isEmpty {
-                throw SecurityWorkflowError(message: translateSecurityKey(res.error), code: "invalid", retryable: false, uncertain: false, errorAction: "")
+                throw SecurityWorkflowError(message: translateSecurityKey(res.error), code: .invalid, retryable: false, uncertain: false, errorAction: "")
             }
-            return res.hasContent ? res.content : nil
+            guard res.hasDisplay, res.display.valid else { return nil }
+            return res.display
         }
     }
     return nil

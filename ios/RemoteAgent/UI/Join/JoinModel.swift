@@ -78,7 +78,7 @@ struct JoinCalls: Sendable {
                         try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
                         throw SecurityWorkflowError(
                             message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
-                            code: "canceled",
+                            code: .canceled,
                             retryable: false
                         )
                     }
@@ -89,7 +89,7 @@ struct JoinCalls: Sendable {
                         try? await secClient.cancelJoinPairing(pairingId: info.pairingID)
                         throw SecurityWorkflowError(
                             message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(),
-                            code: "canceled",
+                            code: .canceled,
                             retryable: false
                         )
                     }

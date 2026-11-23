@@ -438,7 +438,7 @@ actor CoreHost: SyncEngine {
                 await self?.runSecurityOp(req) ?? .with {
                     $0.opID = req.opID
                     $0.error = "host closed"
-                    $0.errorCode = "storage"
+                    $0.structuredErrorCode = .storage
                 }
             },
             onCoreEvent: { [weak self] ev in
@@ -617,7 +617,7 @@ actor CoreHost: SyncEngine {
             return .with {
                 $0.opID = req.opID
                 $0.error = "security host unavailable"
-                $0.errorCode = "storage"
+                $0.structuredErrorCode = .storage
             }
         }
         let opID = nextSecurityOpID
@@ -636,7 +636,7 @@ actor CoreHost: SyncEngine {
             securityOpWaiters.removeValue(forKey: opID)?.resume(returning: .with {
                 $0.opID = opID
                 $0.error = "host closed"
-                $0.errorCode = "storage"
+                $0.structuredErrorCode = .storage
             })
             return
         }
@@ -689,7 +689,7 @@ actor CoreHost: SyncEngine {
             continuation.resume(returning: .with {
                 $0.opID = opID
                 $0.error = "host closed"
-                $0.errorCode = "storage"
+                $0.structuredErrorCode = .storage
             })
         }
         let pendingRetry = retryNowWaiters

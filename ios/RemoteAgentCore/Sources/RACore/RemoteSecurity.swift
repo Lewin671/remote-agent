@@ -275,22 +275,24 @@ extension Remote {
     }
 
     static func mapOpError(_ res: PBSecurityOpResultEffect) -> Error {
-        switch res.errorCode {
-        case "unsupported_history":
+        switch res.structuredErrorCode {
+        case .unsupportedHistory:
             return UnsupportedHistoryError()
-        case "recovery_unavailable":
+        case .recoveryUnavailable:
             return SecurityFailure.unavailable
-        case "stale":
-            return res.error.contains("lease expired") ? SecurityFailure.lease : SecurityFailure.stale
-        case "clock":
+        case .leaseExpired:
+            return SecurityFailure.lease
+        case .stale:
+            return SecurityFailure.stale
+        case .clockSkewed:
             return SecurityFailure.clock
-        case "untrusted":
+        case .untrusted:
             return SecurityFailure.untrusted
-        case "capacity":
+        case .capacity:
             return SecurityFailure.capacity
-        case "storage":
+        case .storage:
             return SecurityFailure.storage
-        case "conflict":
+        case .conflict:
             return SecurityFailure.conflict
         default:
             return SecurityFailure.invalid

@@ -54,14 +54,14 @@ public struct PairLink: Equatable, Sendable {
 
 public struct SecurityWorkflowError: Error, LocalizedError, Equatable, Sendable {
     public let message: String
-    public let code: String
+    public let code: PBSecurityErrorCode
     public let retryable: Bool
     public let uncertain: Bool
     public let errorAction: String
 
     public init(
         message: String,
-        code: String = "",
+        code: PBSecurityErrorCode = .unspecified,
         retryable: Bool = true,
         uncertain: Bool = false,
         errorAction: String = ""
@@ -87,7 +87,9 @@ public func translateSecurityKey(_ raw: String) -> String {
 }
 
 public func translateSecurityErrorMessage(_ res: PBSecurityWorkflowResultEffect) -> String {
-    let raw = !res.error.isEmpty ? res.error : (!res.errorCode.isEmpty ? res.errorCode : "security error")
+    let raw = !res.error.isEmpty
+        ? res.error
+        : (res.structuredErrorCode != .unspecified ? String(describing: res.structuredErrorCode) : "security error")
     return translateSecurityKey(raw)
 }
 
@@ -227,7 +229,7 @@ public final class SecurityClient: @unchecked Sendable {
             let msg = translateSecurityErrorMessage(res)
             waiter.resolve(.failure(SecurityWorkflowError(
                 message: msg,
-                code: res.errorCode,
+                code: res.structuredErrorCode,
                 retryable: res.retryable,
                 uncertain: res.uncertain,
                 errorAction: res.errorAction
@@ -251,7 +253,7 @@ public final class SecurityClient: @unchecked Sendable {
             waiters.removeAll()
             return all
         }
-        let err = SecurityWorkflowError(message: reason, code: "canceled", retryable: false)
+        let err = SecurityWorkflowError(message: reason, code: .canceled, retryable: false)
         for waiter in pending { waiter.resolve(.failure(err)) }
     }
 
@@ -259,7 +261,7 @@ public final class SecurityClient: @unchecked Sendable {
         setForegroundFn(active)
     }
 
-    private static let closedErr = SecurityWorkflowError(message: "security client closed", code: "canceled", retryable: false)
+    private static let closedErr = SecurityWorkflowError(message: "security client closed", code: .canceled, retryable: false)
 
     private func run(_ build: (inout PBSecurityWorkflowActionEvent) -> Void) async throws -> PBSecurityWorkflowResultEffect {
         try await awaitWaiter(

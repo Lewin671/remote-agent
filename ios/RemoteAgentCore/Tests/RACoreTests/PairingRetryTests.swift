@@ -84,7 +84,7 @@ extension ServerTests {
             let fx = PBSecurityWorkflowResultEffect.with {
                 $0.ok = false
                 $0.error = "security.pairing_expired_or_was_canceled"
-                $0.errorCode = "not_found"
+                $0.structuredErrorCode = .notFound
                 $0.retryable = false
                 $0.uncertain = false
             }

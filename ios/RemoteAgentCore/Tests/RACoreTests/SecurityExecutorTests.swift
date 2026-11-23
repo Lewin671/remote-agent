@@ -169,6 +169,7 @@ extension ServerTests {
                 content.kind = .machineDisk
                 content.machineID = daemon.id
                 content.machineName = "Notify Mac"
+                content.diskStatus.observedMs = 1
                 content.diskStatus.availableBytes = 1_500_000_000
                 content.diskStatus.pressure = .critical
                 let payload = try content.serializedData()
@@ -176,17 +177,53 @@ extension ServerTests {
                     $0.sealEnvelope = .with {
                         $0.purpose = SecurityPurpose.notify.rawValue
                         $0.machineID = daemon.id
-                        $0.requestID = "disk:1:1"
+                        $0.requestID = "disk:1:\(PBResourcePressure.critical.rawValue)"
                         $0.plaintext = payload
                     }
                 }
                 #expect(sealed.error.isEmpty)
-                let notice = try receiveMachineDiskNotification(
-                    envelope: try sealed.sealed.envelope.serializedData(),
+                let envData = try sealed.sealed.envelope.serializedData()
+                let expectedTag = "\(daemon.id)/NOTIFY_KIND_MACHINE_DISK"
+                let noticeEn = try receiveMachineDiskNotification(
+                    envelope: envData,
                     notifyRecord: notifyBlob,
+                    machineID: daemon.id,
+                    tag: expectedTag,
                     locale: "en"
                 )
-                #expect(notice?.machineID == daemon.id)
+                #expect(noticeEn?.machineID == daemon.id)
+                #expect(noticeEn?.tag == expectedTag)
+                #expect(noticeEn?.body == "Clean up now or sessions may not start.")
+                let noticeZh = try receiveMachineDiskNotification(
+                    envelope: envData,
+                    notifyRecord: notifyBlob,
+                    machineID: daemon.id,
+                    tag: expectedTag,
+                    locale: "zh-CN"
+                )
+                #expect(noticeZh?.title == "Notify Mac 磁盘快满了，只剩 1.5 GB")
+
+                // Locked state must redact detail to generic_body.
+                let lockedNotice = try receiveMachineDiskNotification(
+                    envelope: envData,
+                    notifyRecord: notifyBlob,
+                    machineID: daemon.id,
+                    tag: expectedTag,
+                    locked: true,
+                    locale: "en"
+                )
+                #expect(lockedNotice?.title == "remote-agent")
+                #expect(lockedNotice?.body == L10n.machineStatusHomeWarning(locale: "en"))
+
+                // Fail-closed when outer tag or machineID does not match.
+                let wrongTag = try receiveMachineDiskNotification(
+                    envelope: envData,
+                    notifyRecord: notifyBlob,
+                    machineID: daemon.id,
+                    tag: "wrong-tag",
+                    locale: "en"
+                )
+                #expect(wrongTag == nil)
 
                 var tampered = sealed.sealed.envelope
                 tampered.signature[0] ^= 0xff
@@ -194,6 +231,8 @@ extension ServerTests {
                     _ = try receiveMachineDiskNotification(
                         envelope: try tampered.serializedData(),
                         notifyRecord: notifyBlob,
+                        machineID: daemon.id,
+                        tag: expectedTag,
                         locale: "en"
                     )
                 }

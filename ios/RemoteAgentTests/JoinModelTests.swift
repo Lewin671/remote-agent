@@ -112,7 +112,7 @@ final class FakeJoin: @unchecked Sendable {
         m.cancel()
         #expect(await task.value == false)
         #expect(p.stopped() && joined.accounts.isEmpty)
-        p.end.resume(throwing: SecurityWorkflowError(message: "已取消", code: "canceled", retryable: false))
+        p.end.resume(throwing: SecurityWorkflowError(message: "已取消", code: .canceled, retryable: false))
     }
     @Test func theCodeKeepsOnlyEightDigitsAndIsShownInTwoGroups() {
         let m = model()
@@ -221,7 +221,7 @@ final class FakeJoin: @unchecked Sendable {
         #expect(m.notice == L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe())
         #expect(!m.noticeIsError)
         // The pairing ending because it was stopped changes nothing on the page.
-        p.end.resume(throwing: SecurityWorkflowError(message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(), code: "canceled", retryable: false))
+        p.end.resume(throwing: SecurityWorkflowError(message: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(), code: .canceled, retryable: false))
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(m.notice == L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe() && m.step == .form)
         #expect(joined.accounts.isEmpty)
@@ -249,7 +249,7 @@ final class FakeJoin: @unchecked Sendable {
 
     @Test func aJoinThatFailsSaysWhyAndKeepsWhatWasTyped() async {
         let (m, p) = await started()
-        p.end.resume(throwing: SecurityWorkflowError(message: "配对码不对，或者已经用过了", code: "invalid", retryable: false))
+        p.end.resume(throwing: SecurityWorkflowError(message: "配对码不对，或者已经用过了", code: .invalid, retryable: false))
         await eventually("failed") { m.step == .form }
         #expect(m.notice == L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen() && m.noticeIsError)
         #expect(m.code == "48291756")
