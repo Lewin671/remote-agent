@@ -1162,6 +1162,7 @@ actor CoreHost: SyncEngine {
         machineStatusWatches[token] = MachineStatusWatchEntry(token: token, machineID: machineID, mode: mode)
         if mode == .live {
             activeMachineStatusID = machineID
+            await hydrateUsageCache(machineID: machineID)
         }
         await syncMachineStatusWatch(machineID: machineID)
         if mode == .live {

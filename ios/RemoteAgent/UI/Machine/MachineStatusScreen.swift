@@ -188,7 +188,8 @@ struct MachineStatusScreen: View {
             onCleanup: {
                 context.dispatch { $0.machineStatusCleanup.machineID = id }
             },
-            onOpenSession: { sid in nav.open(.session(id: sid)) }
+            onOpenSession: { sid in nav.open(.session(id: sid)) },
+            onOpenUsage: { agent, model in nav.open(.usage(machine: id, agent: agent, model: model)) }
         )
         .task(id: id) {
             if HomeLaunch.value("-machineList") == "processes" {
@@ -278,6 +279,7 @@ struct MachineStatusScreenContent: View {
     let onOpenStorage: () -> Void
     let onCleanup: () -> Void
     let onOpenSession: (String) -> Void
+    var onOpenUsage: (PBAgent, String) -> Void = { _, _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduce
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -415,6 +417,9 @@ struct MachineStatusScreenContent: View {
             }
             usageHeader(vm.topUsage).padding(.top, 26)
             usageList(vm.topUsage, dim: vm.dim)
+            if vm.hasModelUsage && (vm.modelUsage.supported || vm.modelUsage.hasUnsupportedFootnote) {
+                modelUsageSection(vm.modelUsage, dim: vm.dim).padding(.top, 26)
+            }
             if !footParts.isEmpty {
                 Text(footParts.joined(separator: " · "))
                     .font(.footnote)
@@ -564,11 +569,6 @@ struct MachineStatusScreenContent: View {
 
     private func usageList(_ top: PBMachineTopUsageSection, dim: Bool) -> some View {
         let rows = top.rows
-        let maxVal: Double = if main == .cpu {
-            rows.map(\.cpuPercent).max().flatMap { $0 > 0 ? $0 : nil } ?? 100
-        } else {
-            rows.map { Double($0.memoryBytes) }.max().flatMap { $0 > 0 ? $0 : nil } ?? 1
-        }
         return VStack(spacing: 0) {
             if rows.isEmpty {
                 Text(top.emptyText.rendered().or(L10n.machineStatusNoRunningSessions()))
@@ -579,12 +579,8 @@ struct MachineStatusScreenContent: View {
                     .padding(16)
             }
             ForEach(Array(rows.enumerated()), id: \.element.id) { i, row in
-                let bar = main == .cpu
-                    ? min(max(row.cpuPercent / maxVal, 0), 1)
-                    : min(max(Double(row.memoryBytes) / maxVal, 0), 1)
-                let primary = main == .cpu
-                    ? "\(Int(row.cpuPercent.rounded()))%"
-                    : imageBytes(Int64(row.memoryBytes))
+                let bar = main == .cpu ? row.cpuBarFraction : row.memoryBarFraction
+                let primary = main == .cpu ? row.cpuValueText.rendered() : row.memoryValueText.rendered()
                 UsageRowView(
                     row: row,
                     primary: primary,
@@ -601,6 +597,108 @@ struct MachineStatusScreenContent: View {
         .frame(maxWidth: .infinity)
         .animation(reduce ? nil : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.3), value: rows.map(\.id))
         .statusCard()
+    }
+
+    private func modelUsageSection(_ preview: PBMachineModelUsagePreview, dim: Bool) -> some View {
+        let windowText = preview.hasWindowLabel ? preview.windowLabel.rendered() : ""
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(L10n.usageTitle())
+                    .font(.title3.bold())
+                    .foregroundStyle(DS.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                if preview.supported {
+                    Button {
+                        onOpenUsage(.unspecified, "")
+                    } label: {
+                        HStack(spacing: 4) {
+                            if !windowText.isEmpty {
+                                Text(windowText)
+                                    .font(.subheadline)
+                                    .foregroundStyle(DS.ink2)
+                            }
+                            Arrow(DS.ink3)
+                        }
+                        .frame(minHeight: DS.minHit)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else if !windowText.isEmpty {
+                    Text(windowText)
+                        .font(.subheadline)
+                        .foregroundStyle(DS.ink2)
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 6)
+
+            VStack(spacing: 0) {
+                if preview.loading && preview.rows.isEmpty {
+                    LoadingRow(inset: 16)
+                } else if !preview.rows.isEmpty {
+                    ForEach(Array(preview.rows.enumerated()), id: \.offset) { idx, row in
+                        let title = row.hasTitleText ? row.titleText.rendered() : row.model
+                        let tokens = row.hasTotalTokensText ? row.totalTokensText.rendered() : ""
+                        let meta = row.hasMetaText ? row.metaText.rendered() : ""
+                        Button {
+                            onOpenUsage(row.agent, row.model)
+                        } label: {
+                            HStack(alignment: .center, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(title)
+                                        .font(.callout.weight(.medium))
+                                        .foregroundStyle(dim ? DS.ink3 : DS.ink)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    if !meta.isEmpty {
+                                        Text(meta)
+                                            .font(.footnote)
+                                            .foregroundStyle(dim ? DS.ink3 : DS.ink2)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                if !tokens.isEmpty {
+                                    Text(tokens)
+                                        .font(.callout.weight(.semibold))
+                                        .monospacedDigit()
+                                        .foregroundStyle(dim ? DS.ink3 : DS.ink)
+                                        .lineLimit(1)
+                                }
+                                Arrow(DS.ink3)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 11)
+                            .contentShape(Rectangle())
+                            .overlay(alignment: .bottom) {
+                                if idx < preview.rows.count - 1 {
+                                    Rectangle().fill(DS.sep).frame(height: 0.5).padding(.leading, 16)
+                                }
+                            }
+                        }
+                        .buttonStyle(RowPressStyle())
+                    }
+                } else if !preview.supported && preview.hasUnsupportedFootnote {
+                    Text(preview.unsupportedFootnote.rendered())
+                        .font(.footnote)
+                        .foregroundStyle(DS.ink2)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                } else if preview.hasEmptyText {
+                    Text(preview.emptyText.rendered())
+                        .font(.footnote)
+                        .foregroundStyle(DS.ink2)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                }
+            }
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity)
+            .statusCard()
+        }
     }
 
     private func applyDebugSwapLaunch() {
@@ -624,27 +722,6 @@ struct MachineStatusScreenContent: View {
 }
 
 // MARK: Pieces
-
-private func parseFigure(_ raw: String, fallbackCaption: String) -> (value: String, number: Double, unit: String) {
-    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty || trimmed == "—" {
-        return ("—", 0, fallbackCaption)
-    }
-    if trimmed.hasSuffix("%") {
-        let num = trimmed.dropLast().trimmingCharacters(in: .whitespaces)
-        return (num, Double(num) ?? 0, "%")
-    }
-    if trimmed.hasSuffix(" GB") {
-        let num = String(trimmed.dropLast(3)).trimmingCharacters(in: .whitespaces)
-        return (num, Double(num) ?? 0, fallbackCaption.or("GB"))
-    }
-    for suffix in [" TB", " MB", " KB", " B"] where trimmed.hasSuffix(suffix) {
-        let num = String(trimmed.dropLast(suffix.count)).trimmingCharacters(in: .whitespaces)
-        let unit = suffix.trimmingCharacters(in: .whitespaces)
-        return (num, Double(num) ?? 0, fallbackCaption.isEmpty ? unit : unit)
-    }
-    return (trimmed, Double(trimmed) ?? 0, fallbackCaption)
-}
 
 private struct LiveLine: View {
     let dot: PBMachineStatusDot
@@ -730,14 +807,18 @@ private struct HeroContent: View {
 
     private var figure: (value: String, number: Double, unit: String) {
         if chart.hasScrub_p {
-            let raw = chart.scrubValue.rendered()
-            let caption = metric == .memory ? mem.caption.rendered() : "%"
-            return parseFigure(raw, fallbackCaption: caption)
+            let idx = Int(chart.scrubIndex)
+            let val = chart.points.indices.contains(idx) ? chart.points[idx].value : (metric == .cpu ? cpu.value : mem.value)
+            if metric == .cpu {
+                return ("\(Int(val.rounded()))", val, "%")
+            }
+            return (chart.scrubValue.rendered().or("—"), val, "")
         }
         if metric == .cpu {
-            return parseFigure(cpu.headline, fallbackCaption: "%")
+            return (cpu.valueText.or("—"), cpu.value, cpu.unit)
         }
-        return parseFigure(mem.headline.rendered(), fallbackCaption: mem.caption.rendered())
+        let unit = mem.unit == "GB" ? mem.caption.rendered().or("GB") : mem.unit
+        return (mem.valueText.or("—"), mem.value, unit)
     }
 
     private func sideLines(_ alignment: HorizontalAlignment, ink: Color, ink2: Color) -> some View {
@@ -917,9 +998,9 @@ private struct SmallTile: View {
         let ink = dim ? DS.ink3 : DS.ink
         let ink2 = dim ? DS.ink3 : DS.ink2
         let fig: (value: String, number: Double, unit: String) = if metric == .memory {
-            parseFigure(mem.headline.rendered(), fallbackCaption: mem.caption.rendered())
+            (mem.valueText.or("—"), mem.value, mem.unit == "GB" ? mem.caption.rendered().or("GB") : mem.unit)
         } else {
-            parseFigure(cpu.headline, fallbackCaption: "%")
+            (cpu.valueText.or("—"), cpu.value, cpu.unit)
         }
 
         Button(action: onTap) {
@@ -979,7 +1060,11 @@ private struct DiskTile: View {
         let bad = disk.state == .critical
         let ink = dim ? DS.ink3 : disk.state.ink(DS.ink)
         let ink2 = dim ? DS.ink3 : (bad ? DS.red : DS.ink2)
-        let fig = parseFigure(disk.headline.rendered(), fallbackCaption: disk.caption.rendered())
+        let fig = (
+            value: disk.valueText.or("—"),
+            number: disk.value,
+            unit: disk.unit == "GB" ? disk.caption.rendered().or("GB") : disk.unit
+        )
 
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
