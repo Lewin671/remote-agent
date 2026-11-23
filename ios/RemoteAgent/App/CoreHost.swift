@@ -30,7 +30,6 @@ final class CoreScreens {
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
     var newSession = PBCoreNewSessionViewModel()
-    var project = PBCoreProjectViewModel()
     var sessions: [String: PBSessionViewModel] = [:]
     var schedules = PBSchedulesViewModel()
     var scheduleDetail = PBScheduleDetailViewModel()
@@ -2256,7 +2255,6 @@ actor CoreHost: SyncEngine {
         ] in
             if let homeVM { screens.home = homeVM }
             if let projectVM {
-                screens.project = projectVM
                 if projectVM.hasDetail { screens.projectDetail = projectVM.detail }
                 if projectVM.hasManage { screens.manageProjects = projectVM.manage }
             }

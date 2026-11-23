@@ -417,7 +417,7 @@ struct ChatPane: View {
         let rows = cache.syncBuild(items: tl.items)
         let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
-            agent: header.agent != .unspecified ? header.agent : (state.sessions[sessionID]?.agent ?? defaultAgent),
+            agent: header.agent != .unspecified ? header.agent : defaultAgent,
             frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
             session: sessionID,
             machine: header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: header.machineID),
@@ -636,7 +636,7 @@ struct ChatPane: View {
         composer: PBSessionComposerView,
         actions: PBSessionActionsView
     ) -> some View {
-        let taskOwned = model.state.sessions[sessionID]?.info?.taskOwned == true
+        let taskOwned = header.isScheduled && !header.scheduledTaskID.isEmpty
         if header.exited {
             VStack(spacing: 0) {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
