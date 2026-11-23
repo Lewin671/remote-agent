@@ -1071,7 +1071,9 @@ internal fun Composer(
     val interruptBusy = interruptSlot.busy || interruptSlot.status == SessionCommandStatus.SESSION_COMMAND_STATUS_PENDING
     val placeholder = if (composer.hasPlaceholder()) uiText(composer.placeholder) else copy(UiMessages.composerMessage())
     val hasPendingTray = composer.hasPendingTray() && (composer.pendingTray.totalCount > 0 || (composer.pendingTray.hasUndo() && composer.pendingTray.undo.visible))
-    val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val imeOpen by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
     val compactWidth = LocalConfiguration.current.screenWidthDp < 600
 
     ComposeBox(

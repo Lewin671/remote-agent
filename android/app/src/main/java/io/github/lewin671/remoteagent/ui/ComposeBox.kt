@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -161,7 +162,9 @@ fun ComposeBox(
                 }
             }
 
-            val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            val ime = WindowInsets.ime
+            val density = LocalDensity.current
+            val imeOpen by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
             val maxDraftHeight = if (imeOpen) 116.dp else 220.dp
             val maxDraftRatio = if (imeOpen) 0.40f else 0.45f
 
