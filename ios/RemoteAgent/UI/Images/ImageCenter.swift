@@ -1164,7 +1164,9 @@ final class ImageCenter {
                 })
             }
         }
-        let eval = await evaluateAttachments(evalRequest(key: key, machineId: machineId, candidates: cands))
+        var request = evalRequest(key: key, machineId: machineId, candidates: cands)
+        request.putBack = true
+        let eval = await evaluateAttachments(request)
         guard eval.decisions.count == cands.count, eval.decisions.allSatisfy(\.accepted) else {
             let reason = Self.rejectionReason(from: eval)
             if !reason.isEmpty {
