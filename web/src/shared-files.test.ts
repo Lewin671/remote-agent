@@ -25,6 +25,7 @@ import {
   SharedFileVerifyAndCommitEffectSchema,
   SharedFileWriteChunkEffectSchema,
 } from "./gen/remoteagent/core/v1/shared_files_pb";
+import { hashBlobStreaming } from "./shared-file-sha256";
 import {
   bytesToHex,
   decodeSegment,
@@ -82,9 +83,9 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
         return backing.writeChunk(params);
       },
       readPartialBlob: (s, f) => backing.readPartialBlob(s, f),
-      async commitCompleted(s, f, bytes): Promise<Blob> {
+      async commitPartial(s, f, totalSizeBytes): Promise<Blob> {
         await gate(`commit:${s}/${f}`, 10);
-        return backing.commitCompleted(s, f, bytes);
+        return backing.commitPartial(s, f, totalSizeBytes);
       },
       getCompletedBlob: (s, f) => backing.getCompletedBlob(s, f),
       async deletePartial(s, f): Promise<void> {
@@ -273,6 +274,8 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
     });
     const commitEvents: Event["event"][] = [];
     const exec2 = new SharedFileExecutor({ store: tightStore, onEvent: (ev) => commitEvents.push(ev) });
+    // Simulate a quota error during commitPartial (e.g. fallback copy when OPFS move() is unavailable).
+    const commitSpy = vi.spyOn(tightStore, "commitPartial").mockRejectedValueOnce(new StorageQuotaError());
     exec2.handleVerifyAndCommit(
       create(SharedFileVerifyAndCommitEffectSchema, {
         opId: 11n,
@@ -285,6 +288,7 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
       }),
     );
     await exec2.whenIdle();
+    commitSpy.mockRestore();
     const cres = commitEvents[0];
     expect(cres.case).toBe("sharedFileVerifyAndCommitResult");
     if (cres.case === "sharedFileVerifyAndCommitResult") {
@@ -292,6 +296,9 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
       expect(cres.value.errorKind).toBe(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL);
     }
     expect((await tightStore.readPartialBlob("s1", "f-tight"))?.size).toBe(4);
+    // In-place commitPartial without extra quota succeeds within the exact 4-byte cap.
+    const okBlob = await tightStore.commitPartial("s1", "f-tight", 4);
+    expect(okBlob.size).toBe(4);
   });
 
   it("handles 0-byte verify, deliver_only direct save without caching, checksum mismatch, and LocalMissing", async () => {
@@ -444,13 +451,22 @@ describe("SharedFileExecutor FIFO queue and platform I/O", () => {
       resetPartial: true,
     });
     expect(await store.scanLocal()).toHaveLength(1);
-    const bytes = await (await store.readPartialBlob("s-fb", "f-fb"))!.arrayBuffer();
-    const committed = await store.commitCompleted("s-fb", "f-fb", bytes);
+    const committed = await store.commitPartial("s-fb", "f-fb", 3);
     expect(committed.size).toBe(3);
     expect((await store.getCompletedBlob("s-fb", "f-fb"))?.size).toBe(3);
     // Once OPFS is disabled, inspectDisk falls back cleanly to known=false.
     expect(await store.inspectDisk()).toEqual({ known: false, availableBytes: 0n });
     expect(new StorageQuotaError().name).toBe("StorageQuotaError");
+  });
+
+  it("hashBlobStreaming matches WebCrypto SHA-256 across block boundaries and multi-slice blobs", async () => {
+    for (const size of [0, 1, 55, 56, 63, 64, 65, 128, 10_000]) {
+      const data = new Uint8Array(size);
+      for (let i = 0; i < size; i++) data[i] = (i * 31 + 7) & 0xff;
+      const expected = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
+      const got = await hashBlobStreaming(new Blob([data]), size, 137);
+      expect(bytesToHex(got)).toBe(bytesToHex(expected));
+    }
   });
 });
 

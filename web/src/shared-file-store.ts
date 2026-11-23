@@ -51,7 +51,7 @@ export interface SharedFileStore {
   inspectDisk(): Promise<DiskInspectResult>;
   writeChunk(params: WriteChunkParams): Promise<void>;
   readPartialBlob(sessionId: string, fileId: string): Promise<Blob | undefined>;
-  commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob>;
+  commitPartial(sessionId: string, fileId: string, totalSizeBytes: number): Promise<Blob>;
   getCompletedBlob(sessionId: string, fileId: string): Promise<Blob | undefined>;
   deletePartial(sessionId: string, fileId: string): Promise<void>;
   deleteLocal(sessionId: string, fileId: string): Promise<void>;
@@ -174,13 +174,22 @@ function isNotFound(err: unknown): boolean {
   return isRecord(err) && err.name === "NotFoundError";
 }
 
-function concatChunks(chunks: Map<number, Uint8Array>, totalBytes: number): Uint8Array<ArrayBuffer> {
-  const out = new Uint8Array(new ArrayBuffer(totalBytes));
+function chunksToBlobParts(chunks: Map<number, Uint8Array>, totalBytes: number): BlobPart[] {
+  if (totalBytes <= 0) return [];
+  const parts: BlobPart[] = [];
+  let cursor = 0;
   for (const [offset, data] of [...chunks.entries()].sort((a, b) => a[0] - b[0])) {
-    if (offset >= totalBytes) continue;
-    out.set(data.subarray(0, Math.min(data.length, totalBytes - offset)), offset);
+    if (offset >= totalBytes) break;
+    if (offset > cursor) parts.push(new Uint8Array(offset - cursor));
+    const startInChunk = Math.max(0, cursor - offset);
+    const endInChunk = Math.min(data.length, totalBytes - offset);
+    if (endInChunk > startInChunk) {
+      parts.push(data.subarray(startInChunk, endInChunk) as Uint8Array<ArrayBuffer>);
+      cursor = offset + endInChunk;
+    }
   }
-  return out;
+  if (cursor < totalBytes) parts.push(new Uint8Array(totalBytes - cursor));
+  return parts;
 }
 
 /** Pure in-memory store used as OPFS fallback (and directly in demo/tests). */
@@ -251,19 +260,21 @@ export class MemorySharedFileStore implements SharedFileStore {
   async readPartialBlob(sessionId: string, fileId: string): Promise<Blob | undefined> {
     const rec = this.partials.get(this.key(sessionId, fileId));
     if (!rec) return undefined;
-    return new Blob([concatChunks(rec.chunks, rec.length)], { type: "application/octet-stream" });
+    return new Blob(chunksToBlobParts(rec.chunks, rec.length), { type: "application/octet-stream" });
   }
 
-  async commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob> {
+  async commitPartial(sessionId: string, fileId: string, totalSizeBytes: number): Promise<Blob> {
     const k = this.key(sessionId, fileId);
-    this.ensureSpace(bytes.byteLength);
-    const blob = new Blob([bytes], { type: "application/octet-stream" });
     const prevPartial = this.partials.get(k);
+    const prevDone = this.completed.get(k);
+    const delta = totalSizeBytes - (prevPartial?.length ?? 0) - (prevDone?.blob.size ?? 0);
+    this.ensureSpace(delta);
+    const parts = totalSizeBytes === 0 ? [] : chunksToBlobParts(prevPartial?.chunks ?? new Map(), totalSizeBytes);
+    const blob = new Blob(parts, { type: "application/octet-stream" });
     if (prevPartial) {
       this.usedBytes = Math.max(0, this.usedBytes - prevPartial.length);
       this.partials.delete(k);
     }
-    const prevDone = this.completed.get(k);
     if (prevDone) this.usedBytes = Math.max(0, this.usedBytes - prevDone.blob.size);
     this.completed.set(k, { sessionId, fileId, blob });
     this.usedBytes += blob.size;
@@ -484,21 +495,67 @@ export class OpfsSharedFileStore implements SharedFileStore {
     const dir = await this.sessionDir(sessionId, false);
     if (!dir) return this.fallback.readPartialBlob(sessionId, fileId);
     try { return await (await dir.getFileHandle(this.names(fileId).part)).getFile(); }
-    catch { return this.fallback.readPartialBlob(sessionId, fileId); }
+    catch (e) {
+      if (isNotFound(e)) return this.fallback.readPartialBlob(sessionId, fileId);
+      rethrowQuota(e);
+    }
   }
 
-  async commitCompleted(sessionId: string, fileId: string, bytes: ArrayBuffer): Promise<Blob> {
+  async commitPartial(sessionId: string, fileId: string, totalSizeBytes: number): Promise<Blob> {
     const dir = await this.sessionDir(sessionId, true);
-    if (!dir) return this.fallback.commitCompleted(sessionId, fileId, bytes);
+    if (!dir) return this.fallback.commitPartial(sessionId, fileId, totalSizeBytes);
     const { part, meta, bin } = this.names(fileId);
     try {
+      if (totalSizeBytes === 0) {
+        const binHandle = await dir.getFileHandle(bin, { create: true });
+        if (typeof binHandle.createWritable !== "function") {
+          this.opfsDisabled = true;
+          return this.fallback.commitPartial(sessionId, fileId, totalSizeBytes);
+        }
+        await writeOpfs(binHandle, false, async () => undefined);
+        await removeEntryQuiet(dir, part);
+        await removeEntryQuiet(dir, meta);
+        return await binHandle.getFile();
+      }
+
+      let partHandle: FileSystemFileHandle;
+      try {
+        partHandle = await dir.getFileHandle(part);
+      } catch (e) {
+        if (isNotFound(e)) return this.fallback.commitPartial(sessionId, fileId, totalSizeBytes);
+        throw e;
+      }
+
+      const partFile = await partHandle.getFile();
+      if (partFile.size > totalSizeBytes && typeof partHandle.createWritable === "function") {
+        await writeOpfs(partHandle, true, async (w) => {
+          await w.truncate(totalSizeBytes);
+        });
+      }
+
+      // Prefer zero-copy OPFS atomic rename (.part -> .bin) when supported.
+      const movable = partHandle as FileSystemFileHandle & { move?: (newName: string) => Promise<void> };
+      if (typeof movable.move === "function") {
+        await removeEntryQuiet(dir, bin);
+        await movable.move(bin);
+        await removeEntryQuiet(dir, meta);
+        return await (await dir.getFileHandle(bin)).getFile();
+      }
+
+      // Fallback when OPFS move() is unavailable: stream-copy in 1 MiB slices without loading whole file into RAM.
       const binHandle = await dir.getFileHandle(bin, { create: true });
       if (typeof binHandle.createWritable !== "function") {
         this.opfsDisabled = true;
-        return this.fallback.commitCompleted(sessionId, fileId, bytes);
+        return this.fallback.commitPartial(sessionId, fileId, totalSizeBytes);
       }
+      const srcFile = await partHandle.getFile();
+      const COPY_SLICE = 1024 * 1024;
       await writeOpfs(binHandle, false, async (w) => {
-        if (bytes.byteLength > 0) await w.write(new Uint8Array(bytes).slice());
+        for (let off = 0; off < totalSizeBytes; off += COPY_SLICE) {
+          const end = Math.min(totalSizeBytes, off + COPY_SLICE);
+          const buf = await srcFile.slice(off, end).arrayBuffer();
+          if (buf.byteLength > 0) await w.write(new Uint8Array(buf));
+        }
       });
       await removeEntryQuiet(dir, part);
       await removeEntryQuiet(dir, meta);

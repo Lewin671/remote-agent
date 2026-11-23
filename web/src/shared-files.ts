@@ -17,6 +17,7 @@ import {
   type SharedFileVerifyAndCommitEffect,
   type SharedFileWriteChunkEffect,
 } from "./gen/remoteagent/core/v1/shared_files_pb";
+import { hashBlobStreaming, PartialTruncatedError } from "./shared-file-sha256";
 import { hasQuotaExceeded, sharedFileStore, type SharedFileStore } from "./shared-file-store";
 
 /** Files strictly larger than 50 MiB are delivered directly via browser save without local caching. */
@@ -197,31 +198,35 @@ export class SharedFileExecutor {
       if (eff.expectedSha256.length !== 32 || !Number.isFinite(totalSize) || totalSize < 0) return failChecksum();
 
       try {
-        let bytes: ArrayBuffer;
+        let partial: Blob | undefined;
+        let digest: Uint8Array;
         if (totalSize === 0) {
-          bytes = new ArrayBuffer(0);
+          digest = await hashBlobStreaming(new Blob([]), 0);
         } else {
-          const partial = await this.store.readPartialBlob(eff.sessionId, eff.fileId);
+          partial = await this.store.readPartialBlob(eff.sessionId, eff.fileId);
           if (!partial || partial.size < totalSize) return failChecksum();
-          const exact = partial.size === totalSize ? partial : partial.slice(0, totalSize, "application/octet-stream");
-          bytes = await exact.arrayBuffer();
-          if (bytes.byteLength !== totalSize) return failChecksum();
+          digest = await hashBlobStreaming(partial, totalSize);
         }
-        const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
         if (!equalBytes(digest, eff.expectedSha256)) return failChecksum();
 
         if (eff.deliverOnly) {
-          const deliverBlob = new Blob([bytes], { type: "application/octet-stream" });
-          await this.store.deletePartial(eff.sessionId, eff.fileId).catch(() => undefined);
+          const deliverBlob =
+            totalSize === 0 || !partial
+              ? new Blob([], { type: "application/octet-stream" })
+              : partial.size === totalSize
+                ? partial
+                : partial.slice(0, totalSize, "application/octet-stream");
           this.onDeliverOnly(deliverBlob, eff.displayName);
+          await this.store.deletePartial(eff.sessionId, eff.fileId).catch(() => undefined);
           this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, true);
           return;
         }
-        const committed = await this.store.commitCompleted(eff.sessionId, eff.fileId, bytes);
+        const committed = await this.store.commitPartial(eff.sessionId, eff.fileId, totalSize);
         this.blobCache.set(this.key(eff.sessionId, eff.fileId), committed);
         this.emitBlobs();
         this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, true);
       } catch (err) {
+        if (err instanceof PartialTruncatedError) return failChecksum();
         const io = classifyIOError(err);
         this.emitVerifyResult(eff.opId, eff.sessionId, eff.fileId, false, io.errorKind, io.errorDetail);
       }
