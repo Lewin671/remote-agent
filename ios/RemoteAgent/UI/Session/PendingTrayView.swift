@@ -281,6 +281,7 @@ struct PendingTrayView: View {
                             .opacity(actionsDisabled ? 0.35 : 1)
                         }
                         if item.canRestore && restoreReady {
+                            let restoreDisabled = item.serverBacked && actionsDisabled
                             Button {
                                 SessionHaptics.tap()
                                 Task {
@@ -297,8 +298,8 @@ struct PendingTrayView: View {
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            .disabled(actionsDisabled)
-                            .opacity(actionsDisabled ? 0.35 : 1)
+                            .disabled(restoreDisabled)
+                            .opacity(restoreDisabled ? 0.35 : 1)
                         }
                     }
                     .padding(.top, 4)
@@ -453,6 +454,7 @@ struct PendingTrayView: View {
                     .opacity(disabled ? 0.35 : 1)
                 }
                 if item.canCancel {
+                    let cancelDisabled = item.serverBacked && disabled
                     Button {
                         SessionHaptics.tap()
                         Task { await context.coreHost.cancelTrayItem(sessionID: sessionID, requestID: item.requestID) }
@@ -465,8 +467,8 @@ struct PendingTrayView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L10n.commonCancel())
-                    .disabled(disabled)
-                    .opacity(disabled ? 0.35 : 1)
+                    .disabled(cancelDisabled)
+                    .opacity(cancelDisabled ? 0.35 : 1)
                 }
             }
         }

@@ -445,6 +445,69 @@ struct StubAttachmentEvaluator: AttachmentEvaluating {
         #expect(store.draft(sid) == "带图文本")
     }
 
+    @Test func restoringAFailedMessageWithImagesWhileOfflineRestoresTextAndImages() async throws {
+        // Send while online so the outgoing record + sealed image bytes exist, then switch Core to offline.
+        let (cOnline, onlineHost) = try await centerWithCore()
+        let key = ImageCenter.sessionKey(sid)
+        cOnline.draft(key).append([ready("offline-img")])
+        _ = await send(cOnline, "离线失败消息")
+        await eventually("submitted") { !spy.sent.isEmpty }
+        let sent = try #require(spy.sent.first)
+        onlineHost.close()
+
+        var offlineState = RemoteState()
+        offlineState.machines["mac"] = MachineView(id: "mac", online: false, lastSeenMs: 0, meta: .with {
+            $0.hostname = "MacBook"
+            $0.capabilities.imageUpload = true
+            $0.capabilities.fileUpload = true
+        })
+        offlineState.sessions[sid] = SessionView(id: sid, machineId: "mac")
+        await remote.showForTest(state: offlineState)
+        let offlineHost = try CoreHost.live(
+            remote: remote, account: remote.account, defaults: UserDefaults(suiteName: "ra-si-off-\(UUID())")!,
+            screens: CoreScreens(), demoMode: true, onNavigate: { _ in }
+        )
+        defer { offlineHost.close(); ImageCenter.remove(remote) }
+        await offlineHost.seedDemo(state: offlineState)
+
+        // Confirm real Core rejects normal attachment picks while offline.
+        let normalEval = await offlineHost.evaluateAttachments(.with {
+            $0.machineID = "mac"
+            $0.sessionID = sid
+            $0.candidates = [.with { $0.mimeType = "image/png" }]
+        })
+        #expect(normalEval.decisions.first?.accepted == false)
+
+        ImageCenter.install(remote: remote, coreHost: offlineHost, files: files)
+        let cOffline = ImageCenter.of(remote)
+        _ = cOffline.draft(key)
+        await cOffline.restoredDraft(key)
+        cOffline.restoreOutgoing(sid)
+        await cOffline.restoredOutgoing(sid)
+        #expect(cOffline.heldOutgoing(sid, requestId: sent.requestId) != nil)
+
+        // PendingTrayView's pre-check uses put_back=true and succeeds while offline.
+        #expect(await SessionImages.canPutBack(requestId: sent.requestId, session: sid, remote: remote))
+
+        // Over-limit draft is still rejected by Core even with put_back=true.
+        let draft = cOffline.draft(key)
+        draft.append((1...6).map { ready("full-\($0)") })
+        #expect(await !SessionImages.canPutBack(requestId: sent.requestId, session: sid, remote: remote))
+        #expect(draft.notice.contains("一条消息最多 6 张"))
+        draft.clear()
+
+        // With room in the draft, restoring while offline puts both text and image back.
+        let effect = PBSessionRestoreComposerEffect.with {
+            $0.sessionID = sid
+            $0.requestID = sent.requestId
+            $0.text = "离线失败消息"
+        }
+        #expect(await SessionImages.applyRestore(effect, session: sid, remote: remote, store: store))
+        #expect(store.draft(sid) == "离线失败消息")
+        #expect(draft.images.count == 1)
+        #expect(draft.images.first?.id == "offline-img")
+    }
+
     @Test func aRunThatEndedLeavesItsMessagesToTheNext() async throws {
         let first = center()
         first.draft(ImageCenter.sessionKey(sid)).append([ready("a")])
