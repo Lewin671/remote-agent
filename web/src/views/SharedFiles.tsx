@@ -10,8 +10,17 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from "react";
+import { renderText } from "../core/text";
+import {
+  SharedFileCardStatus,
+  SharedFileKind,
+  SharedFileMenuAction,
+  SharedFilePrimaryAction,
+  SharedFileWebPreviewKind,
+  type SessionSharedFileItem,
+  type SharedFileMenuItemView,
+} from "../gen/remoteagent/core/v1/session_view_pb";
 import * as i18n from "../i18n";
-import type { SharedFile } from "../gen/remoteagent/v1/event_pb";
 import {
   ArrowDown,
   DownloadIcon,
@@ -26,38 +35,20 @@ import {
   VideoIcon,
   X,
 } from "../icons";
-import { shortPath } from "../model";
 import { errorText, type Remote } from "../remote";
-import {
-  classifySharedFile,
-  failureNotice,
-  fileSizeDone,
-  formatEta,
-  sharedFilesOf,
-  formatMediaDuration,
-  kindName,
-  previewBlobForFile,
-  sanitizeFileName,
-  saveBlobAsDownload,
-  splitFileName,
-  type SharedFileDerivedState,
-  type SharedFileKind,
-  type SharedFilePreviewKind,
-} from "../shared-files";
+import { saveBlobAsDownload, sharedFilesOf } from "../shared-files";
 import { GlassButton, Sheet, useDialogFocus, useEscape, wideQuery } from "../ui";
-import { fileSize } from "./Files";
 import { ImageViewer } from "./Images";
 
 export interface SharedFilePreviewTarget {
-  file: SharedFile;
+  file: SessionSharedFileItem;
   blob: Blob;
-  kind: SharedFilePreviewKind;
+  kind: SharedFileWebPreviewKind;
   previewBlob: Blob;
-  path: string;
 }
 
 export interface SharedFileViewContextValue {
-  openFile: (file: SharedFile, blob: Blob) => void;
+  openFile: (file: SessionSharedFileItem, blob: Blob) => void;
   onToast: (msg: string) => void;
 }
 
@@ -77,51 +68,55 @@ function useWide(): boolean {
   );
 }
 
-function useSharedFileState(remote: Remote, sessionId: string, file: SharedFile): SharedFileDerivedState {
-  const manager = sharedFilesOf(remote);
+function useLocalBlob(
+  remote: Remote | undefined,
+  sessionId: string,
+  file: SessionSharedFileItem,
+): Blob | undefined {
+  const manager = remote ? sharedFilesOf(remote) : undefined;
   useEffect(() => {
-    void manager.hydrate(sessionId, file);
-  }, [manager, sessionId, file]);
+    if (manager) void manager.hydrate(sessionId, file);
+  }, [manager, sessionId, file.fileId, file.sizeBytes]);
 
-  // Subscribe only to the shared-file store and read latest derived snapshot.
-  const tick = useSyncExternalStore(
-    (cb) => manager.subscribe(cb),
-    () => {
-      const st = manager.stateOf(sessionId, file);
-      return `${st.status}:${st.downloadedBytes}:${st.etaSeconds ?? ""}:${st.failKind ?? ""}:${st.failReason ?? ""}:${st.waitingReconnect ? 1 : 0}`;
-    },
+  return useSyncExternalStore(
+    (cb) => (manager ? manager.subscribe(cb) : () => undefined),
+    () => manager?.blobOf(sessionId, file.fileId),
   );
-  void tick;
-  return manager.stateOf(sessionId, file);
 }
 
-interface MediaMeta {
-  thumbUrl?: string;
-  durationSec?: number;
-}
-
-function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
-  const [meta, setMeta] = useState<MediaMeta>({});
+function useLocalMediaThumb(
+  remote: Remote | undefined,
+  sessionId: string,
+  file: SessionSharedFileItem,
+  blob?: Blob,
+): string | undefined {
+  const [thumbUrl, setThumbUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!blob) {
-      setMeta({});
+    if (
+      !blob ||
+      file.status !== SharedFileCardStatus.DOWNLOADED ||
+      file.webPreviewKind === SharedFileWebPreviewKind.UNSPECIFIED ||
+      !file.webPreviewMime
+    ) {
+      setThumbUrl(undefined);
       return;
     }
-    const preview = previewBlobForFile(blob, file.name);
-    if (!preview) {
-      setMeta({});
-      return;
-    }
+    const previewBlob = new Blob([blob], { type: file.webPreviewMime });
     let alive = true;
     const urlsToRevoke: string[] = [];
+    const reportDuration = (durationSec: number | undefined) => {
+      if (remote && file.hasMediaDuration && durationSec !== undefined && Number.isFinite(durationSec) && durationSec > 0) {
+        sharedFilesOf(remote).reportDuration(sessionId, file.fileId, durationSec * 1000);
+      }
+    };
 
-    if (preview.kind === "image") {
-      const url = URL.createObjectURL(preview.blob);
+    if (file.webPreviewKind === SharedFileWebPreviewKind.IMAGE) {
+      const url = URL.createObjectURL(previewBlob);
       urlsToRevoke.push(url);
-      setMeta({ thumbUrl: url });
-    } else if (preview.kind === "video") {
-      const videoUrl = URL.createObjectURL(preview.blob);
+      setThumbUrl(url);
+    } else if (file.webPreviewKind === SharedFileWebPreviewKind.VIDEO) {
+      const videoUrl = URL.createObjectURL(previewBlob);
       const video = document.createElement("video");
       video.preload = "auto";
       video.muted = true;
@@ -133,6 +128,7 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
         captured = true;
         clearTimeout(fallbackTimer);
         const durationSec = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : undefined;
+        reportDuration(durationSec);
         let drew = false;
         try {
           if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -151,11 +147,11 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
                   URL.revokeObjectURL(videoUrl);
                   if (!alive) return;
                   if (thumbBlob) {
-                    const thumbUrl = URL.createObjectURL(thumbBlob);
-                    urlsToRevoke.push(thumbUrl);
-                    setMeta({ thumbUrl, durationSec });
+                    const url = URL.createObjectURL(thumbBlob);
+                    urlsToRevoke.push(url);
+                    setThumbUrl(url);
                   } else {
-                    setMeta({ durationSec });
+                    setThumbUrl(undefined);
                   }
                 },
                 "image/jpeg",
@@ -168,7 +164,7 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
         }
         if (!drew) {
           URL.revokeObjectURL(videoUrl);
-          if (alive) setMeta({ durationSec });
+          if (alive) setThumbUrl(undefined);
         }
       };
       video.onloadeddata = () => {
@@ -187,14 +183,15 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
         URL.revokeObjectURL(videoUrl);
       };
       video.src = videoUrl;
-    } else if (preview.kind === "audio") {
-      const audioUrl = URL.createObjectURL(preview.blob);
+    } else if (file.webPreviewKind === SharedFileWebPreviewKind.AUDIO) {
+      setThumbUrl(undefined);
+      const audioUrl = URL.createObjectURL(previewBlob);
       const audio = document.createElement("audio");
       audio.preload = "metadata";
       audio.onloadedmetadata = () => {
         const durationSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : undefined;
         URL.revokeObjectURL(audioUrl);
-        if (alive) setMeta({ durationSec });
+        if (alive) reportDuration(durationSec);
       };
       audio.onerror = () => URL.revokeObjectURL(audioUrl);
       audio.src = audioUrl;
@@ -204,144 +201,58 @@ function useLocalMediaMeta(file: SharedFile, blob?: Blob): MediaMeta {
       alive = false;
       for (const u of urlsToRevoke) URL.revokeObjectURL(u);
     };
-  }, [blob, file.name]);
+  }, [remote, sessionId, file.fileId, file.status, file.webPreviewKind, file.webPreviewMime, file.hasMediaDuration, blob]);
 
-  return meta;
+  return thumbUrl;
 }
 
 function tileAppearance(kind: SharedFileKind): { cls: string; icon: ReactElement } {
   switch (kind) {
-    case "video":
+    case SharedFileKind.VIDEO:
       return { cls: "v", icon: <VideoIcon /> };
-    case "image":
+    case SharedFileKind.IMAGE:
       return { cls: "p", icon: <ImageIcon /> };
-    case "audio":
+    case SharedFileKind.AUDIO:
       return { cls: "d", icon: <MusicIcon /> };
-    case "archive":
+    case SharedFileKind.ARCHIVE:
       return { cls: "z", icon: <FileArchiveIcon /> };
-    case "pdf":
+    case SharedFileKind.PDF:
+    case SharedFileKind.DOC:
       return { cls: "d", icon: <FileTextIcon /> };
-    case "file":
+    default:
       return { cls: "d", icon: <FileIcon /> };
   }
 }
 
-function displayHomePath(rawPath: string, fallbackName: string, home?: string): string {
-  const target = rawPath || sanitizeFileName(fallbackName);
-  if (home && (target === home || target.startsWith(home + "/"))) {
-    return "~" + target.slice(home.length);
-  }
-  return shortPath(target);
-}
-
-function subtitleFor(
-  kind: SharedFileKind,
-  file: SharedFile,
-  state: SharedFileDerivedState,
-  meta: MediaMeta,
-): string {
-  const totalText = fileSize(file.sizeBytes);
-  switch (state.status) {
-    case "available":
-      return i18n.t("shared_file.subtitle_kind_size", { kind: kindName(kind), size: totalText });
-    case "downloading": {
-      const doneText = fileSizeDone(state.downloadedBytes, file.sizeBytes);
-      if (state.etaSeconds !== undefined) {
-        return i18n.t("shared_file.subtitle_downloading_eta", {
-          downloaded: doneText,
-          total: totalText,
-          eta: formatEta(state.etaSeconds),
-        });
-      }
-      return i18n.t("shared_file.subtitle_downloading", { downloaded: doneText, total: totalText });
-    }
-    case "paused":
-      return i18n.t("shared_file.subtitle_paused", {
-        downloaded: fileSizeDone(state.downloadedBytes, file.sizeBytes),
-        total: totalText,
-      });
-    case "downloaded":
-      if ((kind === "video" || kind === "audio") && meta.durationSec !== undefined) {
-        return i18n.t("shared_file.subtitle_media_size", {
-          duration: formatMediaDuration(meta.durationSec),
-          size: totalText,
-        });
-      }
-      return i18n.t("shared_file.subtitle_kind_size", { kind: kindName(kind), size: totalText });
-    case "failed":
-      return failureNotice(state.failKind, state.failReason);
-    case "offline":
-      return i18n.t("shared_file.subtitle_offline");
-    case "cleaned":
-      return i18n.t("shared_file.subtitle_cleaned");
-  }
-}
-
-function a11yLabelFor(file: SharedFile, state: SharedFileDerivedState): string {
-  const safe = sanitizeFileName(file.name);
-  let detail: string;
-  switch (state.status) {
-    case "available":
-      detail = i18n.t("shared_file.a11y_state_available");
-      break;
-    case "downloading":
-      detail = i18n.t("shared_file.a11y_state_downloading");
-      break;
-    case "paused":
-      detail = i18n.t("shared_file.a11y_state_paused");
-      break;
-    case "downloaded":
-      detail = i18n.t("shared_file.a11y_state_downloaded");
-      break;
-    case "failed":
-      detail = failureNotice(state.failKind, state.failReason);
-      break;
-    case "offline":
-      detail = i18n.t("shared_file.subtitle_offline");
-      break;
-    case "cleaned":
-      detail = i18n.t("shared_file.subtitle_cleaned");
-      break;
-  }
-  return i18n.t("shared_file.a11y_card", {
-    name: safe,
-    kind: kindName(classifySharedFile(file.name).kind),
-    size: fileSize(file.sizeBytes),
-    state: detail,
-  });
-}
-
-function cardClass(state: SharedFileDerivedState): string {
-  if (state.status === "failed") return "sf-fc sf-fail";
-  if (state.status === "offline") return "sf-fc sf-off";
-  if (state.status === "cleaned") return "sf-fc sf-gone";
+function cardClass(status: SharedFileCardStatus): string {
+  if (status === SharedFileCardStatus.FAILED) return "sf-fc sf-fail";
+  if (status === SharedFileCardStatus.OFFLINE) return "sf-fc sf-off";
+  if (status === SharedFileCardStatus.CLEANED) return "sf-fc sf-gone";
   return "sf-fc";
 }
 
 function CardVisuals({
   file,
-  state,
-  meta,
-  kind,
+  thumbUrl,
   caption,
 }: {
-  file: SharedFile;
-  state: SharedFileDerivedState;
-  meta: MediaMeta;
-  kind: SharedFileKind;
+  file: SessionSharedFileItem;
+  thumbUrl?: string;
   caption: string;
 }) {
-  const [nameHead, nameTail] = splitFileName(file.name);
-  const { cls, icon } = tileAppearance(kind);
-  const showThumb = state.status === "downloaded" && !!meta.thumbUrl;
-  const isVideo = kind === "video";
-  const ringDash = `${Math.max(2, state.progress * 81.68).toFixed(1)} 82`;
+  const nameHead = file.nameHead || file.displayName || file.name;
+  const nameTail = file.nameTail;
+  const { cls, icon } = tileAppearance(file.kind);
+  const showThumb = file.status === SharedFileCardStatus.DOWNLOADED && !!thumbUrl;
+  const isVideo = file.kind === SharedFileKind.VIDEO;
+  const ringDash = `${Math.max(2, file.progress * 81.68).toFixed(1)} 82`;
+  const primaryLabel = renderText(file.primaryLabel);
 
   return (
     <>
       {showThumb ? (
         <span className={"sf-tile thumb" + (isVideo ? " video" : "")}>
-          <img src={meta.thumbUrl} draggable={false} aria-hidden />
+          <img src={thumbUrl} draggable={false} aria-hidden />
           {isVideo && <PlayIcon />}
         </span>
       ) : (
@@ -354,42 +265,50 @@ function CardVisuals({
         </div>
         <div className="sf-fs">{caption}</div>
       </div>
-      {state.status === "available" && (
+      {(file.status === SharedFileCardStatus.AVAILABLE || file.status === SharedFileCardStatus.OFFLINE) && (
         <span className="sf-act" aria-hidden>
           <ArrowDown />
         </span>
       )}
-      {state.status === "offline" && (
-        <span className="sf-act" aria-hidden>
-          <ArrowDown />
-        </span>
-      )}
-      {(state.status === "downloading" || state.status === "paused") && (
+      {(file.status === SharedFileCardStatus.DOWNLOADING || file.status === SharedFileCardStatus.PAUSED) && (
         <span className="sf-ring" aria-hidden>
           <svg viewBox="0 0 30 30">
             <circle className="t" cx="15" cy="15" r="13" />
             <circle className="p" cx="15" cy="15" r="13" strokeDasharray={ringDash} />
           </svg>
-          {state.status === "downloading" ? <i /> : <PlayIcon className="sf-ring-play" />}
+          {file.status === SharedFileCardStatus.DOWNLOADING ? <i /> : <PlayIcon className="sf-ring-play" />}
         </span>
       )}
-      {state.status === "downloaded" && (
-        <span className="sf-pill">{i18n.t("shared_file.action_open")}</span>
-      )}
-      {state.status === "failed" && (
-        <span className="sf-pill">{i18n.t("shared_file.action_retry")}</span>
+      {(file.status === SharedFileCardStatus.DOWNLOADED || file.status === SharedFileCardStatus.FAILED) && primaryLabel && (
+        <span className="sf-pill">{primaryLabel}</span>
       )}
     </>
   );
 }
 
 interface MenuItemSpec {
-  id: string;
+  id: number;
   label: string;
   icon?: ReactElement;
-  red?: boolean;
+  red: boolean;
+  disabled: boolean;
+  disabledReason?: string;
   group: number;
   onClick: () => void;
+}
+
+function menuIconFor(action: SharedFileMenuAction): ReactElement | undefined {
+  switch (action) {
+    case SharedFileMenuAction.DOWNLOAD:
+    case SharedFileMenuAction.SAVE:
+      return <DownloadIcon />;
+    case SharedFileMenuAction.SHARE:
+      return <ShareIcon />;
+    case SharedFileMenuAction.DELETE_LOCAL:
+      return <TrashIcon />;
+    default:
+      return undefined;
+  }
 }
 
 function overlayCoordinates(cardRect: DOMRect, itemCount: number): { top: number; left: number } {
@@ -412,23 +331,19 @@ function menuSeparatorFlags(items: MenuItemSpec[], idx: number): { showGap: bool
 
 function PhoneContextOverlay({
   file,
-  state,
-  meta,
-  kind,
+  thumbUrl,
   sub,
   fullPath,
-  machineName,
+  sourceCaption,
   cardRect,
   items,
   onClose,
 }: {
-  file: SharedFile;
-  state: SharedFileDerivedState;
-  meta: MediaMeta;
-  kind: SharedFileKind;
+  file: SessionSharedFileItem;
+  thumbUrl?: string;
   sub: string;
   fullPath: string;
-  machineName: string;
+  sourceCaption: string;
   cardRect: DOMRect;
   items: MenuItemSpec[];
   onClose: () => void;
@@ -447,16 +362,14 @@ function PhoneContextOverlay({
     <div className="sf-ctx-overlay" ref={rootRef} {...overlayDialogProps}>
       <div className="sf-blur" onClick={onClose} />
       <div className="sf-ctx" style={{ top, left }}>
-        <div className={cardClass(state)} onClick={onClose}>
-          <CardVisuals file={file} state={state} meta={meta} kind={kind} caption={sub} />
+        <div className={cardClass(file.status)} onClick={onClose}>
+          <CardVisuals file={file} thumbUrl={thumbUrl} caption={sub} />
         </div>
         <div className="sf-menu" role="menu">
           <div className="sf-mh">
             <div>{fullPath}</div>
-            <small>{i18n.t("shared_file.menu_from_machine", { machine: machineName })}</small>
-            {state.status === "failed" && (
-              <small className="sf-mh-err">{sub}</small>
-            )}
+            {sourceCaption && <small>{sourceCaption}</small>}
+            {file.subtitleIsError && <small className="sf-mh-err">{sub}</small>}
           </div>
           {items.map((item, idx) => {
             const { showGap, noSep } = menuSeparatorFlags(items, idx);
@@ -466,8 +379,11 @@ function PhoneContextOverlay({
                 <button
                   type="button"
                   role="menuitem"
+                  disabled={item.disabled}
+                  title={item.disabledReason}
                   className={"sf-mi" + (item.red ? " red" : "") + (noSep ? " no-sep" : "")}
                   onClick={() => {
+                    if (item.disabled) return;
                     onClose();
                     item.onClick();
                   }}
@@ -484,11 +400,11 @@ function PhoneContextOverlay({
   );
 }
 
-function canSystemShareBlob(blob: Blob, name: string): boolean {
+function canSystemShareBlob(blob: Blob, displayName: string, previewMime: string): boolean {
   if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") return false;
   try {
-    const f = new File([blob], sanitizeFileName(name), {
-      type: previewBlobForFile(blob, name)?.blob.type || "application/octet-stream",
+    const f = new File([blob], displayName || "file", {
+      type: previewMime || "application/octet-stream",
     });
     return navigator.canShare({ files: [f] });
   } catch {
@@ -496,10 +412,15 @@ function canSystemShareBlob(blob: Blob, name: string): boolean {
   }
 }
 
-async function systemShareBlob(blob: Blob, name: string, onToast: (msg: string) => void) {
+async function systemShareBlob(
+  blob: Blob,
+  displayName: string,
+  previewMime: string,
+  onToast: (msg: string) => void,
+) {
   try {
-    const f = new File([blob], sanitizeFileName(name), {
-      type: previewBlobForFile(blob, name)?.blob.type || "application/octet-stream",
+    const f = new File([blob], displayName || "file", {
+      type: previewMime || "application/octet-stream",
     });
     await navigator.share({ files: [f] });
   } catch (e) {
@@ -509,23 +430,18 @@ async function systemShareBlob(blob: Blob, name: string, onToast: (msg: string) 
   }
 }
 
-/** A single agent-shared file card matching draft.html section ①. */
+/** A single agent-shared file card rendered from Core's SessionSharedFileItem. */
 export function SharedFileCard({
   remote,
   sessionId,
   file,
-  machineName,
-  machineHome,
 }: {
-  remote: Remote;
+  remote?: Remote;
   sessionId: string;
-  file: SharedFile;
-  machineName: string;
-  machineHome?: string;
+  file: SessionSharedFileItem;
 }) {
-  const state = useSharedFileState(remote, sessionId, file);
-  const { kind } = classifySharedFile(file.name);
-  const meta = useLocalMediaMeta(file, state.blob);
+  const blob = useLocalBlob(remote, sessionId, file);
+  const thumbUrl = useLocalMediaThumb(remote, sessionId, file, blob);
   const { openFile, onToast } = useContext(SharedFileViewContext);
   const wide = useWide();
 
@@ -539,116 +455,92 @@ export function SharedFileCard({
     return () => clearTimeout(longPressTimer.current);
   }, []);
 
-  const subtitle = subtitleFor(kind, file, state, meta);
-  const fullPath = displayHomePath(file.path, file.name, machineHome);
-  const canShare = state.status === "downloaded" && state.blob ? canSystemShareBlob(state.blob, file.name) : false;
+  const displayName = file.displayName || file.name;
+  const subtitle = renderText(file.subtitle);
+  const fullPath = file.displayPath || displayName;
+  const sourceCaption = renderText(file.sourceCaption);
+  const a11yLabel = renderText(file.a11yLabel) || displayName;
+  const canShare =
+    file.status === SharedFileCardStatus.DOWNLOADED && blob
+      ? canSystemShareBlob(blob, displayName, file.webPreviewMime)
+      : false;
+
+  const runMenuAction = (action: SharedFileMenuAction) => {
+    if (!remote) return;
+    const manager = sharedFilesOf(remote);
+    switch (action) {
+      case SharedFileMenuAction.DOWNLOAD:
+      case SharedFileMenuAction.RESUME:
+      case SharedFileMenuAction.RETRY:
+        void manager.startDownload(sessionId, file, { autoOpenIfStaying: false });
+        break;
+      case SharedFileMenuAction.PAUSE:
+        manager.pause(sessionId, file.fileId);
+        break;
+      case SharedFileMenuAction.CANCEL_DOWNLOAD:
+        void manager.cancel(sessionId, file.fileId);
+        break;
+      case SharedFileMenuAction.SAVE:
+        if (blob) saveBlobAsDownload(blob, displayName);
+        break;
+      case SharedFileMenuAction.SHARE:
+        if (blob) void systemShareBlob(blob, displayName, file.webPreviewMime, onToast);
+        break;
+      case SharedFileMenuAction.DELETE_LOCAL:
+        void manager.deleteLocal(sessionId, file.fileId);
+        break;
+      default:
+        break;
+    }
+  };
 
   const menuItems: MenuItemSpec[] = [];
-  if (state.status === "downloaded" && state.blob) {
-    menuItems.push({
-      id: "save",
-      label: i18n.t("shared_file.menu_save_to_device"),
-      icon: <DownloadIcon />,
-      group: 0,
-      onClick: () => saveBlobAsDownload(state.blob!, file.name),
-    });
-    if (canShare) {
-      menuItems.push({
-        id: "share",
-        label: i18n.t("shared_file.menu_share"),
-        icon: <ShareIcon />,
-        group: 0,
-        onClick: () => void systemShareBlob(state.blob!, file.name, onToast),
-      });
+  let group = 0;
+  for (const m of file.menuItems as readonly SharedFileMenuItemView[]) {
+    if (
+      m.action === SharedFileMenuAction.SAVE_TO_ALBUM ||
+      m.action === SharedFileMenuAction.OPEN_WITH ||
+      (m.action === SharedFileMenuAction.SHARE && !canShare) ||
+      (m.action === SharedFileMenuAction.SAVE && !blob)
+    ) {
+      continue;
     }
+    if (m.separated && menuItems.length > 0) group++;
     menuItems.push({
-      id: "delete",
-      label: i18n.t("shared_file.menu_delete_local"),
-      icon: <TrashIcon />,
-      red: true,
-      group: 1,
-      onClick: () => void sharedFilesOf(remote).deleteLocal(sessionId, file.fileId),
-    });
-  } else if (state.status === "downloading") {
-    menuItems.push(
-      {
-        id: "pause",
-        label: i18n.t("shared_file.action_pause"),
-        group: 0,
-        onClick: () => sharedFilesOf(remote).pause(sessionId, file.fileId),
-      },
-      {
-        id: "cancel",
-        label: i18n.t("shared_file.action_cancel_download"),
-        group: 0,
-        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
-      },
-    );
-  } else if (state.status === "paused") {
-    menuItems.push(
-      {
-        id: "resume",
-        label: i18n.t("shared_file.action_resume"),
-        group: 0,
-        onClick: () =>
-          void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
-      },
-      {
-        id: "cancel",
-        label: i18n.t("shared_file.action_cancel_download"),
-        group: 0,
-        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
-      },
-    );
-  } else if (state.status === "failed") {
-    menuItems.push({
-      id: "retry",
-      label: i18n.t("shared_file.action_retry"),
-      group: 0,
-      onClick: () =>
-        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
-    });
-    if (state.downloadedBytes > 0) {
-      menuItems.push({
-        id: "cancel",
-        label: i18n.t("shared_file.action_cancel_download"),
-        group: 0,
-        onClick: () => void sharedFilesOf(remote).cancel(sessionId, file.fileId),
-      });
-    }
-  } else if (state.status === "available") {
-    menuItems.push({
-      id: "download",
-      label: i18n.t("shared_file.action_download"),
-      icon: <DownloadIcon />,
-      group: 0,
-      onClick: () =>
-        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: false }),
+      id: m.action,
+      label: renderText(m.label),
+      icon: menuIconFor(m.action),
+      red: m.destructive,
+      disabled: !m.enabled,
+      disabledReason: renderText(m.disabledReason) || undefined,
+      group,
+      onClick: () => runMenuAction(m.action),
     });
   }
 
   const interactive =
-    state.status !== "offline" && state.status !== "cleaned";
+    file.primaryEnabled && file.primaryAction !== SharedFilePrimaryAction.UNSPECIFIED;
 
   const handlePrimaryAction = () => {
     if (suppressNextClick.current) {
       suppressNextClick.current = false;
       return;
     }
-    switch (state.status) {
-      case "available":
-      case "paused":
-      case "failed":
-        void sharedFilesOf(remote).startDownload(sessionId, file, { autoOpenIfStaying: true });
+    if (!interactive || !remote) return;
+    const manager = sharedFilesOf(remote);
+    switch (file.primaryAction) {
+      case SharedFilePrimaryAction.DOWNLOAD:
+      case SharedFilePrimaryAction.RESUME:
+      case SharedFilePrimaryAction.RETRY:
+        void manager.startDownload(sessionId, file, { autoOpenIfStaying: true });
         break;
-      case "downloading":
-        sharedFilesOf(remote).pause(sessionId, file.fileId);
+      case SharedFilePrimaryAction.PAUSE:
+        manager.pause(sessionId, file.fileId);
         break;
-      case "downloaded":
-        if (state.blob) openFile(file, state.blob);
+      case SharedFilePrimaryAction.OPEN:
+        if (blob) openFile(file, blob);
         break;
-      case "offline":
-      case "cleaned":
+      default:
         break;
     }
   };
@@ -715,8 +607,8 @@ export function SharedFileCard({
         role="button"
         tabIndex={0}
         aria-disabled={interactive ? undefined : true}
-        aria-label={a11yLabelFor(file, state)}
-        className={cardClass(state)}
+        aria-label={a11yLabel}
+        className={cardClass(file.status)}
         onClick={handlePrimaryAction}
         onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
@@ -725,18 +617,16 @@ export function SharedFileCard({
         onPointerCancel={clearLongPress}
         onContextMenu={onContextMenu}
       >
-        <CardVisuals file={file} state={state} meta={meta} kind={kind} caption={subtitle} />
+        <CardVisuals file={file} thumbUrl={thumbUrl} caption={subtitle} />
       </div>
 
       {menuState && !wide && (
         <PhoneContextOverlay
           file={file}
-          state={state}
-          meta={meta}
-          kind={kind}
+          thumbUrl={thumbUrl}
           sub={subtitle}
           fullPath={fullPath}
-          machineName={machineName}
+          sourceCaption={sourceCaption}
           cardRect={menuState.rect}
           items={menuItems}
           onClose={() => setMenuState(undefined)}
@@ -747,8 +637,8 @@ export function SharedFileCard({
         <Sheet anchor={cardRef} onClose={() => setMenuState(undefined)} className="menu">
           <div className="menu-info">
             <span className="mono sf-wide-path">{fullPath}</span>
-            <span>{i18n.t("shared_file.menu_from_machine", { machine: machineName })}</span>
-            {state.status === "failed" && <span className="red">{subtitle}</span>}
+            {sourceCaption && <span>{sourceCaption}</span>}
+            {file.subtitleIsError && <span className="red">{subtitle}</span>}
           </div>
           {menuGroups.map((grp, g) => (
             <div className="list" role="menu" key={g}>
@@ -757,8 +647,11 @@ export function SharedFileCard({
                   key={item.id}
                   type="button"
                   role="menuitem"
+                  disabled={item.disabled}
+                  title={item.disabledReason}
                   className={"mi" + (item.red ? " danger" : "")}
                   onClick={() => {
+                    if (item.disabled) return;
                     setMenuState(undefined);
                     item.onClick();
                   }}
@@ -779,14 +672,10 @@ export function SharedFileCards({
   remote,
   sessionId,
   files,
-  machineName,
-  machineHome,
 }: {
-  remote: Remote;
+  remote?: Remote;
   sessionId: string;
-  files: SharedFile[];
-  machineName: string;
-  machineHome?: string;
+  files: readonly SessionSharedFileItem[];
 }) {
   return (
     <div className="sf-files">
@@ -796,8 +685,6 @@ export function SharedFileCards({
           remote={remote}
           sessionId={sessionId}
           file={f}
-          machineName={machineName}
-          machineHome={machineHome}
         />
       ))}
     </div>
@@ -809,7 +696,6 @@ export function SharedFilePreviewOverlay({
   remote,
   sessionId,
   agentName,
-  machineHome,
   wide,
   target,
   onClose,
@@ -817,7 +703,6 @@ export function SharedFilePreviewOverlay({
   remote: Remote;
   sessionId: string;
   agentName: string;
-  machineHome?: string;
   wide: boolean;
   target: SharedFilePreviewTarget;
   onClose: () => void;
@@ -827,8 +712,12 @@ export function SharedFilePreviewOverlay({
   useEscape(onClose);
   useDialogFocus(boxRef);
 
+  const safeName = target.file.displayName || target.file.name;
+  const pathText = target.file.displayPath || safeName;
+  const sizeText = renderText(target.file.sizeText);
+
   useEffect(() => {
-    if (target.kind === "image") return;
+    if (target.kind === SharedFileWebPreviewKind.IMAGE) return;
     const url = URL.createObjectURL(target.previewBlob);
     setMediaUrl(url);
     return () => {
@@ -837,7 +726,7 @@ export function SharedFilePreviewOverlay({
     };
   }, [target]);
 
-  if (target.kind === "image") {
+  if (target.kind === SharedFileWebPreviewKind.IMAGE) {
     return (
       <ImageViewer
         remote={remote}
@@ -848,19 +737,16 @@ export function SharedFilePreviewOverlay({
         title=""
         wide={wide}
         onClose={onClose}
-        showPath={(p) => displayHomePath(p, target.file.name, machineHome)}
         sharedFile={{
           blob: target.previewBlob,
-          name: sanitizeFileName(target.file.name),
-          path: target.path,
-          sizeText: fileSize(target.file.sizeBytes),
+          name: safeName,
+          path: pathText,
+          sizeText,
         }}
       />
     );
   }
 
-  const safeName = sanitizeFileName(target.file.name);
-  const pathText = displayHomePath(target.path, target.file.name, machineHome);
   const dialogProps = {
     role: "dialog" as const,
     "aria-modal": true,
@@ -877,10 +763,10 @@ export function SharedFilePreviewOverlay({
           </GlassButton>
         </div>
         <div className="lb-mid sf-media-mid">
-          {target.kind === "video" && mediaUrl && (
+          {target.kind === SharedFileWebPreviewKind.VIDEO && mediaUrl && (
             <video className="sf-media-video" src={mediaUrl} controls autoPlay playsInline />
           )}
-          {target.kind === "audio" && mediaUrl && (
+          {target.kind === SharedFileWebPreviewKind.AUDIO && mediaUrl && (
             <div className="sf-media-audio-wrap">
               <MusicIcon />
               <b>{safeName}</b>
@@ -890,9 +776,9 @@ export function SharedFilePreviewOverlay({
         </div>
         <div className="lb-foot">
           <span className="lb-info">
-            {safeName} · <code>{pathText}</code> · {fileSize(target.file.sizeBytes)}
+            {safeName} · <code>{pathText}</code> · {sizeText}
           </span>
-          <button className="glass" onClick={() => saveBlobAsDownload(target.blob, target.file.name)}>
+          <button className="glass" onClick={() => saveBlobAsDownload(target.blob, safeName)}>
             {i18n.t("shared_file.menu_save_to_device")}
           </button>
           <button className="glass" onClick={onClose}>
@@ -913,10 +799,10 @@ export function SharedFilePreviewOverlay({
         <span />
       </div>
       <div className="vimg sf-media-mid">
-        {target.kind === "video" && mediaUrl && (
+        {target.kind === SharedFileWebPreviewKind.VIDEO && mediaUrl && (
           <video className="sf-media-video" src={mediaUrl} controls autoPlay playsInline />
         )}
-        {target.kind === "audio" && mediaUrl && (
+        {target.kind === SharedFileWebPreviewKind.AUDIO && mediaUrl && (
           <div className="sf-media-audio-wrap">
             <MusicIcon />
             <b>{safeName}</b>
@@ -927,10 +813,10 @@ export function SharedFilePreviewOverlay({
       <div className="vinfo">
         <b>{safeName}</b>
         <code>{pathText}</code>
-        <div>{fileSize(target.file.sizeBytes)}</div>
+        <div>{sizeText}</div>
       </div>
       <div className="vact">
-        <button className="glass" onClick={() => saveBlobAsDownload(target.blob, target.file.name)}>
+        <button className="glass" onClick={() => saveBlobAsDownload(target.blob, safeName)}>
           {i18n.t("shared_file.menu_save_to_device")}
         </button>
         <button className="glass" onClick={onClose}>

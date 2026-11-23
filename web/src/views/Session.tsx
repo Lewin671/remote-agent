@@ -11,17 +11,19 @@ import {
   SessionInputNoticeKind,
   SessionNoteKind,
   SessionNoteTone,
+  SharedFileWebPreviewKind,
   type SessionActionsView,
   type SessionCommandState,
   type SessionHeaderView,
   type SessionNotifyReceiptItem,
   type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
+  type SessionSharedFileItem,
   type SessionTimelineItem,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ConnState, SessionDisplayStatus, SessionTone } from "../gen/remoteagent/core/v1/home_view_pb";
-import { Agent, ApprovalMode, SendMode, SharedFileSchema, type ImageRef, type SharedFile } from "../gen/remoteagent/v1/event_pb";
+import { Agent, ApprovalMode, SendMode, type ImageRef } from "../gen/remoteagent/v1/event_pb";
 import {
   CommandSchema,
   type Command,
@@ -43,14 +45,14 @@ import { Markdown } from "../markdown";
 import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
 import { shortenPath } from "../model";
 import { type Remote } from "../remote";
-import { previewBlobForFile, saveBlobAsDownload, sharedFilesOf } from "../shared-files";
+import { saveBlobAsDownload, sharedFilesOf } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
 import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
 import { Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
-import { FileChips } from "./Files";
+import { FileChip, FileChips } from "./Files";
 import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
 import { GenCard, ImageStrip, ImageViewer, LocalThumbs, OpenImage } from "./Images";
@@ -614,27 +616,42 @@ export function SessionScreenView({
     [pictures],
   );
 
-  const openSharedFile = useCallback((file: SharedFile, blob: Blob) => {
-    const preview = previewBlobForFile(blob, file.name);
-    if (!preview) {
-      saveBlobAsDownload(blob, file.name);
+  const openSharedFile = useCallback((file: SessionSharedFileItem, blob: Blob) => {
+    if (
+      file.webPreviewKind === SharedFileWebPreviewKind.UNSPECIFIED ||
+      !file.webPreviewMime
+    ) {
+      saveBlobAsDownload(blob, file.displayName || file.name);
       return;
     }
     setViewingShared({
       file,
       blob,
-      kind: preview.kind,
-      previewBlob: preview.blob,
-      path: file.path,
+      kind: file.webPreviewKind,
+      previewBlob: new Blob([blob], { type: file.webPreviewMime }),
     });
   }, []);
+
+  const sharedItemsById = useMemo(() => {
+    const map = new Map<string, SessionSharedFileItem>();
+    for (const item of items) {
+      if (item.kind.case === "sharedFiles") {
+        for (const f of item.kind.value.files) map.set(f.fileId, f);
+      }
+    }
+    return map;
+  }, [items]);
+  const sharedItemsRef = useRef(sharedItemsById);
+  sharedItemsRef.current = sharedItemsById;
 
   useEffect(() => {
     if (!remote) return;
     const files = sharedFilesOf(remote);
     files.setCurrentSession(sid);
     files.setAutoOpenHandler((targetSid, file, blob) => {
-      if (targetSid === sid) openSharedFile(file, blob);
+      if (targetSid !== sid) return;
+      const item = sharedItemsRef.current.get(file.fileId);
+      if (item) openSharedFile(item, blob);
     });
     return () => {
       files.setCurrentSession(undefined);
@@ -1993,7 +2010,6 @@ const ChatBody = memo(function ChatBody({
   );
 
   const online = header?.computerOnline ?? true;
-  const mname = renderText(header?.computerName);
   const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
 
   const renderEntry = useCallback(
@@ -2006,7 +2022,6 @@ const ChatBody = memo(function ChatBody({
           lostAt={remote?.lostAt}
           awaitingApproval={awaitingApprovalTool}
           remote={remote}
-          machineName={mname}
           hasSharedFiles={hasSharedFiles}
           locale={locale}
           onTerminal={onTerminal}
@@ -2016,7 +2031,7 @@ const ChatBody = memo(function ChatBody({
         />
       </RowState>
     ),
-    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, mname, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
+    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
   );
 
   return (
@@ -2175,7 +2190,6 @@ const TimelineRow = memo(function TimelineRow({
   lostAt,
   awaitingApproval,
   remote,
-  machineName,
   hasSharedFiles,
   locale: _locale,
   localAttachments,
@@ -2189,7 +2203,6 @@ const TimelineRow = memo(function TimelineRow({
   lostAt?: number;
   awaitingApproval: boolean;
   remote?: Remote;
-  machineName: string;
   hasSharedFiles: boolean;
   locale: string;
   localAttachments?: Map<string, LocalSendAttachments>;
@@ -2200,18 +2213,12 @@ const TimelineRow = memo(function TimelineRow({
   switch (item.kind.case) {
     case "userMessage": {
       const m = item.kind.value;
-      const files = m.files.map((f, i) => ({
-        fileId: f.path || f.name || String(i),
-        name: f.name,
-        sizeBytes: f.sizeBytes,
-        path: f.path,
-      }));
       const segs = splitPlaceholders(m.text, m.images);
       const caption = renderText(m.originCaption);
       return (
         <div className="me" data-msg-id={item.id}>
           <ImageStrip refs={m.images} numbered />
-          <FileChips files={files} />
+          <FileChips files={m.files} />
           {m.isScheduled ? (
             <ScheduleText key={item.id} text={m.text} meta={caption} />
           ) : (
@@ -2266,32 +2273,30 @@ const TimelineRow = memo(function TimelineRow({
       return <ToolGroupView group={item.kind.value} />;
     case "sharedFiles": {
       const sf = item.kind.value;
-      if (hasSharedFiles && remote) {
-        const files = sf.files.map((f) =>
-          create(SharedFileSchema, {
-            path: f.path,
-            name: f.name,
-            sizeBytes: f.sizeBytes,
-            fileId: f.fileId,
-          }),
-        );
+      if (hasSharedFiles) {
         return (
           <SharedFileCards
             remote={remote}
             sessionId={sessionId}
-            files={files}
-            machineName={machineName}
+            files={sf.files}
           />
         );
       }
       return (
-        <FileChips
-          files={sf.files.map((f, i) => ({
-            fileId: f.fileId || f.path || f.name || String(i),
-            name: f.name,
-            sizeBytes: f.sizeBytes,
-          }))}
-        />
+        <div className="file-chips">
+          {sf.files.map((f, i) => (
+            <FileChip
+              key={f.fileId || f.path || f.name || String(i)}
+              file={{
+                name: f.name,
+                displayName: f.displayName,
+                nameHead: f.nameHead,
+                nameTail: f.nameTail,
+                sizeText: renderText(f.sizeText),
+              }}
+            />
+          ))}
+        </div>
       );
     }
     case "generatedImages":

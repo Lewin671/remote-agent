@@ -1,35 +1,64 @@
+import { renderText } from "../core/text";
+import type { SessionFileRefView } from "../gen/remoteagent/core/v1/session_view_pb";
 import * as i18n from "../i18n";
-import type { SentFile } from "../gen/remoteagent/v1/event_pb";
 import { FileIcon, X } from "../icons";
 
-export function fileSize(n: number | bigint): string {
+export interface FileChipInfo {
+  fileId?: string;
+  name: string;
+  displayName?: string;
+  nameHead?: string;
+  nameTail?: string;
+  sizeText?: string;
+  sizeBytes?: bigint | number;
+}
+
+function fallbackSize(n: number | bigint): string {
   const bytes = Number(n);
   return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 /** One chip in drafts, pending messages and recorded user messages. */
 export function FileChip({ file, state, progress = 0, error, onRetry, onRemove }: {
-  file: Pick<SentFile, "name" | "sizeBytes">;
+  file: FileChipInfo;
   state?: "preparing" | "uploading" | "done" | "failed";
   progress?: number;
   error?: string;
   onRetry?: () => void;
   onRemove?: () => void;
 }) {
-  const chars = Array.from(file.name);
-  const split = Math.ceil(chars.length / 2);
+  const label = file.displayName || file.name;
+  const head = file.nameHead || label;
+  const tail = file.nameTail ?? "";
+  const size = file.sizeText || (file.sizeBytes !== undefined ? fallbackSize(file.sizeBytes) : "");
   const busy = state === "preparing" || state === "uploading";
-  return <span className={"file-chip" + (state === "failed" ? " failed" : "")} title={error || file.name}>
+  return <span className={"file-chip" + (state === "failed" ? " failed" : "")} title={error || label}>
     <FileIcon />
     <span className="file-info">
-      <span className="file-name" aria-label={file.name}><span>{chars.slice(0, split).join("")}</span><span><bdi dir="ltr">{chars.slice(split).join("")}</bdi></span></span>
-      <small>{fileSize(file.sizeBytes)}{busy && " · " + (state === "preparing" ? i18n.t("attachment.preparing") : i18n.t("attachment.upload_progress", { percent: Math.round(progress * 100) }))}{state === "failed" && " · " + i18n.t("attachment.upload_failed")}</small>
+      <span className="file-name" aria-label={label}><span>{head}</span><span>{tail && <bdi dir="ltr">{tail}</bdi>}</span></span>
+      <small>{size}{busy && " · " + (state === "preparing" ? i18n.t("attachment.preparing") : i18n.t("attachment.upload_progress", { percent: Math.round(progress * 100) }))}{state === "failed" && " · " + i18n.t("attachment.upload_failed")}</small>
       {busy && <progress max={1} value={progress} aria-label={i18n.t("attachment.file_progress")} />}
     </span>
     {state === "failed" && onRetry && <button onClick={onRetry}>{i18n.t("common.retry")}</button>}
-    {onRemove && <button onClick={onRemove} aria-label={i18n.t("attachment.remove_file", { name: file.name })}><X /></button>}
+    {onRemove && <button onClick={onRemove} aria-label={i18n.t("attachment.remove_file", { name: label })}><X /></button>}
   </span>;
 }
-export function FileChips({ files }: { files?: Pick<SentFile, "name" | "sizeBytes" | "fileId">[] }) {
-  return files?.length ? <div className="file-chips">{files.map((f) => <FileChip key={f.fileId} file={f} />)}</div> : null;
+
+export function FileChips({ files }: { files?: readonly SessionFileRefView[] }) {
+  return files?.length ? (
+    <div className="file-chips">
+      {files.map((f, i) => (
+        <FileChip
+          key={f.path || f.name || String(i)}
+          file={{
+            name: f.name,
+            displayName: f.displayName,
+            nameHead: f.nameHead,
+            nameTail: f.nameTail,
+            sizeText: renderText(f.sizeText),
+          }}
+        />
+      ))}
+    </div>
+  ) : null;
 }

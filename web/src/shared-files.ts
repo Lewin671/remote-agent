@@ -1,5 +1,10 @@
-import * as i18n from "./i18n";
-import type { SharedFile } from "./gen/remoteagent/v1/event_pb";
+import { create } from "@bufbuild/protobuf";
+import {
+  SharedFileFailureKind,
+  SharedFileLocalStateUpdateSchema,
+  SharedFileTransferStatus,
+  type SharedFileLocalStateUpdate,
+} from "./gen/remoteagent/core/v1/session_view_pb";
 import type { Remote } from "./remote";
 import { hasQuotaExceeded, OpfsSharedFileStore, sharedFileStore, type SharedFileStore } from "./shared-file-store";
 
@@ -8,25 +13,24 @@ export const DEFAULT_SHARED_FILE_CHUNK_BYTES = 786_432;
 export const LOCAL_CACHE_MAX_BYTES = 50 * 1024 * 1024;
 export const AUTO_RESUME_TIMEOUT_MS = 30_000;
 export const ETA_DELAY_MS = 3_000;
-
-export type SharedFileKind = "video" | "image" | "audio" | "archive" | "pdf" | "file";
-export type SharedFilePreviewKind = "image" | "video" | "audio";
-export type SharedFileStatus =
-  | "available"
-  | "downloading"
-  | "paused"
-  | "downloaded"
-  | "failed"
-  | "offline"
-  | "cleaned";
+export const PROGRESS_REPORT_INTERVAL_MS = 250;
 
 export type SharedFileFailKind = "checksum" | "disconnected" | "storage" | "other";
 
+export interface SharedFileDescriptor {
+  fileId: string;
+  sizeBytes: bigint;
+  sha256: Uint8Array;
+  displayName?: string;
+  name?: string;
+}
+
 export interface SharedFileTransferState {
-  status: "available" | "downloading" | "paused" | "downloaded" | "failed";
+  status: "available" | "downloading" | "paused" | "downloaded" | "failed" | "cleaned_up";
   downloadedBytes: number;
   startedAtMs?: number;
   etaSeconds?: number;
+  durationMs?: number;
   failKind?: SharedFileFailKind;
   failReason?: string;
   blob?: Blob;
@@ -35,22 +39,15 @@ export interface SharedFileTransferState {
   hydrated?: boolean;
 }
 
-export interface SharedFileDerivedState {
-  status: SharedFileStatus;
-  downloadedBytes: number;
-  totalBytes: number;
-  progress: number;
-  etaSeconds?: number;
-  failKind?: SharedFileFailKind;
-  failReason?: string;
-  blob?: Blob;
-  waitingReconnect: boolean;
-}
-
 export interface SharedFileChunkResult {
   data: Uint8Array;
   totalBytes?: bigint;
 }
+
+export type SharedFileStateReporter = (
+  updates: SharedFileLocalStateUpdate[],
+  opts?: { replaceAll?: boolean; clearSessionId?: string },
+) => void;
 
 export interface SharedFileEnvironment {
   getChunk(sessionId: string, fileId: string, offset: bigint): Promise<SharedFileChunkResult>;
@@ -60,168 +57,14 @@ export interface SharedFileEnvironment {
   sharedFileChunkBytes(sessionId: string): number;
   store?: SharedFileStore;
   now?: () => number;
-  onSaveLargeFile?: (blob: Blob, safeName: string, file: SharedFile) => void;
-  onAutoOpen?: (sessionId: string, file: SharedFile, blob: Blob) => void;
-}
-
-const IMAGE_PREVIEW_MIME: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  webp: "image/webp",
-};
-
-const VIDEO_PREVIEW_MIME: Record<string, string> = {
-  mp4: "video/mp4",
-  webm: "video/webm",
-  mov: "video/quicktime",
-  m4v: "video/mp4",
-};
-
-const AUDIO_PREVIEW_MIME: Record<string, string> = {
-  mp3: "audio/mpeg",
-  m4a: "audio/mp4",
-  wav: "audio/wav",
-  ogg: "audio/ogg",
-};
-
-const EXTRA_VIDEO_EXTS = new Set(["mkv", "avi", "flv", "wmv"]);
-const EXTRA_AUDIO_EXTS = new Set(["aac", "flac", "opus"]);
-const ARCHIVE_EXTS = new Set(["zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar", "zst"]);
-
-/** Removes path separators, ASCII controls, and Unicode bidirectional controls from a filename. */
-export function sanitizeFileName(raw: string): string {
-  const cleaned = raw
-    .replace(/[/\\\u0000-\u001f\u007f\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069]/g, "")
-    .trim();
-  if (!cleaned || cleaned === "." || cleaned === "..") return "file";
-  return cleaned;
-}
-
-export function extensionOf(name: string): string {
-  const safe = sanitizeFileName(name);
-  const dot = safe.lastIndexOf(".");
-  if (dot <= 0 || dot === safe.length - 1) return "";
-  return safe.slice(dot + 1).toLowerCase();
-}
-
-export function classifySharedFile(name: string): {
-  kind: SharedFileKind;
-  previewKind?: SharedFilePreviewKind;
-  previewMime?: string;
-} {
-  const ext = extensionOf(name);
-  if (ext in VIDEO_PREVIEW_MIME) {
-    return { kind: "video", previewKind: "video", previewMime: VIDEO_PREVIEW_MIME[ext] };
-  }
-  if (EXTRA_VIDEO_EXTS.has(ext)) {
-    return { kind: "video" };
-  }
-  if (ext in IMAGE_PREVIEW_MIME) {
-    return { kind: "image", previewKind: "image", previewMime: IMAGE_PREVIEW_MIME[ext] };
-  }
-  if (ext in AUDIO_PREVIEW_MIME) {
-    return { kind: "audio", previewKind: "audio", previewMime: AUDIO_PREVIEW_MIME[ext] };
-  }
-  if (EXTRA_AUDIO_EXTS.has(ext)) {
-    return { kind: "audio" };
-  }
-  if (ARCHIVE_EXTS.has(ext)) {
-    return { kind: "archive" };
-  }
-  if (ext === "pdf") {
-    return { kind: "pdf" };
-  }
-  return { kind: "file" };
-}
-
-export function kindName(kind: SharedFileKind): string {
-  switch (kind) {
-    case "video":
-      return i18n.t("shared_file.type_video");
-    case "image":
-      return i18n.t("shared_file.type_image");
-    case "audio":
-      return i18n.t("shared_file.type_audio");
-    case "archive":
-      return i18n.t("shared_file.type_archive");
-    case "pdf":
-      return i18n.t("shared_file.type_pdf");
-    case "file":
-      return i18n.t("shared_file.type_other");
-  }
-}
-
-/** Splits a sanitized filename into [head, tail] so middle ellipsis preserves the extension. */
-export function splitFileName(raw: string): [string, string] {
-  const name = sanitizeFileName(raw);
-  const dot = name.lastIndexOf(".");
-  if (dot <= 0 || dot === name.length - 1 || name.length - dot > 10) {
-    return [name, ""];
-  }
-  const stem = name.slice(0, dot);
-  const ext = name.slice(dot);
-  const tailKeep = stem.length > 6 ? 2 : 0;
-  if (tailKeep === 0) return [stem, ext];
-  return [stem.slice(0, stem.length - tailKeep), stem.slice(stem.length - tailKeep) + ext];
-}
-
-export function formatMediaDuration(totalSeconds: number): string {
-  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return "0:00";
-  const secs = Math.floor(totalSeconds);
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-/**
- * Downloaded bytes written without a unit, in the unit of the total
- * ("8.1" for "8.1 / 24.3 MB"), same rounding as the file-size label.
- */
-export function fileSizeDone(done: number | bigint, total: number | bigint): string {
-  const d = Number(done);
-  const t = Number(total);
-  if (t < 1024) return `${d}`;
-  if (t < 1024 * 1024) return (d / 1024).toFixed(1);
-  return (d / 1024 / 1024).toFixed(1);
-}
-
-export function formatEta(seconds: number): string {
-  const s = Math.max(1, Math.round(seconds));
-  if (s < 60) return i18n.t("shared_file.eta_seconds", { count: s });
-  if (s < 3600) return i18n.t("shared_file.eta_minutes", { count: Math.ceil(s / 60) });
-  return i18n.t("shared_file.eta_hours", { count: Math.ceil(s / 3600) });
-}
-
-export function failureNotice(failKind?: SharedFileFailKind, reason?: string): string {
-  switch (failKind) {
-    case "checksum":
-      return i18n.t("shared_file.subtitle_failed", {
-        reason: i18n.t("shared_file.reason_checksum_mismatch"),
-      });
-    case "disconnected":
-      return i18n.t("shared_file.subtitle_failed", {
-        reason: i18n.t("shared_file.reason_disconnected"),
-      });
-    case "storage":
-      return i18n.t("shared_file.subtitle_failed", {
-        reason: i18n.t("shared_file.reason_browser_storage_full"),
-      });
-    default:
-      return i18n.t("shared_file.subtitle_failed", {
-        reason: reason?.trim() || i18n.t("shared_file.reason_unknown"),
-      });
-  }
+  onStateReport?: SharedFileStateReporter;
+  onSaveLargeFile?: (blob: Blob, safeName: string, file: SharedFileDescriptor) => void;
+  onAutoOpen?: (sessionId: string, file: SharedFileDescriptor, blob: Blob) => void;
 }
 
 /** Triggers a generic browser download save with forced application/octet-stream MIME type. */
-export function saveBlobAsDownload(blob: Blob, rawFileName: string) {
-  const safeName = sanitizeFileName(rawFileName);
+export function saveBlobAsDownload(blob: Blob, safeFileName: string) {
+  const safeName = safeFileName.trim() || "file";
   const safeBlob =
     blob.type === "application/octet-stream"
       ? blob
@@ -235,16 +78,6 @@ export function saveBlobAsDownload(blob: Blob, rawFileName: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-/** Wraps a locally cached Blob in a client-assigned preview MIME if and only if extension is whitelisted. */
-export function previewBlobForFile(blob: Blob, rawFileName: string): { kind: SharedFilePreviewKind; blob: Blob } | undefined {
-  const info = classifySharedFile(rawFileName);
-  if (!info.previewKind || !info.previewMime) return undefined;
-  return {
-    kind: info.previewKind,
-    blob: new Blob([blob], { type: info.previewMime }),
-  };
 }
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -267,15 +100,72 @@ async function sha256(blob: Blob): Promise<Uint8Array> {
   return new Uint8Array(digest);
 }
 
+function errorCodeOf(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  const code = (err as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
+
 function isLinkDrop(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const code = (err as { code?: string }).code;
+  const code = errorCodeOf(err);
   return code === "unavailable" || code === "unknown" || code === "unknown_outcome";
 }
 
 function rawFailureDetail(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
-  return String(err || i18n.t("shared_file.reason_unknown"));
+  return typeof err === "string" ? err : "";
+}
+
+function toProtoUpdate(e: InternalEntry): SharedFileLocalStateUpdate {
+  let status = SharedFileTransferStatus.UNSPECIFIED;
+  switch (e.status) {
+    case "downloading":
+      status = SharedFileTransferStatus.DOWNLOADING;
+      break;
+    case "paused":
+      status = SharedFileTransferStatus.PAUSED;
+      break;
+    case "downloaded":
+      status = SharedFileTransferStatus.DOWNLOADED;
+      break;
+    case "failed":
+      status = SharedFileTransferStatus.FAILED;
+      break;
+    case "cleaned_up":
+      status = SharedFileTransferStatus.CLEANED_UP;
+      break;
+  }
+  let failureKind = SharedFileFailureKind.UNSPECIFIED;
+  if (e.status === "failed") {
+    switch (e.failKind) {
+      case "checksum":
+        failureKind = SharedFileFailureKind.CHECKSUM_MISMATCH;
+        break;
+      case "disconnected":
+        failureKind = SharedFileFailureKind.DISCONNECTED;
+        break;
+      case "storage":
+        failureKind = SharedFileFailureKind.BROWSER_STORAGE_FULL;
+        break;
+      default:
+        failureKind = SharedFileFailureKind.OTHER;
+        break;
+    }
+  }
+  return create(SharedFileLocalStateUpdateSchema, {
+    sessionId: e.sessionId,
+    fileId: e.fileId,
+    status,
+    downloadedBytes: BigInt(Math.max(0, Math.floor(e.downloadedBytes))),
+    hasEta: e.etaSeconds !== undefined,
+    etaSeconds: BigInt(e.etaSeconds !== undefined ? Math.max(1, Math.round(e.etaSeconds)) : 0),
+    waitingReconnect: !!e.waitingReconnect,
+    hasDuration: e.durationMs !== undefined,
+    durationMs: BigInt(e.durationMs !== undefined ? Math.max(0, Math.round(e.durationMs)) : 0),
+    failureKind,
+    failureDetail: e.status === "failed" && e.failKind === "other" ? (e.failReason ?? "") : "",
+    metadataOnly: false,
+  });
 }
 
 interface InternalEntry extends SharedFileTransferState {
@@ -289,22 +179,27 @@ interface InternalEntry extends SharedFileTransferState {
   autoOpenSessionId?: string;
   reconnectResolve?: () => void;
   hydrating?: Promise<void>;
+  lastReportAtMs: number;
+  lastReportPct: number;
+  lastReportedHasEta: boolean;
 }
 
 /** Coordinates chunked shared-file downloads, resume/cancel, OPFS/memory persistence,
- * auto-resume on transient disconnects, and duplicate fileId state sharing. */
+ * auto-resume on transient disconnects, and reporting local transfer state to Core. */
 export class SharedFileManager {
   private readonly env: SharedFileEnvironment;
   private readonly store: SharedFileStore;
   private readonly entries = new Map<string, InternalEntry>();
   private readonly listeners = new Set<() => void>();
+  private report?: SharedFileStateReporter;
   private currentSessionId: string | undefined;
-  private autoOpenHandler?: (sessionId: string, file: SharedFile, blob: Blob) => void;
+  private autoOpenHandler?: (sessionId: string, file: SharedFileDescriptor, blob: Blob) => void;
   private nextToken = 1;
 
   constructor(env: SharedFileEnvironment) {
     this.env = env;
     this.store = env.store ?? new OpfsSharedFileStore();
+    this.report = env.onStateReport;
   }
 
   private now(): number {
@@ -324,6 +219,49 @@ export class SharedFileManager {
     for (const listener of this.listeners) listener();
   }
 
+  /** Attaches or detaches the Core reporter. On attach, pushes a full replace_all snapshot. */
+  setReporter(reporter?: SharedFileStateReporter) {
+    this.report = reporter;
+    if (reporter) this.reportAll();
+  }
+
+  /** Reports all known local shared-file entries with replace_all = true. */
+  reportAll() {
+    if (!this.report) return;
+    const updates: SharedFileLocalStateUpdate[] = [];
+    for (const e of this.entries.values()) {
+      if (e.status !== "available" || e.durationMs !== undefined) {
+        updates.push(toProtoUpdate(e));
+      }
+    }
+    this.report(updates, { replaceAll: true });
+  }
+
+  private reportEntry(e: InternalEntry, opts?: { throttle?: boolean; totalBytes?: number }) {
+    if (!this.report) return;
+    const now = this.now();
+    if (opts?.throttle && e.status === "downloading") {
+      const total = opts.totalBytes ?? 0;
+      const pct = total > 0 ? Math.floor((e.downloadedBytes * 100) / total) : -1;
+      const etaJustAppeared = e.etaSeconds !== undefined && !e.lastReportedHasEta;
+      if (
+        !etaJustAppeared &&
+        now - e.lastReportAtMs < PROGRESS_REPORT_INTERVAL_MS &&
+        pct === e.lastReportPct
+      ) {
+        return;
+      }
+      e.lastReportAtMs = now;
+      e.lastReportPct = pct;
+      e.lastReportedHasEta = e.etaSeconds !== undefined;
+    } else {
+      e.lastReportAtMs = now;
+      e.lastReportPct = -1;
+      e.lastReportedHasEta = e.etaSeconds !== undefined;
+    }
+    this.report([toProtoUpdate(e)]);
+  }
+
   private entryFor(sessionId: string, fileId: string): InternalEntry {
     const k = this.key(sessionId, fileId);
     let e = this.entries.get(k);
@@ -338,14 +276,46 @@ export class SharedFileManager {
         runToken: 0,
         pausedByUser: false,
         canceledByUser: false,
+        lastReportAtMs: -Infinity,
+        lastReportPct: -1,
+        lastReportedHasEta: false,
       };
       this.entries.set(k, e);
     }
     return e;
   }
 
+  /** Returns the locally cached Blob when downloaded in this browser. */
+  blobOf(sessionId: string, fileId: string): Blob | undefined {
+    const e = this.entries.get(this.key(sessionId, fileId));
+    return e?.status === "downloaded" ? e.blob : undefined;
+  }
+
+  /** Returns the local transfer record for executor tests and internal guards. */
+  transferOf(sessionId: string, fileId: string): SharedFileTransferState | undefined {
+    return this.entries.get(this.key(sessionId, fileId));
+  }
+
+  /** Reports probed local video/audio duration (in ms) without altering transfer status. */
+  reportDuration(sessionId: string, fileId: string, durationMs: number) {
+    if (!Number.isFinite(durationMs) || durationMs <= 0) return;
+    const ms = Math.round(durationMs);
+    const e = this.entryFor(sessionId, fileId);
+    if (e.durationMs === ms) return;
+    e.durationMs = ms;
+    this.report?.([
+      create(SharedFileLocalStateUpdateSchema, {
+        sessionId,
+        fileId,
+        metadataOnly: true,
+        hasDuration: true,
+        durationMs: BigInt(ms),
+      }),
+    ]);
+  }
+
   /** Registers a UI callback to open completed files when the user stayed in the session. */
-  setAutoOpenHandler(fn?: (sessionId: string, file: SharedFile, blob: Blob) => void) {
+  setAutoOpenHandler(fn?: (sessionId: string, file: SharedFileDescriptor, blob: Blob) => void) {
     this.autoOpenHandler = fn;
   }
 
@@ -390,7 +360,7 @@ export class SharedFileManager {
     patch: Partial<
       Pick<
         SharedFileTransferState,
-        "status" | "downloadedBytes" | "etaSeconds" | "failKind" | "failReason" | "blob" | "waitingReconnect"
+        "status" | "downloadedBytes" | "etaSeconds" | "durationMs" | "failKind" | "failReason" | "blob" | "waitingReconnect"
       >
     >,
   ) {
@@ -401,16 +371,18 @@ export class SharedFileManager {
     e.status = patch.status ?? "available";
     e.downloadedBytes = patch.downloadedBytes ?? (patch.blob ? patch.blob.size : 0);
     e.etaSeconds = patch.etaSeconds;
+    if (patch.durationMs !== undefined) e.durationMs = patch.durationMs;
     e.failKind = patch.failKind;
     e.failReason = patch.failReason;
     e.blob = patch.blob;
     e.waitingReconnect = patch.waitingReconnect ?? false;
     e.hydrated = true;
+    this.reportEntry(e);
     this.emit();
   }
 
   /** Hydrates saved OPFS/store blob and partial download metadata if present. */
-  hydrate(sessionId: string, file: SharedFile): Promise<void> {
+  hydrate(sessionId: string, file: SharedFileDescriptor): Promise<void> {
     const e = this.entryFor(sessionId, file.fileId);
     if (e.hydrated) return Promise.resolve();
     if (e.hydrating) return e.hydrating;
@@ -421,6 +393,7 @@ export class SharedFileManager {
         e.downloadedBytes = completed.size;
         e.blob = completed;
         e.hydrated = true;
+        this.reportEntry(e);
         this.emit();
         return;
       }
@@ -437,6 +410,7 @@ export class SharedFileManager {
         ) {
           e.status = "paused";
           e.downloadedBytes = meta.nextOffset;
+          this.reportEntry(e);
           this.emit();
         }
       }
@@ -448,83 +422,6 @@ export class SharedFileManager {
     return p;
   }
 
-  stateOf(sessionId: string, file: SharedFile): SharedFileDerivedState {
-    const e = this.entries.get(this.key(sessionId, file.fileId));
-    const totalBytes = Number(file.sizeBytes);
-    const ended = this.env.isSessionEnded(sessionId);
-    const online = this.env.isConnected(sessionId) && this.env.isMachineOnline(sessionId);
-
-    if (e?.status === "downloaded" && e.blob) {
-      return {
-        status: "downloaded",
-        downloadedBytes: totalBytes,
-        totalBytes,
-        progress: 1,
-        blob: e.blob,
-        waitingReconnect: false,
-      };
-    }
-    if (ended) {
-      return {
-        status: "cleaned",
-        downloadedBytes: 0,
-        totalBytes,
-        progress: 0,
-        waitingReconnect: false,
-      };
-    }
-    if (e?.status === "downloading") {
-      const done = Math.min(e.downloadedBytes, totalBytes);
-      return {
-        status: "downloading",
-        downloadedBytes: done,
-        totalBytes,
-        progress: totalBytes > 0 ? Math.min(1, done / totalBytes) : 0,
-        etaSeconds: e.etaSeconds,
-        waitingReconnect: !!e.waitingReconnect,
-      };
-    }
-    if (e?.status === "paused" && (online || e.downloadedBytes > 0)) {
-      const done = Math.min(e.downloadedBytes, totalBytes);
-      return {
-        status: "paused",
-        downloadedBytes: done,
-        totalBytes,
-        progress: totalBytes > 0 ? Math.min(1, done / totalBytes) : 0,
-        waitingReconnect: false,
-      };
-    }
-    if (e?.status === "failed") {
-      const done = Math.min(e.downloadedBytes, totalBytes);
-      return {
-        status: "failed",
-        downloadedBytes: done,
-        totalBytes,
-        progress: totalBytes > 0 ? Math.min(1, done / totalBytes) : 0,
-        failKind: e.failKind,
-        failReason: e.failReason,
-        waitingReconnect: false,
-      };
-    }
-    if (!online) {
-      // Untouched files need the computer; local partials and failures keep their controls.
-      return {
-        status: "offline",
-        downloadedBytes: e?.downloadedBytes ?? 0,
-        totalBytes,
-        progress: totalBytes > 0 ? Math.min(1, (e?.downloadedBytes ?? 0) / totalBytes) : 0,
-        waitingReconnect: false,
-      };
-    }
-    return {
-      status: "available",
-      downloadedBytes: 0,
-      totalBytes,
-      progress: 0,
-      waitingReconnect: false,
-    };
-  }
-
   private chunkSizeFor(sessionId: string): number {
     const v = this.env.sharedFileChunkBytes(sessionId);
     return v > 0 ? v : DEFAULT_SHARED_FILE_CHUNK_BYTES;
@@ -532,15 +429,17 @@ export class SharedFileManager {
 
   async startDownload(
     sessionId: string,
-    file: SharedFile,
+    file: SharedFileDescriptor,
     opts?: { autoOpenIfStaying?: boolean },
   ): Promise<void> {
-    const derived = this.stateOf(sessionId, file);
+    const existing = this.entries.get(this.key(sessionId, file.fileId));
+    const online = this.env.isConnected(sessionId) && this.env.isMachineOnline(sessionId);
     if (
-      derived.status === "downloaded" ||
-      derived.status === "downloading" ||
-      derived.status === "cleaned" ||
-      derived.status === "offline"
+      existing?.status === "downloading" ||
+      existing?.status === "cleaned_up" ||
+      (existing?.status === "downloaded" && existing.blob) ||
+      this.env.isSessionEnded(sessionId) ||
+      (!online && (!existing || existing.status === "available"))
     ) {
       return;
     }
@@ -557,6 +456,7 @@ export class SharedFileManager {
     e.startedAtMs = this.now();
     e.autoOpenSessionId = opts?.autoOpenIfStaying ? sessionId : undefined;
     e.status = "downloading";
+    this.reportEntry(e);
     this.emit();
 
     const chunkBytes = this.chunkSizeFor(sessionId);
@@ -580,6 +480,7 @@ export class SharedFileManager {
       offset = existingMeta.nextOffset;
       e.downloadedBytes = offset;
       attemptBaselineBytes = offset;
+      this.reportEntry(e);
       this.emit();
     } else if (existingMeta) {
       await this.store.deletePartial(sessionId, file.fileId);
@@ -598,6 +499,19 @@ export class SharedFileManager {
         chunkRes = await this.env.getChunk(sessionId, file.fileId, BigInt(offset));
       } catch (err) {
         if (e.runToken !== token || e.pausedByUser || e.canceledByUser) return;
+        if (errorCodeOf(err) === "not_found") {
+          await this.store.deletePartial(sessionId, file.fileId);
+          e.status = "cleaned_up";
+          e.downloadedBytes = 0;
+          e.etaSeconds = undefined;
+          e.failKind = undefined;
+          e.failReason = undefined;
+          e.waitingReconnect = false;
+          e.autoOpenSessionId = undefined;
+          this.reportEntry(e);
+          this.emit();
+          return;
+        }
         if (isLinkDrop(err) && !autoResumeUsed) {
           autoResumeUsed = true;
           const recovered = await this.waitForReconnect(e, token);
@@ -607,6 +521,7 @@ export class SharedFileManager {
               e.failKind = "disconnected";
               e.failReason = undefined;
               e.waitingReconnect = false;
+              this.reportEntry(e);
               this.emit();
             }
             return;
@@ -618,6 +533,7 @@ export class SharedFileManager {
         e.failKind = drop ? "disconnected" : "other";
         e.failReason = drop ? undefined : rawFailureDetail(err);
         e.waitingReconnect = false;
+        this.reportEntry(e);
         this.emit();
         return;
       }
@@ -651,6 +567,7 @@ export class SharedFileManager {
         e.failKind = full ? "storage" : "other";
         e.failReason = full ? undefined : rawFailureDetail(err);
         e.waitingReconnect = false;
+        this.reportEntry(e);
         this.emit();
         return;
       }
@@ -674,11 +591,13 @@ export class SharedFileManager {
       } else {
         e.etaSeconds = undefined;
       }
+      this.reportEntry(e, { throttle: true, totalBytes });
       this.emit();
 
       if (e.pausedByUser) {
         e.status = "paused";
         e.etaSeconds = undefined;
+        this.reportEntry(e);
         this.emit();
         return;
       }
@@ -710,8 +629,9 @@ export class SharedFileManager {
       e.blob = undefined;
       e.waitingReconnect = false;
       e.autoOpenSessionId = undefined;
+      this.reportEntry(e);
       this.emit();
-      const safeName = sanitizeFileName(file.name);
+      const safeName = file.displayName || file.name || "file";
       if (this.env.onSaveLargeFile) {
         this.env.onSaveLargeFile(partialBlob, safeName, file);
       } else {
@@ -729,6 +649,7 @@ export class SharedFileManager {
       e.failKind = full ? "storage" : "other";
       e.failReason = full ? undefined : rawFailureDetail(err);
       e.waitingReconnect = false;
+      this.reportEntry(e);
       this.emit();
       return;
     }
@@ -747,6 +668,7 @@ export class SharedFileManager {
     const shouldAutoOpen =
       e.autoOpenSessionId === sessionId && this.currentSessionId === sessionId;
     e.autoOpenSessionId = undefined;
+    this.reportEntry(e);
     this.emit();
 
     if (shouldAutoOpen) {
@@ -764,11 +686,13 @@ export class SharedFileManager {
     e.failReason = undefined;
     e.waitingReconnect = false;
     e.autoOpenSessionId = undefined;
+    this.reportEntry(e);
     this.emit();
   }
 
   private waitForReconnect(e: InternalEntry, token: number): Promise<boolean> {
     e.waitingReconnect = true;
+    this.reportEntry(e);
     this.emit();
     return new Promise<boolean>((resolve) => {
       if (e.runToken !== token || e.pausedByUser || e.canceledByUser || this.env.isSessionEnded(e.sessionId)) {
@@ -812,6 +736,7 @@ export class SharedFileManager {
       e.reconnectResolve = undefined;
       r();
     }
+    this.reportEntry(e);
     this.emit();
   }
 
@@ -836,6 +761,7 @@ export class SharedFileManager {
       r();
     }
     await this.store.deletePartial(sessionId, fileId);
+    this.reportEntry(e);
     this.emit();
   }
 
@@ -849,12 +775,14 @@ export class SharedFileManager {
       e.failKind = undefined;
       e.failReason = undefined;
       e.etaSeconds = undefined;
+      e.durationMs = undefined;
       e.waitingReconnect = false;
       e.autoOpenSessionId = undefined;
       e.hydrated = true;
     }
     await this.store.deleteCompleted(sessionId, fileId);
     await this.store.deletePartial(sessionId, fileId);
+    if (e) this.reportEntry(e);
     this.emit();
   }
 
@@ -872,6 +800,7 @@ export class SharedFileManager {
       this.entries.delete(k);
     }
     await this.store.dropSession(sessionId);
+    this.report?.([], { clearSessionId: sessionId });
     this.emit();
   }
 
@@ -887,11 +816,26 @@ export class SharedFileManager {
     }
     this.entries.clear();
     await this.store.clearAll();
+    this.report?.([], { replaceAll: true });
     this.emit();
   }
 }
 
 const sharedFileManagers = new WeakMap<Remote, SharedFileManager>();
+const sharedFileReporters = new WeakMap<Remote, SharedFileStateReporter>();
+
+/** Binds a CoreHost reporter to a Remote's SharedFileManager, syncing existing state immediately. */
+export function bindSharedFiles(remote: Remote, reporter: SharedFileStateReporter): () => void {
+  sharedFileReporters.set(remote, reporter);
+  const existing = sharedFileManagers.get(remote);
+  if (existing) existing.setReporter(reporter);
+  return () => {
+    if (sharedFileReporters.get(remote) === reporter) {
+      sharedFileReporters.delete(remote);
+      sharedFileManagers.get(remote)?.setReporter(undefined);
+    }
+  };
+}
 
 /** Lazily instantiates and caches the SharedFileManager for a Remote instance. */
 export function sharedFilesOf(remote: Remote): SharedFileManager {
@@ -900,6 +844,7 @@ export function sharedFilesOf(remote: Remote): SharedFileManager {
     mgr = new SharedFileManager({
       ...remote.sharedFilesHost(),
       store: sharedFileStore,
+      onStateReport: sharedFileReporters.get(remote),
     });
     remote.subscribe(() => mgr!.onConnectivityChange());
     sharedFileManagers.set(remote, mgr);

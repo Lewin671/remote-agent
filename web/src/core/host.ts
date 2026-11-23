@@ -225,10 +225,13 @@ import {
   SessionTrayItemActionSchema,
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
+  SharedFileLocalStateEventSchema,
   type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
+  type SharedFileLocalStateUpdate,
 } from "../gen/remoteagent/core/v1/session_view_pb";
+import { bindSharedFiles } from "../shared-files";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -807,6 +810,7 @@ export class CoreHost {
   private extraVersion = 0;
   private clockTimer?: ReturnType<typeof setInterval>;
   private unsubscribeLocale?: () => void;
+  private unbindSharedFiles?: () => void;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
   private pendingEvents: Array<{ ev: Event; onProcessed?: () => void }> = [];
@@ -873,6 +877,9 @@ export class CoreHost {
           this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
       });
+      this.unbindSharedFiles = bindSharedFiles(this.remote, (updates, opts) =>
+        this.reportSharedFileState(updates, opts),
+      );
     }
 
     this.dispatch(
@@ -1166,6 +1173,22 @@ export class CoreHost {
 
   retryEvents(sessionId: string) {
     this.retrySession(sessionId);
+  }
+
+  reportSharedFileState(
+    updates: SharedFileLocalStateUpdate[],
+    opts?: { replaceAll?: boolean; clearSessionId?: string },
+  ) {
+    if (this.closed) return;
+    if (!updates.length && !opts?.replaceAll && !opts?.clearSessionId) return;
+    this.emit({
+      case: "sharedFileLocalState",
+      value: create(SharedFileLocalStateEventSchema, {
+        updates,
+        replaceAll: !!opts?.replaceAll,
+        clearSessionId: opts?.clearSessionId ?? "",
+      }),
+    });
   }
 
   // --- Screen Intents ---
@@ -2938,6 +2961,8 @@ export class CoreHost {
     if (this.closed) return;
     this.unsubscribeLocale?.();
     this.unsubscribeLocale = undefined;
+    this.unbindSharedFiles?.();
+    this.unbindSharedFiles = undefined;
     this.stop();
     this.closed = true;
     this.pendingEvents = [];
