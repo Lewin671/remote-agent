@@ -22,6 +22,7 @@ import io.github.lewin671.remoteagent.core.proto.SecurityKeyGenerateEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityKeyGeneratedEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityRpcEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityRpcMethod
@@ -30,7 +31,7 @@ import io.github.lewin671.remoteagent.core.proto.SecurityStorageEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityStorageResultEvent
 import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Envelope
-import io.github.lewin671.remoteagent.proto.NotifyContent
+import io.github.lewin671.remoteagent.proto.NotifyKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -322,7 +323,7 @@ internal class SecurityExecutor(
 }
 
 /**
- * Decodes and verifies a push notification [Envelope] using Go `clientcore` Path A (`notify_blob`).
+ * Decodes, verifies, and projects a push notification [Envelope] using Go `clientcore` Path A (`notify_blob`).
  * Runs in a short-lived sandboxed Core instance without needing unlocked device private keys.
  */
 fun openNotifyEnvelopeViaCore(
@@ -332,7 +333,9 @@ fun openNotifyEnvelopeViaCore(
     sessionId: String = "",
     tag: String = "",
     machineId: String = "",
-): NotifyContent? {
+    expectedKind: NotifyKind = NotifyKind.NOTIFY_KIND_UNSPECIFIED,
+    eventKey: String = "",
+): SecurityNotifyDisplay? {
     if (notifyBlob.isEmpty()) return null
     val core = Corebind.new_()
     return try {
@@ -346,7 +349,9 @@ fun openNotifyEnvelopeViaCore(
                     .setNowMs(nowMs)
                     .setSessionId(sessionId)
                     .setTag(tag)
-                    .setMachineId(machineId),
+                    .setMachineId(machineId)
+                    .setExpectedKind(expectedKind)
+                    .setEventKey(eventKey),
             )
             .build()
         val batchBytes: ByteArray? = core.dispatch(ev.toByteArray())
@@ -355,8 +360,8 @@ fun openNotifyEnvelopeViaCore(
         for (eff in batch.effectsList) {
             if (eff.hasSecurityNotifyOpened()) {
                 val opened = eff.securityNotifyOpened
-                if (opened.error.isEmpty() && opened.hasContent()) {
-                    return opened.content
+                if (opened.error.isEmpty() && opened.hasDisplay()) {
+                    return opened.display
                 }
             }
         }

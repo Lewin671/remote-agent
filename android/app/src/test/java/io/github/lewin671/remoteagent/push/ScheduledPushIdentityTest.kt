@@ -10,7 +10,8 @@ import android.app.Notification
 import androidx.core.app.NotificationCompat
 import android.app.NotificationManager
 import io.github.lewin671.remoteagent.MainActivity
-import io.github.lewin671.remoteagent.proto.NotifyContent
+import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import org.junit.Assert.*
 import org.junit.Test
@@ -70,9 +71,17 @@ class ScheduledPushIdentityTest {
         val second = 368856997L
         assertEquals(Notifier.id("session", "scheduled:$first"), Notifier.id("session", "scheduled:$second"))
         for (seq in listOf(first, second, first)) {
-            val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
-                .setTitle("event-$seq").setSourceEventSeq(seq).build()
-            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:$seq")
+            val display = SecurityNotifyDisplay.newBuilder()
+                .setValid(true)
+                .setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
+                .setSessionId("session")
+                .setShowDetailedByDefault(true)
+                .setTitle(CoreText.newBuilder().setLiteral("event-$seq"))
+                .setBody(CoreText.newBuilder().setLiteral("body-$seq"))
+                .setGenericBody(CoreText.newBuilder().setKey("notifications.scheduled_tasks_have_new_results"))
+                .setSourceEventSeq(seq)
+                .build()
+            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, display, true, "scheduled:$seq")
         }
         val notifications = shadowOf(manager).allNotifications
         assertEquals("different events coexist and retry replaces only itself", 2, notifications.size)
@@ -87,9 +96,17 @@ class ScheduledPushIdentityTest {
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
         for (session in listOf("first-session", "second-session")) {
-            val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
-                .setTitle(session).setSourceEventSeq(7).build()
-            Notifier.show(context, session, NotifyKind.NOTIFY_KIND_SCHEDULED, content, true, "scheduled:7")
+            val display = SecurityNotifyDisplay.newBuilder()
+                .setValid(true)
+                .setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
+                .setSessionId(session)
+                .setShowDetailedByDefault(true)
+                .setTitle(CoreText.newBuilder().setLiteral(session))
+                .setBody(CoreText.newBuilder().setLiteral("body"))
+                .setGenericBody(CoreText.newBuilder().setKey("notifications.scheduled_tasks_have_new_results"))
+                .setSourceEventSeq(7)
+                .build()
+            Notifier.show(context, session, NotifyKind.NOTIFY_KIND_SCHEDULED, display, true, "scheduled:7")
         }
         val notifications = shadowOf(manager).allNotifications
         assertEquals(2, notifications.size)
@@ -103,25 +120,39 @@ class ScheduledPushIdentityTest {
         val context = RuntimeEnvironment.getApplication()
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED).setTitle("任务名来自签名内容").setText("通知正文").setSourceEventSeq(7).build()
-        Notifier.show(context,"session",NotifyKind.NOTIFY_KIND_SCHEDULED,content,false,"scheduled:7")
+        val display = SecurityNotifyDisplay.newBuilder()
+            .setValid(true)
+            .setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
+            .setSessionId("session")
+            .setShowDetailedByDefault(true)
+            .setTitle(CoreText.newBuilder().setLiteral("任务名来自签名内容"))
+            .setBody(CoreText.newBuilder().setLiteral("通知正文"))
+            .setGenericBody(CoreText.newBuilder().setKey("notifications.scheduled_tasks_have_new_results"))
+            .setSourceEventSeq(7)
+            .build()
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, display, false, "scheduled:7")
         val n = shadowOf(manager).allNotifications.single()
         assertEquals("任务名来自签名内容", n.extras.getCharSequence("android.title").toString())
         assertEquals("通知正文", n.extras.getCharSequence("android.text").toString())
         assertEquals(NotificationCompat.VISIBILITY_SECRET, n.visibility)
         assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertTrue(n.actions.isNullOrEmpty())
-        assertEquals(7L, shadowOf(n.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ,0))
+        assertEquals(7L, shadowOf(n.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ, 0))
     }
 
-    @Test fun approvalRelabelledAsScheduledStaysGenericWithoutContentSetting() {
+    @Test fun invalidOrRelabelledDisplayStaysGeneric() {
         val context = RuntimeEnvironment.getApplication()
         Push.createChannels(context)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_ATTENTION).setTitle("Private session")
-            .setSourceEventSeq(7).setApproval(io.github.lewin671.remoteagent.proto.NotifyApproval.newBuilder()
-                .setApprovalId("approval").setCommand("cat secret")).build()
-        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, false, "scheduled:7")
+        val invalid = SecurityNotifyDisplay.newBuilder()
+            .setValid(false)
+            .setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
+            .setTitle(CoreText.newBuilder().setLiteral("Private session"))
+            .setBody(CoreText.newBuilder().setLiteral("cat secret"))
+            .setGenericBody(CoreText.newBuilder().setKey("notifications.scheduled_tasks_have_new_results"))
+            .setSourceEventSeq(7)
+            .build()
+        Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, invalid, true, "scheduled:7")
         val n = shadowOf(manager).allNotifications.single()
         assertEquals("remote-agent", n.extras.getCharSequence("android.title").toString())
         assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.extras.getCharSequence("android.text").toString())
@@ -132,9 +163,18 @@ class ScheduledPushIdentityTest {
         Push.createChannels(context)
         shadowOf(context.getSystemService(KeyguardManager::class.java)).setIsDeviceLocked(true)
         val manager = context.getSystemService(NotificationManager::class.java)
-        val content = NotifyContent.newBuilder().setKind(NotifyKind.NOTIFY_KIND_SCHEDULED).setTitle("Private task").setText("Private summary").setSourceEventSeq(7).build()
+        val display = SecurityNotifyDisplay.newBuilder()
+            .setValid(true)
+            .setKind(NotifyKind.NOTIFY_KIND_SCHEDULED)
+            .setSessionId("session")
+            .setShowDetailedByDefault(true)
+            .setTitle(CoreText.newBuilder().setLiteral("Private task"))
+            .setBody(CoreText.newBuilder().setLiteral("Private summary"))
+            .setGenericBody(CoreText.newBuilder().setKey("notifications.scheduled_tasks_have_new_results"))
+            .setSourceEventSeq(7)
+            .build()
         for (showContent in listOf(false, true)) {
-            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, showContent, "scheduled:7")
+            Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, display, showContent, "scheduled:7")
             val n = shadowOf(manager).allNotifications.single()
             assertEquals("remote-agent", n.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
             assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())

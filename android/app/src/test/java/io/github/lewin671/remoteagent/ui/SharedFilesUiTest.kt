@@ -311,20 +311,31 @@ class SharedFilesUiTest {
     }
 
     @Test
-    fun turnEndedNotificationAppendsSharedFileCount() {
+    fun turnEndedNotificationRendersCoreProjectedSharedFileBody() {
         val nm = context.getSystemService(NotificationManager::class.java)
         val snm = Shadows.shadowOf(nm)
-        val content = NotifyContent.newBuilder()
+        val suffix = io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+            .setKey("shared_file.notification_files")
+            .addArgs(io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder().setName("count").setIntValue(2L))
+            .build()
+        val display = io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay.newBuilder()
+            .setValid(true)
             .setKind(NotifyKind.NOTIFY_KIND_TURN_ENDED)
-            .setTitle("稻城剪辑")
-            .setText("成片导出好了")
+            .setSessionId("s-notify")
+            .setTitle(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("稻城剪辑"))
+            .setBody(
+                io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                    .setSeparatorLiteral(" ")
+                    .addJoin(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("成片导出好了"))
+                    .addJoin(suffix),
+            )
             .setSharedFileCount(2)
             .build()
         Notifier.show(
             context,
             "s-notify",
             NotifyKind.NOTIFY_KIND_TURN_ENDED,
-            content,
+            display,
             showContent = true,
             copy = { msg -> messageTextForTest(msg, "zh-CN") },
         )

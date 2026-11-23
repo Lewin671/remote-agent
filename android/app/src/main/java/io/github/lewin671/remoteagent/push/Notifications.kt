@@ -3,7 +3,6 @@ package io.github.lewin671.remoteagent.push
 import io.github.lewin671.remoteagent.ui.resolveUiMessage
 import io.github.lewin671.remoteagent.ui.sessionText
 
-import io.github.lewin671.remoteagent.core.machineDiskNotice
 import io.github.lewin671.remoteagent.core.UiMessages
 
 import android.app.KeyguardManager
@@ -37,12 +36,12 @@ import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.coreTextToMessageText
 import io.github.lewin671.remoteagent.core.openNotifyEnvelopeViaCore
+import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Envelope
-import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
 import java.util.concurrent.TimeUnit
@@ -79,40 +78,55 @@ class RaMessagingService : FirebaseMessagingService() {
             return
         }
         val session = data["session"] ?: return
-        val content = data["content"]?.let {
-            open(session, it, data["machine"].orEmpty(), data["tag"].orEmpty())
+        val eventKey = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
+            data["event"]?.takeIf { it.isNotEmpty() } ?: return
+        } else null
+        val machine = data["machine"].orEmpty()
+        val tag = when (kind) {
+            NotifyKind.NOTIFY_KIND_MACHINE_DISK -> data["tag"].orEmpty()
+            NotifyKind.NOTIFY_KIND_SCHEDULED -> data["tag"]?.takeIf { it.isNotEmpty() } ?: "$session/$eventKey/NOTIFY_KIND_SCHEDULED"
+            NotifyKind.NOTIFY_KIND_TURN_ENDED -> data["tag"]?.takeIf { it.isNotEmpty() } ?: "$session/NOTIFY_KIND_TURN_ENDED"
+            NotifyKind.NOTIFY_KIND_ATTENTION -> data["tag"]?.takeIf { it.isNotEmpty() } ?: "$session/NOTIFY_KIND_ATTENTION"
+            else -> data["tag"].orEmpty()
         }
-        if (data["content"] != null && content == null) return
-        if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && (content==null || content.machineId!=data["machine"] || content.kind!=kind || !content.sessionId.isEmpty() || data["tag"]!="${content.machineId}/NOTIFY_KIND_MACHINE_DISK")) return
-        if(kind==NotifyKind.NOTIFY_KIND_MACHINE_DISK && machineDiskNotice(content ?: return,{ io.github.lewin671.remoteagent.ui.resolveUiMessage(this,it) })==null) return
+        val display = data["content"]?.let {
+            open(session, it, machine, tag, kind, eventKey.orEmpty())
+        }
+        if (data["content"] != null && (display == null || !display.valid)) return
+        if (kind == NotifyKind.NOTIFY_KIND_MACHINE_DISK && (display == null || !display.valid)) return
         // Only the actual session page suppresses scheduled results in the foreground.
         // Other kinds retain their foreground rule.
         val foreground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         if (foreground && (kind != NotifyKind.NOTIFY_KIND_SCHEDULED || app.visibleSession == session))
             return
-        val eventKey = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
-            data["event"]?.takeIf { it.isNotEmpty() } ?: return
-        } else null
-        Notifier.show(this, session, kind, content, settings.showContent, eventKey)
+        Notifier.show(this, session, kind, display, settings.showContent, eventKey)
         // Timing only, for the notes on cold starts; no content.
         Log.i(
             TAG,
-            "push shown in ${SystemClock.elapsedRealtime() - started} ms, content=${content != null}",
+            "push shown in ${SystemClock.elapsedRealtime() - started} ms, content=${display != null}",
         )
     }
 
-    private fun open(session: String, b64: String, machine: String, tag: String): NotifyContent? =
+    private fun open(
+        session: String,
+        b64: String,
+        machine: String,
+        tag: String,
+        expectedKind: NotifyKind,
+        eventKey: String,
+    ): SecurityNotifyDisplay? =
         try {
             val blob = RaApp.instance.vault.readNotifyBlob() ?: return null
             val env = Envelope.parseFrom(Base64.decode(b64, Base64.DEFAULT))
-            val nc = openNotifyEnvelopeViaCore(
+            openNotifyEnvelopeViaCore(
                 notifyBlob = blob,
                 envelope = env,
                 sessionId = session,
                 tag = tag,
                 machineId = machine,
+                expectedKind = expectedKind,
+                eventKey = eventKey,
             )
-            nc?.takeIf { it.sessionId == session }
         } catch (e: Exception) {
             Log.w(TAG, "push content does not open: ${e.javaClass.simpleName}")
             null
@@ -198,37 +212,27 @@ object Notifier {
         }
     }
 
-    /**
-     * An approval's title and line, as the web names it: a command is 请求执行 with the command, any
-     * other tool 请求权限 · <tool> with its description or input. Daemons before
-     * NotifyApproval.tool_input put a tool's JSON input in command.
-     */
-    fun approvalText(a: io.github.lewin671.remoteagent.proto.NotifyApproval, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): Pair<String, String> {
-        val oldToolInput =
-            a.toolInput.isEmpty() && a.command.trimStart().startsWith("{") && a.toolName != "Bash"
-        val command = if (oldToolInput) "" else a.command
-        if (command.isNotEmpty()) return copy(UiMessages.listStateAndroidRequestCommand()) to command.trim()
-        val input = a.toolInput.ifEmpty { if (oldToolInput) a.command else "" }
-        return copy(UiMessages.listStateAndroidRequestPermission()) +
-            (if (a.toolName.isNotEmpty()) " · ${a.toolName.trim()}" else "") to
-            input.ifEmpty { a.toolName }.let { a.description.ifEmpty { it } }.trim()
-    }
-
     /** How a push is shown. */
     data class Display(val detailed: Boolean, val buttons: Boolean, val visibility: Int)
 
     /**
-     * Scheduled content is on by default; other content requires the setting. Only while unlocked,
-     * and then hidden from the lock screen
-     * altogether (VISIBILITY_SECRET): VISIBILITY_PRIVATE alone shows everything to users who allow
-     * sensitive content on the lock screen. Buttons only from API 31, where they can require
-     * unlocking; below that a tap opens the approval page in the app.
+     * Scheduled and disk content is on by default; other content requires the setting. Only while
+     * unlocked, and then hidden from the lock screen altogether (VISIBILITY_SECRET):
+     * VISIBILITY_PRIVATE alone shows everything to users who allow sensitive content on the lock
+     * screen. Buttons only from API 31, where they can require unlocking; below that a tap opens
+     * the approval page in the app.
      */
-    fun display(showContent: Boolean, hasContent: Boolean, locked: Boolean, sdk: Int, scheduled: Boolean = false): Display {
-        val detailed = (scheduled || showContent) && hasContent && !locked
+    fun display(
+        showContent: Boolean,
+        hasContent: Boolean,
+        locked: Boolean,
+        sdk: Int,
+        showDetailedByDefault: Boolean = false,
+    ): Display {
+        val detailed = (showDetailedByDefault || showContent) && hasContent && !locked
         return Display(
             detailed = detailed,
-            buttons = detailed && !scheduled && sdk >= 31,
+            buttons = detailed && !showDetailedByDefault && sdk >= 31,
             visibility =
                 if (detailed) NotificationCompat.VISIBILITY_SECRET
                 else NotificationCompat.VISIBILITY_PRIVATE,
@@ -236,50 +240,52 @@ object Notifier {
     }
 
     /**
-     * The cleartext kind and event come from the server; only the signed content proves a
-     * scheduled result. A replayed approval or turn preview relabelled as scheduled stays generic.
-     */
-    fun scheduledContent(kind: NotifyKind, c: NotifyContent?, eventKey: String?): Boolean =
-        kind == NotifyKind.NOTIFY_KIND_SCHEDULED &&
-            c != null &&
-            c.kind == NotifyKind.NOTIFY_KIND_SCHEDULED &&
-            !c.hasApproval() &&
-            c.sourceEventSeq > 0 &&
-            eventKey == "scheduled:${c.sourceEventSeq}"
-
-    /**
-     * Shows a push. Scheduled results show content while unlocked. Other kinds without [showContent]
-     * use generic text: tapping opens the session. With
-     * it, the approval itself and 拒绝 / 允许 buttons that need the phone unlocked. The lock screen
+     * Shows a push from Core's validated [SecurityNotifyDisplay]. When [notifyDisplay] is null or
+     * invalid, or the device is locked, or content display is disabled for kinds without
+     * [SecurityNotifyDisplay.getShowDetailedByDefault], only generic text is shown. The lock screen
      * only ever gets generic text.
      */
     fun show(
         context: Context,
         session: String,
         kind: NotifyKind,
-        c: NotifyContent?,
+        notifyDisplay: SecurityNotifyDisplay?,
         showContent: Boolean,
         eventKey: String? = null,
         copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
     ) {
         require(kind != NotifyKind.NOTIFY_KIND_SCHEDULED || !eventKey.isNullOrEmpty())
+        fun resolveText(t: io.github.lewin671.remoteagent.core.proto.Text): String =
+            coreTextToMessageText(t).resolve(copy)
+
         val nm = context.getSystemService(NotificationManager::class.java)
-        val generic = when (kind) {
-            NotifyKind.NOTIFY_KIND_SCHEDULED -> copy(UiMessages.notificationsScheduledTasksHaveNewResults())
-            NotifyKind.NOTIFY_KIND_TURN_ENDED -> copy(UiMessages.notificationsAndroidAConversationTurnFinished())
-            NotifyKind.NOTIFY_KIND_MACHINE_DISK -> copy(UiMessages.machineStatusHomeWarning())
-            else -> copy(UiMessages.notificationsAndroidASessionNeedsYourAttention())
-        }
+        val valid = notifyDisplay?.takeIf { it.valid && (it.kind == NotifyKind.NOTIFY_KIND_UNSPECIFIED || it.kind == kind) }
+        val generic = valid?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
+            ?: notifyDisplay?.takeIf { it.hasGenericBody() }?.let { resolveText(it.genericBody) }?.ifEmpty { null }
+            ?: when (kind) {
+                NotifyKind.NOTIFY_KIND_SCHEDULED -> copy(UiMessages.notificationsScheduledTasksHaveNewResults())
+                NotifyKind.NOTIFY_KIND_TURN_ENDED -> copy(UiMessages.notificationsAndroidAConversationTurnFinished())
+                NotifyKind.NOTIFY_KIND_MACHINE_DISK -> copy(UiMessages.machineStatusHomeWarning())
+                else -> copy(UiMessages.notificationsAndroidASessionNeedsYourAttention())
+            }
         val channel = when (kind) {
             NotifyKind.NOTIFY_KIND_SCHEDULED -> Push.CHANNEL_SCHEDULED
             NotifyKind.NOTIFY_KIND_TURN_ENDED -> Push.CHANNEL_TURN
             else -> Push.CHANNEL_ATTENTION
         }
-        val diskNotice = c?.let { machineDiskNotice(it,copy) }
-        val approval = c?.takeIf { it.hasApproval() }?.approval
-        val nid = diskNotice?.machineId?.hashCode() ?: id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approval?.approvalId)
+        val isDisk = kind == NotifyKind.NOTIFY_KIND_MACHINE_DISK
+        val diskMachineId = valid?.machineId?.takeIf { isDisk && it.isNotEmpty() }
+        val approvalId = valid?.approvalId?.takeIf { it.isNotEmpty() }
+        val nid = diskMachineId?.hashCode()
+            ?: id(session, if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) eventKey else approvalId)
         val locked = context.getSystemService(KeyguardManager::class.java).isDeviceLocked
-        val how = display(showContent, c != null, locked, Build.VERSION.SDK_INT, scheduledContent(kind, c, eventKey) || diskNotice != null)
+        val how = display(
+            showContent = showContent,
+            hasContent = valid != null,
+            locked = locked,
+            sdk = Build.VERSION.SDK_INT,
+            showDetailedByDefault = valid?.showDetailedByDefault == true,
+        )
         val public =
             NotificationCompat.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_notify)
@@ -298,67 +304,57 @@ object Notifier {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(
                     openIntent(
-                        context, session, approval?.approvalId, nid,
-                        machineStatus = diskNotice?.machineId,
+                        context, session, approvalId, nid,
+                        machineStatus = diskMachineId,
                         scheduled = kind == NotifyKind.NOTIFY_KIND_SCHEDULED,
-                        scheduleSeq = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0,
+                        scheduleSeq = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) valid?.sourceEventSeq ?: 0L else 0L,
                         scheduleEvent = eventKey.takeIf { kind == NotifyKind.NOTIFY_KIND_SCHEDULED },
                     ),
                 )
-        if(diskNotice!=null && !locked) { b.setContentTitle(diskNotice.title).setContentText(diskNotice.body)
-        } else if (!how.detailed || c == null) {
+        if (!how.detailed || valid == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
-        } else if (approval != null) {
-            val (title, what) = approvalText(approval, copy = copy)
-            b.setContentTitle(title)
-                .setContentText(what)
-                .setSubText(c.title.takeIf { it.isNotEmpty() })
-                .setStyle(
-                    NotificationCompat.BigTextStyle()
-                        .bigText(
-                            listOf(approval.description.trim(), what)
-                                .filter { it.isNotEmpty() }
-                                .distinct()
-                                .joinToString("\n"),
-                        ),
-                )
-            if (approval.deadlineMs > 0)
-                b.setTimeoutAfter(
-                    (approval.deadlineMs - System.currentTimeMillis()).coerceAtLeast(1000),
-                )
-            if (
-                how.buttons &&
-                    c.sourceEventSeq > 0 &&
-                    (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis())
-            ) {
-                b.addAction(action(context, c, false, nid, copy = copy))
-                // A command not shown in full is allowed from the full page.
-                b.addAction(
-                    if (approval.truncated)
-                        NotificationCompat.Action.Builder(
-                                0,
-                                copy(UiMessages.notificationsAndroidViewFullText()),
-                                openIntent(context, session, approval.approvalId, nid + 1),
-                            )
-                            .build()
-                    else action(context, c, true, nid, copy = copy),
-                )
-            }
         } else {
-            val sharedFileCount = c.sharedFileCount
-            val baseText = if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED && sharedFileCount > 0) c.text else c.text.ifEmpty { generic }
-            val bodyText =
-                if (kind == NotifyKind.NOTIFY_KIND_TURN_ENDED && sharedFileCount > 0) {
-                    val suffix = copy(UiMessages.sharedFileNotificationFiles(count = sharedFileCount))
-                    if (baseText.isEmpty()) suffix else "$baseText $suffix"
-                } else {
-                    baseText
+            val title = if (valid.hasTitle()) resolveText(valid.title).ifEmpty { "remote-agent" } else "remote-agent"
+            val body = if (valid.hasBody()) resolveText(valid.body).ifEmpty { generic } else generic
+            b.setContentTitle(title).setContentText(body)
+            if (valid.hasSubText()) {
+                val sub = resolveText(valid.subText)
+                if (sub.isNotEmpty()) b.setSubText(sub)
+            }
+            if (valid.hasBigText()) {
+                val big = resolveText(valid.bigText)
+                if (big.isNotEmpty()) b.setStyle(NotificationCompat.BigTextStyle().bigText(big))
+            }
+            if (approvalId != null) {
+                if (valid.deadlineMs > 0) {
+                    b.setTimeoutAfter((valid.deadlineMs - System.currentTimeMillis()).coerceAtLeast(1000))
                 }
-            b.setContentTitle(c.title.ifEmpty { "remote-agent" })
-                .setContentText(bodyText)
+                if (
+                    how.buttons &&
+                        valid.sourceEventSeq > 0 &&
+                        (valid.deadlineMs == 0L || valid.deadlineMs > System.currentTimeMillis())
+                ) {
+                    b.addAction(action(context, valid, false, nid, copy = copy))
+                    // A command not shown in full is allowed from the full page.
+                    b.addAction(
+                        if (valid.truncated)
+                            NotificationCompat.Action.Builder(
+                                    0,
+                                    copy(UiMessages.notificationsAndroidViewFullText()),
+                                    openIntent(context, session, approvalId, nid + 1),
+                                )
+                                .build()
+                        else action(context, valid, true, nid, copy = copy),
+                    )
+                }
+            }
         }
         try {
-            val tag = diskNotice?.tag ?: if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) "scheduled/$session/$eventKey" else null
+            val tag = when {
+                isDisk && valid != null -> valid.tag.ifEmpty { "${valid.machineId}/NOTIFY_KIND_MACHINE_DISK" }
+                kind == NotifyKind.NOTIFY_KIND_SCHEDULED -> "scheduled/$session/$eventKey"
+                else -> null
+            }
             nm.notify(tag, nid, b.build())
         } catch (e: SecurityException) {
             // Notifications are not allowed; Settings shows the banner.
@@ -367,7 +363,7 @@ object Notifier {
 
     private fun action(
         context: Context,
-        c: NotifyContent,
+        d: SecurityNotifyDisplay,
         allow: Boolean,
         nid: Int,
         copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
@@ -375,11 +371,11 @@ object Notifier {
         val i =
             Intent(context, ApprovalReceiver::class.java)
                 .setAction("io.github.lewin671.remoteagent.APPROVAL")
-                .putExtra("machine", c.machineId)
-                .putExtra("session", c.sessionId)
-                .putExtra("approval", c.approval.approvalId)
-                .putExtra("sourceSeq", c.sourceEventSeq)
-                .putExtra("deadline", c.approval.deadlineMs)
+                .putExtra("machine", d.machineId)
+                .putExtra("session", d.sessionId)
+                .putExtra("approval", d.approvalId)
+                .putExtra("sourceSeq", d.sourceEventSeq)
+                .putExtra("deadline", d.deadlineMs)
                 .putExtra("allow", allow)
                 .putExtra("nid", nid)
         // One immutable PendingIntent per notification and button, bound to this approval only.

@@ -102,6 +102,7 @@ class SecurityExecutorTest {
             .setMachineId(machineId)
             .setSessionId("s-notify")
             .setKind(NotifyKind.NOTIFY_KIND_ATTENTION)
+            .setSourceEventSeq(1L)
             .setTitle("Title")
             .setText("Body")
             .build()
@@ -123,15 +124,46 @@ class SecurityExecutorTest {
         }
 
         val nowMs = parseLeaseIssuedAt(lease) + 1000L
-        val opened = openNotifyEnvelopeViaCore(notifyBlob, env, nowMs = nowMs)
+        val opened = openNotifyEnvelopeViaCore(
+            notifyBlob = notifyBlob,
+            envelope = env,
+            nowMs = nowMs,
+            sessionId = "s-notify",
+            tag = "s-notify/NOTIFY_KIND_ATTENTION",
+            machineId = machineId,
+            expectedKind = NotifyKind.NOTIFY_KIND_ATTENTION,
+        )
         assertNotNull(opened)
-        assertEquals("s-notify", opened!!.sessionId)
-        assertEquals("Title", opened.title)
-        assertEquals("Body", opened.text)
+        assertTrue(opened!!.valid)
+        assertEquals("s-notify", opened.sessionId)
+        assertEquals("Title", opened.title.literal)
+        assertEquals("Body", opened.body.literal)
+
+        val relabelled = openNotifyEnvelopeViaCore(
+            notifyBlob = notifyBlob,
+            envelope = env,
+            nowMs = nowMs,
+            sessionId = "s-notify",
+            tag = "s-notify/scheduled:1/NOTIFY_KIND_SCHEDULED",
+            machineId = machineId,
+            expectedKind = NotifyKind.NOTIFY_KIND_SCHEDULED,
+            eventKey = "scheduled:1",
+        )
+        assertTrue(relabelled == null || !relabelled.valid)
 
         val tamperedSig = env.signature.toByteArray().also { it[0] = (it[0].toInt() xor 1).toByte() }
         val tampered = env.toBuilder().setSignature(ByteString.copyFrom(tamperedSig)).build()
-        assertNull(openNotifyEnvelopeViaCore(notifyBlob, tampered, nowMs = nowMs))
+        assertNull(
+            openNotifyEnvelopeViaCore(
+                notifyBlob = notifyBlob,
+                envelope = tampered,
+                nowMs = nowMs,
+                sessionId = "s-notify",
+                tag = "s-notify/NOTIFY_KIND_ATTENTION",
+                machineId = machineId,
+                expectedKind = NotifyKind.NOTIFY_KIND_ATTENTION,
+            ),
+        )
         assertTrue(Corebind.ed25519PublicKey(phoneSeed).size == KEY_SIZE)
         assertTrue(Corebind.x25519PublicKey(phoneX).size == KEY_SIZE)
     }

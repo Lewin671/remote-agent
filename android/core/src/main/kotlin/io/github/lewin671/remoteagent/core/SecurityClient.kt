@@ -9,6 +9,7 @@ import io.github.lewin671.remoteagent.core.proto.SecurityActionEmpty
 import io.github.lewin671.remoteagent.core.proto.SecurityApprovePairingAction
 import io.github.lewin671.remoteagent.core.proto.SecurityBoolAction
 import io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent
+import io.github.lewin671.remoteagent.core.proto.SecurityErrorCode
 import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
 import io.github.lewin671.remoteagent.core.proto.SecurityForegroundEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityHandoffCandidate
@@ -108,9 +109,31 @@ data class PairLink(val code: String, val server: String, val commit: ByteArray?
     }
 }
 
+fun securityErrorCodeKey(code: SecurityErrorCode): String = when (code) {
+    SecurityErrorCode.SECURITY_ERROR_CODE_UNTRUSTED -> "untrusted"
+    SecurityErrorCode.SECURITY_ERROR_CODE_STALE -> "stale"
+    SecurityErrorCode.SECURITY_ERROR_CODE_LEASE_EXPIRED -> "lease"
+    SecurityErrorCode.SECURITY_ERROR_CODE_CLOCK_SKEWED -> "clock"
+    SecurityErrorCode.SECURITY_ERROR_CODE_CAPACITY -> "capacity"
+    SecurityErrorCode.SECURITY_ERROR_CODE_RECOVERY_UNAVAILABLE -> "unavailable"
+    SecurityErrorCode.SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY -> "unsupported_history"
+    SecurityErrorCode.SECURITY_ERROR_CODE_STORAGE -> "storage"
+    SecurityErrorCode.SECURITY_ERROR_CODE_CONFLICT -> "conflict"
+    SecurityErrorCode.SECURITY_ERROR_CODE_PERMISSION_DENIED -> "permission_denied"
+    SecurityErrorCode.SECURITY_ERROR_CODE_NOT_FOUND -> "not_found"
+    SecurityErrorCode.SECURITY_ERROR_CODE_FAILED_PRECONDITION -> "failed_precondition"
+    SecurityErrorCode.SECURITY_ERROR_CODE_RESOURCE_EXHAUSTED -> "resource_exhausted"
+    SecurityErrorCode.SECURITY_ERROR_CODE_CANCELED -> "canceled"
+    SecurityErrorCode.SECURITY_ERROR_CODE_UNAVAILABLE -> "unavailable"
+    SecurityErrorCode.SECURITY_ERROR_CODE_FOREGROUND -> "foreground"
+    SecurityErrorCode.SECURITY_ERROR_CODE_INVALID,
+    SecurityErrorCode.SECURITY_ERROR_CODE_UNSPECIFIED,
+    SecurityErrorCode.UNRECOGNIZED -> "invalid"
+}
+
 class SecurityWorkflowError(
     message: String,
-    val code: String,
+    val code: SecurityErrorCode,
     val retryable: Boolean,
     val uncertain: Boolean,
     val errorAction: String,
@@ -130,7 +153,13 @@ fun translateSecurityErrorMessage(
     res: SecurityWorkflowResultEffect,
     resolver: MessageResolver,
 ): String {
-    val raw = res.error.ifEmpty { res.errorCode.ifEmpty { "security error" } }
+    val raw = res.error.ifEmpty {
+        if (res.structuredErrorCode != SecurityErrorCode.SECURITY_ERROR_CODE_UNSPECIFIED) {
+            securityErrorCodeKey(res.structuredErrorCode)
+        } else {
+            "security error"
+        }
+    }
     return translateSecurityKey(raw, resolver)
 }
 
@@ -173,7 +202,7 @@ class SecurityClient(
             deferred.completeExceptionally(
                 SecurityWorkflowError(
                     message = msg,
-                    code = res.errorCode,
+                    code = res.structuredErrorCode,
                     retryable = res.retryable,
                     uncertain = res.uncertain,
                     errorAction = res.errorAction,

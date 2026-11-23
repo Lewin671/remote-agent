@@ -412,7 +412,7 @@ internal class CoreMemoryBridge(
             ?.securityOpResult
             ?: throw SecurityFailure("invalid")
         if (res.error.isNotEmpty()) {
-            throw SecurityFailure(res.errorCode.ifEmpty { "invalid" }, res.error)
+            throw SecurityFailure(securityErrorCodeKey(res.structuredErrorCode), res.error)
         }
         return res
     }

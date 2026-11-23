@@ -19,42 +19,13 @@ class MachineNotificationsTest {
         assertTrue(requested.all { it.number <= 4 })
         assertEquals(base + NotifyKind.NOTIFY_KIND_MACHINE_DISK, machineNotificationKinds(base, true))
     }
-
-    @Test
-    fun localCopyAndMachineIdentity() {
-        val c = NotifyContent.newBuilder()
-            .setKind(NotifyKind.NOTIFY_KIND_MACHINE_DISK)
-            .setMachineId("computer-a")
-            .setMachineName("电脑 A")
-            .setDiskStatus(
-                DiskStatus.newBuilder()
-                    .setAvailableBytes(1_500_000_000)
-                    .setPressure(ResourcePressure.RESOURCE_PRESSURE_CRITICAL),
-            )
-            .build()
-        val zh = machineDiskNotice(c, { messageTextForTest(it, "zh-CN") })!!
-        val en = machineDiskNotice(c, { messageTextForTest(it, "en") }, "en")!!
-        assertEquals("电脑 A 磁盘快满了，只剩 1.5 GB", zh.title)
-        assertEquals("Clean up now or sessions may not start.", en.body)
-        assertNotEquals(
-            zh.tag,
-            machineDiskNotice(c.toBuilder().setMachineId("computer-b").build(), ::messageTextForTest)!!.tag,
-        )
-        assertNull(machineDiskNotice(c.toBuilder().setText("daemon text").build(), ::messageTextForTest))
-        assertNull(
-            machineDiskNotice(
-                c.toBuilder().setDiskStatus(c.diskStatus.toBuilder().setAvailableBytes(50_000_000_000)).build(),
-                ::messageTextForTest,
-            ),
-        )
-    }
 }
 
 class MachineNotificationReceiverTest {
     @get:org.junit.Rule val hangGuard = hangGuard()
 
     @Test
-    fun opensGoEnvelopeBeforeLocalizing() = kotlinx.coroutines.runBlocking {
+    fun opensGoEnvelopeThroughCoreDisplayAndRejectsTampered() = kotlinx.coroutines.runBlocking {
         val server = TestServer()
         val http = Api.defaultHttp()
         try {
@@ -66,13 +37,14 @@ class MachineNotificationReceiverTest {
                 phoneRemote.syncSecurity()
                 phoneRemote.renewLeaseBlocking(force = true)
                 val key = fixture.stores.getValue(phone.deviceId).readNotifyBlob()!!
+                val observedMs = System.currentTimeMillis()
                 val c = NotifyContent.newBuilder()
                     .setKind(NotifyKind.NOTIFY_KIND_MACHINE_DISK)
                     .setMachineId(machine.deviceId)
                     .setMachineName("电脑 A")
                     .setDiskStatus(
                         DiskStatus.newBuilder()
-                            .setObservedMs(System.currentTimeMillis())
+                            .setObservedMs(observedMs)
                             .setAvailableBytes(1_500_000_000)
                             .setPressure(ResourcePressure.RESOURCE_PRESSURE_CRITICAL),
                     )
@@ -83,25 +55,34 @@ class MachineNotificationReceiverTest {
                         .setKind(PayloadKind.PAYLOAD_KIND_NOTIFY)
                         .setMachineId(machine.deviceId)
                         .setSender(machine.deviceId)
-                        .setRequestId("disk:${System.currentTimeMillis()}:3")
+                        .setRequestId("disk:$observedMs:${ResourcePressure.RESOURCE_PRESSURE_CRITICAL_VALUE}")
                         .build(),
                     c,
                 )
-                val result = receiveMachineDiskNotification(
-                    env.toByteArray(),
-                    key,
-                    { messageTextForTest(it, "en") },
-                    "en",
+                val tag = "${machine.deviceId}/NOTIFY_KIND_MACHINE_DISK"
+                val result = openNotifyEnvelopeViaCore(
+                    notifyBlob = key,
+                    envelope = env,
+                    machineId = machine.deviceId,
+                    tag = tag,
+                    expectedKind = NotifyKind.NOTIFY_KIND_MACHINE_DISK,
                 )!!
+                assertTrue(result.valid)
+                assertTrue(result.critical)
+                assertTrue(result.showDetailedByDefault)
                 assertEquals(machine.deviceId, result.machineId)
-                assertEquals("Clean up now or sessions may not start.", result.body)
+                assertEquals(tag, result.tag)
+                assertEquals("电脑 A 磁盘快满了，只剩 1.5 GB", coreTextToMessageText(result.title).resolve { messageTextForTest(it, "zh-CN") })
+                assertEquals("Clean up now or sessions may not start.", coreTextToMessageText(result.body).resolve { messageTextForTest(it, "en") })
 
                 val signature = env.signature.toByteArray().also { it[0] = (it[0].toInt() xor 1).toByte() }
                 assertNull(
-                    receiveMachineDiskNotification(
-                        env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(signature)).build().toByteArray(),
-                        key,
-                        ::messageTextForTest,
+                    openNotifyEnvelopeViaCore(
+                        notifyBlob = key,
+                        envelope = env.toBuilder().setSignature(com.google.protobuf.ByteString.copyFrom(signature)).build(),
+                        machineId = machine.deviceId,
+                        tag = tag,
+                        expectedKind = NotifyKind.NOTIFY_KIND_MACHINE_DISK,
                     ),
                 )
             } finally {

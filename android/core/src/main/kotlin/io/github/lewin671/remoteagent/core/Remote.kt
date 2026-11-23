@@ -2383,14 +2383,9 @@ class Remote(
     }
 
     private fun throwSecurityOpError(res: SecurityOpResultEffect): Nothing {
-        when (res.errorCode) {
-            "unsupported_history" -> throw UnsupportedHistoryException()
-            "recovery_unavailable" -> throw SecurityFailure("unavailable")
-            "stale" ->
-                if (res.error.contains("lease expired")) throw SecurityFailure("lease")
-                else throw SecurityFailure("stale")
-            "clock", "untrusted", "capacity" -> throw SecurityFailure(res.errorCode)
-            else -> throw SecurityFailure(res.errorCode.ifEmpty { "invalid" })
+        when (res.structuredErrorCode) {
+            SecurityErrorCode.SECURITY_ERROR_CODE_UNSUPPORTED_HISTORY -> throw UnsupportedHistoryException()
+            else -> throw SecurityFailure(securityErrorCodeKey(res.structuredErrorCode))
         }
     }
 
