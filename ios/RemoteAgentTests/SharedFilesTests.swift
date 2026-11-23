@@ -504,7 +504,7 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         // Dispatch host1's ClearAll while the shared queue is held (so ClearAll is enqueued
         // behind the blocker), close host1 immediately, and enqueue host2's ScanLocal next.
         // Closing host1 must NOT drop the queued ClearAll, and host2's scan must run strictly after it.
-        await host1.dispatch { $0.sharedFileClearAll = PBSharedFileClearAllAction() }
+        await host1.dispatch(PBCoreEvent.with { $0.sharedFileClearAll = PBSharedFileClearAllAction() })
         await host1.closeAsync()
 
         let scanDone = AsyncStream<Int>.makeStream()
