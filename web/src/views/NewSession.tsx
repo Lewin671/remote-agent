@@ -442,17 +442,19 @@ export function ProjectPicker({ remote, onPick, onNew, onClose, title = t("proje
   );
 }
 
+const NEW_SESSION_PICKER_KEY = "new-session";
+
 /** The ＋ flow: pick a project, or add a folder via Core's DirPickerView; then open its new-session box. */
 export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remote; go: Go; onClose: () => void; onPicked?: (key: string) => void; start?: "new" }) {
   const host = useCoreHost(remote, go);
-  const manage = useProjectView(host, "", true).manage;
+  const manage = useProjectView(host, "", true, 30, "", NEW_SESSION_PICKER_KEY).manage;
   const pick = (manage?.projectCount ?? 0) > 0 && !start;
   const [step, setStep] = useState<"project" | "new">(pick ? "project" : "new");
 
   useEffect(() => {
     if (step !== "new") return;
-    host.projectOpenDirPicker(true);
-    return () => { host.projectCloseDirPicker(); };
+    host.projectOpenDirPicker(true, "", "", NEW_SESSION_PICKER_KEY);
+    return () => { host.projectCloseDirPicker(NEW_SESSION_PICKER_KEY); };
   }, [host, step]);
 
   const open = (key: string) => {
@@ -467,10 +469,10 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
         picker={manage.dirPicker}
         onBack={pick ? () => setStep("project") : undefined}
         onClose={onClose}
-        onNavigate={host.projectDirNavigate}
+        onNavigate={(mid, path) => host.projectDirNavigate(mid, path, NEW_SESSION_PICKER_KEY)}
         onConfirm={(path) => {
           if (manage.dirPicker?.machineId) remote.draftMachines.set(path, manage.dirPicker.machineId);
-          host.projectAdd(path);
+          host.projectAdd(path, NEW_SESSION_PICKER_KEY);
           if (onPicked) open(path);
           else { onClose(); remote.focusProject = path; }
         }}

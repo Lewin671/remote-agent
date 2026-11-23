@@ -587,24 +587,26 @@ function ScheduleConfigSheet({ vm, focusMode = false, onSelectMachine, onSelectM
   );
 }
 
+const SCHEDULE_FORM_PICKER_KEY = "schedule-form";
+
 function ScheduleProjectSheet({ host, vm, onPickProject, onClose }: {
   host: CoreHost; vm: ScheduleFormViewModel; onPickProject: (projectKey: string, machineId: string) => void; onClose: () => void;
 }) {
-  const manage = useProjectView(host, "", true).manage;
+  const manage = useProjectView(host, "", true, 30, "", SCHEDULE_FORM_PICKER_KEY).manage;
   const [step, setStep] = useState<"project" | "dir">("project");
   useEffect(() => {
     if (step !== "dir") return;
-    host.projectOpenDirPicker(false, vm.lockMachine ? vm.machineId : "");
-    return () => host.projectCloseDirPicker();
+    host.projectOpenDirPicker(false, vm.lockMachine ? vm.machineId : "", "", SCHEDULE_FORM_PICKER_KEY);
+    return () => host.projectCloseDirPicker(SCHEDULE_FORM_PICKER_KEY);
   }, [host, step, vm.lockMachine, vm.machineId]);
 
   if (step === "dir" && manage?.dirPicker) {
     return (
-      <DirPickerSheet picker={manage.dirPicker} onBack={() => setStep("project")} onClose={onClose} onNavigate={host.projectDirNavigate}
+      <DirPickerSheet picker={manage.dirPicker} onBack={() => setStep("project")} onClose={onClose} onNavigate={(mid, path) => host.projectDirNavigate(mid, path, SCHEDULE_FORM_PICKER_KEY)}
         onConfirm={(path) => {
           const mid = manage.dirPicker?.machineId || vm.machineId;
           if (mid && host.remote) host.remote.draftMachines.set(path, mid);
-          host.projectAdd(path);
+          host.projectAdd(path, SCHEDULE_FORM_PICKER_KEY);
           onPickProject(path, mid);
           onClose();
         }} />

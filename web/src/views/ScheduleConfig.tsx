@@ -12,12 +12,15 @@ function pathCrumbs(p: string): string[] {
   return parts[0] === "~" ? parts : parts.length ? ["/" + parts[0], ...parts.slice(1)] : ["/"];
 }
 
+const MACHINE_STATUS_PICKER_KEY = "machine-status";
+
 /** Lists a folder as a project via Core's ProjectAdd action. */
 export function addProject(remote: Remote, machineId: string, path: string) {
   remote.draftMachines.set(path, machineId);
   const host = getCoreHost(remote);
-  host.projectOpenDirPicker(false, machineId, path);
-  host.projectAdd(path);
+  host.projectOpenDirPicker(false, machineId, path, MACHINE_STATUS_PICKER_KEY);
+  host.projectAdd(path, MACHINE_STATUS_PICKER_KEY);
+  host.projectCloseDirPicker(MACHINE_STATUS_PICKER_KEY);
 }
 
 /** Temporary M4-deferred directory picker on a fixed machine for MachineStatus. */

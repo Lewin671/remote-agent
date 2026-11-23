@@ -759,7 +759,7 @@ export class CoreHost {
   private totalListeners = 0;
 
   private homeCache?: { version: number; endedLimit: number; vm: HomeViewModel };
-  private projectCache?: { version: number; key: string; manage: boolean; endedLimit: number; machineId: string; vm: ProjectViewModel };
+  private projectCache = new Map<string, { version: number; vm: ProjectViewModel }>();
   private sessionCache = new Map<string, { version: number; windowKey: string; vm: SessionViewModel }>();
   private newSessionCache?: { version: number; key: string; vm: NewSessionViewModel };
   private syncStateCache?: { version: number; view: SyncStateView };
@@ -1181,12 +1181,14 @@ export class CoreHost {
   projectSetSearch = (query: string) => this.emit({ case: "projectSetSearch", value: create(ProjectSetSearchActionSchema, { query }) });
   projectTogglePin = (projectKey: string) => this.emit({ case: "projectTogglePin", value: create(ProjectKeyActionSchema, { projectKey }) });
   projectToggleHide = (projectKey: string) => this.emit({ case: "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey }) });
-  projectOpenDirPicker = (forNewTask: boolean, machineId = "", path = "") =>
-    this.emit({ case: "projectOpenDirPicker", value: create(DirPickerOpenActionSchema, { forNewTask, machineId, path }) });
-  projectDirNavigate = (machineId: string, path: string) =>
-    this.emit({ case: "projectDirNavigate", value: create(DirNavigateActionSchema, { machineId, path }) });
-  projectCloseDirPicker = () => this.emit({ case: "projectCloseDirPicker", value: create(DirPickerCloseActionSchema) });
-  projectAdd = (path: string) => this.emit({ case: "projectAdd", value: create(ProjectAddActionSchema, { path }) });
+  projectOpenDirPicker = (forNewTask: boolean, machineId = "", path = "", pickerKey = "") =>
+    this.emit({ case: "projectOpenDirPicker", value: create(DirPickerOpenActionSchema, { forNewTask, machineId, path, pickerKey }) });
+  projectDirNavigate = (machineId: string, path: string, pickerKey = "") =>
+    this.emit({ case: "projectDirNavigate", value: create(DirNavigateActionSchema, { machineId, path, pickerKey }) });
+  projectCloseDirPicker = (pickerKey = "") =>
+    this.emit({ case: "projectCloseDirPicker", value: create(DirPickerCloseActionSchema, { pickerKey }) });
+  projectAdd = (path: string, pickerKey = "") =>
+    this.emit({ case: "projectAdd", value: create(ProjectAddActionSchema, { path, pickerKey }) });
 
   newSessionOpen = (projectKey: string) => this.emit({ case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey }) });
   newSessionSelectMachine = (machineId: string) => this.emit({ case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId }) });
@@ -1963,23 +1965,18 @@ export class CoreHost {
     return value;
   }
 
-  viewProject(projectKey: string, manage: boolean, endedLimit = 30, machineId = ""): ProjectViewModel {
+  viewProject(projectKey: string, manage: boolean, endedLimit = 30, machineId = "", pickerKey = ""): ProjectViewModel {
     const ver = this.version(ScreenTarget.PROJECT);
-    if (
-      this.projectCache &&
-      this.projectCache.version === ver &&
-      this.projectCache.key === projectKey &&
-      this.projectCache.manage === manage &&
-      this.projectCache.endedLimit === endedLimit &&
-      this.projectCache.machineId === machineId
-    ) {
-      return this.projectCache.vm;
+    const cacheKey = `${projectKey}\0${manage ? 1 : 0}\0${endedLimit}\0${machineId}\0${pickerKey}`;
+    const cached = this.projectCache.get(cacheKey);
+    if (cached && cached.version === ver) {
+      return cached.vm;
     }
     const value = this.queryView<ProjectViewModel>(
-      { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit, machineId }) },
+      { case: "project", value: create(ProjectScreenRequestSchema, { projectKey, manage, endedLimit, machineId, pickerKey }) },
       "project",
     );
-    this.projectCache = { version: ver, key: projectKey, manage, endedLimit, machineId, vm: value };
+    this.projectCache.set(cacheKey, { version: ver, vm: value });
     return value;
   }
 
@@ -2875,7 +2872,7 @@ export class CoreHost {
   private invalidateTarget(target: ScreenTarget) {
     this.screenVersions.set(target, (this.screenVersions.get(target) ?? 0) + 1);
     if (target === ScreenTarget.HOME) this.homeCache = undefined;
-    else if (target === ScreenTarget.PROJECT) this.projectCache = undefined;
+    else if (target === ScreenTarget.PROJECT) this.projectCache.clear();
     else if (target === ScreenTarget.SESSION) this.sessionCache.clear();
     else if (target === ScreenTarget.NEW_SESSION) this.newSessionCache = undefined;
     else if (target === ScreenTarget.SYNC_STATE) this.syncStateCache = undefined;
@@ -3018,9 +3015,9 @@ export function useHomeView(host: CoreHost, endedLimit = 30): HomeViewModel {
   return useMemo(() => host.viewHome(endedLimit), [host, version, endedLimit]);
 }
 
-export function useProjectView(host: CoreHost, projectKey: string, manage: boolean, endedLimit = 30, machineId = ""): ProjectViewModel {
+export function useProjectView(host: CoreHost, projectKey: string, manage: boolean, endedLimit = 30, machineId = "", pickerKey = ""): ProjectViewModel {
   const version = useScreenVersion(host, ScreenTarget.PROJECT);
-  return useMemo(() => host.viewProject(projectKey, manage, endedLimit, machineId), [host, version, projectKey, manage, endedLimit, machineId]);
+  return useMemo(() => host.viewProject(projectKey, manage, endedLimit, machineId, pickerKey), [host, version, projectKey, manage, endedLimit, machineId, pickerKey]);
 }
 
 export function useNewSessionView(host: CoreHost, projectKey = ""): NewSessionViewModel {

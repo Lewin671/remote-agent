@@ -153,10 +153,12 @@ export function ManageProjectsScreen(p: { vm: ManageProjectsView; onSearch: (que
   );
 }
 
+const MANAGE_PICKER_KEY = "manage";
+
 /** 项目管理: connected to CoreHost. */
 export function ManagePage({ remote, machineId = "", go, onBack }: { remote: Remote; machineId?: string; go: Go; onBack: () => void }) {
   const host = useCoreHost(remote, go);
-  const manage = useProjectView(host, "", true, 30, machineId).manage;
+  const manage = useProjectView(host, "", true, 30, machineId, MANAGE_PICKER_KEY).manage;
   if (!manage) return null;
   const effectiveManage = remote.conn !== "online" && manage.canEdit
     ? { ...manage, canEdit: false, blockedReason: manage.blockedReason ?? create(TextSchema, { literal: t("projects.connect_to_edit") }) }
@@ -167,12 +169,12 @@ export function ManagePage({ remote, machineId = "", go, onBack }: { remote: Rem
       onSearch={host.projectSetSearch}
       onTogglePin={host.projectTogglePin}
       onToggleHide={host.projectToggleHide}
-      onOpenDirPicker={() => host.projectOpenDirPicker(false)}
-      onDirNavigate={host.projectDirNavigate}
-      onCloseDirPicker={host.projectCloseDirPicker}
+      onOpenDirPicker={() => host.projectOpenDirPicker(false, "", "", MANAGE_PICKER_KEY)}
+      onDirNavigate={(mid, path) => host.projectDirNavigate(mid, path, MANAGE_PICKER_KEY)}
+      onCloseDirPicker={() => host.projectCloseDirPicker(MANAGE_PICKER_KEY)}
       onAddProject={(path) => {
         if (remote.projectPrefs().hidden.some((h) => h.path === path)) host.projectToggleHide(path);
-        host.projectAdd(path);
+        host.projectAdd(path, MANAGE_PICKER_KEY);
       }}
       onSelectProject={(scopeKey) => { host.homeSetScope(scopeKey); go(""); }}
       onRetryPrefs={() => remote.retryPrefs()}
