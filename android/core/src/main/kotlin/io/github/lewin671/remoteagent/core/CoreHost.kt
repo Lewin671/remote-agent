@@ -99,6 +99,7 @@ class CoreHost(
     private val monotonic: () -> Long = { System.nanoTime() / 1_000_000L },
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val random: SecureRandom = SecureRandom(),
+    private val initialLocale: String = "zh-CN",
 ) {
     private val ownsScope = externalScope == null
     private val dispatcher: CoroutineDispatcher = workerDispatcher ?: Dispatchers.IO.limitedParallelism(1)
@@ -398,6 +399,11 @@ class CoreHost(
                     dispatchOnWorker(
                         CoreEvent.newBuilder()
                             .setScheduleLocalContext(buildScheduleLocalContext(nowMs, tz))
+                            .build(),
+                    )
+                    dispatchOnWorker(
+                        CoreEvent.newBuilder()
+                            .setLocaleChanged(LocaleChangedEvent.newBuilder().setUiLocale(initialLocale))
                             .build(),
                     )
                     refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
@@ -1056,6 +1062,9 @@ class CoreHost(
 
     fun networkChanged(available: Boolean, signature: String) =
         send { setNetworkChanged(NetworkChangedEvent.newBuilder().setAvailable(available).setSignature(signature)) }
+
+    fun setUiLocale(uiLocale: String) =
+        send { setLocaleChanged(LocaleChangedEvent.newBuilder().setUiLocale(uiLocale)) }
 
     fun retrySessionEvents(sessionId: String) =
         send { setRetrySessionEvents(RetrySessionEventsAction.newBuilder().setSessionId(sessionId)) }

@@ -482,4 +482,65 @@ class CoreHostSmokeTest {
             dispatcher.close()
         }
     }
+
+    @Test
+    fun setUiLocaleSwitchesCoreFormattedUsageNumbers() {
+        val h = host()
+        try {
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setSeedDemoWorld(
+                        SeedDemoWorldEvent.newBuilder()
+                            .addMachines(
+                                io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+                                    .setMachineId("m1")
+                                    .setOnline(false)
+                                    .setMeta(
+                                        MachineMeta.newBuilder()
+                                            .setHostname("Mac Studio")
+                                            .setProtocolVersion(PEER_PROTOCOL_VERSION)
+                                            .setCapabilities(MachineCapabilities.newBuilder().setUsageStats(true)),
+                                    ),
+                            )
+                            .setSecurity(
+                                DemoSecurity.newBuilder()
+                                    .setIsMember(true)
+                                    .setSelfDeviceId("c1")
+                                    .setAuthorityDeviceId("c1")
+                                    .addTrustedMachineIds("m1")
+                                    .setHeadEpoch(1L)
+                                    .setLeaseEndMs(nowMs + 3_600_000L),
+                            ),
+                    )
+                    .build(),
+            )
+            val snap = io.github.lewin671.remoteagent.proto.UsageStatsResponse.newBuilder()
+                .setPreset(io.github.lewin671.remoteagent.proto.UsageRangePreset.USAGE_RANGE_PRESET_SEVEN_DAYS)
+                .setGranularity(io.github.lewin671.remoteagent.proto.UsageBucketGranularity.USAGE_BUCKET_GRANULARITY_DAY)
+                .setGeneratedAtMs(nowMs)
+                .addSeries(
+                    io.github.lewin671.remoteagent.proto.UsageSeries.newBuilder()
+                        .setAgent(Agent.AGENT_CLAUDE)
+                        .setModel("claude-sonnet-4-6")
+                        .setCurrent(
+                            io.github.lewin671.remoteagent.proto.UsagePeriodSummary.newBuilder()
+                                .setUncachedInputTokens(1_200_000L)
+                                .setOutputTokens(300_000L)
+                                .setUsageRequestCount(5L),
+                        ),
+                )
+                .build()
+            h.deliverUsageCacheLoaded("m1", snap)
+            h.openUsageScreen("m1")
+            assertEquals("150万", h.usageView.value.hero.totalTokensText.literal)
+
+            h.setUiLocale("en")
+            assertEquals("1.5M", h.usageView.value.hero.totalTokensText.literal)
+
+            h.setUiLocale("zh-CN")
+            assertEquals("150万", h.usageView.value.hero.totalTokensText.literal)
+        } finally {
+            h.close()
+        }
+    }
 }

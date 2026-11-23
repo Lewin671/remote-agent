@@ -222,6 +222,10 @@ class MainActivity : ComponentActivity() {
         }
         // Say what this client is, sealed, so other clients can tell it apart.
         val syncView by remote.coreHost.syncStateView.collectAsState()
+        val uiLocale = io.github.lewin671.remoteagent.ui.LocalMessageLocale.current
+        LaunchedEffect(remote, uiLocale) {
+            remote.coreHost.setUiLocale(uiLocale)
+        }
         // The phone's own name where the system has one (小米 14), else its model number.
         val phone = remember {
             android.provider.Settings.Global.getString(
