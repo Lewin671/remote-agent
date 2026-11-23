@@ -11,15 +11,14 @@ import {
 } from "../core/host";
 import { renderText } from "../core/text";
 import { t, useLocale, type Locale } from "../i18n";
-import type {
-  UsageBarBucketView,
-  UsageHeroView,
-  UsageMetricStripView,
-  UsageModelRowView,
-  UsageViewModel,
+import {
+  UsageEmptyKind,
+  type UsageBarBucketView,
+  type UsageMetricStripView,
+  type UsageModelRowView,
+  type UsageViewModel,
 } from "../gen/remoteagent/core/v1/usage_view_pb";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
-import { UsageSourceState } from "../gen/remoteagent/v1/local_pb";
 import type { Remote } from "../remote";
 import { Banner, NavBar, Segmented, useRemote } from "../ui";
 import {
@@ -28,15 +27,13 @@ import {
   formatUsageBucketLabel,
   formatUsageCustomRange,
 } from "../usageChart";
-import {
-  formatCacheHit,
-  formatCommaUint,
-  formatDeltaTriangle,
-  formatSpeedValue,
-  formatTokens,
-  formatTtftSeconds,
-  middleEllipsis,
-} from "../usageFormat";
+
+function middleEllipsis(name: string, max = 38): string {
+  if (name.length <= max || max < 8) return name;
+  const tail = Math.min(12, Math.max(4, Math.floor((max - 3) / 3)));
+  const head = max - tail - 1;
+  return `${name.slice(0, head)}…${name.slice(-tail)}`;
+}
 
 const RANGE_OPTIONS: Array<{ value: string; preset: UsageRangePreset; label: (locale: Locale) => string }> = [
   { value: String(UsageRangePreset.TODAY), preset: UsageRangePreset.TODAY, label: (locale) => t("usage.range_today", undefined, locale) },
@@ -74,12 +71,6 @@ function fromLocalDateInputValue(s: string): bigint | undefined {
   return BigInt(new Date(parts[0], parts[1] - 1, parts[2]).getTime());
 }
 
-function formatCachedTime(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return "";
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
 function ChevronDownSmall() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -94,35 +85,6 @@ function ClearXIcon() {
       <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
     </svg>
   );
-}
-
-function heroSubline(vm: UsageViewModel, hero: UsageHeroView, locale: Locale): string {
-  if (hero.scrubbing) return "";
-  const parts: string[] = [
-    t(
-      "usage.hero_reqs",
-      { count: Number(hero.requestCount), formatted: formatCommaUint(hero.requestCount) },
-      locale,
-    ),
-  ];
-  if (hero.hasSharePercent) {
-    const shareText = hero.shareRatio < 0.01 ? "<1%" : `${Math.round(hero.shareRatio * 100)}%`;
-    parts.push(t("usage.hero_share", { pct: shareText }, locale));
-  }
-  if (hero.previousBackfilling) {
-    parts.push(t("usage.backfilling_cell", undefined, locale));
-  } else if (hero.hasTokensDelta) {
-    if (Math.abs(hero.tokensDeltaPercent) < 0.5) {
-      parts.push(t("usage.flat", undefined, locale));
-    } else {
-      const period =
-        vm.rangeDays <= 1
-          ? t("usage.vs_yesterday", undefined, locale)
-          : t("usage.vs_prev_days", { days: vm.rangeDays }, locale);
-      parts.push(`${formatDeltaTriangle(hero.tokensDeltaPercent, locale)} ${period}`);
-    }
-  }
-  return parts.join(" · ");
 }
 
 function HeroSection({
@@ -141,19 +103,19 @@ function HeroSection({
   const compRowHeight = twoCol ? 18 : 17;
   const minCompHeight = Math.max(0, hero?.periodCompositionRows ?? 0) * compRowHeight + 5;
 
-  const compItems: Array<{ key: string; label: string; value: bigint; indent?: boolean }> = comp
+  const compItems = comp
     ? [
-        { key: "uncached", label: t("usage.comp_uncached", undefined, locale), value: comp.uncachedInputTokens },
-        { key: "read", label: t("usage.comp_cache_read", undefined, locale), value: comp.cacheReadTokens },
-        { key: "write", label: t("usage.comp_cache_write", undefined, locale), value: comp.cacheWriteTokens },
-        { key: "out", label: t("usage.comp_output", undefined, locale), value: comp.outputTokens },
-        { key: "reas", label: t("usage.comp_reasoning_label", undefined, locale), value: comp.reasoningOutputTokens, indent: true },
-      ].filter((it) => it.value > 0n)
+        { key: "uncached", label: t("usage.comp_uncached", undefined, locale), text: comp.uncachedInputText },
+        { key: "read", label: t("usage.comp_cache_read", undefined, locale), text: comp.cacheReadText },
+        { key: "write", label: t("usage.comp_cache_write", undefined, locale), text: comp.cacheWriteText },
+        { key: "out", label: t("usage.comp_output", undefined, locale), text: comp.outputText },
+        { key: "reas", label: t("usage.comp_reasoning_label", undefined, locale), text: comp.reasoningOutputText, indent: true },
+      ].filter((it) => !!it.text)
     : [];
 
   let scopeNode: React.ReactNode;
   if (!vm.hasAnyUsage || !hero) {
-    scopeNode = t("usage.scope_all_empty", undefined, locale);
+    scopeNode = renderText(hero?.scopeText, locale) || t("usage.scope_all_empty", undefined, locale);
   } else if (hero.scrubbing) {
     const label = formatUsageBucketLabel(hero.scrubStartMs, hero.scrubEndMs, vm.granularity, locale);
     scopeNode = (
@@ -163,11 +125,12 @@ function HeroSection({
       </>
     );
   } else if (hero.hasSelectedModel) {
+    const selectedLabel = renderText(hero.scopeText, locale) || hero.selectedModel;
     scopeNode = (
       <>
         <AgentMark agent={hero.selectedAgent} />
-        <span className="nm" title={hero.selectedModel}>
-          {middleEllipsis(hero.selectedModel, 46)}
+        <span className="nm" title={selectedLabel}>
+          {middleEllipsis(selectedLabel, 46)}
         </span>
         <button
           type="button"
@@ -180,11 +143,11 @@ function HeroSection({
       </>
     );
   } else {
-    scopeNode = t("usage.scope_all_models", { count: hero.totalModelCount }, locale);
+    scopeNode = renderText(hero.scopeText, locale);
   }
 
-  const subline = vm.hasAnyUsage && hero ? heroSubline(vm, hero, locale) : "";
-  const bigStr = vm.hasAnyUsage && hero ? formatTokens(hero.totalTokens, locale) : "0";
+  const subline = vm.hasAnyUsage && hero ? renderText(hero.sublineText, locale) : "";
+  const bigStr = renderText(hero?.totalTokensText, locale) || "0";
 
   return (
     <>
@@ -202,7 +165,7 @@ function HeroSection({
             {compItems.map((it) => (
               <div key={it.key} className={it.indent ? "u-comp-row in2" : "u-comp-row"}>
                 <span>{it.label}</span>
-                <b>{formatTokens(it.value, locale)}</b>
+                <b>{renderText(it.text, locale)}</b>
               </div>
             ))}
           </div>
@@ -216,7 +179,7 @@ function MetricStrip({
   label,
   unit,
   strip,
-  formatVal,
+  locale,
   scrubbing,
   scrubIdx,
   plotW,
@@ -226,7 +189,7 @@ function MetricStrip({
   label: string;
   unit?: string;
   strip: UsageMetricStripView | undefined;
-  formatVal: (v: number) => string;
+  locale: Locale;
   scrubbing: boolean;
   scrubIdx: number;
   plotW: number;
@@ -252,10 +215,9 @@ function MetricStrip({
   const frontPoints = hasSel ? strip.selectedPoints : strip.allPoints;
   const frontGeom = buildStripPaths(frontPoints, strip.scaleMin, strip.scaleMax, plotW, height);
 
-  const curStr = strip.hasValue ? formatVal(strip.currentValue) : "–";
-  const minStr = formatVal(strip.minValue);
-  const maxStr = formatVal(strip.maxValue);
-  const showRange = minStr !== maxStr;
+  const curStr = renderText(strip.currentValueText, locale) || "–";
+  const minStr = renderText(strip.minValueText, locale);
+  const maxStr = renderText(strip.maxValueText, locale);
 
   const markCoord = scrubbing
     ? 0 <= scrubIdx && scrubIdx < frontGeom.coords.length
@@ -273,7 +235,7 @@ function MetricStrip({
           {curStr}
         </b>
         {strip.hasValue && unit && <span>{unit}</span>}
-        {showRange && <em>{`${minStr} – ${maxStr}`}</em>}
+        {strip.showRange && <em>{`${minStr} – ${maxStr}`}</em>}
       </div>
       <svg viewBox={`0 0 ${plotW} ${height}`} height={height} aria-hidden="true">
         {backGeom && backGeom.d && <path className="u-ln back" d={backGeom.d} />}
@@ -458,19 +420,10 @@ function BarAndStripsSection({
   };
 
   const yMax = Number(barChart?.yMax ?? 0n);
-  const yMid = Number(barChart?.yMid ?? 0n);
   const bw = n > 0 ? plotW / n : 0;
   const gap = n > 26 ? 2 : 3;
   const barInnerH = barH - topPad;
-  const a11yLabel = t(
-    "usage.charts_a11y",
-    {
-      name: vm.machineName,
-      total: formatTokens(hero?.totalTokens ?? 0n, locale),
-      count: vm.rows.length,
-    },
-    locale,
-  );
+  const a11yLabel = renderText(vm.chartsA11yLabel, locale);
   const noSampleA11y = t("usage.no_sample_a11y", undefined, locale);
 
   return (
@@ -514,10 +467,10 @@ function BarAndStripsSection({
         {yMax > 0 && (
           <>
             <text className="u-yl" x={plotW} y={topPad - 4} textAnchor="end">
-              {formatTokens(yMax, locale)}
+              {renderText(barChart?.yMaxText, locale)}
             </text>
             <text className="u-yl" x={plotW} y={midY - 4} textAnchor="end">
-              {formatTokens(yMid, locale)}
+              {renderText(barChart?.yMidText, locale)}
             </text>
           </>
         )}
@@ -527,7 +480,7 @@ function BarAndStripsSection({
       <MetricStrip
         label={t("usage.strip_cache_hit", undefined, locale)}
         strip={vm.cacheHitStrip}
-        formatVal={formatCacheHit}
+        locale={locale}
         scrubbing={scrubbing}
         scrubIdx={scrubIdx}
         plotW={plotW}
@@ -538,7 +491,7 @@ function BarAndStripsSection({
         label={t("usage.strip_speed", undefined, locale)}
         unit={t("usage.kpi_unit_toks", undefined, locale)}
         strip={vm.outputSpeedStrip}
-        formatVal={formatSpeedValue}
+        locale={locale}
         scrubbing={scrubbing}
         scrubIdx={scrubIdx}
         plotW={plotW}
@@ -548,7 +501,7 @@ function BarAndStripsSection({
       <MetricStrip
         label={t("usage.strip_ttft", undefined, locale)}
         strip={vm.ttftStrip}
-        formatVal={formatTtftSeconds}
+        locale={locale}
         scrubbing={scrubbing}
         scrubIdx={scrubIdx}
         plotW={plotW}
@@ -573,12 +526,6 @@ function BarAndStripsSection({
       )}
     </div>
   );
-}
-
-function formatRowDelta(row: UsageModelRowView, locale: Locale): string {
-  if (row.previousBackfilling) return t("usage.backfilling_cell", undefined, locale);
-  if (!row.hasTokensDelta) return "";
-  return formatDeltaTriangle(row.tokensDeltaPercent, locale);
 }
 
 function ModelTableSection({
@@ -627,7 +574,7 @@ function ModelTableSection({
       </div>
 
       {vm.rows.map((row) => {
-        const deltaStr = formatRowDelta(row, locale);
+        const deltaStr = renderText(row.deltaText, locale);
         return (
           <button
             key={row.seriesKey}
@@ -647,15 +594,15 @@ function ModelTableSection({
               <div className="u-sh" aria-hidden="true">
                 <i style={{ width: `${Math.max(0, Math.min(100, row.shareRatio * 100)).toFixed(2)}%` }} />
               </div>
-              <span className="tk">{formatTokens(row.totalTokens, locale)}</span>
-              <span className={row.hasCacheHit ? undefined : "na"} aria-label={row.hasCacheHit ? undefined : noSampleA11y}>
-                {row.hasCacheHit ? formatCacheHit(row.cacheHitRate) : "–"}
+              <span className="tk">{renderText(row.totalTokensText, locale)}</span>
+              <span className={row.cacheHitText ? undefined : "na"} aria-label={row.cacheHitText ? undefined : noSampleA11y}>
+                {renderText(row.cacheHitText, locale) || "–"}
               </span>
-              <span className={row.hasSpeed ? undefined : "na"} aria-label={row.hasSpeed ? undefined : noSampleA11y}>
-                {row.hasSpeed ? formatSpeedValue(row.speedP50) : "–"}
+              <span className={row.speedText ? undefined : "na"} aria-label={row.speedText ? undefined : noSampleA11y}>
+                {renderText(row.speedText, locale) || "–"}
               </span>
-              <span className={row.hasTtft ? undefined : "na"} aria-label={row.hasTtft ? undefined : noSampleA11y}>
-                {row.hasTtft ? formatTtftSeconds(row.ttftP50Ms) : "–"}
+              <span className={row.ttftText ? undefined : "na"} aria-label={row.ttftText ? undefined : noSampleA11y}>
+                {renderText(row.ttftText, locale) || "–"}
               </span>
             </div>
           </button>
@@ -837,36 +784,13 @@ export function UsageScreenView({
     return clampUsageCustomRange(vm.startMs, endInc);
   }, [vm.startMs, vm.endMs]);
 
-  const errStr = useMemo(() => renderText(vm.errorText), [vm.errorText]);
-  const name = vm.machineName || vm.machineId;
-  const subtitle = vm.found && !vm.online ? t("usage.subtitle_offline", { name }, locale) : name;
-
-  const allSourcesUnavailable =
-    vm.found &&
-    vm.supported &&
-    !vm.hasAnyUsage &&
-    !vm.loading &&
-    !errStr &&
-    (vm.online || vm.cachedOffline) &&
-    0 < vm.sources.length &&
-    vm.sources.every((s) => s.state === UsageSourceState.UNAVAILABLE);
-
-  const showOfflineEmpty =
-    vm.found && vm.supported && !vm.online && !vm.hasAnyUsage && !vm.cachedOffline && !vm.loading;
-
-  const showEmptyRecords =
-    vm.found &&
-    vm.supported &&
-    !vm.hasAnyUsage &&
-    !vm.loading &&
-    !errStr &&
-    !showOfflineEmpty &&
-    !allSourcesUnavailable;
-
-  const unavailAgentNames = vm.sources
-    .filter((s) => s.state === UsageSourceState.UNAVAILABLE)
-    .map((s) => (s.agent === Agent.ANTIGRAVITY ? "Antigravity" : s.agent === Agent.CLAUDE ? "Claude Code" : "Codex"))
-    .join(", ");
+  const subtitle = renderText(vm.subtitle, locale) || vm.machineName || vm.machineId;
+  const isEmptyCard =
+    vm.emptyKind === UsageEmptyKind.NOT_FOUND ||
+    vm.emptyKind === UsageEmptyKind.UNSUPPORTED ||
+    vm.emptyKind === UsageEmptyKind.OFFLINE_EMPTY ||
+    vm.emptyKind === UsageEmptyKind.LOAD_ERROR ||
+    vm.emptyKind === UsageEmptyKind.ALL_SOURCES_UNAVAILABLE;
 
   const minDateStr = useMemo(() => toLocalDateInputValue(clampUsageCustomRange(1n, 1n).startMs), []);
   const todayDateStr = useMemo(() => toLocalDateInputValue(Date.now()), []);
@@ -959,87 +883,47 @@ export function UsageScreenView({
           </div>
         )}
 
-        {vm.found && vm.supported && (vm.cachedOffline || vm.backfilling || (errStr && vm.hasAnyUsage)) && (
+        {vm.banners.length > 0 && (
           <div className={twoCol ? "u-banners" : "u-in u-banners"}>
-            {vm.cachedOffline && (
-              <Banner>
-                {t("usage.offline_banner", { name, time: formatCachedTime(Number(vm.cachedAtMs)) }, locale)}
+            {vm.banners.map((b, idx) => (
+              <Banner
+                key={`${b.kind}-${idx}`}
+                kind={b.isError ? "err" : undefined}
+                action={b.canRetry ? t("common.retry", undefined, locale) : undefined}
+                onAction={b.canRetry ? onRetry : undefined}
+              >
+                {renderText(b.text, locale)}
               </Banner>
-            )}
-            {vm.backfilling && (
-              <Banner>
-                {t(
-                  "usage.backfilling_banner",
-                  { scanned: vm.backfillScannedDays, total: vm.backfillTotalDays || 90 },
-                  locale,
-                )}
-              </Banner>
-            )}
-            {errStr && vm.hasAnyUsage && (
-              <Banner kind="err" action={t("common.retry", undefined, locale)} onAction={onRetry}>
-                {`${t("usage.load_error_title", undefined, locale)}：${errStr}`}
-              </Banner>
-            )}
+            ))}
           </div>
         )}
 
-        {!vm.found && vm.loading && showSkeleton && (
+        {vm.emptyKind === UsageEmptyKind.LOADING && showSkeleton && (
           <div className="u-in">
             <div className="u-skel" aria-busy="true" />
           </div>
         )}
 
-        {vm.found && !vm.supported && (
+        {isEmptyCard && (
           <div className="u-in">
             <div className="u-empty">
-              <b>{t("usage.unsupported_title", undefined, locale)}</b>
-              <p>{renderText(vm.unsupportedFootnote) || t("usage.unsupported_body", { name }, locale)}</p>
+              <b>{renderText(vm.emptyTitle, locale)}</b>
+              {vm.emptyBody && <p>{renderText(vm.emptyBody, locale)}</p>}
+              {vm.emptyCanRetry && (
+                <button type="button" className="btn pri" onClick={onRetry}>
+                  {t("common.retry", undefined, locale)}
+                </button>
+              )}
             </div>
           </div>
         )}
 
-        {showOfflineEmpty && (
-          <div className="u-in">
-            <div className="u-empty">
-              <b>{t("usage.offline_empty_title", { name }, locale)}</b>
-              <p>{t("usage.offline_empty_body", { name }, locale)}</p>
-            </div>
-          </div>
-        )}
-
-        {vm.found && vm.supported && errStr && !vm.hasAnyUsage && !vm.loading && (
-          <div className="u-in">
-            <div className="u-empty">
-              <b>{t("usage.load_error_title", undefined, locale)}</b>
-              <p>{errStr}</p>
-              <button type="button" className="btn pri" onClick={onRetry}>
-                {t("common.retry", undefined, locale)}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {vm.found && vm.supported && vm.loading && showSkeleton && !vm.hasAnyUsage && (
-          <div className="u-in">
-            <div className="u-skel" aria-busy="true" />
-          </div>
-        )}
-
-        {allSourcesUnavailable && (
-          <div className="u-in">
-            <div className="u-empty">
-              <b>{renderText(vm.unsupportedFootnote) || t("usage.only_unavailable_title", { agents: unavailAgentNames }, locale)}</b>
-              <p>{t("usage.only_unavailable_body", { agents: unavailAgentNames }, locale)}</p>
-            </div>
-          </div>
-        )}
-
-        {showEmptyRecords && (
+        {vm.emptyKind === UsageEmptyKind.NO_RECORDS && (
           <div className={twoCol ? "u-wbody" : "u-in"}>
             <div className={twoCol ? "u-wl" : undefined}>
               <HeroSection vm={vm} twoCol={twoCol} locale={locale} onClearSeries={() => onSelectSeries("", false)} />
               <div className="u-charts is-empty">
-                <div className="u-nodata">{t("usage.empty_no_records", undefined, locale)}</div>
+                <div className="u-nodata">{renderText(vm.emptyTitle, locale) || t("usage.empty_no_records", undefined, locale)}</div>
                 <div className="u-axis">
                   {emptyAxisTicks.map((tk, idx) => (
                     <span
@@ -1056,7 +940,7 @@ export function UsageScreenView({
           </div>
         )}
 
-        {vm.found && vm.supported && vm.hasAnyUsage && (
+        {vm.emptyKind === UsageEmptyKind.NONE && vm.hasAnyUsage && (
           <div className={twoCol ? "u-wbody" : "u-in"}>
             <div className={twoCol ? "u-wl" : undefined}>
               <HeroSection
