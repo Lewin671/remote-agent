@@ -2280,3 +2280,112 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 		t.Fatalf("expected viewer closed")
 	}
 }
+
+func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	start := c.Dispatch(&corev1.Event{
+		NowMs: 900,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	var tokenOp uint64
+	for _, eff := range start.GetEffects() {
+		if req := eff.GetEnsureToken(); req != nil {
+			tokenOp = req.GetOpId()
+		}
+	}
+	res := c.Dispatch(&corev1.Event{
+		NowMs: 910,
+		Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokenOp, Token: "tok", ExpiresMs: 60_000}},
+	})
+	var legID uint64
+	for _, eff := range res.GetEffects() {
+		if open := eff.GetOpenStream(); open != nil {
+			legID = open.GetLegId()
+		}
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 920,
+		Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920}},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        99_999_999,
+					TrustedMachineIds: []string{"m-att"},
+				},
+				Machines: []*corev1.DemoMachine{
+					{
+						MachineId: "m-att",
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname: "MacBook",
+							Capabilities: &v1.MachineCapabilities{
+								ImageUpload:         true,
+								FileUpload:          true,
+								MaxImagesPerMessage: 8,
+								MaxFilesPerMessage:  12,                // must be clamped to 6
+								MaxFileUploadBytes:  250 * 1024 * 1024, // must be clamped to 100 MiB
+							},
+						},
+					},
+				},
+				Sessions: []*corev1.DemoSession{
+					{
+						SessionId: "s-att",
+						MachineId: "m-att",
+						Meta:      &v1.Session{Id: "s-att", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+					},
+				},
+			},
+		},
+	})
+
+	vm, err := c.View(&corev1.Screen{
+		Screen: &corev1.Screen_AttachmentEval{
+			AttachmentEval: &corev1.AttachmentEvalScreenRequest{
+				SessionId:     "s-att",
+				CurrentImages: 7,
+				CurrentFiles:  5,
+				Candidates: []*corev1.AttachmentCandidateInput{
+					{Name: "a.jpg", MimeType: "image/jpeg", SizeBytes: 2048, FromGallery: true},
+					{Name: "b.jpg", MimeType: "image/jpeg", SizeBytes: 2048, FromGallery: true},
+					{Name: "clip.mov", MimeType: "", SizeBytes: 120 * 1024 * 1024, FromGallery: true},
+					{Name: "short.mp4", MimeType: "video/mp4", SizeBytes: 4 * 1024 * 1024, FromGallery: true},
+				},
+				Problems: []*corev1.ImageProblemInput{
+					{ErrorCode: "resource_exhausted"},
+					{RawDiagnostic: "network timeout"},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("AttachmentEval View error: %v", err)
+	}
+	ev := vm.GetAttachmentEval()
+	if ev.GetMaxImages() != 8 || ev.GetMaxFiles() != 6 || ev.GetMaxFileBytes() != 100*1024*1024 {
+		t.Fatalf("unexpected clamped limits: images=%d files=%d bytes=%d", ev.GetMaxImages(), ev.GetMaxFiles(), ev.GetMaxFileBytes())
+	}
+	if !ev.GetGalleryAllowsVideo() || ev.GetGalleryAcceptMime() != "image/*,video/*" || ev.GetLibraryRoom() != 2 {
+		t.Fatalf("unexpected gallery caps: allows=%v accept=%q room=%d", ev.GetGalleryAllowsVideo(), ev.GetGalleryAcceptMime(), ev.GetLibraryRoom())
+	}
+	if len(ev.GetDecisions()) != 4 {
+		t.Fatalf("expected 4 decisions, got %d", len(ev.GetDecisions()))
+	}
+	if !ev.Decisions[0].Accepted || ev.Decisions[1].Accepted || ev.Decisions[2].Accepted || !ev.Decisions[3].Accepted {
+		t.Fatalf("unexpected acceptance vector: %+v", ev.Decisions)
+	}
+	if ev.Decisions[3].Route != corev1.AttachmentCandidateRoute_ATTACHMENT_CANDIDATE_ROUTE_VIDEO_FILE {
+		t.Fatalf("expected VIDEO_FILE route, got %v", ev.Decisions[3].Route)
+	}
+	if len(ev.GetProblems()) != 2 || ev.GetFailureSummary().GetKey() != "image.attach_failed" {
+		t.Fatalf("unexpected problems/summary: %+v / %+v", ev.GetProblems(), ev.GetFailureSummary())
+	}
+}

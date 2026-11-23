@@ -163,6 +163,25 @@
                   "strValue": "OldMac"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.computer_offline_files",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -411,6 +430,25 @@
                   "strValue": "OldMac"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.computer_offline_files",
+              "args": [
+                {
+                  "name": "name",
+                  "strValue": "OldMac"
+                }
+              ]
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -673,6 +711,19 @@
                   "strValue": "Workstation"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.update_required"
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -885,6 +936,19 @@
                   "strValue": "Workstation"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.update_required"
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -1100,6 +1164,19 @@
                   "strValue": "Workstation"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.update_required"
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -1279,6 +1356,19 @@
                   "strValue": "Workstation"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.update_required"
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }
@@ -1468,6 +1558,19 @@
                   "strValue": "Workstation"
                 }
               ]
+            },
+            "fileUploadBlockedReason": {
+              "key": "attachment.update_required"
+            },
+            "galleryAcceptMime": "image/*",
+            "maxFileNameBytes": 255,
+            "maxFileSizeText": "100.0 MB",
+            "originalImageMaxBytes": "20971520",
+            "originalImageHint": {
+              "key": "image.original_hint"
+            },
+            "fileMetadataNotice": {
+              "key": "attachment.metadata"
             }
           }
         }

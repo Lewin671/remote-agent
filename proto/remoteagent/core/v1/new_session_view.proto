@@ -168,4 +168,12 @@ message NewSessionViewModel {
   int64 max_file_bytes = 33;
   Text image_upload_blocked_reason = 34;
   bool disk_full = 35;
+  Text file_upload_blocked_reason = 36;
+  bool gallery_allows_video = 37;
+  string gallery_accept_mime = 38;
+  int32 max_file_name_bytes = 39;
+  string max_file_size_text = 40;
+  int64 original_image_max_bytes = 41;
+  Text original_image_hint = 42;
+  Text file_metadata_notice = 43;
 }

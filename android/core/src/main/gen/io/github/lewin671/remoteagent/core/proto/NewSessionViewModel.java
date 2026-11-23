@@ -23,6 +23,8 @@ public  final class NewSessionViewModel extends
     availableAgents_ = emptyProtobufList();
     effortLabel_ = "";
     notices_ = emptyProtobufList();
+    galleryAcceptMime_ = "";
+    maxFileSizeText_ = "";
   }
   private int bitField0_;
   public static final int PROJECT_SELECTABLE_FIELD_NUMBER = 1;
@@ -1421,6 +1423,324 @@ public  final class NewSessionViewModel extends
   private void clearDiskFull() {
 
     diskFull_ = false;
+  }
+
+  public static final int FILE_UPLOAD_BLOCKED_REASON_FIELD_NUMBER = 36;
+  private io.github.lewin671.remoteagent.core.proto.Text fileUploadBlockedReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFileUploadBlockedReason() {
+    return ((bitField0_ & 0x00000200) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFileUploadBlockedReason() {
+    return fileUploadBlockedReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : fileUploadBlockedReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    fileUploadBlockedReason_ = value;
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFileUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (fileUploadBlockedReason_ != null &&
+        fileUploadBlockedReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      fileUploadBlockedReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(fileUploadBlockedReason_).mergeFrom(value).buildPartial();
+    } else {
+      fileUploadBlockedReason_ = value;
+    }
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+   */
+  private void clearFileUploadBlockedReason() {
+    fileUploadBlockedReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000200);
+  }
+
+  public static final int GALLERY_ALLOWS_VIDEO_FIELD_NUMBER = 37;
+  private boolean galleryAllowsVideo_;
+  /**
+   * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+   * @return The galleryAllowsVideo.
+   */
+  @java.lang.Override
+  public boolean getGalleryAllowsVideo() {
+    return galleryAllowsVideo_;
+  }
+  /**
+   * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+   * @param value The galleryAllowsVideo to set.
+   */
+  private void setGalleryAllowsVideo(boolean value) {
+    
+    galleryAllowsVideo_ = value;
+  }
+  /**
+   * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+   */
+  private void clearGalleryAllowsVideo() {
+
+    galleryAllowsVideo_ = false;
+  }
+
+  public static final int GALLERY_ACCEPT_MIME_FIELD_NUMBER = 38;
+  private java.lang.String galleryAcceptMime_;
+  /**
+   * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+   * @return The galleryAcceptMime.
+   */
+  @java.lang.Override
+  public java.lang.String getGalleryAcceptMime() {
+    return galleryAcceptMime_;
+  }
+  /**
+   * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+   * @return The bytes for galleryAcceptMime.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getGalleryAcceptMimeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(galleryAcceptMime_);
+  }
+  /**
+   * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+   * @param value The galleryAcceptMime to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGalleryAcceptMime(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    galleryAcceptMime_ = value;
+  }
+  /**
+   * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+   */
+  private void clearGalleryAcceptMime() {
+
+    galleryAcceptMime_ = getDefaultInstance().getGalleryAcceptMime();
+  }
+  /**
+   * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+   * @param value The bytes for galleryAcceptMime to set.
+   */
+  private void setGalleryAcceptMimeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    galleryAcceptMime_ = value.toStringUtf8();
+
+  }
+
+  public static final int MAX_FILE_NAME_BYTES_FIELD_NUMBER = 39;
+  private int maxFileNameBytes_;
+  /**
+   * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+   * @return The maxFileNameBytes.
+   */
+  @java.lang.Override
+  public int getMaxFileNameBytes() {
+    return maxFileNameBytes_;
+  }
+  /**
+   * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+   * @param value The maxFileNameBytes to set.
+   */
+  private void setMaxFileNameBytes(int value) {
+    
+    maxFileNameBytes_ = value;
+  }
+  /**
+   * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+   */
+  private void clearMaxFileNameBytes() {
+
+    maxFileNameBytes_ = 0;
+  }
+
+  public static final int MAX_FILE_SIZE_TEXT_FIELD_NUMBER = 40;
+  private java.lang.String maxFileSizeText_;
+  /**
+   * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+   * @return The maxFileSizeText.
+   */
+  @java.lang.Override
+  public java.lang.String getMaxFileSizeText() {
+    return maxFileSizeText_;
+  }
+  /**
+   * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+   * @return The bytes for maxFileSizeText.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getMaxFileSizeTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(maxFileSizeText_);
+  }
+  /**
+   * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+   * @param value The maxFileSizeText to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMaxFileSizeText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    maxFileSizeText_ = value;
+  }
+  /**
+   * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+   */
+  private void clearMaxFileSizeText() {
+
+    maxFileSizeText_ = getDefaultInstance().getMaxFileSizeText();
+  }
+  /**
+   * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+   * @param value The bytes for maxFileSizeText to set.
+   */
+  private void setMaxFileSizeTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    maxFileSizeText_ = value.toStringUtf8();
+
+  }
+
+  public static final int ORIGINAL_IMAGE_MAX_BYTES_FIELD_NUMBER = 41;
+  private long originalImageMaxBytes_;
+  /**
+   * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+   * @return The originalImageMaxBytes.
+   */
+  @java.lang.Override
+  public long getOriginalImageMaxBytes() {
+    return originalImageMaxBytes_;
+  }
+  /**
+   * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+   * @param value The originalImageMaxBytes to set.
+   */
+  private void setOriginalImageMaxBytes(long value) {
+    
+    originalImageMaxBytes_ = value;
+  }
+  /**
+   * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+   */
+  private void clearOriginalImageMaxBytes() {
+
+    originalImageMaxBytes_ = 0L;
+  }
+
+  public static final int ORIGINAL_IMAGE_HINT_FIELD_NUMBER = 42;
+  private io.github.lewin671.remoteagent.core.proto.Text originalImageHint_;
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOriginalImageHint() {
+    return ((bitField0_ & 0x00000400) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getOriginalImageHint() {
+    return originalImageHint_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : originalImageHint_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOriginalImageHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    originalImageHint_ = value;
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeOriginalImageHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (originalImageHint_ != null &&
+        originalImageHint_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      originalImageHint_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(originalImageHint_).mergeFrom(value).buildPartial();
+    } else {
+      originalImageHint_ = value;
+    }
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+   */
+  private void clearOriginalImageHint() {
+    originalImageHint_ = null;
+    bitField0_ = (bitField0_ & ~0x00000400);
+  }
+
+  public static final int FILE_METADATA_NOTICE_FIELD_NUMBER = 43;
+  private io.github.lewin671.remoteagent.core.proto.Text fileMetadataNotice_;
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFileMetadataNotice() {
+    return ((bitField0_ & 0x00000800) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFileMetadataNotice() {
+    return fileMetadataNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : fileMetadataNotice_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFileMetadataNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    fileMetadataNotice_ = value;
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFileMetadataNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (fileMetadataNotice_ != null &&
+        fileMetadataNotice_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      fileMetadataNotice_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(fileMetadataNotice_).mergeFrom(value).buildPartial();
+    } else {
+      fileMetadataNotice_ = value;
+    }
+    bitField0_ |= 0x00000800;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+   */
+  private void clearFileMetadataNotice() {
+    fileMetadataNotice_ = null;
+    bitField0_ = (bitField0_ & ~0x00000800);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.NewSessionViewModel parseFrom(
@@ -2963,6 +3283,329 @@ public  final class NewSessionViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFileUploadBlockedReason() {
+      return instance.hasFileUploadBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFileUploadBlockedReason() {
+      return instance.getFileUploadBlockedReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    public Builder setFileUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFileUploadBlockedReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    public Builder setFileUploadBlockedReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFileUploadBlockedReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    public Builder mergeFileUploadBlockedReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFileUploadBlockedReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 36 [json_name = "fileUploadBlockedReason"];</code>
+     */
+    public Builder clearFileUploadBlockedReason() {  copyOnWrite();
+      instance.clearFileUploadBlockedReason();
+      return this;
+    }
+
+    /**
+     * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+     * @return The galleryAllowsVideo.
+     */
+    @java.lang.Override
+    public boolean getGalleryAllowsVideo() {
+      return instance.getGalleryAllowsVideo();
+    }
+    /**
+     * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+     * @param value The galleryAllowsVideo to set.
+     * @return This builder for chaining.
+     */
+    public Builder setGalleryAllowsVideo(boolean value) {
+      copyOnWrite();
+      instance.setGalleryAllowsVideo(value);
+      return this;
+    }
+    /**
+     * <code>bool gallery_allows_video = 37 [json_name = "galleryAllowsVideo"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearGalleryAllowsVideo() {
+      copyOnWrite();
+      instance.clearGalleryAllowsVideo();
+      return this;
+    }
+
+    /**
+     * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+     * @return The galleryAcceptMime.
+     */
+    @java.lang.Override
+    public java.lang.String getGalleryAcceptMime() {
+      return instance.getGalleryAcceptMime();
+    }
+    /**
+     * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+     * @return The bytes for galleryAcceptMime.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getGalleryAcceptMimeBytes() {
+      return instance.getGalleryAcceptMimeBytes();
+    }
+    /**
+     * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+     * @param value The galleryAcceptMime to set.
+     * @return This builder for chaining.
+     */
+    public Builder setGalleryAcceptMime(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setGalleryAcceptMime(value);
+      return this;
+    }
+    /**
+     * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearGalleryAcceptMime() {
+      copyOnWrite();
+      instance.clearGalleryAcceptMime();
+      return this;
+    }
+    /**
+     * <code>string gallery_accept_mime = 38 [json_name = "galleryAcceptMime"];</code>
+     * @param value The bytes for galleryAcceptMime to set.
+     * @return This builder for chaining.
+     */
+    public Builder setGalleryAcceptMimeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setGalleryAcceptMimeBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+     * @return The maxFileNameBytes.
+     */
+    @java.lang.Override
+    public int getMaxFileNameBytes() {
+      return instance.getMaxFileNameBytes();
+    }
+    /**
+     * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+     * @param value The maxFileNameBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFileNameBytes(int value) {
+      copyOnWrite();
+      instance.setMaxFileNameBytes(value);
+      return this;
+    }
+    /**
+     * <code>int32 max_file_name_bytes = 39 [json_name = "maxFileNameBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFileNameBytes() {
+      copyOnWrite();
+      instance.clearMaxFileNameBytes();
+      return this;
+    }
+
+    /**
+     * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+     * @return The maxFileSizeText.
+     */
+    @java.lang.Override
+    public java.lang.String getMaxFileSizeText() {
+      return instance.getMaxFileSizeText();
+    }
+    /**
+     * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+     * @return The bytes for maxFileSizeText.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMaxFileSizeTextBytes() {
+      return instance.getMaxFileSizeTextBytes();
+    }
+    /**
+     * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+     * @param value The maxFileSizeText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFileSizeText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setMaxFileSizeText(value);
+      return this;
+    }
+    /**
+     * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxFileSizeText() {
+      copyOnWrite();
+      instance.clearMaxFileSizeText();
+      return this;
+    }
+    /**
+     * <code>string max_file_size_text = 40 [json_name = "maxFileSizeText"];</code>
+     * @param value The bytes for maxFileSizeText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxFileSizeTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setMaxFileSizeTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+     * @return The originalImageMaxBytes.
+     */
+    @java.lang.Override
+    public long getOriginalImageMaxBytes() {
+      return instance.getOriginalImageMaxBytes();
+    }
+    /**
+     * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+     * @param value The originalImageMaxBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setOriginalImageMaxBytes(long value) {
+      copyOnWrite();
+      instance.setOriginalImageMaxBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 original_image_max_bytes = 41 [json_name = "originalImageMaxBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearOriginalImageMaxBytes() {
+      copyOnWrite();
+      instance.clearOriginalImageMaxBytes();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOriginalImageHint() {
+      return instance.hasOriginalImageHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getOriginalImageHint() {
+      return instance.getOriginalImageHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    public Builder setOriginalImageHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setOriginalImageHint(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    public Builder setOriginalImageHint(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOriginalImageHint(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    public Builder mergeOriginalImageHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeOriginalImageHint(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text original_image_hint = 42 [json_name = "originalImageHint"];</code>
+     */
+    public Builder clearOriginalImageHint() {  copyOnWrite();
+      instance.clearOriginalImageHint();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFileMetadataNotice() {
+      return instance.hasFileMetadataNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFileMetadataNotice() {
+      return instance.getFileMetadataNotice();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    public Builder setFileMetadataNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFileMetadataNotice(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    public Builder setFileMetadataNotice(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFileMetadataNotice(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    public Builder mergeFileMetadataNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFileMetadataNotice(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text file_metadata_notice = 43 [json_name = "fileMetadataNotice"];</code>
+     */
+    public Builder clearFileMetadataNotice() {  copyOnWrite();
+      instance.clearFileMetadataNotice();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.NewSessionViewModel)
   }
   @java.lang.Override
@@ -3017,14 +3660,23 @@ public  final class NewSessionViewModel extends
             "maxFileBytes_",
             "imageUploadBlockedReason_",
             "diskFull_",
+            "fileUploadBlockedReason_",
+            "galleryAllowsVideo_",
+            "galleryAcceptMime_",
+            "maxFileNameBytes_",
+            "maxFileSizeText_",
+            "originalImageMaxBytes_",
+            "originalImageHint_",
+            "fileMetadataNotice_",
           };
           java.lang.String info =
-              "\u0000#\u0000\u0001\u0001##\u0000\u0002\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
+              "\u0000+\u0000\u0001\u0001++\u0000\u0002\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
               "\u0000\u0004\u0208\u0005\u0007\u0006\u0208\u0007\u0007\b\u0007\t\u0007\n\u0007\u000b" +
               "\u1009\u0001\f\u0208\r\u0007\u000e\u0208\u000f\u001b\u0010\u1009\u0002\u0011\u0208" +
               "\u0012\u1009\u0003\u0013\u1009\u0004\u0014\u001b\u0015\u0007\u0016\u1009\u0005\u0017" +
               "\u1009\u0006\u0018\u0007\u0019\f\u001a\u0007\u001b\u1009\u0007\u001c\u0007\u001d" +
-              "\u0007\u001e\u0007\u001f\u0004 \u0004!\u0002\"\u1009\b#\u0007";
+              "\u0007\u001e\u0007\u001f\u0004 \u0004!\u0002\"\u1009\b#\u0007$\u1009\t%\u0007&\u0208" +
+              "\'\u0004(\u0208)\u0002*\u1009\n+\u1009\u000b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

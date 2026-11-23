@@ -327,6 +327,13 @@ type Screen_DirectDiagnostics struct {
 
 func (*Screen_DirectDiagnostics) isScreen_Screen() {}
 
+type Screen_AttachmentEval struct {
+	_              [0]func()
+	AttachmentEval *AttachmentEvalScreenRequest
+}
+
+func (*Screen_AttachmentEval) isScreen_Screen() {}
+
 type Screen_Session struct {
 	_       [0]func()
 	Session *SessionScreenRequest
@@ -446,6 +453,12 @@ func (m *Screen) GetDirectDiagnostics() *DirectDiagnosticsScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetAttachmentEval() *AttachmentEvalScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_AttachmentEval); ok && x != nil {
+		return x.AttachmentEval
+	}
+	return nil
+}
 func (m *Screen) GetSession() *SessionScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_Session); ok && x != nil {
 		return x.Session
@@ -490,7 +503,7 @@ func extraUnmarshal_Screen(base unsafe.Pointer, num litewire.Number, wtyp litewi
 	switch {
 	case num <= 31:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 37:
+	case num <= 38:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
 	}
 	return false, nil
@@ -646,6 +659,13 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.DirectDiagnostics
+		case 38:
+			w, _ := m.Screen.(*Screen_AttachmentEval)
+			if w == nil || w.AttachmentEval == nil {
+				w = &Screen_AttachmentEval{AttachmentEval: &AttachmentEvalScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AttachmentEval
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -754,6 +774,13 @@ type ViewModel_DirectDiagnostics struct {
 }
 
 func (*ViewModel_DirectDiagnostics) isViewModel_View() {}
+
+type ViewModel_AttachmentEval struct {
+	_              [0]func()
+	AttachmentEval *AttachmentEvalViewModel
+}
+
+func (*ViewModel_AttachmentEval) isViewModel_View() {}
 
 type ViewModel_Session struct {
 	_       [0]func()
@@ -871,6 +898,12 @@ func (m *ViewModel) GetUsage() *UsageViewModel {
 func (m *ViewModel) GetDirectDiagnostics() *DirectDiagnosticsViewModel {
 	if x, ok := m.GetView().(*ViewModel_DirectDiagnostics); ok && x != nil {
 		return x.DirectDiagnostics
+	}
+	return nil
+}
+func (m *ViewModel) GetAttachmentEval() *AttachmentEvalViewModel {
+	if x, ok := m.GetView().(*ViewModel_AttachmentEval); ok && x != nil {
+		return x.AttachmentEval
 	}
 	return nil
 }
@@ -1001,6 +1034,10 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 	case *ViewModel_DirectDiagnostics:
 		if x != nil && x.DirectDiagnostics != nil {
 			onum, omsg = 37, x.DirectDiagnostics
+		}
+	case *ViewModel_AttachmentEval:
+		if x != nil && x.AttachmentEval != nil {
+			onum, omsg = 38, x.AttachmentEval
 		}
 	case *ViewModel_Session:
 		if x != nil && x.Session != nil {

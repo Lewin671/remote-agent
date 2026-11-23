@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/attachments_view.proto";
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/machine_view.proto";
 import "remoteagent/core/v1/new_session_view.proto";
@@ -60,6 +61,7 @@ message Screen {
     ClientDetailScreenRequest client_detail = 35;
     UsageScreenRequest usage = 36;
     DirectDiagnosticsScreenRequest direct_diagnostics = 37;
+    AttachmentEvalScreenRequest attachment_eval = 38;
     SessionScreenRequest session = 10;
     SchedulesScreenRequest schedules = 20;
     ScheduleDetailScreenRequest schedule_detail = 21;
@@ -85,6 +87,7 @@ message ViewModel {
     ClientDetailViewModel client_detail = 35;
     UsageViewModel usage = 36;
     DirectDiagnosticsViewModel direct_diagnostics = 37;
+    AttachmentEvalViewModel attachment_eval = 38;
     SessionViewModel session = 10;
     SchedulesViewModel schedules = 20;
     ScheduleDetailViewModel schedule_detail = 21;

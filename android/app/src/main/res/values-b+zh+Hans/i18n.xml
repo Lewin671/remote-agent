@@ -46,9 +46,13 @@
     <string name="attachment_android_source_unreadable" formatted="false">"读不到源文件，请重新选择"</string>
     <string name="attachment_android_upload_meta">" · 上传 %1$s%%"</string>
     <string name="attachment_android_upload_required" formatted="false">"附件需要重新传到电脑，请上传完成后再发送"</string>
+    <string name="attachment_choose_computer" formatted="false">"先选一台电脑"</string>
     <string name="attachment_computer_offline">"%1$s 离线，连上后才能添加图片"</string>
+    <string name="attachment_computer_offline_files">"%1$s 离线，连上后才能添加文件"</string>
     <string name="attachment_computer_unread">"还没读到 %1$s 的信息，稍后才能添加图片"</string>
+    <string name="attachment_computer_unread_files">"还没读到 %1$s 的信息，稍后才能添加文件"</string>
     <string name="attachment_disconnected" formatted="false">"和服务器断线了，连上后才能添加图片"</string>
+    <string name="attachment_disconnected_files" formatted="false">"和服务器断线了，连上后才能添加文件"</string>
     <string name="attachment_failed" formatted="false">"失败"</string>
     <string name="attachment_failed_send_hint">"%1$s。点「重试」或移除后才能发送"</string>
     <string name="attachment_failure">"失败：%1$s"</string>
@@ -75,6 +79,7 @@
     <string name="attachment_remove_file">"移除文件 %1$s"</string>
     <string name="attachment_remove_video">"移除视频 %1$s"</string>
     <string name="attachment_size_limit">"单个文件不能超过 %1$d MB"</string>
+    <string name="attachment_size_unreadable" formatted="false">"读不到文件大小，请重新选择"</string>
     <string name="attachment_update_required" formatted="false">"这台电脑不支持发送文件，请更新电脑上的 remote-agent"</string>
     <string name="attachment_upload_failed" formatted="false">"上传失败"</string>
     <string name="attachment_upload_progress">"上传 %1$d%%"</string>

@@ -586,6 +586,14 @@ public struct PBCoreScreen: Sendable {
     set {screen = .directDiagnostics(newValue)}
   }
 
+  public var attachmentEval: PBAttachmentEvalScreenRequest {
+    get {
+      if case .attachmentEval(let v)? = screen {return v}
+      return PBAttachmentEvalScreenRequest()
+    }
+    set {screen = .attachmentEval(newValue)}
+  }
+
   public var session: PBSessionScreenRequest {
     get {
       if case .session(let v)? = screen {return v}
@@ -644,6 +652,7 @@ public struct PBCoreScreen: Sendable {
     case clientDetail(PBClientDetailScreenRequest)
     case usage(PBCoreUsageScreenRequest)
     case directDiagnostics(PBDirectDiagnosticsScreenRequest)
+    case attachmentEval(PBAttachmentEvalScreenRequest)
     case session(PBSessionScreenRequest)
     case schedules(PBSchedulesScreenRequest)
     case scheduleDetail(PBScheduleDetailScreenRequest)
@@ -768,6 +777,14 @@ public struct PBCoreViewModel: Sendable {
     set {view = .directDiagnostics(newValue)}
   }
 
+  public var attachmentEval: PBAttachmentEvalViewModel {
+    get {
+      if case .attachmentEval(let v)? = view {return v}
+      return PBAttachmentEvalViewModel()
+    }
+    set {view = .attachmentEval(newValue)}
+  }
+
   public var session: PBSessionViewModel {
     get {
       if case .session(let v)? = view {return v}
@@ -826,6 +843,7 @@ public struct PBCoreViewModel: Sendable {
     case clientDetail(PBClientDetailViewModel)
     case usage(PBCoreUsageViewModel)
     case directDiagnostics(PBDirectDiagnosticsViewModel)
+    case attachmentEval(PBAttachmentEvalViewModel)
     case session(PBSessionViewModel)
     case schedules(PBSchedulesViewModel)
     case scheduleDetail(PBScheduleDetailViewModel)
@@ -5008,7 +5026,7 @@ extension PBCoreSessionDataScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Screen"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5250,6 +5268,19 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.screen = .directDiagnostics(v)
         }
       }()
+      case 38: try {
+        var v: PBAttachmentEvalScreenRequest?
+        var hadOneofValue = false
+        if let current = self.screen {
+          hadOneofValue = true
+          if case .attachmentEval(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.screen = .attachmentEval(v)
+        }
+      }()
       default: break
       }
     }
@@ -5333,6 +5364,10 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       guard case .directDiagnostics(let v)? = self.screen else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 37)
     }()
+    case .attachmentEval?: try {
+      guard case .attachmentEval(let v)? = self.screen else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -5347,7 +5382,7 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
 
 extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5589,6 +5624,19 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.view = .directDiagnostics(v)
         }
       }()
+      case 38: try {
+        var v: PBAttachmentEvalViewModel?
+        var hadOneofValue = false
+        if let current = self.view {
+          hadOneofValue = true
+          if case .attachmentEval(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.view = .attachmentEval(v)
+        }
+      }()
       default: break
       }
     }
@@ -5671,6 +5719,10 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .directDiagnostics?: try {
       guard case .directDiagnostics(let v)? = self.view else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 37)
+    }()
+    case .attachmentEval?: try {
+      guard case .attachmentEval(let v)? = self.view else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
     }()
     case nil: break
     }

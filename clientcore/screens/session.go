@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/attachments"
 	"github.com/Lewin671/remote-agent/clientcore/domain/images"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
@@ -536,10 +537,11 @@ func buildSessionHeader(
 		mc = lm.Meta.Capabilities
 	}
 	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && out.ComputerOnline && !unlinked && !out.ProtocolMismatch && !in.AccountControlLost && !in.Removed
+	attCaps := attachments.ResolveCaps(lm, machineID, out.ComputerOnline, onlineReady, st.UILocale)
 	out.Capabilities = &corev1.SessionCapabilitiesView{
 		CanSend:                  onlineReady && !out.Exited,
-		SupportsImages:           mc != nil && mc.ImageUpload,
-		SupportsFiles:            mc != nil && mc.FileUpload,
+		SupportsImages:           attCaps.SupportsImages,
+		SupportsFiles:            attCaps.SupportsFiles,
 		SupportsSendModes:        caps.SteersDuringTurn,
 		SupportsSharedFiles:      mc != nil && mc.SharedFiles,
 		SupportsAlwaysAllow:      mc != nil && mc.ApprovalAlways,
@@ -550,11 +552,19 @@ func buildSessionHeader(
 		SupportsModeSwitch:       true,
 		SupportsSchedule:         mc != nil && mc.ScheduledTasks,
 		TerminalAvailable:        meta != nil && meta.Status != v1.SessionStatus_SESSION_STATUS_EXITED,
-		MaxImages:                maxImagesCount(mc),
-		MaxFiles:                 maxFilesCount(mc),
-		MaxFileBytes:             maxFileBytesLimit(mc),
-		CapabilitiesLoaded:       lm != nil && lm.Meta != nil,
-		ImageUploadBlockedReason: imageUploadBlockedReason(lm, out.ComputerOnline, onlineReady),
+		MaxImages:                attCaps.MaxImages,
+		MaxFiles:                 attCaps.MaxFiles,
+		MaxFileBytes:             attCaps.MaxFileBytes,
+		CapabilitiesLoaded:       attCaps.CapabilitiesLoaded,
+		ImageUploadBlockedReason: attCaps.ImageUploadBlockedReason,
+		FileUploadBlockedReason:  attCaps.FileUploadBlockedReason,
+		GalleryAllowsVideo:       attCaps.SupportsFiles,
+		GalleryAcceptMime:        attachments.GalleryAcceptMime(attCaps.SupportsFiles),
+		MaxFileNameBytes:         attachments.MaxFileNameUTF8Bytes,
+		MaxFileSizeText:          attCaps.MaxFileSizeText,
+		OriginalImageMaxBytes:    attachments.OriginalImageMaxBytes,
+		OriginalImageHint:        text.Msg(text.KeyImageOriginalHint),
+		FileMetadataNotice:       text.Msg(text.KeyAttachmentMetadata),
 	}
 	if st != nil && st.DirectReportFn != nil && machineID != "" {
 		if _, report, ok := st.DirectReportFn(machineID); ok {
@@ -563,55 +573,6 @@ func buildSessionHeader(
 	}
 
 	return out
-}
-
-const (
-	defaultMaxFilesPerMessage = 6
-	defaultMaxFileUploadBytes = 100 * 1024 * 1024
-)
-
-func maxImagesCount(mc *v1.MachineCapabilities) int32 {
-	if mc == nil || mc.MaxImagesPerMessage <= 0 {
-		return 6
-	}
-	return mc.MaxImagesPerMessage
-}
-
-func maxFilesCount(mc *v1.MachineCapabilities) int32 {
-	if mc == nil || mc.MaxFilesPerMessage <= 0 {
-		return defaultMaxFilesPerMessage
-	}
-	if mc.MaxFilesPerMessage > defaultMaxFilesPerMessage {
-		return defaultMaxFilesPerMessage
-	}
-	return mc.MaxFilesPerMessage
-}
-
-func maxFileBytesLimit(mc *v1.MachineCapabilities) int64 {
-	if mc == nil || mc.MaxFileUploadBytes <= 0 {
-		return defaultMaxFileUploadBytes
-	}
-	if mc.MaxFileUploadBytes > defaultMaxFileUploadBytes {
-		return defaultMaxFileUploadBytes
-	}
-	return mc.MaxFileUploadBytes
-}
-
-func imageUploadBlockedReason(lm *lists.Machine, computerOnline, onlineReady bool) *corev1.Text {
-	name := lists.MachineName(lm, "")
-	if lm == nil || !computerOnline {
-		return text.Msg(text.KeyAttachmentComputerOffline, text.Str("name", name))
-	}
-	if !onlineReady {
-		return text.Msg(text.KeyAttachmentDisconnected)
-	}
-	if lm.Meta == nil {
-		return text.Msg(text.KeyAttachmentComputerUnread, text.Str("name", name))
-	}
-	if lm.Meta.Capabilities == nil || !lm.Meta.Capabilities.ImageUpload {
-		return text.Msg(text.KeyAttachmentPathSpaces, text.Str("name", name))
-	}
-	return nil
 }
 
 func knownSessionModeText(mode v1.ApprovalMode, raw string) *corev1.Text {

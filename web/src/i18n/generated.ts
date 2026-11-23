@@ -62,9 +62,13 @@ export interface MessageArgs {
   "approval.timeout_note": { remaining: string };
   "approval.title": { [name: string]: never };
   "approval.truncated": { [name: string]: never };
+  "attachment.choose_computer": { [name: string]: never };
   "attachment.computer_offline": { name: string };
+  "attachment.computer_offline_files": { name: string };
   "attachment.computer_unread": { name: string };
+  "attachment.computer_unread_files": { name: string };
   "attachment.disconnected": { [name: string]: never };
+  "attachment.disconnected_files": { [name: string]: never };
   "attachment.failed": { [name: string]: never };
   "attachment.failed_send_hint": { reason: string };
   "attachment.failure": { reason: string };
@@ -87,6 +91,7 @@ export interface MessageArgs {
   "attachment.remove_file": { name: string };
   "attachment.remove_video": { name: string };
   "attachment.size_limit": { limit: number };
+  "attachment.size_unreadable": { [name: string]: never };
   "attachment.update_required": { [name: string]: never };
   "attachment.upload_failed": { [name: string]: never };
   "attachment.upload_progress": { percent: number };
@@ -1807,9 +1812,13 @@ export const messages = {
     "approval.timeout_note": "{remaining}; deny on timeout",
     "approval.title": "Approval",
     "approval.truncated": "Content truncated; view in terminal",
+    "attachment.choose_computer": "Select a computer first",
     "attachment.computer_offline": "{name} is offline. Reconnect to add images.",
+    "attachment.computer_offline_files": "{name} is offline. Reconnect to add files.",
     "attachment.computer_unread": "Information for {name} has not loaded yet. Add images shortly.",
+    "attachment.computer_unread_files": "Information for {name} has not loaded yet. Add files shortly.",
     "attachment.disconnected": "Disconnected from server. Reconnect to add images.",
+    "attachment.disconnected_files": "Disconnected from server. Reconnect to add files.",
     "attachment.failed": "Failed",
     "attachment.failed_send_hint": "{reason}. Retry or remove the file before sending.",
     "attachment.failure": "Failed: {reason}",
@@ -1850,6 +1859,7 @@ export const messages = {
     "attachment.remove_file": "Remove file {name}",
     "attachment.remove_video": "Remove video {name}",
     "attachment.size_limit": "A file cannot exceed {limit} MB",
+    "attachment.size_unreadable": "Could not read the file size. Select the file again.",
     "attachment.update_required": "This computer does not support file uploads. Update remote-agent on the computer.",
     "attachment.upload_failed": "Upload failed",
     "attachment.upload_progress": "Uploading {percent}%",
@@ -4155,9 +4165,13 @@ export const messages = {
     "approval.timeout_note": "{remaining}，超时拒绝",
     "approval.title": "审批",
     "approval.truncated": "内容被截断，请在终端查看",
+    "attachment.choose_computer": "先选一台电脑",
     "attachment.computer_offline": "{name} 离线，连上后才能添加图片",
+    "attachment.computer_offline_files": "{name} 离线，连上后才能添加文件",
     "attachment.computer_unread": "还没读到 {name} 的信息，稍后才能添加图片",
+    "attachment.computer_unread_files": "还没读到 {name} 的信息，稍后才能添加文件",
     "attachment.disconnected": "和服务器断线了，连上后才能添加图片",
+    "attachment.disconnected_files": "和服务器断线了，连上后才能添加文件",
     "attachment.failed": "失败",
     "attachment.failed_send_hint": "{reason}。点「重试」或移除后才能发送",
     "attachment.failure": "失败：{reason}",
@@ -4195,6 +4209,7 @@ export const messages = {
     "attachment.remove_file": "移除文件 {name}",
     "attachment.remove_video": "移除视频 {name}",
     "attachment.size_limit": "单个文件不能超过 {limit} MB",
+    "attachment.size_unreadable": "读不到文件大小，请重新选择",
     "attachment.update_required": "这台电脑不支持发送文件，请更新电脑上的 remote-agent",
     "attachment.upload_failed": "上传失败",
     "attachment.upload_progress": "上传 {percent}%",

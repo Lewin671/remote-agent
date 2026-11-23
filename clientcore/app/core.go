@@ -103,6 +103,13 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	case *corev1.Screen_Usage:
 		return c.viewUsage(s.Usage)
 
+	case *corev1.Screen_AttachmentEval:
+		return &corev1.ViewModel{
+			View: &corev1.ViewModel_AttachmentEval{
+				AttachmentEval: screens.BuildAttachmentEval(c.m.state, s.AttachmentEval),
+			},
+		}, nil
+
 	default:
 		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
 			return vm, err

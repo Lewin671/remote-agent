@@ -344,7 +344,18 @@
                 "maxImages": 6,
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
-                "capabilitiesLoaded": true
+                "capabilitiesLoaded": true,
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
               },
               "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
               "shortPath": "~/Code/app"
@@ -661,7 +672,18 @@
                 "maxImages": 6,
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
-                "capabilitiesLoaded": true
+                "capabilitiesLoaded": true,
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
               },
               "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
               "shortPath": "~/Code/app"
@@ -1006,7 +1028,18 @@
                 "maxImages": 6,
                 "maxFiles": 6,
                 "maxFileBytes": "104857600",
-                "capabilitiesLoaded": true
+                "capabilitiesLoaded": true,
+                "galleryAllowsVideo": true,
+                "galleryAcceptMime": "image/*,video/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
               },
               "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
               "shortPath": "~/Code/app"

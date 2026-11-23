@@ -503,6 +503,14 @@ type SessionCapabilitiesView struct {
 	MaxFileBytes             int64
 	CapabilitiesLoaded       bool
 	ImageUploadBlockedReason *Text
+	FileUploadBlockedReason  *Text
+	GalleryAllowsVideo       bool
+	GalleryAcceptMime        string
+	MaxFileNameBytes         int32
+	MaxFileSizeText          string
+	OriginalImageMaxBytes    int64
+	OriginalImageHint        *Text
+	FileMetadataNotice       *Text
 }
 
 func (m *SessionCapabilitiesView) GetCanSend() bool {
@@ -619,6 +627,54 @@ func (m *SessionCapabilitiesView) GetImageUploadBlockedReason() *Text {
 	}
 	return nil
 }
+func (m *SessionCapabilitiesView) GetFileUploadBlockedReason() *Text {
+	if m != nil {
+		return m.FileUploadBlockedReason
+	}
+	return nil
+}
+func (m *SessionCapabilitiesView) GetGalleryAllowsVideo() bool {
+	if m != nil {
+		return m.GalleryAllowsVideo
+	}
+	return false
+}
+func (m *SessionCapabilitiesView) GetGalleryAcceptMime() string {
+	if m != nil {
+		return m.GalleryAcceptMime
+	}
+	return ""
+}
+func (m *SessionCapabilitiesView) GetMaxFileNameBytes() int32 {
+	if m != nil {
+		return m.MaxFileNameBytes
+	}
+	return 0
+}
+func (m *SessionCapabilitiesView) GetMaxFileSizeText() string {
+	if m != nil {
+		return m.MaxFileSizeText
+	}
+	return ""
+}
+func (m *SessionCapabilitiesView) GetOriginalImageMaxBytes() int64 {
+	if m != nil {
+		return m.OriginalImageMaxBytes
+	}
+	return 0
+}
+func (m *SessionCapabilitiesView) GetOriginalImageHint() *Text {
+	if m != nil {
+		return m.OriginalImageHint
+	}
+	return nil
+}
+func (m *SessionCapabilitiesView) GetFileMetadataNotice() *Text {
+	if m != nil {
+		return m.FileMetadataNotice
+	}
+	return nil
+}
 
 var LitewireDesc_SessionCapabilitiesView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -641,6 +697,14 @@ var LitewireDesc_SessionCapabilitiesView = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxFileBytes), Kind: litewire.KindInt64},
 		{Num: 18, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.CapabilitiesLoaded), Kind: litewire.KindBool},
 		{Num: 19, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.ImageUploadBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.FileUploadBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 21, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.GalleryAllowsVideo), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.GalleryAcceptMime), Kind: litewire.KindString},
+		{Num: 23, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxFileNameBytes), Kind: litewire.KindInt32},
+		{Num: 24, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.MaxFileSizeText), Kind: litewire.KindString},
+		{Num: 25, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.OriginalImageMaxBytes), Kind: litewire.KindInt64},
+		{Num: 26, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.OriginalImageHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 27, Offset: unsafe.Offsetof(SessionCapabilitiesView{}.FileMetadataNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

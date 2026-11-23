@@ -1583,5 +1583,95 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "attachment.choose_computer",
+    "zh-CN": "先选一台电脑",
+    "en": "Select a computer first",
+    "notes": "附件栏在未选定目标电脑时的阻止提示。短句，允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.computer_offline_files",
+    "zh-CN": "{name} 离线，连上后才能添加文件",
+    "en": "{name} is offline. Reconnect to add files.",
+    "notes": "会话文件/视频附件栏：目标电脑离线时的阻止提示。参数 name 为电脑显示名，不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.disconnected_files",
+    "zh-CN": "和服务器断线了，连上后才能添加文件",
+    "en": "Disconnected from server. Reconnect to add files.",
+    "notes": "会话文件/视频附件栏：客户端与中继断线时的阻止提示。完整句，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.computer_unread_files",
+    "zh-CN": "还没读到 {name} 的信息，稍后才能添加文件",
+    "en": "Information for {name} has not loaded yet. Add files shortly.",
+    "notes": "会话文件/视频附件栏：目标电脑元数据尚未加载完成时的阻止提示。参数 name 为电脑显示名，不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "MacBook"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.size_unreadable",
+    "zh-CN": "读不到文件大小，请重新选择",
+    "en": "Could not read the file size. Select the file again.",
+    "notes": "会话文件/视频附件栏：无法读取所选文件大小时的提示。完整句，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

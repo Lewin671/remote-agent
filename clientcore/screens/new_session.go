@@ -3,6 +3,7 @@ package screens
 import (
 	"slices"
 
+	attdomain "github.com/Lewin671/remote-agent/clientcore/domain/attachments"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -461,11 +462,8 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		protoAutoIssue = corev1.AutoIssueKind_AUTO_ISSUE_KIND_NONE
 	}
 
-	var mc *v1.MachineCapabilities
-	if mMeta != nil {
-		mc = mMeta.Capabilities
-	}
 	onlineReady := st.World.Connection == lists.ConnConnected && machineOnline && !lists.MachineUnlinked(machine, &st.World) && res.ProtocolMismatch == 0 && !st.World.AccountControlLost
+	attCaps := attdomain.ResolveCaps(machine, cfg.MachineID, machineOnline, onlineReady, st.UILocale)
 	prefsBlocked := st.World.AccountControlLost || st.World.AccountClockSkewed || lists.WorldUnlinked(&st.World)
 	var prefsBlockedReason *corev1.Text
 	switch {
@@ -512,14 +510,22 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		AutoIssue:                protoAutoIssue,
 		PrefsBlocked:             prefsBlocked,
 		PrefsBlockedReason:       prefsBlockedReason,
-		CapabilitiesLoaded:       mMeta != nil,
-		SupportsImages:           mc != nil && mc.ImageUpload,
-		SupportsFiles:            mc != nil && mc.FileUpload,
-		MaxImages:                maxImagesCount(mc),
-		MaxFiles:                 maxFilesCount(mc),
-		MaxFileBytes:             maxFileBytesLimit(mc),
-		ImageUploadBlockedReason: imageUploadBlockedReason(machine, machineOnline, onlineReady),
+		CapabilitiesLoaded:       attCaps.CapabilitiesLoaded,
+		SupportsImages:           attCaps.SupportsImages,
+		SupportsFiles:            attCaps.SupportsFiles,
+		MaxImages:                attCaps.MaxImages,
+		MaxFiles:                 attCaps.MaxFiles,
+		MaxFileBytes:             attCaps.MaxFileBytes,
+		ImageUploadBlockedReason: attCaps.ImageUploadBlockedReason,
 		DiskFull:                 diskFull,
+		FileUploadBlockedReason:  attCaps.FileUploadBlockedReason,
+		GalleryAllowsVideo:       attCaps.SupportsFiles,
+		GalleryAcceptMime:        attdomain.GalleryAcceptMime(attCaps.SupportsFiles),
+		MaxFileNameBytes:         attdomain.MaxFileNameUTF8Bytes,
+		MaxFileSizeText:          attCaps.MaxFileSizeText,
+		OriginalImageMaxBytes:    attdomain.OriginalImageMaxBytes,
+		OriginalImageHint:        text.Msg(text.KeyImageOriginalHint),
+		FileMetadataNotice:       text.Msg(text.KeyAttachmentMetadata),
 	}
 }
 

@@ -170,6 +170,17 @@ public interface ScreenOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest getDirectDiagnostics();
 
   /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   * @return Whether the attachmentEval field is set.
+   */
+  boolean hasAttachmentEval();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   * @return The attachmentEval.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest getAttachmentEval();
+
+  /**
    * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

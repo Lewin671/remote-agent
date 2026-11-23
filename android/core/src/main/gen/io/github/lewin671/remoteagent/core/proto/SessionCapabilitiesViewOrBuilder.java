@@ -133,4 +133,79 @@ public interface SessionCapabilitiesViewOrBuilder extends
    * @return The imageUploadBlockedReason.
    */
   io.github.lewin671.remoteagent.core.proto.Text getImageUploadBlockedReason();
+
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 20 [json_name = "fileUploadBlockedReason"];</code>
+   * @return Whether the fileUploadBlockedReason field is set.
+   */
+  boolean hasFileUploadBlockedReason();
+  /**
+   * <code>.remoteagent.core.v1.Text file_upload_blocked_reason = 20 [json_name = "fileUploadBlockedReason"];</code>
+   * @return The fileUploadBlockedReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getFileUploadBlockedReason();
+
+  /**
+   * <code>bool gallery_allows_video = 21 [json_name = "galleryAllowsVideo"];</code>
+   * @return The galleryAllowsVideo.
+   */
+  boolean getGalleryAllowsVideo();
+
+  /**
+   * <code>string gallery_accept_mime = 22 [json_name = "galleryAcceptMime"];</code>
+   * @return The galleryAcceptMime.
+   */
+  java.lang.String getGalleryAcceptMime();
+  /**
+   * <code>string gallery_accept_mime = 22 [json_name = "galleryAcceptMime"];</code>
+   * @return The bytes for galleryAcceptMime.
+   */
+  com.google.protobuf.ByteString
+      getGalleryAcceptMimeBytes();
+
+  /**
+   * <code>int32 max_file_name_bytes = 23 [json_name = "maxFileNameBytes"];</code>
+   * @return The maxFileNameBytes.
+   */
+  int getMaxFileNameBytes();
+
+  /**
+   * <code>string max_file_size_text = 24 [json_name = "maxFileSizeText"];</code>
+   * @return The maxFileSizeText.
+   */
+  java.lang.String getMaxFileSizeText();
+  /**
+   * <code>string max_file_size_text = 24 [json_name = "maxFileSizeText"];</code>
+   * @return The bytes for maxFileSizeText.
+   */
+  com.google.protobuf.ByteString
+      getMaxFileSizeTextBytes();
+
+  /**
+   * <code>int64 original_image_max_bytes = 25 [json_name = "originalImageMaxBytes"];</code>
+   * @return The originalImageMaxBytes.
+   */
+  long getOriginalImageMaxBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 26 [json_name = "originalImageHint"];</code>
+   * @return Whether the originalImageHint field is set.
+   */
+  boolean hasOriginalImageHint();
+  /**
+   * <code>.remoteagent.core.v1.Text original_image_hint = 26 [json_name = "originalImageHint"];</code>
+   * @return The originalImageHint.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getOriginalImageHint();
+
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 27 [json_name = "fileMetadataNotice"];</code>
+   * @return Whether the fileMetadataNotice field is set.
+   */
+  boolean hasFileMetadataNotice();
+  /**
+   * <code>.remoteagent.core.v1.Text file_metadata_notice = 27 [json_name = "fileMetadataNotice"];</code>
+   * @return The fileMetadataNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getFileMetadataNotice();
 }

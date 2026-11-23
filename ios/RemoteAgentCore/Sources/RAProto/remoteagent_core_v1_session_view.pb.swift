@@ -1236,6 +1236,58 @@ public struct PBSessionCapabilitiesView: @unchecked Sendable {
   /// Clears the value of `imageUploadBlockedReason`. Subsequent reads from it will return its default value.
   public mutating func clearImageUploadBlockedReason() {_uniqueStorage()._imageUploadBlockedReason = nil}
 
+  public var fileUploadBlockedReason: PBCoreText {
+    get {return _storage._fileUploadBlockedReason ?? PBCoreText()}
+    set {_uniqueStorage()._fileUploadBlockedReason = newValue}
+  }
+  /// Returns true if `fileUploadBlockedReason` has been explicitly set.
+  public var hasFileUploadBlockedReason: Bool {return _storage._fileUploadBlockedReason != nil}
+  /// Clears the value of `fileUploadBlockedReason`. Subsequent reads from it will return its default value.
+  public mutating func clearFileUploadBlockedReason() {_uniqueStorage()._fileUploadBlockedReason = nil}
+
+  public var galleryAllowsVideo: Bool {
+    get {return _storage._galleryAllowsVideo}
+    set {_uniqueStorage()._galleryAllowsVideo = newValue}
+  }
+
+  public var galleryAcceptMime: String {
+    get {return _storage._galleryAcceptMime}
+    set {_uniqueStorage()._galleryAcceptMime = newValue}
+  }
+
+  public var maxFileNameBytes: Int32 {
+    get {return _storage._maxFileNameBytes}
+    set {_uniqueStorage()._maxFileNameBytes = newValue}
+  }
+
+  public var maxFileSizeText: String {
+    get {return _storage._maxFileSizeText}
+    set {_uniqueStorage()._maxFileSizeText = newValue}
+  }
+
+  public var originalImageMaxBytes: Int64 {
+    get {return _storage._originalImageMaxBytes}
+    set {_uniqueStorage()._originalImageMaxBytes = newValue}
+  }
+
+  public var originalImageHint: PBCoreText {
+    get {return _storage._originalImageHint ?? PBCoreText()}
+    set {_uniqueStorage()._originalImageHint = newValue}
+  }
+  /// Returns true if `originalImageHint` has been explicitly set.
+  public var hasOriginalImageHint: Bool {return _storage._originalImageHint != nil}
+  /// Clears the value of `originalImageHint`. Subsequent reads from it will return its default value.
+  public mutating func clearOriginalImageHint() {_uniqueStorage()._originalImageHint = nil}
+
+  public var fileMetadataNotice: PBCoreText {
+    get {return _storage._fileMetadataNotice ?? PBCoreText()}
+    set {_uniqueStorage()._fileMetadataNotice = newValue}
+  }
+  /// Returns true if `fileMetadataNotice` has been explicitly set.
+  public var hasFileMetadataNotice: Bool {return _storage._fileMetadataNotice != nil}
+  /// Clears the value of `fileMetadataNotice`. Subsequent reads from it will return its default value.
+  public mutating func clearFileMetadataNotice() {_uniqueStorage()._fileMetadataNotice = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5128,7 +5180,7 @@ extension PBSessionCommandState: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionCapabilitiesView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_send\0\u{3}supports_images\0\u{3}supports_files\0\u{3}supports_send_modes\0\u{3}supports_shared_files\0\u{3}supports_always_allow\0\u{3}supports_steer\0\u{3}supports_compact\0\u{3}supports_fork\0\u{3}supports_model_switch\0\u{3}supports_mode_switch\0\u{3}supports_schedule\0\u{3}terminal_available\0\u{3}terminal_hint\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}capabilities_loaded\0\u{3}image_upload_blocked_reason\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}can_send\0\u{3}supports_images\0\u{3}supports_files\0\u{3}supports_send_modes\0\u{3}supports_shared_files\0\u{3}supports_always_allow\0\u{3}supports_steer\0\u{3}supports_compact\0\u{3}supports_fork\0\u{3}supports_model_switch\0\u{3}supports_mode_switch\0\u{3}supports_schedule\0\u{3}terminal_available\0\u{3}terminal_hint\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}capabilities_loaded\0\u{3}image_upload_blocked_reason\0\u{3}file_upload_blocked_reason\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0")
 
   fileprivate class _StorageClass {
     var _canSend: Bool = false
@@ -5150,6 +5202,14 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _maxFileBytes: Int64 = 0
     var _capabilitiesLoaded: Bool = false
     var _imageUploadBlockedReason: PBCoreText? = nil
+    var _fileUploadBlockedReason: PBCoreText? = nil
+    var _galleryAllowsVideo: Bool = false
+    var _galleryAcceptMime: String = String()
+    var _maxFileNameBytes: Int32 = 0
+    var _maxFileSizeText: String = String()
+    var _originalImageMaxBytes: Int64 = 0
+    var _originalImageHint: PBCoreText? = nil
+    var _fileMetadataNotice: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5179,6 +5239,14 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _maxFileBytes = source._maxFileBytes
       _capabilitiesLoaded = source._capabilitiesLoaded
       _imageUploadBlockedReason = source._imageUploadBlockedReason
+      _fileUploadBlockedReason = source._fileUploadBlockedReason
+      _galleryAllowsVideo = source._galleryAllowsVideo
+      _galleryAcceptMime = source._galleryAcceptMime
+      _maxFileNameBytes = source._maxFileNameBytes
+      _maxFileSizeText = source._maxFileSizeText
+      _originalImageMaxBytes = source._originalImageMaxBytes
+      _originalImageHint = source._originalImageHint
+      _fileMetadataNotice = source._fileMetadataNotice
     }
   }
 
@@ -5216,6 +5284,14 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 17: try { try decoder.decodeSingularInt64Field(value: &_storage._maxFileBytes) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._capabilitiesLoaded) }()
         case 19: try { try decoder.decodeSingularMessageField(value: &_storage._imageUploadBlockedReason) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._fileUploadBlockedReason) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._galleryAllowsVideo) }()
+        case 22: try { try decoder.decodeSingularStringField(value: &_storage._galleryAcceptMime) }()
+        case 23: try { try decoder.decodeSingularInt32Field(value: &_storage._maxFileNameBytes) }()
+        case 24: try { try decoder.decodeSingularStringField(value: &_storage._maxFileSizeText) }()
+        case 25: try { try decoder.decodeSingularInt64Field(value: &_storage._originalImageMaxBytes) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._originalImageHint) }()
+        case 27: try { try decoder.decodeSingularMessageField(value: &_storage._fileMetadataNotice) }()
         default: break
         }
       }
@@ -5285,6 +5361,30 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._imageUploadBlockedReason {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
       } }()
+      try { if let v = _storage._fileUploadBlockedReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
+      if _storage._galleryAllowsVideo != false {
+        try visitor.visitSingularBoolField(value: _storage._galleryAllowsVideo, fieldNumber: 21)
+      }
+      if !_storage._galleryAcceptMime.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._galleryAcceptMime, fieldNumber: 22)
+      }
+      if _storage._maxFileNameBytes != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._maxFileNameBytes, fieldNumber: 23)
+      }
+      if !_storage._maxFileSizeText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._maxFileSizeText, fieldNumber: 24)
+      }
+      if _storage._originalImageMaxBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._originalImageMaxBytes, fieldNumber: 25)
+      }
+      try { if let v = _storage._originalImageHint {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
+      try { if let v = _storage._fileMetadataNotice {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5313,6 +5413,14 @@ extension PBSessionCapabilitiesView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._maxFileBytes != rhs_storage._maxFileBytes {return false}
         if _storage._capabilitiesLoaded != rhs_storage._capabilitiesLoaded {return false}
         if _storage._imageUploadBlockedReason != rhs_storage._imageUploadBlockedReason {return false}
+        if _storage._fileUploadBlockedReason != rhs_storage._fileUploadBlockedReason {return false}
+        if _storage._galleryAllowsVideo != rhs_storage._galleryAllowsVideo {return false}
+        if _storage._galleryAcceptMime != rhs_storage._galleryAcceptMime {return false}
+        if _storage._maxFileNameBytes != rhs_storage._maxFileNameBytes {return false}
+        if _storage._maxFileSizeText != rhs_storage._maxFileSizeText {return false}
+        if _storage._originalImageMaxBytes != rhs_storage._originalImageMaxBytes {return false}
+        if _storage._originalImageHint != rhs_storage._originalImageHint {return false}
+        if _storage._fileMetadataNotice != rhs_storage._fileMetadataNotice {return false}
         return true
       }
       if !storagesAreEqual {return false}

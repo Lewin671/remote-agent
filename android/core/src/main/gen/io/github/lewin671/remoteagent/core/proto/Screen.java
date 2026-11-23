@@ -32,6 +32,7 @@ public  final class Screen extends
     CLIENT_DETAIL(35),
     USAGE(36),
     DIRECT_DIAGNOSTICS(37),
+    ATTACHMENT_EVAL(38),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -65,6 +66,7 @@ public  final class Screen extends
         case 35: return CLIENT_DETAIL;
         case 36: return USAGE;
         case 37: return DIRECT_DIAGNOSTICS;
+        case 38: return ATTACHMENT_EVAL;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -802,6 +804,58 @@ public  final class Screen extends
    */
   private void clearDirectDiagnostics() {
     if (screenCase_ == 37) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_EVAL_FIELD_NUMBER = 38;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentEval() {
+    return screenCase_ == 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest getAttachmentEval() {
+    if (screenCase_ == 38) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentEval(io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentEval(io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 38 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 38;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+   */
+  private void clearAttachmentEval() {
+    if (screenCase_ == 38) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -1849,6 +1903,54 @@ public  final class Screen extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentEval() {
+      return instance.hasAttachmentEval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest getAttachmentEval() {
+      return instance.getAttachmentEval();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    public Builder setAttachmentEval(io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest value) {
+      copyOnWrite();
+      instance.setAttachmentEval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    public Builder setAttachmentEval(
+        io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentEval(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    public Builder mergeAttachmentEval(io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest value) {
+      copyOnWrite();
+      instance.mergeAttachmentEval(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentEvalScreenRequest attachment_eval = 38 [json_name = "attachmentEval"];</code>
+     */
+    public Builder clearAttachmentEval() {
+      copyOnWrite();
+      instance.clearAttachmentEval();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2124,12 +2226,13 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.ClientDetailScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0012\u0001\u0000\u0001%\u0012\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0013\u0001\u0000\u0001&\u0013\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000";
+              "<\u0000%<\u0000&<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

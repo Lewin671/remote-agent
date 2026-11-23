@@ -22,9 +22,13 @@
 "approval_timeout_note" = "%1$@; deny on timeout";
 "approval_title" = "Approval";
 "approval_truncated" = "Content truncated; view in terminal";
+"attachment_choose_computer" = "Select a computer first";
 "attachment_computer_offline" = "%1$@ is offline. Reconnect to add images.";
+"attachment_computer_offline_files" = "%1$@ is offline. Reconnect to add files.";
 "attachment_computer_unread" = "Information for %1$@ has not loaded yet. Add images shortly.";
+"attachment_computer_unread_files" = "Information for %1$@ has not loaded yet. Add files shortly.";
 "attachment_disconnected" = "Disconnected from server. Reconnect to add images.";
+"attachment_disconnected_files" = "Disconnected from server. Reconnect to add files.";
 "attachment_failed" = "Failed";
 "attachment_failed_send_hint" = "%1$@. Retry or remove the file before sending.";
 "attachment_failure" = "Failed: %1$@";
@@ -81,6 +85,7 @@
 "attachment_remove_file" = "Remove file %1$@";
 "attachment_remove_video" = "Remove video %1$@";
 "attachment_size_limit" = "A file cannot exceed %1$lld MB";
+"attachment_size_unreadable" = "Could not read the file size. Select the file again.";
 "attachment_update_required" = "This computer does not support file uploads. Update remote-agent on the computer.";
 "attachment_upload_failed" = "Upload failed";
 "attachment_upload_progress" = "Uploading %1$lld%%";

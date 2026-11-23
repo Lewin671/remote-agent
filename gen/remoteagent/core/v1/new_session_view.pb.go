@@ -1055,6 +1055,14 @@ type NewSessionViewModel struct {
 	MaxFileBytes             int64                     `protobuf:"varint,33,opt,name=max_file_bytes,json=maxFileBytes,proto3" json:"max_file_bytes,omitempty"`
 	ImageUploadBlockedReason *Text                     `protobuf:"bytes,34,opt,name=image_upload_blocked_reason,json=imageUploadBlockedReason,proto3" json:"image_upload_blocked_reason,omitempty"`
 	DiskFull                 bool                      `protobuf:"varint,35,opt,name=disk_full,json=diskFull,proto3" json:"disk_full,omitempty"`
+	FileUploadBlockedReason  *Text                     `protobuf:"bytes,36,opt,name=file_upload_blocked_reason,json=fileUploadBlockedReason,proto3" json:"file_upload_blocked_reason,omitempty"`
+	GalleryAllowsVideo       bool                      `protobuf:"varint,37,opt,name=gallery_allows_video,json=galleryAllowsVideo,proto3" json:"gallery_allows_video,omitempty"`
+	GalleryAcceptMime        string                    `protobuf:"bytes,38,opt,name=gallery_accept_mime,json=galleryAcceptMime,proto3" json:"gallery_accept_mime,omitempty"`
+	MaxFileNameBytes         int32                     `protobuf:"varint,39,opt,name=max_file_name_bytes,json=maxFileNameBytes,proto3" json:"max_file_name_bytes,omitempty"`
+	MaxFileSizeText          string                    `protobuf:"bytes,40,opt,name=max_file_size_text,json=maxFileSizeText,proto3" json:"max_file_size_text,omitempty"`
+	OriginalImageMaxBytes    int64                     `protobuf:"varint,41,opt,name=original_image_max_bytes,json=originalImageMaxBytes,proto3" json:"original_image_max_bytes,omitempty"`
+	OriginalImageHint        *Text                     `protobuf:"bytes,42,opt,name=original_image_hint,json=originalImageHint,proto3" json:"original_image_hint,omitempty"`
+	FileMetadataNotice       *Text                     `protobuf:"bytes,43,opt,name=file_metadata_notice,json=fileMetadataNotice,proto3" json:"file_metadata_notice,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -1334,6 +1342,62 @@ func (x *NewSessionViewModel) GetDiskFull() bool {
 	return false
 }
 
+func (x *NewSessionViewModel) GetFileUploadBlockedReason() *Text {
+	if x != nil {
+		return x.FileUploadBlockedReason
+	}
+	return nil
+}
+
+func (x *NewSessionViewModel) GetGalleryAllowsVideo() bool {
+	if x != nil {
+		return x.GalleryAllowsVideo
+	}
+	return false
+}
+
+func (x *NewSessionViewModel) GetGalleryAcceptMime() string {
+	if x != nil {
+		return x.GalleryAcceptMime
+	}
+	return ""
+}
+
+func (x *NewSessionViewModel) GetMaxFileNameBytes() int32 {
+	if x != nil {
+		return x.MaxFileNameBytes
+	}
+	return 0
+}
+
+func (x *NewSessionViewModel) GetMaxFileSizeText() string {
+	if x != nil {
+		return x.MaxFileSizeText
+	}
+	return ""
+}
+
+func (x *NewSessionViewModel) GetOriginalImageMaxBytes() int64 {
+	if x != nil {
+		return x.OriginalImageMaxBytes
+	}
+	return 0
+}
+
+func (x *NewSessionViewModel) GetOriginalImageHint() *Text {
+	if x != nil {
+		return x.OriginalImageHint
+	}
+	return nil
+}
+
+func (x *NewSessionViewModel) GetFileMetadataNotice() *Text {
+	if x != nil {
+		return x.FileMetadataNotice
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_new_session_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
@@ -1408,7 +1472,7 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\fcontext_note\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\vcontextNote\x12#\n" +
 	"\rpanel_enabled\x18\r \x01(\bR\fpanelEnabled\x12O\n" +
 	"\x0fmachine_choices\x18\x0e \x03(\v2&.remoteagent.core.v1.MachineChoiceViewR\x0emachineChoices\x12/\n" +
-	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\xf6\f\n" +
+	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\xdd\x10\n" +
 	"\x13NewSessionViewModel\x12-\n" +
 	"\x12project_selectable\x18\x01 \x01(\bR\x11projectSelectable\x12\x1f\n" +
 	"\vproject_key\x18\x02 \x01(\tR\n" +
@@ -1452,7 +1516,15 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\tmax_files\x18  \x01(\x05R\bmaxFiles\x12$\n" +
 	"\x0emax_file_bytes\x18! \x01(\x03R\fmaxFileBytes\x12X\n" +
 	"\x1bimage_upload_blocked_reason\x18\" \x01(\v2\x19.remoteagent.core.v1.TextR\x18imageUploadBlockedReason\x12\x1b\n" +
-	"\tdisk_full\x18# \x01(\bR\bdiskFull*\x82\x01\n" +
+	"\tdisk_full\x18# \x01(\bR\bdiskFull\x12V\n" +
+	"\x1afile_upload_blocked_reason\x18$ \x01(\v2\x19.remoteagent.core.v1.TextR\x17fileUploadBlockedReason\x120\n" +
+	"\x14gallery_allows_video\x18% \x01(\bR\x12galleryAllowsVideo\x12.\n" +
+	"\x13gallery_accept_mime\x18& \x01(\tR\x11galleryAcceptMime\x12-\n" +
+	"\x13max_file_name_bytes\x18' \x01(\x05R\x10maxFileNameBytes\x12+\n" +
+	"\x12max_file_size_text\x18( \x01(\tR\x0fmaxFileSizeText\x127\n" +
+	"\x18original_image_max_bytes\x18) \x01(\x03R\x15originalImageMaxBytes\x12I\n" +
+	"\x13original_image_hint\x18* \x01(\v2\x19.remoteagent.core.v1.TextR\x11originalImageHint\x12K\n" +
+	"\x14file_metadata_notice\x18+ \x01(\v2\x19.remoteagent.core.v1.TextR\x12fileMetadataNotice*\x82\x01\n" +
 	"\rAutoIssueKind\x12\x1f\n" +
 	"\x1bAUTO_ISSUE_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AUTO_ISSUE_KIND_NONE\x10\x01\x12\x19\n" +
@@ -1568,11 +1640,14 @@ var file_remoteagent_core_v1_new_session_view_proto_depIdxs = []int32{
 	0,  // 34: remoteagent.core.v1.NewSessionViewModel.auto_issue:type_name -> remoteagent.core.v1.AutoIssueKind
 	14, // 35: remoteagent.core.v1.NewSessionViewModel.prefs_blocked_reason:type_name -> remoteagent.core.v1.Text
 	14, // 36: remoteagent.core.v1.NewSessionViewModel.image_upload_blocked_reason:type_name -> remoteagent.core.v1.Text
-	37, // [37:37] is the sub-list for method output_type
-	37, // [37:37] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	14, // 37: remoteagent.core.v1.NewSessionViewModel.file_upload_blocked_reason:type_name -> remoteagent.core.v1.Text
+	14, // 38: remoteagent.core.v1.NewSessionViewModel.original_image_hint:type_name -> remoteagent.core.v1.Text
+	14, // 39: remoteagent.core.v1.NewSessionViewModel.file_metadata_notice:type_name -> remoteagent.core.v1.Text
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_new_session_view_proto_init() }

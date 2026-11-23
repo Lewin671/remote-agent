@@ -84,6 +84,14 @@ message SessionCapabilitiesView {
   int64 max_file_bytes = 17;
   bool capabilities_loaded = 18;
   Text image_upload_blocked_reason = 19;
+  Text file_upload_blocked_reason = 20;
+  bool gallery_allows_video = 21;
+  string gallery_accept_mime = 22;
+  int32 max_file_name_bytes = 23;
+  string max_file_size_text = 24;
+  int64 original_image_max_bytes = 25;
+  Text original_image_hint = 26;
+  Text file_metadata_notice = 27;
 }
 
 enum ComputerReachability {

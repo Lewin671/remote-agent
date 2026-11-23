@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+
+// Stable user-facing image attachment error category shared across all three shells.
+enum ImageProblemKind {
+  IMAGE_PROBLEM_KIND_UNSPECIFIED = 0;
+  IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE = 1;
+  IMAGE_PROBLEM_KIND_DIMENSIONS = 2;
+  IMAGE_PROBLEM_KIND_SOURCE_MISSING = 3;
+  IMAGE_PROBLEM_KIND_DECODE = 4;
+  IMAGE_PROBLEM_KIND_STORAGE_FULL = 5;
+  IMAGE_PROBLEM_KIND_UPLOAD_FAILED = 6;
+  IMAGE_PROBLEM_KIND_PROCESSING_FAILED = 7;
+}
+
+// How a picked attachment candidate should be routed by the shell's draft/upload pipeline.
+enum AttachmentCandidateRoute {
+  ATTACHMENT_CANDIDATE_ROUTE_UNSPECIFIED = 0;
+  ATTACHMENT_CANDIDATE_ROUTE_IMAGE = 1;
+  ATTACHMENT_CANDIDATE_ROUTE_VIDEO_FILE = 2;
+  ATTACHMENT_CANDIDATE_ROUTE_FILE = 3;
+  ATTACHMENT_CANDIDATE_ROUTE_REJECTED = 4;
+}
+
+// Why a picked attachment candidate was rejected.
+enum AttachmentRejectKind {
+  ATTACHMENT_REJECT_KIND_UNSPECIFIED = 0;
+  ATTACHMENT_REJECT_KIND_IMAGES_UNSUPPORTED = 1;
+  ATTACHMENT_REJECT_KIND_FILES_UNSUPPORTED = 2;
+  ATTACHMENT_REJECT_KIND_DIRECTORY = 3;
+  ATTACHMENT_REJECT_KIND_IMAGE_LIMIT = 4;
+  ATTACHMENT_REJECT_KIND_FILE_LIMIT = 5;
+  ATTACHMENT_REJECT_KIND_SIZE_UNKNOWN = 6;
+  ATTACHMENT_REJECT_KIND_FILE_TOO_LARGE = 7;
+  ATTACHMENT_REJECT_KIND_FILENAME_INVALID = 8;
+}
+
+// Structured input for Core's image error classifier.
+// Shells pass the highest-fidelity signal they have (explicit_kind > local_key > error_code > raw_diagnostic).
+// Never pass already-translated UI prose into raw_diagnostic.
+message ImageProblemInput {
+  ImageProblemKind explicit_kind = 1;
+  string local_key = 2;
+  string error_code = 3;
+  string raw_diagnostic = 4;
+  // True when the failure happened while reading from the OS photo/file provider;
+  // unknown provider errors fall back to DECODE instead of PROCESSING_FAILED.
+  bool is_reading_source = 5;
+}
+
+// Classified user-facing image problem returned by Core.
+message ImageProblemView {
+  ImageProblemKind kind = 1;
+  Text message = 2;
+  bool retryable = 3;
+}
+
+// One candidate picked from the photo library, file picker, clipboard, or drag-and-drop.
+message AttachmentCandidateInput {
+  string name = 1;
+  string mime_type = 2;
+  int64 size_bytes = 3;
+  bool size_unknown = 4;
+  bool is_directory = 5;
+  // True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+  bool from_gallery = 6;
+}
+
+// Core's routing and validation verdict for one picked candidate.
+message AttachmentCandidateDecision {
+  AttachmentCandidateRoute route = 1;
+  bool accepted = 2;
+  AttachmentRejectKind reject_kind = 3;
+  Text reject_reason = 4;
+  string display_name = 5;
+  string formatted_size = 6;
+  bool is_video = 7;
+}
+
+// Synchronous screen query for attachment capability limits, picked-candidate validation,
+// and image problem classification / failure summary.
+message AttachmentEvalScreenRequest {
+  // Target machine ID (preferred when evaluating new-session drafts); if empty, resolved from session_id.
+  string machine_id = 1;
+  // Optional session ID; used to resolve target machine when machine_id is empty.
+  string session_id = 2;
+  // Number of images currently in the composer draft.
+  int32 current_images = 3;
+  // Number of non-image files (including gallery videos) currently in the composer draft.
+  int32 current_files = 4;
+  // Optional batch of newly picked candidates to route and validate against current limits.
+  repeated AttachmentCandidateInput candidates = 5;
+  // Optional list of image errors to classify and summarize.
+  repeated ImageProblemInput problems = 6;
+}
+
+// Computed attachment limits, candidate decisions, and classified image problems.
+message AttachmentEvalViewModel {
+  bool capabilities_loaded = 1;
+  bool supports_images = 2;
+  bool supports_files = 3;
+  int32 max_images = 4;
+  int32 max_files = 5;
+  int64 max_file_bytes = 6;
+  int32 max_file_name_bytes = 7;
+  string max_file_size_text = 8;
+  int64 original_image_max_bytes = 9;
+
+  bool gallery_allows_video = 10;
+  string gallery_accept_mime = 11;
+  int32 library_room = 12;
+  bool can_pick_images = 13;
+  bool can_pick_files = 14;
+  bool can_pick_gallery = 15;
+
+  Text image_upload_blocked_reason = 16;
+  Text file_upload_blocked_reason = 17;
+  Text gallery_blocked_reason = 18;
+  Text original_image_hint = 19;
+  Text file_metadata_notice = 20;
+
+  repeated AttachmentCandidateDecision decisions = 21;
+  Text notice = 22;
+
+  repeated ImageProblemView problems = 23;
+  Text failure_summary = 24;
+}
