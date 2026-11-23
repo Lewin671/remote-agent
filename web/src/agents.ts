@@ -4,8 +4,6 @@ import { Agent } from "./gen/remoteagent/v1/event_pb";
 export interface AgentEntry {
   readonly agent: Agent;
   readonly name: string;
-  readonly trustFolderHint: string | null;
-  readonly permissionModeNotice: string | null;
   readonly showMaxEffort: boolean;
   // Retained until i18n/messages/modes.json drops orphan keys modes.ask_permission_desc and modes.plan_propose_desc.
   readonly askModeDesc?: string;
@@ -15,16 +13,12 @@ export interface AgentEntry {
 const CODEX_ENTRY: AgentEntry = {
   agent: Agent.CODEX,
   name: "Codex",
-  trustFolderHint: null,
-  permissionModeNotice: null,
   showMaxEffort: true,
 };
 
 const CLAUDE_ENTRY: AgentEntry = {
   agent: Agent.CLAUDE,
   name: "Claude Code",
-  get trustFolderHint() { return i18n.t("dock.trust_folder"); },
-  get permissionModeNotice() { return i18n.t("modes.permission_notice"); },
   showMaxEffort: false,
   get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
   get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
@@ -33,16 +27,12 @@ const CLAUDE_ENTRY: AgentEntry = {
 const ANTIGRAVITY_ENTRY: AgentEntry = {
   agent: Agent.ANTIGRAVITY,
   name: "Antigravity",
-  trustFolderHint: null,
-  permissionModeNotice: null,
   showMaxEffort: false,
 };
 
 const UNKNOWN_ENTRY: AgentEntry = {
   agent: -1 as Agent,
   get name() { return i18n.t("models.unknown_cli"); },
-  trustFolderHint: null,
-  permissionModeNotice: null,
   showMaxEffort: false,
 };
 

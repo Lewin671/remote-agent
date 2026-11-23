@@ -9,20 +9,14 @@ describe("agents registry", () => {
 
     const codex = agentInfo(Agent.CODEX);
     expect(codex.name).toBe("Codex");
-    expect(codex.trustFolderHint).toBeNull();
-    expect(codex.permissionModeNotice).toBeNull();
     expect(codex.showMaxEffort).toBe(true);
 
     const claude = agentInfo(Agent.CLAUDE);
     expect(claude.name).toBe("Claude Code");
-    expect(claude.trustFolderHint).toBe(message("dock.trust_folder"));
-    expect(claude.permissionModeNotice).toBe(message("modes.permission_notice"));
     expect(claude.showMaxEffort).toBe(false);
 
     const agy = agentInfo(Agent.ANTIGRAVITY);
     expect(agy.name).toBe("Antigravity");
-    expect(agy.trustFolderHint).toBeNull();
-    expect(agy.permissionModeNotice).toBeNull();
     expect(agy.showMaxEffort).toBe(false);
   });
 
@@ -38,8 +32,6 @@ describe("agents registry", () => {
     const unknown = agentInfo(999 as Agent);
     expect(unknown.agent).toBe(999);
     expect(unknown.name).toBe(message("models.unknown_cli"));
-    expect(unknown.trustFolderHint).toBeNull();
-    expect(unknown.permissionModeNotice).toBeNull();
     expect(unknown.showMaxEffort).toBe(false);
     expect(agentName(999 as Agent)).toBe(message("models.unknown_cli"));
     // Passing unknown.agent back into agentInfo must still be the unknown entry, never Codex.

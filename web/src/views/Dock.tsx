@@ -6,7 +6,6 @@ import * as i18n from "../i18n";
 
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { agentInfo } from "../agents";
 import { approvalDisplay } from "../approval-display";
 import { renderText } from "../core/text";
 import {
@@ -19,7 +18,6 @@ import {
   type SessionQuestionDockView,
   type SessionTerminalPopupDockView,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import {
   CommandSchema,
@@ -28,7 +26,6 @@ import {
 import { Check, ChevronRight } from "../icons";
 import { Markdown } from "../markdown";
 import { useGrow, useHeightFlip } from "../motion";
-import { skeletonMessage } from "../skeleton";
 import { Banner, Exp, NavBar } from "../ui";
 import { ApprovalCard } from "./ApprovalCard";
 
@@ -156,16 +153,16 @@ function ApprovalDock({
 }) {
   const lastCmd = useRef<Command | undefined>(undefined);
   const title = renderText(dock.title) || i18n.t("approval.title");
-  if (approval.isSkeleton) {
+  if (dock.isSkeleton || approval.isSkeleton) {
     return (
       <div className="dock pending">
         <div className="tc line">
-          <div className="k">{skeletonMessage()}</div>
+          <div className="k">{i18n.t("session.skeleton")}</div>
         </div>
       </div>
     );
   }
-  const timeText = renderText(dock.timeLeft).replace(/^\s*·\s*/, "");
+  const timeText = renderText(dock.timeLeftPlain);
   const cmd = dock.command;
   const slotKey = cmd?.slotKey ?? "";
   if (!frame.open) {
@@ -257,10 +254,10 @@ function useQuestionState(
   const frozen = busy || !!cmd?.frozen || !canSend;
 
   const step = q.question;
-  if (!step) {
+  if (dock.isSkeleton || !step) {
     return {
       label,
-      text: skeletonMessage(),
+      text: i18n.t("session.skeleton"),
       busy: false,
       progress: "",
       answers: null,
@@ -484,7 +481,7 @@ function PlanButtons({
   const hasError = !!cmd && (cmd.status === SessionCommandStatus.FAILED || cmd.status === SessionCommandStatus.UNKNOWN);
   const errMsg = renderText(cmd?.errorText) || renderText(cmd?.statusText);
 
-  if (plan.choices.length === 0) return <div className="muted">{skeletonMessage()}</div>;
+  if (dock.isSkeleton || plan.choices.length === 0) return <div className="muted">{i18n.t("session.skeleton")}</div>;
 
   const locked = busy || !canSend || !!cmd?.frozen;
   const answer = (choice: PlanChoice) => {
@@ -560,7 +557,7 @@ function PlanDock({
   onAbandonCommand: (slotKey: string) => void;
 }) {
   const hasContent = !!plan.markdown || plan.choices.length > 0;
-  if (!hasContent) return <div className="dock muted">{skeletonMessage()}</div>;
+  if (dock.isSkeleton || !hasContent) return <div className="dock muted">{i18n.t("session.skeleton")}</div>;
   const note = renderText(plan.note);
   const title = renderText(dock.title) || i18n.t("list_state.plan");
   return (
@@ -604,22 +601,18 @@ function formatTrustHint(text: string) {
 function PopupDock({
   dock,
   popup,
-  agent,
   agentName,
   frame,
   onTerminal,
 }: {
   dock: SessionDockView;
   popup: SessionTerminalPopupDockView;
-  agent: Agent;
   agentName: string;
   frame: Frame;
   onTerminal: () => void;
 }) {
   const title = renderText(popup.popupTitle) || renderText(dock.title);
-  const hint = renderText(popup.hint);
-  const isTrust = dock.itemId === "trust folder" || title === i18n.t("dock.trust_folder");
-  const trustHint = agentInfo(agent).trustFolderHint;
+  const hint = renderText(popup.hint) || (popup.isTrustFolder ? i18n.t("dock.trust_folder") : "");
   return (
     <Pending
       frame={frame}
@@ -630,7 +623,7 @@ function PopupDock({
         title ? (
           <>
             <div className="q mono">{title}</div>
-            {hint ? <div className="y">{formatTrustHint(hint)}</div> : trustHint && isTrust && <div className="y">{formatTrustHint(trustHint)}</div>}
+            {hint && <div className="y">{formatTrustHint(hint)}</div>}
           </>
         ) : undefined
       }
@@ -864,7 +857,6 @@ export function Dock({
           key={dock.itemId}
           dock={dock}
           popup={dock.detail.value}
-          agent={header?.agent ?? Agent.UNSPECIFIED}
           agentName={header?.agentName ?? ""}
           frame={frame}
           onTerminal={onTerminal}
@@ -972,13 +964,13 @@ export function ApprovalPage({
   onAbandonCommand: (slotKey: string) => void;
 }) {
   const lastCmd = useRef<Command | undefined>(undefined);
-  const timeText = renderText(dock.timeLeft).replace(/^\s*·\s*/, "");
-  if (approval.isSkeleton) {
+  const timeText = renderText(dock.timeLeftPlain);
+  if (dock.isSkeleton || approval.isSkeleton) {
     return (
       <div className="page dpage">
         <NavBar onBack={onBack} title={i18n.t("approval.title")} sub={title} />
         <div className="tc">
-          <div className="y">{skeletonMessage()}</div>
+          <div className="y">{i18n.t("session.skeleton")}</div>
         </div>
       </div>
     );
@@ -1035,11 +1027,11 @@ export function PlanPage({
   onSubmitCommand: (slotKey: string, cmd: Command) => void;
   onAbandonCommand: (slotKey: string) => void;
 }) {
-  if (!plan.markdown && plan.choices.length === 0) {
+  if (dock.isSkeleton || (!plan.markdown && plan.choices.length === 0)) {
     return (
       <div className="page">
         <NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={title} />
-        <div className="body chat muted">{skeletonMessage()}</div>
+        <div className="body chat muted">{i18n.t("session.skeleton")}</div>
       </div>
     );
   }

@@ -1815,7 +1815,7 @@ export class DemoRemote extends Remote {
         return this.resolveSyncRpc(eff);
       case "fetchSessionById": {
         const s = this.demoSessions.get(eff.kind.value.sessionId);
-        return create(CoreEventSchema, { event: { case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, session: s ? this.plainSession(s) : undefined, error: s ? "" : "未找到对话" }) } });
+        return create(CoreEventSchema, { event: { case: "sessionByIdFetched", value: create(SessionByIdFetchedEventSchema, { opId, session: s ? this.plainSession(s) : undefined, error: "" }) } });
       }
       case "getEvents": {
         const { sessionId, afterSeq, limit } = eff.kind.value;

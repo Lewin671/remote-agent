@@ -41,11 +41,10 @@ import {
 import { splitPlaceholders, timelineImages } from "../imageview";
 import { Markdown } from "../markdown";
 import { canAnimate, easeBetween, useExit, useKnob } from "../motion";
-import { shortPath, shortenPath } from "../model";
+import { shortenPath } from "../model";
 import { type Remote } from "../remote";
 import { previewBlobForFile, saveBlobAsDownload, sharedFilesOf } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
-import { skeletonMessage } from "../skeleton";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
@@ -315,6 +314,7 @@ export interface SessionScreenViewProps {
   onUndoCancel?: () => void;
   onRestoreText?: (text: string, requestId?: string) => void;
   onLoadEarlier: () => void;
+  onRetrySession?: () => void;
   onRetryEvents?: () => void;
   onRefreshModels?: () => void;
   onExpandGroup: (groupId: string) => void;
@@ -365,6 +365,7 @@ export function SessionScreenView({
   onUndoCancel = noop,
   onRestoreText,
   onLoadEarlier,
+  onRetrySession,
   onRetryEvents,
   onRefreshModels,
   onExpandGroup,
@@ -394,7 +395,7 @@ export function SessionScreenView({
     (vm.timeline?.items.length ?? 0) > 0 ||
     (vm.composer?.pendingTray?.totalCount ?? 0) > 0 ||
     !!vm.composer?.pendingTray?.undo?.visible;
-  const pending = (!header || (!header.found && !header.missing)) && !hasContent;
+  const pending = (!header || (!header.found && !header.missing && !header.lookupFailed)) && !hasContent;
   const exited = !!header?.exited;
   const reachabilityUnknown = (() => {
     return header?.computerReachability === ComputerReachability.UNKNOWN;
@@ -670,6 +671,29 @@ export function SessionScreenView({
       </div>
     );
   }
+  const lookupFailed = !header?.found && !!header?.lookupFailed && !hasContent;
+  if (lookupFailed) {
+    return (
+      <div className="page">
+        <NavBar onBack={onBack} />
+        <div className="center">
+          <div>
+            <div className="et">{renderText(header?.lookupErrorText) || renderText(header?.statusText) || i18n.t("session.ios_missing")}</div>
+            <div className="big">
+              {onRetrySession && (
+                <button className="btn pri" onClick={onRetrySession}>
+                  {i18n.t("common.retry")}
+                </button>
+              )}
+              <button className="btn" onClick={onBack}>
+                {i18n.t("common.back")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const title = renderText(header?.title) || i18n.t("common.loading");
   const agent = header?.agent ?? Agent.UNSPECIFIED;
@@ -794,7 +818,7 @@ export function SessionScreenView({
 
   const headerBar = wide ? (
     <header className="dh">
-      {header?.isScheduled && (
+      {header?.taskOwned && (
         <button className="schedule-run-back" aria-label={t("common.back")} title={i18n.t("session.back_task")} onClick={onBack}>
           <ChevronLeft />
         </button>
@@ -840,7 +864,7 @@ export function SessionScreenView({
 
   const interruptCmd = actions?.interrupt;
   const endCmd = actions?.end;
-  const forkBlockedReason = renderText(actions?.forkBlockedReason);
+  const forkUi = actions?.forkAction;
 
   const chatCol = (
     <div className="ccol" ref={setColRef}>
@@ -888,7 +912,7 @@ export function SessionScreenView({
           onAbandonCommand={onAbandonCommand}
         />
       )}
-      {header?.isScheduled && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
+      {header?.taskOwned && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
       {showEndCard ? (
         <EndCard
           sessionId={sid}
@@ -986,64 +1010,42 @@ export function SessionScreenView({
     ...(actions?.canRename
       ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
       : []),
-    ...(header?.capabilities?.supportsFork && header?.computerOnline && !header?.computerUnlinked
+    ...(forkUi?.visible
       ? [
-          ...(forkCmd?.busy
+          forkUi.busy
+            ? {
+                label: renderText(forkUi.label) || i18n.t("session.forking"),
+                busy: true,
+                keep: true,
+                group: 1,
+                onClick: () => undefined,
+              }
+            : {
+                label: renderText(forkUi.label) || i18n.t("session.fork"),
+                disabled: !forkUi.enabled,
+                keep: forkUi.enabled,
+                note: renderText(forkUi.note) || undefined,
+                noteRed: forkUi.noteError,
+                group: 1,
+                onClick: () => {
+                  if (!forkUi.enabled) return;
+                  if (forkUi.abandons) {
+                    if (forkCmd?.slotKey) onAbandonCommand(forkCmd.slotKey);
+                  } else {
+                    forkAction();
+                  }
+                },
+              },
+          ...(forkUi.canAbandon && forkCmd?.slotKey
             ? [
                 {
-                  label: i18n.t("session.forking"),
-                  busy: true,
+                  label: i18n.t("session.abandon_fork"),
                   keep: true,
                   group: 1,
-                  onClick: () => undefined,
+                  onClick: () => onAbandonCommand(forkCmd.slotKey),
                 },
               ]
-            : !actions?.canFork && forkBlockedReason
-              ? [
-                  {
-                    label: i18n.t("session.fork"),
-                    disabled: true,
-                    note: forkBlockedReason,
-                    group: 1,
-                    onClick: () => undefined,
-                  },
-                ]
-              : forkCmd?.expired
-                ? [
-                    {
-                      label: i18n.t("session.abandon_fork"),
-                      keep: true,
-                      note: i18n.t("session.fork_expired"),
-                      noteRed: true,
-                      group: 1,
-                      onClick: () => onAbandonCommand(forkCmd.slotKey),
-                    },
-                  ]
-                : [
-                    {
-                      label: i18n.t("session.fork"),
-                      keep: true,
-                      note:
-                        forkCmd?.status === SessionCommandStatus.UNKNOWN
-                          ? i18n.t("session.fork_unknown")
-                          : forkErr
-                            ? i18n.t("session.fork_failed", { reason: forkErr })
-                            : undefined,
-                      noteRed: true,
-                      group: 1,
-                      onClick: forkAction,
-                    },
-                    ...(forkCmd?.canAbandon
-                      ? [
-                          {
-                            label: i18n.t("session.abandon_fork"),
-                            keep: true,
-                            group: 1,
-                            onClick: () => onAbandonCommand(forkCmd.slotKey),
-                          },
-                        ]
-                      : []),
-                  ]),
+            : []),
         ]
       : []),
     ...(remote && header
@@ -1136,7 +1138,7 @@ export function SessionScreenView({
                     {[agentLabel, project, mname].filter(Boolean).join(" · ")}
                   </b>
                   <span className="mono">
-                    <PathText path={shortPath(header?.cwd ?? "")} />
+                    <PathText path={header?.shortPath ?? ""} />
                   </span>
                 </>
               }
@@ -1587,7 +1589,7 @@ export function SessionPage({
   };
 
   const handleBack = () => {
-    if (go && header?.isScheduled && header.scheduledTaskId && header.machineId) {
+    if (go && header?.taskOwned && header.scheduledTaskId && header.machineId) {
       go(routeForTask(header.machineId, header.scheduledTaskId));
       return;
     }
@@ -1658,6 +1660,7 @@ export function SessionPage({
       setWindowLimit((n) => Math.max(n, tl.items.length) + DEFAULT_WINDOW_LIMIT);
     }
   }, [host, sessionId]);
+  const onRetrySession = useCallback(() => host.retrySession(sessionId), [host, sessionId]);
   const onRetryEvents = useCallback(() => host.retryEvents(sessionId), [host, sessionId]);
   const onRefreshModels = useCallback(() => host.sessionOpen(sessionId, true, false), [host, sessionId]);
   const onExpandGroup = useCallback(
@@ -1709,6 +1712,7 @@ export function SessionPage({
       onUndoCancel={onUndoCancel}
       onRestoreText={onRestoreText}
       onLoadEarlier={onLoadEarlier}
+      onRetrySession={onRetrySession}
       onRetryEvents={onRetryEvents}
       onRefreshModels={onRefreshModels}
       onExpandGroup={onExpandGroup}
@@ -2431,7 +2435,7 @@ const TimelineRow = memo(function TimelineRow({
       );
     }
     case "skeleton":
-      return <div className="record muted">{renderText(item.kind.value.text) || skeletonMessage()}</div>;
+      return <div className="record muted">{renderText(item.kind.value.text) || i18n.t("session.skeleton")}</div>;
     default:
       return null;
   }

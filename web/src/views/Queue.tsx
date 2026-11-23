@@ -15,7 +15,6 @@ import {
 import type { SentFile } from "../gen/remoteagent/v1/event_pb";
 import { ChevronDown, ChevronUp, LoaderCircle, Paperclip, X } from "../icons";
 import { useFresh } from "../motion";
-import { isSkeleton, skeletonMessage } from "../skeleton";
 
 export interface LocalSendAttachments {
   thumbs?: Blob[];
@@ -158,11 +157,11 @@ export function PendingTray({
             </div>
             {visibleItems.map((it) => {
               const id = it.requestId;
-              if (isSkeleton(id) || isSkeleton(it.text)) {
+              if (it.isSkeleton) {
                 return (
                   <div className="ptray-row" key={id}>
                     <span className="ptray-lead" />
-                    <div className="ptray-body">{skeletonMessage()}</div>
+                    <div className="ptray-body">{i18n.t("session.skeleton")}</div>
                   </div>
                 );
               }

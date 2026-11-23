@@ -12,7 +12,6 @@ import { approvalDisplay, approvalTruncatedMessage } from "../approval-display";
 import { renderText } from "../core/text";
 import { SessionCommandStatus, type SessionCommandState } from "../gen/remoteagent/core/v1/session_view_pb";
 import { ChevronRight, LoaderCircle } from "../icons";
-import { skeletonMessage } from "../skeleton";
 import { isApprovalAtBottom, isShortApprovalViewport } from "./approval-scroll";
 
 /** Whole lines a card's command shows before 看完整命令. */
@@ -198,7 +197,7 @@ export function ApprovalCard({
     return (
       <div className="tc">
         {head("")}
-        <div className="y">{skeletonMessage()}</div>
+        <div className="y">{i18n.t("session.skeleton")}</div>
       </div>
     );
   }

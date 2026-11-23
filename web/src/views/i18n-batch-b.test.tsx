@@ -9,7 +9,7 @@ import * as i18n from "../i18n";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { ApprovalMode, OriginKind, OriginSchema, type EventSchema } from "../gen/remoteagent/v1/event_pb";
 import { imageFailureLine, imageProblemKind } from "../image-problem";
-import { skeletonNote } from "../skeleton";
+import skeletonCorpus from "../../../testdata/projection/skeletons.json";
 import { SessionPage } from "./Session";
 import { useRemote } from "../ui";
 
@@ -87,7 +87,7 @@ it.each(["zh-CN", "en"] as const)("never enables approval of a skeleton in %s", 
   localeStore.overrideForTesting(locale);
   remote = DemoRemote.create(new URLSearchParams(), async () => {}); remote.start();
   const submit = vi.spyOn(getCoreHost(remote), "sessionSubmitCommand");
-  demoPush("s-idle", { case: "approvalRequested", value: { approvalId: "a-skel", description: "run cmd" + skeletonNote, command: "rm -rf" + skeletonNote } });
+  demoPush("s-idle", { case: "approvalRequested", value: { approvalId: "a-skel", description: "run cmd" + skeletonCorpus.note, command: "rm -rf" + skeletonCorpus.note } });
   await mount("s-idle");
   expect(host.textContent).toContain(t("session.skeleton"));
   expect([...host.querySelectorAll("button")].some(b => b.textContent === t("approval.allow"))).toBe(false);

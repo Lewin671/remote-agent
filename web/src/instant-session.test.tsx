@@ -63,6 +63,10 @@ it("draws an unresolved link as a chat page before lookup returns", async () => 
   const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
   remote.start();
   patchSyncState(remote, { listed: true });
+  const origRpc = remote.executeRpc.bind(remote);
+  vi.spyOn(remote, "executeRpc").mockImplementation((eff) =>
+    eff.kind.case === "fetchSessionById" ? new Promise<never>(() => undefined) : origRpc(eff),
+  );
   const core = getCoreHost(remote);
   const openSpy = vi.spyOn(core, "sessionOpen");
   history.replaceState(null, "", "/#/s/linked-session");
@@ -74,6 +78,40 @@ it("draws an unresolved link as a chat page before lookup returns", async () => 
   expect(host.querySelector(".session .navbar, .session .dh")).not.toBeNull();
   expect(host.querySelector<HTMLTextAreaElement>(".draft")!.disabled).toBe(false);
   expect(host.textContent).not.toContain("正在打开会话");
+});
+
+it("distinguishes lookup failure (with retry) from missing session", async () => {
+  const remote = DemoRemote.create(new URLSearchParams(), async () => undefined);
+  remote.start();
+  patchSyncState(remote, { listed: true });
+  const origRpc = remote.executeRpc.bind(remote);
+  let failLookup = true;
+  const { create } = await import("@bufbuild/protobuf");
+  const { EventSchema, SessionByIdFetchedEventSchema } = await import("./gen/remoteagent/core/v1/app_pb");
+  vi.spyOn(remote, "executeRpc").mockImplementation(async (eff) => {
+    if (eff.kind.case === "fetchSessionById") {
+      return create(EventSchema, {
+        event: {
+          case: "sessionByIdFetched",
+          value: create(SessionByIdFetchedEventSchema, {
+            opId: eff.opId,
+            error: failLookup ? "rpc timeout" : "",
+          }),
+        },
+      });
+    }
+    return origRpc(eff);
+  });
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root!.render(<SessionPage remote={remote} sessionId="missing-one" wide={false} onBack={() => undefined} />));
+  expect(host.textContent).toContain("rpc timeout");
+  const retry = [...host.querySelectorAll("button")].find((b) => b.textContent === message("common.retry"))!;
+  expect(retry).toBeTruthy();
+  failLookup = false;
+  await act(async () => retry.click());
+  expect(host.textContent).toContain(message("session.ios_missing"));
 });
 
 it("shows a verified session in Workspace", async () => {

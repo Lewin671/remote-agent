@@ -113,12 +113,12 @@ export function Composer({
   const showSendAfter = running && hasDraft && supportsQueueMode;
   const twoRow = showSendAfter || t.length > 20 || text.includes("\n");
 
-  const submit = (force = false, sendMode: SendMode = SendMode.STEER) => {
-    const resolvedMode = running && composer && !composer.supportsQueueMode ? SendMode.QUEUE : sendMode;
+  const defaultMode = composer?.defaultSendMode || SendMode.STEER;
+  const submit = (force = false, sendMode: SendMode = defaultMode) => {
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
-    if (t.startsWith("/") && !force && !images) return setSlash(resolvedMode);
-    onSend(t, resolvedMode);
+    if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
+    onSend(t, sendMode);
     setText("");
   };
 
@@ -126,7 +126,7 @@ export function Composer({
   const qKeys = wide ? queueKeys(fine) : "";
   const corePlaceholder = renderText(composer?.placeholder);
   const placeholder =
-    corePlaceholder && composer?.placeholder?.key !== "composer.message"
+    corePlaceholder && !composer?.isDefaultPlaceholder
       ? corePlaceholder
       : keys
         ? i18n.t("composer.shortcut", { keys })
@@ -154,7 +154,7 @@ export function Composer({
         disabled={!canSend}
         onMouseDown={keepComposerFocus}
         onPointerDown={keepComposerFocus}
-        onClick={() => submit(false, SendMode.STEER)}
+        onClick={() => submit(false, defaultMode)}
         aria-label={i18n.t("composer.send")}
       >
         <ArrowUp />
@@ -184,7 +184,7 @@ export function Composer({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              submit(false, SendMode.STEER);
+              submit(false, defaultMode);
             } else if (e.key === "Enter" && e.altKey && running && !e.nativeEvent.isComposing) {
               e.preventDefault();
               submit(false, SendMode.QUEUE);
@@ -211,8 +211,8 @@ export function Composer({
       </div>
       {slash !== undefined && (
         <Alert
-          title={i18n.t("composer.slash_title")}
-          text={i18n.t("composer.slash_note")}
+          title={renderText(composer?.slashWarningTitle) || i18n.t("composer.slash_title")}
+          text={renderText(composer?.slashWarningText) || i18n.t("composer.slash_note")}
           ok={i18n.t("composer.send")}
           onCancel={() => setSlash(undefined)}
           onOk={() => {

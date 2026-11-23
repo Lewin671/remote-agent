@@ -26,13 +26,6 @@ import {
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { localeStore, t as message } from "../i18n";
 import { SessionSheet } from "../sheets";
-import {
-  formatCacheHit,
-  formatDeltaTriangle,
-  formatTokens,
-  formatTtftSeconds,
-  middleEllipsis,
-} from "../usageFormat";
 import { MachineStatusPage } from "./MachineStatus";
 import { NewBoxView } from "./NewSession";
 import { ScheduleDetailView, type ScheduleDetailActions } from "./Schedules";
@@ -85,28 +78,7 @@ async function mountAsync(node: React.ReactElement) {
   await flushUi();
 }
 
-describe("Phase 2 formatters and bounds", () => {
-  it("formats zh and en token boundaries accurately", () => {
-    expect(formatTokens(8_420, "zh-CN")).toBe("8,420");
-    expect(formatTokens(8_420, "en")).toBe("8.4k");
-    expect(formatTokens(999_600, "en")).toBe("1M");
-    expect(formatTokens(99_960_000, "zh-CN")).toBe("1亿");
-    expect(formatTokens(3_480_000_000, "zh-CN")).toBe("34.8亿");
-    expect(formatTokens(12_860_000_000, "zh-CN")).toBe("128.6亿");
-    expect(formatTokens(3_480_000_000, "en")).toBe("3.5B");
-    expect(formatCacheHit(0.004)).toBe("0.4%");
-    expect(formatCacheHit(0.884)).toBe("88%");
-    expect(formatCacheHit(0.996)).toBe("99.6%");
-    expect(formatTtftSeconds(400)).toBe("0.4s");
-    expect(formatTtftSeconds(1_240)).toBe("1.2s");
-    expect(formatTtftSeconds(14_200)).toBe("14s");
-    expect(formatDeltaTriangle(1240, "zh-CN")).toBe("▲1,240%");
-    expect(formatDeltaTriangle(-72, "zh-CN")).toBe("▼72%");
-    expect(formatDeltaTriangle(0.2, "zh-CN")).toBe(message("usage.flat"));
-    expect(middleEllipsis("gemini-flash-workhorse-preview-2026-11-12", 24)).toContain("…");
-    expect(middleEllipsis("short-model", 24)).toBe("short-model");
-  });
-
+describe("Phase 2 bounds", () => {
   it("clamps custom date ranges to 90 days, uses 28 6-hour buckets for 7d, and reports east-of-UTC offset sign", () => {
     const now = new Date(2026, 10, 18, 12, 0, 0).getTime();
     const veryOld = new Date(2026, 0, 1).getTime();
@@ -483,6 +455,19 @@ describe("Usage & Output Speed screen", () => {
             hasCacheHit: true,
             cacheHitRate: 0.7,
             hasSpeed: false,
+            totalTokensText: create(TextSchema, { literal: "11万" }),
+            formattedSubtitle: create(TextSchema, {
+              key: "usage.entry_no_speed",
+              args: [
+                {
+                  name: "detail",
+                  value: {
+                    case: "strValue",
+                    value: `${message("usage.entry_last_7d")} · ${message("usage.entry_cache_pct", { pct: "70%" })}`,
+                  },
+                },
+              ],
+            }),
           }),
         })}
         onClose={() => undefined}
