@@ -482,7 +482,7 @@ class SharedFileIoExecutor(
                 .build()
         }
 
-        if (!MessageDigest.isEqual(actualHash, expectedHash)) {
+        if (actualHash == null || !MessageDigest.isEqual(actualHash, expectedHash)) {
             deletePartialFiles(dir)
             pruneEmptyDirs(dir)
             return builder
@@ -688,7 +688,7 @@ class SharedFileIoExecutor(
         }
     }
 
-    private fun sha256File(file: File, exactBytes: Long): ByteArray {
+    private fun sha256File(file: File, exactBytes: Long): ByteArray? {
         val md = MessageDigest.getInstance("SHA-256")
         if (exactBytes == 0L) return md.digest()
         val buf = ByteArray(8192)
@@ -696,7 +696,7 @@ class SharedFileIoExecutor(
         file.inputStream().use { input ->
             while (remaining > 0L) {
                 val read = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
-                if (read <= 0) throw IOException("unexpected EOF while hashing partial file")
+                if (read <= 0) return null
                 md.update(buf, 0, read)
                 remaining -= read
             }

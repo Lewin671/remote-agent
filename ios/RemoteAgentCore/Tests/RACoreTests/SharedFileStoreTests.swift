@@ -252,6 +252,31 @@ import Testing
         #expect(res.errorKind == .other)
     }
 
+    @Test func verifyReadIOErrorReportsOtherAndPreservesPartial() throws {
+        let dir = tempRoot(); defer { try? FileManager.default.removeItem(at: dir) }
+        let store = SharedFileStore(root: dir)
+        let content = pattern(1200)
+        let hash = Data(SHA256.hash(data: content))
+
+        #expect(store.writeChunk(writeEffect(
+            opID: 1, offset: 0, data: content, total: 1200,
+            committedOffset: 1200, sha256: hash, resetPartial: true)).ok)
+
+        let part = dir.appending(path: "s1/f1/.part")
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: part.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: part.path) }
+
+        let v = store.verifyAndCommit(verifyEffect(opID: 2, total: 1200, sha256: hash))
+        #expect(!v.ok)
+        #expect(v.errorKind == .other)
+        #expect(FileManager.default.fileExists(atPath: part.path))
+
+        // Once readable again, the preserved partial commits cleanly without redownloading.
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: part.path)
+        let retry = store.verifyAndCommit(verifyEffect(opID: 3, total: 1200, sha256: hash))
+        #expect(retry.ok)
+    }
+
     @Test func folderAndFileNamesStaySafe() {
         #expect(sharedFileFolderName("a1b2-c_3") == "a1b2-c_3")
         #expect(sharedFileFolderName("../x/y") == "___x_y")

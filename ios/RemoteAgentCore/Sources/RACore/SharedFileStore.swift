@@ -315,13 +315,28 @@ public struct SharedFileStore: Sendable {
             return checksumFailure("invalid expected digest or size")
         }
 
-        let digest: Data?
+        let digest: Data
         if effect.totalSizeBytes == 0 {
             digest = Data(SHA256.hash(data: Data()))
         } else {
-            digest = Self.sha256(of: part, bytes: effect.totalSizeBytes)
+            switch Self.sha256Result(of: part, bytes: effect.totalSizeBytes) {
+            case .digest(let d):
+                digest = d
+            case .shortOrMissing:
+                return checksumFailure("partial file missing or truncated")
+            case .readError(let error):
+                // Read I/O error: report OTHER/STORAGE_FULL and preserve .part/.meta.
+                return .with {
+                    $0.opID = effect.opID
+                    $0.sessionID = effect.sessionID
+                    $0.fileID = effect.fileID
+                    $0.ok = false
+                    $0.errorKind = Self.ioErrorKind(for: error)
+                    $0.errorDetail = error.localizedDescription
+                }
+            }
         }
-        guard let digest, digest == effect.expectedSha256 else {
+        guard digest == effect.expectedSha256 else {
             return checksumFailure("sha256 mismatch")
         }
 
@@ -475,22 +490,53 @@ public struct SharedFileStore: Sendable {
         return false
     }
 
+    private enum HashResult {
+        case digest(Data)
+        case shortOrMissing
+        case readError(Error)
+    }
+
     /// SHA-256 of the first `bytes` bytes of the file, streamed in 1 MiB pieces.
-    static func sha256(of url: URL, bytes: Int64) -> Data? {
-        guard bytes >= 0 else { return nil }
-        if bytes == 0 { return Data(SHA256.hash(data: Data())) }
-        guard let actual = fileLength(url), actual >= bytes,
-              let handle = try? FileHandle(forReadingFrom: url)
-        else { return nil }
-        defer { try? handle.close() }
-        var hash = SHA256()
-        var left = bytes
-        while left > 0 {
-            guard let piece = try? handle.read(upToCount: Int(min(left, 1 << 20))), !piece.isEmpty else { return nil }
-            hash.update(data: piece)
-            left -= Int64(piece.count)
+    /// Distinguishes missing/truncated files (`.shortOrMissing`) from read I/O errors (`.readError`).
+    private static func sha256Result(of url: URL, bytes: Int64) -> HashResult {
+        guard bytes >= 0 else { return .shortOrMissing }
+        if bytes == 0 { return .digest(Data(SHA256.hash(data: Data()))) }
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) {
+            return .shortOrMissing
         }
-        return Data(hash.finalize())
+        do {
+            let attrs = try fm.attributesOfItem(atPath: url.path)
+            let actual = (attrs[.size] as? NSNumber)?.int64Value ?? -1
+            if actual < bytes {
+                return .shortOrMissing
+            }
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            var hash = SHA256()
+            var left = bytes
+            while left > 0 {
+                guard let piece = try handle.read(upToCount: Int(min(left, 1 << 20))), !piece.isEmpty else {
+                    return .shortOrMissing
+                }
+                hash.update(data: piece)
+                left -= Int64(piece.count)
+            }
+            return .digest(Data(hash.finalize()))
+        } catch {
+            let ns = error as NSError
+            if (ns.domain == NSCocoaErrorDomain && ns.code == NSFileReadNoSuchFileError) ||
+               (ns.domain == NSPOSIXErrorDomain && ns.code == Int(ENOENT))
+            {
+                return .shortOrMissing
+            }
+            return .readError(error)
+        }
+    }
+
+    static func sha256(of url: URL, bytes: Int64) -> Data? {
+        if case .digest(let d) = sha256Result(of: url, bytes: bytes) { return d }
+        return nil
     }
 
     private static var protection: [FileAttributeKey: Any] {
