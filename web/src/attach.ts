@@ -157,10 +157,7 @@ export class Tray {
     });
     if (forFiles) {
       if (ev.canPickFiles) return "";
-      return (
-        renderText(ev.fileUploadBlockedReason) ||
-        i18n.t("attachment.max_files", { count: ev.maxFiles })
-      );
+      return renderText(ev.filesPickBlockedReason) || fallbackBlocked;
     }
     if (ev.canPickGallery) return "";
     return renderText(ev.galleryBlockedReason) || fallbackBlocked;
