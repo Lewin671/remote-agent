@@ -36,6 +36,7 @@ final class AccountContext {
         remote: Remote,
         preferenceDefaults: UserDefaults = .standard,
         draftFiles: (any RACore.SealedFiles)? = nil,
+        sharedFileRoot: URL = SharedFileCenter.defaultRoot,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
@@ -53,6 +54,7 @@ final class AccountContext {
             account: account,
             defaults: preferenceDefaults,
             screens: screens,
+            sharedFileStore: SharedFileStore(root: sharedFileRoot),
             demoDirectories: demoDirectories,
             demoModels: demoModels,
             demoMode: demoMode,
@@ -553,7 +555,8 @@ final class AppModel {
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
         ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, files: parts.storage.pending.scoped())
         // What the agent shared is kept in the cache, per session, and counts in 附件存储.
-        SharedFileCenter.install(remote: made.remote, coreHost: made.coreHost, root: SharedFileCenter.defaultRoot)
+        let sharedCenter = SharedFileCenter.install(remote: made.remote, coreHost: ctx.coreHost, root: SharedFileCenter.defaultRoot)
+        await ctx.coreHost.setSharedFileHandlers(sharedCenter.handlers())
         stage = .ready
         if hasObservedPath {
             made.engine.networkChanged(path.signature, available: path.available)
@@ -699,13 +702,19 @@ final class AppModel {
         follower?.cancel()
         follower = nil
         closeTerminals()
-        engine?.close()
+        let leavingHost = context?.coreHost
+        if let leavingEngine = engine, (leavingEngine as AnyObject) !== (leavingHost as AnyObject) {
+            leavingEngine.close()
+        }
         engine = nil
         // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
         if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
         LibraryVideos.discardAll()
-        if let host = context?.coreHost {
-            Task { await host.closeAsync() }
+        if let leavingHost {
+            Task {
+                await leavingHost.clearAllSharedFiles()
+                await leavingHost.closeAsync()
+            }
         }
         context = nil
         state = RemoteState()
@@ -779,38 +788,42 @@ final class AppModel {
                 Demo.models.map { ("\($0.machineId)/\($0.agent.rawValue)", $0.models) },
                 uniquingKeysWith: { _, rhs in rhs }
             )
+            let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
             let ctx = AccountContext(
                 account: account,
                 remote: remote,
+                sharedFileRoot: demoSharedRoot,
                 demoDirectories: Demo.directories,
                 demoModels: models,
                 demoMode: true
             )
             context = ctx
             ImageCenter.install(remote: remote, coreHost: ctx.coreHost, files: VolatileFiles(), live: false)
-            let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
-            SharedFileCenter.install(remote: remote, coreHost: context?.coreHost, root: demoSharedRoot)
+            let sharedCenter = SharedFileCenter.install(
+                remote: remote,
+                coreHost: ctx.coreHost,
+                root: demoSharedRoot,
+                allowMissingReports: SharedFileDebug.fake
+            )
             stage = .ready
-            let host = context?.coreHost
+            let host = ctx.coreHost
             let initialTheme = settings.settings.theme.proto
             Task { [weak self] in
-                await host?.setPersistClientPrefsHandler { eff in
+                await host.setSharedFileHandlers(sharedCenter.handlers())
+                await host.setPersistClientPrefsHandler { eff in
                     self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
                 }
                 guard let self else { return }
                 await load()
                 if gen == self.generation { self.follow(remote.state, gen: gen) }
-                await host?.seedDemo(
+                await host.seedDemo(
                     state: remote.current,
                     events: events,
                     schedules: schedules,
                     scheduleSeen: scheduleSeen
                 )
-                if let forced = SharedFileDebug.localStateEvent(for: events) {
-                    await host?.reportSharedFileLocalState(forced)
-                }
-                await host?.reportAppearancePref(initialTheme)
-                await host?.reportNotificationPref(supported: false)
+                await host.reportAppearancePref(initialTheme)
+                await host.reportNotificationPref(supported: false)
             }
         }
 

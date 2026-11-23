@@ -18,6 +18,33 @@ import RACore
 import RAProto
 import UIKit
 
+private enum ForcedCardState: String {
+    case available
+    case downloading
+    case downloadingEta
+    case paused
+    case downloaded
+    case downloadedNoDuration
+    case failed
+    case failedChecksum
+    case failedFull
+    case offline
+    case cleaned
+}
+
+private enum CardArgName {
+    static let name = "name"
+    static let kind = "kind"
+    static let size = "size"
+    static let state = "state"
+    static let count = "count"
+    static let downloaded = "downloaded"
+    static let total = "total"
+    static let eta = "eta"
+    static let duration = "duration"
+    static let reason = "reason"
+}
+
 enum SharedFileDebug {
     private static let args = ProcessInfo.processInfo.arguments
 
@@ -27,98 +54,164 @@ enum SharedFileDebug {
     }
 
     /// `-sharedFileCards id=state`, where a downloading or paused state may say how far: `downloading:0.19`.
-    private static let forced: [String: String] = {
-        var out: [String: String] = [:]
+    private static let forced: [String: (ForcedCardState, Double)] = {
+        var out: [String: (ForcedCardState, Double)] = [:]
         for pair in (value("-sharedFileCards") ?? "").split(separator: ",") {
             let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
-            if parts.count == 2 { out[parts[0]] = parts[1] }
+            guard parts.count == 2 else { continue }
+            let spec = parts[1].split(separator: ":").map(String.init)
+            guard let state = ForcedCardState(rawValue: spec[0]) else { continue }
+            let ratio = spec.count > 1 ? min(1, max(0, Double(spec[1]) ?? 0.33)) : 0.33
+            out[parts[0]] = (state, ratio)
         }
         return out
     }()
 
     static var hasForcedStates: Bool { !forced.isEmpty }
 
-    /// Produces a `PBSharedFileLocalStateEvent` driving Core into each forced debug state for demo sessions.
-    static func localStateEvent(for sessionEvents: [String: [PBEvent]]) -> PBSharedFileLocalStateEvent? {
-        guard !forced.isEmpty else { return nil }
-        var updates: [PBSharedFileLocalStateUpdate] = []
-        for (sid, events) in sessionEvents {
-            for ev in events {
-                guard case .toolCall(let tc)? = ev.kind else { continue }
-                for f in tc.sharedFiles {
-                    guard let word = forced[f.fileID] else { continue }
-                    let parts = word.split(separator: ":").map(String.init)
-                    let total = f.sizeBytes
-                    let done = Int64(Double(total) * (parts.count > 1 ? Double(parts[1]) ?? 0.33 : 0.33))
-                    var u = PBSharedFileLocalStateUpdate()
-                    u.sessionID = sid
-                    u.fileID = f.fileID
-                    switch parts[0] {
-                    case "available":
-                        u.status = .unspecified
-                    case "downloading":
-                        u.status = .downloading
-                        u.downloadedBytes = done
-                    case "downloadingEta":
-                        u.status = .downloading
-                        u.downloadedBytes = done
-                        u.hasEta_p = true
-                        u.etaSeconds = 12
-                    case "paused":
-                        u.status = .paused
-                        u.downloadedBytes = done
-                    case "downloaded":
-                        u.status = .downloaded
-                        u.hasDuration_p = true
-                        u.durationMs = 102_000
-                    case "downloadedNoDuration":
-                        u.status = .downloaded
-                    case "failed":
-                        u.status = .failed
-                        u.failureKind = .disconnected
-                    case "failedChecksum":
-                        u.status = .failed
-                        u.failureKind = .checksumMismatch
-                    case "failedFull":
-                        u.status = .failed
-                        u.failureKind = .phoneStorageFull
-                    case "cleaned":
-                        u.status = .cleanedUp
-                    default:
-                        continue
-                    }
-                    updates.append(u)
-                }
+    private static func t(_ key: String, _ args: [(String, PBCoreTextArg)] = []) -> PBCoreText {
+        .with {
+            $0.key = key
+            $0.args = args.map { name, val in
+                var a = val
+                a.name = name
+                return a
             }
-        }
-        guard !updates.isEmpty else { return nil }
-        return .with {
-            $0.replaceAll = true
-            $0.updates = updates
         }
     }
 
-    /// Demo-only per-card offline override when an online demo session (`sample-files-states`) displays
-    /// both online and offline cards side by side via `-sharedFileCards id=offline`.
+    private static func menuItem(
+        _ action: PBSharedFileMenuAction,
+        label: PBCoreText,
+        destructive: Bool = false,
+        separated: Bool = false
+    ) -> PBSharedFileMenuItemView {
+        .with {
+            $0.action = action
+            $0.label = label
+            $0.enabled = true
+            $0.destructive = destructive
+            $0.separated = separated
+        }
+    }
+
+    private static func cardA11y(_ item: PBSessionSharedFileItem, state: PBCoreText) -> PBCoreText {
+        t("shared_file.a11y_card", [
+            (CardArgName.name, .with { $0.strValue = item.displayName }),
+            (CardArgName.kind, .with { $0.textValue = item.kindLabel }),
+            (CardArgName.size, .with { $0.textValue = item.sizeText }),
+            (CardArgName.state, .with { $0.textValue = state }),
+        ])
+    }
+
+    /// Demo-only per-card ViewModel override for `-sharedFileCards id=state` (UI tests & visual previews).
     static func overrideItem(_ item: PBSessionSharedFileItem) -> PBSessionSharedFileItem {
-        guard forced[item.fileID] == "offline" else { return item }
+        guard let (state, ratio) = forced[item.fileID] else { return item }
+        let doneBytes = Int64(Double(item.sizeBytes) * ratio)
+        let doneText = imageBytes(doneBytes)
+
         var copy = item
-        copy.status = .offline
-        copy.subtitle = .with { $0.key = "shared_file.subtitle_offline" }
         copy.subtitleIsError = false
-        copy.primaryAction = .download
-        copy.primaryLabel = .with { $0.key = "shared_file.action_download" }
-        copy.primaryEnabled = false
-        copy.primaryDisabledReason = .with { $0.key = "shared_file.subtitle_offline" }
-        copy.menuItems = []
-        copy.a11YLabel = .with {
-            $0.key = "shared_file.a11y_card"
-            $0.args = [
-                .with { $0.name = "name"; $0.strValue = item.displayName },
-                .with { $0.name = "kind"; $0.textValue = item.kindLabel },
-                .with { $0.name = "size"; $0.textValue = item.sizeText },
-                .with { $0.name = "state"; $0.textValue = .with { $0.key = "shared_file.subtitle_offline" } },
+        copy.primaryDisabledReason = PBCoreText()
+        switch state {
+        case .available:
+            return item
+        case .downloading, .downloadingEta:
+            copy.status = .downloading
+            copy.progress = ratio
+            if state == .downloadingEta {
+                let eta = t("shared_file.eta_seconds", [(CardArgName.count, .with { $0.intValue = 12 })])
+                copy.subtitle = t("shared_file.subtitle_downloading_eta", [
+                    (CardArgName.downloaded, .with { $0.strValue = doneText }),
+                    (CardArgName.total, .with { $0.textValue = item.sizeText }),
+                    (CardArgName.eta, .with { $0.textValue = eta }),
+                ])
+            } else {
+                copy.subtitle = t("shared_file.subtitle_downloading", [
+                    (CardArgName.downloaded, .with { $0.strValue = doneText }),
+                    (CardArgName.total, .with { $0.textValue = item.sizeText }),
+                ])
+            }
+            copy.primaryAction = .pause
+            copy.primaryLabel = t("shared_file.action_pause")
+            copy.primaryEnabled = true
+            copy.menuItems = [
+                menuItem(.pause, label: t("shared_file.action_pause")),
+                menuItem(.cancelDownload, label: t("shared_file.action_cancel_download"), destructive: true, separated: true),
             ]
+            copy.a11YLabel = cardA11y(item, state: t("shared_file.a11y_state_downloading"))
+        case .paused:
+            copy.status = .paused
+            copy.progress = ratio
+            copy.subtitle = t("shared_file.subtitle_paused", [
+                (CardArgName.downloaded, .with { $0.strValue = doneText }),
+                (CardArgName.total, .with { $0.textValue = item.sizeText }),
+            ])
+            copy.primaryAction = .resume
+            copy.primaryLabel = t("shared_file.action_resume")
+            copy.primaryEnabled = true
+            copy.menuItems = [
+                menuItem(.resume, label: t("shared_file.action_resume")),
+                menuItem(.cancelDownload, label: t("shared_file.action_cancel_download"), destructive: true, separated: true),
+            ]
+            copy.a11YLabel = cardA11y(item, state: t("shared_file.a11y_state_paused"))
+        case .downloaded, .downloadedNoDuration:
+            copy.status = .downloaded
+            copy.progress = 1
+            if state == .downloaded, item.kind == .video || item.kind == .audio {
+                copy.subtitle = t("shared_file.subtitle_media_size", [
+                    (CardArgName.duration, .with { $0.strValue = "01:42" }),
+                    (CardArgName.size, .with { $0.textValue = item.sizeText }),
+                ])
+            }
+            copy.primaryAction = .open
+            copy.primaryLabel = t("shared_file.action_open")
+            copy.primaryEnabled = true
+            var menu: [PBSharedFileMenuItemView] = []
+            if item.kind == .image || item.kind == .video {
+                menu.append(menuItem(.saveToAlbum, label: t("shared_file.menu_save_to_album")))
+            }
+            menu.append(menuItem(.save, label: t("shared_file.menu_save_to_device")))
+            menu.append(menuItem(.share, label: t("shared_file.menu_share")))
+            menu.append(menuItem(.openWith, label: t("shared_file.menu_open_with")))
+            menu.append(menuItem(.deleteLocal, label: t("shared_file.menu_delete_local"), destructive: true, separated: true))
+            copy.menuItems = menu
+            copy.a11YLabel = cardA11y(item, state: t("shared_file.a11y_state_downloaded"))
+        case .failed, .failedChecksum, .failedFull:
+            let reasonText: PBCoreText = switch state {
+            case .failedChecksum: t("shared_file.reason_checksum_mismatch")
+            case .failedFull: t("shared_file.reason_disk_full")
+            default: t("shared_file.reason_disconnected")
+            }
+            let sub = t("shared_file.subtitle_failed", [(CardArgName.reason, .with { $0.textValue = reasonText })])
+            copy.status = .failed
+            copy.progress = 0
+            copy.subtitle = sub
+            copy.subtitleIsError = true
+            copy.primaryAction = .retry
+            copy.primaryLabel = t("shared_file.action_retry")
+            copy.primaryEnabled = true
+            copy.menuItems = [
+                menuItem(.retry, label: t("shared_file.action_retry")),
+            ]
+            copy.a11YLabel = cardA11y(item, state: sub)
+        case .offline:
+            copy.status = .offline
+            copy.subtitle = t("shared_file.subtitle_offline")
+            copy.primaryAction = .download
+            copy.primaryLabel = t("shared_file.action_download")
+            copy.primaryEnabled = false
+            copy.primaryDisabledReason = t("shared_file.subtitle_offline")
+            copy.menuItems = []
+            copy.a11YLabel = cardA11y(item, state: t("shared_file.subtitle_offline"))
+        case .cleaned:
+            copy.status = .cleaned
+            copy.subtitle = t("shared_file.subtitle_cleaned")
+            copy.primaryAction = .unspecified
+            copy.primaryLabel = PBCoreText()
+            copy.primaryEnabled = false
+            copy.menuItems = []
+            copy.a11YLabel = cardA11y(item, state: t("shared_file.subtitle_cleaned"))
         }
         return copy
     }
@@ -156,9 +249,11 @@ enum SharedFileDebug {
 // MARK: A computer that is not there
 
 extension SharedFileDebug {
-    /// `-sharedFileFake`: the sample session's files are really downloaded, from a fake computer in this process, one
-    /// block at a time and slowly, so that the whole path (blocks, check, copy, thumbnail, Quick Look) can be watched.
+    /// `-sharedFileFake`: the sample session's files are really downloaded through Core's download
+    /// state machine from an in-process fake computer, one block every 700 ms.
     static let fake = args.contains("-sharedFileFake")
+
+    static let demoBlockBytes = 786_432
 
     struct Fake: Sendable {
         let id: String
@@ -190,29 +285,46 @@ extension SharedFileDebug {
         ]
     }()
 
-    /// Serves `fakes`, a block every 700 ms.
-    struct FakeComputer: SharedFileFetching {
-        let files: [String: Data]
-        let blockBytes: Int
-
-        func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
-            try await Task.sleep(nanoseconds: 700_000_000)
-            guard let data = files[fileId] else { throw CommandError("not_found", "no such file", fromDaemon: true, readOnly: true, outcome: .executed) }
+    /// Builds a `CoreHost.DemoCommandAction` serving `fakes` one block every 700 ms.
+    static func demoChunkAction(
+        effect: PBCoreDispatchCommandEffect,
+        request: PBGetSharedFileChunkRequest,
+        files: [String: Data]
+    ) -> CoreHost.DemoCommandAction {
+        let blockBytes = demoBlockBytes
+        return .asyncRespond {
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            guard let data = files[request.fileID] else {
+                var result = PBCommandResult()
+                result.outcome = "executed"
+                result.reason = "ok"
+                result.resultAvailable = true
+                result.errorCode = "not_found"
+                result.errorMessage = "no such file"
+                return .with {
+                    $0.requestID = effect.requestID
+                    $0.attemptID = effect.attemptID
+                    $0.source = .daemon
+                    $0.attemptBound = true
+                    $0.hashesMatch = true
+                    $0.outerMatchesInner = true
+                    $0.signed = true
+                    $0.outerOutcome = "executed"
+                    $0.outerReason = "ok"
+                    $0.result = result
+                }
+            }
             var block = Data(count: blockBytes)
-            let from = Int(offset), take = max(0, min(blockBytes, data.count - from))
+            let from = Int(request.offset)
+            let take = max(0, min(blockBytes, data.count - from))
             if take > 0 { block.replaceSubrange(0..<take, with: data[from..<from + take]) }
-            return .with { $0.data = block; $0.totalBytes = UInt64(data.count) }
+            return CoreHost.demoExecutedOutcome(for: effect) {
+                $0.getSharedFileChunk = .with {
+                    $0.data = block
+                    $0.totalBytes = UInt64(data.count)
+                }
+            }
         }
-    }
-
-    @MainActor
-    static func fakeCenter(
-        root: URL,
-        report: @escaping @Sendable (PBSharedFileLocalStateEvent) async -> Void = { _ in }
-    ) -> SharedFileCenter {
-        let files = Dictionary(uniqueKeysWithValues: fakes.map { ($0.id, $0.data) })
-        let store = SharedFileStore(root: root, fetcher: FakeComputer(files: files, blockBytes: defaultSharedFileBlockBytes), isMachineOnline: { _ in true })
-        return SharedFileCenter(store: store, report: report)
     }
 }
 

@@ -257,11 +257,24 @@ actor CoreHost: SyncEngine {
         let task: Task<Void, Never>
     }
 
+    struct SharedFileHandlers: Sendable {
+        var onCompleted: @MainActor @Sendable (PBSharedFileCompletedEffect) -> Void = { _ in }
+        var onClearThumbnail: @MainActor @Sendable (SharedFileKey) -> Void = { _ in }
+        var onClearSessionThumbnails: @MainActor @Sendable (String) -> Void = { _ in }
+        var onClearAllThumbnails: @MainActor @Sendable () -> Void = {}
+    }
+
     private let client: CoreClient
     private let executor: any CoreHostExecutor
     private let screens: CoreScreens
     private let defaults: ScopeDefaults
     private let scopeHmacKey: Data
+    private let sharedFileStore: SharedFileStore
+    private let sharedFileContinuation: AsyncStream<@Sendable () async -> Void>.Continuation
+    private var sharedFileWorkerTask: Task<Void, Never>?
+    private var sharedFileHandlers: SharedFileHandlers?
+    private var visibleSessions: [(token: UUID, sessionID: String)] = []
+    private var currentVisibleSessionID = ""
     private let clock: @Sendable () -> Int64
     private let monoClock: @Sendable () -> Int64
     private let sleep: Sleeper
@@ -333,6 +346,7 @@ actor CoreHost: SyncEngine {
     enum DemoCommandAction: Sendable {
         case hold
         case respond(PBCoreCommandOutcomeEvent)
+        case asyncRespond(@Sendable () async -> PBCoreCommandOutcomeEvent)
     }
     private var demoCommandResponder: (@Sendable (PBCoreDispatchCommandEffect, PBCommand) -> DemoCommandAction?)?
     private var demoDaemonSettings: PBDaemonSettings?
@@ -358,6 +372,7 @@ actor CoreHost: SyncEngine {
         account: Account,
         defaults: UserDefaults,
         screens: CoreScreens,
+        sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
@@ -373,6 +388,7 @@ actor CoreHost: SyncEngine {
             screens: screens,
             defaults: ScopeDefaults(defaults, scope: [account.server, account.deviceId]),
             scopeHmacKey: RACore.scopeHmacKey(localKey: account.localKey),
+            sharedFileStore: sharedFileStore,
             clock: clock,
             monoClock: hostMonoMs,
             sleep: sleep,
@@ -394,6 +410,7 @@ actor CoreHost: SyncEngine {
         screens: CoreScreens,
         defaults: ScopeDefaults = ScopeDefaults(),
         scopeHmacKey: Data = Data(),
+        sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         monoClock: @escaping @Sendable () -> Int64 = hostMonoMs,
         sleep: @escaping Sleeper = realSleep,
@@ -408,6 +425,14 @@ actor CoreHost: SyncEngine {
         self.screens = screens
         self.defaults = defaults
         self.scopeHmacKey = scopeHmacKey
+        self.sharedFileStore = sharedFileStore
+        let (sfStream, sfContinuation) = AsyncStream.makeStream(of: (@Sendable () async -> Void).self, bufferingPolicy: .unbounded)
+        self.sharedFileContinuation = sfContinuation
+        self.sharedFileWorkerTask = Task.detached(priority: .utility) {
+            for await op in sfStream {
+                await op()
+            }
+        }
         self.clock = clock
         self.monoClock = monoClock
         self.sleep = sleep
@@ -418,6 +443,10 @@ actor CoreHost: SyncEngine {
         self.onScheduleNavigate = onScheduleNavigate
         self.randomIdPool = (0..<16).map { _ in newRequestId() }
         self.unitFloatPool = (0..<16).map { _ in Double.random(in: 0..<1) }
+    }
+
+    deinit {
+        sharedFileContinuation.finish()
     }
 
     func wireExecutorHooks() async {
@@ -563,6 +592,15 @@ actor CoreHost: SyncEngine {
                 $0.scopeHmacKey = scopeHmacKey
             }
         }
+        if !demoMode {
+            await dispatch {
+                $0.sharedFileConfig = .with {
+                    $0.localCacheMaxBytes = 0
+                    $0.storageFullKind = .phoneStorageFull
+                    $0.scanLocal = true
+                }
+            }
+        }
         await setUILocale(MessageLocale.current)
         await dispatchClockUpdated()
     }
@@ -680,6 +718,11 @@ actor CoreHost: SyncEngine {
         cancelIOTasks()
         cacheChain?.cancel()
         cacheChain = nil
+        sharedFileContinuation.finish()
+        sharedFileWorkerTask = nil
+        sharedFileHandlers = nil
+        visibleSessions.removeAll()
+        currentVisibleSessionID = ""
         let pendingBulk = bulkRouteWaiters
         bulkRouteWaiters.removeAll()
         for continuation in pendingBulk.values {
@@ -1308,6 +1351,9 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         let stillWatched = sessionWatches.values.contains { $0.sessionID == entry.sessionID }
         if !stillWatched {
+            if !visibleSessions.contains(where: { $0.sessionID == entry.sessionID }), currentVisibleSessionID == entry.sessionID {
+                currentVisibleSessionID = ""
+            }
             await syncWatchedSessionsToExecutor()
             await dispatch {
                 $0.sessionWatch = .with {
@@ -1336,11 +1382,129 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func reportSharedFileLocalState(_ event: PBSharedFileLocalStateEvent) async {
+    func setSharedFileHandlers(_ handlers: SharedFileHandlers) {
+        sharedFileHandlers = handlers
+    }
+
+    func startSharedFileDownload(sessionID: String, fileID: String, autoOpenIfStaying: Bool) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFileStartDownload = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+                $0.autoOpenIfStaying = autoOpenIfStaying
+            }
+        }
+    }
+
+    func pauseSharedFileDownload(sessionID: String, fileID: String) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFilePauseDownload = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+            }
+        }
+    }
+
+    func cancelSharedFileDownload(sessionID: String, fileID: String) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFileCancelDownload = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+            }
+        }
+    }
+
+    func deleteSharedFileLocal(sessionID: String, fileID: String) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFileDeleteLocal = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+            }
+        }
+    }
+
+    func enterVisibleSession(_ sid: String) async -> UUID {
+        let token = UUID()
+        guard !closed, !sid.isEmpty else { return token }
+        visibleSessions.append((token: token, sessionID: sid))
+        await syncVisibleSession()
+        return token
+    }
+
+    func leaveVisibleSession(_ token: UUID) async {
+        visibleSessions.removeAll { $0.token == token }
+        guard !closed else { return }
+        await syncVisibleSession()
+    }
+
+    private func syncVisibleSession() async {
+        let next = visibleSessions.last?.sessionID ?? ""
+        guard next != currentVisibleSessionID else { return }
+        currentVisibleSessionID = next
+        await dispatch {
+            $0.sharedFileSetVisibleSession = .with { $0.sessionID = next }
+        }
+    }
+
+    func forgetSharedFileSession(_ sessionID: String) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFileForgetSession = .with { $0.sessionID = sessionID }
+        }
+    }
+
+    func clearAllSharedFiles() async {
         guard !closed else { return }
         await dispatch {
-            $0.sharedFileLocalState = event
+            $0.sharedFileClearAll = PBSharedFileClearAllAction()
         }
+        await drainSharedFileQueue()
+    }
+
+    func recordSharedFileDuration(sessionID: String, fileID: String, durationMs: Int64) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty, durationMs > 0 else { return }
+        let store = self.sharedFileStore
+        let key = SharedFileKey(sessionId: sessionID, fileId: fileID)
+        enqueueSharedFileOp {
+            store.recordDuration(key, ms: durationMs)
+        }
+        await dispatch {
+            $0.sharedFileDurationProbed = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+                $0.durationMs = durationMs
+            }
+        }
+    }
+
+    func reportSharedFileLocalMissing(sessionID: String, fileID: String) async {
+        guard !closed, !sessionID.isEmpty, !fileID.isEmpty else { return }
+        await dispatch {
+            $0.sharedFileLocalMissing = .with {
+                $0.sessionID = sessionID
+                $0.fileID = fileID
+            }
+        }
+    }
+
+    func drainSharedFileQueue() async {
+        guard !closed else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let yielded = sharedFileContinuation.yield {
+                continuation.resume()
+            }
+            if case .terminated = yielded {
+                continuation.resume()
+            }
+        }
+    }
+
+    private func enqueueSharedFileOp(_ op: @escaping @Sendable () async -> Void) {
+        sharedFileContinuation.yield(op)
     }
 
     func openSessionImageViewer(sessionID: String, seq: UInt64, imageIndex: Int32 = 0, viewerIndex: Int32 = 0) async {
@@ -1658,6 +1822,7 @@ actor CoreHost: SyncEngine {
         var renderTargets: Set<PBCoreScreenTarget> = []
         var restoredComposers: [PBSessionRestoreComposerEffect] = []
         var resendAttachments: [PBSessionResendAttachmentsEffect] = []
+        var completedSharedFiles: [PBSharedFileCompletedEffect] = []
         var demoReplies: [PBCoreEvent] = []
         for eff in effects {
             guard !closed else { return }
@@ -1716,11 +1881,11 @@ actor CoreHost: SyncEngine {
                 break
 
             case .scheduleTimer(let t):
-                guard !demoMode else { continue }
+                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
                 scheduleTimer(timerId: t.timerID, kind: t.kind, key: t.key, delayMs: t.delayMs)
 
             case .cancelTimer(let t):
-                guard !demoMode else { continue }
+                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
                 cancelTimer(timerId: t.timerID, kind: t.kind, key: t.key)
 
             case .cacheRead(let r):
@@ -1970,6 +2135,74 @@ actor CoreHost: SyncEngine {
             case .usageCacheWrite(let eff):
                 defaults.saveUsageCache(machineID: eff.machineID, snapshot: eff.snapshot)
 
+            case .sharedFileScanLocal(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.scanLocal(opID: eff.opID)
+                    await self?.dispatch { $0.sharedFileLocalScanned = result }
+                }
+
+            case .sharedFileInspectDisk(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.inspectDisk(eff)
+                    await self?.dispatch { $0.sharedFileDiskInspected = result }
+                }
+
+            case .sharedFileWriteChunk(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.writeChunk(eff)
+                    await self?.dispatch { $0.sharedFileWriteChunkResult = result }
+                }
+
+            case .sharedFileVerifyAndCommit(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp { [weak self] in
+                    let result = store.verifyAndCommit(eff)
+                    await self?.dispatch { $0.sharedFileVerifyAndCommitResult = result }
+                }
+
+            case .sharedFileDeletePartial(let eff):
+                let store = self.sharedFileStore
+                enqueueSharedFileOp {
+                    store.deletePartial(sessionID: eff.sessionID, fileID: eff.fileID)
+                }
+
+            case .sharedFileDeleteLocal(let eff):
+                let store = self.sharedFileStore
+                let clearThumb = self.sharedFileHandlers?.onClearThumbnail
+                let key = SharedFileKey(sessionId: eff.sessionID, fileId: eff.fileID)
+                enqueueSharedFileOp {
+                    store.deleteLocal(sessionID: eff.sessionID, fileID: eff.fileID)
+                    if let clearThumb {
+                        await MainActor.run { clearThumb(key) }
+                    }
+                }
+
+            case .sharedFileDeleteSession(let eff):
+                let store = self.sharedFileStore
+                let clearSession = self.sharedFileHandlers?.onClearSessionThumbnails
+                enqueueSharedFileOp {
+                    store.deleteSession(sessionID: eff.sessionID)
+                    if let clearSession {
+                        await MainActor.run { clearSession(eff.sessionID) }
+                    }
+                }
+
+            case .sharedFileClearAll:
+                let store = self.sharedFileStore
+                let clearAll = self.sharedFileHandlers?.onClearAllThumbnails
+                enqueueSharedFileOp {
+                    store.clearAll()
+                    if let clearAll {
+                        await MainActor.run { clearAll() }
+                    }
+                }
+
+            case .sharedFileCompleted(let eff):
+                completedSharedFiles.append(eff)
+
             case nil:
                 break
             }
@@ -1990,6 +2223,13 @@ actor CoreHost: SyncEngine {
         }
         if !renderTargets.isEmpty {
             await self.renderTargets(renderTargets)
+        }
+        if !completedSharedFiles.isEmpty, let onCompleted = self.sharedFileHandlers?.onCompleted {
+            await MainActor.run {
+                for eff in completedSharedFiles {
+                    onCompleted(eff)
+                }
+            }
         }
     }
 
@@ -2014,6 +2254,12 @@ actor CoreHost: SyncEngine {
                     return
                 case .respond(let outcome):
                     await dispatch { $0.commandOutcome = outcome }
+                    return
+                case .asyncRespond(let make):
+                    spawnIO { host in
+                        let outcome = await make()
+                        await host.dispatch { $0.commandOutcome = outcome }
+                    }
                     return
                 }
             }
@@ -2843,6 +3089,13 @@ actor CoreHost: SyncEngine {
             }
         })
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
+        scanPre(await stepDemo {
+            $0.sharedFileConfig = .with {
+                $0.localCacheMaxBytes = 0
+                $0.storageFullKind = .phoneStorageFull
+                $0.scanLocal = SharedFileDebug.fake
+            }
+        })
         scanPre(await stepDemo { $0.clockUpdated = Self.makeLocalCalendar(nowMs: clock()) })
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
         scanPre(await stepDemo { $0.localeChanged = .with { $0.uiLocale = MessageLocale.current } })

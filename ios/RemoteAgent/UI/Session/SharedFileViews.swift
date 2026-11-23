@@ -73,8 +73,6 @@ struct SharedFileCardView: View {
     var body: some View {
         let center = SharedFileCenter.of(context.remote)
         let item = resolvedSharedFileItem(file)
-        let pbFile = sharedFileDescriptor(item)
-        let transfer = center.transfer(key, file: pbFile)
         SharedFileCardBody(item: item, thumbnail: resolvedSharedFileThumbnail(center: center, key: key, item: item))
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { box.frame = $0 }
             .opacity(pressed ? 0.7 : 1)
@@ -92,28 +90,24 @@ struct SharedFileCardView: View {
                     tap: { center.tap(item, sessionId: env.session) }
                 )
             }
-            .task(id: item.fileID + env.session) { await center.appeared(key, file: pbFile) }
-            .task(id: DownloadedCopy(transfer)) {
-                if case .downloaded(let url, _) = transfer { await center.loadMedia(key, url: url, kind: item.kind) }
-            }
-            .onChange(of: item.status == .downloaded) { was, now in
-                // Finished while VoiceOver is reading: said once; no toast and no per-percent updates.
-                if !was, now, UIAccessibility.isVoiceOverRunning {
-                    AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: item.displayName)).post()
+            .task(id: MediaProbeKey(session: env.session, fileID: item.fileID, downloaded: item.status == .downloaded)) {
+                if item.status == .downloaded {
+                    await center.loadMedia(key, name: item.displayName, kind: item.kind)
                 }
             }
             #if DEBUG
             .task { await SharedFileDebug.autoMenu(for: item, open: { openMenu(item: item) }) }
             .debugSignal("sharedfile.tap." + item.fileID) { center.tap(item, sessionId: env.session) }
             .debugSignal("sharedfile.menu." + item.fileID) { openMenu(item: item) }
-            .debugSignal("sharedfile.quiet." + item.fileID) { center.begin(key, file: pbFile); center.leftPage() }
+            .debugSignal("sharedfile.quiet." + item.fileID) { center.startDownload(key, autoOpenIfStaying: false) }
             .debugSignal("sharedfile.photos." + item.fileID) { center.saveToPhotos(key, item: item) }
             #endif
     }
 
-    private struct DownloadedCopy: Equatable {
-        let url: URL?
-        init(_ t: SharedFileTransfer) { if case .downloaded(let u, _) = t { url = u } else { url = nil } }
+    private struct MediaProbeKey: Equatable {
+        let session: String
+        let fileID: String
+        let downloaded: Bool
     }
 
     private func openMenu(item: PBSessionSharedFileItem) {

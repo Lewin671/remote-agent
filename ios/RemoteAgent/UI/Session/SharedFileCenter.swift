@@ -1,7 +1,9 @@
-// Files the agent shared, on the phone: the downloads (`SharedFileStore` in
-// the package does them), throttled local-state reporting to Go clientcore
-// (`SharedFileLocalStateEvent`), thumbnails/duration probing, and system actions
-// (Quick Look, Photos, Files, Share, Open With, delete).
+// Platform UI coordinator for files the agent shared: dispatches user actions
+// to Go clientcore (`CoreHost`), responds to `SharedFileCompletedEffect`
+// (haptics, VoiceOver announcement, auto-open Quick Look), generates local
+// thumbnails & probes media duration (`AVFoundation`), reports OS-reclaimed
+// local copies (`SharedFileLocalMissingEvent`), and opens system sheets
+// (Quick Look, Photos, Files, Share, Open With).
 import AVFoundation
 import ImageIO
 import Observation
@@ -21,16 +23,6 @@ struct SharedFileNotice: Equatable, Identifiable {
     var symbol: String { failed ? "xmark" : "checkmark" }
 }
 
-/// Builds the minimal `PBSharedFile` metadata needed by `SharedFileStore` from Core's `PBSessionSharedFileItem`.
-func sharedFileDescriptor(_ item: PBSessionSharedFileItem) -> PBSharedFile {
-    .with {
-        $0.fileID = item.fileID
-        $0.name = item.displayName
-        $0.sizeBytes = item.sizeBytes
-        $0.sha256 = item.sha256
-    }
-}
-
 @MainActor
 @Observable
 final class SharedFileCenter {
@@ -38,30 +30,25 @@ final class SharedFileCenter {
 
     @ObservationIgnored private static var centers: [ObjectIdentifier: SharedFileCenter] = [:]
 
-    /// Called when an account comes into use: its copies are kept under `root` and reported to Core (`replace_all = true`).
-    static func install(remote: Remote, coreHost: CoreHost? = nil, root: URL) {
+    /// Called when an account comes into use: pairs this center with `coreHost` and its shared-file root.
+    @discardableResult
+    static func install(
+        remote: Remote,
+        coreHost: CoreHost?,
+        root: URL,
+        allowMissingReports: Bool = true
+    ) -> SharedFileCenter {
         centers[ObjectIdentifier(remote)]?.close()
-        let report: @Sendable (PBSharedFileLocalStateEvent) async -> Void = { [weak coreHost] ev in
-            await coreHost?.reportSharedFileLocalState(ev)
-        }
-        let center: SharedFileCenter
-        #if DEBUG
-        if SharedFileDebug.fake {
-            center = SharedFileDebug.fakeCenter(root: root, report: report)
-        } else {
-            center = SharedFileCenter(remote: remote, root: root, report: report)
-        }
-        #else
-        center = SharedFileCenter(remote: remote, root: root, report: report)
-        #endif
+        let center = SharedFileCenter(
+            store: SharedFileStore(root: root),
+            coreHost: coreHost,
+            allowMissingReports: allowMissingReports
+        )
         centers[ObjectIdentifier(remote)] = center
-        #if DEBUG
-        if SharedFileDebug.hasForcedStates { return }
-        #endif
-        Task { await center.syncAllToCore() }
+        return center
     }
 
-    /// Called when the account is left: downloads stop and what was held in memory goes.
+    /// Called when the account is left: drops in-memory thumbnails and notices.
     static func remove(_ remote: Remote) {
         centers.removeValue(forKey: ObjectIdentifier(remote))?.close()
     }
@@ -70,11 +57,7 @@ final class SharedFileCenter {
     static func of(_ remote: Remote) -> SharedFileCenter {
         if let c = centers[ObjectIdentifier(remote)] { return c }
         let root = FileManager.default.temporaryDirectory.appending(path: "shared-files-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
-        #if DEBUG
-        let c = SharedFileDebug.fake ? SharedFileDebug.fakeCenter(root: root) : SharedFileCenter(remote: remote, root: root)
-        #else
-        let c = SharedFileCenter(remote: remote, root: root)
-        #endif
+        let c = SharedFileCenter(store: SharedFileStore(root: root), coreHost: nil, allowMissingReports: false)
         centers[ObjectIdentifier(remote)] = c
         return c
     }
@@ -87,28 +70,13 @@ final class SharedFileCenter {
 
     // MARK: State
 
-    private struct ReportedMark {
-        var timeMs: Int64
-        var percent: Int
-        var status: PBSharedFileTransferStatus
-        var waitingReconnect: Bool
-    }
-
     @ObservationIgnored let store: SharedFileStore
+    @ObservationIgnored private weak var coreHost: CoreHost?
     @ObservationIgnored private let present: @MainActor (URL) -> Void
-    @ObservationIgnored private let report: @Sendable (PBSharedFileLocalStateEvent) async -> Void
-    @ObservationIgnored private let clock: @Sendable () -> Int64
-    @ObservationIgnored private var follower: Task<Void, Never>?
-    @ObservationIgnored private var reportTail: Task<Void, Never>?
-    @ObservationIgnored private var lastReported: [SharedFileKey: ReportedMark] = [:]
-    @ObservationIgnored private var peeked: [SharedFileKey: SharedFileTransfer] = [:]
+    @ObservationIgnored private let allowMissingReports: Bool
     @ObservationIgnored private var loading = Set<SharedFileKey>()
-    /// Downloads the user started on a page that is still open: the ones that open by themselves when done.
-    @ObservationIgnored private var tickets = Set<SharedFileKey>()
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
-    /// What the store says, as it changes.
-    private(set) var states: [SharedFileKey: SharedFileTransfer] = [:]
     /// Pictures and first frames of copies that are on the phone.
     private(set) var thumbnails: [SharedFileKey: UIImage] = [:]
     private(set) var notice: SharedFileNotice?
@@ -116,179 +84,74 @@ final class SharedFileCenter {
     /// `open` shows a finished copy (Quick Look); a test gives its own.
     init(
         store: SharedFileStore,
-        open: @escaping @MainActor (URL) -> Void = { QuickLook.present($0) },
-        report: @escaping @Sendable (PBSharedFileLocalStateEvent) async -> Void = { _ in },
-        clock: @escaping @Sendable () -> Int64 = { nowMs() }
+        coreHost: CoreHost? = nil,
+        allowMissingReports: Bool = true,
+        open: @escaping @MainActor (URL) -> Void = { QuickLook.present($0) }
     ) {
         self.store = store
+        self.coreHost = coreHost
+        self.allowMissingReports = allowMissingReports
         self.present = open
-        self.report = report
-        self.clock = clock
-        let events = store.events
-        follower = Task { [weak self] in
-            for await event in events {
-                guard let self else { return }
-                self.apply(event)
-            }
-        }
     }
 
-    convenience init(
-        remote: Remote,
-        root: URL,
-        report: @escaping @Sendable (PBSharedFileLocalStateEvent) async -> Void = { _ in }
-    ) {
-        self.init(
-            store: SharedFileStore(
-                root: root, fetcher: remote.sharedFileFetcher,
-                isMachineOnline: { sid in
-                    let state = remote.state.value
-                    guard let machine = state.sessions[sid]?.machineId else { return false }
-                    return state.peer(machine).available
-                },
-                blockBytes: { sid in
-                    let state = remote.state.value
-                    return sharedFileBlockBytes(state.sessions[sid].flatMap { state.machines[$0.machineId] })
-                }),
-            report: report
+    func handlers() -> CoreHost.SharedFileHandlers {
+        CoreHost.SharedFileHandlers(
+            onCompleted: { [weak self] eff in self?.handleCompleted(eff) },
+            onClearThumbnail: { [weak self] key in self?.clearThumbnail(key) },
+            onClearSessionThumbnails: { [weak self] sid in self?.clearThumbnails(sessionID: sid) },
+            onClearAllThumbnails: { [weak self] in self?.clearAllThumbnails() }
         )
     }
 
     func close() {
-        follower?.cancel()
-        follower = nil
-        reportTail?.cancel()
-        reportTail = nil
         noticeTask?.cancel()
-        let store = store
-        Task { await store.stop() }
+        noticeTask = nil
+        thumbnails.removeAll()
+        loading.removeAll()
     }
 
-    /// Scans persisted local copies on disk and sends a full `replace_all = true` report to Core.
-    func syncAllToCore() async {
-        let entries = await store.scanPersisted()
-        var updates: [PBSharedFileLocalStateUpdate] = []
-        updates.reserveCapacity(entries.count)
-        let now = clock()
-        lastReported.removeAll()
-        for (key, transfer) in entries {
-            if states[key] == nil {
-                states[key] = transfer
-            }
-            let u = sharedFileLocalStateUpdate(key: key, transfer: transfer)
-            updates.append(u)
-            lastReported[key] = ReportedMark(timeMs: now, percent: -1, status: u.status, waitingReconnect: u.waitingReconnect)
+    // MARK: Core Effects
+
+    /// Handles `SharedFileCompletedEffect` emitted by Core after verification and commit.
+    func handleCompleted(_ effect: PBSharedFileCompletedEffect) {
+        guard !effect.deliverOnly else { return }
+        Haptics.light()
+        if UIAccessibility.isVoiceOverRunning {
+            AccessibilityNotification.Announcement(L10n.sharedFileA11YDownloadedAnnounce(name: effect.displayName)).post()
         }
-        sendToCore(.with {
-            $0.replaceAll = true
-            $0.updates = updates
-        })
-    }
-
-    /// Waits for all enqueued Core reports to complete (for tests).
-    func flushReports() async {
-        await reportTail?.value
-    }
-
-    private func sendToCore(_ event: PBSharedFileLocalStateEvent) {
-        let prev = reportTail
-        let report = self.report
-        reportTail = Task {
-            await prev?.value
-            guard !Task.isCancelled else { return }
-            await report(event)
+        let key = SharedFileKey(sessionId: effect.sessionID, fileId: effect.fileID)
+        if effect.autoOpen {
+            open(key, name: effect.displayName)
+        }
+        if effect.kind == .image || effect.kind == .video || effect.kind == .audio {
+            Task { await loadMedia(key, name: effect.displayName, kind: effect.kind) }
         }
     }
 
-    private func apply(_ event: SharedFileStoreEvent) {
-        switch event {
-        case .state(let key, let transfer):
-            let previous = states[key]
-            states[key] = transfer
-            if case .downloaded = transfer {} else { thumbnails[key] = nil }
-            reportTransfer(key: key, transfer: transfer, previous: previous)
-        case .completed(let key, let url):
-            Haptics.light()
-            // Back on the page that asked, and only there: otherwise it is the user's to open.
-            if tickets.remove(key) != nil { present(url) }
+    func clearThumbnail(_ key: SharedFileKey) {
+        thumbnails.removeValue(forKey: key)
+    }
+
+    func clearThumbnails(sessionID: String) {
+        for key in Array(thumbnails.keys) where key.sessionId == sessionID {
+            thumbnails.removeValue(forKey: key)
         }
     }
 
-    private func reportTransfer(key: SharedFileKey, transfer: SharedFileTransfer, previous: SharedFileTransfer?) {
-        #if DEBUG
-        if SharedFileDebug.hasForcedStates { return }
-        #endif
-        if transfer == .idle && (previous == nil || previous == .idle) {
-            return
-        }
-        // Duration-only update on an already-downloaded file uses `metadata_only = true`.
-        if case .downloaded(let prevURL, let prevMs) = previous,
-           case .downloaded(let nextURL, let nextMs) = transfer,
-           prevURL == nextURL, let ms = nextMs, ms != prevMs
-        {
-            sendToCore(.with {
-                $0.updates = [.with {
-                    $0.sessionID = key.sessionId
-                    $0.fileID = key.fileId
-                    $0.metadataOnly = true
-                    $0.hasDuration_p = true
-                    $0.durationMs = ms
-                }]
-            })
-            return
-        }
-
-        let update = sharedFileLocalStateUpdate(key: key, transfer: transfer)
-        if case .downloading(let done, let total, _, let waitingReconnect) = transfer {
-            let now = clock()
-            let pct = total > 0 ? Int(min(100, max(0, (done * 100) / total))) : 0
-            if let prev = lastReported[key],
-               prev.status == .downloading,
-               prev.waitingReconnect == waitingReconnect,
-               prev.percent == pct,
-               now - prev.timeMs < 250
-            {
-                return
-            }
-            lastReported[key] = ReportedMark(timeMs: now, percent: pct, status: .downloading, waitingReconnect: waitingReconnect)
-        } else {
-            lastReported[key] = ReportedMark(timeMs: clock(), percent: -1, status: update.status, waitingReconnect: false)
-        }
-        sendToCore(.with { $0.updates = [update] })
+    func clearAllThumbnails() {
+        thumbnails.removeAll()
     }
 
-    // MARK: What a card reads
-
-    /// The transfer of a file. A card drawn before the store has said anything reads the disk once.
-    func transfer(_ key: SharedFileKey, file: PBSharedFile) -> SharedFileTransfer {
-        if let held = states[key] { return held }
-        if let kept = peeked[key] { return kept }
-        let found = store.inspect(key, file: file)
-        peeked[key] = found
-        return found
-    }
-
-    /// Called when a card appears: asks the store to settle on what the disk says and sync to Core.
-    func appeared(_ key: SharedFileKey, file: PBSharedFile) async {
-        peeked[key] = nil
-        let found = await store.hydrate(key, file: file)
-        // If store already had the same state in memory without emitting, ensure Core knows about it.
-        if lastReported[key] == nil, found != .idle {
-            reportTransfer(key: key, transfer: found, previous: nil)
-        }
-    }
-
-    // MARK: Controls
+    // MARK: Controls (User -> Core Actions)
 
     /// What a tap on the card, or on its control, does — driven by Core's `primary_action` and `primary_enabled`.
     func tap(_ item: PBSessionSharedFileItem, sessionId: String) {
         guard item.primaryEnabled else { return }
         let key = SharedFileKey(sessionId: sessionId, fileId: item.fileID)
-        let file = sharedFileDescriptor(item)
         switch item.primaryAction {
-        case .download, .resume, .retry: begin(key, file: file)
-        case .pause: pause(key, file: file)
-        case .open: open(key, file: file)
+        case .download, .resume, .retry: startDownload(key, autoOpenIfStaying: true)
+        case .pause: pauseDownload(key)
+        case .open: open(key, name: item.displayName)
         case .unspecified, .UNRECOGNIZED: break
         }
     }
@@ -296,95 +159,94 @@ final class SharedFileCenter {
     /// Executes one menu action returned by Core's `SessionSharedFileItem.menu_items`.
     func runMenuAction(_ action: PBSharedFileMenuAction, item: PBSessionSharedFileItem, sessionId: String) {
         let key = SharedFileKey(sessionId: sessionId, fileId: item.fileID)
-        let file = sharedFileDescriptor(item)
         switch action {
-        case .download, .resume, .retry: begin(key, file: file)
-        case .pause: pause(key, file: file)
-        case .cancelDownload: cancel(key)
+        case .download, .resume, .retry: startDownload(key, autoOpenIfStaying: true)
+        case .pause: pauseDownload(key)
+        case .cancelDownload: cancelDownload(key)
         case .saveToAlbum: saveToPhotos(key, item: item)
-        case .save: saveToFiles(key, file: file)
-        case .share: share(key, file: file)
-        case .openWith: openWith(key, file: file)
+        case .save: saveToFiles(key, name: item.displayName)
+        case .share: share(key, name: item.displayName)
+        case .openWith: openWith(key, name: item.displayName)
         case .deleteLocal: deleteLocal(key)
         case .unspecified, .UNRECOGNIZED: break
         }
     }
 
-    func begin(_ key: SharedFileKey, file: PBSharedFile) {
-        tickets.insert(key)
-        let store = store
-        Task { await store.start(key, file: file) }
+    func startDownload(_ key: SharedFileKey, autoOpenIfStaying: Bool) {
+        guard let host = coreHost else { return }
+        Task { await host.startSharedFileDownload(sessionID: key.sessionId, fileID: key.fileId, autoOpenIfStaying: autoOpenIfStaying) }
     }
 
-    func pause(_ key: SharedFileKey, file: PBSharedFile) {
-        tickets.remove(key)
-        let store = store
-        Task { await store.pause(key, file: file) }
+    func pauseDownload(_ key: SharedFileKey) {
+        guard let host = coreHost else { return }
+        Task { await host.pauseSharedFileDownload(sessionID: key.sessionId, fileID: key.fileId) }
     }
 
-    func cancel(_ key: SharedFileKey) {
-        tickets.remove(key)
-        let store = store
-        Task { await store.cancel(key) }
+    func cancelDownload(_ key: SharedFileKey) {
+        guard let host = coreHost else { return }
+        Task { await host.cancelSharedFileDownload(sessionID: key.sessionId, fileID: key.fileId) }
     }
 
     func deleteLocal(_ key: SharedFileKey) {
-        tickets.remove(key)
-        let store = store
-        Task { await store.deleteLocal(key) }
-    }
-
-    /// The session page went, or the app left the front: nothing that finishes now opens by itself.
-    func leftPage(_ sessionId: String? = nil) {
-        if let sessionId { tickets = tickets.filter { $0.sessionId != sessionId } } else { tickets.removeAll() }
+        thumbnails.removeValue(forKey: key)
+        guard let host = coreHost else { return }
+        Task { await host.deleteSharedFileLocal(sessionID: key.sessionId, fileID: key.fileId) }
     }
 
     func forgetSession(_ sessionId: String) {
-        leftPage(sessionId)
-        for key in Array(lastReported.keys) where key.sessionId == sessionId {
-            lastReported.removeValue(forKey: key)
-        }
-        sendToCore(.with { $0.clearSessionID_p = sessionId })
-        let store = store
-        Task { await store.removeSession(sessionId) }
+        clearThumbnails(sessionID: sessionId)
+        guard let host = coreHost else { return }
+        Task { await host.forgetSharedFileSession(sessionId) }
     }
 
     /// 清理 in the storage settings.
     func clearAll() async {
-        tickets.removeAll()
-        lastReported.removeAll()
-        sendToCore(.with { $0.replaceAll = true })
-        await store.clearAll()
+        thumbnails.removeAll()
+        if let host = coreHost {
+            await host.clearAllSharedFiles()
+        } else {
+            let store = store
+            await Task.detached(priority: .utility) { store.clearAll() }.value
+        }
     }
 
-    func usedBytes() async -> Int64 { await store.usedBytes() }
+    func usedBytes() -> Int64 { store.usedBytes() }
 
     // MARK: Using a copy
 
-    private func copy(_ key: SharedFileKey, file: PBSharedFile) -> URL? {
-        guard case .downloaded(let url, _) = transfer(key, file: file), FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return url
+    private func existingCopy(_ key: SharedFileKey, name: String) -> URL? {
+        if let url = store.existingLocalURL(key, name: name) {
+            return url
+        }
+        reportMissingIfNeeded(key)
+        return nil
     }
 
-    func open(_ key: SharedFileKey, file: PBSharedFile) {
-        if let url = copy(key, file: file) { present(url) }
+    private func reportMissingIfNeeded(_ key: SharedFileKey) {
+        thumbnails.removeValue(forKey: key)
+        guard allowMissingReports, let host = coreHost else { return }
+        Task { await host.reportSharedFileLocalMissing(sessionID: key.sessionId, fileID: key.fileId) }
     }
 
-    func openWith(_ key: SharedFileKey, file: PBSharedFile) {
-        if let url = copy(key, file: file) { SystemSheets.openWith(url) }
+    func open(_ key: SharedFileKey, name: String) {
+        if let url = existingCopy(key, name: name) { present(url) }
     }
 
-    func share(_ key: SharedFileKey, file: PBSharedFile) {
-        if let url = copy(key, file: file) { SystemSheets.share(url) }
+    func openWith(_ key: SharedFileKey, name: String) {
+        if let url = existingCopy(key, name: name) { SystemSheets.openWith(url) }
+    }
+
+    func share(_ key: SharedFileKey, name: String) {
+        if let url = existingCopy(key, name: name) { SystemSheets.share(url) }
     }
 
     /// 存到「文件」 / 保存到本机: the system's export panel, which says itself how it went.
-    func saveToFiles(_ key: SharedFileKey, file: PBSharedFile) {
-        if let url = copy(key, file: file) { SystemSheets.export(url) }
+    func saveToFiles(_ key: SharedFileKey, name: String) {
+        if let url = existingCopy(key, name: name) { SystemSheets.export(url) }
     }
 
     func saveToPhotos(_ key: SharedFileKey, item: PBSessionSharedFileItem) {
-        guard let url = copy(key, file: sharedFileDescriptor(item)) else { return }
+        guard let url = existingCopy(key, name: item.displayName) else { return }
         let isVideo = item.kind == .video
         Task {
             do {
@@ -412,15 +274,21 @@ final class SharedFileCenter {
     // MARK: From the copy only
 
     /// A picture's or video's first frame, and a video's or recording's length, read from the copy on the phone (never asked of the computer).
-    func loadMedia(_ key: SharedFileKey, url: URL, kind: PBSharedFileKind) async {
+    func loadMedia(_ key: SharedFileKey, name: String, kind: PBSharedFileKind) async {
         guard kind == .image || kind == .video || kind == .audio, !loading.contains(key) else { return }
+        #if DEBUG
+        if SharedFileDebug.hasForcedStates { return }
+        #endif
+        guard let url = existingCopy(key, name: name) else { return }
         if kind == .audio || thumbnails[key] == nil {
             loading.insert(key)
             defer { loading.remove(key) }
             let media = await Task.detached(priority: .utility) { await SharedFileMedia.read(url, kind: kind) }.value
-            guard case .downloaded(let current, _) = states[key] ?? .idle, current == url else { return }
+            guard store.existingLocalURL(key, name: name) != nil else { return }
             if let image = media.thumbnail { thumbnails[key] = image }
-            if let ms = media.durationMs { await store.recordDuration(key, ms: ms) }
+            if let ms = media.durationMs, ms > 0, let host = coreHost {
+                await host.recordSharedFileDuration(sessionID: key.sessionId, fileID: key.fileId, durationMs: ms)
+            }
         }
     }
 
