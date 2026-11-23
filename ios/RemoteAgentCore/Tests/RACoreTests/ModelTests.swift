@@ -188,9 +188,6 @@ import Testing
         #expect("ab😀cd".jvmTake(4) == "ab😀")
         #expect("ab😀cd".jvmTakeLast(3) == "cd")
         #expect("ab😀cd".jvmLength == 6)
-        #expect(avatarIndex("/Users/me/Code/foo") == Int(UInt32(truncatingIfNeeded: "/Users/me/Code/foo".utf16.reduce(0) { ($0 &* 31 &+ UInt64($1)) & 0xffff_ffff }) % 4))
-        #expect(avatarIndex("") == 0)
-        #expect(avatarIndex("a") == 1)
     }
 
     /// What the app's screens trim, test for blankness and split by, as Kotlin does on Android.

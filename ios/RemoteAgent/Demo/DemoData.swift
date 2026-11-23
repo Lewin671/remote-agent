@@ -581,8 +581,6 @@ enum Demo {
         s.link = .online
         s.loaded = true
         s.synced = true
-        // The server has more ended sessions than were fetched.
-        s.sessionsNext = SessionPlace(endedMs: now - 60 * 9 * 3_600_000, sessionId: "old59")
         return s
     }
 

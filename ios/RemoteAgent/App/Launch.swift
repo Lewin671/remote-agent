@@ -218,7 +218,7 @@ enum LaunchDriver {
                 schedules: sampleSchedules.schedules,
                 scheduleSeen: sampleSchedules.seen
             ) {
-                await remote.showForTest(state: shown, modelLists: Demo.models)
+                await remote.showForTest(state: shown)
             }
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }

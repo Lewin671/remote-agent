@@ -112,28 +112,6 @@ import Testing
         #expect(!draft.filesAllowed(for: machine))
     }
 
-    @Test func fileOnlyNewSessionAndUnknownRetryKeepTheFirstFileIDs() async throws {
-        let (url, p) = try document()
-        defer { try? FileManager.default.removeItem(at: url) }
-        let commands = FakeCommands()
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
-        let cfg = NewConfig(machineId: "mac", cwd: "/work/example")
-        let draft = NewSessionDraft(cfg, settled: true)
-        let attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil)
-        attachments.append([p])
-        draft.start(commands, cfg, images: attachments) { _, _, _ in }
-        await eventually { !draft.running }
-        #expect(draft.frozen)
-        #expect(commands.sent.first?.createSession.fileIds == ["uploaded-file"])
-        #expect(commands.sent.first?.createSession.imageIds.isEmpty == true)
-        p.imageId = "renewed-file"
-        commands.answer(CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown))
-        draft.start(commands, cfg, images: attachments) { _, _, _ in }
-        await eventually { !draft.running }
-        #expect(commands.sent.count == 1)
-        #expect(commands.forwarded.count == 2 && commands.forwarded.last?.retry == true)
-    }
-
     @Test func fileOnlySessionMessagePersistsAndRestoresWithOriginalRequest() async throws {
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }

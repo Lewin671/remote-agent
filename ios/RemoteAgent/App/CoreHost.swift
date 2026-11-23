@@ -432,11 +432,6 @@ actor CoreHost: SyncEngine {
             onRefreshDevices: { [weak self] in
                 _ = try? await self?.executor.syncSecurity(touch: false)
             },
-            onLoadMoreSessions: { [weak self] in
-                await self?.dispatch {
-                    $0.homeLoadMoreEnded = PBCoreHomeLoadMoreEndedAction()
-                }
-            },
             onQuerySyncState: { [weak self] in
                 await self?.querySyncStateView()
             },

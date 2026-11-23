@@ -32,7 +32,7 @@ import Testing
         let initial = Demo.state(.everyday)
         model.setForeground(true)
         model.showDemo(account: Demo.account, remote: remote, initial: initial) {
-            await remote.showForTest(state: initial, modelLists: Demo.models)
+            await remote.showForTest(state: initial)
         }
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)

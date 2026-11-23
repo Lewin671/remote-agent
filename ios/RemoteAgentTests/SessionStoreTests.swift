@@ -5,55 +5,6 @@ import Testing
 
 @testable import RemoteAgent
 
-/// Test stub for Step 4 command callers (`prepare`/`forward`).
-final class FakeCommands: NewSessionCommands, @unchecked Sendable {
-    private let lock = NSLock()
-    private var answers: [Error?] = []
-    private var commands: [PBCommand] = []
-    private var sends: [String:PBCommand] = [:]
-    private var forwards: [(id: String, retry: Bool)] = []
-    private var made = 0
-    private var reply = PBCommandResult()
-
-    /// What a command that succeeds is answered with.
-    func result(_ r: PBCommandResult) { lock.withLock { reply = r } }
-    /// What the next commands end with, in order; nil is success. With none left they succeed.
-    func answer(_ list: Error?...) { lock.withLock { answers += list } }
-    var sent: [PBCommand] { lock.withLock { commands } }
-    var forwarded: [(id: String, retry: Bool)] { lock.withLock { forwards } }
-
-    private func next() throws -> PBCommandResult {
-        if let error = lock.withLock({ answers.isEmpty ? nil : answers.removeFirst() }) { throw error }
-        return lock.withLock { reply }
-    }
-
-    func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
-        lock.withLock { commands.append(cmd) }
-        return try next()
-    }
-
-    func prepare(_ sid: String, _ cmd: PBCommand) async throws -> PreparedCommand {
-        lock.withLock {
-            made += 1
-            let id="r\(made)";sends[id]=cmd
-            return PreparedCommand(machineId:"fixture-machine",sessionId:sid,requestId:id,deadlineMs:0,command:cmd)
-        }
-    }
-
-    func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
-        lock.withLock {
-            made += 1
-            commands.append(cmd)
-            return PreparedCommand(machineId: machineId, sessionId: sessionId, requestId: "r\(made)", deadlineMs: 0, command: cmd)
-        }
-    }
-
-    func forward(_ p: PreparedCommand, retryOfUnknown: Bool) async throws -> PBCommandResult {
-        lock.withLock { forwards.append((p.requestId, retryOfUnknown)); if let cmd=sends[p.requestId] {commands.append(cmd)} }
-        return try next()
-    }
-}
-
 @MainActor
 @Suite struct SessionStoreTests {
     let store = SessionStore()

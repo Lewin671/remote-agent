@@ -741,7 +741,7 @@ extension Remote {
             // Lengths and IDs only: a state holds titles.
             let st = current
             throw TestFailure(
-                "cancelled waiting for \(what): \(st.sessions.count) sessions, next \(String(describing: st.sessionsNext)), \(st.conn), link \(st.link), removed \(st.removed), error \(st.error), sessionsError \(st.sessionsError)"
+                "cancelled waiting for \(what): \(st.sessions.count) sessions, \(st.conn), link \(st.link), removed \(st.removed), error \(st.error)"
             )
         }
     }

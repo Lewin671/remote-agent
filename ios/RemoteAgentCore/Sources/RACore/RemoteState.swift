@@ -64,26 +64,6 @@ public struct SessionView: Equatable, Sendable, Identifiable {
     }
 }
 
-/// A place in the server's listing of ended sessions: the latest ended first, by session ID where those are equal.
-public struct SessionPlace: Equatable, Sendable {
-    public var endedMs: Int64
-    public var sessionId: String
-
-    public init(endedMs: Int64, sessionId: String) {
-        self.endedMs = endedMs
-        self.sessionId = sessionId
-    }
-}
-
-/// Whether a session ended at `endedMs` comes after `place` in the listing; one that has not ended is never there.
-public func afterPlace(endedMs: Int64, sessionId: String, place: SessionPlace) -> Bool {
-    endedMs != 0
-        && (endedMs < place.endedMs || (endedMs == place.endedMs && sessionId > place.sessionId))
-}
-
-/// Ended sessions asked for per page of the listing.
-public let sessionPage = 50
-
 public struct RemoteState: Equatable, Sendable {
     public var machines: [String: MachineView] = [:]
     /// Current signed machine members; `machines` also contains readable archives.
@@ -106,19 +86,6 @@ public struct RemoteState: Equatable, Sendable {
     public var recoveryStatusStale = true
     public var leaseEndMs: UInt64 = 0
     public var removed = false
-    /// Where the next page of ended sessions starts (architecture §8
-    /// 「会话列表分页」): `sessions` holds every session that has not ended and
-    /// the ended ones up to here, besides any fetched on their own. Nil when
-    /// every page was fetched, and before the first one (`sessionsListed`).
-    public var sessionsNext: SessionPlace?
-    /// A page of the listing is being fetched.
-    public var loadingSessions = false
-    /// Why the last page could not be fetched; empty once one was, or the first page came again.
-    public var sessionsError = ""
-    /// The listing's first page was fetched in this run. Before that the
-    /// sessions held are what the cache kept of an earlier run, and how many
-    /// pages there are is not known.
-    public var sessionsListed = true
     public var link: ServerLink = .waiting
     /// The lists came from the server since start: what they say of the computers is not from the cache.
     public var synced = false
@@ -142,9 +109,6 @@ public struct RemoteState: Equatable, Sendable {
     public var unlinked: Bool {
         link == .noNetwork || link == .noServer || (link == .waiting && !synced)
     }
-
-    /// The server has, or may have, ended sessions that were not fetched yet.
-    public var moreSessions: Bool { !sessionsListed || sessionsNext != nil }
 }
 
 /// A device of the account; a client's name is in its sealed metadata.

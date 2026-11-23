@@ -62,7 +62,7 @@ import UIKit
             schedules: samples.schedules,
             scheduleSeen: samples.seen
         ) {
-            await remote.showForTest(state: state, modelLists: Demo.models)
+            await remote.showForTest(state: state)
         }
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)

@@ -65,73 +65,10 @@ import Testing
         #expect(errorText(OpenError("envelope does not open")) == "envelope does not open")
         #expect(
             detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
-        #expect(errorText(PrefsConflictError()) == L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
         // One without words is called by its type, never by NSError's sentence about it.
         struct Wordless: Error {}
         #expect(errorText(Wordless()) == "Wordless")
         #expect(detailText(Wordless()) == "Wordless")
-    }
-}
-
-@Suite(.timeLimit(.minutes(2))) struct PagedListTests {
-    @Test func appendsAcrossPageBoundariesWithoutMutatingPublishedSnapshots() {
-        let values = Array(0..<1100)
-        var list = PagedList<Int>()
-        var snapshots: [PagedList<Int>] = []
-        for range in [0...0, 1...254, 255...256, 257...999, 1000...1099] {
-            snapshots.append(list)
-            list = list.appending(Array(values[range]))
-            #expect(Array(list) == Array(values[...range.upperBound]))
-            for before in snapshots {
-                #expect(list.extends(before))
-                #expect(Array(before) == Array(values.prefix(before.count)))
-            }
-        }
-        #expect(list.appending([]).extends(list) && list.extends(list.appending([])))
-        #expect(!list.extends(PagedList(Array(0..<1101))))
-        // The same values built apart are equal, though neither continues the other.
-        #expect(list == PagedList(values))
-        #expect(list.last == 1099 && list.count == 1100 && list[256] == 256)
-    }
-
-    @Test func replacingATailOrAppendingADifferentSiblingIsNotAnUnchangedPrefix() {
-        let original = Array(0..<700)
-        let common = PagedList(original.prefix(300))
-        let left = common.appending(Array(original[300..<700]))
-        let sibling = common.appending(Array(1000..<1400))
-        #expect(!left.extends(sibling))
-        #expect(!sibling.extends(left))
-        #expect(unchangedPrefix(left, common))
-        #expect(unchangedPrefix(sibling, common))
-        #expect(!unchangedPrefix(PagedList(original.dropFirst()), PagedList(original.prefix(300))))
-        // A second append to the same snapshot does not disturb the first.
-        #expect(Array(left) == original)
-        #expect(Array(sibling) == Array(0..<300) + Array(1000..<1400))
-        // An older snapshot of the line is still a prefix of both; the two later ones go their own ways.
-        let further = left.appending([7])
-        #expect(further.extends(left) && further.extends(common) && !further.extends(sibling))
-    }
-
-    @Test func appendLineDoesNotConfuseBranchesAtFullPageBoundaries() {
-        let common = PagedList(Array(0..<256))
-        let left = common.appending([256])
-        let right = common.appending([999])
-        let rightTail = right.appending(Array(1000..<1300))
-        #expect(left.extends(common) && rightTail.extends(common))
-        #expect(!rightTail.extends(left) && !left.extends(right))
-        #expect(rightTail.extends(right))
-        #expect(!common.extends(left))
-    }
-
-    @Test func manySmallAppendsShareTheirFullPages() {
-        var list = PagedList<Int>()
-        var earlier: [PagedList<Int>] = []
-        for i in 0..<2000 {
-            if i % 97 == 0 { earlier.append(list) }
-            list = list.appending([i])
-        }
-        #expect(Array(list) == Array(0..<2000))
-        for e in earlier { #expect(list.extends(e)) }
     }
 }
 
@@ -181,13 +118,8 @@ import Testing
         var state = RemoteState()
         state.machines = ["m": m]
         state.loaded = true
-        var list = PBListModelsResponse()
-        list.defaultModel = "astra"
-        await remote.showForTest(
-            state: state,
-            modelLists: [(machineId: "m", agent: .codex, models: list)])
+        await remote.showForTest(state: state)
         #expect(remote.current.machines["m"] == m)
-        #expect(try await remote.listModels("m", agent: .codex).defaultModel == "astra")
         await #expect(throws: CommandError.self) { try await remote.machineCommand("m", PBCommand()) }
     }
 }

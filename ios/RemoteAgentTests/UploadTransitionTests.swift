@@ -76,25 +76,4 @@ private struct TransitionChannel: UploadChannel {
         await job.value
         #expect(observed)
     }
-
-    @Test(arguments: [true, false]) func aCreateOwnsItsSnapshotBeforeTheNextUIAction(outcomeUnknown: Bool) async throws {
-        let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
-        let aborts = TransitionAborts(), commands = FakeCommands()
-        commands.answer(outcomeUnknown ? CommandError(CommandError.unknownOutcome, "unknown", outcome: .unknown) : UserError("refused"))
-        let attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil); attachments.append([p])
-        let cfg = NewConfig(machineId: "a", cwd: "/work/example"), draft = NewSessionDraft(nil, settled: true)
-        draft.start(commands, cfg, images: attachments) { _, _, _ in }
-        if outcomeUnknown {
-            // No actor turn has elapsed since pressing Start. The original request
-            // must already own this reservation when the next action supersedes it.
-            p.invalidate(retiring: true)
-        }
-        await eventually { !draft.running }
-        let uploads = ImageUploads(prepare: { _, _ in throw UserError("unexpected preparation") }, channel: { _ in TransitionChannel(aborts: aborts) })
-        await uploads.discard(p).value
-        #expect(commands.sent.first?.createSession.fileIds == ["first-file"])
-        #expect(draft.frozen == outcomeUnknown)
-        if outcomeUnknown { #expect(await aborts.ids.isEmpty) }
-        else { #expect(await aborts.ids.count == 1) }
-    }
 }

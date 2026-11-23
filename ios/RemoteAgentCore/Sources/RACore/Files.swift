@@ -54,27 +54,6 @@ public func fileChipName(_ name: String, maxCharacters: Int = 40) -> String {
     return String(name.prefix(room - tail)) + "…" + String(name.suffix(tail))
 }
 
-/// Only whole reference lines attested by this event may be hidden.
-public func withoutFileLines(_ text: String, files: [PBSentFile]) -> String {
-    let paths = Set(files.map(\.path).filter { !$0.isEmpty })
-    let lines = text.components(separatedBy: "\n")
-    var hidden = Set<Int>()
-    for (i, line) in lines.enumerated() {
-        let path: String
-        if line.hasPrefix("File: @\""), line.hasSuffix("\" (file)") {
-            path = "@" + String(line.dropFirst(8).dropLast(8))
-
-        } else if line.hasPrefix("File: ") {
-            path = String(line.dropFirst(6))
-        } else { path = line }
-        if paths.contains(path) || (path.hasPrefix("@") && paths.contains(String(path.dropFirst()))) {
-            hidden.insert(i)
-            if i > 0 && lines[i - 1].isEmpty { hidden.insert(i - 1) }
-        }
-    }
-    return lines.enumerated().filter { !hidden.contains($0.offset) }.map(\.element).joined(separator: "\n")
-}
-
 /// Durable metadata for resuming a current transfer and retiring superseded reservations.
 public struct FileTransfer: Codable, Equatable, Sendable {
     public var transferId: String

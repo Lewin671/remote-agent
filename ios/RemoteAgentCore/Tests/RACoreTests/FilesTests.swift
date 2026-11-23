@@ -103,19 +103,6 @@ private actor FileReceiver: UploadChannel {
         #expect(fileSize(2048) == "2.0 KB")
     }
 
-    @Test func onlyExactAttestedLinesAndTheirEmptySeparatorDisappear() {
-        let f = PBSentFile.with { $0.path = "/uploads/s/files/f/report.csv" }
-        #expect(withoutFileLines("看看\n\n@\(f.path)", files: [f]) == "看看")
-        #expect(withoutFileLines(f.path, files: [f]).isEmpty)
-        #expect(withoutFileLines("看看\n\nFile: \(f.path)", files: [f]) == "看看")
-        #expect(withoutFileLines("File: @\(f.path) (file)", files: [f]) == "File: @\(f.path) (file)")
-        #expect(withoutFileLines("看看\n\nFile: @\"\(f.path)\" (file)", files: [f]) == "看看")
-        #expect(withoutFileLines("File: @\(f.path) (file) more", files: [f]) == "File: @\(f.path) (file) more")
-        let ordinary = "提到 \(f.path)\n\(f.path)  \n/elsewhere/file\n\n尾巴"
-        #expect(withoutFileLines(ordinary, files: [f]) == ordinary)
-        #expect(withoutFileLines("\nabc", files: []) == "\nabc")
-    }
-
     @Test func documentsRestoreWithoutCopyingTheirContentsToTheImageStore() throws {
         let (folder, file) = try source(1024 * 1024)
         defer { try? FileManager.default.removeItem(at: folder) }

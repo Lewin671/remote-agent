@@ -119,7 +119,7 @@ enum SessionSamples {
                 return nil
             }
         }
-        await remote.showForTest(state: state, modelLists: modelLists)
+        await remote.showForTest(state: state)
         await coreHost.appendDemoSessionData(state: state, events: eventsMap, modelLists: modelLists)
         await local(coreHost)
     }

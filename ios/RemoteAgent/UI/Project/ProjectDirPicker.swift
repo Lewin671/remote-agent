@@ -3,18 +3,10 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// Where a folder's listing comes from: the computer, or in sample mode a made-up tree.
+/// Where a folder's listing comes from in sample mode: a made-up tree.
 @MainActor
 struct DirectorySource {
     var list: @MainActor (_ machine: String, _ path: String) async throws -> PBListDirectoriesResponse
-
-    static func remote(_ remote: Remote) -> DirectorySource {
-        DirectorySource { machine, path in
-            let r = try await remote.machineCommand(machine, listDirectoriesCommand(path: path))
-            guard case .listDirectories(let dirs)? = r.kind else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
-            return dirs
-        }
-    }
 }
 
 /// Core-backed directory picker driven by `PBCoreDirPickerView`.
@@ -194,22 +186,5 @@ struct CoreDirPickerContent: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 6)
             .accessibilityLabel(L10n.projectsIosCurrentDirectory(path: picker.currentPath))
-    }
-}
-
-/// Compatibility entry point for non-M1 screens (`ScheduleConfigSheet`, `MachineStatusScreen`).
-struct ProjectDirPicker: View {
-    private let machine: String?
-    private let onPage: Bool
-    private let onChosen: (_ machine: String, _ path: String) -> Void
-
-    init(_ ignoredState: RemoteState, machine: String? = nil, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
-        self.machine = machine
-        self.onPage = onPage
-        self.onChosen = onChosen
-    }
-
-    var body: some View {
-        CoreDirPicker(machine: machine, onPage: onPage, onChosen: onChosen)
     }
 }

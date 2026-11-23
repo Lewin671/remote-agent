@@ -1,9 +1,6 @@
-// Transitional Step 4 adapters from Core's SyncStateView
-// into the legacy shell model (`RemoteState`) and the
-// per-slot unknown-command tracker (`Attempt`) used by unmigrated Step 4 views
-// (`SchedulesScreen`, `ScheduleStore`, `Settings`, `MachineStatusScreen`).
+// Transitional adapter from Core's SyncStateView into the legacy shell model (`RemoteState`).
 //
-// Delete this file once Step 4 migrates those screens into Go Core.
+// Delete this file once remaining shell views migrate off `RemoteState`.
 import Foundation
 import RACore
 import RAProto
@@ -44,17 +41,6 @@ enum SyncStateAdapter {
             let text = renderCoreText(v.connectionReason)
             s.error = text
             s.errorDetail = text
-        }
-        if v.sessionListFailed, v.hasSessionListError {
-            s.sessionsError = renderCoreText(v.sessionListError)
-        }
-        s.loadingSessions = v.loadingMoreSessions
-        s.sessionsListed = v.sessionsListed
-        if v.hasMoreSessions_p && v.hasNextCursor {
-            s.sessionsNext = SessionPlace(
-                endedMs: v.nextCursor.endedMs,
-                sessionId: v.nextCursor.sessionID
-            )
         }
         if v.hasPrefs || v.prefsLoaded {
             s.prefs = PrefsObject(
@@ -130,64 +116,5 @@ enum SyncStateAdapter {
         }
         s.devices = devices
         return s
-    }
-}
-
-/// Step 4 transitional per-slot command holder for unmigrated UI views
-/// (`ScheduleMutation`). Delete when Step 4 migrates Schedules commands into Core.
-final class Attempt {
-    static var expiredUnknown: LocalizedMessage {
-        L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult()
-    }
-
-    private(set) var pending: PreparedCommand?
-    private(set) var frozen = false
-    private(set) var expired = false
-
-    func next(_ make: () throws -> PreparedCommand) throws -> PreparedCommand {
-        if expired {
-            throw CommandError(CommandError.unknownOutcome, Self.expiredUnknown, outcome: .unknown)
-        }
-        if frozen, let pending { return pending }
-        let prepared = try make()
-        pending = prepared
-        frozen = false
-        return prepared
-    }
-
-    func settle() {
-        pending = nil
-        frozen = false
-        expired = false
-    }
-
-    @discardableResult
-    func settle(_ error: Error) -> Error? {
-        guard let ce = error as? CommandError else {
-            if frozen { return error }
-            pending = nil
-            frozen = false
-            return error
-        }
-        if frozen {
-            if ce.code == CommandError.expired {
-                expired = true
-                return CommandError(CommandError.unknownOutcome, Self.expiredUnknown, outcome: .unknown)
-            }
-            return ce.unknown ? ce : CommandError.unknownBecause(errorText(ce))
-        }
-        if ce.unknown || pending?.mayHaveRun == true {
-            frozen = true
-            return ce.unknown ? ce : CommandError.unknownBecause(errorText(ce))
-        }
-        pending = nil
-        frozen = false
-        return error
-    }
-
-    func abandon() {
-        pending = nil
-        frozen = false
-        expired = false
     }
 }

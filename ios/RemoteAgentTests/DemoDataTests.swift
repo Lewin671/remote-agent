@@ -25,7 +25,7 @@ import Testing
         let remote = Demo.remote()
         let state = Demo.state(set, now: now)
         let events = Demo.events(set, now: now)
-        await remote.showForTest(state: state, modelLists: Demo.models)
+        await remote.showForTest(state: state)
         #expect(remote.current == state)
         let model = AppModel(settings: SettingsStore(defaults: UserDefaults(suiteName: "demo-\(UUID().uuidString)")!))
         model.showDemo(account: Demo.account, remote: remote, initial: state, events: events) {}

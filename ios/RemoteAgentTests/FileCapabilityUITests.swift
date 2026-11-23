@@ -70,18 +70,6 @@ import Testing
         #expect(store.draft("s") == "existing\nplain")
     }
 
-    @Test func aCreateWithFilesIsRejectedBeforePreparingOrClearingItsDraft() async throws {
-        let remote = try remote(); await remote.showForTest(state: state(support: false))
-        let p = readyFile(), attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil)
-        attachments.append([p])
-        let cfg = NewConfig(machineId: "m", cwd: "/work/example"), draft = NewSessionDraft(nil, settled: true)
-        draft.text = "keep all attachments"
-        draft.start(remote, cfg, images: attachments) { _, _, _ in Issue.record("unsupported create was sent") }
-        await eventually { !draft.running }
-        #expect(draft.error.contains("更新") && !draft.frozen)
-        #expect(draft.text == "keep all attachments" && attachments.images.first === p && p.imageId == "file-1")
-    }
-
     @Test func capabilityIsRecheckedAfterSavingTheOutgoingRecord() async throws {
         let remote = try remote(); await remote.showForTest(state: state(support: true))
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }

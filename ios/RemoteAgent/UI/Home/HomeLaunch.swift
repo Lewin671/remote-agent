@@ -75,14 +75,11 @@ enum HomeLaunch {
             case "diskTwo":
                 s.machines["mac"]?.meta?.diskStatus = .with { $0.totalBytes = 460_000_000_000; $0.availableBytes = 8_200_000_000; $0.pressure = .warning }
                 s.machines["vps"]?.meta?.diskStatus = .with { $0.totalBytes = 200_000_000_000; $0.availableBytes = 1_200_000_000; $0.pressure = .critical }
-            case "listFailed":
-                s.sessionsListed = false
-                s.sessionsError = L10n.errorsConnectionTimedOut()
             default:
                 break
             }
         }
-        await remote.showForTest(state: s, modelLists: Demo.models)
+        await remote.showForTest(state: s)
         if let scope = value("-homeScope") {
             context.dispatch { $0.homeSetScope.scopeKey = scope == "all" ? "" : scope }
         }

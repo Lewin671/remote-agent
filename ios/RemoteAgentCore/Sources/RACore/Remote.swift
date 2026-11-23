@@ -171,12 +171,6 @@ public final actor Remote {
         }
     }
 
-    struct ModelList {
-        let task: Task<PBListModelsResponse, Error>
-        var done = false
-        var failed = false
-    }
-
     public struct StreamCallbacks: Sendable {
         public let onReady: @Sendable (UInt64, Int64) async -> Void
         public let onFrame: @Sendable (PBCoreStreamFrameEvent) async -> Void
@@ -255,7 +249,6 @@ public final actor Remote {
     var securityConfiguredInCore = false
     var securityBootstrapped = false
     var securityBootstrapTask: Task<Void, Error>?
-    var models: [String: ModelList] = [:]
 
     // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
     public nonisolated let state: Feed<RemoteState>
@@ -267,7 +260,6 @@ public final actor Remote {
         public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
-        public var onLoadMoreSessions: @Sendable () async -> Void
         public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
@@ -277,7 +269,6 @@ public final actor Remote {
             onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
-            onLoadMoreSessions: @escaping @Sendable () async -> Void = {},
             onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
@@ -287,7 +278,6 @@ public final actor Remote {
             self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
-            self.onLoadMoreSessions = onLoadMoreSessions
             self.onQuerySyncState = onQuerySyncState
             self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
@@ -864,29 +854,15 @@ public final actor Remote {
         return state.value.sessions[id] != nil
     }
 
-    @discardableResult
-    public func loadMoreSessions() async throws -> Bool {
-        await hostHooks?.onLoadMoreSessions()
-        return state.value.sessionsNext == nil
-    }
-
     // MARK: - Demo / Layout Fixtures
 
-    public func showForTest(
-        state shown: RemoteState,
-        modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = []
-    ) {
+    public func showForTest(state shown: RemoteState) {
         state.set(shown)
         var nextMachines = sessionMachines
         for (sid, s) in shown.sessions {
             nextMachines[sid] = s.machineId
         }
         if nextMachines != sessionMachines { sessionMachines = nextMachines }
-        for m in modelLists {
-            let response = m.models
-            models["\(m.machineId)/\(m.agent.rawValue)"] = ModelList(
-                task: Task<PBListModelsResponse, Error> { response }, done: true)
-        }
     }
 
     func report(_ e: Error) {

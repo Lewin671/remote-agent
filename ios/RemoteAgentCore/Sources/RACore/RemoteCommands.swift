@@ -492,32 +492,6 @@ extension Remote {
         }
     }
 
-    /// The models a machine's CLI offers, refreshed when a picker opens.
-    public func listModels(_ machineId: String, agent: PBAgent = .unspecified, fresh: Bool = false) async throws -> PBListModelsResponse {
-        let k = "\(machineId)/\(agent.rawValue)"
-        if let held = models[k], !(held.done && (fresh || held.failed)) {
-            return try await held.task.value
-        }
-        let task = Task { () throws -> PBListModelsResponse in
-            do {
-                var cmd = PBCommand()
-                cmd.listModels.agent = agent
-                let r = try await self.machineCommand(machineId, cmd)
-                guard case .listModels(let list)? = r.kind else {
-                    throw CommandError("internal", L10nMessage.newSessionUnexpectedReply())
-                }
-                self.models[k]?.done = true
-                return list
-            } catch {
-                self.models[k]?.done = true
-                self.models[k]?.failed = true
-                throw error
-            }
-        }
-        models[k] = ModelList(task: task)
-        return try await task.value
-    }
-
     /// The bearer token of the current login, for services used outside this class.
     public func currentToken() async throws -> String {
         if token.isEmpty { return try await signIn() }
@@ -617,22 +591,4 @@ private struct RemoteSharedFileFetcher: SharedFileFetching {
     func fetchChunk(sessionId: String, fileId: String, offset: Int64) async throws -> PBGetSharedFileChunkResponse {
         try await remote.sharedFileChunk(sessionId: sessionId, fileId: fileId, offset: offset)
     }
-}
-
-/// Session ID created by a `createSession` command result, if present.
-public func startedSession(_ r: PBCommandResult?) -> String? {
-    guard case .createSession(let reply)? = r?.kind, reply.hasSession else { return nil }
-    return reply.session.id.isEmpty ? nil : reply.session.id
-}
-
-public func listDirectoriesCommand(path: String) -> PBCommand {
-    var cmd = PBCommand()
-    cmd.listDirectories = .with { $0.path = path }
-    return cmd
-}
-
-public func getSettingsCommand() -> PBCommand {
-    var cmd = PBCommand()
-    cmd.getSettings = PBGetSettingsRequest()
-    return cmd
 }
