@@ -7,6 +7,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -667,6 +668,84 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 			}
 		}
 		store.pendingDirty = true
+		return nil
+
+	case *corev1.Event_SharedFileLocalState:
+		if k.SharedFileLocalState == nil {
+			return nil
+		}
+		evSF := k.SharedFileLocalState
+		changed := false
+		if evSF.ReplaceAll {
+			if evSF.ClearSessionId != "" {
+				if ui := store.uiBySession[evSF.ClearSessionId]; ui != nil && len(ui.SharedFiles) > 0 {
+					ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
+					ui.SharedFilesRev++
+					changed = true
+				}
+			} else {
+				for _, ui := range store.uiBySession {
+					if ui != nil && len(ui.SharedFiles) > 0 {
+						ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
+						ui.SharedFilesRev++
+						changed = true
+					}
+				}
+			}
+		}
+		for _, u := range evSF.Updates {
+			if u == nil || u.SessionId == "" || u.FileId == "" {
+				continue
+			}
+			ui := store.ensureUI(u.SessionId)
+			if ui.SharedFiles == nil {
+				ui.SharedFiles = make(map[string]*sharedfiles.LocalState)
+			}
+			prev := ui.SharedFiles[u.FileId]
+			if u.MetadataOnly {
+				if prev != nil && u.HasDuration && (!prev.HasDuration || prev.DurationMs != u.DurationMs) {
+					prev.HasDuration = true
+					prev.DurationMs = u.DurationMs
+					ui.SharedFilesRev++
+					changed = true
+				}
+				continue
+			}
+			if u.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED {
+				if prev != nil {
+					delete(ui.SharedFiles, u.FileId)
+					ui.SharedFilesRev++
+					changed = true
+				}
+				continue
+			}
+			next := &sharedfiles.LocalState{
+				Status:           u.Status,
+				DownloadedBytes:  u.DownloadedBytes,
+				HasEta:           u.HasEta,
+				EtaSeconds:       u.EtaSeconds,
+				WaitingReconnect: u.WaitingReconnect,
+				HasDuration:      u.HasDuration,
+				DurationMs:       u.DurationMs,
+				FailureKind:      u.FailureKind,
+				FailureDetail:    u.FailureDetail,
+			}
+			if next.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED &&
+				!next.HasDuration && prev != nil &&
+				prev.Status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED &&
+				prev.HasDuration {
+				next.HasDuration = true
+				next.DurationMs = prev.DurationMs
+			}
+			if prev == nil || *prev != *next {
+				ui.SharedFiles[u.FileId] = next
+				ui.SharedFilesRev++
+				changed = true
+			}
+		}
+		if changed {
+			store.pendingDirty = true
+		}
 		return nil
 
 	case *corev1.Event_SessionSubmitCommand:

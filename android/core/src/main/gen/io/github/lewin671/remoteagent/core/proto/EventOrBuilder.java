@@ -968,6 +968,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionRetryLoadAction getSessionRetryLoad();
 
   /**
+   * <code>.remoteagent.core.v1.SharedFileLocalStateEvent shared_file_local_state = 216 [json_name = "sharedFileLocalState"];</code>
+   * @return Whether the sharedFileLocalState field is set.
+   */
+  boolean hasSharedFileLocalState();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileLocalStateEvent shared_file_local_state = 216 [json_name = "sharedFileLocalState"];</code>
+   * @return The sharedFileLocalState.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent getSharedFileLocalState();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
    * @return Whether the scheduleCacheLoaded field is set.
    */

@@ -595,6 +595,7 @@ message Event {
     SessionTraySessionAction session_cancel_all_paused = 213;
     SessionTraySessionAction session_undo_cancel = 214;
     SessionRetryLoadAction session_retry_load = 215;
+    SharedFileLocalStateEvent shared_file_local_state = 216;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;

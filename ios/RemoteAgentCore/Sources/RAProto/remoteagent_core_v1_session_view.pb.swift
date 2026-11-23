@@ -351,6 +351,384 @@ public enum PBSessionToolStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBSharedFileKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case video // = 1
+  case image // = 2
+  case audio // = 3
+  case archive // = 4
+  case pdf // = 5
+  case doc // = 6
+  case other // = 7
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .video
+    case 2: self = .image
+    case 3: self = .audio
+    case 4: self = .archive
+    case 5: self = .pdf
+    case 6: self = .doc
+    case 7: self = .other
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .video: return 1
+    case .image: return 2
+    case .audio: return 3
+    case .archive: return 4
+    case .pdf: return 5
+    case .doc: return 6
+    case .other: return 7
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileKind] = [
+    .unspecified,
+    .video,
+    .image,
+    .audio,
+    .archive,
+    .pdf,
+    .doc,
+    .other,
+  ]
+
+}
+
+public enum PBSharedFileWebPreviewKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case image // = 1
+  case video // = 2
+  case audio // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .image
+    case 2: self = .video
+    case 3: self = .audio
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .image: return 1
+    case .video: return 2
+    case .audio: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileWebPreviewKind] = [
+    .unspecified,
+    .image,
+    .video,
+    .audio,
+  ]
+
+}
+
+public enum PBSharedFileTransferStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case downloading // = 1
+  case paused // = 2
+  case downloaded // = 3
+  case failed // = 4
+  case cleanedUp // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .downloading
+    case 2: self = .paused
+    case 3: self = .downloaded
+    case 4: self = .failed
+    case 5: self = .cleanedUp
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .downloading: return 1
+    case .paused: return 2
+    case .downloaded: return 3
+    case .failed: return 4
+    case .cleanedUp: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileTransferStatus] = [
+    .unspecified,
+    .downloading,
+    .paused,
+    .downloaded,
+    .failed,
+    .cleanedUp,
+  ]
+
+}
+
+public enum PBSharedFileFailureKind: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case disconnected // = 1
+  case checksumMismatch // = 2
+  case phoneStorageFull // = 3
+  case browserStorageFull // = 4
+  case other // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .disconnected
+    case 2: self = .checksumMismatch
+    case 3: self = .phoneStorageFull
+    case 4: self = .browserStorageFull
+    case 5: self = .other
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .disconnected: return 1
+    case .checksumMismatch: return 2
+    case .phoneStorageFull: return 3
+    case .browserStorageFull: return 4
+    case .other: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileFailureKind] = [
+    .unspecified,
+    .disconnected,
+    .checksumMismatch,
+    .phoneStorageFull,
+    .browserStorageFull,
+    .other,
+  ]
+
+}
+
+public enum PBSharedFileCardStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case available // = 1
+  case downloading // = 2
+  case paused // = 3
+  case downloaded // = 4
+  case failed // = 5
+  case offline // = 6
+  case cleaned // = 7
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .available
+    case 2: self = .downloading
+    case 3: self = .paused
+    case 4: self = .downloaded
+    case 5: self = .failed
+    case 6: self = .offline
+    case 7: self = .cleaned
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .available: return 1
+    case .downloading: return 2
+    case .paused: return 3
+    case .downloaded: return 4
+    case .failed: return 5
+    case .offline: return 6
+    case .cleaned: return 7
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileCardStatus] = [
+    .unspecified,
+    .available,
+    .downloading,
+    .paused,
+    .downloaded,
+    .failed,
+    .offline,
+    .cleaned,
+  ]
+
+}
+
+public enum PBSharedFilePrimaryAction: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case download // = 1
+  case pause // = 2
+  case resume // = 3
+  case `open` // = 4
+  case retry // = 5
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .download
+    case 2: self = .pause
+    case 3: self = .resume
+    case 4: self = .open
+    case 5: self = .retry
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .download: return 1
+    case .pause: return 2
+    case .resume: return 3
+    case .open: return 4
+    case .retry: return 5
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFilePrimaryAction] = [
+    .unspecified,
+    .download,
+    .pause,
+    .resume,
+    .open,
+    .retry,
+  ]
+
+}
+
+public enum PBSharedFileMenuAction: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case download // = 1
+  case pause // = 2
+  case resume // = 3
+  case retry // = 4
+  case cancelDownload // = 5
+  case saveToAlbum // = 6
+  case save // = 7
+  case share // = 8
+  case openWith // = 9
+  case deleteLocal // = 10
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .download
+    case 2: self = .pause
+    case 3: self = .resume
+    case 4: self = .retry
+    case 5: self = .cancelDownload
+    case 6: self = .saveToAlbum
+    case 7: self = .save
+    case 8: self = .share
+    case 9: self = .openWith
+    case 10: self = .deleteLocal
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .download: return 1
+    case .pause: return 2
+    case .resume: return 3
+    case .retry: return 4
+    case .cancelDownload: return 5
+    case .saveToAlbum: return 6
+    case .save: return 7
+    case .share: return 8
+    case .openWith: return 9
+    case .deleteLocal: return 10
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBSharedFileMenuAction] = [
+    .unspecified,
+    .download,
+    .pause,
+    .resume,
+    .retry,
+    .cancelDownload,
+    .saveToAlbum,
+    .save,
+    .share,
+    .openWith,
+    .deleteLocal,
+  ]
+
+}
+
 public enum PBSessionNoteTone: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -2928,9 +3306,26 @@ public struct PBSessionFileRefView: Sendable {
 
   public var mimeType: String = String()
 
+  public var displayName: String = String()
+
+  public var nameHead: String = String()
+
+  public var nameTail: String = String()
+
+  public var sizeText: PBCoreText {
+    get {return _sizeText ?? PBCoreText()}
+    set {_sizeText = newValue}
+  }
+  /// Returns true if `sizeText` has been explicitly set.
+  public var hasSizeText: Bool {return self._sizeText != nil}
+  /// Clears the value of `sizeText`. Subsequent reads from it will return its default value.
+  public mutating func clearSizeText() {self._sizeText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _sizeText: PBCoreText? = nil
 }
 
 public struct PBSessionUserMessageItem: @unchecked Sendable {
@@ -3182,26 +3577,254 @@ public struct PBSessionToolGroupItem: Sendable {
   fileprivate var _summary: PBCoreText? = nil
 }
 
-public struct PBSessionSharedFileItem: Sendable {
+public struct PBSharedFileMenuItemView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var path: String = String()
+  public var action: PBSharedFileMenuAction {
+    get {return _storage._action}
+    set {_uniqueStorage()._action = newValue}
+  }
 
-  public var name: String = String()
+  public var label: PBCoreText {
+    get {return _storage._label ?? PBCoreText()}
+    set {_uniqueStorage()._label = newValue}
+  }
+  /// Returns true if `label` has been explicitly set.
+  public var hasLabel: Bool {return _storage._label != nil}
+  /// Clears the value of `label`. Subsequent reads from it will return its default value.
+  public mutating func clearLabel() {_uniqueStorage()._label = nil}
 
-  public var sizeBytes: Int64 = 0
+  public var enabled: Bool {
+    get {return _storage._enabled}
+    set {_uniqueStorage()._enabled = newValue}
+  }
 
-  public var mimeType: String = String()
+  public var disabledReason: PBCoreText {
+    get {return _storage._disabledReason ?? PBCoreText()}
+    set {_uniqueStorage()._disabledReason = newValue}
+  }
+  /// Returns true if `disabledReason` has been explicitly set.
+  public var hasDisabledReason: Bool {return _storage._disabledReason != nil}
+  /// Clears the value of `disabledReason`. Subsequent reads from it will return its default value.
+  public mutating func clearDisabledReason() {_uniqueStorage()._disabledReason = nil}
 
-  public var fileID: String = String()
+  public var destructive: Bool {
+    get {return _storage._destructive}
+    set {_uniqueStorage()._destructive = newValue}
+  }
 
-  public var available: Bool = false
+  public var separated: Bool {
+    get {return _storage._separated}
+    set {_uniqueStorage()._separated = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
+}
+
+public struct PBSessionSharedFileItem: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var path: String {
+    get {return _storage._path}
+    set {_uniqueStorage()._path = newValue}
+  }
+
+  public var name: String {
+    get {return _storage._name}
+    set {_uniqueStorage()._name = newValue}
+  }
+
+  public var sizeBytes: Int64 {
+    get {return _storage._sizeBytes}
+    set {_uniqueStorage()._sizeBytes = newValue}
+  }
+
+  public var mimeType: String {
+    get {return _storage._mimeType}
+    set {_uniqueStorage()._mimeType = newValue}
+  }
+
+  public var fileID: String {
+    get {return _storage._fileID}
+    set {_uniqueStorage()._fileID = newValue}
+  }
+
+  public var available: Bool {
+    get {return _storage._available}
+    set {_uniqueStorage()._available = newValue}
+  }
+
+  public var sha256: Data {
+    get {return _storage._sha256}
+    set {_uniqueStorage()._sha256 = newValue}
+  }
+
+  public var displayName: String {
+    get {return _storage._displayName}
+    set {_uniqueStorage()._displayName = newValue}
+  }
+
+  public var nameHead: String {
+    get {return _storage._nameHead}
+    set {_uniqueStorage()._nameHead = newValue}
+  }
+
+  public var nameTail: String {
+    get {return _storage._nameTail}
+    set {_uniqueStorage()._nameTail = newValue}
+  }
+
+  public var kind: PBSharedFileKind {
+    get {return _storage._kind}
+    set {_uniqueStorage()._kind = newValue}
+  }
+
+  public var kindLabel: PBCoreText {
+    get {return _storage._kindLabel ?? PBCoreText()}
+    set {_uniqueStorage()._kindLabel = newValue}
+  }
+  /// Returns true if `kindLabel` has been explicitly set.
+  public var hasKindLabel: Bool {return _storage._kindLabel != nil}
+  /// Clears the value of `kindLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearKindLabel() {_uniqueStorage()._kindLabel = nil}
+
+  public var sizeText: PBCoreText {
+    get {return _storage._sizeText ?? PBCoreText()}
+    set {_uniqueStorage()._sizeText = newValue}
+  }
+  /// Returns true if `sizeText` has been explicitly set.
+  public var hasSizeText: Bool {return _storage._sizeText != nil}
+  /// Clears the value of `sizeText`. Subsequent reads from it will return its default value.
+  public mutating func clearSizeText() {_uniqueStorage()._sizeText = nil}
+
+  public var displayPath: String {
+    get {return _storage._displayPath}
+    set {_uniqueStorage()._displayPath = newValue}
+  }
+
+  public var sourceCaption: PBCoreText {
+    get {return _storage._sourceCaption ?? PBCoreText()}
+    set {_uniqueStorage()._sourceCaption = newValue}
+  }
+  /// Returns true if `sourceCaption` has been explicitly set.
+  public var hasSourceCaption: Bool {return _storage._sourceCaption != nil}
+  /// Clears the value of `sourceCaption`. Subsequent reads from it will return its default value.
+  public mutating func clearSourceCaption() {_uniqueStorage()._sourceCaption = nil}
+
+  public var status: PBSharedFileCardStatus {
+    get {return _storage._status}
+    set {_uniqueStorage()._status = newValue}
+  }
+
+  public var subtitle: PBCoreText {
+    get {return _storage._subtitle ?? PBCoreText()}
+    set {_uniqueStorage()._subtitle = newValue}
+  }
+  /// Returns true if `subtitle` has been explicitly set.
+  public var hasSubtitle: Bool {return _storage._subtitle != nil}
+  /// Clears the value of `subtitle`. Subsequent reads from it will return its default value.
+  public mutating func clearSubtitle() {_uniqueStorage()._subtitle = nil}
+
+  public var subtitleIsError: Bool {
+    get {return _storage._subtitleIsError}
+    set {_uniqueStorage()._subtitleIsError = newValue}
+  }
+
+  public var a11YLabel: PBCoreText {
+    get {return _storage._a11YLabel ?? PBCoreText()}
+    set {_uniqueStorage()._a11YLabel = newValue}
+  }
+  /// Returns true if `a11YLabel` has been explicitly set.
+  public var hasA11YLabel: Bool {return _storage._a11YLabel != nil}
+  /// Clears the value of `a11YLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearA11YLabel() {_uniqueStorage()._a11YLabel = nil}
+
+  public var downloadedBytes: Int64 {
+    get {return _storage._downloadedBytes}
+    set {_uniqueStorage()._downloadedBytes = newValue}
+  }
+
+  public var progress: Double {
+    get {return _storage._progress}
+    set {_uniqueStorage()._progress = newValue}
+  }
+
+  public var waitingReconnect: Bool {
+    get {return _storage._waitingReconnect}
+    set {_uniqueStorage()._waitingReconnect = newValue}
+  }
+
+  public var primaryAction: PBSharedFilePrimaryAction {
+    get {return _storage._primaryAction}
+    set {_uniqueStorage()._primaryAction = newValue}
+  }
+
+  public var primaryLabel: PBCoreText {
+    get {return _storage._primaryLabel ?? PBCoreText()}
+    set {_uniqueStorage()._primaryLabel = newValue}
+  }
+  /// Returns true if `primaryLabel` has been explicitly set.
+  public var hasPrimaryLabel: Bool {return _storage._primaryLabel != nil}
+  /// Clears the value of `primaryLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearPrimaryLabel() {_uniqueStorage()._primaryLabel = nil}
+
+  public var primaryEnabled: Bool {
+    get {return _storage._primaryEnabled}
+    set {_uniqueStorage()._primaryEnabled = newValue}
+  }
+
+  public var primaryDisabledReason: PBCoreText {
+    get {return _storage._primaryDisabledReason ?? PBCoreText()}
+    set {_uniqueStorage()._primaryDisabledReason = newValue}
+  }
+  /// Returns true if `primaryDisabledReason` has been explicitly set.
+  public var hasPrimaryDisabledReason: Bool {return _storage._primaryDisabledReason != nil}
+  /// Clears the value of `primaryDisabledReason`. Subsequent reads from it will return its default value.
+  public mutating func clearPrimaryDisabledReason() {_uniqueStorage()._primaryDisabledReason = nil}
+
+  public var menuItems: [PBSharedFileMenuItemView] {
+    get {return _storage._menuItems}
+    set {_uniqueStorage()._menuItems = newValue}
+  }
+
+  public var supportsAlbumSave: Bool {
+    get {return _storage._supportsAlbumSave}
+    set {_uniqueStorage()._supportsAlbumSave = newValue}
+  }
+
+  public var hasMediaDuration_p: Bool {
+    get {return _storage._hasMediaDuration_p}
+    set {_uniqueStorage()._hasMediaDuration_p = newValue}
+  }
+
+  public var durationText: String {
+    get {return _storage._durationText}
+    set {_uniqueStorage()._durationText = newValue}
+  }
+
+  public var webPreviewKind: PBSharedFileWebPreviewKind {
+    get {return _storage._webPreviewKind}
+    set {_uniqueStorage()._webPreviewKind = newValue}
+  }
+
+  public var webPreviewMime: String {
+    get {return _storage._webPreviewMime}
+    set {_uniqueStorage()._webPreviewMime = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBSessionSharedFilesItem: Sendable {
@@ -3691,6 +4314,59 @@ public struct PBSessionRetryLoadAction: Sendable {
   public init() {}
 }
 
+/// SharedFileLocalStateUpdate reports shell-owned download/cache/media metadata for one shared file.
+public struct PBSharedFileLocalStateUpdate: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sessionID: String = String()
+
+  public var fileID: String = String()
+
+  public var status: PBSharedFileTransferStatus = .unspecified
+
+  public var downloadedBytes: Int64 = 0
+
+  public var hasEta_p: Bool = false
+
+  public var etaSeconds: Int64 = 0
+
+  public var waitingReconnect: Bool = false
+
+  public var hasDuration_p: Bool = false
+
+  public var durationMs: Int64 = 0
+
+  public var failureKind: PBSharedFileFailureKind = .unspecified
+
+  public var failureDetail: String = String()
+
+  /// When true, preserves existing transfer status/bytes/failure and only updates duration_ms.
+  public var metadataOnly: Bool = false
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// SharedFileLocalStateEvent delivers one or more local shared-file state updates from shell to Core.
+public struct PBSharedFileLocalStateEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var updates: [PBSharedFileLocalStateUpdate] = []
+
+  public var replaceAll: Bool = false
+
+  public var clearSessionID_p: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 /// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
 public struct PBSessionRestoreComposerEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -3769,6 +4445,34 @@ extension PBSessionTrayRowActivity: SwiftProtobuf._ProtoNameProviding {
 
 extension PBSessionToolStatus: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SESSION_TOOL_STATUS_UNSPECIFIED\0\u{1}SESSION_TOOL_STATUS_RUNNING\0\u{1}SESSION_TOOL_STATUS_OK\0\u{1}SESSION_TOOL_STATUS_ERROR\0\u{1}SESSION_TOOL_STATUS_DENIED\0\u{1}SESSION_TOOL_STATUS_UNCONFIRMED\0\u{1}SESSION_TOOL_STATUS_BACKGROUND\0")
+}
+
+extension PBSharedFileKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_KIND_UNSPECIFIED\0\u{1}SHARED_FILE_KIND_VIDEO\0\u{1}SHARED_FILE_KIND_IMAGE\0\u{1}SHARED_FILE_KIND_AUDIO\0\u{1}SHARED_FILE_KIND_ARCHIVE\0\u{1}SHARED_FILE_KIND_PDF\0\u{1}SHARED_FILE_KIND_DOC\0\u{1}SHARED_FILE_KIND_OTHER\0")
+}
+
+extension PBSharedFileWebPreviewKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_WEB_PREVIEW_KIND_UNSPECIFIED\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_IMAGE\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_VIDEO\0\u{1}SHARED_FILE_WEB_PREVIEW_KIND_AUDIO\0")
+}
+
+extension PBSharedFileTransferStatus: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED\0\u{1}SHARED_FILE_TRANSFER_STATUS_DOWNLOADING\0\u{1}SHARED_FILE_TRANSFER_STATUS_PAUSED\0\u{1}SHARED_FILE_TRANSFER_STATUS_DOWNLOADED\0\u{1}SHARED_FILE_TRANSFER_STATUS_FAILED\0\u{1}SHARED_FILE_TRANSFER_STATUS_CLEANED_UP\0")
+}
+
+extension PBSharedFileFailureKind: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_FAILURE_KIND_UNSPECIFIED\0\u{1}SHARED_FILE_FAILURE_KIND_DISCONNECTED\0\u{1}SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH\0\u{1}SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL\0\u{1}SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL\0\u{1}SHARED_FILE_FAILURE_KIND_OTHER\0")
+}
+
+extension PBSharedFileCardStatus: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_CARD_STATUS_UNSPECIFIED\0\u{1}SHARED_FILE_CARD_STATUS_AVAILABLE\0\u{1}SHARED_FILE_CARD_STATUS_DOWNLOADING\0\u{1}SHARED_FILE_CARD_STATUS_PAUSED\0\u{1}SHARED_FILE_CARD_STATUS_DOWNLOADED\0\u{1}SHARED_FILE_CARD_STATUS_FAILED\0\u{1}SHARED_FILE_CARD_STATUS_OFFLINE\0\u{1}SHARED_FILE_CARD_STATUS_CLEANED\0")
+}
+
+extension PBSharedFilePrimaryAction: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_PRIMARY_ACTION_UNSPECIFIED\0\u{1}SHARED_FILE_PRIMARY_ACTION_DOWNLOAD\0\u{1}SHARED_FILE_PRIMARY_ACTION_PAUSE\0\u{1}SHARED_FILE_PRIMARY_ACTION_RESUME\0\u{1}SHARED_FILE_PRIMARY_ACTION_OPEN\0\u{1}SHARED_FILE_PRIMARY_ACTION_RETRY\0")
+}
+
+extension PBSharedFileMenuAction: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SHARED_FILE_MENU_ACTION_UNSPECIFIED\0\u{1}SHARED_FILE_MENU_ACTION_DOWNLOAD\0\u{1}SHARED_FILE_MENU_ACTION_PAUSE\0\u{1}SHARED_FILE_MENU_ACTION_RESUME\0\u{1}SHARED_FILE_MENU_ACTION_RETRY\0\u{1}SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD\0\u{1}SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM\0\u{1}SHARED_FILE_MENU_ACTION_SAVE\0\u{1}SHARED_FILE_MENU_ACTION_SHARE\0\u{1}SHARED_FILE_MENU_ACTION_OPEN_WITH\0\u{1}SHARED_FILE_MENU_ACTION_DELETE_LOCAL\0")
 }
 
 extension PBSessionNoteTone: SwiftProtobuf._ProtoNameProviding {
@@ -7717,7 +8421,7 @@ extension PBSessionTimelineItem: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBSessionFileRefView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionFileRefView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}path\0\u{3}size_bytes\0\u{3}mime_type\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}path\0\u{3}size_bytes\0\u{3}mime_type\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{3}size_text\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7729,12 +8433,20 @@ extension PBSessionFileRefView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 2: try { try decoder.decodeSingularStringField(value: &self.path) }()
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.nameHead) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.nameTail) }()
+      case 8: try { try decoder.decodeSingularMessageField(value: &self._sizeText) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.name.isEmpty {
       try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
     }
@@ -7747,6 +8459,18 @@ extension PBSessionFileRefView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.mimeType.isEmpty {
       try visitor.visitSingularStringField(value: self.mimeType, fieldNumber: 4)
     }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 5)
+    }
+    if !self.nameHead.isEmpty {
+      try visitor.visitSingularStringField(value: self.nameHead, fieldNumber: 6)
+    }
+    if !self.nameTail.isEmpty {
+      try visitor.visitSingularStringField(value: self.nameTail, fieldNumber: 7)
+    }
+    try { if let v = self._sizeText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7755,6 +8479,10 @@ extension PBSessionFileRefView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.path != rhs.path {return false}
     if lhs.sizeBytes != rhs.sizeBytes {return false}
     if lhs.mimeType != rhs.mimeType {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs.nameHead != rhs.nameHead {return false}
+    if lhs.nameTail != rhs.nameTail {return false}
+    if lhs._sizeText != rhs._sizeText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -8225,56 +8953,393 @@ extension PBSessionToolGroupItem: SwiftProtobuf.Message, SwiftProtobuf._MessageI
   }
 }
 
-extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SessionSharedFileItem"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}size_bytes\0\u{3}mime_type\0\u{3}file_id\0\u{1}available\0")
+extension PBSharedFileMenuItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SharedFileMenuItemView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}action\0\u{1}label\0\u{1}enabled\0\u{3}disabled_reason\0\u{1}destructive\0\u{1}separated\0")
+
+  fileprivate class _StorageClass {
+    var _action: PBSharedFileMenuAction = .unspecified
+    var _label: PBCoreText? = nil
+    var _enabled: Bool = false
+    var _disabledReason: PBCoreText? = nil
+    var _destructive: Bool = false
+    var _separated: Bool = false
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _action = source._action
+      _label = source._label
+      _enabled = source._enabled
+      _disabledReason = source._disabledReason
+      _destructive = source._destructive
+      _separated = source._separated
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
-      case 3: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.mimeType) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.available) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._action) }()
+        case 2: try { try decoder.decodeSingularMessageField(value: &_storage._label) }()
+        case 3: try { try decoder.decodeSingularBoolField(value: &_storage._enabled) }()
+        case 4: try { try decoder.decodeSingularMessageField(value: &_storage._disabledReason) }()
+        case 5: try { try decoder.decodeSingularBoolField(value: &_storage._destructive) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._separated) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.path.isEmpty {
-      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._action != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._action, fieldNumber: 1)
+      }
+      try { if let v = _storage._label {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+      } }()
+      if _storage._enabled != false {
+        try visitor.visitSingularBoolField(value: _storage._enabled, fieldNumber: 3)
+      }
+      try { if let v = _storage._disabledReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+      } }()
+      if _storage._destructive != false {
+        try visitor.visitSingularBoolField(value: _storage._destructive, fieldNumber: 5)
+      }
+      if _storage._separated != false {
+        try visitor.visitSingularBoolField(value: _storage._separated, fieldNumber: 6)
+      }
     }
-    if !self.name.isEmpty {
-      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSharedFileMenuItemView, rhs: PBSharedFileMenuItemView) -> Bool {
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._action != rhs_storage._action {return false}
+        if _storage._label != rhs_storage._label {return false}
+        if _storage._enabled != rhs_storage._enabled {return false}
+        if _storage._disabledReason != rhs_storage._disabledReason {return false}
+        if _storage._destructive != rhs_storage._destructive {return false}
+        if _storage._separated != rhs_storage._separated {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
     }
-    if self.sizeBytes != 0 {
-      try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 3)
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSessionSharedFileItem: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SessionSharedFileItem"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}size_bytes\0\u{3}mime_type\0\u{3}file_id\0\u{1}available\0\u{1}sha256\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{1}kind\0\u{3}kind_label\0\u{3}size_text\0\u{3}display_path\0\u{3}source_caption\0\u{1}status\0\u{1}subtitle\0\u{3}subtitle_is_error\0\u{3}a11y_label\0\u{3}downloaded_bytes\0\u{1}progress\0\u{3}waiting_reconnect\0\u{3}primary_action\0\u{3}primary_label\0\u{3}primary_enabled\0\u{3}primary_disabled_reason\0\u{3}menu_items\0\u{3}supports_album_save\0\u{3}has_media_duration\0\u{3}duration_text\0\u{3}web_preview_kind\0\u{3}web_preview_mime\0")
+
+  fileprivate class _StorageClass {
+    var _path: String = String()
+    var _name: String = String()
+    var _sizeBytes: Int64 = 0
+    var _mimeType: String = String()
+    var _fileID: String = String()
+    var _available: Bool = false
+    var _sha256: Data = Data()
+    var _displayName: String = String()
+    var _nameHead: String = String()
+    var _nameTail: String = String()
+    var _kind: PBSharedFileKind = .unspecified
+    var _kindLabel: PBCoreText? = nil
+    var _sizeText: PBCoreText? = nil
+    var _displayPath: String = String()
+    var _sourceCaption: PBCoreText? = nil
+    var _status: PBSharedFileCardStatus = .unspecified
+    var _subtitle: PBCoreText? = nil
+    var _subtitleIsError: Bool = false
+    var _a11YLabel: PBCoreText? = nil
+    var _downloadedBytes: Int64 = 0
+    var _progress: Double = 0
+    var _waitingReconnect: Bool = false
+    var _primaryAction: PBSharedFilePrimaryAction = .unspecified
+    var _primaryLabel: PBCoreText? = nil
+    var _primaryEnabled: Bool = false
+    var _primaryDisabledReason: PBCoreText? = nil
+    var _menuItems: [PBSharedFileMenuItemView] = []
+    var _supportsAlbumSave: Bool = false
+    var _hasMediaDuration_p: Bool = false
+    var _durationText: String = String()
+    var _webPreviewKind: PBSharedFileWebPreviewKind = .unspecified
+    var _webPreviewMime: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _path = source._path
+      _name = source._name
+      _sizeBytes = source._sizeBytes
+      _mimeType = source._mimeType
+      _fileID = source._fileID
+      _available = source._available
+      _sha256 = source._sha256
+      _displayName = source._displayName
+      _nameHead = source._nameHead
+      _nameTail = source._nameTail
+      _kind = source._kind
+      _kindLabel = source._kindLabel
+      _sizeText = source._sizeText
+      _displayPath = source._displayPath
+      _sourceCaption = source._sourceCaption
+      _status = source._status
+      _subtitle = source._subtitle
+      _subtitleIsError = source._subtitleIsError
+      _a11YLabel = source._a11YLabel
+      _downloadedBytes = source._downloadedBytes
+      _progress = source._progress
+      _waitingReconnect = source._waitingReconnect
+      _primaryAction = source._primaryAction
+      _primaryLabel = source._primaryLabel
+      _primaryEnabled = source._primaryEnabled
+      _primaryDisabledReason = source._primaryDisabledReason
+      _menuItems = source._menuItems
+      _supportsAlbumSave = source._supportsAlbumSave
+      _hasMediaDuration_p = source._hasMediaDuration_p
+      _durationText = source._durationText
+      _webPreviewKind = source._webPreviewKind
+      _webPreviewMime = source._webPreviewMime
     }
-    if !self.mimeType.isEmpty {
-      try visitor.visitSingularStringField(value: self.mimeType, fieldNumber: 4)
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
     }
-    if !self.fileID.isEmpty {
-      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 5)
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._path) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._name) }()
+        case 3: try { try decoder.decodeSingularInt64Field(value: &_storage._sizeBytes) }()
+        case 4: try { try decoder.decodeSingularStringField(value: &_storage._mimeType) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._fileID) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._available) }()
+        case 7: try { try decoder.decodeSingularBytesField(value: &_storage._sha256) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._displayName) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._nameHead) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._nameTail) }()
+        case 11: try { try decoder.decodeSingularEnumField(value: &_storage._kind) }()
+        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._kindLabel) }()
+        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._sizeText) }()
+        case 14: try { try decoder.decodeSingularStringField(value: &_storage._displayPath) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._sourceCaption) }()
+        case 16: try { try decoder.decodeSingularEnumField(value: &_storage._status) }()
+        case 17: try { try decoder.decodeSingularMessageField(value: &_storage._subtitle) }()
+        case 18: try { try decoder.decodeSingularBoolField(value: &_storage._subtitleIsError) }()
+        case 19: try { try decoder.decodeSingularMessageField(value: &_storage._a11YLabel) }()
+        case 20: try { try decoder.decodeSingularInt64Field(value: &_storage._downloadedBytes) }()
+        case 21: try { try decoder.decodeSingularDoubleField(value: &_storage._progress) }()
+        case 22: try { try decoder.decodeSingularBoolField(value: &_storage._waitingReconnect) }()
+        case 23: try { try decoder.decodeSingularEnumField(value: &_storage._primaryAction) }()
+        case 24: try { try decoder.decodeSingularMessageField(value: &_storage._primaryLabel) }()
+        case 25: try { try decoder.decodeSingularBoolField(value: &_storage._primaryEnabled) }()
+        case 26: try { try decoder.decodeSingularMessageField(value: &_storage._primaryDisabledReason) }()
+        case 27: try { try decoder.decodeRepeatedMessageField(value: &_storage._menuItems) }()
+        case 28: try { try decoder.decodeSingularBoolField(value: &_storage._supportsAlbumSave) }()
+        case 29: try { try decoder.decodeSingularBoolField(value: &_storage._hasMediaDuration_p) }()
+        case 30: try { try decoder.decodeSingularStringField(value: &_storage._durationText) }()
+        case 31: try { try decoder.decodeSingularEnumField(value: &_storage._webPreviewKind) }()
+        case 32: try { try decoder.decodeSingularStringField(value: &_storage._webPreviewMime) }()
+        default: break
+        }
+      }
     }
-    if self.available != false {
-      try visitor.visitSingularBoolField(value: self.available, fieldNumber: 6)
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._path.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._path, fieldNumber: 1)
+      }
+      if !_storage._name.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._name, fieldNumber: 2)
+      }
+      if _storage._sizeBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._sizeBytes, fieldNumber: 3)
+      }
+      if !_storage._mimeType.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._mimeType, fieldNumber: 4)
+      }
+      if !_storage._fileID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._fileID, fieldNumber: 5)
+      }
+      if _storage._available != false {
+        try visitor.visitSingularBoolField(value: _storage._available, fieldNumber: 6)
+      }
+      if !_storage._sha256.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._sha256, fieldNumber: 7)
+      }
+      if !_storage._displayName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._displayName, fieldNumber: 8)
+      }
+      if !_storage._nameHead.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._nameHead, fieldNumber: 9)
+      }
+      if !_storage._nameTail.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._nameTail, fieldNumber: 10)
+      }
+      if _storage._kind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._kind, fieldNumber: 11)
+      }
+      try { if let v = _storage._kindLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+      } }()
+      try { if let v = _storage._sizeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+      } }()
+      if !_storage._displayPath.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._displayPath, fieldNumber: 14)
+      }
+      try { if let v = _storage._sourceCaption {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      if _storage._status != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._status, fieldNumber: 16)
+      }
+      try { if let v = _storage._subtitle {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 17)
+      } }()
+      if _storage._subtitleIsError != false {
+        try visitor.visitSingularBoolField(value: _storage._subtitleIsError, fieldNumber: 18)
+      }
+      try { if let v = _storage._a11YLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 19)
+      } }()
+      if _storage._downloadedBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._downloadedBytes, fieldNumber: 20)
+      }
+      if _storage._progress.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._progress, fieldNumber: 21)
+      }
+      if _storage._waitingReconnect != false {
+        try visitor.visitSingularBoolField(value: _storage._waitingReconnect, fieldNumber: 22)
+      }
+      if _storage._primaryAction != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._primaryAction, fieldNumber: 23)
+      }
+      try { if let v = _storage._primaryLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 24)
+      } }()
+      if _storage._primaryEnabled != false {
+        try visitor.visitSingularBoolField(value: _storage._primaryEnabled, fieldNumber: 25)
+      }
+      try { if let v = _storage._primaryDisabledReason {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
+      } }()
+      if !_storage._menuItems.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._menuItems, fieldNumber: 27)
+      }
+      if _storage._supportsAlbumSave != false {
+        try visitor.visitSingularBoolField(value: _storage._supportsAlbumSave, fieldNumber: 28)
+      }
+      if _storage._hasMediaDuration_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasMediaDuration_p, fieldNumber: 29)
+      }
+      if !_storage._durationText.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._durationText, fieldNumber: 30)
+      }
+      if _storage._webPreviewKind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._webPreviewKind, fieldNumber: 31)
+      }
+      if !_storage._webPreviewMime.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._webPreviewMime, fieldNumber: 32)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionSharedFileItem, rhs: PBSessionSharedFileItem) -> Bool {
-    if lhs.path != rhs.path {return false}
-    if lhs.name != rhs.name {return false}
-    if lhs.sizeBytes != rhs.sizeBytes {return false}
-    if lhs.mimeType != rhs.mimeType {return false}
-    if lhs.fileID != rhs.fileID {return false}
-    if lhs.available != rhs.available {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._path != rhs_storage._path {return false}
+        if _storage._name != rhs_storage._name {return false}
+        if _storage._sizeBytes != rhs_storage._sizeBytes {return false}
+        if _storage._mimeType != rhs_storage._mimeType {return false}
+        if _storage._fileID != rhs_storage._fileID {return false}
+        if _storage._available != rhs_storage._available {return false}
+        if _storage._sha256 != rhs_storage._sha256 {return false}
+        if _storage._displayName != rhs_storage._displayName {return false}
+        if _storage._nameHead != rhs_storage._nameHead {return false}
+        if _storage._nameTail != rhs_storage._nameTail {return false}
+        if _storage._kind != rhs_storage._kind {return false}
+        if _storage._kindLabel != rhs_storage._kindLabel {return false}
+        if _storage._sizeText != rhs_storage._sizeText {return false}
+        if _storage._displayPath != rhs_storage._displayPath {return false}
+        if _storage._sourceCaption != rhs_storage._sourceCaption {return false}
+        if _storage._status != rhs_storage._status {return false}
+        if _storage._subtitle != rhs_storage._subtitle {return false}
+        if _storage._subtitleIsError != rhs_storage._subtitleIsError {return false}
+        if _storage._a11YLabel != rhs_storage._a11YLabel {return false}
+        if _storage._downloadedBytes != rhs_storage._downloadedBytes {return false}
+        if _storage._progress != rhs_storage._progress {return false}
+        if _storage._waitingReconnect != rhs_storage._waitingReconnect {return false}
+        if _storage._primaryAction != rhs_storage._primaryAction {return false}
+        if _storage._primaryLabel != rhs_storage._primaryLabel {return false}
+        if _storage._primaryEnabled != rhs_storage._primaryEnabled {return false}
+        if _storage._primaryDisabledReason != rhs_storage._primaryDisabledReason {return false}
+        if _storage._menuItems != rhs_storage._menuItems {return false}
+        if _storage._supportsAlbumSave != rhs_storage._supportsAlbumSave {return false}
+        if _storage._hasMediaDuration_p != rhs_storage._hasMediaDuration_p {return false}
+        if _storage._durationText != rhs_storage._durationText {return false}
+        if _storage._webPreviewKind != rhs_storage._webPreviewKind {return false}
+        if _storage._webPreviewMime != rhs_storage._webPreviewMime {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -9287,6 +10352,131 @@ extension PBSessionRetryLoadAction: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
   public static func ==(lhs: PBSessionRetryLoadAction, rhs: PBSessionRetryLoadAction) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSharedFileLocalStateUpdate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SharedFileLocalStateUpdate"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}file_id\0\u{1}status\0\u{3}downloaded_bytes\0\u{3}has_eta\0\u{3}eta_seconds\0\u{3}waiting_reconnect\0\u{3}has_duration\0\u{3}duration_ms\0\u{3}failure_kind\0\u{3}failure_detail\0\u{3}metadata_only\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 3: try { try decoder.decodeSingularEnumField(value: &self.status) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.downloadedBytes) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.hasEta_p) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.etaSeconds) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.waitingReconnect) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.hasDuration_p) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
+      case 10: try { try decoder.decodeSingularEnumField(value: &self.failureKind) }()
+      case 11: try { try decoder.decodeSingularStringField(value: &self.failureDetail) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.metadataOnly) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sessionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
+    }
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 2)
+    }
+    if self.status != .unspecified {
+      try visitor.visitSingularEnumField(value: self.status, fieldNumber: 3)
+    }
+    if self.downloadedBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.downloadedBytes, fieldNumber: 4)
+    }
+    if self.hasEta_p != false {
+      try visitor.visitSingularBoolField(value: self.hasEta_p, fieldNumber: 5)
+    }
+    if self.etaSeconds != 0 {
+      try visitor.visitSingularInt64Field(value: self.etaSeconds, fieldNumber: 6)
+    }
+    if self.waitingReconnect != false {
+      try visitor.visitSingularBoolField(value: self.waitingReconnect, fieldNumber: 7)
+    }
+    if self.hasDuration_p != false {
+      try visitor.visitSingularBoolField(value: self.hasDuration_p, fieldNumber: 8)
+    }
+    if self.durationMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 9)
+    }
+    if self.failureKind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.failureKind, fieldNumber: 10)
+    }
+    if !self.failureDetail.isEmpty {
+      try visitor.visitSingularStringField(value: self.failureDetail, fieldNumber: 11)
+    }
+    if self.metadataOnly != false {
+      try visitor.visitSingularBoolField(value: self.metadataOnly, fieldNumber: 12)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSharedFileLocalStateUpdate, rhs: PBSharedFileLocalStateUpdate) -> Bool {
+    if lhs.sessionID != rhs.sessionID {return false}
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.status != rhs.status {return false}
+    if lhs.downloadedBytes != rhs.downloadedBytes {return false}
+    if lhs.hasEta_p != rhs.hasEta_p {return false}
+    if lhs.etaSeconds != rhs.etaSeconds {return false}
+    if lhs.waitingReconnect != rhs.waitingReconnect {return false}
+    if lhs.hasDuration_p != rhs.hasDuration_p {return false}
+    if lhs.durationMs != rhs.durationMs {return false}
+    if lhs.failureKind != rhs.failureKind {return false}
+    if lhs.failureDetail != rhs.failureDetail {return false}
+    if lhs.metadataOnly != rhs.metadataOnly {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSharedFileLocalStateEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SharedFileLocalStateEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}updates\0\u{3}replace_all\0\u{3}clear_session_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.updates) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.replaceAll) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.clearSessionID_p) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.updates.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.updates, fieldNumber: 1)
+    }
+    if self.replaceAll != false {
+      try visitor.visitSingularBoolField(value: self.replaceAll, fieldNumber: 2)
+    }
+    if !self.clearSessionID_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.clearSessionID_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSharedFileLocalStateEvent, rhs: PBSharedFileLocalStateEvent) -> Bool {
+    if lhs.updates != rhs.updates {return false}
+    if lhs.replaceAll != rhs.replaceAll {return false}
+    if lhs.clearSessionID_p != rhs.clearSessionID_p {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

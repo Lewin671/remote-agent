@@ -18,7 +18,11 @@ public  final class SessionFileRefView extends
     name_ = "";
     path_ = "";
     mimeType_ = "";
+    displayName_ = "";
+    nameHead_ = "";
+    nameTail_ = "";
   }
+  private int bitField0_;
   public static final int NAME_FIELD_NUMBER = 1;
   private java.lang.String name_;
   /**
@@ -187,6 +191,198 @@ public  final class SessionFileRefView extends
     checkByteStringIsUtf8(value);
     mimeType_ = value.toStringUtf8();
 
+  }
+
+  public static final int DISPLAY_NAME_FIELD_NUMBER = 5;
+  private java.lang.String displayName_;
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  @java.lang.Override
+  public java.lang.String getDisplayName() {
+    return displayName_;
+  }
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisplayNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(displayName_);
+  }
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @param value The displayName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    displayName_ = value;
+  }
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   */
+  private void clearDisplayName() {
+
+    displayName_ = getDefaultInstance().getDisplayName();
+  }
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @param value The bytes for displayName to set.
+   */
+  private void setDisplayNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    displayName_ = value.toStringUtf8();
+
+  }
+
+  public static final int NAME_HEAD_FIELD_NUMBER = 6;
+  private java.lang.String nameHead_;
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @return The nameHead.
+   */
+  @java.lang.Override
+  public java.lang.String getNameHead() {
+    return nameHead_;
+  }
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @return The bytes for nameHead.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNameHeadBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(nameHead_);
+  }
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @param value The nameHead to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNameHead(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    nameHead_ = value;
+  }
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   */
+  private void clearNameHead() {
+
+    nameHead_ = getDefaultInstance().getNameHead();
+  }
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @param value The bytes for nameHead to set.
+   */
+  private void setNameHeadBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    nameHead_ = value.toStringUtf8();
+
+  }
+
+  public static final int NAME_TAIL_FIELD_NUMBER = 7;
+  private java.lang.String nameTail_;
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @return The nameTail.
+   */
+  @java.lang.Override
+  public java.lang.String getNameTail() {
+    return nameTail_;
+  }
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @return The bytes for nameTail.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNameTailBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(nameTail_);
+  }
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @param value The nameTail to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNameTail(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    nameTail_ = value;
+  }
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   */
+  private void clearNameTail() {
+
+    nameTail_ = getDefaultInstance().getNameTail();
+  }
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @param value The bytes for nameTail to set.
+   */
+  private void setNameTailBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    nameTail_ = value.toStringUtf8();
+
+  }
+
+  public static final int SIZE_TEXT_FIELD_NUMBER = 8;
+  private io.github.lewin671.remoteagent.core.proto.Text sizeText_;
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSizeText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSizeText() {
+    return sizeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sizeText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    sizeText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (sizeText_ != null &&
+        sizeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      sizeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sizeText_).mergeFrom(value).buildPartial();
+    } else {
+      sizeText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   */
+  private void clearSizeText() {
+    sizeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionFileRefView parseFrom(
@@ -461,6 +657,200 @@ public  final class SessionFileRefView extends
       return this;
     }
 
+    /**
+     * <code>string display_name = 5 [json_name = "displayName"];</code>
+     * @return The displayName.
+     */
+    @java.lang.Override
+    public java.lang.String getDisplayName() {
+      return instance.getDisplayName();
+    }
+    /**
+     * <code>string display_name = 5 [json_name = "displayName"];</code>
+     * @return The bytes for displayName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisplayNameBytes() {
+      return instance.getDisplayNameBytes();
+    }
+    /**
+     * <code>string display_name = 5 [json_name = "displayName"];</code>
+     * @param value The displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisplayName(value);
+      return this;
+    }
+    /**
+     * <code>string display_name = 5 [json_name = "displayName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayName() {
+      copyOnWrite();
+      instance.clearDisplayName();
+      return this;
+    }
+    /**
+     * <code>string display_name = 5 [json_name = "displayName"];</code>
+     * @param value The bytes for displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisplayNameBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string name_head = 6 [json_name = "nameHead"];</code>
+     * @return The nameHead.
+     */
+    @java.lang.Override
+    public java.lang.String getNameHead() {
+      return instance.getNameHead();
+    }
+    /**
+     * <code>string name_head = 6 [json_name = "nameHead"];</code>
+     * @return The bytes for nameHead.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNameHeadBytes() {
+      return instance.getNameHeadBytes();
+    }
+    /**
+     * <code>string name_head = 6 [json_name = "nameHead"];</code>
+     * @param value The nameHead to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameHead(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNameHead(value);
+      return this;
+    }
+    /**
+     * <code>string name_head = 6 [json_name = "nameHead"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNameHead() {
+      copyOnWrite();
+      instance.clearNameHead();
+      return this;
+    }
+    /**
+     * <code>string name_head = 6 [json_name = "nameHead"];</code>
+     * @param value The bytes for nameHead to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameHeadBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNameHeadBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+     * @return The nameTail.
+     */
+    @java.lang.Override
+    public java.lang.String getNameTail() {
+      return instance.getNameTail();
+    }
+    /**
+     * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+     * @return The bytes for nameTail.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNameTailBytes() {
+      return instance.getNameTailBytes();
+    }
+    /**
+     * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+     * @param value The nameTail to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameTail(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNameTail(value);
+      return this;
+    }
+    /**
+     * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNameTail() {
+      copyOnWrite();
+      instance.clearNameTail();
+      return this;
+    }
+    /**
+     * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+     * @param value The bytes for nameTail to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameTailBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNameTailBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSizeText() {
+      return instance.hasSizeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSizeText() {
+      return instance.getSizeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    public Builder setSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSizeText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    public Builder setSizeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSizeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    public Builder mergeSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSizeText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+     */
+    public Builder clearSizeText() {  copyOnWrite();
+      instance.clearSizeText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionFileRefView)
   }
   @java.lang.Override
@@ -477,14 +867,19 @@ public  final class SessionFileRefView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "name_",
             "path_",
             "sizeBytes_",
             "mimeType_",
+            "displayName_",
+            "nameHead_",
+            "nameTail_",
+            "sizeText_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0002\u0004\u0208";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\u0002" +
+              "\u0004\u0208\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

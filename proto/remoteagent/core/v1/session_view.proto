@@ -536,6 +536,10 @@ message SessionFileRefView {
   string path = 2;
   int64 size_bytes = 3;
   string mime_type = 4;
+  string display_name = 5;
+  string name_head = 6;
+  string name_tail = 7;
+  Text size_text = 8;
 }
 
 message SessionUserMessageItem {
@@ -603,6 +607,85 @@ message SessionToolGroupItem {
   int32 image_count = 6;
 }
 
+enum SharedFileKind {
+  SHARED_FILE_KIND_UNSPECIFIED = 0;
+  SHARED_FILE_KIND_VIDEO = 1;
+  SHARED_FILE_KIND_IMAGE = 2;
+  SHARED_FILE_KIND_AUDIO = 3;
+  SHARED_FILE_KIND_ARCHIVE = 4;
+  SHARED_FILE_KIND_PDF = 5;
+  SHARED_FILE_KIND_DOC = 6;
+  SHARED_FILE_KIND_OTHER = 7;
+}
+
+enum SharedFileWebPreviewKind {
+  SHARED_FILE_WEB_PREVIEW_KIND_UNSPECIFIED = 0;
+  SHARED_FILE_WEB_PREVIEW_KIND_IMAGE = 1;
+  SHARED_FILE_WEB_PREVIEW_KIND_VIDEO = 2;
+  SHARED_FILE_WEB_PREVIEW_KIND_AUDIO = 3;
+}
+
+enum SharedFileTransferStatus {
+  SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED = 0;
+  SHARED_FILE_TRANSFER_STATUS_DOWNLOADING = 1;
+  SHARED_FILE_TRANSFER_STATUS_PAUSED = 2;
+  SHARED_FILE_TRANSFER_STATUS_DOWNLOADED = 3;
+  SHARED_FILE_TRANSFER_STATUS_FAILED = 4;
+  SHARED_FILE_TRANSFER_STATUS_CLEANED_UP = 5;
+}
+
+enum SharedFileFailureKind {
+  SHARED_FILE_FAILURE_KIND_UNSPECIFIED = 0;
+  SHARED_FILE_FAILURE_KIND_DISCONNECTED = 1;
+  SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH = 2;
+  SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL = 3;
+  SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL = 4;
+  SHARED_FILE_FAILURE_KIND_OTHER = 5;
+}
+
+enum SharedFileCardStatus {
+  SHARED_FILE_CARD_STATUS_UNSPECIFIED = 0;
+  SHARED_FILE_CARD_STATUS_AVAILABLE = 1;
+  SHARED_FILE_CARD_STATUS_DOWNLOADING = 2;
+  SHARED_FILE_CARD_STATUS_PAUSED = 3;
+  SHARED_FILE_CARD_STATUS_DOWNLOADED = 4;
+  SHARED_FILE_CARD_STATUS_FAILED = 5;
+  SHARED_FILE_CARD_STATUS_OFFLINE = 6;
+  SHARED_FILE_CARD_STATUS_CLEANED = 7;
+}
+
+enum SharedFilePrimaryAction {
+  SHARED_FILE_PRIMARY_ACTION_UNSPECIFIED = 0;
+  SHARED_FILE_PRIMARY_ACTION_DOWNLOAD = 1;
+  SHARED_FILE_PRIMARY_ACTION_PAUSE = 2;
+  SHARED_FILE_PRIMARY_ACTION_RESUME = 3;
+  SHARED_FILE_PRIMARY_ACTION_OPEN = 4;
+  SHARED_FILE_PRIMARY_ACTION_RETRY = 5;
+}
+
+enum SharedFileMenuAction {
+  SHARED_FILE_MENU_ACTION_UNSPECIFIED = 0;
+  SHARED_FILE_MENU_ACTION_DOWNLOAD = 1;
+  SHARED_FILE_MENU_ACTION_PAUSE = 2;
+  SHARED_FILE_MENU_ACTION_RESUME = 3;
+  SHARED_FILE_MENU_ACTION_RETRY = 4;
+  SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD = 5;
+  SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM = 6;
+  SHARED_FILE_MENU_ACTION_SAVE = 7;
+  SHARED_FILE_MENU_ACTION_SHARE = 8;
+  SHARED_FILE_MENU_ACTION_OPEN_WITH = 9;
+  SHARED_FILE_MENU_ACTION_DELETE_LOCAL = 10;
+}
+
+message SharedFileMenuItemView {
+  SharedFileMenuAction action = 1;
+  Text label = 2;
+  bool enabled = 3;
+  Text disabled_reason = 4;
+  bool destructive = 5;
+  bool separated = 6;
+}
+
 message SessionSharedFileItem {
   string path = 1;
   string name = 2;
@@ -610,6 +693,32 @@ message SessionSharedFileItem {
   string mime_type = 4;
   string file_id = 5;
   bool available = 6;
+  bytes sha256 = 7;
+  string display_name = 8;
+  string name_head = 9;
+  string name_tail = 10;
+  SharedFileKind kind = 11;
+  Text kind_label = 12;
+  Text size_text = 13;
+  string display_path = 14;
+  Text source_caption = 15;
+  SharedFileCardStatus status = 16;
+  Text subtitle = 17;
+  bool subtitle_is_error = 18;
+  Text a11y_label = 19;
+  int64 downloaded_bytes = 20;
+  double progress = 21;
+  bool waiting_reconnect = 22;
+  SharedFilePrimaryAction primary_action = 23;
+  Text primary_label = 24;
+  bool primary_enabled = 25;
+  Text primary_disabled_reason = 26;
+  repeated SharedFileMenuItemView menu_items = 27;
+  bool supports_album_save = 28;
+  bool has_media_duration = 29;
+  string duration_text = 30;
+  SharedFileWebPreviewKind web_preview_kind = 31;
+  string web_preview_mime = 32;
 }
 
 message SessionSharedFilesItem {
@@ -776,6 +885,30 @@ message SessionRefreshHistoryAction {
 // SessionRetryLoadAction retries loading a session that failed lookup or event sync.
 message SessionRetryLoadAction {
   string session_id = 1;
+}
+
+// SharedFileLocalStateUpdate reports shell-owned download/cache/media metadata for one shared file.
+message SharedFileLocalStateUpdate {
+  string session_id = 1;
+  string file_id = 2;
+  SharedFileTransferStatus status = 3;
+  int64 downloaded_bytes = 4;
+  bool has_eta = 5;
+  int64 eta_seconds = 6;
+  bool waiting_reconnect = 7;
+  bool has_duration = 8;
+  int64 duration_ms = 9;
+  SharedFileFailureKind failure_kind = 10;
+  string failure_detail = 11;
+  // When true, preserves existing transfer status/bytes/failure and only updates duration_ms.
+  bool metadata_only = 12;
+}
+
+// SharedFileLocalStateEvent delivers one or more local shared-file state updates from shell to Core.
+message SharedFileLocalStateEvent {
+  repeated SharedFileLocalStateUpdate updates = 1;
+  bool replace_all = 2;
+  string clear_session_id = 3;
 }
 
 // SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.

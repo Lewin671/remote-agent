@@ -7,6 +7,8 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
+	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -24,6 +26,9 @@ type timelineCacheKey struct {
 	home                string
 	machineName         string
 	supportsSharedFiles bool
+	sharedFileOnline    bool
+	sharedFilesRev      uint64
+	uiLocale            string
 	sessionExited       bool
 	endedAtMs           int64
 	agent               v1.Agent
@@ -66,8 +71,9 @@ func computeTimelineCacheKey(
 	p *corev1.ProjectionState,
 	caps lists.AgentCapabilities,
 	cwd, home, machineName string,
-	supportsSharedFiles, sessionExited bool,
+	supportsSharedFiles, sharedFileOnline, sessionExited bool,
 	endedAtMs int64,
+	uiLocale string,
 	ui *SessionUIState,
 ) timelineCacheKey {
 	var firstSeq, lastSeq uint64
@@ -112,6 +118,10 @@ func computeTimelineCacheKey(
 		}
 	}
 
+	var sharedFilesRev uint64
+	if ui != nil {
+		sharedFilesRev = ui.SharedFilesRev
+	}
 	return timelineCacheKey{
 		eventRev:            in.EventRev,
 		eventsLen:           len(events),
@@ -121,6 +131,9 @@ func computeTimelineCacheKey(
 		home:                home,
 		machineName:         machineName,
 		supportsSharedFiles: supportsSharedFiles,
+		sharedFileOnline:    sharedFileOnline,
+		sharedFilesRev:      sharedFilesRev,
+		uiLocale:            uiLocale,
 		sessionExited:       sessionExited,
 		endedAtMs:           endedAtMs,
 		agent:               caps.Agent,
@@ -203,6 +216,10 @@ type timelineToolCtx struct {
 	bgBySeq             map[uint64]*corev1.BackgroundTool
 	noResultSet         map[uint64]bool
 	supportsSharedFiles bool
+	sharedFileOnline    bool
+	sessionExited       bool
+	uiLocale            string
+	localFiles          map[string]*sharedfiles.LocalState
 	cwd                 string
 	home                string
 	machineName         string
@@ -259,7 +276,15 @@ func (r *timelineToolRun) add(tcCtx *timelineToolCtx, rawItems *[]*corev1.Sessio
 			TimestampMs: projection.EventTimeMs(e),
 			TurnId:      e.TurnId,
 			Kind: &corev1.SessionTimelineItem_SharedFiles{
-				SharedFiles: buildSharedFilesItem(tc.SharedFiles),
+				SharedFiles: buildSharedFilesItem(
+					tc.SharedFiles,
+					tcCtx.localFiles,
+					tcCtx.machineName,
+					tcCtx.home,
+					tcCtx.sharedFileOnline,
+					tcCtx.sessionExited,
+					tcCtx.uiLocale,
+				),
 			},
 		})
 		return
@@ -309,6 +334,7 @@ func buildSessionTimeline(
 	st *State,
 	ls *lists.Session,
 	lm *lists.Machine,
+	header *corev1.SessionHeaderView,
 	caps lists.AgentCapabilities,
 	win *corev1.SessionWindowRequest,
 	ui *SessionUIState,
@@ -358,6 +384,12 @@ func buildSessionTimeline(
 		home = lm.Meta.Home
 	}
 	supportsSharedFiles := lm != nil && lm.Meta != nil && lm.Meta.Capabilities != nil && lm.Meta.Capabilities.SharedFiles
+	sharedFileOnline := header != nil && header.ComputerOnline && !header.ComputerUnlinked &&
+		(in.Conn == lists.ConnConnected || (st != nil && st.DisplayGrace))
+	uiLocale := ""
+	if st != nil {
+		uiLocale = usage.NormalizeUILocale(st.UILocale)
+	}
 	machineName := ""
 	if lm != nil {
 		machineName = lists.MachineName(lm, lm.ID)
@@ -374,7 +406,7 @@ func buildSessionTimeline(
 	} else {
 		cacheKey = computeTimelineCacheKey(
 			in, events, p, caps, cwd, home, machineName,
-			supportsSharedFiles, sessionExited, endedAtMs, ui,
+			supportsSharedFiles, sharedFileOnline, sessionExited, endedAtMs, uiLocale, ui,
 		)
 		cacheKey.todayStartMs = st.Cal.TodayStartMs
 		if ui.timeline != nil && !ui.timeline.hasFork && ui.timeline.key == cacheKey {
@@ -453,6 +485,10 @@ func buildSessionTimeline(
 
 	var rawItems []*corev1.SessionTimelineItem
 	var tools timelineToolRun
+	var localFiles map[string]*sharedfiles.LocalState
+	if ui != nil {
+		localFiles = ui.SharedFiles
+	}
 	tcCtx := timelineToolCtx{
 		in:                  in,
 		st:                  st,
@@ -460,6 +496,10 @@ func buildSessionTimeline(
 		bgBySeq:             bgBySeq,
 		noResultSet:         noResultSet,
 		supportsSharedFiles: supportsSharedFiles,
+		sharedFileOnline:    sharedFileOnline,
+		sessionExited:       sessionExited,
+		uiLocale:            uiLocale,
+		localFiles:          localFiles,
 		cwd:                 cwd,
 		home:                home,
 		machineName:         machineName,
@@ -577,10 +617,16 @@ func buildSessionTimeline(
 				if sf == nil {
 					continue
 				}
+				disp := sharedfiles.SanitizeFileName(sf.Name)
+				head, tail := sharedfiles.SplitMiddleTruncateName(disp)
 				files = append(files, &corev1.SessionFileRefView{
-					Name:      sf.Name,
-					Path:      sf.Path,
-					SizeBytes: sf.SizeBytes,
+					Name:        sf.Name,
+					Path:        sf.Path,
+					SizeBytes:   sf.SizeBytes,
+					DisplayName: disp,
+					NameHead:    head,
+					NameTail:    tail,
+					SizeText:    text.Plain(sharedfiles.FormatFileSize(sf.SizeBytes, uiLocale)),
 				})
 			}
 			rawItems = append(rawItems, &corev1.SessionTimelineItem{
@@ -1000,19 +1046,34 @@ func approvalDecisionRecorded(d v1.ApprovalDecision) bool {
 	return d != v1.ApprovalDecision_APPROVAL_DECISION_CANCELED && d != v1.ApprovalDecision_APPROVAL_DECISION_TERMINAL
 }
 
-func buildSharedFilesItem(files []*v1.SharedFile) *corev1.SessionSharedFilesItem {
+func buildSharedFilesItem(
+	files []*v1.SharedFile,
+	localFiles map[string]*sharedfiles.LocalState,
+	machineName, machineHome string,
+	online, sessionExited bool,
+	uiLocale string,
+) *corev1.SessionSharedFilesItem {
 	out := make([]*corev1.SessionSharedFileItem, 0, len(files))
 	for _, f := range files {
 		if f == nil {
 			continue
 		}
-		out = append(out, &corev1.SessionSharedFileItem{
-			Path:      f.Path,
-			Name:      f.Name,
-			SizeBytes: f.SizeBytes,
-			FileId:    f.FileId,
-			Available: f.FileId != "",
+		var local *sharedfiles.LocalState
+		if localFiles != nil {
+			local = localFiles[f.FileId]
+		}
+		card := sharedfiles.BuildCard(sharedfiles.CardInput{
+			File:          f,
+			Local:         local,
+			MachineName:   machineName,
+			MachineHome:   machineHome,
+			Online:        online,
+			SessionExited: sessionExited,
+			UILocale:      uiLocale,
 		})
+		if card != nil {
+			out = append(out, card)
+		}
 	}
 	return &corev1.SessionSharedFilesItem{Files: out}
 }

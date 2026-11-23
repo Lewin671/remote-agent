@@ -6,6 +6,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sharedfiles"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/usage"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
@@ -139,6 +140,8 @@ type SessionUIState struct {
 	LastPlanSeq            uint64
 	LastPlanHash           []byte
 	LookupError            string
+	SharedFiles            map[string]*sharedfiles.LocalState
+	SharedFilesRev         uint64
 	timeline               *timelineCache
 }
 
@@ -166,6 +169,7 @@ func NewSessionUIState() *SessionUIState {
 		QuestionIndexByID:    make(map[string]int32),
 		LastApprovalSeq:      make(map[string]uint64),
 		LastQuestionSeq:      make(map[string]uint64),
+		SharedFiles:          make(map[string]*sharedfiles.LocalState),
 	}
 }
 
@@ -209,7 +213,7 @@ func BuildSessionView(
 	actions := buildSessionActions(in, st, ls, lm, header, caps, modelsResp, hasModels, modelsLoading, modelsErrText, modelsErr, ui)
 	dock := buildSessionDock(in, st, ls, lm, caps, ui)
 	composer := buildSessionComposer(in, st, ls, lm, header, caps, dock, ui)
-	timeline := buildSessionTimeline(in, st, ls, lm, caps, win, ui)
+	timeline := buildSessionTimeline(in, st, ls, lm, header, caps, win, ui)
 
 	return &corev1.SessionViewModel{
 		SessionId: sid,

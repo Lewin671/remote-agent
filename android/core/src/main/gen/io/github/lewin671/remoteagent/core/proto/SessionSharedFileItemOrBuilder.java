@@ -69,4 +69,259 @@ public interface SessionSharedFileItemOrBuilder extends
    * @return The available.
    */
   boolean getAvailable();
+
+  /**
+   * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+   * @return The sha256.
+   */
+  com.google.protobuf.ByteString getSha256();
+
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  java.lang.String getDisplayName();
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  com.google.protobuf.ByteString
+      getDisplayNameBytes();
+
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @return The nameHead.
+   */
+  java.lang.String getNameHead();
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @return The bytes for nameHead.
+   */
+  com.google.protobuf.ByteString
+      getNameHeadBytes();
+
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @return The nameTail.
+   */
+  java.lang.String getNameTail();
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @return The bytes for nameTail.
+   */
+  com.google.protobuf.ByteString
+      getNameTailBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  int getKindValue();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileKind getKind();
+
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   * @return Whether the kindLabel field is set.
+   */
+  boolean hasKindLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   * @return The kindLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getKindLabel();
+
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   * @return Whether the sizeText field is set.
+   */
+  boolean hasSizeText();
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   * @return The sizeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSizeText();
+
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @return The displayPath.
+   */
+  java.lang.String getDisplayPath();
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @return The bytes for displayPath.
+   */
+  com.google.protobuf.ByteString
+      getDisplayPathBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   * @return Whether the sourceCaption field is set.
+   */
+  boolean hasSourceCaption();
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   * @return The sourceCaption.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSourceCaption();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @return The enum numeric value on the wire for status.
+   */
+  int getStatusValue();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @return The status.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus getStatus();
+
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   * @return Whether the subtitle field is set.
+   */
+  boolean hasSubtitle();
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   * @return The subtitle.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSubtitle();
+
+  /**
+   * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+   * @return The subtitleIsError.
+   */
+  boolean getSubtitleIsError();
+
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   * @return Whether the a11yLabel field is set.
+   */
+  boolean hasA11YLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   * @return The a11yLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getA11YLabel();
+
+  /**
+   * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+   * @return The downloadedBytes.
+   */
+  long getDownloadedBytes();
+
+  /**
+   * <code>double progress = 21 [json_name = "progress"];</code>
+   * @return The progress.
+   */
+  double getProgress();
+
+  /**
+   * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+   * @return The waitingReconnect.
+   */
+  boolean getWaitingReconnect();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @return The enum numeric value on the wire for primaryAction.
+   */
+  int getPrimaryActionValue();
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @return The primaryAction.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction getPrimaryAction();
+
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   * @return Whether the primaryLabel field is set.
+   */
+  boolean hasPrimaryLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   * @return The primaryLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getPrimaryLabel();
+
+  /**
+   * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+   * @return The primaryEnabled.
+   */
+  boolean getPrimaryEnabled();
+
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   * @return Whether the primaryDisabledReason field is set.
+   */
+  boolean hasPrimaryDisabledReason();
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   * @return The primaryDisabledReason.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getPrimaryDisabledReason();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> 
+      getMenuItemsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView getMenuItems(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  int getMenuItemsCount();
+
+  /**
+   * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+   * @return The supportsAlbumSave.
+   */
+  boolean getSupportsAlbumSave();
+
+  /**
+   * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+   * @return The hasMediaDuration.
+   */
+  boolean getHasMediaDuration();
+
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @return The durationText.
+   */
+  java.lang.String getDurationText();
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @return The bytes for durationText.
+   */
+  com.google.protobuf.ByteString
+      getDurationTextBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @return The enum numeric value on the wire for webPreviewKind.
+   */
+  int getWebPreviewKindValue();
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @return The webPreviewKind.
+   */
+  io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind getWebPreviewKind();
+
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @return The webPreviewMime.
+   */
+  java.lang.String getWebPreviewMime();
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @return The bytes for webPreviewMime.
+   */
+  com.google.protobuf.ByteString
+      getWebPreviewMimeBytes();
 }

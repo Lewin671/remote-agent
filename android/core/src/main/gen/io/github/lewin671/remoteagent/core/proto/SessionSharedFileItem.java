@@ -19,7 +19,16 @@ public  final class SessionSharedFileItem extends
     name_ = "";
     mimeType_ = "";
     fileId_ = "";
+    sha256_ = com.google.protobuf.ByteString.EMPTY;
+    displayName_ = "";
+    nameHead_ = "";
+    nameTail_ = "";
+    displayPath_ = "";
+    menuItems_ = emptyProtobufList();
+    durationText_ = "";
+    webPreviewMime_ = "";
   }
+  private int bitField0_;
   public static final int PATH_FIELD_NUMBER = 1;
   private java.lang.String path_;
   /**
@@ -262,6 +271,1104 @@ public  final class SessionSharedFileItem extends
   private void clearAvailable() {
 
     available_ = false;
+  }
+
+  public static final int SHA256_FIELD_NUMBER = 7;
+  private com.google.protobuf.ByteString sha256_;
+  /**
+   * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+   * @return The sha256.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString getSha256() {
+    return sha256_;
+  }
+  /**
+   * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+   * @param value The sha256 to set.
+   */
+  private void setSha256(com.google.protobuf.ByteString value) {
+    java.lang.Class<?> valueClass = value.getClass();
+  
+    sha256_ = value;
+  }
+  /**
+   * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+   */
+  private void clearSha256() {
+
+    sha256_ = getDefaultInstance().getSha256();
+  }
+
+  public static final int DISPLAY_NAME_FIELD_NUMBER = 8;
+  private java.lang.String displayName_;
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  @java.lang.Override
+  public java.lang.String getDisplayName() {
+    return displayName_;
+  }
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisplayNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(displayName_);
+  }
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @param value The displayName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    displayName_ = value;
+  }
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   */
+  private void clearDisplayName() {
+
+    displayName_ = getDefaultInstance().getDisplayName();
+  }
+  /**
+   * <code>string display_name = 8 [json_name = "displayName"];</code>
+   * @param value The bytes for displayName to set.
+   */
+  private void setDisplayNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    displayName_ = value.toStringUtf8();
+
+  }
+
+  public static final int NAME_HEAD_FIELD_NUMBER = 9;
+  private java.lang.String nameHead_;
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @return The nameHead.
+   */
+  @java.lang.Override
+  public java.lang.String getNameHead() {
+    return nameHead_;
+  }
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @return The bytes for nameHead.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNameHeadBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(nameHead_);
+  }
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @param value The nameHead to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNameHead(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    nameHead_ = value;
+  }
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   */
+  private void clearNameHead() {
+
+    nameHead_ = getDefaultInstance().getNameHead();
+  }
+  /**
+   * <code>string name_head = 9 [json_name = "nameHead"];</code>
+   * @param value The bytes for nameHead to set.
+   */
+  private void setNameHeadBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    nameHead_ = value.toStringUtf8();
+
+  }
+
+  public static final int NAME_TAIL_FIELD_NUMBER = 10;
+  private java.lang.String nameTail_;
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @return The nameTail.
+   */
+  @java.lang.Override
+  public java.lang.String getNameTail() {
+    return nameTail_;
+  }
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @return The bytes for nameTail.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getNameTailBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(nameTail_);
+  }
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @param value The nameTail to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setNameTail(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    nameTail_ = value;
+  }
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   */
+  private void clearNameTail() {
+
+    nameTail_ = getDefaultInstance().getNameTail();
+  }
+  /**
+   * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+   * @param value The bytes for nameTail to set.
+   */
+  private void setNameTailBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    nameTail_ = value.toStringUtf8();
+
+  }
+
+  public static final int KIND_FIELD_NUMBER = 11;
+  private int kind_;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  @java.lang.Override
+  public int getKindValue() {
+    return kind_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileKind getKind() {
+    io.github.lewin671.remoteagent.core.proto.SharedFileKind result = io.github.lewin671.remoteagent.core.proto.SharedFileKind.forNumber(kind_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SharedFileKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @param value The enum numeric value on the wire for kind to set.
+   */
+  private void setKindValue(int value) {
+      kind_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   * @param value The kind to set.
+   */
+  private void setKind(io.github.lewin671.remoteagent.core.proto.SharedFileKind value) {
+    kind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+   */
+  private void clearKind() {
+
+    kind_ = 0;
+  }
+
+  public static final int KIND_LABEL_FIELD_NUMBER = 12;
+  private io.github.lewin671.remoteagent.core.proto.Text kindLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasKindLabel() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getKindLabel() {
+    return kindLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : kindLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setKindLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    kindLabel_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeKindLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindLabel_ != null &&
+        kindLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      kindLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(kindLabel_).mergeFrom(value).buildPartial();
+    } else {
+      kindLabel_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+   */
+  private void clearKindLabel() {
+    kindLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int SIZE_TEXT_FIELD_NUMBER = 13;
+  private io.github.lewin671.remoteagent.core.proto.Text sizeText_;
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSizeText() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSizeText() {
+    return sizeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sizeText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    sizeText_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (sizeText_ != null &&
+        sizeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      sizeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sizeText_).mergeFrom(value).buildPartial();
+    } else {
+      sizeText_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+   */
+  private void clearSizeText() {
+    sizeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int DISPLAY_PATH_FIELD_NUMBER = 14;
+  private java.lang.String displayPath_;
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @return The displayPath.
+   */
+  @java.lang.Override
+  public java.lang.String getDisplayPath() {
+    return displayPath_;
+  }
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @return The bytes for displayPath.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisplayPathBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(displayPath_);
+  }
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @param value The displayPath to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayPath(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    displayPath_ = value;
+  }
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   */
+  private void clearDisplayPath() {
+
+    displayPath_ = getDefaultInstance().getDisplayPath();
+  }
+  /**
+   * <code>string display_path = 14 [json_name = "displayPath"];</code>
+   * @param value The bytes for displayPath to set.
+   */
+  private void setDisplayPathBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    displayPath_ = value.toStringUtf8();
+
+  }
+
+  public static final int SOURCE_CAPTION_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text sourceCaption_;
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSourceCaption() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSourceCaption() {
+    return sourceCaption_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sourceCaption_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSourceCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    sourceCaption_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSourceCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (sourceCaption_ != null &&
+        sourceCaption_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      sourceCaption_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sourceCaption_).mergeFrom(value).buildPartial();
+    } else {
+      sourceCaption_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+   */
+  private void clearSourceCaption() {
+    sourceCaption_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int STATUS_FIELD_NUMBER = 16;
+  private int status_;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @return The enum numeric value on the wire for status.
+   */
+  @java.lang.Override
+  public int getStatusValue() {
+    return status_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @return The status.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus getStatus() {
+    io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus result = io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus.forNumber(status_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @param value The enum numeric value on the wire for status to set.
+   */
+  private void setStatusValue(int value) {
+      status_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   * @param value The status to set.
+   */
+  private void setStatus(io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus value) {
+    status_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+   */
+  private void clearStatus() {
+
+    status_ = 0;
+  }
+
+  public static final int SUBTITLE_FIELD_NUMBER = 17;
+  private io.github.lewin671.remoteagent.core.proto.Text subtitle_;
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSubtitle() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSubtitle() {
+    return subtitle_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : subtitle_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    subtitle_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (subtitle_ != null &&
+        subtitle_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      subtitle_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(subtitle_).mergeFrom(value).buildPartial();
+    } else {
+      subtitle_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+   */
+  private void clearSubtitle() {
+    subtitle_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
+  }
+
+  public static final int SUBTITLE_IS_ERROR_FIELD_NUMBER = 18;
+  private boolean subtitleIsError_;
+  /**
+   * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+   * @return The subtitleIsError.
+   */
+  @java.lang.Override
+  public boolean getSubtitleIsError() {
+    return subtitleIsError_;
+  }
+  /**
+   * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+   * @param value The subtitleIsError to set.
+   */
+  private void setSubtitleIsError(boolean value) {
+    
+    subtitleIsError_ = value;
+  }
+  /**
+   * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+   */
+  private void clearSubtitleIsError() {
+
+    subtitleIsError_ = false;
+  }
+
+  public static final int A11Y_LABEL_FIELD_NUMBER = 19;
+  private io.github.lewin671.remoteagent.core.proto.Text a11YLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasA11YLabel() {
+    return ((bitField0_ & 0x00000010) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getA11YLabel() {
+    return a11YLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : a11YLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    a11YLabel_ = value;
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (a11YLabel_ != null &&
+        a11YLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      a11YLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(a11YLabel_).mergeFrom(value).buildPartial();
+    } else {
+      a11YLabel_ = value;
+    }
+    bitField0_ |= 0x00000010;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+   */
+  private void clearA11YLabel() {
+    a11YLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000010);
+  }
+
+  public static final int DOWNLOADED_BYTES_FIELD_NUMBER = 20;
+  private long downloadedBytes_;
+  /**
+   * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+   * @return The downloadedBytes.
+   */
+  @java.lang.Override
+  public long getDownloadedBytes() {
+    return downloadedBytes_;
+  }
+  /**
+   * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+   * @param value The downloadedBytes to set.
+   */
+  private void setDownloadedBytes(long value) {
+    
+    downloadedBytes_ = value;
+  }
+  /**
+   * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+   */
+  private void clearDownloadedBytes() {
+
+    downloadedBytes_ = 0L;
+  }
+
+  public static final int PROGRESS_FIELD_NUMBER = 21;
+  private double progress_;
+  /**
+   * <code>double progress = 21 [json_name = "progress"];</code>
+   * @return The progress.
+   */
+  @java.lang.Override
+  public double getProgress() {
+    return progress_;
+  }
+  /**
+   * <code>double progress = 21 [json_name = "progress"];</code>
+   * @param value The progress to set.
+   */
+  private void setProgress(double value) {
+    
+    progress_ = value;
+  }
+  /**
+   * <code>double progress = 21 [json_name = "progress"];</code>
+   */
+  private void clearProgress() {
+
+    progress_ = 0D;
+  }
+
+  public static final int WAITING_RECONNECT_FIELD_NUMBER = 22;
+  private boolean waitingReconnect_;
+  /**
+   * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+   * @return The waitingReconnect.
+   */
+  @java.lang.Override
+  public boolean getWaitingReconnect() {
+    return waitingReconnect_;
+  }
+  /**
+   * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+   * @param value The waitingReconnect to set.
+   */
+  private void setWaitingReconnect(boolean value) {
+    
+    waitingReconnect_ = value;
+  }
+  /**
+   * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+   */
+  private void clearWaitingReconnect() {
+
+    waitingReconnect_ = false;
+  }
+
+  public static final int PRIMARY_ACTION_FIELD_NUMBER = 23;
+  private int primaryAction_;
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @return The enum numeric value on the wire for primaryAction.
+   */
+  @java.lang.Override
+  public int getPrimaryActionValue() {
+    return primaryAction_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @return The primaryAction.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction getPrimaryAction() {
+    io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction result = io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction.forNumber(primaryAction_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @param value The enum numeric value on the wire for primaryAction to set.
+   */
+  private void setPrimaryActionValue(int value) {
+      primaryAction_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   * @param value The primaryAction to set.
+   */
+  private void setPrimaryAction(io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction value) {
+    primaryAction_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+   */
+  private void clearPrimaryAction() {
+
+    primaryAction_ = 0;
+  }
+
+  public static final int PRIMARY_LABEL_FIELD_NUMBER = 24;
+  private io.github.lewin671.remoteagent.core.proto.Text primaryLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPrimaryLabel() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getPrimaryLabel() {
+    return primaryLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : primaryLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrimaryLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    primaryLabel_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePrimaryLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (primaryLabel_ != null &&
+        primaryLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      primaryLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(primaryLabel_).mergeFrom(value).buildPartial();
+    } else {
+      primaryLabel_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+   */
+  private void clearPrimaryLabel() {
+    primaryLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
+  public static final int PRIMARY_ENABLED_FIELD_NUMBER = 25;
+  private boolean primaryEnabled_;
+  /**
+   * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+   * @return The primaryEnabled.
+   */
+  @java.lang.Override
+  public boolean getPrimaryEnabled() {
+    return primaryEnabled_;
+  }
+  /**
+   * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+   * @param value The primaryEnabled to set.
+   */
+  private void setPrimaryEnabled(boolean value) {
+    
+    primaryEnabled_ = value;
+  }
+  /**
+   * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+   */
+  private void clearPrimaryEnabled() {
+
+    primaryEnabled_ = false;
+  }
+
+  public static final int PRIMARY_DISABLED_REASON_FIELD_NUMBER = 26;
+  private io.github.lewin671.remoteagent.core.proto.Text primaryDisabledReason_;
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   */
+  @java.lang.Override
+  public boolean hasPrimaryDisabledReason() {
+    return ((bitField0_ & 0x00000040) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getPrimaryDisabledReason() {
+    return primaryDisabledReason_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : primaryDisabledReason_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPrimaryDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    primaryDisabledReason_ = value;
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergePrimaryDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (primaryDisabledReason_ != null &&
+        primaryDisabledReason_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      primaryDisabledReason_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(primaryDisabledReason_).mergeFrom(value).buildPartial();
+    } else {
+      primaryDisabledReason_ = value;
+    }
+    bitField0_ |= 0x00000040;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+   */
+  private void clearPrimaryDisabledReason() {
+    primaryDisabledReason_ = null;
+    bitField0_ = (bitField0_ & ~0x00000040);
+  }
+
+  public static final int MENU_ITEMS_FIELD_NUMBER = 27;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> menuItems_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> getMenuItemsList() {
+    return menuItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemViewOrBuilder> 
+      getMenuItemsOrBuilderList() {
+    return menuItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public int getMenuItemsCount() {
+    return menuItems_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView getMenuItems(int index) {
+    return menuItems_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemViewOrBuilder getMenuItemsOrBuilder(
+      int index) {
+    return menuItems_.get(index);
+  }
+  private void ensureMenuItemsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> tmp = menuItems_;
+    if (!tmp.isModifiable()) {
+      menuItems_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMenuItems(
+      int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMenuItems(io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMenuItems(
+      int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMenuItemsIsMutable();
+    menuItems_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  private void addAllMenuItems(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> values) {
+    ensureMenuItemsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, menuItems_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  private void clearMenuItems() {
+    menuItems_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+   */
+  private void removeMenuItems(int index) {
+    ensureMenuItemsIsMutable();
+    menuItems_.remove(index);
+  }
+
+  public static final int SUPPORTS_ALBUM_SAVE_FIELD_NUMBER = 28;
+  private boolean supportsAlbumSave_;
+  /**
+   * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+   * @return The supportsAlbumSave.
+   */
+  @java.lang.Override
+  public boolean getSupportsAlbumSave() {
+    return supportsAlbumSave_;
+  }
+  /**
+   * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+   * @param value The supportsAlbumSave to set.
+   */
+  private void setSupportsAlbumSave(boolean value) {
+    
+    supportsAlbumSave_ = value;
+  }
+  /**
+   * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+   */
+  private void clearSupportsAlbumSave() {
+
+    supportsAlbumSave_ = false;
+  }
+
+  public static final int HAS_MEDIA_DURATION_FIELD_NUMBER = 29;
+  private boolean hasMediaDuration_;
+  /**
+   * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+   * @return The hasMediaDuration.
+   */
+  @java.lang.Override
+  public boolean getHasMediaDuration() {
+    return hasMediaDuration_;
+  }
+  /**
+   * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+   * @param value The hasMediaDuration to set.
+   */
+  private void setHasMediaDuration(boolean value) {
+    
+    hasMediaDuration_ = value;
+  }
+  /**
+   * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+   */
+  private void clearHasMediaDuration() {
+
+    hasMediaDuration_ = false;
+  }
+
+  public static final int DURATION_TEXT_FIELD_NUMBER = 30;
+  private java.lang.String durationText_;
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @return The durationText.
+   */
+  @java.lang.Override
+  public java.lang.String getDurationText() {
+    return durationText_;
+  }
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @return The bytes for durationText.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDurationTextBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(durationText_);
+  }
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @param value The durationText to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDurationText(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    durationText_ = value;
+  }
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   */
+  private void clearDurationText() {
+
+    durationText_ = getDefaultInstance().getDurationText();
+  }
+  /**
+   * <code>string duration_text = 30 [json_name = "durationText"];</code>
+   * @param value The bytes for durationText to set.
+   */
+  private void setDurationTextBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    durationText_ = value.toStringUtf8();
+
+  }
+
+  public static final int WEB_PREVIEW_KIND_FIELD_NUMBER = 31;
+  private int webPreviewKind_;
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @return The enum numeric value on the wire for webPreviewKind.
+   */
+  @java.lang.Override
+  public int getWebPreviewKindValue() {
+    return webPreviewKind_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @return The webPreviewKind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind getWebPreviewKind() {
+    io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind result = io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind.forNumber(webPreviewKind_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @param value The enum numeric value on the wire for webPreviewKind to set.
+   */
+  private void setWebPreviewKindValue(int value) {
+      webPreviewKind_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   * @param value The webPreviewKind to set.
+   */
+  private void setWebPreviewKind(io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind value) {
+    webPreviewKind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+   */
+  private void clearWebPreviewKind() {
+
+    webPreviewKind_ = 0;
+  }
+
+  public static final int WEB_PREVIEW_MIME_FIELD_NUMBER = 32;
+  private java.lang.String webPreviewMime_;
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @return The webPreviewMime.
+   */
+  @java.lang.Override
+  public java.lang.String getWebPreviewMime() {
+    return webPreviewMime_;
+  }
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @return The bytes for webPreviewMime.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getWebPreviewMimeBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(webPreviewMime_);
+  }
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @param value The webPreviewMime to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setWebPreviewMime(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    webPreviewMime_ = value;
+  }
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   */
+  private void clearWebPreviewMime() {
+
+    webPreviewMime_ = getDefaultInstance().getWebPreviewMime();
+  }
+  /**
+   * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+   * @param value The bytes for webPreviewMime to set.
+   */
+  private void setWebPreviewMimeBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    webPreviewMime_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem parseFrom(
@@ -613,6 +1720,1139 @@ public  final class SessionSharedFileItem extends
       return this;
     }
 
+    /**
+     * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+     * @return The sha256.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString getSha256() {
+      return instance.getSha256();
+    }
+    /**
+     * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+     * @param value The sha256 to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSha256(com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setSha256(value);
+      return this;
+    }
+    /**
+     * <code>bytes sha256 = 7 [json_name = "sha256"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSha256() {
+      copyOnWrite();
+      instance.clearSha256();
+      return this;
+    }
+
+    /**
+     * <code>string display_name = 8 [json_name = "displayName"];</code>
+     * @return The displayName.
+     */
+    @java.lang.Override
+    public java.lang.String getDisplayName() {
+      return instance.getDisplayName();
+    }
+    /**
+     * <code>string display_name = 8 [json_name = "displayName"];</code>
+     * @return The bytes for displayName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisplayNameBytes() {
+      return instance.getDisplayNameBytes();
+    }
+    /**
+     * <code>string display_name = 8 [json_name = "displayName"];</code>
+     * @param value The displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisplayName(value);
+      return this;
+    }
+    /**
+     * <code>string display_name = 8 [json_name = "displayName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayName() {
+      copyOnWrite();
+      instance.clearDisplayName();
+      return this;
+    }
+    /**
+     * <code>string display_name = 8 [json_name = "displayName"];</code>
+     * @param value The bytes for displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisplayNameBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string name_head = 9 [json_name = "nameHead"];</code>
+     * @return The nameHead.
+     */
+    @java.lang.Override
+    public java.lang.String getNameHead() {
+      return instance.getNameHead();
+    }
+    /**
+     * <code>string name_head = 9 [json_name = "nameHead"];</code>
+     * @return The bytes for nameHead.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNameHeadBytes() {
+      return instance.getNameHeadBytes();
+    }
+    /**
+     * <code>string name_head = 9 [json_name = "nameHead"];</code>
+     * @param value The nameHead to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameHead(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNameHead(value);
+      return this;
+    }
+    /**
+     * <code>string name_head = 9 [json_name = "nameHead"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNameHead() {
+      copyOnWrite();
+      instance.clearNameHead();
+      return this;
+    }
+    /**
+     * <code>string name_head = 9 [json_name = "nameHead"];</code>
+     * @param value The bytes for nameHead to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameHeadBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNameHeadBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+     * @return The nameTail.
+     */
+    @java.lang.Override
+    public java.lang.String getNameTail() {
+      return instance.getNameTail();
+    }
+    /**
+     * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+     * @return The bytes for nameTail.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getNameTailBytes() {
+      return instance.getNameTailBytes();
+    }
+    /**
+     * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+     * @param value The nameTail to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameTail(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setNameTail(value);
+      return this;
+    }
+    /**
+     * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearNameTail() {
+      copyOnWrite();
+      instance.clearNameTail();
+      return this;
+    }
+    /**
+     * <code>string name_tail = 10 [json_name = "nameTail"];</code>
+     * @param value The bytes for nameTail to set.
+     * @return This builder for chaining.
+     */
+    public Builder setNameTailBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setNameTailBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+     * @return The enum numeric value on the wire for kind.
+     */
+    @java.lang.Override
+    public int getKindValue() {
+      return instance.getKindValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+     * @param value The kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKindValue(int value) {
+      copyOnWrite();
+      instance.setKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+     * @return The kind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileKind getKind() {
+      return instance.getKind();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+     * @param value The enum numeric value on the wire for kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKind(io.github.lewin671.remoteagent.core.proto.SharedFileKind value) {
+      copyOnWrite();
+      instance.setKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileKind kind = 11 [json_name = "kind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearKind() {
+      copyOnWrite();
+      instance.clearKind();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasKindLabel() {
+      return instance.hasKindLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getKindLabel() {
+      return instance.getKindLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    public Builder setKindLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setKindLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    public Builder setKindLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setKindLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    public Builder mergeKindLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeKindLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text kind_label = 12 [json_name = "kindLabel"];</code>
+     */
+    public Builder clearKindLabel() {  copyOnWrite();
+      instance.clearKindLabel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSizeText() {
+      return instance.hasSizeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSizeText() {
+      return instance.getSizeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    public Builder setSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSizeText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    public Builder setSizeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSizeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    public Builder mergeSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSizeText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text size_text = 13 [json_name = "sizeText"];</code>
+     */
+    public Builder clearSizeText() {  copyOnWrite();
+      instance.clearSizeText();
+      return this;
+    }
+
+    /**
+     * <code>string display_path = 14 [json_name = "displayPath"];</code>
+     * @return The displayPath.
+     */
+    @java.lang.Override
+    public java.lang.String getDisplayPath() {
+      return instance.getDisplayPath();
+    }
+    /**
+     * <code>string display_path = 14 [json_name = "displayPath"];</code>
+     * @return The bytes for displayPath.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisplayPathBytes() {
+      return instance.getDisplayPathBytes();
+    }
+    /**
+     * <code>string display_path = 14 [json_name = "displayPath"];</code>
+     * @param value The displayPath to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayPath(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisplayPath(value);
+      return this;
+    }
+    /**
+     * <code>string display_path = 14 [json_name = "displayPath"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayPath() {
+      copyOnWrite();
+      instance.clearDisplayPath();
+      return this;
+    }
+    /**
+     * <code>string display_path = 14 [json_name = "displayPath"];</code>
+     * @param value The bytes for displayPath to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayPathBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisplayPathBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSourceCaption() {
+      return instance.hasSourceCaption();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSourceCaption() {
+      return instance.getSourceCaption();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    public Builder setSourceCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSourceCaption(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    public Builder setSourceCaption(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSourceCaption(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    public Builder mergeSourceCaption(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSourceCaption(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text source_caption = 15 [json_name = "sourceCaption"];</code>
+     */
+    public Builder clearSourceCaption() {  copyOnWrite();
+      instance.clearSourceCaption();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+     * @return The enum numeric value on the wire for status.
+     */
+    @java.lang.Override
+    public int getStatusValue() {
+      return instance.getStatusValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+     * @param value The status to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatusValue(int value) {
+      copyOnWrite();
+      instance.setStatusValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+     * @return The status.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus getStatus() {
+      return instance.getStatus();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+     * @param value The enum numeric value on the wire for status to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStatus(io.github.lewin671.remoteagent.core.proto.SharedFileCardStatus value) {
+      copyOnWrite();
+      instance.setStatus(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileCardStatus status = 16 [json_name = "status"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStatus() {
+      copyOnWrite();
+      instance.clearStatus();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSubtitle() {
+      return instance.hasSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSubtitle() {
+      return instance.getSubtitle();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    public Builder setSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSubtitle(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    public Builder setSubtitle(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSubtitle(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    public Builder mergeSubtitle(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSubtitle(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text subtitle = 17 [json_name = "subtitle"];</code>
+     */
+    public Builder clearSubtitle() {  copyOnWrite();
+      instance.clearSubtitle();
+      return this;
+    }
+
+    /**
+     * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+     * @return The subtitleIsError.
+     */
+    @java.lang.Override
+    public boolean getSubtitleIsError() {
+      return instance.getSubtitleIsError();
+    }
+    /**
+     * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+     * @param value The subtitleIsError to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSubtitleIsError(boolean value) {
+      copyOnWrite();
+      instance.setSubtitleIsError(value);
+      return this;
+    }
+    /**
+     * <code>bool subtitle_is_error = 18 [json_name = "subtitleIsError"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSubtitleIsError() {
+      copyOnWrite();
+      instance.clearSubtitleIsError();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasA11YLabel() {
+      return instance.hasA11YLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getA11YLabel() {
+      return instance.getA11YLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    public Builder setA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setA11YLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    public Builder setA11YLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setA11YLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    public Builder mergeA11YLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeA11YLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text a11y_label = 19 [json_name = "a11yLabel"];</code>
+     */
+    public Builder clearA11YLabel() {  copyOnWrite();
+      instance.clearA11YLabel();
+      return this;
+    }
+
+    /**
+     * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+     * @return The downloadedBytes.
+     */
+    @java.lang.Override
+    public long getDownloadedBytes() {
+      return instance.getDownloadedBytes();
+    }
+    /**
+     * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+     * @param value The downloadedBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDownloadedBytes(long value) {
+      copyOnWrite();
+      instance.setDownloadedBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 downloaded_bytes = 20 [json_name = "downloadedBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDownloadedBytes() {
+      copyOnWrite();
+      instance.clearDownloadedBytes();
+      return this;
+    }
+
+    /**
+     * <code>double progress = 21 [json_name = "progress"];</code>
+     * @return The progress.
+     */
+    @java.lang.Override
+    public double getProgress() {
+      return instance.getProgress();
+    }
+    /**
+     * <code>double progress = 21 [json_name = "progress"];</code>
+     * @param value The progress to set.
+     * @return This builder for chaining.
+     */
+    public Builder setProgress(double value) {
+      copyOnWrite();
+      instance.setProgress(value);
+      return this;
+    }
+    /**
+     * <code>double progress = 21 [json_name = "progress"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearProgress() {
+      copyOnWrite();
+      instance.clearProgress();
+      return this;
+    }
+
+    /**
+     * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+     * @return The waitingReconnect.
+     */
+    @java.lang.Override
+    public boolean getWaitingReconnect() {
+      return instance.getWaitingReconnect();
+    }
+    /**
+     * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+     * @param value The waitingReconnect to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWaitingReconnect(boolean value) {
+      copyOnWrite();
+      instance.setWaitingReconnect(value);
+      return this;
+    }
+    /**
+     * <code>bool waiting_reconnect = 22 [json_name = "waitingReconnect"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWaitingReconnect() {
+      copyOnWrite();
+      instance.clearWaitingReconnect();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+     * @return The enum numeric value on the wire for primaryAction.
+     */
+    @java.lang.Override
+    public int getPrimaryActionValue() {
+      return instance.getPrimaryActionValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+     * @param value The primaryAction to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrimaryActionValue(int value) {
+      copyOnWrite();
+      instance.setPrimaryActionValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+     * @return The primaryAction.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction getPrimaryAction() {
+      return instance.getPrimaryAction();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+     * @param value The enum numeric value on the wire for primaryAction to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrimaryAction(io.github.lewin671.remoteagent.core.proto.SharedFilePrimaryAction value) {
+      copyOnWrite();
+      instance.setPrimaryAction(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFilePrimaryAction primary_action = 23 [json_name = "primaryAction"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrimaryAction() {
+      copyOnWrite();
+      instance.clearPrimaryAction();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPrimaryLabel() {
+      return instance.hasPrimaryLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getPrimaryLabel() {
+      return instance.getPrimaryLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    public Builder setPrimaryLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setPrimaryLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    public Builder setPrimaryLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPrimaryLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    public Builder mergePrimaryLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergePrimaryLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_label = 24 [json_name = "primaryLabel"];</code>
+     */
+    public Builder clearPrimaryLabel() {  copyOnWrite();
+      instance.clearPrimaryLabel();
+      return this;
+    }
+
+    /**
+     * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+     * @return The primaryEnabled.
+     */
+    @java.lang.Override
+    public boolean getPrimaryEnabled() {
+      return instance.getPrimaryEnabled();
+    }
+    /**
+     * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+     * @param value The primaryEnabled to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPrimaryEnabled(boolean value) {
+      copyOnWrite();
+      instance.setPrimaryEnabled(value);
+      return this;
+    }
+    /**
+     * <code>bool primary_enabled = 25 [json_name = "primaryEnabled"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPrimaryEnabled() {
+      copyOnWrite();
+      instance.clearPrimaryEnabled();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    @java.lang.Override
+    public boolean hasPrimaryDisabledReason() {
+      return instance.hasPrimaryDisabledReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getPrimaryDisabledReason() {
+      return instance.getPrimaryDisabledReason();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    public Builder setPrimaryDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setPrimaryDisabledReason(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    public Builder setPrimaryDisabledReason(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setPrimaryDisabledReason(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    public Builder mergePrimaryDisabledReason(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergePrimaryDisabledReason(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text primary_disabled_reason = 26 [json_name = "primaryDisabledReason"];</code>
+     */
+    public Builder clearPrimaryDisabledReason() {  copyOnWrite();
+      instance.clearPrimaryDisabledReason();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> getMenuItemsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getMenuItemsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public int getMenuItemsCount() {
+      return instance.getMenuItemsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView getMenuItems(int index) {
+      return instance.getMenuItems(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder setMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+      copyOnWrite();
+      instance.setMenuItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder setMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMenuItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+      copyOnWrite();
+      instance.addMenuItems(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView value) {
+      copyOnWrite();
+      instance.addMenuItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMenuItems(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder addMenuItems(
+        int index, io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMenuItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder addAllMenuItems(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView> values) {
+      copyOnWrite();
+      instance.addAllMenuItems(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder clearMenuItems() {
+      copyOnWrite();
+      instance.clearMenuItems();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SharedFileMenuItemView menu_items = 27 [json_name = "menuItems"];</code>
+     */
+    public Builder removeMenuItems(int index) {
+      copyOnWrite();
+      instance.removeMenuItems(index);
+      return this;
+    }
+
+    /**
+     * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+     * @return The supportsAlbumSave.
+     */
+    @java.lang.Override
+    public boolean getSupportsAlbumSave() {
+      return instance.getSupportsAlbumSave();
+    }
+    /**
+     * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+     * @param value The supportsAlbumSave to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSupportsAlbumSave(boolean value) {
+      copyOnWrite();
+      instance.setSupportsAlbumSave(value);
+      return this;
+    }
+    /**
+     * <code>bool supports_album_save = 28 [json_name = "supportsAlbumSave"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSupportsAlbumSave() {
+      copyOnWrite();
+      instance.clearSupportsAlbumSave();
+      return this;
+    }
+
+    /**
+     * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+     * @return The hasMediaDuration.
+     */
+    @java.lang.Override
+    public boolean getHasMediaDuration() {
+      return instance.getHasMediaDuration();
+    }
+    /**
+     * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+     * @param value The hasMediaDuration to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHasMediaDuration(boolean value) {
+      copyOnWrite();
+      instance.setHasMediaDuration(value);
+      return this;
+    }
+    /**
+     * <code>bool has_media_duration = 29 [json_name = "hasMediaDuration"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHasMediaDuration() {
+      copyOnWrite();
+      instance.clearHasMediaDuration();
+      return this;
+    }
+
+    /**
+     * <code>string duration_text = 30 [json_name = "durationText"];</code>
+     * @return The durationText.
+     */
+    @java.lang.Override
+    public java.lang.String getDurationText() {
+      return instance.getDurationText();
+    }
+    /**
+     * <code>string duration_text = 30 [json_name = "durationText"];</code>
+     * @return The bytes for durationText.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDurationTextBytes() {
+      return instance.getDurationTextBytes();
+    }
+    /**
+     * <code>string duration_text = 30 [json_name = "durationText"];</code>
+     * @param value The durationText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDurationText(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDurationText(value);
+      return this;
+    }
+    /**
+     * <code>string duration_text = 30 [json_name = "durationText"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDurationText() {
+      copyOnWrite();
+      instance.clearDurationText();
+      return this;
+    }
+    /**
+     * <code>string duration_text = 30 [json_name = "durationText"];</code>
+     * @param value The bytes for durationText to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDurationTextBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDurationTextBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+     * @return The enum numeric value on the wire for webPreviewKind.
+     */
+    @java.lang.Override
+    public int getWebPreviewKindValue() {
+      return instance.getWebPreviewKindValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+     * @param value The webPreviewKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWebPreviewKindValue(int value) {
+      copyOnWrite();
+      instance.setWebPreviewKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+     * @return The webPreviewKind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind getWebPreviewKind() {
+      return instance.getWebPreviewKind();
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+     * @param value The enum numeric value on the wire for webPreviewKind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWebPreviewKind(io.github.lewin671.remoteagent.core.proto.SharedFileWebPreviewKind value) {
+      copyOnWrite();
+      instance.setWebPreviewKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.SharedFileWebPreviewKind web_preview_kind = 31 [json_name = "webPreviewKind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWebPreviewKind() {
+      copyOnWrite();
+      instance.clearWebPreviewKind();
+      return this;
+    }
+
+    /**
+     * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+     * @return The webPreviewMime.
+     */
+    @java.lang.Override
+    public java.lang.String getWebPreviewMime() {
+      return instance.getWebPreviewMime();
+    }
+    /**
+     * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+     * @return The bytes for webPreviewMime.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getWebPreviewMimeBytes() {
+      return instance.getWebPreviewMimeBytes();
+    }
+    /**
+     * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+     * @param value The webPreviewMime to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWebPreviewMime(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setWebPreviewMime(value);
+      return this;
+    }
+    /**
+     * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWebPreviewMime() {
+      copyOnWrite();
+      instance.clearWebPreviewMime();
+      return this;
+    }
+    /**
+     * <code>string web_preview_mime = 32 [json_name = "webPreviewMime"];</code>
+     * @param value The bytes for webPreviewMime to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWebPreviewMimeBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setWebPreviewMimeBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionSharedFileItem)
   }
   @java.lang.Override
@@ -629,16 +2869,48 @@ public  final class SessionSharedFileItem extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "path_",
             "name_",
             "sizeBytes_",
             "mimeType_",
             "fileId_",
             "available_",
+            "sha256_",
+            "displayName_",
+            "nameHead_",
+            "nameTail_",
+            "kind_",
+            "kindLabel_",
+            "sizeText_",
+            "displayPath_",
+            "sourceCaption_",
+            "status_",
+            "subtitle_",
+            "subtitleIsError_",
+            "a11YLabel_",
+            "downloadedBytes_",
+            "progress_",
+            "waitingReconnect_",
+            "primaryAction_",
+            "primaryLabel_",
+            "primaryEnabled_",
+            "primaryDisabledReason_",
+            "menuItems_",
+            io.github.lewin671.remoteagent.core.proto.SharedFileMenuItemView.class,
+            "supportsAlbumSave_",
+            "hasMediaDuration_",
+            "durationText_",
+            "webPreviewKind_",
+            "webPreviewMime_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0002\u0004\u0208\u0005\u0208\u0006\u0007";
+              "\u0000 \u0000\u0001\u0001  \u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0002" +
+              "\u0004\u0208\u0005\u0208\u0006\u0007\u0007\n\b\u0208\t\u0208\n\u0208\u000b\f\f\u1009" +
+              "\u0000\r\u1009\u0001\u000e\u0208\u000f\u1009\u0002\u0010\f\u0011\u1009\u0003\u0012" +
+              "\u0007\u0013\u1009\u0004\u0014\u0002\u0015\u0000\u0016\u0007\u0017\f\u0018\u1009" +
+              "\u0005\u0019\u0007\u001a\u1009\u0006\u001b\u001b\u001c\u0007\u001d\u0007\u001e\u0208" +
+              "\u001f\f \u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

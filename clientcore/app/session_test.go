@@ -1964,3 +1964,193 @@ func TestSessionRetryLoadAction(t *testing.T) {
 		t.Fatalf("expected GetEvents RPC when retrying an already-loaded session with failed event load")
 	}
 }
+
+func TestSharedFileLocalStateEventAndDisplay(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	effStart := c.Dispatch(&corev1.Event{
+		NowMs: 900,
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var tokOp uint64
+	for _, ef := range effStart.GetEffects() {
+		if et := ef.GetEnsureToken(); et != nil {
+			tokOp = et.GetOpId()
+		}
+	}
+	effTok := c.Dispatch(&corev1.Event{
+		NowMs: 910,
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok", ExpiresMs: 60_000},
+		},
+	})
+	var legID uint64
+	for _, ef := range effTok.GetEffects() {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.GetLegId()
+		}
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: 920,
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: 920},
+		},
+	})
+
+	hash := []byte{1, 2, 3, 4}
+	c.Dispatch(&corev1.Event{
+		NowMs: 1000,
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        99_999_999,
+					TrustedMachineIds: []string{"m1"},
+				},
+				Machines: []*corev1.DemoMachine{
+					{
+						MachineId: "m1",
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:        "Studio",
+							Home:            "/Users/me",
+							ProtocolVersion: 17,
+							Capabilities:    &v1.MachineCapabilities{SharedFiles: true},
+						},
+					},
+				},
+				Sessions: []*corev1.DemoSession{
+					{
+						SessionId: "s-sf",
+						MachineId: "m1",
+						LastSeq:   1,
+						Meta:      &v1.Session{Id: "s-sf", Cwd: "/Users/me/proj", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+					},
+				},
+				SessionEvents: []*corev1.DemoSessionEvents{
+					{
+						SessionId: "s-sf",
+						Events: []*v1.Event{
+							{
+								Seq: 1,
+								Kind: &v1.Event_ToolCall{
+									ToolCall: &v1.ToolCall{
+										CallId: "c1",
+										Status: "completed",
+										SharedFiles: []*v1.SharedFile{
+											{
+												FileId:    "f1",
+												Name:      "demo-clip.mp4",
+												Path:      "/Users/me/proj/demo-clip.mp4",
+												SizeBytes: 10 * 1024 * 1024,
+												Sha256:    hash,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	getCard := func() *corev1.SessionSharedFileItem {
+		vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_Session{Session: &corev1.SessionScreenRequest{SessionId: "s-sf"}}})
+		if err != nil {
+			t.Fatalf("View failed: %v", err)
+		}
+		items := vm.GetSession().GetTimeline().GetItems()
+		if len(items) != 1 || items[0].GetSharedFiles() == nil || len(items[0].GetSharedFiles().GetFiles()) != 1 {
+			t.Fatalf("expected 1 shared file item, got %+v", items)
+		}
+		return items[0].GetSharedFiles().GetFiles()[0]
+	}
+
+	// Initially available (demo world is connected + machine online).
+	c0 := getCard()
+	if c0.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE ||
+		c0.GetDisplayPath() != "~/proj/demo-clip.mp4" ||
+		c0.GetSizeText().GetLiteral() != "10.0 MB" ||
+		len(c0.GetSha256()) != 4 {
+		t.Fatalf("unexpected initial card: %+v", c0)
+	}
+
+	// Shell reports downloading with ETA -> emits SESSION render and updates card.
+	effDL := c.Dispatch(&corev1.Event{
+		NowMs: 1100,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{
+						SessionId:       "s-sf",
+						FileId:          "f1",
+						Status:          corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING,
+						DownloadedBytes: 2 * 1024 * 1024,
+						HasEta:          true,
+						EtaSeconds:      65,
+					},
+				},
+			},
+		},
+	})
+	if len(effDL.GetEffects()) == 0 {
+		t.Fatalf("expected render effect after SharedFileLocalStateEvent")
+	}
+	c1 := getCard()
+	if c1.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING ||
+		c1.GetSubtitle().GetKey() != text.KeySharedFileSubtitleDownloadingEta ||
+		c1.GetPrimaryAction() != corev1.SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_PAUSE {
+		t.Fatalf("unexpected downloading card: %+v", c1)
+	}
+
+	// Shell reports downloaded, then metadata-only duration update -> preserves DOWNLOADED and adds duration subtitle.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1200,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED},
+				},
+			},
+		},
+	})
+	c.Dispatch(&corev1.Event{
+		NowMs: 1250,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", MetadataOnly: true, HasDuration: true, DurationMs: 92_000},
+				},
+			},
+		},
+	})
+	c2 := getCard()
+	if c2.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED ||
+		c2.GetDurationText() != "1:32" ||
+		c2.GetSubtitle().GetKey() != text.KeySharedFileSubtitleMediaSize {
+		t.Fatalf("unexpected downloaded card with duration: %+v", c2)
+	}
+
+	// Shell deletes local copy (status=UNSPECIFIED) -> returns to AVAILABLE.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1300,
+		Event: &corev1.Event_SharedFileLocalState{
+			SharedFileLocalState: &corev1.SharedFileLocalStateEvent{
+				Updates: []*corev1.SharedFileLocalStateUpdate{
+					{SessionId: "s-sf", FileId: "f1", Status: corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED},
+				},
+			},
+		},
+	})
+	c3 := getCard()
+	if c3.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE {
+		t.Fatalf("expected AVAILABLE after clearing local copy, got %v", c3.GetStatus())
+	}
+}

@@ -81,6 +81,90 @@ const (
 	SessionToolStatus_SESSION_TOOL_STATUS_BACKGROUND  SessionToolStatus = 6
 )
 
+type SharedFileKind int32
+
+const (
+	SharedFileKind_SHARED_FILE_KIND_UNSPECIFIED SharedFileKind = 0
+	SharedFileKind_SHARED_FILE_KIND_VIDEO       SharedFileKind = 1
+	SharedFileKind_SHARED_FILE_KIND_IMAGE       SharedFileKind = 2
+	SharedFileKind_SHARED_FILE_KIND_AUDIO       SharedFileKind = 3
+	SharedFileKind_SHARED_FILE_KIND_ARCHIVE     SharedFileKind = 4
+	SharedFileKind_SHARED_FILE_KIND_PDF         SharedFileKind = 5
+	SharedFileKind_SHARED_FILE_KIND_DOC         SharedFileKind = 6
+	SharedFileKind_SHARED_FILE_KIND_OTHER       SharedFileKind = 7
+)
+
+type SharedFileWebPreviewKind int32
+
+const (
+	SharedFileWebPreviewKind_SHARED_FILE_WEB_PREVIEW_KIND_UNSPECIFIED SharedFileWebPreviewKind = 0
+	SharedFileWebPreviewKind_SHARED_FILE_WEB_PREVIEW_KIND_IMAGE       SharedFileWebPreviewKind = 1
+	SharedFileWebPreviewKind_SHARED_FILE_WEB_PREVIEW_KIND_VIDEO       SharedFileWebPreviewKind = 2
+	SharedFileWebPreviewKind_SHARED_FILE_WEB_PREVIEW_KIND_AUDIO       SharedFileWebPreviewKind = 3
+)
+
+type SharedFileTransferStatus int32
+
+const (
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED SharedFileTransferStatus = 0
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING SharedFileTransferStatus = 1
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_PAUSED      SharedFileTransferStatus = 2
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADED  SharedFileTransferStatus = 3
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_FAILED      SharedFileTransferStatus = 4
+	SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_CLEANED_UP  SharedFileTransferStatus = 5
+)
+
+type SharedFileFailureKind int32
+
+const (
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_UNSPECIFIED          SharedFileFailureKind = 0
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_DISCONNECTED         SharedFileFailureKind = 1
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH    SharedFileFailureKind = 2
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL   SharedFileFailureKind = 3
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL SharedFileFailureKind = 4
+	SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_OTHER                SharedFileFailureKind = 5
+)
+
+type SharedFileCardStatus int32
+
+const (
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_UNSPECIFIED SharedFileCardStatus = 0
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE   SharedFileCardStatus = 1
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING SharedFileCardStatus = 2
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_PAUSED      SharedFileCardStatus = 3
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED  SharedFileCardStatus = 4
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_FAILED      SharedFileCardStatus = 5
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_OFFLINE     SharedFileCardStatus = 6
+	SharedFileCardStatus_SHARED_FILE_CARD_STATUS_CLEANED     SharedFileCardStatus = 7
+)
+
+type SharedFilePrimaryAction int32
+
+const (
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_UNSPECIFIED SharedFilePrimaryAction = 0
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_DOWNLOAD    SharedFilePrimaryAction = 1
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_PAUSE       SharedFilePrimaryAction = 2
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_RESUME      SharedFilePrimaryAction = 3
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_OPEN        SharedFilePrimaryAction = 4
+	SharedFilePrimaryAction_SHARED_FILE_PRIMARY_ACTION_RETRY       SharedFilePrimaryAction = 5
+)
+
+type SharedFileMenuAction int32
+
+const (
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_UNSPECIFIED     SharedFileMenuAction = 0
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_DOWNLOAD        SharedFileMenuAction = 1
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_PAUSE           SharedFileMenuAction = 2
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_RESUME          SharedFileMenuAction = 3
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_RETRY           SharedFileMenuAction = 4
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD SharedFileMenuAction = 5
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM   SharedFileMenuAction = 6
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_SAVE            SharedFileMenuAction = 7
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_SHARE           SharedFileMenuAction = 8
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_OPEN_WITH       SharedFileMenuAction = 9
+	SharedFileMenuAction_SHARED_FILE_MENU_ACTION_DELETE_LOCAL    SharedFileMenuAction = 10
+)
+
 type SessionNoteTone int32
 
 const (
@@ -3657,11 +3741,15 @@ func (m *SessionTimelineItem) appendMarshalKindPart1(b []byte) ([]byte, bool) {
 }
 
 type SessionFileRefView struct {
-	_         [0]func()
-	Name      string
-	Path      string
-	SizeBytes int64
-	MimeType  string
+	_           [0]func()
+	Name        string
+	Path        string
+	SizeBytes   int64
+	MimeType    string
+	DisplayName string
+	NameHead    string
+	NameTail    string
+	SizeText    *Text
 }
 
 func (m *SessionFileRefView) GetName() string {
@@ -3688,6 +3776,30 @@ func (m *SessionFileRefView) GetMimeType() string {
 	}
 	return ""
 }
+func (m *SessionFileRefView) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *SessionFileRefView) GetNameHead() string {
+	if m != nil {
+		return m.NameHead
+	}
+	return ""
+}
+func (m *SessionFileRefView) GetNameTail() string {
+	if m != nil {
+		return m.NameTail
+	}
+	return ""
+}
+func (m *SessionFileRefView) GetSizeText() *Text {
+	if m != nil {
+		return m.SizeText
+	}
+	return nil
+}
 
 var LitewireDesc_SessionFileRefView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3695,6 +3807,10 @@ var LitewireDesc_SessionFileRefView = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(SessionFileRefView{}.Path), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(SessionFileRefView{}.SizeBytes), Kind: litewire.KindInt64},
 		{Num: 4, Offset: unsafe.Offsetof(SessionFileRefView{}.MimeType), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SessionFileRefView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 6, Offset: unsafe.Offsetof(SessionFileRefView{}.NameHead), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SessionFileRefView{}.NameTail), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SessionFileRefView{}.SizeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -4116,14 +4232,106 @@ func (m *SessionToolGroupItem) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionToolGroupItem)
 }
 
+type SharedFileMenuItemView struct {
+	_              [0]func()
+	Action         SharedFileMenuAction
+	Label          *Text
+	Enabled        bool
+	DisabledReason *Text
+	Destructive    bool
+	Separated      bool
+}
+
+func (m *SharedFileMenuItemView) GetAction() SharedFileMenuAction {
+	if m != nil {
+		return m.Action
+	}
+	return 0
+}
+func (m *SharedFileMenuItemView) GetLabel() *Text {
+	if m != nil {
+		return m.Label
+	}
+	return nil
+}
+func (m *SharedFileMenuItemView) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *SharedFileMenuItemView) GetDisabledReason() *Text {
+	if m != nil {
+		return m.DisabledReason
+	}
+	return nil
+}
+func (m *SharedFileMenuItemView) GetDestructive() bool {
+	if m != nil {
+		return m.Destructive
+	}
+	return false
+}
+func (m *SharedFileMenuItemView) GetSeparated() bool {
+	if m != nil {
+		return m.Separated
+	}
+	return false
+}
+
+var LitewireDesc_SharedFileMenuItemView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.Action), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.Label), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.Enabled), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.DisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.Destructive), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SharedFileMenuItemView{}.Separated), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SharedFileMenuItemView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SharedFileMenuItemView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SharedFileMenuItemView)
+}
+
 type SessionSharedFileItem struct {
-	_         [0]func()
-	Path      string
-	Name      string
-	SizeBytes int64
-	MimeType  string
-	FileId    string
-	Available bool
+	_                     [0]func()
+	Path                  string
+	Name                  string
+	SizeBytes             int64
+	MimeType              string
+	FileId                string
+	Available             bool
+	Sha256                []byte
+	DisplayName           string
+	NameHead              string
+	NameTail              string
+	Kind                  SharedFileKind
+	KindLabel             *Text
+	SizeText              *Text
+	DisplayPath           string
+	SourceCaption         *Text
+	Status                SharedFileCardStatus
+	Subtitle              *Text
+	SubtitleIsError       bool
+	A11YLabel             *Text
+	DownloadedBytes       int64
+	Progress              float64
+	WaitingReconnect      bool
+	PrimaryAction         SharedFilePrimaryAction
+	PrimaryLabel          *Text
+	PrimaryEnabled        bool
+	PrimaryDisabledReason *Text
+	MenuItems             []*SharedFileMenuItemView
+	SupportsAlbumSave     bool
+	HasMediaDuration      bool
+	DurationText          string
+	WebPreviewKind        SharedFileWebPreviewKind
+	WebPreviewMime        string
 }
 
 func (m *SessionSharedFileItem) GetPath() string {
@@ -4162,6 +4370,162 @@ func (m *SessionSharedFileItem) GetAvailable() bool {
 	}
 	return false
 }
+func (m *SessionSharedFileItem) GetSha256() []byte {
+	if m != nil {
+		return m.Sha256
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *SessionSharedFileItem) GetNameHead() string {
+	if m != nil {
+		return m.NameHead
+	}
+	return ""
+}
+func (m *SessionSharedFileItem) GetNameTail() string {
+	if m != nil {
+		return m.NameTail
+	}
+	return ""
+}
+func (m *SessionSharedFileItem) GetKind() SharedFileKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetKindLabel() *Text {
+	if m != nil {
+		return m.KindLabel
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetSizeText() *Text {
+	if m != nil {
+		return m.SizeText
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetDisplayPath() string {
+	if m != nil {
+		return m.DisplayPath
+	}
+	return ""
+}
+func (m *SessionSharedFileItem) GetSourceCaption() *Text {
+	if m != nil {
+		return m.SourceCaption
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetStatus() SharedFileCardStatus {
+	if m != nil {
+		return m.Status
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetSubtitle() *Text {
+	if m != nil {
+		return m.Subtitle
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetSubtitleIsError() bool {
+	if m != nil {
+		return m.SubtitleIsError
+	}
+	return false
+}
+func (m *SessionSharedFileItem) GetA11YLabel() *Text {
+	if m != nil {
+		return m.A11YLabel
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetDownloadedBytes() int64 {
+	if m != nil {
+		return m.DownloadedBytes
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetProgress() float64 {
+	if m != nil {
+		return m.Progress
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetWaitingReconnect() bool {
+	if m != nil {
+		return m.WaitingReconnect
+	}
+	return false
+}
+func (m *SessionSharedFileItem) GetPrimaryAction() SharedFilePrimaryAction {
+	if m != nil {
+		return m.PrimaryAction
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetPrimaryLabel() *Text {
+	if m != nil {
+		return m.PrimaryLabel
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetPrimaryEnabled() bool {
+	if m != nil {
+		return m.PrimaryEnabled
+	}
+	return false
+}
+func (m *SessionSharedFileItem) GetPrimaryDisabledReason() *Text {
+	if m != nil {
+		return m.PrimaryDisabledReason
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetMenuItems() []*SharedFileMenuItemView {
+	if m != nil {
+		return m.MenuItems
+	}
+	return nil
+}
+func (m *SessionSharedFileItem) GetSupportsAlbumSave() bool {
+	if m != nil {
+		return m.SupportsAlbumSave
+	}
+	return false
+}
+func (m *SessionSharedFileItem) GetHasMediaDuration() bool {
+	if m != nil {
+		return m.HasMediaDuration
+	}
+	return false
+}
+func (m *SessionSharedFileItem) GetDurationText() string {
+	if m != nil {
+		return m.DurationText
+	}
+	return ""
+}
+func (m *SessionSharedFileItem) GetWebPreviewKind() SharedFileWebPreviewKind {
+	if m != nil {
+		return m.WebPreviewKind
+	}
+	return 0
+}
+func (m *SessionSharedFileItem) GetWebPreviewMime() string {
+	if m != nil {
+		return m.WebPreviewMime
+	}
+	return ""
+}
 
 var LitewireDesc_SessionSharedFileItem = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4171,6 +4535,32 @@ var LitewireDesc_SessionSharedFileItem = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(SessionSharedFileItem{}.MimeType), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(SessionSharedFileItem{}.FileId), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Available), Kind: litewire.KindBool},
+		{Num: 7, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Sha256), Kind: litewire.KindBytes},
+		{Num: 8, Offset: unsafe.Offsetof(SessionSharedFileItem{}.DisplayName), Kind: litewire.KindString},
+		{Num: 9, Offset: unsafe.Offsetof(SessionSharedFileItem{}.NameHead), Kind: litewire.KindString},
+		{Num: 10, Offset: unsafe.Offsetof(SessionSharedFileItem{}.NameTail), Kind: litewire.KindString},
+		{Num: 11, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Kind), Kind: litewire.KindInt32},
+		{Num: 12, Offset: unsafe.Offsetof(SessionSharedFileItem{}.KindLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 13, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SizeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 14, Offset: unsafe.Offsetof(SessionSharedFileItem{}.DisplayPath), Kind: litewire.KindString},
+		{Num: 15, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SourceCaption), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Status), Kind: litewire.KindInt32},
+		{Num: 17, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Subtitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 18, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SubtitleIsError), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionSharedFileItem{}.A11YLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 20, Offset: unsafe.Offsetof(SessionSharedFileItem{}.DownloadedBytes), Kind: litewire.KindInt64},
+		{Num: 21, Offset: unsafe.Offsetof(SessionSharedFileItem{}.Progress), Kind: litewire.KindDouble},
+		{Num: 22, Offset: unsafe.Offsetof(SessionSharedFileItem{}.WaitingReconnect), Kind: litewire.KindBool},
+		{Num: 23, Offset: unsafe.Offsetof(SessionSharedFileItem{}.PrimaryAction), Kind: litewire.KindInt32},
+		{Num: 24, Offset: unsafe.Offsetof(SessionSharedFileItem{}.PrimaryLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 25, Offset: unsafe.Offsetof(SessionSharedFileItem{}.PrimaryEnabled), Kind: litewire.KindBool},
+		{Num: 26, Offset: unsafe.Offsetof(SessionSharedFileItem{}.PrimaryDisabledReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 27, Offset: unsafe.Offsetof(SessionSharedFileItem{}.MenuItems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SharedFileMenuItemView},
+		{Num: 28, Offset: unsafe.Offsetof(SessionSharedFileItem{}.SupportsAlbumSave), Kind: litewire.KindBool},
+		{Num: 29, Offset: unsafe.Offsetof(SessionSharedFileItem{}.HasMediaDuration), Kind: litewire.KindBool},
+		{Num: 30, Offset: unsafe.Offsetof(SessionSharedFileItem{}.DurationText), Kind: litewire.KindString},
+		{Num: 31, Offset: unsafe.Offsetof(SessionSharedFileItem{}.WebPreviewKind), Kind: litewire.KindInt32},
+		{Num: 32, Offset: unsafe.Offsetof(SessionSharedFileItem{}.WebPreviewMime), Kind: litewire.KindString},
 	},
 }
 
@@ -4998,6 +5388,173 @@ func (m *SessionRetryLoadAction) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRetryLoadAction)
 }
 
+type SharedFileLocalStateUpdate struct {
+	_                [0]func()
+	SessionId        string
+	FileId           string
+	Status           SharedFileTransferStatus
+	DownloadedBytes  int64
+	HasEta           bool
+	EtaSeconds       int64
+	WaitingReconnect bool
+	HasDuration      bool
+	DurationMs       int64
+	FailureKind      SharedFileFailureKind
+	FailureDetail    string
+	MetadataOnly     bool
+}
+
+func (m *SharedFileLocalStateUpdate) GetSessionId() string {
+	if m != nil {
+		return m.SessionId
+	}
+	return ""
+}
+func (m *SharedFileLocalStateUpdate) GetFileId() string {
+	if m != nil {
+		return m.FileId
+	}
+	return ""
+}
+func (m *SharedFileLocalStateUpdate) GetStatus() SharedFileTransferStatus {
+	if m != nil {
+		return m.Status
+	}
+	return 0
+}
+func (m *SharedFileLocalStateUpdate) GetDownloadedBytes() int64 {
+	if m != nil {
+		return m.DownloadedBytes
+	}
+	return 0
+}
+func (m *SharedFileLocalStateUpdate) GetHasEta() bool {
+	if m != nil {
+		return m.HasEta
+	}
+	return false
+}
+func (m *SharedFileLocalStateUpdate) GetEtaSeconds() int64 {
+	if m != nil {
+		return m.EtaSeconds
+	}
+	return 0
+}
+func (m *SharedFileLocalStateUpdate) GetWaitingReconnect() bool {
+	if m != nil {
+		return m.WaitingReconnect
+	}
+	return false
+}
+func (m *SharedFileLocalStateUpdate) GetHasDuration() bool {
+	if m != nil {
+		return m.HasDuration
+	}
+	return false
+}
+func (m *SharedFileLocalStateUpdate) GetDurationMs() int64 {
+	if m != nil {
+		return m.DurationMs
+	}
+	return 0
+}
+func (m *SharedFileLocalStateUpdate) GetFailureKind() SharedFileFailureKind {
+	if m != nil {
+		return m.FailureKind
+	}
+	return 0
+}
+func (m *SharedFileLocalStateUpdate) GetFailureDetail() string {
+	if m != nil {
+		return m.FailureDetail
+	}
+	return ""
+}
+func (m *SharedFileLocalStateUpdate) GetMetadataOnly() bool {
+	if m != nil {
+		return m.MetadataOnly
+	}
+	return false
+}
+
+var LitewireDesc_SharedFileLocalStateUpdate = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SharedFileLocalStateUpdate{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.SessionId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.FileId), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.Status), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.DownloadedBytes), Kind: litewire.KindInt64},
+		{Num: 5, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.HasEta), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.EtaSeconds), Kind: litewire.KindInt64},
+		{Num: 7, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.WaitingReconnect), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.HasDuration), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.DurationMs), Kind: litewire.KindInt64},
+		{Num: 10, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.FailureKind), Kind: litewire.KindInt32},
+		{Num: 11, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.FailureDetail), Kind: litewire.KindString},
+		{Num: 12, Offset: unsafe.Offsetof(SharedFileLocalStateUpdate{}.MetadataOnly), Kind: litewire.KindBool},
+	},
+}
+
+func (m *SharedFileLocalStateUpdate) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SharedFileLocalStateUpdate)
+}
+
+type SharedFileLocalStateEvent struct {
+	_              [0]func()
+	Updates        []*SharedFileLocalStateUpdate
+	ReplaceAll     bool
+	ClearSessionId string
+}
+
+func (m *SharedFileLocalStateEvent) GetUpdates() []*SharedFileLocalStateUpdate {
+	if m != nil {
+		return m.Updates
+	}
+	return nil
+}
+func (m *SharedFileLocalStateEvent) GetReplaceAll() bool {
+	if m != nil {
+		return m.ReplaceAll
+	}
+	return false
+}
+func (m *SharedFileLocalStateEvent) GetClearSessionId() string {
+	if m != nil {
+		return m.ClearSessionId
+	}
+	return ""
+}
+
+var LitewireDesc_SharedFileLocalStateEvent = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&SharedFileLocalStateEvent{}) },
+	Fields: []litewire.Field{
+		{Num: 2, Offset: unsafe.Offsetof(SharedFileLocalStateEvent{}.ReplaceAll), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SharedFileLocalStateEvent{}.ClearSessionId), Kind: litewire.KindString},
+	},
+}
+
+func (m *SharedFileLocalStateEvent) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SharedFileLocalStateEvent)
+}
+
+func extraUnmarshal_SharedFileLocalStateEvent(base unsafe.Pointer, num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	m := (*SharedFileLocalStateEvent)(base)
+	b := *bp
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 1:
+			elem := &SharedFileLocalStateUpdate{}
+			m.Updates = append(m.Updates, elem)
+			if err := litewire.ReadMessage(&b, elem); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 type SessionRestoreComposerEffect struct {
 	_         [0]func()
 	SessionId string
@@ -5141,4 +5698,5 @@ func (m *SessionResendAttachmentsEffect) AppendMarshal(b []byte) []byte {
 func init() {
 	LitewireDesc_SessionDockView.ExtraMarshal = extraMarshal_SessionDockView
 	LitewireDesc_SessionTimelineItem.ExtraMarshal = extraMarshal_SessionTimelineItem
+	LitewireDesc_SharedFileLocalStateEvent.ExtraUnmarshal = extraUnmarshal_SharedFileLocalStateEvent
 }

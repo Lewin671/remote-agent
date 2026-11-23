@@ -51,4 +51,51 @@ public interface SessionFileRefViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMimeTypeBytes();
+
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  java.lang.String getDisplayName();
+  /**
+   * <code>string display_name = 5 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  com.google.protobuf.ByteString
+      getDisplayNameBytes();
+
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @return The nameHead.
+   */
+  java.lang.String getNameHead();
+  /**
+   * <code>string name_head = 6 [json_name = "nameHead"];</code>
+   * @return The bytes for nameHead.
+   */
+  com.google.protobuf.ByteString
+      getNameHeadBytes();
+
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @return The nameTail.
+   */
+  java.lang.String getNameTail();
+  /**
+   * <code>string name_tail = 7 [json_name = "nameTail"];</code>
+   * @return The bytes for nameTail.
+   */
+  com.google.protobuf.ByteString
+      getNameTailBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   * @return Whether the sizeText field is set.
+   */
+  boolean hasSizeText();
+  /**
+   * <code>.remoteagent.core.v1.Text size_text = 8 [json_name = "sizeText"];</code>
+   * @return The sizeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSizeText();
 }
