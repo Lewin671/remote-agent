@@ -1810,4 +1810,128 @@ func TestSharedFileDownloadCancelDeleteAndAutoOpenTickets(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("pause and STOP during VERIFYING do not discard verified download", func(t *testing.T) {
+		cases := []struct {
+			name        string
+			deliverOnly bool
+			isStop      bool
+			wantStatus  corev1.SharedFileCardStatus
+		}{
+			{
+				name:        "pause during cached VERIFYING is ignored and settles DOWNLOADED",
+				deliverOnly: false,
+				isStop:      false,
+				wantStatus:  corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED,
+			},
+			{
+				name:        "pause during deliver_only VERIFYING is ignored and settles AVAILABLE",
+				deliverOnly: true,
+				isStop:      false,
+				wantStatus:  corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE,
+			},
+			{
+				name:        "STOP during cached VERIFYING revokes auto_open and settles DOWNLOADED",
+				deliverOnly: false,
+				isStop:      true,
+				wantStatus:  corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADED,
+			},
+			{
+				name:        "STOP during deliver_only VERIFYING settles AVAILABLE without DeleteLocal",
+				deliverOnly: true,
+				isStop:      true,
+				wantStatus:  corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_AVAILABLE,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				h := newSFHarness(t, block, &v1.SharedFile{FileId: "f-vp", Name: "pack.zip", SizeBytes: 64, Sha256: sfTestHash(0xda)})
+				if tc.deliverOnly {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFileConfig{
+							SharedFileConfig: &corev1.SharedFileConfigEvent{
+								LocalCacheMaxBytes: 32,
+								StorageFullKind:    corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_BROWSER_STORAGE_FULL,
+							},
+						},
+					})
+				}
+				h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileSetVisibleSession{
+						SharedFileSetVisibleSession: &corev1.SharedFileSetVisibleSessionAction{SessionId: h.sessionID},
+					},
+				})
+				eff := h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileStartDownload{
+						SharedFileStartDownload: &corev1.SharedFileStartDownloadAction{
+							SessionId:         h.sessionID,
+							FileId:            "f-vp",
+							AutoOpenIfStaying: true,
+						},
+					},
+				})
+				insp := findInspectDisk(eff)
+				eff = h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileDiskInspected{
+						SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-vp", Known: false},
+					},
+				})
+				dc, _ := findDispatchChunk(eff)
+				eff = h.deliverChunkOK(dc, bytes.Repeat([]byte{2}, 64), 64)
+				wc := findWriteChunk(eff)
+				eff = h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileWriteChunkResult{
+						SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{OpId: wc.GetOpId(), SessionId: h.sessionID, FileId: "f-vp", Ok: true},
+					},
+				})
+				vc := findVerifyCommit(eff)
+				if vc == nil || vc.GetDeliverOnly() != tc.deliverOnly {
+					t.Fatalf("expected VerifyAndCommit(deliverOnly=%v), got %+v", tc.deliverOnly, vc)
+				}
+
+				if tc.isStop {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SyncLifecycle{
+							SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
+						},
+					})
+				} else {
+					h.dispatch(&corev1.Event{
+						Event: &corev1.Event_SharedFilePauseDownload{
+							SharedFilePauseDownload: &corev1.SharedFilePauseDownloadAction{SessionId: h.sessionID, FileId: "f-vp"},
+						},
+					})
+				}
+				if c := h.card("f-vp"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_DOWNLOADING {
+					t.Fatalf("expected card to remain DOWNLOADING during VERIFYING, got %+v", c)
+				}
+
+				effDone := h.dispatch(&corev1.Event{
+					Event: &corev1.Event_SharedFileVerifyAndCommitResult{
+						SharedFileVerifyAndCommitResult: &corev1.SharedFileVerifyAndCommitResultEvent{
+							OpId:      vc.GetOpId(),
+							SessionId: h.sessionID,
+							FileId:    "f-vp",
+							Ok:        true,
+						},
+					},
+				})
+				if findDeleteLocal(effDone) != nil {
+					t.Fatalf("must not emit DeleteLocal after pause/STOP during VERIFYING")
+				}
+				comp := findCompleted(effDone)
+				if comp == nil || comp.GetDeliverOnly() != tc.deliverOnly {
+					t.Fatalf("expected SharedFileCompletedEffect(deliverOnly=%v), got %+v", tc.deliverOnly, comp)
+				}
+				wantAutoOpen := !tc.isStop && !tc.deliverOnly
+				if comp.GetAutoOpen() != wantAutoOpen {
+					t.Fatalf("auto_open = %v, want %v", comp.GetAutoOpen(), wantAutoOpen)
+				}
+				if c := h.card("f-vp"); c.GetStatus() != tc.wantStatus {
+					t.Fatalf("final status = %v, want %v", c.GetStatus(), tc.wantStatus)
+				}
+			})
+		}
+	})
 }

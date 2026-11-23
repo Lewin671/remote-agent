@@ -994,7 +994,9 @@ func (c *Core) handleSharedFilePauseDownload(ctx *sync.StepContext, act *corev1.
 	mgr := c.m.sharedFiles
 	key := sfKey{sessionID: act.SessionId, fileID: act.FileId}
 	entry := mgr.entries[key]
-	if entry == nil || entry.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
+	if entry == nil ||
+		entry.status != corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING ||
+		entry.phase == sfPhaseVerifying {
 		return nil
 	}
 	c.pauseEntry(ctx, mgr, entry)
@@ -1211,12 +1213,17 @@ func (c *Core) onSharedFilesSyncEvent(ev *corev1.Event, effects *[]*corev1.Effec
 				}
 			}
 		case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
-			// Stopping sync pauses all active downloads (keeping partial blocks on disk for resume) and revokes tickets.
+			// Stopping sync pauses active network/disk downloads (keeping partial blocks on disk for resume)
+			// and revokes auto-open tickets, while letting entries already in local VERIFYING finish settling.
 			var activeKeys []string
 			for key, entry := range mgr.entries {
-				if entry != nil && entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING {
+				if entry == nil {
+					continue
+				}
+				if entry.status == corev1.SharedFileTransferStatus_SHARED_FILE_TRANSFER_STATUS_DOWNLOADING &&
+					entry.phase != sfPhaseVerifying {
 					activeKeys = append(activeKeys, key.timerKey())
-				} else if entry != nil {
+				} else {
 					entry.autoOpen = false
 				}
 			}
