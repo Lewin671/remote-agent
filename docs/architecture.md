@@ -993,6 +993,7 @@ Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGR
 - **Android**：生成完整中文 values、values-b+zh+Hans、values-en 的 strings/plurals，所有格式参数为位置参数；app 在明确 locale 的 Configuration Context 中读取资源。纯 JVM core 只提供 typed `UiMessages` 工厂与 `UiMessage(key,args)`，在 app 显示边界 resolve，不引入 R/Context。图片错误推导保持原逻辑，只有混合失败汇总在显示边界解析数量消息。
 - **iOS**：生成手工管理的 String Catalog，以及同源的原生 `.strings`/`.stringsdict` 给 SwiftPM（命令行 swift test 不编译 Catalog）。Catalog 在 iOS 检查中经 xcstringstool 验证；SwiftPM 用 defaultLocalization 与 Resources 处理，wrapper 始终找 RACore 的 Bundle.module 对应 lproj。原生位置参数支持重排；阶段 0 数字保留原始无分组十进制，格式 locale 用 en_US_POSIX，简中资源只有 other、英文资源用整数 one/other。扩展其他语言/数字格式前要补充对应契约，不能直接沿用这个限制。
 - **Go**：`internal/i18n` 内嵌生成表并提供有类型的函数参数。Resolve 使用同源规则，现有 CLI 输出尚未抽取，也不修改子进程的语言环境。
+- **共享核心（`clientcore`）的按语言数字格式例外**：核心默认只输出 `corev1.Text` 的 key 与参数，由各端渲染；唯一例外是按语言区分缩写单位的数字字面量（如模型用量的 token 紧缩格式：中文「万/亿」、英文「k/M/B」）。三端壳在启动与语言切换时通过 `LocaleChangedEvent` 传入当前 BCP 47 界面语言，核心按语言族（中文 / 非中文）直接输出最终的 `Text.literal`，并在语言族变化时刷新受影响屏幕。理由是：紧缩数值的进位、小数位数与分档规则属于跨端一致的业务口径，集中到核心可防止三端漂移；同时用核心状态 `ui_locale` 替代在 proto 上按语言平铺多份字面量字段，后续新增语言时无需改动协议结构。
 
 生成的语言资源嵌入现有二进制/网页资源，不新增压缩包成员或独立语言包。i18n 源和编译器计入产品变化；公开扫描也检查译者说明与源数据。release-task、Release checks、build-dist 和 iOS 流水线拒绝过期产物或新增写死文案。用法与抽取步骤见 [development.md](development.md#文案生成与检查)，文案和译审规则见 [design-system.md](design-system.md#8-文案)。
 

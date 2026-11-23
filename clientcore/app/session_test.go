@@ -1721,6 +1721,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 			Agent:           v1.Agent_AGENT_ANTIGRAVITY,
 			Status:          v1.SessionStatus_SESSION_STATUS_RUNNING,
 			ScheduledTaskId: "task-1",
+			TaskOwned:       true,
 		},
 	}
 	agyVM := screens.BuildSessionView(
@@ -1757,5 +1758,37 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	}
 	if agyVM.GetComposer().GetSlashWarningTitle().GetKey() != text.KeyComposerSlashTitle || agyVM.GetComposer().GetSlashWarningText().GetKey() != text.KeyComposerSlashNote {
 		t.Fatalf("expected slash warning texts on composer")
+	}
+
+	// Claimed scheduled session retains ScheduledTaskId (IsScheduled=true) while TaskOwned becomes false.
+	claimedSess := &lists.Session{
+		ID:        "s-agy-claimed",
+		MachineID: "m1",
+		Info: &v1.Session{
+			Id:              "s-agy-claimed",
+			Cwd:             "/Users/me/work/repo",
+			Agent:           v1.Agent_AGENT_ANTIGRAVITY,
+			Status:          v1.SessionStatus_SESSION_STATUS_RUNNING,
+			ScheduledTaskId: "task-1",
+			TaskOwned:       false,
+		},
+	}
+	claimedVM := screens.BuildSessionView(
+		world.SessionSnapshot{
+			Found:           true,
+			SessionsListed:  true,
+			LiveLoaded:      true,
+			Conn:            lists.ConnConnected,
+			ProtocolVersion: 17,
+			Session:         claimedSess,
+			Machine:         agySt.World.Machines[0],
+		},
+		agySt,
+		&corev1.SessionScreenRequest{SessionId: "s-agy-claimed"},
+		screens.NewSessionUIState(),
+	)
+	if !claimedVM.GetHeader().GetIsScheduled() || claimedVM.GetHeader().GetTaskOwned() {
+		t.Fatalf("expected claimed scheduled session to have IsScheduled=true and TaskOwned=false, got isScheduled=%v taskOwned=%v",
+			claimedVM.GetHeader().GetIsScheduled(), claimedVM.GetHeader().GetTaskOwned())
 	}
 }

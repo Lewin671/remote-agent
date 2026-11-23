@@ -922,10 +922,10 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if !e.running {
 			return
 		}
-		if len(outS) == 0 {
+		if len(outS) == 0 || outS[0].OpenFailed {
 			if m.sid != "" {
 				e.sessionByIDFailed[m.sid] = true
-				delete(e.sessionByIDErrors, m.sid)
+				e.sessionByIDErrors[m.sid] = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
 			}
 			stepCtx.Dirty.Add(false, true, false)
 			stepCtx.Dirty.MarkSessionData()

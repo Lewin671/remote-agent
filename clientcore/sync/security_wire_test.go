@@ -17,6 +17,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -1373,5 +1374,121 @@ func TestCommandRetryResealsEnvelopeAfterContentEpochRotation(t *testing.T) {
 	}
 	if hdr2.ContentEpoch != s2.Core.ContentEpoch || hdr2.State != s2Hash {
 		t.Fatalf("expected retried envelope resealed at epoch=%d head=%x, got epoch=%d head=%x", s2.Core.ContentEpoch, s2Hash, hdr2.ContentEpoch, hdr2.State)
+	}
+}
+
+func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
+	nowMs := int64(1_700_000_000_000)
+	phone := newSyncTestActor(t, 11)
+	machine := newSyncTestActor(t, 12)
+	rec := newSyncTestActor(t, 13)
+	dom := devicesec.Digest("sync-session-by-id", []byte{2})
+	sec := bytes.Repeat([]byte{0x55}, 32)
+	u0, err := devicesec.NewGenesis(phone.id, dom, phone.member(devicesec.Client), [32]byte(rec.edP), sec, uint64(nowMs), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(phone.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	gen, _ := s0.Hash()
+
+	u1, err := devicesec.NewMembershipState(s0, []devicesec.Member{phone.member(devicesec.Client), machine.member(devicesec.Machine)}, nil, sec, sec, uint64(nowMs+10), syncTestHPKE{}, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(phone.ed, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	lease, _ := devicesec.NewLease(s1, uint64(nowMs+10))
+	lb, _ := lease.SigningBytes()
+	lease.Signature = ed25519.Sign(phone.ed, lb)
+	leaseRaw, _ := lease.MarshalBinary()
+
+	e := NewEngine()
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 20,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{Account: phone.id, DeviceId: phone.id, InlineCrypto: true},
+		},
+	})
+	recRes := applyTestSecurityRecord(e, nowMs+20, security.RecordUpdate{
+		NetworkGeneration: 1,
+		Account:           phone.id,
+		Domain:            dom[:],
+		Genesis:           gen[:],
+		States:            [][]byte{s0Raw, s1Raw},
+		Lease:             leaseRaw,
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+20, recRes)
+
+	// Start sync so e.running == true.
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+
+	fetchOp := func(sid string) uint64 {
+		_, res := e.HandleEvent(&corev1.Event{
+			NowMs: nowMs + 40,
+			Event: &corev1.Event_FetchSession{FetchSession: &corev1.FetchSessionAction{SessionId: sid}},
+		})
+		for _, ef := range res.Effects {
+			if rpc := ef.GetRpc(); rpc != nil && rpc.GetFetchSessionById() != nil && rpc.GetFetchSessionById().SessionId == sid {
+				return rpc.OpId
+			}
+		}
+		t.Fatalf("expected FetchSessionById RPC for %s", sid)
+		return 0
+	}
+
+	// 1. Server returns empty WireSession with no error -> missing (LookupFailed=true, LookupErrorText=nil).
+	opEmpty := fetchOp("s-missing")
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 50,
+		Event: &corev1.Event_SessionByIdFetched{SessionByIdFetched: &corev1.SessionByIdFetchedEvent{OpId: opEmpty}},
+	})
+	snapMissing := e.SessionSnapshot("s-missing")
+	if !snapMissing.LookupFailed || snapMissing.LookupErrorText != nil || snapMissing.Found {
+		t.Fatalf("expected missing snapshot (LookupFailed=true, LookupErrorText=nil), got %+v", snapMissing)
+	}
+
+	// 2. Server returns a WireSession whose encrypted metadata is tampered -> read failure with error reason, NOT missing.
+	metaBytes, _ := (&v1.Session{Id: "s-bad", Cwd: "/repo"}).Marshal()
+	badEnv := sealWireObj(t, machine, dom, s1, sec, nil, metaBytes, devicesec.SessionMeta, machine.id, "s-bad", "", 1)
+	badEnv.Ciphertext[0] ^= 0xff // tamper ciphertext so opening fails
+
+	opBad := fetchOp("s-bad")
+	_, stepBad := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 60,
+		Event: &corev1.Event_SessionByIdFetched{
+			SessionByIdFetched: &corev1.SessionByIdFetchedEvent{
+				OpId: opBad,
+				WireSession: &v1.RemoteSession{
+					SessionId: "s-bad",
+					MachineId: machine.id,
+					Meta:      badEnv,
+				},
+			},
+		},
+	})
+	pumpSecurityEffects(t, e, phone, nowMs+60, stepBad)
+
+	snapBad := e.SessionSnapshot("s-bad")
+	if !snapBad.LookupFailed || snapBad.Found || snapBad.LookupErrorText == nil || snapBad.LookupErrorText.GetKey() != text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed {
+		t.Fatalf("expected decrypt failure to report LookupErrorText reason (retryable, not missing), got found=%v failed=%v err=%+v",
+			snapBad.Found, snapBad.LookupFailed, snapBad.LookupErrorText)
+	}
+
+	// 3. Retrying FetchSessionAction clears the prior error and issues a fresh FetchSessionById RPC.
+	opRetry := fetchOp("s-bad")
+	if opRetry == 0 || opRetry == opBad {
+		t.Fatalf("expected new retry FetchSessionById opID, got %d", opRetry)
+	}
+	snapRetrying := e.SessionSnapshot("s-bad")
+	if !snapRetrying.LookingUp || snapRetrying.LookupFailed || snapRetrying.LookupErrorText != nil {
+		t.Fatalf("expected retrying snapshot to clear previous failure, got %+v", snapRetrying)
 	}
 }

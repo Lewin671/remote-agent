@@ -709,14 +709,17 @@ func TestAntigravityUsageWithoutSpeedInUsageMachineAndSession(t *testing.T) {
 		}
 	}
 
-	// Switching to "en" refreshes Usage, MachineStatus, MachineSettings, and Session and formats tokens as "110k".
+	// Switching between language families refreshes Usage/MachineStatus/MachineSettings/Session,
+	// while equivalent region/script variants (e.g. "en" -> "en-US", "zh-CN" -> "zh-Hans") are no-ops.
 	enSteps := []struct {
-		locale       string
-		wantRender   bool
-		wantTokens   string
+		locale     string
+		wantRender bool
+		wantTokens string
 	}{
+		{"zh-Hans", false, "11万"},
 		{"en", true, "110k"},
 		{"en", false, "110k"},
+		{"en-US", false, "110k"},
 		{"zh-CN", true, "11万"},
 		{"en-US", true, "110k"},
 		{"", true, "11万"},

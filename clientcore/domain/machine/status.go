@@ -68,6 +68,12 @@ func formatSize(bytes uint64, binary bool) *corev1.Text {
 		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", gbNumber(bytes, binary)))
 	}
 	mb := math.Round(float64(bytes) / float64(mi))
+	if !binary && mb >= 1000 {
+		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", "1"))
+	}
+	if binary && mb >= 1024 {
+		return text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", "1"))
+	}
 	return text.Msg(text.KeyMachineStatusSizeMb, text.Str("size", strconv.FormatFloat(mb, 'f', 0, 64)))
 }
 
@@ -332,9 +338,16 @@ func BuildDiskSection(status *v1.MachineStatus) *corev1.MachineDiskSection {
 		diskValStr = gbNumber(d.AvailableBytes, false)
 		diskUnit = "GB"
 	} else {
-		diskVal = math.Round(float64(d.AvailableBytes) / float64(mbBytes))
-		diskValStr = strconv.FormatFloat(diskVal, 'f', 0, 64)
-		diskUnit = "MB"
+		mb := math.Round(float64(d.AvailableBytes) / float64(mbBytes))
+		if mb >= 1000 {
+			diskVal = float64(d.AvailableBytes) / float64(gbBytes)
+			diskValStr = "1"
+			diskUnit = "GB"
+		} else {
+			diskVal = mb
+			diskValStr = strconv.FormatFloat(mb, 'f', 0, 64)
+			diskUnit = "MB"
+		}
 	}
 
 	var state corev1.DiskPressureState
@@ -632,8 +645,6 @@ func BuildUsageRows(
 			SessionId:         knownID,
 			CpuBarFraction:    cpuFrac,
 			MemoryBarFraction: memFrac,
-			CpuBarPercent:     int32(math.Round(cpuFrac * 100.0)),
-			MemoryBarPercent:  int32(math.Round(memFrac * 100.0)),
 			CpuValueText:      cpuTxt,
 			MemoryValueText:   memTxt,
 		})

@@ -216,7 +216,7 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 			},
 		},
 	})
-	c.Dispatch(&corev1.Event{
+	schedBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1110,
 		Event: &corev1.Event_ProjectOpenDirPicker{
 			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{
@@ -227,6 +227,15 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 			},
 		},
 	})
+	var schedDC *corev1.DispatchCommandEffect
+	for _, eff := range schedBatch.Effects {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			schedDC = dc
+		}
+	}
+	if schedDC == nil {
+		t.Fatalf("expected DispatchCommand for schedule ListDirectories")
+	}
 
 	viewPicker := func(key string) *corev1.DirPickerView {
 		vm, err := c.View(&corev1.Screen{
@@ -265,5 +274,44 @@ func TestDirPickerKeyedIsolation(t *testing.T) {
 	}
 	if got := viewPicker("manage"); !got.GetOpen() || got.GetCurrentPath() != "/Users/alice/manage" {
 		t.Fatalf("closing schedule picker affected manage picker: %+v", got)
+	}
+
+	// A late ListDirectories response for the closed "schedule" picker must be dropped without recreating it.
+	c.Dispatch(&corev1.Event{
+		NowMs: 1130,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         schedDC.RequestId,
+				AttemptId:         schedDC.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				AttemptBound:      true,
+				Signed:            true,
+				HashesMatch:       true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind: &v1.CommandResult_ListDirectories{
+						ListDirectories: &v1.ListDirectoriesResponse{
+							Path:   "/Users/alice/schedule",
+							Parent: "/Users/alice",
+							Dirs:   []string{"late-dir"},
+						},
+					},
+				},
+			},
+		},
+	})
+	if _, stillPending := c.m.pendingCmdMeta[schedDC.RequestId]; stillPending {
+		t.Fatalf("expected late ListDirectories command outcome to settle and consume pendingCmdMeta")
+	}
+	if c.m.state.DirPickers["schedule"] != nil {
+		t.Fatalf("late ListDirectories response recreated closed picker: %+v", c.m.state.DirPickers["schedule"])
+	}
+	if p := viewPicker("schedule"); p.GetOpen() || len(p.GetDirs()) != 0 {
+		t.Fatalf("closed schedule picker should stay empty after late ListDirectories, got %+v", p)
 	}
 }

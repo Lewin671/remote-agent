@@ -4,7 +4,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 // SessionSnapshot gathers the current sync state and zero-copy shown events for sessionID.
@@ -30,8 +29,8 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 	}
 	if !out.LookingUp && e.sessionByIDFailed[sessionID] {
 		out.LookupFailed = true
-		if errMsg := e.sessionByIDErrors[sessionID]; errMsg != "" {
-			out.LookupErrorText = text.Plain(errMsg)
+		if errTxt := e.sessionByIDErrors[sessionID]; errTxt != nil {
+			out.LookupErrorText = errTxt
 		}
 	}
 

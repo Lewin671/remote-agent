@@ -350,6 +350,16 @@ func TestMachineStatusRawValuesUnitsAndTopUsageBars(t *testing.T) {
 	if disk.ValueText != "512" || disk.Unit != "MB" || disk.AvailableBytes != 512_000_000 {
 		t.Fatalf("unexpected sub-GB Disk section raw values: %+v", disk)
 	}
+	status.Disk.AvailableBytes = 999_600_000 // rounds to 1000 MB -> must carry over to 1 GB
+	diskCarry := BuildDiskSection(status)
+	if diskCarry.ValueText != "1" || diskCarry.Unit != "GB" || diskCarry.Headline.GetKey() != text.KeyMachineStatusSizeGb {
+		t.Fatalf("expected 999.6 MB disk to carry over to 1 GB, got value=%q unit=%q headline=%+v", diskCarry.ValueText, diskCarry.Unit, diskCarry.Headline)
+	}
+	status.Disk.AvailableBytes = 999_400_000 // rounds to 999 MB -> stays MB
+	disk999 := BuildDiskSection(status)
+	if disk999.ValueText != "999" || disk999.Unit != "MB" || disk999.Headline.GetKey() != text.KeyMachineStatusSizeMb {
+		t.Fatalf("expected 999.4 MB disk to stay 999 MB, got value=%q unit=%q headline=%+v", disk999.ValueText, disk999.Unit, disk999.Headline)
+	}
 	status.Disk.AvailableBytes = 24_000_000_000
 	diskGB := BuildDiskSection(status)
 	if diskGB.ValueText != "24" || diskGB.Unit != "GB" {
@@ -363,9 +373,9 @@ func TestMachineStatusRawValuesUnitsAndTopUsageBars(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 usage rows, got %d", len(rows))
 	}
-	if rows[0].CpuBarPercent != 100 || rows[0].MemoryBarPercent != 50 || rows[1].CpuBarPercent != 25 || rows[1].MemoryBarPercent != 100 {
-		t.Fatalf("unexpected normalized usage bar percents: r0=(%d,%d) r1=(%d,%d)",
-			rows[0].CpuBarPercent, rows[0].MemoryBarPercent, rows[1].CpuBarPercent, rows[1].MemoryBarPercent)
+	if rows[0].CpuBarFraction != 1.0 || rows[0].MemoryBarFraction != 0.5 || rows[1].CpuBarFraction != 0.25 || rows[1].MemoryBarFraction != 1.0 {
+		t.Fatalf("unexpected normalized usage bar fractions: r0=(%v,%v) r1=(%v,%v)",
+			rows[0].CpuBarFraction, rows[0].MemoryBarFraction, rows[1].CpuBarFraction, rows[1].MemoryBarFraction)
 	}
 	if rows[0].GetCpuValueText().GetLiteral() != "80%" || rows[0].GetMemoryValueText() == nil {
 		t.Fatalf("expected formatted cpu/memory values on usage row: %+v", rows[0])

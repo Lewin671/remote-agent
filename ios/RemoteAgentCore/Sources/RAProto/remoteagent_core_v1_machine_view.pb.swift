@@ -1100,16 +1100,6 @@ public struct PBMachineUsageRow: @unchecked Sendable {
     set {_uniqueStorage()._memoryBarFraction = newValue}
   }
 
-  public var cpuBarPercent: Int32 {
-    get {return _storage._cpuBarPercent}
-    set {_uniqueStorage()._cpuBarPercent = newValue}
-  }
-
-  public var memoryBarPercent: Int32 {
-    get {return _storage._memoryBarPercent}
-    set {_uniqueStorage()._memoryBarPercent = newValue}
-  }
-
   public var cpuValueText: PBCoreText {
     get {return _storage._cpuValueText ?? PBCoreText()}
     set {_uniqueStorage()._cpuValueText = newValue}
@@ -2994,7 +2984,7 @@ extension PBMachineDiskSection: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
 
 extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineUsageRow"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}secondary\0\u{3}cpu_percent\0\u{3}memory_bytes\0\u{1}agent\0\u{3}session_id\0\u{3}cpu_bar_fraction\0\u{3}memory_bar_fraction\0\u{3}cpu_bar_percent\0\u{3}memory_bar_percent\0\u{3}cpu_value_text\0\u{3}memory_value_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}title\0\u{1}secondary\0\u{3}cpu_percent\0\u{3}memory_bytes\0\u{1}agent\0\u{3}session_id\0\u{3}cpu_bar_fraction\0\u{3}memory_bar_fraction\0\u{3}cpu_value_text\0\u{3}memory_value_text\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3006,8 +2996,6 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
     var _sessionID: String = String()
     var _cpuBarFraction: Double = 0
     var _memoryBarFraction: Double = 0
-    var _cpuBarPercent: Int32 = 0
-    var _memoryBarPercent: Int32 = 0
     var _cpuValueText: PBCoreText? = nil
     var _memoryValueText: PBCoreText? = nil
 
@@ -3029,8 +3017,6 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       _sessionID = source._sessionID
       _cpuBarFraction = source._cpuBarFraction
       _memoryBarFraction = source._memoryBarFraction
-      _cpuBarPercent = source._cpuBarPercent
-      _memoryBarPercent = source._memoryBarPercent
       _cpuValueText = source._cpuValueText
       _memoryValueText = source._memoryValueText
     }
@@ -3060,10 +3046,8 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._sessionID) }()
         case 8: try { try decoder.decodeSingularDoubleField(value: &_storage._cpuBarFraction) }()
         case 9: try { try decoder.decodeSingularDoubleField(value: &_storage._memoryBarFraction) }()
-        case 10: try { try decoder.decodeSingularInt32Field(value: &_storage._cpuBarPercent) }()
-        case 11: try { try decoder.decodeSingularInt32Field(value: &_storage._memoryBarPercent) }()
-        case 12: try { try decoder.decodeSingularMessageField(value: &_storage._cpuValueText) }()
-        case 13: try { try decoder.decodeSingularMessageField(value: &_storage._memoryValueText) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._cpuValueText) }()
+        case 11: try { try decoder.decodeSingularMessageField(value: &_storage._memoryValueText) }()
         default: break
         }
       }
@@ -3103,17 +3087,11 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
       if _storage._memoryBarFraction.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._memoryBarFraction, fieldNumber: 9)
       }
-      if _storage._cpuBarPercent != 0 {
-        try visitor.visitSingularInt32Field(value: _storage._cpuBarPercent, fieldNumber: 10)
-      }
-      if _storage._memoryBarPercent != 0 {
-        try visitor.visitSingularInt32Field(value: _storage._memoryBarPercent, fieldNumber: 11)
-      }
       try { if let v = _storage._cpuValueText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 12)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
       } }()
       try { if let v = _storage._memoryValueText {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 13)
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 11)
       } }()
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -3133,8 +3111,6 @@ extension PBMachineUsageRow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
         if _storage._sessionID != rhs_storage._sessionID {return false}
         if _storage._cpuBarFraction != rhs_storage._cpuBarFraction {return false}
         if _storage._memoryBarFraction != rhs_storage._memoryBarFraction {return false}
-        if _storage._cpuBarPercent != rhs_storage._cpuBarPercent {return false}
-        if _storage._memoryBarPercent != rhs_storage._memoryBarPercent {return false}
         if _storage._cpuValueText != rhs_storage._cpuValueText {return false}
         if _storage._memoryValueText != rhs_storage._memoryValueText {return false}
         return true

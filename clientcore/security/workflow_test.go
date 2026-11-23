@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
@@ -1569,7 +1570,7 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		t.Fatalf("legacy ErrorCode(ErrLeaseExpired) must stay stale for untouched shells")
 	}
 
-	// Disk notification: valid critical vs wrong requestId vs over threshold.
+	// Disk notification: valid critical & warning.
 	diskNC := &v1.NotifyContent{
 		Kind:        v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
 		MachineId:   "m1",
@@ -1580,24 +1581,18 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			Pressure:       v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL,
 		},
 	}
-	dOK := buildNotifyDisplay(
-		&corev1.SecurityOpenNotifyEvent{MachineId: "m1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK},
-		devicesec.Header{Request: "disk:1700000000000:3"},
-		diskNC,
-	)
+	diskEv := &corev1.SecurityOpenNotifyEvent{
+		MachineId:    "m1",
+		Tag:          "m1/NOTIFY_KIND_MACHINE_DISK",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
+	}
+	diskHdr := devicesec.Header{Machine: "m1", Request: "disk:1700000000000:3"}
+	dOK := buildNotifyDisplay(diskEv, diskHdr, diskNC)
 	if !dOK.Valid || !dOK.Critical || !dOK.ShowDetailedByDefault || dOK.Title.GetKey() != text.KeyMachineStatusNotifyCritical {
 		t.Fatalf("expected valid critical disk display, got %+v", dOK)
 	}
-	dBadReq := buildNotifyDisplay(
-		&corev1.SecurityOpenNotifyEvent{MachineId: "m1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK"},
-		devicesec.Header{Request: "disk:999:3"},
-		diskNC,
-	)
-	if dBadReq.Valid {
-		t.Fatalf("expected disk display invalid on mismatched requestId")
-	}
 
-	// Scheduled notification: valid vs event_key mismatch vs oversized title.
+	// Scheduled notification: valid.
 	schedNC := &v1.NotifyContent{
 		Kind:           v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
 		SessionId:      "s1",
@@ -1606,37 +1601,35 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		Title:          "Daily check",
 		Text:           "All green",
 	}
-	sOK := buildNotifyDisplay(
-		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", Tag: "s1/scheduled:7/NOTIFY_KIND_SCHEDULED", EventKey: "scheduled:7", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED},
-		devicesec.Header{Session: "s1", Request: "scheduled:7"},
-		schedNC,
-	)
+	schedEv := &corev1.SecurityOpenNotifyEvent{
+		SessionId:    "s1",
+		Tag:          "s1/scheduled:7/NOTIFY_KIND_SCHEDULED",
+		EventKey:     "scheduled:7",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+	}
+	schedHdr := devicesec.Header{Machine: "m1", Session: "s1", Request: "scheduled:7"}
+	sOK := buildNotifyDisplay(schedEv, schedHdr, schedNC)
 	if !sOK.Valid || !sOK.ShowDetailedByDefault || sOK.Title.GetLiteral() != "Daily check" || sOK.Body.GetLiteral() != "All green" {
 		t.Fatalf("expected valid scheduled display, got %+v", sOK)
-	}
-	sBadEvent := buildNotifyDisplay(
-		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", EventKey: "scheduled:8"},
-		devicesec.Header{Session: "s1", Request: "scheduled:7"},
-		schedNC,
-	)
-	if sBadEvent.Valid {
-		t.Fatalf("expected scheduled display invalid on mismatched eventKey")
 	}
 
 	// Turn ended with shared files suffix.
 	turnNC := &v1.NotifyContent{
 		Kind:            v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
 		SessionId:       "s1",
+		MachineId:       "m1",
 		SourceEventSeq:  42,
 		Text:            "Done",
 		SharedFileCount: 2,
 	}
-	tOK := buildNotifyDisplay(
-		&corev1.SecurityOpenNotifyEvent{SessionId: "s1", Tag: "s1/NOTIFY_KIND_TURN_ENDED"},
-		devicesec.Header{Session: "s1", Request: "notify:2:42"},
-		turnNC,
-	)
-	if !tOK.Valid || tOK.SharedFileCount != 2 || tOK.SharedFilesSuffix.GetKey() != text.KeySharedFileNotificationFiles {
+	turnEv := &corev1.SecurityOpenNotifyEvent{
+		SessionId:    "s1",
+		Tag:          "s1/NOTIFY_KIND_TURN_ENDED",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+	}
+	turnHdr := devicesec.Header{Machine: "m1", Session: "s1", Request: "notify:2:42"}
+	tOK := buildNotifyDisplay(turnEv, turnHdr, turnNC)
+	if !tOK.Valid || tOK.ShowDetailedByDefault || tOK.SharedFileCount != 2 || tOK.SharedFilesSuffix.GetKey() != text.KeySharedFileNotificationFiles {
 		t.Fatalf("expected valid turn ended display with shared files suffix, got %+v", tOK)
 	}
 
@@ -1656,8 +1649,271 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 			Truncated:   true,
 		},
 	}
-	aOK := buildNotifyDisplay(nil, devicesec.Header{Session: "s1"}, appNC)
-	if !aOK.Valid || aOK.ApprovalId != "ap-1" || !aOK.Truncated || aOK.Title.GetKey() != text.KeyListStateRequestCommandPlain || aOK.BigText.GetLiteral() != "Run Go tests\ngo test ./..." {
+	appEv := &corev1.SecurityOpenNotifyEvent{
+		SessionId:    "s1",
+		Tag:          "s1/NOTIFY_KIND_ATTENTION",
+		ExpectedKind: v1.NotifyKind_NOTIFY_KIND_ATTENTION,
+	}
+	appHdr := devicesec.Header{Machine: "m1", Session: "s1", Request: "ap-1"}
+	aOK := buildNotifyDisplay(appEv, appHdr, appNC)
+	if !aOK.Valid || aOK.ShowDetailedByDefault || aOK.ApprovalId != "ap-1" || !aOK.Truncated || aOK.Title.GetKey() != text.KeyListStateRequestCommandPlain || aOK.BigText.GetLiteral() != "Run Go tests\ngo test ./..." {
 		t.Fatalf("expected valid approval display, got %+v", aOK)
+	}
+
+	// Table-driven rejection cases: every missing/mismatched required field, disallowed kind,
+	// and payload violation must fail closed with GenericBody set and no plaintext fields leaked.
+	rejectCases := []struct {
+		name           string
+		ev             *corev1.SecurityOpenNotifyEvent
+		h              devicesec.Header
+		nc             *v1.NotifyContent
+		wantGenericKey string
+	}{
+		{
+			name:           "nil event",
+			ev:             nil,
+			h:              appHdr,
+			nc:             appNC,
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name:           "missing expected kind",
+			ev:             &corev1.SecurityOpenNotifyEvent{MachineId: "m1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK"},
+			h:              diskHdr,
+			nc:             diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name:           "kind mismatch sets expected generic body",
+			ev:             schedEv,
+			h:              appHdr,
+			nc:             appNC,
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "security kind disallowed",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", Tag: "s1/NOTIFY_KIND_SECURITY", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SECURITY,
+			},
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: "sec:1"},
+			nc:             &v1.NotifyContent{Kind: v1.NotifyKind_NOTIFY_KIND_SECURITY, MachineId: "m1", SessionId: "s1", Title: "secret"},
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name: "unknown kind disallowed",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", Tag: "s1/99", ExpectedKind: v1.NotifyKind(99),
+			},
+			h:              devicesec.Header{Machine: "m1", Session: "s1", Request: "x"},
+			nc:             &v1.NotifyContent{Kind: v1.NotifyKind(99), MachineId: "m1", SessionId: "s1", Text: "secret"},
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name: "disk missing machine_id in event",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				Tag: "m1/NOTIFY_KIND_MACHINE_DISK", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
+			},
+			h:              diskHdr,
+			nc:             diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "disk missing tag in event",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				MachineId: "m1", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
+			},
+			h:              diskHdr,
+			nc:             diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "disk empty request id in header",
+			ev:   diskEv,
+			h:    devicesec.Header{Machine: "m1", Request: ""},
+			nc:   diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "disk mismatched request id",
+			ev:   diskEv,
+			h:    devicesec.Header{Machine: "m1", Request: "disk:999:3"},
+			nc:   diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "disk available bytes over critical threshold",
+			ev:   diskEv,
+			h:    diskHdr,
+			nc: &v1.NotifyContent{
+				Kind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK, MachineId: "m1", MachineName: "MacBook",
+				DiskStatus: &v1.DiskStatus{ObservedMs: 1_700_000_000_000, AvailableBytes: 3_000_000_000, Pressure: v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL},
+			},
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "disk non-empty session_id rejected",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				MachineId: "m1", SessionId: "s1", Tag: "m1/NOTIFY_KIND_MACHINE_DISK", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK,
+			},
+			h:              diskHdr,
+			nc:             diskNC,
+			wantGenericKey: text.KeyMachineStatusHomeWarning,
+		},
+		{
+			name: "scheduled missing event_key",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", Tag: "s1/scheduled:7/NOTIFY_KIND_SCHEDULED", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+			},
+			h:              schedHdr,
+			nc:             schedNC,
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "scheduled mismatched event_key",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", Tag: "s1/scheduled:7/NOTIFY_KIND_SCHEDULED", EventKey: "scheduled:8", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+			},
+			h:              schedHdr,
+			nc:             schedNC,
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "scheduled missing tag",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", EventKey: "scheduled:7", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+			},
+			h:              schedHdr,
+			nc:             schedNC,
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "scheduled empty request id",
+			ev:   schedEv,
+			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:   schedNC,
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "scheduled oversized title",
+			ev:   schedEv,
+			h:    schedHdr,
+			nc: &v1.NotifyContent{
+				Kind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED, SessionId: "s1", MachineId: "m1", SourceEventSeq: 7,
+				Title: strings.Repeat("a", 61), Text: "ok",
+			},
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "scheduled oversized text",
+			ev:   schedEv,
+			h:    schedHdr,
+			nc: &v1.NotifyContent{
+				Kind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED, SessionId: "s1", MachineId: "m1", SourceEventSeq: 7,
+				Title: "ok", Text: strings.Repeat("b", 201),
+			},
+			wantGenericKey: text.KeyNotificationsScheduledTasksHaveNewResults,
+		},
+		{
+			name: "turn ended missing tag",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+			},
+			h:              turnHdr,
+			nc:             turnNC,
+			wantGenericKey: text.KeyNotificationsAndroidAConversationTurnFinished,
+		},
+		{
+			name: "turn ended empty request id",
+			ev:   turnEv,
+			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:   turnNC,
+			wantGenericKey: text.KeyNotificationsAndroidAConversationTurnFinished,
+		},
+		{
+			name: "turn ended missing session_id in event",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				Tag: "s1/NOTIFY_KIND_TURN_ENDED", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_TURN_ENDED,
+			},
+			h:              turnHdr,
+			nc:             turnNC,
+			wantGenericKey: text.KeyNotificationsAndroidAConversationTurnFinished,
+		},
+		{
+			name: "attention missing tag",
+			ev: &corev1.SecurityOpenNotifyEvent{
+				SessionId: "s1", ExpectedKind: v1.NotifyKind_NOTIFY_KIND_ATTENTION,
+			},
+			h:              appHdr,
+			nc:             appNC,
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name: "attention empty request id",
+			ev:   appEv,
+			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: ""},
+			nc:   appNC,
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name: "attention mismatched approval request id",
+			ev:   appEv,
+			h:    devicesec.Header{Machine: "m1", Session: "s1", Request: "ap-other"},
+			nc:   appNC,
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+		{
+			name: "attention header machine mismatch",
+			ev:   appEv,
+			h:    devicesec.Header{Machine: "m-other", Session: "s1", Request: "ap-1"},
+			nc:   appNC,
+			wantGenericKey: text.KeyNotificationsAndroidASessionNeedsYourAttention,
+		},
+	}
+
+	for _, tc := range rejectCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := buildNotifyDisplay(tc.ev, tc.h, tc.nc)
+			if got.GetValid() {
+				t.Fatalf("expected Valid=false, got %+v", got)
+			}
+			if got.GetGenericBody().GetKey() != tc.wantGenericKey {
+				t.Fatalf("GenericBody key = %q, want %q", got.GetGenericBody().GetKey(), tc.wantGenericKey)
+			}
+			if got.GetTitle() != nil || got.GetBody() != nil || got.GetSubText() != nil || got.GetBigText() != nil ||
+				got.GetApprovalId() != "" || got.GetTag() != "" || got.GetSessionId() != "" || got.GetMachineId() != "" {
+				t.Fatalf("invalid display must not leak plaintext/routing fields: %+v", got)
+			}
+		})
+	}
+
+	// Verify finishNotifyPlain strips Content and metadata on invalid strict-mode notifications.
+	eng := NewEngine(&entropy.Pool{}, 0)
+	plainBytes, err := schedNC.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	eng.finishNotifyPlain(
+		&corev1.SecurityOpenNotifyEvent{
+			OpId:         42,
+			Envelope:     &v1.Envelope{Header: []byte("hdr")},
+			SessionId:    "s1",
+			Tag:          "s1/scheduled:7/NOTIFY_KIND_SCHEDULED",
+			EventKey:     "scheduled:999", // mismatch -> invalid
+			ExpectedKind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED,
+		},
+		devicesec.Header{Purpose: devicesec.Notify, Machine: "m1", Session: "s1", Request: "scheduled:7"},
+		plainBytes,
+		false,
+	)
+	effs := eng.DrainEffects()
+	if len(effs) != 1 || effs[0].GetSecurityNotifyOpened() == nil {
+		t.Fatalf("expected 1 SecurityNotifyOpenedEffect, got %+v", effs)
+	}
+	opened := effs[0].GetSecurityNotifyOpened()
+	if opened.GetDisplay().GetValid() || opened.GetDisplay().GetGenericBody().GetKey() != text.KeyNotificationsScheduledTasksHaveNewResults {
+		t.Fatalf("expected invalid display with scheduled generic body, got %+v", opened.GetDisplay())
+	}
+	if opened.GetContent() != nil || len(opened.GetHeaderBytes()) != 0 || opened.GetSessionId() != "" || opened.GetMachineId() != "" || opened.GetRequestId() != "" {
+		t.Fatalf("invalid SecurityNotifyOpenedEffect must clear Content and metadata, got %+v", opened)
 	}
 }

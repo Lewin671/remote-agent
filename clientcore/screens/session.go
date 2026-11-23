@@ -477,7 +477,7 @@ func buildSessionHeader(
 		out.ForkedFromId = meta.ForkedFrom
 		out.ScheduledTaskId = meta.ScheduledTaskId
 		out.IsScheduled = meta.ScheduledTaskId != ""
-		out.TaskOwned = meta.ScheduledTaskId != ""
+		out.TaskOwned = meta.TaskOwned
 	}
 	if out.ForkedFromId != "" {
 		for _, ev := range in.Events {

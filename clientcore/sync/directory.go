@@ -175,6 +175,7 @@ func (e *Engine) fetchSessionByID(ctx *StepContext, sessionID string) {
 		return
 	}
 	delete(e.sessionByIDFailed, sessionID)
+	delete(e.sessionByIDErrors, sessionID)
 	opID := e.allocOpID()
 	e.sessionByIDOps[opID] = sessionID
 	ctx.emit(&corev1.Effect{
@@ -414,7 +415,7 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 			if sid != "" {
 				e.sessionByIDFailed[sid] = true
 				if ev.Error != "" {
-					e.sessionByIDErrors[sid] = ev.Error
+					e.sessionByIDErrors[sid] = text.Plain(ev.Error)
 				} else {
 					delete(e.sessionByIDErrors, sid)
 				}
@@ -432,7 +433,7 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 		if sid != "" {
 			e.sessionByIDFailed[sid] = true
 			if ev.Error != "" {
-				e.sessionByIDErrors[sid] = ev.Error
+				e.sessionByIDErrors[sid] = text.Plain(ev.Error)
 			} else {
 				delete(e.sessionByIDErrors, sid)
 			}
@@ -723,6 +724,7 @@ func (e *Engine) putSessionDecoded(ctx *StepContext, ds decodedSession, writeCac
 		return
 	}
 	delete(e.sessionByIDFailed, ds.SessionID)
+	delete(e.sessionByIDErrors, ds.SessionID)
 	prev := e.sessions[ds.SessionID]
 	entry := decodedToSessionEntry(ds, prev)
 	e.refreshSessionPending(entry)

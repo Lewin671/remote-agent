@@ -1451,10 +1451,8 @@ type MachineUsageRow struct {
 	SessionId         string                 `protobuf:"bytes,7,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	CpuBarFraction    float64                `protobuf:"fixed64,8,opt,name=cpu_bar_fraction,json=cpuBarFraction,proto3" json:"cpu_bar_fraction,omitempty"`
 	MemoryBarFraction float64                `protobuf:"fixed64,9,opt,name=memory_bar_fraction,json=memoryBarFraction,proto3" json:"memory_bar_fraction,omitempty"`
-	CpuBarPercent     int32                  `protobuf:"varint,10,opt,name=cpu_bar_percent,json=cpuBarPercent,proto3" json:"cpu_bar_percent,omitempty"`
-	MemoryBarPercent  int32                  `protobuf:"varint,11,opt,name=memory_bar_percent,json=memoryBarPercent,proto3" json:"memory_bar_percent,omitempty"`
-	CpuValueText      *Text                  `protobuf:"bytes,12,opt,name=cpu_value_text,json=cpuValueText,proto3" json:"cpu_value_text,omitempty"`
-	MemoryValueText   *Text                  `protobuf:"bytes,13,opt,name=memory_value_text,json=memoryValueText,proto3" json:"memory_value_text,omitempty"`
+	CpuValueText      *Text                  `protobuf:"bytes,10,opt,name=cpu_value_text,json=cpuValueText,proto3" json:"cpu_value_text,omitempty"`
+	MemoryValueText   *Text                  `protobuf:"bytes,11,opt,name=memory_value_text,json=memoryValueText,proto3" json:"memory_value_text,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1548,20 +1546,6 @@ func (x *MachineUsageRow) GetCpuBarFraction() float64 {
 func (x *MachineUsageRow) GetMemoryBarFraction() float64 {
 	if x != nil {
 		return x.MemoryBarFraction
-	}
-	return 0
-}
-
-func (x *MachineUsageRow) GetCpuBarPercent() int32 {
-	if x != nil {
-		return x.CpuBarPercent
-	}
-	return 0
-}
-
-func (x *MachineUsageRow) GetMemoryBarPercent() int32 {
-	if x != nil {
-		return x.MemoryBarPercent
 	}
 	return 0
 }
@@ -3485,7 +3469,7 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\x04unit\x18\x11 \x01(\tR\x04unit\x12'\n" +
 	"\x0favailable_bytes\x18\x12 \x01(\x04R\x0eavailableBytes\x12\x1f\n" +
 	"\vtotal_bytes\x18\x13 \x01(\x04R\n" +
-	"totalBytes\"\xd3\x04\n" +
+	"totalBytes\"\xfd\x03\n" +
 	"\x0fMachineUsageRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x127\n" +
@@ -3497,12 +3481,10 @@ const file_remoteagent_core_v1_machine_view_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\a \x01(\tR\tsessionId\x12(\n" +
 	"\x10cpu_bar_fraction\x18\b \x01(\x01R\x0ecpuBarFraction\x12.\n" +
-	"\x13memory_bar_fraction\x18\t \x01(\x01R\x11memoryBarFraction\x12&\n" +
-	"\x0fcpu_bar_percent\x18\n" +
-	" \x01(\x05R\rcpuBarPercent\x12,\n" +
-	"\x12memory_bar_percent\x18\v \x01(\x05R\x10memoryBarPercent\x12?\n" +
-	"\x0ecpu_value_text\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\fcpuValueText\x12E\n" +
-	"\x11memory_value_text\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x0fmemoryValueText\"\xd5\x01\n" +
+	"\x13memory_bar_fraction\x18\t \x01(\x01R\x11memoryBarFraction\x12?\n" +
+	"\x0ecpu_value_text\x18\n" +
+	" \x01(\v2\x19.remoteagent.core.v1.TextR\fcpuValueText\x12E\n" +
+	"\x11memory_value_text\x18\v \x01(\v2\x19.remoteagent.core.v1.TextR\x0fmemoryValueText\"\xd5\x01\n" +
 	"\x16MachineTopUsageSection\x12G\n" +
 	"\fselected_tab\x18\x01 \x01(\x0e2$.remoteagent.core.v1.MachineUsageTabR\vselectedTab\x128\n" +
 	"\x04rows\x18\x02 \x03(\v2$.remoteagent.core.v1.MachineUsageRowR\x04rows\x128\n" +

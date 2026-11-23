@@ -789,8 +789,6 @@ type MachineUsageRow struct {
 	SessionId         string
 	CpuBarFraction    float64
 	MemoryBarFraction float64
-	CpuBarPercent     int32
-	MemoryBarPercent  int32
 	CpuValueText      *Text
 	MemoryValueText   *Text
 }
@@ -849,18 +847,6 @@ func (m *MachineUsageRow) GetMemoryBarFraction() float64 {
 	}
 	return 0
 }
-func (m *MachineUsageRow) GetCpuBarPercent() int32 {
-	if m != nil {
-		return m.CpuBarPercent
-	}
-	return 0
-}
-func (m *MachineUsageRow) GetMemoryBarPercent() int32 {
-	if m != nil {
-		return m.MemoryBarPercent
-	}
-	return 0
-}
 func (m *MachineUsageRow) GetCpuValueText() *Text {
 	if m != nil {
 		return m.CpuValueText
@@ -885,10 +871,8 @@ var LitewireDesc_MachineUsageRow = litewire.MessageDesc{
 		{Num: 7, Offset: unsafe.Offsetof(MachineUsageRow{}.SessionId), Kind: litewire.KindString},
 		{Num: 8, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuBarFraction), Kind: litewire.KindDouble},
 		{Num: 9, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryBarFraction), Kind: litewire.KindDouble},
-		{Num: 10, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuBarPercent), Kind: litewire.KindInt32},
-		{Num: 11, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryBarPercent), Kind: litewire.KindInt32},
-		{Num: 12, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 13, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 10, Offset: unsafe.Offsetof(MachineUsageRow{}.CpuValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 11, Offset: unsafe.Offsetof(MachineUsageRow{}.MemoryValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

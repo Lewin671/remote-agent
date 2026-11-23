@@ -857,13 +857,14 @@ func FormatTokens(n uint64, english bool) string {
 	return formatScaled(float64(n)/1_000_000_000.0, "B", 100)
 }
 
-// NormalizeUILocale normalizes a BCP 47 UI locale tag, defaulting empty strings to "zh-CN".
+// NormalizeUILocale collapses a BCP 47 UI locale tag into the canonical formatting
+// locale family ("zh-CN" for empty or Chinese tags, "en" for non-Chinese tags),
+// avoiding redundant screen re-renders on equivalent region/script variants like "en" -> "en-US".
 func NormalizeUILocale(locale string) string {
-	trimmed := strings.TrimSpace(locale)
-	if trimmed == "" {
-		return "zh-CN"
+	if IsEnglishLocale(locale) {
+		return "en"
 	}
-	return trimmed
+	return "zh-CN"
 }
 
 // IsEnglishLocale reports whether a BCP 47 UI locale tag uses English/SI token units (k/M/B).

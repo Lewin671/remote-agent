@@ -92,35 +92,23 @@ public interface MachineUsageRowOrBuilder extends
   double getMemoryBarFraction();
 
   /**
-   * <code>int32 cpu_bar_percent = 10 [json_name = "cpuBarPercent"];</code>
-   * @return The cpuBarPercent.
-   */
-  int getCpuBarPercent();
-
-  /**
-   * <code>int32 memory_bar_percent = 11 [json_name = "memoryBarPercent"];</code>
-   * @return The memoryBarPercent.
-   */
-  int getMemoryBarPercent();
-
-  /**
-   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 10 [json_name = "cpuValueText"];</code>
    * @return Whether the cpuValueText field is set.
    */
   boolean hasCpuValueText();
   /**
-   * <code>.remoteagent.core.v1.Text cpu_value_text = 12 [json_name = "cpuValueText"];</code>
+   * <code>.remoteagent.core.v1.Text cpu_value_text = 10 [json_name = "cpuValueText"];</code>
    * @return The cpuValueText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getCpuValueText();
 
   /**
-   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   * <code>.remoteagent.core.v1.Text memory_value_text = 11 [json_name = "memoryValueText"];</code>
    * @return Whether the memoryValueText field is set.
    */
   boolean hasMemoryValueText();
   /**
-   * <code>.remoteagent.core.v1.Text memory_value_text = 13 [json_name = "memoryValueText"];</code>
+   * <code>.remoteagent.core.v1.Text memory_value_text = 11 [json_name = "memoryValueText"];</code>
    * @return The memoryValueText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getMemoryValueText();

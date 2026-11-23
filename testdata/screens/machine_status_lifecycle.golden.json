@@ -797,8 +797,6 @@
                   "sessionId": "s-1",
                   "cpuBarFraction": 1,
                   "memoryBarFraction": 1,
-                  "cpuBarPercent": 100,
-                  "memoryBarPercent": 100,
                   "cpuValueText": {
                     "literal": "15%"
                   },
@@ -838,8 +836,6 @@
                   "memoryBytes": "400000000",
                   "cpuBarFraction": 0.5333333333333333,
                   "memoryBarFraction": 0.4444444444444444,
-                  "cpuBarPercent": 53,
-                  "memoryBarPercent": 44,
                   "cpuValueText": {
                     "literal": "8%"
                   },
@@ -1354,8 +1350,6 @@
                   "sessionId": "s-1",
                   "cpuBarFraction": 1,
                   "memoryBarFraction": 1,
-                  "cpuBarPercent": 100,
-                  "memoryBarPercent": 100,
                   "cpuValueText": {
                     "literal": "12%"
                   },
@@ -1935,8 +1929,6 @@
                   "sessionId": "s-1",
                   "cpuBarFraction": 1,
                   "memoryBarFraction": 1,
-                  "cpuBarPercent": 100,
-                  "memoryBarPercent": 100,
                   "cpuValueText": {
                     "literal": "12%"
                   },

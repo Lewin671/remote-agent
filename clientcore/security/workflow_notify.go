@@ -50,74 +50,116 @@ func (e *Engine) finishNotifyPlain(ev *corev1.SecurityOpenNotifyEvent, h devices
 		return
 	}
 	display := buildNotifyDisplay(ev, h, nc)
+	eff := &corev1.SecurityNotifyOpenedEffect{
+		OpId:                  ev.OpId,
+		VerifyRecordUnchanged: verifyUnchanged,
+		Display:               display,
+	}
+	// Never leave decrypted plaintext on an invalid notification result.
+	// Legacy (pre-Step-2) shells that omit ExpectedKind temporarily keep Content until migrated (contract.md §11).
+	if display.GetValid() || ev.ExpectedKind == v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+		eff.Content = nc
+		eff.HeaderBytes = slices.Clone(ev.Envelope.Header)
+		eff.SessionId = h.Session
+		eff.MachineId = h.Machine
+		eff.RequestId = h.Request
+	}
 	e.out = append(e.out, &corev1.Effect{
 		Effect: &corev1.Effect_SecurityNotifyOpened{
-			SecurityNotifyOpened: &corev1.SecurityNotifyOpenedEffect{
-				OpId:                  ev.OpId,
-				Content:               nc,
-				HeaderBytes:           slices.Clone(ev.Envelope.Header),
-				SessionId:             h.Session,
-				MachineId:             h.Machine,
-				RequestId:             h.Request,
-				VerifyRecordUnchanged: verifyUnchanged,
-				Display:               display,
-			},
+			SecurityNotifyOpened: eff,
 		},
 	})
 }
 
-func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, nc *v1.NotifyContent) *corev1.SecurityNotifyDisplay {
-	if nc == nil {
-		return &corev1.SecurityNotifyDisplay{Valid: false}
-	}
-	kind := nc.Kind
-	out := &corev1.SecurityNotifyDisplay{
-		Kind:           kind,
-		MachineId:      nc.MachineId,
-		SessionId:      nc.SessionId,
-		SourceEventSeq: nc.SourceEventSeq,
-	}
-	if ev != nil && ev.ExpectedKind != v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED && kind != ev.ExpectedKind {
-		return out
-	}
-
+func genericBodyForNotifyKind(kind v1.NotifyKind) *corev1.Text {
 	switch kind {
 	case v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK:
-		out.GenericBody = text.Msg(text.KeyMachineStatusHomeWarning)
+		return text.Msg(text.KeyMachineStatusHomeWarning)
+	case v1.NotifyKind_NOTIFY_KIND_SCHEDULED:
+		return text.Msg(text.KeyNotificationsScheduledTasksHaveNewResults)
+	case v1.NotifyKind_NOTIFY_KIND_TURN_ENDED:
+		return text.Msg(text.KeyNotificationsAndroidAConversationTurnFinished)
+	default:
+		return text.Msg(text.KeyNotificationsAndroidASessionNeedsYourAttention)
+	}
+}
+
+func invalidNotifyDisplay(kind v1.NotifyKind) *corev1.SecurityNotifyDisplay {
+	return &corev1.SecurityNotifyDisplay{
+		Valid:       false,
+		Kind:        kind,
+		GenericBody: genericBodyForNotifyKind(kind),
+	}
+}
+
+func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, nc *v1.NotifyContent) *corev1.SecurityNotifyDisplay {
+	if ev == nil || nc == nil {
+		kind := v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED
+		if ev != nil && ev.ExpectedKind != v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+			kind = ev.ExpectedKind
+		} else if nc != nil {
+			kind = nc.Kind
+		}
+		return invalidNotifyDisplay(kind)
+	}
+	expectedKind := ev.ExpectedKind
+	if expectedKind == v1.NotifyKind_NOTIFY_KIND_UNSPECIFIED {
+		return invalidNotifyDisplay(nc.Kind)
+	}
+	genericBody := genericBodyForNotifyKind(expectedKind)
+	if nc.Kind != expectedKind {
+		return &corev1.SecurityNotifyDisplay{
+			Valid:       false,
+			Kind:        expectedKind,
+			GenericBody: genericBody,
+		}
+	}
+	if nc.MachineId == "" || h.Machine == "" || nc.MachineId != h.Machine {
+		return invalidNotifyDisplay(expectedKind)
+	}
+	if ev.MachineId != "" && ev.MachineId != nc.MachineId {
+		return invalidNotifyDisplay(expectedKind)
+	}
+
+	switch expectedKind {
+	case v1.NotifyKind_NOTIFY_KIND_MACHINE_DISK:
 		disk := nc.DiskStatus
-		if nc.SessionId != "" || h.Session != "" || nc.MachineId == "" ||
+		if ev.MachineId == "" || ev.MachineId != nc.MachineId ||
+			nc.SessionId != "" || h.Session != "" || ev.SessionId != "" ||
 			strings.TrimSpace(nc.MachineName) == "" ||
 			nc.Title != "" || nc.Text != "" || nc.Approval != nil || disk == nil {
-			return out
-		}
-		if ev != nil && ev.MachineId != "" && nc.MachineId != ev.MachineId {
-			return out
+			return invalidNotifyDisplay(expectedKind)
 		}
 		critical := disk.Pressure == v1.ResourcePressure_RESOURCE_PRESSURE_CRITICAL
 		if !critical && disk.Pressure != v1.ResourcePressure_RESOURCE_PRESSURE_WARNING {
-			return out
+			return invalidNotifyDisplay(expectedKind)
 		}
 		limit := notifyDiskWarningBytes
 		if critical {
 			limit = notifyDiskCriticalBytes
 		}
 		if disk.AvailableBytes >= limit {
-			return out
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedTag := nc.MachineId + "/NOTIFY_KIND_MACHINE_DISK"
-		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
-			return out
+		if ev.Tag == "" || ev.Tag != expectedTag {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedReq := "disk:" + strconv.FormatInt(disk.ObservedMs, 10) + ":" + strconv.FormatInt(int64(disk.Pressure), 10)
-		if h.Request != "" && h.Request != expectedReq {
-			return out
+		if h.Request == "" || h.Request != expectedReq {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		gbStr := strconv.FormatFloat(float64(disk.AvailableBytes)/1e9, 'f', 1, 64)
 		sizeTxt := text.Msg(text.KeyMachineStatusSizeGb, text.Str("size", gbStr))
-		out.Valid = true
-		out.Tag = expectedTag
-		out.Critical = critical
-		out.ShowDetailedByDefault = true
+		out := &corev1.SecurityNotifyDisplay{
+			Valid:                 true,
+			Kind:                  expectedKind,
+			Tag:                   expectedTag,
+			MachineId:             nc.MachineId,
+			Critical:              critical,
+			ShowDetailedByDefault: true,
+			GenericBody:           genericBody,
+		}
 		if critical {
 			out.Title = text.Msg(text.KeyMachineStatusNotifyCritical, text.Str("computer", nc.MachineName), text.ArgText("size", sizeTxt))
 			out.Body = text.Msg(text.KeyMachineStatusNotifyCriticalBody)
@@ -128,53 +170,66 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 		return out
 
 	case v1.NotifyKind_NOTIFY_KIND_SCHEDULED:
-		out.GenericBody = text.Msg(text.KeyNotificationsScheduledTasksHaveNewResults)
-		if nc.Approval != nil || nc.SourceEventSeq == 0 || nc.SessionId == "" || (h.Session != "" && h.Session != nc.SessionId) {
-			return out
+		if nc.Approval != nil || nc.SourceEventSeq == 0 ||
+			nc.SessionId == "" || h.Session != nc.SessionId || ev.SessionId != nc.SessionId {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedReq := "scheduled:" + strconv.FormatUint(nc.SourceEventSeq, 10)
-		if h.Request != "" && h.Request != expectedReq {
-			return out
+		if h.Request == "" || h.Request != expectedReq {
+			return invalidNotifyDisplay(expectedKind)
 		}
-		if ev != nil && ev.EventKey != "" && ev.EventKey != expectedReq {
-			return out
+		if ev.EventKey == "" || ev.EventKey != expectedReq {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedTag := nc.SessionId + "/" + expectedReq + "/NOTIFY_KIND_SCHEDULED"
-		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
-			return out
+		if ev.Tag == "" || ev.Tag != expectedTag {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		if strings.TrimSpace(nc.Title) == "" || utf8.RuneCountInString(nc.Title) > notifyMaxScheduledTitle ||
 			strings.TrimSpace(nc.Text) == "" || utf8.RuneCountInString(nc.Text) > notifyMaxScheduledText {
-			return out
+			return invalidNotifyDisplay(expectedKind)
 		}
-		out.Valid = true
-		out.Tag = expectedTag
-		out.ShowDetailedByDefault = true
-		out.Title = text.Plain(nc.Title)
-		out.Body = text.Plain(nc.Text)
-		return out
+		return &corev1.SecurityNotifyDisplay{
+			Valid:                 true,
+			Kind:                  expectedKind,
+			Tag:                   expectedTag,
+			MachineId:             nc.MachineId,
+			SessionId:             nc.SessionId,
+			SourceEventSeq:        nc.SourceEventSeq,
+			ShowDetailedByDefault: true,
+			Title:                 text.Plain(nc.Title),
+			Body:                  text.Plain(nc.Text),
+			GenericBody:           genericBody,
+		}
 
 	case v1.NotifyKind_NOTIFY_KIND_TURN_ENDED:
-		out.GenericBody = text.Msg(text.KeyNotificationsAndroidAConversationTurnFinished)
-		if nc.Approval != nil || nc.SourceEventSeq == 0 || nc.SessionId == "" || (h.Session != "" && h.Session != nc.SessionId) {
-			return out
+		if nc.Approval != nil || nc.SourceEventSeq == 0 ||
+			nc.SessionId == "" || h.Session != nc.SessionId || ev.SessionId != nc.SessionId {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedReq := "notify:" + strconv.FormatInt(int64(v1.NotifyKind_NOTIFY_KIND_TURN_ENDED), 10) + ":" + strconv.FormatUint(nc.SourceEventSeq, 10)
-		if h.Request != "" && h.Request != expectedReq {
-			return out
+		if h.Request == "" || h.Request != expectedReq {
+			return invalidNotifyDisplay(expectedKind)
 		}
 		expectedTag := nc.SessionId + "/NOTIFY_KIND_TURN_ENDED"
-		if ev != nil && ev.Tag != "" && ev.Tag != expectedTag {
-			return out
+		if ev.Tag == "" || ev.Tag != expectedTag {
+			return invalidNotifyDisplay(expectedKind)
 		}
-		out.Valid = true
-		out.Tag = expectedTag
+		out := &corev1.SecurityNotifyDisplay{
+			Valid:           true,
+			Kind:            expectedKind,
+			Tag:             expectedTag,
+			MachineId:       nc.MachineId,
+			SessionId:       nc.SessionId,
+			SourceEventSeq:  nc.SourceEventSeq,
+			GenericBody:     genericBody,
+			SharedFileCount: int32(nc.SharedFileCount),
+		}
 		if nc.Title != "" {
 			out.Title = text.Plain(nc.Title)
 		} else {
 			out.Title = text.Plain("remote-agent")
 		}
-		out.SharedFileCount = int32(nc.SharedFileCount)
 		if nc.SharedFileCount > 0 {
 			suffix := text.Msg(text.KeySharedFileNotificationFiles, text.Int("count", int64(nc.SharedFileCount)))
 			out.SharedFilesSuffix = suffix
@@ -186,18 +241,32 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 		} else if nc.Text != "" {
 			out.Body = text.Plain(nc.Text)
 		} else {
-			out.Body = out.GenericBody
+			out.Body = genericBody
 		}
 		return out
 
-	default:
-		out.GenericBody = text.Msg(text.KeyNotificationsAndroidASessionNeedsYourAttention)
-		if nc.SessionId != "" && h.Session != "" && h.Session != nc.SessionId {
-			return out
+	case v1.NotifyKind_NOTIFY_KIND_ATTENTION:
+		if nc.SessionId == "" || h.Session != nc.SessionId || ev.SessionId != nc.SessionId {
+			return invalidNotifyDisplay(expectedKind)
 		}
-		out.Valid = true
-		if nc.SessionId != "" {
-			out.Tag = nc.SessionId + "/NOTIFY_KIND_ATTENTION"
+		if h.Request == "" {
+			return invalidNotifyDisplay(expectedKind)
+		}
+		if nc.Approval != nil && (nc.Approval.ApprovalId == "" || h.Request != nc.Approval.ApprovalId) {
+			return invalidNotifyDisplay(expectedKind)
+		}
+		expectedTag := nc.SessionId + "/NOTIFY_KIND_ATTENTION"
+		if ev.Tag == "" || ev.Tag != expectedTag {
+			return invalidNotifyDisplay(expectedKind)
+		}
+		out := &corev1.SecurityNotifyDisplay{
+			Valid:          true,
+			Kind:           expectedKind,
+			Tag:            expectedTag,
+			MachineId:      nc.MachineId,
+			SessionId:      nc.SessionId,
+			SourceEventSeq: nc.SourceEventSeq,
+			GenericBody:    genericBody,
 		}
 		if a := nc.Approval; a != nil {
 			out.ApprovalId = a.ApprovalId
@@ -244,10 +313,13 @@ func buildNotifyDisplay(ev *corev1.SecurityOpenNotifyEvent, h devicesec.Header, 
 			if nc.Text != "" {
 				out.Body = text.Plain(nc.Text)
 			} else {
-				out.Body = out.GenericBody
+				out.Body = genericBody
 			}
 		}
 		return out
+
+	default:
+		return invalidNotifyDisplay(expectedKind)
 	}
 }
 

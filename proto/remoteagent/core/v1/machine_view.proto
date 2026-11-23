@@ -193,10 +193,8 @@ message MachineUsageRow {
   string session_id = 7;
   double cpu_bar_fraction = 8;
   double memory_bar_fraction = 9;
-  int32 cpu_bar_percent = 10;
-  int32 memory_bar_percent = 11;
-  Text cpu_value_text = 12;
-  Text memory_value_text = 13;
+  Text cpu_value_text = 10;
+  Text memory_value_text = 11;
 }
 
 message MachineTopUsageSection {

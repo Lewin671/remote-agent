@@ -266,7 +266,13 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			effects = append(effects, c.onUsageStatsSettled(sc, meta, &dirty)...)
 
 		case cmdKindListDirs:
-			dp := c.m.state.EnsureDirPicker(meta.pickerKey)
+			var dp *screens.DirPickerState
+			if c.m.state.DirPickers != nil {
+				dp = c.m.state.DirPickers[meta.pickerKey]
+			}
+			if dp == nil || !dp.Open {
+				continue
+			}
 			if dp.ActiveRequestID != "" && sc.RequestID != "" && dp.ActiveRequestID != sc.RequestID {
 				continue
 			}

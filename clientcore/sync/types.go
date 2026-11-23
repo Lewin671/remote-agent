@@ -411,7 +411,7 @@ type Engine struct {
 	devicesErrorText   *corev1.Text
 	sessionByIDOps     map[uint64]string
 	sessionByIDFailed  map[string]bool
-	sessionByIDErrors  map[string]string
+	sessionByIDErrors  map[string]*corev1.Text
 	machinePushes      map[string]uint64
 	sessionPushes      map[string]uint64
 	removedPushes      map[string]uint64
@@ -471,7 +471,7 @@ func NewEngine() *Engine {
 		listed:              make(map[string]bool),
 		sessionByIDOps:      make(map[uint64]string),
 		sessionByIDFailed:   make(map[string]bool),
-		sessionByIDErrors:   make(map[string]string),
+		sessionByIDErrors:   make(map[string]*corev1.Text),
 		machinePushes:       make(map[string]uint64),
 		sessionPushes:       make(map[string]uint64),
 		removedPushes:       make(map[string]uint64),

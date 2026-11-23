@@ -375,7 +375,6 @@
                 "capabilitiesLoaded": true
               },
               "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
-              "taskOwned": true,
               "shortPath": "~/Code/app"
             },
             "actions": {
@@ -913,7 +912,6 @@
                 "capabilitiesLoaded": true
               },
               "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
-              "taskOwned": true,
               "shortPath": "~/Code/app"
             },
             "actions": {

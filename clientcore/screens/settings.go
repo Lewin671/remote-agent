@@ -415,11 +415,15 @@ func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
 func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnCheckState) *corev1.ConnCheckSummaryView {
 	connState := mapSessionConnState(st.World.Connection)
 	isConnecting := st.World.Connection == lists.ConnConnecting || st.World.Connection == lists.ConnReconnecting
+	networkAvailable := st.World.Connection != lists.ConnNoNetwork
+	if syncView != nil {
+		networkAvailable = syncView.GetNetworkAvailable()
+	}
 	out := &corev1.ConnCheckSummaryView{
 		ServerState:       cc.ServerState,
 		LatencyMs:         cc.LatencyMs,
 		ConnState:         connState,
-		NetworkAvailable:  syncView == nil || syncView.GetNetworkAvailable() || st.World.Connection != lists.ConnNoNetwork,
+		NetworkAvailable:  networkAvailable,
 		LivePushConnected: st.LivePushConnected || syncView.GetLivePushConnected(),
 		EverOnline:        syncView.GetEverOnline(),
 		Failures:          syncView.GetConnectFailures(),
@@ -427,9 +431,6 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		ConnStep:          syncView.GetConnectionStep(),
 		DisplayGrace:      st.DisplayGrace || syncView.GetDisplayGrace(),
 		IsConnecting:      isConnecting,
-	}
-	if syncView != nil {
-		out.NetworkAvailable = syncView.GetNetworkAvailable()
 	}
 	if st != nil && st.ConnectionReasonText != nil {
 		out.LastFailureText = st.ConnectionReasonText
