@@ -190,6 +190,27 @@ func (e *Engine) AbandonAttempt(ctx *StepContext, slotKey string) {
 	ctx.Dirty.Add(true, true, true)
 }
 
+// CancelCommand cancels an in-flight untracked (read-only, SlotKey=="") command and its retry timer.
+func (e *Engine) CancelCommand(ctx *StepContext, requestID string) {
+	if requestID == "" {
+		return
+	}
+	prep := e.inFlightCmds[requestID]
+	if prep == nil || prep.SlotKey != "" {
+		return
+	}
+	delete(e.inFlightCmds, requestID)
+	delete(e.retryReqByTimer, requestID)
+	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, requestID)
+	for aid := range prep.PendingAttempts {
+		delete(e.reqIDByAttempt, aid)
+	}
+	e.releaseOrDeferLegs(prep, "")
+	clear(prep.PendingAttempts)
+	clear(prep.ActiveLegs)
+	prep.DualMode = false
+}
+
 // AttemptState reports whether slotKey currently has a frozen or expired unknown attempt.
 func (e *Engine) AttemptState(slotKey string) (frozen, expired bool, pendingReqID string) {
 	tr := e.attemptTrackers[slotKey]
@@ -759,16 +780,17 @@ func (e *Engine) settleCommand(
 	}
 
 	ctx.Settled = append(ctx.Settled, SettledCommand{
-		RequestID: prep.RequestID,
-		SlotKey:   prep.SlotKey,
-		MachineID: prep.MachineID,
-		SessionID: prep.SessionID,
-		Category:  cat,
-		Result:    res,
-		ErrorCode: errCode,
-		ErrorText: errText,
-		Expired:   trackerExpired || expired,
-		Frozen:    frozen,
+		RequestID:  prep.RequestID,
+		SlotKey:    prep.SlotKey,
+		MachineID:  prep.MachineID,
+		SessionID:  prep.SessionID,
+		Category:   cat,
+		Result:     res,
+		ErrorCode:  errCode,
+		ErrorText:  errText,
+		FromDaemon: res != nil && cat != outcome.Unknown,
+		Expired:    trackerExpired || expired,
+		Frozen:     frozen,
 	})
 	ctx.Dirty.Add(true, true, true)
 }

@@ -962,8 +962,9 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		c.m.sync.RetrySessionHistory(ctx, k.SessionLoadEarlier.SessionId)
 		store.pendingDirty = true
 		return nil
+	default:
+		return c.dispatchSharedFileEvent(ctx, ev)
 	}
-	return nil
 }
 
 func (c *Core) appendSessionRenderTarget(dirty sync.DirtyFlags, effects []*corev1.Effect) []*corev1.Effect {
@@ -1517,6 +1518,9 @@ func (c *Core) handleUndoCancel(ctx *sync.StepContext, store *sessionStore, sid 
 func (c *Core) handleSessionTimerFired(ctx *sync.StepContext, store *sessionStore, ev *corev1.TimerFiredEvent) []*corev1.Effect {
 	if ev == nil || !c.m.sync.ConsumeAppTimer(ev) || ev.Key == "" {
 		return nil
+	}
+	if ev.Kind == corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT {
+		return c.handleSharedFileReconnectTimer(ctx, ev.Key)
 	}
 	sid := ev.Key
 	ui := store.ensureUI(sid)

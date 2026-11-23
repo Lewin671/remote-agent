@@ -62,6 +62,7 @@ type Model struct {
 	settings              *screens.SettingsExtra
 	settingsDirty         settingsDirtyFlags
 	sessions              *sessionStore
+	sharedFiles           *sfManager
 	schedActive           bool
 	schedDirty            scheduleDirty
 	nextScheduleCacheOpID uint64

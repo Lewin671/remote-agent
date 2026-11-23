@@ -415,8 +415,9 @@ func (c *Core) submitSchedTaskMutation(ctx *sync.StepContext, slotKey, mutKey, m
 	c.m.markAllScheduleScreensDirty()
 }
 
-// onSyncEventConsumed runs lightweight schedule state hooks for events handled inside sync.Engine.
+// onSyncEventConsumed runs lightweight app-layer hooks for events handled inside sync.Engine.
 func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) {
+	c.onSharedFilesSyncEvent(ev, effects)
 	if !c.m.schedActive {
 		return
 	}

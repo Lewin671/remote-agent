@@ -190,6 +190,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 		if c.settlePlanPreflight(sc, &effects, &dirty) {
 			continue
 		}
+		if c.settleSharedFileChunk(sc, &effects, &dirty) {
+			continue
+		}
 		c.processSessionSettled(sc, &effects, &dirty)
 		meta, hasMeta := c.m.pendingCmdMeta[sc.RequestID]
 		if hasMeta {
@@ -450,6 +453,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 	}
 
 	c.processSchedulesSyncStep(res, &effects)
+	c.reconcileSharedFileDownloads(&effects, &dirty)
 
 	return effects, dirty
 }

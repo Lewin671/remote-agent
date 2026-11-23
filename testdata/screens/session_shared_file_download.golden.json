@@ -1,0 +1,1380 @@
+{
+  "steps": [
+    {
+      "effects": {
+        "effects": [
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "scheduleTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start",
+              "delayMs": "1500"
+            }
+          },
+          {
+            "cacheRead": {
+              "bootstrap": {
+                "opId": "1"
+              }
+            }
+          },
+          {
+            "ensureToken": {
+              "opId": "2",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "openStream": {
+              "legId": "1",
+              "token": "tok-1",
+              "timeoutMs": "15000"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_STREAM_OPEN",
+              "delayMs": "15000"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_SYNC_STATE"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "2",
+              "kind": "TIMER_KIND_STREAM_OPEN"
+            }
+          },
+          {
+            "scheduleTimer": {
+              "timerId": "3",
+              "kind": "TIMER_KIND_LIVENESS",
+              "delayMs": "1000"
+            }
+          },
+          {
+            "rpc": {
+              "opId": "3",
+              "fetchLists": {
+                "limit": 50
+              }
+            }
+          },
+          {
+            "rpc": {
+              "opId": "4",
+              "getAccountPrefs": {
+                "objectId": "project-prefs"
+              }
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "cancelTimer": {
+              "timerId": "1",
+              "kind": "TIMER_KIND_LINK_GRACE",
+              "key": "cold-start"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_SESSION_DATA"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileScanLocal": {
+              "opId": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {}
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileInspectDisk": {
+              "opId": "2",
+              "sessionId": "s-dl",
+              "fileId": "f-clip",
+              "requiredBytes": "24"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_starting": {
+          "session": {
+            "sessionId": "s-dl",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Shared File Download"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "canSend": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.path_spaces",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "Studio"
+                    }
+                  ]
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.update_required"
+                },
+                "galleryAcceptMime": "image/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canFork": true,
+              "fork": {
+                "slotKey": "fork:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canCompact": true,
+              "compact": {
+                "slotKey": "compact:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchModel": true,
+              "setModel": {
+                "slotKey": "set_model:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "enabled": true,
+                "label": {
+                  "key": "session.fork"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "sizeBytes": "24",
+                        "fileId": "f-clip",
+                        "sha256": "ERERERERERERERERERERERERERERERERERERERERERE=",
+                        "displayName": "clip.mp4",
+                        "nameHead": "c",
+                        "nameTail": "lip.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "24 B"
+                        },
+                        "displayPath": "~/proj/clip.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADING",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_downloading",
+                          "args": [
+                            {
+                              "name": "downloaded",
+                              "strValue": "0"
+                            },
+                            {
+                              "name": "total",
+                              "strValue": "24 B"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "clip.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "24 B"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloading"
+                              }
+                            }
+                          ]
+                        },
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_PAUSE",
+                        "primaryLabel": {
+                          "key": "shared_file.action_pause"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_PAUSE",
+                            "label": {
+                              "key": "shared_file.action_pause"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD",
+                            "label": {
+                              "key": "shared_file.action_cancel_download"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loaded": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "image.viewer_empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-1",
+              "attemptId": "r-2",
+              "machineId": "m1",
+              "sessionId": "s-dl",
+              "deadlineMs": "1791078121050",
+              "commandBytes": "ggIOCgRzLWRsEgZmLWNsaXCgBhE=",
+              "routeHint": "COMMAND_ROUTE_HINT_BULK",
+              "bulkFileKey": "s-dl/f-clip",
+              "bulkBytes": "16",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileWriteChunk": {
+              "opId": "3",
+              "sessionId": "s-dl",
+              "fileId": "f-clip",
+              "displayName": "clip.mp4",
+              "data": "QUFBQUFBQUFBQUFBQUFBQQ==",
+              "totalSizeBytes": "24",
+              "chunkBytes": 16,
+              "committedOffset": "16",
+              "expectedSha256": "ERERERERERERERERERERERERERERERERERERERERERE=",
+              "resetPartial": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "dispatchCommand": {
+              "requestId": "r-3",
+              "attemptId": "r-4",
+              "machineId": "m1",
+              "sessionId": "s-dl",
+              "deadlineMs": "1791078125000",
+              "commandBytes": "ggIQCgRzLWRsEgZmLWNsaXAYEKAGEQ==",
+              "routeHint": "COMMAND_ROUTE_HINT_BULK",
+              "bulkFileKey": "s-dl/f-clip",
+              "bulkBytes": "16",
+              "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
+              "directTicketId": "2"
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_mid_download_eta": {
+          "session": {
+            "sessionId": "s-dl",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Shared File Download"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "canSend": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.path_spaces",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "Studio"
+                    }
+                  ]
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.update_required"
+                },
+                "galleryAcceptMime": "image/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canFork": true,
+              "fork": {
+                "slotKey": "fork:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canCompact": true,
+              "compact": {
+                "slotKey": "compact:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchModel": true,
+              "setModel": {
+                "slotKey": "set_model:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "enabled": true,
+                "label": {
+                  "key": "session.fork"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "sizeBytes": "24",
+                        "fileId": "f-clip",
+                        "sha256": "ERERERERERERERERERERERERERERERERERERERERERE=",
+                        "displayName": "clip.mp4",
+                        "nameHead": "c",
+                        "nameTail": "lip.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "24 B"
+                        },
+                        "displayPath": "~/proj/clip.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADING",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_downloading_eta",
+                          "args": [
+                            {
+                              "name": "downloaded",
+                              "strValue": "16"
+                            },
+                            {
+                              "name": "total",
+                              "strValue": "24 B"
+                            },
+                            {
+                              "name": "eta",
+                              "textValue": {
+                                "key": "shared_file.eta_seconds",
+                                "args": [
+                                  {
+                                    "name": "count",
+                                    "intValue": "2"
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "clip.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "24 B"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloading"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "16",
+                        "progress": 0.6666666666666666,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_PAUSE",
+                        "primaryLabel": {
+                          "key": "shared_file.action_pause"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_PAUSE",
+                            "label": {
+                              "key": "shared_file.action_pause"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_CANCEL_DOWNLOAD",
+                            "label": {
+                              "key": "shared_file.action_cancel_download"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loaded": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "image.viewer_empty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileWriteChunk": {
+              "opId": "4",
+              "sessionId": "s-dl",
+              "fileId": "f-clip",
+              "displayName": "clip.mp4",
+              "offset": "16",
+              "data": "QUFBQUFBQUE=",
+              "totalSizeBytes": "24",
+              "chunkBytes": 16,
+              "committedOffset": "24",
+              "expectedSha256": "ERERERERERERERERERERERERERERERERERERERERERE="
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_HOME",
+                "SCREEN_TARGET_PROJECT",
+                "SCREEN_TARGET_NEW_SESSION",
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_DIRECT_DIAGNOSTICS",
+                "SCREEN_TARGET_SETTINGS",
+                "SCREEN_TARGET_MACHINE_SETTINGS"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileVerifyAndCommit": {
+              "opId": "5",
+              "sessionId": "s-dl",
+              "fileId": "f-clip",
+              "displayName": "clip.mp4",
+              "totalSizeBytes": "24",
+              "expectedSha256": "ERERERERERERERERERERERERERERERERERERERERERE=",
+              "probeDuration": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "effects": {
+        "effects": [
+          {
+            "sharedFileCompleted": {
+              "sessionId": "s-dl",
+              "fileId": "f-clip",
+              "displayName": "clip.mp4",
+              "kind": "SHARED_FILE_KIND_VIDEO",
+              "sizeBytes": "24",
+              "autoOpen": true
+            }
+          },
+          {
+            "render": {
+              "screens": [
+                "SCREEN_TARGET_SESSION"
+              ]
+            }
+          }
+        ]
+      },
+      "views": {
+        "session_downloaded": {
+          "session": {
+            "sessionId": "s-dl",
+            "header": {
+              "found": true,
+              "sessionsListed": true,
+              "liveLoaded": true,
+              "title": {
+                "literal": "Shared File Download"
+              },
+              "projectName": {
+                "literal": "~/proj"
+              },
+              "projectKey": "/Users/me/proj",
+              "cwd": "/Users/me/proj",
+              "agent": "AGENT_CODEX",
+              "agentName": "Codex",
+              "status": "SESSION_DISPLAY_STATUS_RUNNING",
+              "tone": "SESSION_TONE_LIVE",
+              "statusText": {
+                "key": "list_state.running"
+              },
+              "modelUnknown": true,
+              "machineId": "m1",
+              "computerName": {
+                "literal": "Studio"
+              },
+              "computerOnline": true,
+              "connState": "CONN_STATE_CONNECTED",
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
+              "capabilities": {
+                "canSend": true,
+                "supportsSendModes": true,
+                "supportsSharedFiles": true,
+                "supportsSteer": true,
+                "supportsCompact": true,
+                "supportsFork": true,
+                "supportsModelSwitch": true,
+                "supportsModeSwitch": true,
+                "terminalAvailable": true,
+                "maxImages": 6,
+                "maxFiles": 6,
+                "maxFileBytes": "104857600",
+                "capabilitiesLoaded": true,
+                "imageUploadBlockedReason": {
+                  "key": "attachment.path_spaces",
+                  "args": [
+                    {
+                      "name": "name",
+                      "strValue": "Studio"
+                    }
+                  ]
+                },
+                "fileUploadBlockedReason": {
+                  "key": "attachment.update_required"
+                },
+                "galleryAcceptMime": "image/*",
+                "maxFileNameBytes": 255,
+                "maxFileSizeText": "100.0 MB",
+                "originalImageMaxBytes": "20971520",
+                "originalImageHint": {
+                  "key": "image.original_hint"
+                },
+                "fileMetadataNotice": {
+                  "key": "attachment.metadata"
+                }
+              },
+              "computerReachability": "COMPUTER_REACHABILITY_ONLINE",
+              "shortPath": "~/proj"
+            },
+            "actions": {
+              "interrupt": {
+                "slotKey": "interrupt:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canEnd": true,
+              "end": {
+                "slotKey": "stop:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "endConfirmNote": {
+                "key": "session.end_note",
+                "args": [
+                  {
+                    "name": "agent",
+                    "strValue": "Codex"
+                  },
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "resume": {
+                "slotKey": "resume:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "resumeNote": {
+                "key": "session.resume_note",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Studio"
+                  }
+                ]
+              },
+              "canRename": true,
+              "rename": {
+                "slotKey": "rename:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canFork": true,
+              "fork": {
+                "slotKey": "fork:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canCompact": true,
+              "compact": {
+                "slotKey": "compact:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchModel": true,
+              "setModel": {
+                "slotKey": "set_model:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "canSwitchMode": true,
+              "setMode": {
+                "slotKey": "set_mode:s-dl",
+                "status": "SESSION_COMMAND_STATUS_IDLE"
+              },
+              "modeChoices": [
+                {
+                  "mode": "APPROVAL_MODE_ASK",
+                  "label": {
+                    "key": "modes.ask"
+                  },
+                  "note": {
+                    "key": "modes.ask_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_AUTO",
+                  "label": {
+                    "key": "modes.auto"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_PLAN",
+                  "label": {
+                    "key": "modes.plan"
+                  },
+                  "note": {
+                    "key": "modes.ask_generic_desc"
+                  },
+                  "available": true
+                },
+                {
+                  "mode": "APPROVAL_MODE_FULL_ACCESS",
+                  "label": {
+                    "key": "modes.full_access"
+                  },
+                  "note": {
+                    "key": "modes.auto_desc",
+                    "args": [
+                      {
+                        "name": "agent",
+                        "strValue": "Codex"
+                      }
+                    ]
+                  },
+                  "available": true
+                }
+              ],
+              "usageEntry": {},
+              "forkAction": {
+                "visible": true,
+                "enabled": true,
+                "label": {
+                  "key": "session.fork"
+                }
+              }
+            },
+            "dock": {},
+            "composer": {
+              "enabled": true,
+              "placeholder": {
+                "key": "composer.message"
+              },
+              "supportsQueueMode": true,
+              "pendingTray": {},
+              "defaultSendMode": "SEND_MODE_STEER",
+              "isDefaultPlaceholder": true,
+              "slashWarningTitle": {
+                "key": "composer.slash_title"
+              },
+              "slashWarningText": {
+                "key": "composer.slash_note"
+              }
+            },
+            "timeline": {
+              "items": [
+                {
+                  "id": "e1",
+                  "seq": "1",
+                  "endSeq": "1",
+                  "timestampMs": "1791028801000",
+                  "sharedFiles": {
+                    "files": [
+                      {
+                        "sizeBytes": "24",
+                        "fileId": "f-clip",
+                        "sha256": "ERERERERERERERERERERERERERERERERERERERERERE=",
+                        "displayName": "clip.mp4",
+                        "nameHead": "c",
+                        "nameTail": "lip.mp4",
+                        "kind": "SHARED_FILE_KIND_VIDEO",
+                        "kindLabel": {
+                          "key": "shared_file.type_video"
+                        },
+                        "sizeText": {
+                          "literal": "24 B"
+                        },
+                        "displayPath": "~/proj/clip.mp4",
+                        "sourceCaption": {
+                          "key": "shared_file.menu_from_machine",
+                          "args": [
+                            {
+                              "name": "machine",
+                              "strValue": "Studio"
+                            }
+                          ]
+                        },
+                        "status": "SHARED_FILE_CARD_STATUS_DOWNLOADED",
+                        "subtitle": {
+                          "key": "shared_file.subtitle_media_size",
+                          "args": [
+                            {
+                              "name": "duration",
+                              "strValue": "1:02"
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "24 B"
+                            }
+                          ]
+                        },
+                        "a11yLabel": {
+                          "key": "shared_file.a11y_card",
+                          "args": [
+                            {
+                              "name": "name",
+                              "strValue": "clip.mp4"
+                            },
+                            {
+                              "name": "kind",
+                              "textValue": {
+                                "key": "shared_file.type_video"
+                              }
+                            },
+                            {
+                              "name": "size",
+                              "strValue": "24 B"
+                            },
+                            {
+                              "name": "state",
+                              "textValue": {
+                                "key": "shared_file.a11y_state_downloaded"
+                              }
+                            }
+                          ]
+                        },
+                        "downloadedBytes": "24",
+                        "progress": 1,
+                        "primaryAction": "SHARED_FILE_PRIMARY_ACTION_OPEN",
+                        "primaryLabel": {
+                          "key": "shared_file.action_open"
+                        },
+                        "primaryEnabled": true,
+                        "menuItems": [
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE_TO_ALBUM",
+                            "label": {
+                              "key": "shared_file.menu_save_to_album"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SAVE",
+                            "label": {
+                              "key": "shared_file.menu_save_to_device"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_SHARE",
+                            "label": {
+                              "key": "shared_file.menu_share"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_OPEN_WITH",
+                            "label": {
+                              "key": "shared_file.menu_open_with"
+                            },
+                            "enabled": true
+                          },
+                          {
+                            "action": "SHARED_FILE_MENU_ACTION_DELETE_LOCAL",
+                            "label": {
+                              "key": "shared_file.menu_delete_local"
+                            },
+                            "enabled": true,
+                            "destructive": true,
+                            "separated": true
+                          }
+                        ],
+                        "supportsAlbumSave": true,
+                        "hasMediaDuration": true,
+                        "durationText": "1:02",
+                        "webPreviewKind": "SHARED_FILE_WEB_PREVIEW_KIND_VIDEO",
+                        "webPreviewMime": "video/mp4"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "windowFirstSeq": "1",
+              "windowLastSeq": "1",
+              "totalItems": 1,
+              "loaded": true
+            },
+            "imageViewer": {
+              "emptyText": {
+                "key": "image.viewer_empty"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -204,17 +204,18 @@ type SecurityState struct {
 
 // SettledCommand notifies upper layers (e.g. app) when a dispatched command finishes.
 type SettledCommand struct {
-	_         [0]func()
-	RequestID string
-	SlotKey   string
-	MachineID string
-	SessionID string
-	Category  outcome.Category
-	Result    *v1.CommandResult
-	ErrorCode string
-	ErrorText *corev1.Text
-	Expired   bool
-	Frozen    bool
+	_          [0]func()
+	RequestID  string
+	SlotKey    string
+	MachineID  string
+	SessionID  string
+	Category   outcome.Category
+	Result     *v1.CommandResult
+	ErrorCode  string
+	ErrorText  *corev1.Text
+	FromDaemon bool
+	Expired    bool
+	Frozen     bool
 }
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
