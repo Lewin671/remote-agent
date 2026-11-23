@@ -383,3 +383,30 @@ func TestClassifyIOFailure(t *testing.T) {
 		})
 	}
 }
+
+func TestIsTransientDisconnectCode(t *testing.T) {
+	cases := []struct {
+		code string
+		want bool
+	}{
+		{"unavailable", true},
+		{"network", true},
+		{"unknown", true},
+		{"unknown_outcome", true},
+		{"expired", true},
+		{"deadline_exceeded", true},
+		{"canceled", true},
+		{"unresolved_host", true},
+		{"", false},
+		{"   ", false},
+		{"aborted", false},
+		{"machine_offline", false},
+		{"not_found", false},
+		{"failed_precondition", false},
+	}
+	for _, tc := range cases {
+		if got := IsTransientDisconnectCode(tc.code); got != tc.want {
+			t.Fatalf("IsTransientDisconnectCode(%q) = %v, want %v", tc.code, got, tc.want)
+		}
+	}
+}

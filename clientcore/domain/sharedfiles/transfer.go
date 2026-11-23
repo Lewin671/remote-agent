@@ -235,17 +235,14 @@ func isDiskFullDetail(detail string) bool {
 // auto-reconnect wait.
 func IsTransientDisconnectCode(code string) bool {
 	switch strings.ToLower(strings.TrimSpace(code)) {
-	case "",
-		"unavailable",
+	case "unavailable",
 		"network",
 		"unknown",
 		"unknown_outcome",
 		"expired",
 		"deadline_exceeded",
 		"canceled",
-		"aborted",
-		"unresolved_host",
-		"machine_offline":
+		"unresolved_host":
 		return true
 	default:
 		return false

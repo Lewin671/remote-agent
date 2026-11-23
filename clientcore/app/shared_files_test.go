@@ -1048,6 +1048,37 @@ func TestSharedFileDownloadDisconnectReconnectAndTimeout(t *testing.T) {
 			t.Fatalf("expected FAILED after second disconnect, got %+v", c)
 		}
 	})
+
+	t.Run("executed outcome missing chunk payload fails as protocol error without reconnect wait", func(t *testing.T) {
+		h, dc0 := startAndGetChunk0(t)
+		eff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_CommandOutcome{
+				CommandOutcome: &corev1.CommandOutcomeEvent{
+					RequestId:         dc0.GetRequestId(),
+					AttemptId:         dc0.GetAttemptId(),
+					Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+					Signed:            true,
+					HashesMatch:       true,
+					AttemptBound:      true,
+					OuterMatchesInner: true,
+					OuterOutcome:      "executed",
+					OuterReason:       "executed",
+					Result: &v1.CommandResult{
+						Outcome:         "executed",
+						Reason:          "executed",
+						ResultAvailable: true,
+						// Kind deliberately nil (missing GetSharedFileChunk payload)
+					},
+				},
+			},
+		})
+		if findSFScheduleTimer(eff, corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT) != nil {
+			t.Fatalf("missing payload must not schedule reconnect timer")
+		}
+		if c := h.card("f-net"); c.GetStatus() != corev1.SharedFileCardStatus_SHARED_FILE_CARD_STATUS_FAILED || c.GetWaitingReconnect() {
+			t.Fatalf("expected FAILED (not waiting_reconnect) on missing payload, got %+v", c)
+		}
+	})
 }
 
 func TestSharedFileDownloadNotFoundAndSessionExit(t *testing.T) {
