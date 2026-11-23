@@ -164,13 +164,22 @@ internal fun FileStrip(
 ) {
     val copy = uiText()
     if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-    val metaById = docMetaById ?: rememberEvaluatedDocuments(remote, machineId, draft.documents)
+    val metaById = docMetaById ?: rememberEvaluatedDocuments(draft, remote, machineId)
     val files = draft.documents.filterNot { metaById[it.id]?.isVideo == true }
-    val effectiveCaps = caps ?: remember(remote, machineId, sessionId) { remote.attachmentCapsFor(machineId, sessionId) }
-    val checkedPictures = if (machineId.isNullOrEmpty()) emptyList() else draft.pictures
-    val blocked = rememberDraftAttachmentsBlocked(remote, machineId, sessionId, draft.documents, checkedPictures, effectiveCaps)
+    androidx.compose.runtime.LaunchedEffect(draft, remote, machineId, sessionId, caps) {
+        if (caps == null) draft.refreshCaps(remote, machineId, sessionId)
+    }
+    val effectiveCaps = caps ?: draft.cachedCaps
+    val blocked = rememberDraftAttachmentsBlocked(
+        draft = draft,
+        remote = remote,
+        machineId = machineId,
+        sessionId = sessionId,
+        caps = effectiveCaps,
+        checkPictures = !machineId.isNullOrEmpty(),
+    )
     if (files.isEmpty() && blocked == null) return
-    val metadataNotice = effectiveCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty()
+    val metadataNotice = effectiveCaps?.fileMetadataNotice?.let { uiText(it) }.orEmpty()
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
         files.forEach { file ->

@@ -41,16 +41,10 @@ internal fun DraftImageViewer(
     val failedPictures = images.mapNotNull { img ->
         (img.state as? PendingImage.State.Failed)?.failure?.input?.let { img.id to it }
     }
-    val problemEval = remember(remote, failedPictures) {
-        evaluateImageProblems(remote, failedPictures.map { it.second })
+    androidx.compose.runtime.LaunchedEffect(draft, remote, failedPictures) {
+        draft.refreshImageProblems(remote)
     }
-    val problemsById = remember(failedPictures, problemEval) {
-        buildMap(failedPictures.size) {
-            for (i in failedPictures.indices) {
-                problemEval.problemsList.getOrNull(i)?.let { put(failedPictures[i].first, it) }
-            }
-        }
-    }
+    val problemsById = draft.evaluatedProblems
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         PagedImageViewer(
             count = images.size,

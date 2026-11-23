@@ -99,7 +99,7 @@ fun NewSessionBox(
     val pickState = rememberAttachmentPickState(remote, machine, "", images.pictures.size, images.documents.size, attachCaps)
     RefreshDraftUploads(images, remote, machine, attachCaps)
     val pick = rememberImagePicker(images, remote, machine, attachCaps)
-    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machine, "", images.documents, images.pictures, attachCaps)
+    val draftBlocked = rememberDraftAttachmentsBlocked(images, remote, machine, "", attachCaps)
 
     val uploadsReady =
         !images.restoring &&

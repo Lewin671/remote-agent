@@ -270,14 +270,13 @@ internal fun ImageDraft.addPickedCandidates(
  * machine-capability or limit violations (e.g., after capabilities drop or switching computers).
  * Returns Core's localized block reason, or null when all current attachments are accepted.
  */
-internal fun evaluateDraftAttachmentsBlocked(
+internal fun evaluateDraftAttachmentsBlockedText(
     remote: Remote,
     machineId: String?,
     sessionId: String = "",
     documents: List<PendingImage>,
     pictures: List<PendingImage> = emptyList(),
-    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
-): String? {
+): CoreText? {
     if (documents.isEmpty() && pictures.isEmpty()) return null
     val req = AttachmentEvalScreenRequest.newBuilder().apply {
         if (!machineId.isNullOrEmpty()) setMachineId(machineId)
@@ -303,12 +302,88 @@ internal fun evaluateDraftAttachmentsBlocked(
     }.build()
     val eval = remote.evaluateAttachments(req)
     val rejected = eval.decisionsList.firstOrNull { !it.accepted } ?: return null
-    val reason = when {
-        eval.hasNotice() -> coreTextToMessageText(eval.notice).resolve(copy)
-        rejected.hasRejectReason() -> coreTextToMessageText(rejected.rejectReason).resolve(copy)
-        else -> ""
+    return when {
+        eval.hasNotice() -> eval.notice
+        rejected.hasRejectReason() -> rejected.rejectReason
+        else -> null
     }
-    return reason.ifEmpty { null }
+}
+
+internal fun evaluateDraftAttachmentsBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    documents: List<PendingImage>,
+    pictures: List<PendingImage> = emptyList(),
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText,
+): String? {
+    val text = evaluateDraftAttachmentsBlockedText(remote, machineId, sessionId, documents, pictures) ?: return null
+    return coreTextToMessageText(text).resolve(copy).ifEmpty { null }
+}
+
+internal fun ImageDraft.refreshEvaluatedDocuments(remote: Remote, machineId: String?) {
+    val docs = documents
+    if (docs.isEmpty()) {
+        evaluatedDocs = emptyMap()
+        return
+    }
+    val req = AttachmentEvalScreenRequest.newBuilder().apply {
+        if (!machineId.isNullOrEmpty()) setMachineId(machineId)
+        for (doc in docs) {
+            addCandidates(
+                AttachmentCandidateInput.newBuilder()
+                    .setName(doc.fileName.orEmpty())
+                    .setSizeBytes(doc.fileBytes)
+                    .setForceFile(true),
+            )
+        }
+    }.build()
+    val decisions = remote.evaluateAttachments(req).decisionsList
+    evaluatedDocs = buildMap(docs.size) {
+        for (i in docs.indices) {
+            val doc = docs[i]
+            val d = decisions.getOrNull(i)
+            put(
+                doc.id,
+                EvaluatedDocumentMeta(
+                    isVideo = doc.isVideo || (d?.isVideo == true),
+                    formattedSize = d?.formattedSize?.takeIf { it.isNotEmpty() } ?: doc.formattedSize,
+                ),
+            )
+        }
+    }
+}
+
+internal fun ImageDraft.refreshImageProblems(remote: Remote) {
+    val failedPictures = pictures.mapNotNull { img ->
+        (img.state as? PendingImage.State.Failed)?.failure?.input?.let { img.id to it }
+    }
+    if (failedPictures.isEmpty()) {
+        evaluatedProblems = emptyMap()
+        failureSummary = null
+        return
+    }
+    val eval = evaluateImageProblems(remote, failedPictures.map { it.second })
+    evaluatedProblems = buildMap(failedPictures.size) {
+        for (i in failedPictures.indices) {
+            eval.problemsList.getOrNull(i)?.let { put(failedPictures[i].first, it) }
+        }
+    }
+    failureSummary = if (eval.hasFailureSummary()) eval.failureSummary else null
+}
+
+internal fun ImageDraft.refreshDraftBlocked(
+    remote: Remote,
+    machineId: String?,
+    sessionId: String = "",
+    checkPictures: Boolean = true,
+) {
+    val pics = if (checkPictures) pictures else emptyList()
+    draftBlockedReason = evaluateDraftAttachmentsBlockedText(remote, machineId, sessionId, documents, pics)
+}
+
+internal fun ImageDraft.refreshCaps(remote: Remote, machineId: String?, sessionId: String = "") {
+    cachedCaps = remote.attachmentCapsFor(machineId, sessionId)
 }
 
 internal fun ImageDraft.uploadDocument(

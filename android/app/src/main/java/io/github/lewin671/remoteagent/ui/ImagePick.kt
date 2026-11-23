@@ -137,66 +137,41 @@ internal data class EvaluatedDocumentMeta(
 )
 
 /**
- * Evaluates all draft documents once when the document list or verified sizes change (never per row),
- * returning Core's `isVideo` and `formattedSize` per document ID.
+ * Refreshes draft document metadata (`isVideo`, `formattedSize`) via Core (`Screen.attachment_eval`)
+ * in a state-change effect (never synchronously during composition) and reads cached draft state.
  */
 @Composable
 internal fun rememberEvaluatedDocuments(
+    draft: ImageDraft,
     remote: Remote,
     machineId: String?,
-    documents: List<PendingImage>,
 ): Map<String, EvaluatedDocumentMeta> {
-    val key = documents.map { Triple(it.id, it.fileName.orEmpty(), it.fileBytes) }
-    return remember(remote, machineId, key) {
-        if (documents.isEmpty()) return@remember emptyMap()
-        val req = AttachmentEvalScreenRequest.newBuilder().apply {
-            if (!machineId.isNullOrEmpty()) setMachineId(machineId)
-            for (doc in documents) {
-                addCandidates(
-                    AttachmentCandidateInput.newBuilder()
-                        .setName(doc.fileName.orEmpty())
-                        .setSizeBytes(doc.fileBytes)
-                        .setForceFile(true),
-                )
-            }
-        }.build()
-        val decisions = remote.evaluateAttachments(req).decisionsList
-        buildMap(documents.size) {
-            for (i in documents.indices) {
-                val doc = documents[i]
-                val d = decisions.getOrNull(i)
-                put(
-                    doc.id,
-                    EvaluatedDocumentMeta(
-                        isVideo = doc.isVideo || (d?.isVideo == true),
-                        formattedSize = d?.formattedSize?.takeIf { it.isNotEmpty() } ?: doc.formattedSize,
-                    ),
-                )
-            }
-        }
+    val key = draft.documents.map { Triple(it.id, it.fileName.orEmpty(), it.fileBytes) }
+    LaunchedEffect(draft, remote, machineId, key) {
+        draft.refreshEvaluatedDocuments(remote, machineId)
     }
+    return draft.evaluatedDocs
 }
 
 /**
- * Evaluates current draft attachments once when the draft contents or machine capabilities change,
- * returning Core's localized block reason (or null when all current attachments are allowed).
+ * Refreshes current draft attachment block status via Core (`Screen.attachment_eval`) in a
+ * state-change effect (never synchronously during composition) and reads cached draft state.
  */
 @Composable
 internal fun rememberDraftAttachmentsBlocked(
+    draft: ImageDraft,
     remote: Remote,
     machineId: String?,
     sessionId: String = "",
-    documents: List<PendingImage>,
-    pictures: List<PendingImage>,
-    caps: AttachmentCaps,
+    caps: AttachmentCaps?,
+    checkPictures: Boolean = true,
 ): String? {
-    val copy = uiText()
-    val docKey = documents.map { Triple(it.id, it.fileName.orEmpty(), it.fileBytes) }
-    val picKey = pictures.size
-    return remember(remote, machineId, sessionId, docKey, picKey, caps) {
-        if (documents.isEmpty() && pictures.isEmpty()) null
-        else evaluateDraftAttachmentsBlocked(remote, machineId, sessionId, documents, pictures, copy = copy)
+    val docKey = draft.documents.map { Triple(it.id, it.fileName.orEmpty(), it.fileBytes) }
+    val picKey = if (checkPictures) draft.pictures.size else 0
+    LaunchedEffect(draft, remote, machineId, sessionId, docKey, picKey, caps, checkPictures) {
+        draft.refreshDraftBlocked(remote, machineId, sessionId, checkPictures = checkPictures)
     }
+    return draft.draftBlockedReason?.let { uiText(it).ifEmpty { null } }
 }
 
 /**
@@ -241,22 +216,19 @@ internal fun ImageStrip(
         }
         return
     }
-    val effectiveCaps = caps ?: remember(remote, machineId, sessionId) { remote.attachmentCapsFor(machineId, sessionId) }
-    val docMetaById = rememberEvaluatedDocuments(remote, machineId, draft.documents)
+    LaunchedEffect(draft, remote, machineId, sessionId, caps) {
+        if (caps == null) draft.refreshCaps(remote, machineId, sessionId)
+    }
+    val effectiveCaps = caps ?: draft.cachedCaps
+    val docMetaById = rememberEvaluatedDocuments(draft, remote, machineId)
 
     val failedPictures = draft.pictures.mapNotNull { img ->
         (img.state as? PendingImage.State.Failed)?.failure?.input?.let { img.id to it }
     }
-    val problemEval = remember(remote, failedPictures) {
-        evaluateImageProblems(remote, failedPictures.map { it.second })
+    LaunchedEffect(draft, remote, failedPictures) {
+        draft.refreshImageProblems(remote)
     }
-    val problemsById: Map<String, ImageProblemView> = remember(failedPictures, problemEval) {
-        buildMap(failedPictures.size) {
-            for (i in failedPictures.indices) {
-                problemEval.problemsList.getOrNull(i)?.let { put(failedPictures[i].first, it) }
-            }
-        }
-    }
+    val problemsById: Map<String, ImageProblemView> = draft.evaluatedProblems
 
     val thumbs = draft.images.filter { !it.isFile || docMetaById[it.id]?.isVideo == true }
     if (thumbs.isEmpty()) {
@@ -340,7 +312,9 @@ internal fun ImageStrip(
         if (draft.pictures.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier.heightIn(min = 44.dp).clickable {
-                    draft.setOriginal(context, !draft.original, remote, effectiveCaps.originalImageMaxBytes) { machineId }
+                    val origMax = effectiveCaps?.originalImageMaxBytes
+                        ?: remote.attachmentCapsFor(machineId, sessionId).originalImageMaxBytes
+                    draft.setOriginal(context, !draft.original, remote, origMax) { machineId }
                 },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -354,13 +328,13 @@ internal fun ImageStrip(
             Spacer(Modifier.weight(1f))
             Text("${draft.pictures.size} / $max", style = T.s13, color = p.ink2)
         }
-        val summaryLine = if (problemEval.hasFailureSummary()) uiText(problemEval.failureSummary).ifEmpty { null } else null
+        val summaryLine = draft.failureSummary?.let { uiText(it).ifEmpty { null } }
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val line = summaryLine ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
         if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && draft.pictures.isNotEmpty()) {
-            val hint = effectiveCaps.originalImageHint?.let { uiText(it) }.orEmpty()
+            val hint = effectiveCaps?.originalImageHint?.let { uiText(it) }.orEmpty()
             if (hint.isNotEmpty()) Text(hint, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         }
         }
@@ -372,7 +346,7 @@ internal fun ImageStrip(
             remote = remote,
             machineId = machineId,
             start = it,
-            originalMaxBytes = effectiveCaps.originalImageMaxBytes,
+            originalMaxBytes = effectiveCaps?.originalImageMaxBytes ?: 0L,
         ) { viewing = null }
     }
 }
@@ -489,7 +463,7 @@ internal fun RefreshDraftUploads(
     sessionId: String = "",
 ) {
     draft.bindRemote(remote)
-    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sessionId, draft.documents, draft.pictures, caps)
+    val draftBlocked = rememberDraftAttachmentsBlocked(draft, remote, machineId, sessionId, caps)
     val deadlines = draft.images.map { it.expiresMs }
     LaunchedEffect(draft, machineId, draftBlocked, caps, deadlines, draft.images.size, draft.restoring) {
         if (!draft.restoring && machineId != null) draft.retarget(remote, machineId)

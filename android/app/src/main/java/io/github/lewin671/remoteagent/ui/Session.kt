@@ -1018,7 +1018,7 @@ internal fun Composer(
     val pickState = rememberAttachmentPickState(remote, machineId, sid, images.pictures.size, images.documents.size, attachCaps)
     RefreshDraftUploads(images, remote, machineId, attachCaps, sessionId = sid)
     val pick = rememberImagePicker(images, remote, machineId, attachCaps, sessionId = sid)
-    val draftBlocked = rememberDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, attachCaps)
+    val draftBlocked = rememberDraftAttachmentsBlocked(images, remote, machineId, sid, attachCaps)
 
     fun send(requestedMode: SendMode? = null) {
         val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER

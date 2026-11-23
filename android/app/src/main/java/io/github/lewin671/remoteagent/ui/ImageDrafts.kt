@@ -289,6 +289,11 @@ class ImageDraft(
     val images = mutableStateListOf<PendingImage>()
     val pictures: List<PendingImage> get() = images.filterNot { it.isFile }
     val documents: List<PendingImage> get() = images.filter { it.isFile }
+    internal var evaluatedDocs by mutableStateOf<Map<String, EvaluatedDocumentMeta>>(emptyMap())
+    internal var evaluatedProblems by mutableStateOf<Map<String, io.github.lewin671.remoteagent.core.proto.ImageProblemView>>(emptyMap())
+    internal var failureSummary by mutableStateOf<io.github.lewin671.remoteagent.core.proto.Text?>(null)
+    internal var draftBlockedReason by mutableStateOf<io.github.lewin671.remoteagent.core.proto.Text?>(null)
+    internal var cachedCaps by mutableStateOf<AttachmentCaps?>(null)
     var readingFiles by mutableStateOf(false)
         internal set
     var restoring by mutableStateOf(false)
