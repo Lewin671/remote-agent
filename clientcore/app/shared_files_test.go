@@ -1257,7 +1257,7 @@ func TestSharedFileDownloadDiskFullNormalization(t *testing.T) {
 				SharedFileDiskInspected: &corev1.SharedFileDiskInspectedEvent{OpId: insp.GetOpId(), SessionId: h.sessionID, FileId: "f-wf", Known: false},
 			},
 		})
-		// Write chunk 0 ok, chunk 1 fails with raw ENOSPC -> normalized to PHONE_STORAGE_FULL, partial 64 kept.
+		// Write chunk 0 ok, chunk 1 fails with STORAGE_FULL -> normalized to PHONE_STORAGE_FULL, partial 64 kept.
 		dc0, _ := findDispatchChunk(eff)
 		eff = h.deliverChunkOK(dc0, bytes.Repeat([]byte{1}, 64), 128)
 		wc0 := findWriteChunk(eff)
@@ -1272,12 +1272,11 @@ func TestSharedFileDownloadDiskFullNormalization(t *testing.T) {
 		eff = h.dispatch(&corev1.Event{
 			Event: &corev1.Event_SharedFileWriteChunkResult{
 				SharedFileWriteChunkResult: &corev1.SharedFileWriteChunkResultEvent{
-					OpId:        wc1.GetOpId(),
-					SessionId:   h.sessionID,
-					FileId:      "f-wf",
-					Ok:          false,
-					ErrorKind:   corev1.SharedFileIOErrorKind_SHARED_FILE_IO_ERROR_KIND_OTHER,
-					ErrorDetail: "write failed: ENOSPC",
+					OpId:      wc1.GetOpId(),
+					SessionId: h.sessionID,
+					FileId:    "f-wf",
+					Ok:        false,
+					ErrorKind: corev1.SharedFileIOErrorKind_SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL,
 				},
 			},
 		})

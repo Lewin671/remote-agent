@@ -195,39 +195,21 @@ func ComputeEtaSeconds(gainedBytes, remainingBytes, elapsedMs int64) (int64, boo
 	return secs, true
 }
 
-// ClassifyIOFailure normalizes platform I/O error kinds and raw OS/browser storage-full diagnostics
-// into the unified SharedFileFailureKind using the shell-configured storageFullKind.
+// ClassifyIOFailure normalizes shell-reported SharedFileIOErrorKind into the unified
+// SharedFileFailureKind using the shell-configured storageFullKind.
 func ClassifyIOFailure(
 	kind corev1.SharedFileIOErrorKind,
 	detail string,
 	storageFullKind corev1.SharedFileFailureKind,
 ) (corev1.SharedFileFailureKind, string) {
-	fullKind := EffectiveStorageFullKind(storageFullKind)
 	switch kind {
 	case corev1.SharedFileIOErrorKind_SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL:
-		return fullKind, ""
+		return EffectiveStorageFullKind(storageFullKind), ""
 	case corev1.SharedFileIOErrorKind_SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH:
 		return corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH, ""
+	default:
+		return corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_OTHER, strings.TrimSpace(detail)
 	}
-	trimmed := strings.TrimSpace(detail)
-	if isDiskFullDetail(trimmed) {
-		return fullKind, ""
-	}
-	return corev1.SharedFileFailureKind_SHARED_FILE_FAILURE_KIND_OTHER, trimmed
-}
-
-func isDiskFullDetail(detail string) bool {
-	if detail == "" {
-		return false
-	}
-	low := strings.ToLower(detail)
-	return strings.Contains(low, "enospc") ||
-		strings.Contains(low, "no space") ||
-		strings.Contains(low, "disk full") ||
-		strings.Contains(low, "out of space") ||
-		strings.Contains(low, "quotaexceeded") ||
-		strings.Contains(low, "quota_reached") ||
-		strings.Contains(low, "quota exceeded")
 }
 
 // IsTransientDisconnectCode reports whether a non-daemon command failure code represents
