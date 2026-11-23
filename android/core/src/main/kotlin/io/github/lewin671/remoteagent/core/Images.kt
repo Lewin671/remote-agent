@@ -406,10 +406,7 @@ suspend fun uploadImage(
     return UploadedImage(st.imageId, st.expiresMs)
 }
 
-// --- images in a session ---
-
-/** One image as it appears in a session: the ref, the event it is in, and what shows it. */
-data class SessionImage(val ref: io.github.lewin671.remoteagent.proto.ImageRef, val seq: Long, val kind: io.github.lewin671.remoteagent.proto.Event.KindCase, val toolTitle: String = "")
+// --- image decoding ---
 
 /** Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB. */
 const val MAX_DECODE_PIXELS = 40_000_000L

@@ -1613,6 +1613,15 @@ class Remote(
     fun sendSharedFileLocalState(event: io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent) =
         coreHost.sendSharedFileLocalState(event)
 
+    fun openSessionImageViewer(sid: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
+        coreHost.openSessionImageViewer(sid, seq, imageIndex, viewerIndex)
+
+    fun navigateSessionImageViewer(sid: String, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) =
+        coreHost.navigateSessionImageViewer(sid, delta, setIndex, index)
+
+    fun closeSessionImageViewer(sid: String) =
+        coreHost.closeSessionImageViewer(sid)
+
     suspend fun fetchSession(sid: String): Boolean {
         if (state.value.sessions[sid] != null) return true
         val deferred = CompletableDeferred<Boolean>()

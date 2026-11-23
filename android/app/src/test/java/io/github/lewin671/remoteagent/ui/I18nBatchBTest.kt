@@ -319,7 +319,35 @@ class I18nBatchBTest(private val locale: String) {
             .setPreview(com.google.protobuf.ByteString.copyFrom(bytes)).setPreviewWidth(240).setPreviewHeight(160)
             .setWidth(240).setHeight(160).setSync(ImageSync.IMAGE_SYNC_NAME_ONLY).setSource(ImageSource.IMAGE_SOURCE_USER).build()
         val imgItem = tl(6, "e6") { userMessage = SessionUserMessageItem.newBuilder().addImages(image).build() }
-        remote.showForTest(state, sessions = mapOf("s" to sessionVm(items = history + imgItem)))
+        val viewerImg = SessionViewerImageView.newBuilder()
+            .setViewerIndex(0)
+            .setSeq(6)
+            .setEventImageIndex(0)
+            .setKind(SessionImageSourceKind.SESSION_IMAGE_SOURCE_KIND_USER)
+            .setRef(image)
+            .setSourceLabel(Text.newBuilder().setKey(UiMessages.imageUserSource().key))
+            .setSizeText("240 × 160")
+            .setHasDisplayCopy(false)
+            .setDisplayName("example.png")
+            .setDisplayPath("/example/demo/example.png")
+            .setFileExtension("png")
+            .setMimeType("image/png")
+            .build()
+        val vm = sessionVm(items = history + imgItem).toBuilder()
+            .setTimeline(
+                sessionVm(items = history + imgItem).timeline.toBuilder()
+                    .addViewerImages(viewerImg),
+            )
+            .setImageViewer(
+                SessionImageViewerView.newBuilder()
+                    .setOpen(true)
+                    .setCurrentIndex(0)
+                    .setTotalCount(1)
+                    .setPositionText(Text.newBuilder().setLiteral("1 / 1"))
+                    .setCurrentImage(viewerImg),
+            )
+            .build()
+        remote.showForTest(state, sessions = mapOf("s" to vm))
         show { ImageViewer("s", 6, 0) }; shot("image-viewer")
     }
     @Test fun draftViewer() {

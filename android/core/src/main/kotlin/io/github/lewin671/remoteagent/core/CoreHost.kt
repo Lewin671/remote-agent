@@ -1129,6 +1129,31 @@ class CoreHost(
     fun sendSharedFileLocalState(event: SharedFileLocalStateEvent) =
         send { setSharedFileLocalState(event) }
 
+    fun openSessionImageViewer(sessionId: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
+        send {
+            setSessionImageViewerOpen(
+                SessionImageViewerOpenAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setSeq(seq)
+                    .setImageIndex(imageIndex)
+                    .setViewerIndex(viewerIndex),
+            )
+        }
+
+    fun navigateSessionImageViewer(sessionId: String, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) =
+        send {
+            setSessionImageViewerNavigate(
+                SessionImageViewerNavigateAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setDelta(delta)
+                    .setSetIndex(setIndex)
+                    .setIndex(index),
+            )
+        }
+
+    fun closeSessionImageViewer(sessionId: String) =
+        send { setSessionImageViewerClose(SessionImageViewerCloseAction.newBuilder().setSessionId(sessionId)) }
+
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
 
