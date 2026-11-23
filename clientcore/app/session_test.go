@@ -2548,17 +2548,17 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 		Screen: &corev1.Screen_AttachmentEval{
 			AttachmentEval: &corev1.AttachmentEvalScreenRequest{
 				SessionId:     "s-att",
-				CurrentImages: 7,
+				CurrentImages: 5,
 				CurrentFiles:  5,
 				Candidates: []*corev1.AttachmentCandidateInput{
-					{Name: "a.jpg", MimeType: "image/jpeg", SizeBytes: 2048, FromGallery: true},
-					{Name: "b.jpg", MimeType: "image/jpeg", SizeBytes: 2048, FromGallery: true},
-					{Name: "clip.mov", MimeType: "", SizeBytes: 120 * 1024 * 1024, FromGallery: true},
-					{Name: "short.mp4", MimeType: "video/mp4", SizeBytes: 4 * 1024 * 1024, FromGallery: true},
+					{Name: "pasted.jpg", MimeType: "image/jpeg", SizeBytes: 2048},
+					{Name: "dropped.jpg", MimeType: "image/jpeg", SizeBytes: 2048},
+					{Name: "clip.mov", MimeType: "", SizeBytes: 120 * 1024 * 1024},
+					{Name: "short.mp4", MimeType: "video/mp4", SizeBytes: 4 * 1024 * 1024},
 				},
 				Problems: []*corev1.ImageProblemInput{
 					{ErrorCode: "resource_exhausted"},
-					{RawDiagnostic: "network timeout"},
+					{RawDiagnostic: "upload png: network timeout"},
 				},
 			},
 		},
@@ -2567,7 +2567,7 @@ func TestAttachmentEvalScreenAndCapabilities(t *testing.T) {
 		t.Fatalf("AttachmentEval View error: %v", err)
 	}
 	ev := vm.GetAttachmentEval()
-	if ev.GetMaxImages() != 8 || ev.GetMaxFiles() != 6 || ev.GetMaxFileBytes() != 100*1024*1024 {
+	if ev.GetMaxImages() != 6 || ev.GetMaxFiles() != 6 || ev.GetMaxFileBytes() != 100*1024*1024 {
 		t.Fatalf("unexpected clamped limits: images=%d files=%d bytes=%d", ev.GetMaxImages(), ev.GetMaxFiles(), ev.GetMaxFileBytes())
 	}
 	if !ev.GetGalleryAllowsVideo() || ev.GetGalleryAcceptMime() != "image/*,video/*" || ev.GetLibraryRoom() != 2 {

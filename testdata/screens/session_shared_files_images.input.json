@@ -213,31 +213,27 @@
           "screen": {
             "attachmentEval": {
               "sessionId": "s-media",
-              "currentImages": 7,
+              "currentImages": 5,
               "currentFiles": 5,
               "candidates": [
                 {
                   "name": "ok.jpg",
                   "mimeType": "image/jpeg",
-                  "sizeBytes": "2048",
-                  "fromGallery": true
+                  "sizeBytes": "2048"
                 },
                 {
                   "name": "overflow.jpg",
                   "mimeType": "image/jpeg",
-                  "sizeBytes": "2048",
-                  "fromGallery": true
+                  "sizeBytes": "2048"
                 },
                 {
                   "name": "huge.mov",
-                  "sizeBytes": "125829120",
-                  "fromGallery": true
+                  "sizeBytes": "125829120"
                 },
                 {
                   "name": "clip.mp4",
                   "mimeType": "video/mp4",
-                  "sizeBytes": "5242880",
-                  "fromGallery": true
+                  "sizeBytes": "5242880"
                 }
               ],
               "problems": [
@@ -245,7 +241,7 @@
                   "errorCode": "resource_exhausted"
                 },
                 {
-                  "rawDiagnostic": "fetch timeout"
+                  "rawDiagnostic": "upload png: network timeout"
                 }
               ]
             }

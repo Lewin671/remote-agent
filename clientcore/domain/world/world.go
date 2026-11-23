@@ -17,6 +17,7 @@ type State struct {
 
 	DisplayGrace         bool
 	ReachabilityUnknown  bool
+	Removed              bool
 	ConnectionReasonText *corev1.Text
 	SessionListErrorText *corev1.Text
 	ManagerNameText      *corev1.Text

@@ -196,42 +196,48 @@ public  final class AttachmentCandidateInput extends
     isDirectory_ = false;
   }
 
-  public static final int FROM_GALLERY_FIELD_NUMBER = 6;
-  private boolean fromGallery_;
+  public static final int FORCE_FILE_FIELD_NUMBER = 6;
+  private boolean forceFile_;
   /**
    * <pre>
-   * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+   * When true (explicit "文件" / File picker), even image files are routed as FILE and
+   * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+   * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
    * </pre>
    *
-   * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
-   * @return The fromGallery.
+   * <code>bool force_file = 6 [json_name = "forceFile"];</code>
+   * @return The forceFile.
    */
   @java.lang.Override
-  public boolean getFromGallery() {
-    return fromGallery_;
+  public boolean getForceFile() {
+    return forceFile_;
   }
   /**
    * <pre>
-   * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+   * When true (explicit "文件" / File picker), even image files are routed as FILE and
+   * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+   * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
    * </pre>
    *
-   * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
-   * @param value The fromGallery to set.
+   * <code>bool force_file = 6 [json_name = "forceFile"];</code>
+   * @param value The forceFile to set.
    */
-  private void setFromGallery(boolean value) {
+  private void setForceFile(boolean value) {
     
-    fromGallery_ = value;
+    forceFile_ = value;
   }
   /**
    * <pre>
-   * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+   * When true (explicit "文件" / File picker), even image files are routed as FILE and
+   * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+   * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
    * </pre>
    *
-   * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
+   * <code>bool force_file = 6 [json_name = "forceFile"];</code>
    */
-  private void clearFromGallery() {
+  private void clearForceFile() {
 
-    fromGallery_ = false;
+    forceFile_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.AttachmentCandidateInput parseFrom(
@@ -519,41 +525,47 @@ public  final class AttachmentCandidateInput extends
 
     /**
      * <pre>
-     * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+     * When true (explicit "文件" / File picker), even image files are routed as FILE and
+     * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+     * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
      * </pre>
      *
-     * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
-     * @return The fromGallery.
+     * <code>bool force_file = 6 [json_name = "forceFile"];</code>
+     * @return The forceFile.
      */
     @java.lang.Override
-    public boolean getFromGallery() {
-      return instance.getFromGallery();
+    public boolean getForceFile() {
+      return instance.getForceFile();
     }
     /**
      * <pre>
-     * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+     * When true (explicit "文件" / File picker), even image files are routed as FILE and
+     * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+     * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
      * </pre>
      *
-     * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
-     * @param value The fromGallery to set.
+     * <code>bool force_file = 6 [json_name = "forceFile"];</code>
+     * @param value The forceFile to set.
      * @return This builder for chaining.
      */
-    public Builder setFromGallery(boolean value) {
+    public Builder setForceFile(boolean value) {
       copyOnWrite();
-      instance.setFromGallery(value);
+      instance.setForceFile(value);
       return this;
     }
     /**
      * <pre>
-     * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+     * When true (explicit "文件" / File picker), even image files are routed as FILE and
+     * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+     * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
      * </pre>
      *
-     * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
+     * <code>bool force_file = 6 [json_name = "forceFile"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearFromGallery() {
+    public Builder clearForceFile() {
       copyOnWrite();
-      instance.clearFromGallery();
+      instance.clearForceFile();
       return this;
     }
 
@@ -578,7 +590,7 @@ public  final class AttachmentCandidateInput extends
             "sizeBytes_",
             "sizeUnknown_",
             "isDirectory_",
-            "fromGallery_",
+            "forceFile_",
           };
           java.lang.String info =
               "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +

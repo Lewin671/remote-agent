@@ -194,6 +194,7 @@ func (e *Engine) refreshWorld() {
 	e.unlinkedFlag = unlinked
 	w.DisplayGrace = e.displayGraceActive()
 	w.ReachabilityUnknown = e.coldStartGraceActive()
+	w.Removed = e.removed
 	w.ManagerNameText = e.managerNameText()
 	w.World.SessionListFailed = w.SessionListErrorText != nil
 	w.World.Prefs = e.prefs.Prefs

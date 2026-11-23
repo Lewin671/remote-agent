@@ -7,16 +7,14 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
-// Untranslated codec/transport/daemon diagnostic keyword lists.
-// Product failures are classified by explicit_kind, local_key, or error_code first;
-// never feed localized UI text into raw_diagnostic.
+// Untranslated English codec/transport/daemon diagnostic keyword lists.
+// Product failures are classified by explicit_kind, error_code, or legacy local_key first;
+// never feed localized UI prose into raw_diagnostic.
 const (
-	rawOriginalLimitTokens = "原图超过"
-	rawDimensionsTokens    = "尺寸|像素|pixels|dimensions|canvas|too large|图片超过|图片太大"
-	rawSourceMissingTokens = "本机副本|重新选择"
-	rawDecodeTokens        = "decode|解不出|读不出|读不到|格式|规范|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported"
-	rawStorageFullTokens   = "quota|空间|配额"
-	rawUploadFailedTokens  = "network|offline|unavailable|fetch|timeout|deadline|expired|网络|连接|离线|断线|超时|过期|重新传"
+	rawDimensionsTokens   = "pixels|dimensions|canvas|too large"
+	rawStorageFullTokens  = "quota"
+	rawUploadFailedTokens = "network|offline|unavailable|fetch|timeout|deadline|expired"
+	rawDecodeTokens       = "decode|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported"
 )
 
 // ProblemMessage returns the localized user-facing message for a classified ImageProblemKind.
@@ -58,7 +56,7 @@ func BuildImageProblem(kind corev1.ImageProblemKind) *corev1.ImageProblemView {
 }
 
 // ClassifyImageProblem classifies a structured shell error signal into a unified ImageProblemView.
-// Precedence: explicit_kind > local_key > error_code > raw_diagnostic > fallback.
+// Precedence: explicit_kind > error_code > legacy local_key > raw_diagnostic > is_reading_source fallback.
 func ClassifyImageProblem(in *corev1.ImageProblemInput) *corev1.ImageProblemView {
 	if in == nil {
 		return BuildImageProblem(corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_PROCESSING_FAILED)
@@ -66,10 +64,10 @@ func ClassifyImageProblem(in *corev1.ImageProblemInput) *corev1.ImageProblemView
 	if in.ExplicitKind != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return BuildImageProblem(in.ExplicitKind)
 	}
-	if k := classifyLocalKey(in.LocalKey); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
+	if k := classifyErrorCode(in.ErrorCode, in.RawDiagnostic); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return BuildImageProblem(k)
 	}
-	if k := classifyErrorCode(in.ErrorCode, in.RawDiagnostic); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
+	if k := classifyLocalKey(in.LocalKey); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return BuildImageProblem(k)
 	}
 	if k := classifyRawDiagnostic(in.RawDiagnostic); k != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
@@ -249,20 +247,18 @@ func classifyRawDiagnostic(raw string) corev1.ImageProblemKind {
 	if stable := classifyStableToken(lower); stable != corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED {
 		return stable
 	}
-	if has20MB(lower) || containsAnyToken(lower, rawOriginalLimitTokens) {
+	if has20MB(lower) {
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE
 	}
 	if containsAnyToken(lower, rawDimensionsTokens) {
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DIMENSIONS
 	}
-	if containsAnyToken(lower, rawSourceMissingTokens) ||
-		containsOrderedPair(lower, "source", "missing") ||
+	if containsOrderedPair(lower, "source", "missing") ||
 		containsOrderedPair(lower, "source", "read") {
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_SOURCE_MISSING
 	}
-	if containsAnyToken(lower, rawDecodeTokens) {
-		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DECODE
-	}
+	// Check storage and network failures before format/decode tokens so messages like
+	// "upload png: network timeout" remain retryable UPLOAD_FAILED instead of DECODE.
 	if containsAnyToken(lower, rawStorageFullTokens) ||
 		containsOrderedPair(lower, "storage", "full") ||
 		containsOrderedPair(lower, "disk", "full") {
@@ -270,6 +266,9 @@ func classifyRawDiagnostic(raw string) corev1.ImageProblemKind {
 	}
 	if containsAnyToken(lower, rawUploadFailedTokens) {
 		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UPLOAD_FAILED
+	}
+	if containsAnyToken(lower, rawDecodeTokens) {
+		return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DECODE
 	}
 	return corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UNSPECIFIED
 }

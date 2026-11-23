@@ -535,8 +535,8 @@ func buildSessionHeader(
 	if lm != nil && lm.Meta != nil {
 		mc = lm.Meta.Capabilities
 	}
-	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && out.ComputerOnline && !unlinked && !out.ProtocolMismatch && !in.AccountControlLost && !in.Removed
-	attCaps := attachments.ResolveCaps(lm, machineID, out.ComputerOnline, onlineReady, st.UILocale)
+	onlineReady := machineOnlineReady(in.Conn, st.DisplayGrace, out.ComputerOnline, unlinked, out.ProtocolMismatch, in.AccountControlLost, in.Removed)
+	attCaps := attachments.ResolveCaps(lm, machineID, out.ComputerOnline, onlineReady)
 	out.Capabilities = &corev1.SessionCapabilitiesView{
 		CanSend:                  onlineReady && !out.Exited,
 		SupportsImages:           attCaps.SupportsImages,
@@ -688,7 +688,7 @@ func buildSessionActions(
 		out.ModelsError = text.Msg(text.KeyModelsReadingMachine, text.Str("name", lists.MachineName(lm, lm.ID)))
 	}
 
-	onlineReady := (in.Conn == lists.ConnConnected || st.DisplayGrace) && header.ComputerOnline && !header.ComputerUnlinked && !header.ProtocolMismatch && !in.AccountControlLost && !in.Removed
+	onlineReady := machineOnlineReady(in.Conn, st.DisplayGrace, header.ComputerOnline, header.ComputerUnlinked, header.ProtocolMismatch, in.AccountControlLost, in.Removed)
 	runningTurn := in.Projection != nil && in.Projection.Running
 	hasPendingInputs := in.Projection != nil && len(in.Projection.PendingInputs) > 0
 	exited := header.Exited

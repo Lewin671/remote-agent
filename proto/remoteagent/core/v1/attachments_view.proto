@@ -65,8 +65,10 @@ message AttachmentCandidateInput {
   int64 size_bytes = 3;
   bool size_unknown = 4;
   bool is_directory = 5;
-  // True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
-  bool from_gallery = 6;
+  // When true (explicit "文件" / File picker), even image files are routed as FILE and
+  // sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+  // images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
+  bool force_file = 6;
 }
 
 // Core's routing and validation verdict for one picked candidate.

@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// DefaultMaxImages is the default per-message image count cap when the daemon
-	// omits or sends a non-positive value. Positive daemon values are respected as-is.
+	// DefaultMaxImages is both the default and upper clamp (6) for per-message image count
+	// per docs/session-images.md ("一条消息最多 6 张").
 	DefaultMaxImages int32 = 6
 	// DefaultMaxFiles is both the default and upper clamp for per-message file count
 	// (including gallery videos), unifying Web/Android/iOS.
@@ -29,6 +29,13 @@ const (
 	OriginalImageMaxBytes int64 = 20 * 1024 * 1024
 )
 
+// imageExtensions is the unified set of image extensions recognized when MIME is absent
+// (e.g., OS drag-and-drop or clipboard entries without a declared content type).
+var imageExtensions = map[string]bool{
+	"png": true, "jpg": true, "jpeg": true, "gif": true, "webp": true,
+	"heic": true, "heif": true, "bmp": true, "avif": true, "tif": true, "tiff": true,
+}
+
 // videoExtensions is the unified set of video extensions recognized when the OS or browser
 // omits a MIME type for a picked media item (matches Android Files.kt VIDEO_EXTENSIONS).
 var videoExtensions = map[string]bool{
@@ -37,10 +44,13 @@ var videoExtensions = map[string]bool{
 	"ts": true, "wmv": true, "flv": true,
 }
 
-// MaxImages resolves the per-message image limit from daemon capabilities.
-// Positive daemon values are honored without upper clamping; missing/non-positive defaults to 6.
+// MaxImages resolves the per-message image limit from daemon capabilities, clamped to <= 6
+// per docs/session-images.md ("一条消息最多 6 张").
 func MaxImages(mc *v1.MachineCapabilities) int32 {
 	if mc == nil || mc.MaxImagesPerMessage <= 0 {
+		return DefaultMaxImages
+	}
+	if mc.MaxImagesPerMessage > DefaultMaxImages {
 		return DefaultMaxImages
 	}
 	return mc.MaxImagesPerMessage
@@ -86,6 +96,17 @@ func GalleryAcceptMime(supportsFiles bool) string {
 		return "image/*,video/*"
 	}
 	return "image/*"
+}
+
+// IsImage reports whether a candidate is an image based on its MIME type ("image/") or,
+// when MIME is empty, its filename extension.
+func IsImage(mimeType, name string) bool {
+	m := strings.TrimSpace(mimeType)
+	if m != "" {
+		return strings.HasPrefix(strings.ToLower(m), "image/")
+	}
+	ext := fileExtensionLower(name)
+	return ext != "" && imageExtensions[ext]
 }
 
 // IsVideo reports whether a picked candidate should be treated as a video (routed as a file).
@@ -183,7 +204,7 @@ type ResolvedCaps struct {
 }
 
 // ResolveCaps computes the unified attachment capabilities for a target machine.
-func ResolveCaps(lm *lists.Machine, machineID string, computerOnline, onlineReady bool, uiLocale string) ResolvedCaps {
+func ResolveCaps(lm *lists.Machine, machineID string, computerOnline, onlineReady bool) ResolvedCaps {
 	var mc *v1.MachineCapabilities
 	loaded := lm != nil && lm.Meta != nil
 	if loaded {
@@ -205,11 +226,13 @@ func ResolveCaps(lm *lists.Machine, machineID string, computerOnline, onlineRead
 
 // EvaluateCandidates routes and validates a batch of picked candidates against caps and current counts,
 // returning per-candidate verdicts and a single localized notice (or nil when all are accepted).
+// Per docs/session-files.md: images (from gallery, drag-and-drop, or paste) route as IMAGE unless
+// force_file is set (explicit "文件" picker, where images are sent unchanged as FILE); all non-images
+// (including videos) route as VIDEO_FILE / FILE.
 func EvaluateCandidates(
 	caps ResolvedCaps,
 	currentImages, currentFiles int32,
 	candidates []*corev1.AttachmentCandidateInput,
-	uiLocale string,
 ) ([]*corev1.AttachmentCandidateDecision, *corev1.Text) {
 	if len(candidates) == 0 {
 		return nil, nil
@@ -258,15 +281,9 @@ func EvaluateCandidates(
 			formattedSize = sharedfiles.FormatFileSize(c.SizeBytes)
 		}
 
-		// Determine whether this candidate should be validated as an image or as a file.
-		// Gallery picks route images to the image slot and videos/other media to the file slot.
-		asImage := false
-		if c.FromGallery && !c.IsDirectory {
-			m := strings.ToLower(strings.TrimSpace(c.MimeType))
-			if strings.HasPrefix(m, "image/") || (m == "" && !isVid) {
-				asImage = true
-			}
-		}
+		// Per docs/session-files.md: images route as IMAGE (whether from gallery, drag-and-drop,
+		// or paste) unless force_file is set (explicit "文件" picker). Non-images route as files.
+		asImage := !c.ForceFile && !c.IsDirectory && IsImage(c.MimeType, c.Name)
 
 		if asImage {
 			if !imagesAllowed {

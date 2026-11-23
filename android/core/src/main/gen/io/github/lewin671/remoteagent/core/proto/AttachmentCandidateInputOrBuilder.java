@@ -54,11 +54,13 @@ public interface AttachmentCandidateInputOrBuilder extends
 
   /**
    * <pre>
-   * True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
+   * When true (explicit "文件" / File picker), even image files are routed as FILE and
+   * sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+   * images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
    * </pre>
    *
-   * <code>bool from_gallery = 6 [json_name = "fromGallery"];</code>
-   * @return The fromGallery.
+   * <code>bool force_file = 6 [json_name = "forceFile"];</code>
+   * @return The forceFile.
    */
-  boolean getFromGallery();
+  boolean getForceFile();
 }

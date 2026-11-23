@@ -256,8 +256,10 @@ public struct PBAttachmentCandidateInput: Sendable {
 
   public var isDirectory: Bool = false
 
-  /// True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
-  public var fromGallery: Bool = false
+  /// When true (explicit "文件" / File picker), even image files are routed as FILE and
+  /// sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+  /// images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
+  public var forceFile: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -601,7 +603,7 @@ extension PBImageProblemView: SwiftProtobuf.Message, SwiftProtobuf._MessageImple
 
 extension PBAttachmentCandidateInput: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentCandidateInput"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}mime_type\0\u{3}size_bytes\0\u{3}size_unknown\0\u{3}is_directory\0\u{3}from_gallery\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}mime_type\0\u{3}size_bytes\0\u{3}size_unknown\0\u{3}is_directory\0\u{3}force_file\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -614,7 +616,7 @@ extension PBAttachmentCandidateInput: SwiftProtobuf.Message, SwiftProtobuf._Mess
       case 3: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.sizeUnknown) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.isDirectory) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.fromGallery) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.forceFile) }()
       default: break
       }
     }
@@ -636,8 +638,8 @@ extension PBAttachmentCandidateInput: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if self.isDirectory != false {
       try visitor.visitSingularBoolField(value: self.isDirectory, fieldNumber: 5)
     }
-    if self.fromGallery != false {
-      try visitor.visitSingularBoolField(value: self.fromGallery, fieldNumber: 6)
+    if self.forceFile != false {
+      try visitor.visitSingularBoolField(value: self.forceFile, fieldNumber: 6)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -648,7 +650,7 @@ extension PBAttachmentCandidateInput: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.sizeBytes != rhs.sizeBytes {return false}
     if lhs.sizeUnknown != rhs.sizeUnknown {return false}
     if lhs.isDirectory != rhs.isDirectory {return false}
-    if lhs.fromGallery != rhs.fromGallery {return false}
+    if lhs.forceFile != rhs.forceFile {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

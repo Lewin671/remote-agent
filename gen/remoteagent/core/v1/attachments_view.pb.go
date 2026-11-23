@@ -360,8 +360,10 @@ type AttachmentCandidateInput struct {
 	SizeBytes   int64                  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
 	SizeUnknown bool                   `protobuf:"varint,4,opt,name=size_unknown,json=sizeUnknown,proto3" json:"size_unknown,omitempty"`
 	IsDirectory bool                   `protobuf:"varint,5,opt,name=is_directory,json=isDirectory,proto3" json:"is_directory,omitempty"`
-	// True when picked from the photo/video gallery ("照片和视频") rather than the general file picker.
-	FromGallery   bool `protobuf:"varint,6,opt,name=from_gallery,json=fromGallery,proto3" json:"from_gallery,omitempty"`
+	// When true (explicit "文件" / File picker), even image files are routed as FILE and
+	// sent unchanged without image processing. When false (gallery, drag-and-drop, paste),
+	// images are routed as IMAGE and non-images (including videos) as VIDEO_FILE / FILE.
+	ForceFile     bool `protobuf:"varint,6,opt,name=force_file,json=forceFile,proto3" json:"force_file,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -431,9 +433,9 @@ func (x *AttachmentCandidateInput) GetIsDirectory() bool {
 	return false
 }
 
-func (x *AttachmentCandidateInput) GetFromGallery() bool {
+func (x *AttachmentCandidateInput) GetForceFile() bool {
 	if x != nil {
-		return x.FromGallery
+		return x.ForceFile
 	}
 	return false
 }
@@ -867,15 +869,16 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\x10ImageProblemView\x129\n" +
 	"\x04kind\x18\x01 \x01(\x0e2%.remoteagent.core.v1.ImageProblemKindR\x04kind\x123\n" +
 	"\amessage\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\amessage\x12\x1c\n" +
-	"\tretryable\x18\x03 \x01(\bR\tretryable\"\xd3\x01\n" +
+	"\tretryable\x18\x03 \x01(\bR\tretryable\"\xcf\x01\n" +
 	"\x18AttachmentCandidateInput\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x1d\n" +
 	"\n" +
 	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12!\n" +
 	"\fsize_unknown\x18\x04 \x01(\bR\vsizeUnknown\x12!\n" +
-	"\fis_directory\x18\x05 \x01(\bR\visDirectory\x12!\n" +
-	"\ffrom_gallery\x18\x06 \x01(\bR\vfromGallery\"\xef\x02\n" +
+	"\fis_directory\x18\x05 \x01(\bR\visDirectory\x12\x1d\n" +
+	"\n" +
+	"force_file\x18\x06 \x01(\bR\tforceFile\"\xef\x02\n" +
 	"\x1bAttachmentCandidateDecision\x12C\n" +
 	"\x05route\x18\x01 \x01(\x0e2-.remoteagent.core.v1.AttachmentCandidateRouteR\x05route\x12\x1a\n" +
 	"\baccepted\x18\x02 \x01(\bR\baccepted\x12J\n" +

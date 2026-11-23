@@ -462,8 +462,18 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		protoAutoIssue = corev1.AutoIssueKind_AUTO_ISSUE_KIND_NONE
 	}
 
-	onlineReady := st.World.Connection == lists.ConnConnected && machineOnline && !lists.MachineUnlinked(machine, &st.World) && res.ProtocolMismatch == 0 && !st.World.AccountControlLost
-	attCaps := attdomain.ResolveCaps(machine, cfg.MachineID, machineOnline, onlineReady, st.UILocale)
+	computerOnline := machineOnline || (st.DisplayGrace && machine != nil && machine.Online)
+	unlinked := !st.DisplayGrace && (lists.WorldUnlinked(&st.World) || lists.MachineUnlinked(machine, &st.World))
+	onlineReady := machineOnlineReady(
+		st.World.Connection,
+		st.DisplayGrace,
+		computerOnline,
+		unlinked,
+		res.ProtocolMismatch != 0,
+		st.World.AccountControlLost,
+		st.Removed,
+	)
+	attCaps := attdomain.ResolveCaps(machine, cfg.MachineID, computerOnline, onlineReady)
 	prefsBlocked := st.World.AccountControlLost || st.World.AccountClockSkewed || lists.WorldUnlinked(&st.World)
 	var prefsBlockedReason *corev1.Text
 	switch {

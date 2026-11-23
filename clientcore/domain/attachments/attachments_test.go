@@ -19,8 +19,8 @@ func TestLimitsClampingAndVideoHelpers(t *testing.T) {
 		MaxFilesPerMessage:  20,
 		MaxFileUploadBytes:  500 * 1024 * 1024,
 	}
-	if MaxImages(over) != 12 {
-		t.Fatalf("MaxImages(over) = %d, want 12 (daemon positive value respected)", MaxImages(over))
+	if MaxImages(over) != 6 {
+		t.Fatalf("MaxImages(over) = %d, want 6 (clamped per docs/session-images.md)", MaxImages(over))
 	}
 	if MaxFiles(over) != 6 {
 		t.Fatalf("MaxFiles(over) = %d, want 6 (clamped)", MaxFiles(over))
@@ -29,11 +29,12 @@ func TestLimitsClampingAndVideoHelpers(t *testing.T) {
 		t.Fatalf("MaxFileBytes(over) = %d, want %d (clamped)", MaxFileBytes(over), DefaultMaxFileBytes)
 	}
 	under := &v1.MachineCapabilities{
-		MaxFilesPerMessage: 3,
-		MaxFileUploadBytes: 25 * 1024 * 1024,
+		MaxImagesPerMessage: 4,
+		MaxFilesPerMessage:  3,
+		MaxFileUploadBytes:  25 * 1024 * 1024,
 	}
-	if MaxFiles(under) != 3 || MaxFileBytes(under) != 25*1024*1024 {
-		t.Fatalf("unexpected under-clamp values: %d / %d", MaxFiles(under), MaxFileBytes(under))
+	if MaxImages(under) != 4 || MaxFiles(under) != 3 || MaxFileBytes(under) != 25*1024*1024 {
+		t.Fatalf("unexpected under-clamp values: %d / %d / %d", MaxImages(under), MaxFiles(under), MaxFileBytes(under))
 	}
 
 	if GalleryAcceptMime(true) != "image/*,video/*" || GalleryAcceptMime(false) != "image/*" {
@@ -98,22 +99,23 @@ func TestBlockedReasonsAndCandidateEvaluation(t *testing.T) {
 			},
 		},
 	}
-	caps := ResolveCaps(lmFull, "m1", true, true, "zh-CN")
+	caps := ResolveCaps(lmFull, "m1", true, true)
 	if caps.MaxFileSizeText != "50.0 MB" {
 		t.Fatalf("MaxFileSizeText = %q, want 50.0 MB", caps.MaxFileSizeText)
 	}
 
 	longName := strings.Repeat("a", 256) + ".txt"
+	// Non-gallery (drag-and-drop / paste) images route as IMAGE; explicit force_file routes PNG as FILE.
 	decisions, notice := EvaluateCandidates(caps, 1, 1, []*corev1.AttachmentCandidateInput{
-		{Name: "pic1.jpg", MimeType: "image/jpeg", SizeBytes: 1000, FromGallery: true},
-		{Name: "pic2.jpg", MimeType: "image/jpeg", SizeBytes: 1000, FromGallery: true},
-		{Name: "big.mov", MimeType: "", SizeBytes: 60 * 1024 * 1024, FromGallery: true},
-		{Name: "clip.mp4", MimeType: "video/mp4", SizeBytes: 5 * 1024 * 1024, FromGallery: true},
+		{Name: "pasted.png", MimeType: "image/png", SizeBytes: 1000},
+		{Name: "dropped.JPG", MimeType: "", SizeBytes: 1000},
+		{Name: "big.mov", MimeType: "", SizeBytes: 60 * 1024 * 1024},
+		{Name: "clip.mp4", MimeType: "video/mp4", SizeBytes: 5 * 1024 * 1024},
 		{Name: "extra.pdf", MimeType: "application/pdf", SizeBytes: 1024},
 		{Name: "folder", IsDirectory: true},
 		{Name: longName, SizeBytes: 10},
 		{Name: "unknown.bin", SizeUnknown: true},
-	}, "zh-CN")
+	})
 
 	if len(decisions) != 8 {
 		t.Fatalf("len(decisions) = %d, want 8", len(decisions))
@@ -144,16 +146,20 @@ func TestBlockedReasonsAndCandidateEvaluation(t *testing.T) {
 		t.Fatalf("notice = %+v, want joined notice of 4 items", notice)
 	}
 
-	// Verify filename & unknown size when file slots still have room.
+	// Verify explicit file picker (force_file=true) sends PNG as FILE unchanged, plus filename & unknown size checks.
 	d2, _ := EvaluateCandidates(caps, 0, 0, []*corev1.AttachmentCandidateInput{
-		{Name: longName, SizeBytes: 10},
-		{Name: "unknown.bin", SizeUnknown: true},
-	}, "en")
-	if d2[0].RejectKind != corev1.AttachmentRejectKind_ATTACHMENT_REJECT_KIND_FILENAME_INVALID {
-		t.Fatalf("d2[0] = %+v", d2[0])
+		{Name: "raw.png", MimeType: "image/png", SizeBytes: 2048, ForceFile: true},
+		{Name: longName, SizeBytes: 10, ForceFile: true},
+		{Name: "unknown.bin", SizeUnknown: true, ForceFile: true},
+	})
+	if !d2[0].Accepted || d2[0].Route != corev1.AttachmentCandidateRoute_ATTACHMENT_CANDIDATE_ROUTE_FILE {
+		t.Fatalf("d2[0] (force_file PNG) = %+v, want accepted FILE", d2[0])
 	}
-	if d2[1].RejectKind != corev1.AttachmentRejectKind_ATTACHMENT_REJECT_KIND_SIZE_UNKNOWN || d2[1].RejectReason.GetKey() != text.KeyAttachmentSizeUnreadable {
+	if d2[1].RejectKind != corev1.AttachmentRejectKind_ATTACHMENT_REJECT_KIND_FILENAME_INVALID {
 		t.Fatalf("d2[1] = %+v", d2[1])
+	}
+	if d2[2].RejectKind != corev1.AttachmentRejectKind_ATTACHMENT_REJECT_KIND_SIZE_UNKNOWN || d2[2].RejectReason.GetKey() != text.KeyAttachmentSizeUnreadable {
+		t.Fatalf("d2[2] = %+v", d2[2])
 	}
 }
 
@@ -238,6 +244,13 @@ func TestClassifyImageProblemAndSummary(t *testing.T) {
 			in:        &corev1.ImageProblemInput{RawDiagnostic: "disk is full"},
 			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_STORAGE_FULL,
 			wantKey:   text.KeyImageTheComputerSAttachmentStorageIsFullClearSpace,
+			retryable: true,
+		},
+		{
+			name:      "raw network beats png format keyword",
+			in:        &corev1.ImageProblemInput{RawDiagnostic: "upload png: network timeout"},
+			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_UPLOAD_FAILED,
+			wantKey:   text.KeyImageTheImageCouldNotReachTheComputerRetryWhen,
 			retryable: true,
 		},
 		{

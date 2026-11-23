@@ -460,36 +460,6 @@
     "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
   },
   {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "原图超过",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "尺寸|像素|pixels|dimensions|canvas|too large|图片超过|图片太大",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "本机副本|重新选择",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "decode|解不出|读不出|读不到|格式|规范|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "quota|空间|配额",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
-    "path": "clientcore/domain/attachments/problem.go",
-    "literal": "network|offline|unavailable|fetch|timeout|deadline|expired|网络|连接|离线|断线|超时|过期|重新传",
-    "reason": "仅用于识别未本地化的 codec、transport、daemon 诊断原文；产品失败先按显式 Kind / 错误码 / 消息 key 分类，不把显示文案送进该适配器。"
-  },
-  {
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",
     "literal": "CLI",
     "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."

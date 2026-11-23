@@ -149,7 +149,7 @@ type AttachmentCandidateInput struct {
 	SizeBytes   int64
 	SizeUnknown bool
 	IsDirectory bool
-	FromGallery bool
+	ForceFile   bool
 }
 
 func (m *AttachmentCandidateInput) GetName() string {
@@ -182,9 +182,9 @@ func (m *AttachmentCandidateInput) GetIsDirectory() bool {
 	}
 	return false
 }
-func (m *AttachmentCandidateInput) GetFromGallery() bool {
+func (m *AttachmentCandidateInput) GetForceFile() bool {
 	if m != nil {
-		return m.FromGallery
+		return m.ForceFile
 	}
 	return false
 }
@@ -197,7 +197,7 @@ var LitewireDesc_AttachmentCandidateInput = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(AttachmentCandidateInput{}.SizeBytes), Kind: litewire.KindInt64},
 		{Num: 4, Offset: unsafe.Offsetof(AttachmentCandidateInput{}.SizeUnknown), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(AttachmentCandidateInput{}.IsDirectory), Kind: litewire.KindBool},
-		{Num: 6, Offset: unsafe.Offsetof(AttachmentCandidateInput{}.FromGallery), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(AttachmentCandidateInput{}.ForceFile), Kind: litewire.KindBool},
 	},
 }
 

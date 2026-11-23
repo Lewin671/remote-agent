@@ -7,6 +7,21 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
+// machineOnlineReady unifies live send/attachment reachability across session header/actions,
+// new_session, and BuildAttachmentEval, consistently honoring DisplayGrace and Removed.
+func machineOnlineReady(
+	conn lists.ConnectionKind,
+	displayGrace bool,
+	computerOnline bool,
+	unlinked bool,
+	protocolMismatch bool,
+	accountControlLost bool,
+	removed bool,
+) bool {
+	return (conn == lists.ConnConnected || displayGrace) &&
+		computerOnline && !unlinked && !protocolMismatch && !accountControlLost && !removed
+}
+
 // BuildAttachmentEval computes attachment capability limits, picked-candidate verdicts,
 // and image problem classification / failure summary for a target machine or session.
 func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *corev1.AttachmentEvalViewModel {
@@ -24,13 +39,20 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		}
 	}
 	lm := findMachine(st, machineID)
-	computerOnline := lists.MachineReachable(lm)
-	unlinked := lists.WorldUnlinked(&st.World) || lists.MachineUnlinked(lm, &st.World)
+	computerOnline := lists.MachineReachable(lm) || (st.DisplayGrace && lm != nil && lm.Online)
+	unlinked := !st.DisplayGrace && (lists.WorldUnlinked(&st.World) || lists.MachineUnlinked(lm, &st.World))
 	protoMismatch := lm != nil && lists.ProtocolMismatchDirection(lm, st.World.ClientVersion) != 0
-	onlineReady := (st.World.Connection == lists.ConnConnected || st.DisplayGrace) &&
-		computerOnline && !unlinked && !protoMismatch && !st.World.AccountControlLost
+	onlineReady := machineOnlineReady(
+		st.World.Connection,
+		st.DisplayGrace,
+		computerOnline,
+		unlinked,
+		protoMismatch,
+		st.World.AccountControlLost,
+		st.Removed,
+	)
 
-	caps := attachments.ResolveCaps(lm, machineID, computerOnline, onlineReady, st.UILocale)
+	caps := attachments.ResolveCaps(lm, machineID, computerOnline, onlineReady)
 
 	imagesAllowed := caps.SupportsImages && caps.ImageUploadBlockedReason == nil
 	filesAllowed := caps.SupportsFiles && caps.FileUploadBlockedReason == nil
@@ -51,7 +73,7 @@ func BuildAttachmentEval(st *State, req *corev1.AttachmentEvalScreenRequest) *co
 		}
 	}
 
-	decisions, notice := attachments.EvaluateCandidates(caps, req.CurrentImages, req.CurrentFiles, req.Candidates, st.UILocale)
+	decisions, notice := attachments.EvaluateCandidates(caps, req.CurrentImages, req.CurrentFiles, req.Candidates)
 
 	var problems []*corev1.ImageProblemView
 	if len(req.Problems) > 0 {
