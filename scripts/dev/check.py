@@ -24,10 +24,13 @@ ANDROID_QUICK = ["*AttemptTest", "*PrefsTest", "*ProjectionTest", "*SchedulesTes
 def commands(platform, tier):
     if platform == "go":
         packages = ["./internal/" + p for p in GO_QUICK] if tier == "quick" else ["./..."]
-        return [
+        cmds = [
             (ROOT, ["go", "test", "-count=1", "-parallel=8", "-timeout=5m", *packages]),
             (ROOT / "clientcore", ["go", "test", "-count=1", "-parallel=8", "-timeout=5m", "./..."]),
         ]
+        if tier == "full":
+            cmds.append((ROOT, ["python3", "scripts/release.py", "check-relay-impact"]))
+        return cmds
     if platform == "web":
         return [(ROOT / "web", ["pnpm", "typecheck"]), (ROOT / "web", ["pnpm", "test"])]
     if platform == "android":

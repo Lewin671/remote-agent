@@ -202,3 +202,165 @@ class ReleaseTests(unittest.TestCase):
         for text in ('version=01.2.3\nandroidVersionCode=1', 'version=0.2.0\nandroidVersionCode=2100000001'):
             with self.assertRaises(ValueError):
                 release.read_version(text)
+
+    def commit_msg(self, message):
+        self.git('add', '.')
+        self.git('commit', '-qm', message)
+
+    def test_relay_impact_trailer_enforced_after_rule_marker(self):
+        # Pre-rule server edit without trailer must not block the first release.
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":false}\n')
+        self.write('internal/server/services.go', 'package server // before rule\n')
+        self.commit_msg('server change before rule')
+
+        # Introduce the rule marker commit.
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 17\n')
+        self.commit_msg('introduce relay surface golden')
+
+        # Server test-only edits do not require the trailer.
+        self.write('internal/server/foo_test.go', 'package server\n')
+        self.commit_msg('add server unit test')
+        release.check_relay_impact('v0.1.0')
+
+        # Post-rule server non-test edit without trailer is rejected.
+        self.write('internal/server/services.go', 'package server // after rule\n')
+        self.commit_msg('server change without trailer')
+        with self.assertRaisesRegex(ValueError, 'Relay-Impact'):
+            release.check_relay_impact('v0.1.0')
+        with self.assertRaisesRegex(ValueError, 'Relay-Impact'):
+            release.prepare('patch')
+
+    def test_relay_impact_bump_requires_relay_version_change(self):
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":false}\n')
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 17\n')
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit_msg('baseline')
+        self.git('tag', 'v0.1.1')
+
+        # Valid none/additive trailers pass without bumping Version.
+        self.write('internal/server/hub.go', 'package server // refactor\n')
+        self.commit_msg('refactor hub\n\nRelay-Impact: none')
+        self.write('proto/remoteagent/v1/relay.proto', '// additive field\n')
+        self.commit_msg('add relay field\n\nRelay-Impact: additive')
+        release.check_relay_impact('v0.1.1')
+
+        # Declaring bump without actually changing relayproto.Version fails.
+        self.write('proto/remoteagent/v1/envelope.proto', '// breaking\n')
+        self.commit_msg('change envelope\n\nRelay-Impact: bump')
+        with self.assertRaisesRegex(ValueError, 'did not change'):
+            release.check_relay_impact('v0.1.1')
+
+        # Changing relayproto.Version satisfies bump.
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 18\n')
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 18\n')
+        self.commit_msg('bump relay version\n\nRelay-Impact: bump')
+        release.check_relay_impact('v0.1.1')
+        self.assertEqual(release.prepare('minor')['tag'], 'v0.2.0')
+
+    def test_relay_impact_overrides_escape_hatch(self):
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":false}\n')
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 17\n')
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit_msg('baseline')
+        self.git('tag', 'v0.1.1')
+
+        # A commit touching server without a trailer is rejected.
+        self.write('internal/server/services.go', 'package server // missed trailer\n')
+        self.commit_msg('forgot trailer')
+        missed_sha = self.git('rev-parse', 'HEAD')
+        with self.assertRaisesRegex(ValueError, 'Relay-Impact'):
+            release.check_relay_impact('v0.1.1')
+
+        # Adding a malformed override fails validation.
+        for bad in (
+            f'{missed_sha[:12]} none  # short sha\n',
+            f'{missed_sha} none\n',
+            f'{missed_sha} invalid  # bad value\n',
+            f'{missed_sha} none  # first\n{missed_sha} none  # duplicate\n',
+        ):
+            self.write(release.RELAY_IMPACT_OVERRIDES, bad)
+            with self.assertRaises(ValueError):
+                release.check_relay_impact('v0.1.1')
+
+        # A valid none override unblocks check_relay_impact.
+        self.write(release.RELAY_IMPACT_OVERRIDES, f'{missed_sha} none  # refactor only\n')
+        self.commit_msg('add relay impact override')
+        release.check_relay_impact('v0.1.1')
+
+        # An override declaring bump still requires relayproto.Version to change.
+        self.write(release.RELAY_IMPACT_OVERRIDES, f'{missed_sha} bump  # breaking fix\n')
+        self.commit_msg('mark override as bump')
+        with self.assertRaisesRegex(ValueError, 'did not change'):
+            release.check_relay_impact('v0.1.1')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 18\n')
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 18\n')
+        self.commit_msg('bump relay version\n\nRelay-Impact: bump')
+        release.check_relay_impact('v0.1.1')
+
+    def test_golden_change_requires_trailer_and_blocks_unbumped_breaking_diff(self):
+        base_golden = (
+            'relay_version: 17\n\n'
+            'enum remoteagent.v1.FrameClass.1=SIGNAL\n'
+            'field remoteagent.v1.LoginRequest.4:uint32\n'
+            'schema DirectedPeerFrame.1:b\n'
+        )
+        self.write('internal/protocol/protocol.go', 'package protocol\n\nconst PeerVersion = 17\n')
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 17\n')
+        self.write('internal/updater/policy.json', '{"state":4,"automatic":false}\n')
+        self.write(release.RELAY_IMPACT_MARKER, base_golden)
+        self.write('version.properties', 'version=0.1.1\nandroidVersionCode=2\n')
+        self.commit_msg('baseline with golden')
+        self.git('tag', 'v0.1.1')
+
+        # Modifying the golden file without a Relay-Impact trailer is rejected.
+        additive_golden = base_golden + 'field remoteagent.v1.LoginRequest.5:string\n'
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 17\nadditive: optional field\n\n' + '\n'.join(additive_golden.splitlines()[2:]) + '\n')
+        self.commit_msg('edit golden without trailer')
+        with self.assertRaisesRegex(ValueError, 'Relay-Impact'):
+            release.check_relay_impact('v0.1.1')
+
+        # Reset and commit the additive change with a trailer -> passes both golden & trailer checks.
+        self.git('reset', '--hard', 'v0.1.1')
+        self.write(release.RELAY_IMPACT_MARKER, 'relay_version: 17\nadditive: optional field\n\n' + '\n'.join(additive_golden.splitlines()[2:]) + '\n')
+        self.commit_msg('additive golden update\n\nRelay-Impact: additive')
+        release.check_relay_surface_golden('v0.1.1')
+        release.check_relay_impact('v0.1.1')
+
+        # Deleting or changing a golden entry without bumping relayproto.Version -> rejected by prepare and validate.
+        breaking_golden = (
+            'relay_version: 17\n\n'
+            'enum remoteagent.v1.FrameClass.1=SIGNAL\n'
+            'field remoteagent.v1.LoginRequest.4:string\n'
+        )
+        self.write('proto/remoteagent/v1/relay.proto', '// breaking field change\n')
+        self.write(release.RELAY_IMPACT_MARKER, breaking_golden)
+        self.commit_msg('sneak breaking golden edit\n\nRelay-Impact: none')
+        with self.assertRaisesRegex(ValueError, 'breaking changes'):
+            release.prepare('minor')
+        self.write('version.properties', 'version=0.2.0\nandroidVersionCode=3\n')
+        self.commit_msg('tag without bump')
+        self.git('tag', 'v0.2.0')
+        with self.assertRaisesRegex(ValueError, 'breaking changes'):
+            release.validate('v0.2.0')
+        self.git('tag', '-d', 'v0.2.0')
+        self.git('reset', '--hard', 'HEAD~1')
+
+        # Bumping relayproto.Version + golden relay_version allows the breaking change.
+        bumped_golden = (
+            'relay_version: 18\n\n'
+            'enum remoteagent.v1.FrameClass.1=SIGNAL\n'
+            'field remoteagent.v1.LoginRequest.4:string\n'
+        )
+        self.write('internal/relayproto/relayproto.go', 'package relayproto\n\nconst Version = 18\n')
+        self.write(release.RELAY_IMPACT_MARKER, bumped_golden)
+        self.commit_msg('bump relay version for breaking change\n\nRelay-Impact: bump')
+        self.assertEqual(release.prepare('minor')['tag'], 'v0.2.0')
+        self.commit_msg('Release v0.2.0')
+        self.git('tag', 'v0.2.0')
+        self.assertEqual(release.validate('v0.2.0')['tag'], 'v0.2.0')

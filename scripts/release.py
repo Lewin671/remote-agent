@@ -68,6 +68,8 @@ def prepare(kind):
     if previous and previous != "v" + version:
         raise ValueError("main version must match the latest release tag before bumping")
     check_relay_automatic_policy(previous)
+    check_relay_surface_golden(previous)
+    check_relay_impact(previous)
     major, minor, patch = map(int, version.split("."))
     if kind == "major":
         major, minor, patch = major + 1, 0, 0
@@ -98,6 +100,8 @@ def validate(tag):
         if code <= old_code:
             raise ValueError("Android versionCode must increase")
         check_relay_automatic_policy(last)
+        check_relay_surface_golden(last)
+        check_relay_impact(last)
     return {"version": version, "tag": tag, "androidVersionCode": code, "commit": git("rev-parse", "HEAD")}
 
 
@@ -172,6 +176,164 @@ def check_relay_automatic_policy(previous_tag):
         )
 
 
+RELAY_IMPACT_MARKER = "internal/relayproto/testdata/relay_surface.golden"
+RELAY_IMPACT_OVERRIDES = "scripts/relay-impact-overrides.txt"
+RELAY_IMPACT_FILES = {
+    "proto/remoteagent/v1/relay.proto",
+    "proto/remoteagent/v1/envelope.proto",
+    "proto/remoteagent/v1/transport.proto",
+    RELAY_IMPACT_MARKER,
+}
+RELAY_IMPACT_VALUES = {"none", "additive", "bump"}
+
+
+def relay_impact_path(path):
+    if path in RELAY_IMPACT_FILES:
+        return True
+    return path.startswith("internal/server/") and not path.endswith("_test.go")
+
+
+def read_relay_impact_overrides():
+    path = ROOT / RELAY_IMPACT_OVERRIDES
+    if not path.exists():
+        return {}
+    overrides = {}
+    for lineno, raw in enumerate(path.read_text().splitlines(), 1):
+        body, _, comment = raw.partition("#")
+        body = body.strip()
+        if not body:
+            continue
+        parts = body.split()
+        if (len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{40}", parts[0])
+                or parts[1] not in RELAY_IMPACT_VALUES or not comment.strip()):
+            raise ValueError(
+                f"{RELAY_IMPACT_OVERRIDES}:{lineno}: expected '<40-char-sha> none|additive|bump  # reason'"
+            )
+        if parts[0] in overrides:
+            raise ValueError(f"{RELAY_IMPACT_OVERRIDES}:{lineno}: duplicate entry for {parts[0]}")
+        overrides[parts[0]] = parts[1]
+    return overrides
+
+
+def parse_surface_golden(text):
+    version = None
+    entries = {}
+    for lineno, raw in enumerate(text.splitlines(), 1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("relay_version:"):
+            val = line.split(":", 1)[1].strip()
+            if not re.fullmatch(r"[1-9][0-9]*", val):
+                raise ValueError(f"relay surface golden line {lineno}: invalid relay_version {val!r}")
+            version = int(val)
+            continue
+        if line.startswith("additive:"):
+            if not line.split(":", 1)[1].strip():
+                raise ValueError(f"relay surface golden line {lineno}: empty additive reason")
+            continue
+        sep = "=" if line.startswith("enum ") else ":"
+        if sep not in line:
+            raise ValueError(f"relay surface golden line {lineno}: malformed entry {line!r}")
+        k, v = line.split(sep, 1)
+        if not k or not v or k in entries:
+            raise ValueError(f"relay surface golden line {lineno}: invalid or duplicate entry {k!r}")
+        entries[k] = v
+    if version is None:
+        raise ValueError("relay surface golden missing relay_version header")
+    return version, entries
+
+
+def check_relay_surface_golden(previous_tag):
+    if not previous_tag:
+        return
+    prev = subprocess.run(["git", "show", f"{previous_tag}:{RELAY_IMPACT_MARKER}"], cwd=ROOT, text=True, capture_output=True)
+    if prev.returncode != 0:
+        return  # Previous tag predates the golden file (first release carrying it).
+    golden_path = ROOT / RELAY_IMPACT_MARKER
+    if not golden_path.exists():
+        raise ValueError(f"Relay surface golden file {RELAY_IMPACT_MARKER} is missing")
+    _, old_entries = parse_surface_golden(prev.stdout)
+    new_golden_version, new_entries = parse_surface_golden(golden_path.read_text())
+    current_relay = relay_protocol_version()
+    if new_golden_version != current_relay:
+        raise ValueError(
+            f"Relay surface golden relay_version ({new_golden_version}) != relayproto.Version ({current_relay})"
+        )
+    breaking = []
+    for k, old_v in sorted(old_entries.items()):
+        if k not in new_entries:
+            breaking.append(f"removed {k} ({old_v})")
+        elif new_entries[k] != old_v:
+            breaking.append(f"changed {k}: {old_v} -> {new_entries[k]}")
+    old_relay = tag_relay_protocol_version(previous_tag)
+    if breaking and current_relay == old_relay:
+        raise ValueError(
+            f"Relay surface golden has breaking changes since {previous_tag} without bumping "
+            f"relayproto.Version (still {current_relay}): " + "; ".join(breaking)
+        )
+
+
+def relay_impact_rule_commit():
+    res = subprocess.run(
+        ["git", "log", "--diff-filter=A", "--format=%H", "-n", "1", "--", RELAY_IMPACT_MARKER],
+        cwd=ROOT, text=True, capture_output=True,
+    )
+    if res.returncode != 0:
+        return None
+    sha = res.stdout.strip()
+    return sha or None
+
+
+def relay_impact_range(previous_tag):
+    rule_commit = relay_impact_rule_commit()
+    if not rule_commit:
+        return None
+    if not previous_tag:
+        return f"{rule_commit}..HEAD"
+    is_anc = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", rule_commit, previous_tag],
+        cwd=ROOT, capture_output=True,
+    )
+    # Normal releases after the rule landed check previous_tag..HEAD; the first
+    # release carrying the rule checks only commits strictly after rule_commit.
+    return f"{previous_tag}..HEAD" if is_anc.returncode == 0 else f"{rule_commit}..HEAD"
+
+
+def check_relay_impact(previous_tag):
+    rev_range = relay_impact_range(previous_tag)
+    if not rev_range:
+        return
+    overrides = read_relay_impact_overrides()
+    commits = [c for c in git("rev-list", "--no-merges", rev_range).splitlines() if c]
+    saw_bump = False
+    for sha in commits:
+        changed = git("diff-tree", "--no-commit-id", "--name-only", "-r", sha).splitlines()
+        if not any(relay_impact_path(p) for p in changed):
+            continue
+        raw = git("log", "-1", "--format=%(trailers:key=Relay-Impact,valueonly,separator=%x0a)", sha)
+        values = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not values and sha in overrides:
+            impact = overrides[sha]
+        elif len(values) == 1 and values[0] in RELAY_IMPACT_VALUES:
+            impact = values[0]
+        else:
+            raise ValueError(
+                f"Commit {sha[:9]} modifies relay-visible files and must include a single "
+                f"'Relay-Impact: none|additive|bump' trailer (or an entry in {RELAY_IMPACT_OVERRIDES})"
+            )
+        if impact == "bump":
+            saw_bump = True
+    if saw_bump:
+        old_relay = tag_relay_protocol_version(previous_tag) if previous_tag else None
+        new_relay = relay_protocol_version()
+        if old_relay is None or new_relay == old_relay:
+            raise ValueError(
+                f"Commit declares 'Relay-Impact: bump', but relayproto.Version did not change "
+                f"(still {new_relay})"
+            )
+
+
 def property_value(text):
     return text.strip().replace("\\", "\\\\").replace("\r", "").replace("\n", "\\n")
 
@@ -224,11 +386,15 @@ def main():
     p = sub.add_parser("manifest")
     p.add_argument("tag")
     p.add_argument("apk")
+    sub.add_parser("check-relay-impact")
     args = parser.parse_args()
     if args.command == "notes":
         notes(args.tag)
     elif args.command == "manifest":
         print(manifest(args.tag, args.apk), end="")
+    elif args.command == "check-relay-impact":
+        tags = release_tags()
+        check_relay_impact(tags[-1] if tags else None)
     else:
         print(json.dumps(prepare(args.kind) if args.command == "prepare" else validate(args.tag)))
 
