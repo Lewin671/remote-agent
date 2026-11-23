@@ -1,688 +1,600 @@
 package io.github.lewin671.remoteagent.core
 
-import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
-import io.github.lewin671.remoteagent.core.proto.SharedFileFailureKind as CoreSharedFileFailureKind
-import io.github.lewin671.remoteagent.core.proto.SharedFileKind as CoreSharedFileKind
-import io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent
-import io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateUpdate
-import io.github.lewin671.remoteagent.core.proto.SharedFileTransferStatus
-import io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse
+import com.google.protobuf.ByteString
+import io.github.lewin671.remoteagent.core.proto.SharedFileClearAllEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeleteLocalEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeletePartialEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDeleteSessionEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileDiskInspectedEvent
+import io.github.lewin671.remoteagent.core.proto.SharedFileIOErrorKind
+import io.github.lewin671.remoteagent.core.proto.SharedFileInspectDiskEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileLocalEntry
+import io.github.lewin671.remoteagent.core.proto.SharedFileLocalScannedEvent
+import io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent
+import io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkEffect
+import io.github.lewin671.remoteagent.core.proto.SharedFileWriteChunkResultEvent
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.Properties
-import java.util.concurrent.ConcurrentHashMap
-import kotlinx.coroutines.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
-const val SHARED_FILE_BLOCK_BYTES = 786_432
-const val SHARED_FILE_RECONNECT_WAIT_MS = 30_000L
-const val SHARED_FILE_PROGRESS_THROTTLE_MS = 250L
-
-/** Minimal identity and transfer metadata needed by the shell's chunk downloader and cache store. */
-data class SharedFileTarget(
-    val fileId: String,
-    val displayName: String,
-    val sizeBytes: Long,
-    val sha256: ByteArray = ByteArray(0),
-    val kind: CoreSharedFileKind = CoreSharedFileKind.SHARED_FILE_KIND_OTHER,
-    val hasMediaDuration: Boolean = false,
-) {
-    override fun equals(other: Any?): Boolean =
-        this === other || (
-            other is SharedFileTarget &&
-                fileId == other.fileId &&
-                displayName == other.displayName &&
-                sizeBytes == other.sizeBytes &&
-                sha256.contentEquals(other.sha256) &&
-                kind == other.kind &&
-                hasMediaDuration == other.hasMediaDuration
-            )
-
-    override fun hashCode(): Int {
-        var r = fileId.hashCode()
-        r = 31 * r + displayName.hashCode()
-        r = 31 * r + sizeBytes.hashCode()
-        r = 31 * r + sha256.contentHashCode()
-        r = 31 * r + kind.hashCode()
-        r = 31 * r + hasMediaDuration.hashCode()
-        return r
-    }
-}
-
-fun SessionSharedFileItem.toSharedFileTarget(): SharedFileTarget =
-    SharedFileTarget(
-        fileId = fileId,
-        displayName = displayName,
-        sizeBytes = sizeBytes,
-        sha256 = sha256.toByteArray(),
-        kind = kind,
-        hasMediaDuration = hasMediaDuration,
-    )
-
-sealed interface SharedFileTransferState {
-    data object Idle : SharedFileTransferState
-
-    data class Downloading(
-        val downloadedBytes: Long,
-        val totalBytes: Long,
-        val etaSeconds: Long? = null,
-        val waitingReconnect: Boolean = false,
-    ) : SharedFileTransferState
-
-    data class Paused(
-        val downloadedBytes: Long,
-        val totalBytes: Long,
-    ) : SharedFileTransferState
-
-    data class Downloaded(
-        val localFile: File,
-        val durationMs: Long? = null,
-    ) : SharedFileTransferState
-
-    data class Failed(
-        val kind: CoreSharedFileFailureKind,
-        val detail: String = "",
-    ) : SharedFileTransferState
-
-    data object CleanedUp : SharedFileTransferState
-}
-
-data class SharedFileBlockPlan(
-    val offsets: List<Long>,
-    val lastBlockFileBytes: Int,
-)
-
-data class SharedFileCompletion(
-    val sessionId: String,
-    val fileId: String,
-    val displayName: String,
-    val sizeBytes: Long,
-    val kind: CoreSharedFileKind,
-    val localFile: File,
-    val userInitiated: Boolean,
-)
-
-fun interface SharedFileChunkFetcher {
-    suspend fun fetchChunk(sessionId: String, fileId: String, offset: Long): GetSharedFileChunkResponse
-}
-
-/** Negotiated chunk size from daemon capabilities, falling back to the protocol default. */
-fun sharedFileBlockBytes(machine: MachineView?): Int =
-    capabilities(machine)?.sharedFileChunkBytes?.takeIf { it > 0 } ?: SHARED_FILE_BLOCK_BYTES
-
-fun planSharedFileBlocks(
-    sizeBytes: Long,
-    blockBytes: Int = SHARED_FILE_BLOCK_BYTES,
-): SharedFileBlockPlan {
-    require(sizeBytes >= 0L) { "sizeBytes must be non-negative" }
-    require(blockBytes > 0) { "blockBytes must be positive" }
-    if (sizeBytes == 0L) return SharedFileBlockPlan(offsets = listOf(0L), lastBlockFileBytes = 0)
-    val offsets = ArrayList<Long>()
-    var offset = 0L
-    while (offset < sizeBytes) {
-        offsets += offset
-        offset += blockBytes
-    }
-    val rem = (sizeBytes % blockBytes).toInt()
-    return SharedFileBlockPlan(
-        offsets = offsets,
-        lastBlockFileBytes = if (rem == 0) blockBytes else rem,
-    )
-}
-
-/** Converts a shell transfer state into a Core [SharedFileLocalStateUpdate]. */
-fun SharedFileTransferState.toLocalStateUpdate(
-    sessionId: String,
-    fileId: String,
-): SharedFileLocalStateUpdate {
-    val b = SharedFileLocalStateUpdate.newBuilder()
-        .setSessionId(sessionId)
-        .setFileId(fileId)
-    when (this) {
-        SharedFileTransferState.Idle -> b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_UNSPECIFIED)
-        is SharedFileTransferState.Downloading -> {
-            b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADING)
-                .setDownloadedBytes(downloadedBytes)
-                .setWaitingReconnect(waitingReconnect)
-            if (etaSeconds != null) {
-                b.setHasEta(true).setEtaSeconds(etaSeconds)
-            }
-        }
-        is SharedFileTransferState.Paused -> {
-            b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_PAUSED)
-                .setDownloadedBytes(downloadedBytes)
-        }
-        is SharedFileTransferState.Downloaded -> {
-            b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_DOWNLOADED)
-            if (durationMs != null) {
-                b.setHasDuration(true).setDurationMs(durationMs)
-            }
-        }
-        is SharedFileTransferState.Failed -> {
-            b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_FAILED)
-                .setFailureKind(kind)
-                .setFailureDetail(detail)
-        }
-        SharedFileTransferState.CleanedUp -> b.setStatus(SharedFileTransferStatus.SHARED_FILE_TRANSFER_STATUS_CLEANED_UP)
-    }
-    return b.build()
-}
+private const val META_FORMAT_VERSION = "2"
+private const val PART_FILE_NAME = "download.part"
+private const val PARTIAL_META_NAME = "partial.meta"
+private const val COMMITTED_META_NAME = "committed.meta"
+private const val COMMITTED_FILE_DIR = "file"
 
 /**
- * Pure-Kotlin resumable chunk downloader and cache store for shared files sent by an Agent.
- * Deduplicates transfers by `(sessionId, fileId)` across duplicate cards and app navigation,
- * and reports throttled local state transitions to Core via [onLocalStateEvent].
+ * Pure-JVM platform storage executor for Core-driven shared-file downloads.
+ *
+ * All storage effects (`ScanLocal`, `InspectDisk`, `WriteChunk`, `VerifyAndCommit`,
+ * `DeletePartial`, `DeleteLocal`, `DeleteSession`, `ClearAll`) run strictly sequentially
+ * through a single global FIFO queue so directory-level and per-file disk operations
+ * never reorder or race. `VerifyAndCommit` is never cancelled mid-flight.
  */
-class SharedFileStore(
-    private val rootDir: File,
-    private val fetcher: SharedFileChunkFetcher,
-    private val isMachineOnline: (sessionId: String) -> Boolean,
-    private val blockBytesProvider: (sessionId: String) -> Int = { SHARED_FILE_BLOCK_BYTES },
-    private val clock: () -> Long = { System.currentTimeMillis() },
-    private val sleeper: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val durationExtractor: (File, Boolean) -> Long? = { _, _ -> null },
-    private val onLocalStateEvent: (SharedFileLocalStateEvent) -> Unit = {},
+@OptIn(ExperimentalCoroutinesApi::class)
+class SharedFileIoExecutor(
+    val rootDir: File,
+    private val availableBytesProvider: (File) -> Long? = { dir ->
+        dir.mkdirs()
+        dir.usableSpace.takeIf { it >= 0L }
+    },
+    private val durationExtractor: (File) -> Long? = { null },
+    private val isStorageFullError: (Throwable) -> Boolean = { false },
+    private val onLocalDeleted: (sessionId: String?, fileId: String?) -> Unit = { _, _ -> },
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
-    private val jobs = ConcurrentHashMap<String, Job>()
-    private val controlModes = ConcurrentHashMap<String, ControlMode>()
-    private val _states = MutableStateFlow<Map<String, SharedFileTransferState>>(emptyMap())
-    val states: StateFlow<Map<String, SharedFileTransferState>> = _states.asStateFlow()
-    private val entryKeys = ConcurrentHashMap<String, Pair<String, String>>()
-    private val lastProgressReport = ConcurrentHashMap<String, ProgressStamp>()
+    private val queue = Channel<() -> Unit>(Channel.UNLIMITED)
+    private val closed = AtomicBoolean(false)
 
-    private val _completions = MutableSharedFlow<SharedFileCompletion>(extraBufferCapacity = 32)
-    val completions: SharedFlow<SharedFileCompletion> = _completions.asSharedFlow()
-
-    private enum class ControlMode {
-        PAUSE,
-        CANCEL,
-    }
-
-    private data class ProgressStamp(
-        val timeMs: Long,
-        val percent: Int,
-        val waitingReconnect: Boolean,
-        val etaSeconds: Long?,
-    )
-
-    private fun key(sessionId: String, fileId: String) = "$sessionId:$fileId"
-
-    private fun safeLocalFileName(displayName: String): String =
-        displayName.substringAfterLast('/').substringAfterLast('\\').trim().takeIf {
-            it.isNotEmpty() && it != "." && it != ".."
-        } ?: "file"
-
-    private fun fileDir(sessionId: String, fileId: String): File {
-        val safeSid = sessionId.replace(Regex("[^A-Za-z0-9_-]"), "_")
-        val safeFid = fileId.replace(Regex("[^A-Za-z0-9_-]"), "_")
-        return File(File(rootDir, safeSid), safeFid)
-    }
-
-    private fun partFile(dir: File) = File(dir, "download.part")
-
-    private fun metaFile(dir: File) = File(dir, "meta.properties")
-
-    fun localFileFor(sessionId: String, file: SharedFileTarget): File =
-        File(fileDir(sessionId, file.fileId), safeLocalFileName(file.displayName))
-
-    fun localFileIfDownloaded(sessionId: String, fileId: String): File? =
-        (_states.value[key(sessionId, fileId)] as? SharedFileTransferState.Downloaded)?.localFile?.takeIf { it.isFile }
-
-    /** Builds a full-state `replace_all = true` snapshot for startup / account switch reporting. */
-    fun buildFullLocalStateEvent(): SharedFileLocalStateEvent {
-        val b = SharedFileLocalStateEvent.newBuilder().setReplaceAll(true)
-        for ((k, state) in _states.value) {
-            if (state == SharedFileTransferState.Idle) continue
-            val pair = entryKeys[k] ?: continue
-            b.addUpdates(state.toLocalStateUpdate(pair.first, pair.second))
-        }
-        return b.build()
-    }
-
-    /** Loads existing disk state for [file] into [states] and reports non-idle state to Core. */
-    fun hydrate(sessionId: String, file: SharedFileTarget): SharedFileTransferState {
-        val k = key(sessionId, file.fileId)
-        _states.value[k]?.let { existing ->
-            if (existing !is SharedFileTransferState.Downloaded || existing.localFile.isFile) {
-                return existing
+    init {
+        scope.launch {
+            for (task in queue) {
+                if (closed.get()) break
+                task()
             }
         }
-        val state = inspectDisk(sessionId, file)
-        entryKeys[k] = sessionId to file.fileId
-        _states.update { it + (k to state) }
-        if (state != SharedFileTransferState.Idle) {
-            emitSingle(sessionId, file.fileId, state, force = true)
-        }
-        return state
     }
 
-    fun inspectDisk(sessionId: String, file: SharedFileTarget): SharedFileTransferState {
-        val dir = fileDir(sessionId, file.fileId)
-        val finalFile = localFileFor(sessionId, file)
-        val meta = readMeta(metaFile(dir))
-        if (finalFile.isFile && finalFile.length() == file.sizeBytes) {
-            val dur = meta?.getProperty("durationMs")?.toLongOrNull()
-            return SharedFileTransferState.Downloaded(finalFile, dur)
+    /** Wires all 8 shared-file storage Effect callbacks on [coreHost] onto the single global FIFO queue. */
+    fun attach(coreHost: CoreHost) {
+        coreHost.onSharedFileScanLocal = { eff ->
+            enqueue { coreHost.deliverSharedFileLocalScanned(executeScanLocal(eff)) }
         }
-        val part = partFile(dir)
-        val blockBytes = meta?.getProperty("blockBytes")?.toIntOrNull() ?: 0
-        val completed = meta?.getProperty("completedOffset")?.toLongOrNull() ?: -1L
-        val expectedHash = file.sha256.toHex()
-        if (
-            meta != null &&
-            part.isFile &&
-            blockBytes > 0 &&
-            meta.getProperty("sizeBytes")?.toLongOrNull() == file.sizeBytes &&
-            meta.getProperty("sha256") == expectedHash &&
-            completed > 0L &&
-            completed % blockBytes == 0L &&
-            part.length() >= completed
-        ) {
-            return SharedFileTransferState.Paused(
-                downloadedBytes = completed.coerceAtMost(file.sizeBytes),
-                totalBytes = file.sizeBytes,
-            )
+        coreHost.onSharedFileInspectDisk = { eff ->
+            enqueue { coreHost.deliverSharedFileDiskInspected(executeInspectDisk(eff)) }
         }
-        return SharedFileTransferState.Idle
+        coreHost.onSharedFileWriteChunk = { eff ->
+            enqueue { coreHost.deliverSharedFileWriteChunkResult(executeWriteChunk(eff)) }
+        }
+        coreHost.onSharedFileVerifyAndCommit = { eff ->
+            enqueue { coreHost.deliverSharedFileVerifyAndCommitResult(executeVerifyAndCommit(eff)) }
+        }
+        coreHost.onSharedFileDeletePartial = { eff ->
+            enqueue { executeDeletePartial(eff) }
+        }
+        coreHost.onSharedFileDeleteLocal = { eff ->
+            enqueue { executeDeleteLocal(eff) }
+        }
+        coreHost.onSharedFileDeleteSession = { eff ->
+            enqueue { executeDeleteSession(eff) }
+        }
+        coreHost.onSharedFileClearAll = { eff ->
+            enqueue { executeClearAll(eff) }
+        }
     }
 
-    @Synchronized
-    fun startOrResume(
-        sessionId: String,
-        file: SharedFileTarget,
-        userInitiated: Boolean = true,
-    ) {
-        val k = key(sessionId, file.fileId)
-        if (jobs[k]?.isActive == true) return
-        val existing = inspectDisk(sessionId, file)
-        if (existing is SharedFileTransferState.Downloaded) {
-            setState(sessionId, file.fileId, existing)
+    fun localFilePath(sessionId: String, fileId: String, displayName: String): File =
+        File(File(fileDir(sessionId, fileId), COMMITTED_FILE_DIR), safeLocalFileName(displayName))
+
+    fun localFileIfDownloaded(sessionId: String, fileId: String, displayName: String = ""): File? {
+        val dir = fileDir(sessionId, fileId)
+        val resolvedName = displayName.takeIf { it.isNotEmpty() }
+            ?: readMeta(committedMetaFile(dir))?.getProperty("display_name")?.takeIf { it.isNotEmpty() }
+            ?: return null
+        return File(File(dir, COMMITTED_FILE_DIR), safeLocalFileName(resolvedName)).takeIf { it.isFile }
+    }
+
+    /** Persists a newly probed positive media duration into `committed.meta` via the global FIFO queue. */
+    fun enqueuePersistDuration(sessionId: String, fileId: String, durationMs: Long) {
+        if (sessionId.isEmpty() || fileId.isEmpty() || durationMs <= 0L) return
+        enqueue {
+            val dir = fileDir(sessionId, fileId)
+            val metaFile = committedMetaFile(dir)
+            val props = readMeta(metaFile) ?: return@enqueue
+            if (props.getProperty("format") != META_FORMAT_VERSION) return@enqueue
+            if (props.getProperty("duration_ms")?.toLongOrNull() == durationMs) return@enqueue
+            props.setProperty("duration_ms", durationMs.toString())
+            runCatching { writePropertiesAtomic(metaFile, props) }
+        }
+    }
+
+    /** Enqueues a direct session directory cleanup onto the global FIFO queue (fallback when no Core is attached). */
+    fun enqueueDeleteSession(sessionId: String) {
+        if (sessionId.isEmpty()) return
+        enqueue {
+            executeDeleteSession(SharedFileDeleteSessionEffect.newBuilder().setSessionId(sessionId).build())
+        }
+    }
+
+    /** Enqueues a direct wipe of all cached shared files onto the global FIFO queue. */
+    fun enqueueClearAll() {
+        enqueue { executeClearAll(SharedFileClearAllEffect.getDefaultInstance()) }
+    }
+
+    /** Enqueues a direct wipe of all cached shared files onto the global FIFO queue and suspends until done. */
+    suspend fun clearAllAndWait() {
+        val done = CompletableDeferred<Unit>()
+        if (closed.get() || queue.trySend {
+            try {
+                executeClearAll(SharedFileClearAllEffect.getDefaultInstance())
+            } finally {
+                done.complete(Unit)
+            }
+        }.isFailure) {
             return
         }
-        controlModes.remove(k)
-        val previous = jobs[k]
-        val job = scope.launch(start = CoroutineStart.LAZY) {
-            previous?.join()
-            currentCoroutineContext().ensureActive()
-            runDownload(sessionId, file, userInitiated)
-        }
-        jobs[k] = job
-        job.invokeOnCompletion {
-            jobs.remove(k, job)
-        }
-        job.start()
+        done.await()
     }
 
-    @Synchronized
-    fun pause(sessionId: String, file: SharedFileTarget) {
-        val k = key(sessionId, file.fileId)
-        controlModes[k] = ControlMode.PAUSE
-        val active = jobs[k]
-        if (active != null) {
-            active.cancel()
-        }
-        val dir = fileDir(sessionId, file.fileId)
-        val meta = readMeta(metaFile(dir))
-        val completed = (meta?.getProperty("completedOffset")?.toLongOrNull() ?: 0L)
-            .coerceIn(0L, file.sizeBytes)
-        setState(sessionId, file.fileId, SharedFileTransferState.Paused(completed, file.sizeBytes))
+    /** Suspends until all previously enqueued FIFO storage operations have completed. */
+    suspend fun awaitIdle() {
+        val barrier = CompletableDeferred<Unit>()
+        if (closed.get() || queue.trySend { barrier.complete(Unit) }.isFailure) return
+        barrier.await()
     }
 
-    @Synchronized
-    fun cancel(sessionId: String, file: SharedFileTarget) {
-        val k = key(sessionId, file.fileId)
-        controlModes[k] = ControlMode.CANCEL
-        jobs[k]?.cancel()
-        val dir = fileDir(sessionId, file.fileId)
-        partFile(dir).delete()
-        metaFile(dir).delete()
-        setState(sessionId, file.fileId, SharedFileTransferState.Idle)
-    }
-
-    @Synchronized
-    fun deleteLocal(sessionId: String, file: SharedFileTarget) {
-        val k = key(sessionId, file.fileId)
-        controlModes[k] = ControlMode.CANCEL
-        jobs[k]?.cancel()
-        fileDir(sessionId, file.fileId).deleteRecursively()
-        setState(sessionId, file.fileId, SharedFileTransferState.Idle)
-    }
-
-    @Synchronized
-    fun removeSession(sessionId: String) {
-        val prefix = "$sessionId:"
-        for ((k, job) in jobs.entries) {
-            if (k.startsWith(prefix)) {
-                controlModes[k] = ControlMode.CANCEL
-                job.cancel()
+    /** Writes a valid v2 committed file + metadata directly on disk for deterministic tests. */
+    fun seedCommittedFileForTest(
+        sessionId: String,
+        fileId: String,
+        displayName: String,
+        bytes: ByteArray,
+        durationMs: Long? = null,
+    ): File {
+        val dir = fileDir(sessionId, fileId)
+        val fileDir = File(dir, COMMITTED_FILE_DIR).apply { mkdirs() }
+        val finalFile = File(fileDir, safeLocalFileName(displayName)).apply { writeBytes(bytes) }
+        val props = Properties().apply {
+            setProperty("format", META_FORMAT_VERSION)
+            setProperty("session_id", sessionId)
+            setProperty("file_id", fileId)
+            setProperty("display_name", displayName)
+            setProperty("total_size_bytes", bytes.size.toLong().toString())
+            if (durationMs != null && durationMs > 0L) {
+                setProperty("duration_ms", durationMs.toString())
             }
         }
-        val safeSid = sessionId.replace(Regex("[^A-Za-z0-9_-]"), "_")
-        File(rootDir, safeSid).deleteRecursively()
-        entryKeys.keys.removeIf { it.startsWith(prefix) }
-        lastProgressReport.keys.removeIf { it.startsWith(prefix) }
-        _states.update { map -> map.filterKeys { !it.startsWith(prefix) } }
-        onLocalStateEvent(SharedFileLocalStateEvent.newBuilder().setClearSessionId(sessionId).build())
-    }
-
-    @Synchronized
-    fun clearAll() {
-        for ((k, job) in jobs.entries) {
-            controlModes[k] = ControlMode.CANCEL
-            job.cancel()
-        }
-        rootDir.listFiles()?.forEach { it.deleteRecursively() }
-        entryKeys.clear()
-        lastProgressReport.clear()
-        _states.value = emptyMap()
-        onLocalStateEvent(SharedFileLocalStateEvent.newBuilder().setReplaceAll(true).build())
+        writePropertiesAtomic(committedMetaFile(dir), props)
+        return finalFile
     }
 
     fun usedBytes(): Long = ImageDiskPolicy.bytes(rootDir)
 
     fun close() {
-        scope.cancel()
+        if (closed.compareAndSet(false, true)) {
+            queue.close()
+            scope.cancel()
+        }
     }
 
-    private suspend fun runDownload(
-        sessionId: String,
-        file: SharedFileTarget,
-        userInitiated: Boolean,
-    ) {
-        val k = key(sessionId, file.fileId)
-        val dir = fileDir(sessionId, file.fileId)
-        val finalFile = localFileFor(sessionId, file)
-        val part = partFile(dir)
-        val meta = metaFile(dir)
-        val blockBytes = blockBytesProvider(sessionId).coerceAtLeast(1)
-        val expectedHash = file.sha256
-        val expectedHashHex = expectedHash.toHex()
+    private fun enqueue(task: () -> Unit) {
+        if (closed.get()) return
+        queue.trySend(task)
+    }
 
-        try {
-            val startContext = currentCoroutineContext()
-            val nextOffset = synchronized(this) {
-                startContext.ensureActive()
-                dir.mkdirs()
-                val savedMeta = readMeta(meta)
-                var nextOffset = 0L
-                if (
-                    savedMeta != null &&
-                    part.isFile &&
-                    savedMeta.getProperty("sizeBytes")?.toLongOrNull() == file.sizeBytes &&
-                    savedMeta.getProperty("blockBytes")?.toIntOrNull() == blockBytes &&
-                    savedMeta.getProperty("sha256") == expectedHashHex
-                ) {
-                    val savedCompleted = savedMeta.getProperty("completedOffset")?.toLongOrNull() ?: 0L
-                    if (savedCompleted > 0L && savedCompleted % blockBytes == 0L && savedCompleted < file.sizeBytes && part.length() >= savedCompleted) {
-                        RandomAccessFile(part, "rw").use { it.setLength(savedCompleted) }
-                        nextOffset = savedCompleted
-                    } else {
-                        part.delete()
+    // --- Effect execution (always invoked sequentially on the single FIFO worker) ---
+
+    internal fun executeScanLocal(eff: SharedFileScanLocalEffect): SharedFileLocalScannedEvent {
+        val builder = SharedFileLocalScannedEvent.newBuilder().setOpId(eff.opId)
+        if (!rootDir.exists()) return builder.build()
+        return try {
+            val sessionDirs = rootDir.listFiles().orEmpty()
+            for (sidDir in sessionDirs) {
+                if (!sidDir.isDirectory) {
+                    sidDir.delete()
+                    continue
+                }
+                val fileDirs = sidDir.listFiles().orEmpty()
+                for (fidDir in fileDirs) {
+                    if (!fidDir.isDirectory) {
+                        fidDir.delete()
+                        continue
                     }
-                } else {
-                    part.delete()
+                    scanFileDir(fidDir)?.let { builder.addEntries(it) }
                 }
-
-                if (!part.exists()) {
-                    writeMeta(meta, file.sizeBytes, blockBytes, 0L, expectedHashHex, durationMs = null)
+                if (sidDir.listFiles().isNullOrEmpty()) {
+                    sidDir.delete()
                 }
-
-                setState(sessionId, file.fileId, SharedFileTransferState.Downloading(nextOffset.coerceAtMost(file.sizeBytes), file.sizeBytes))
-                nextOffset
             }
+            builder.build()
+        } catch (e: Exception) {
+            SharedFileLocalScannedEvent.newBuilder()
+                .setOpId(eff.opId)
+                .setError(e.message ?: e.javaClass.simpleName)
+                .build()
+        }
+    }
 
-            val startTimeMs = clock()
-            var sessionBytes = 0L
-            var retriedOnce = false
+    private fun scanFileDir(fidDir: File): SharedFileLocalEntry? {
+        // Remove any incomplete atomic temp files left by a prior crash.
+        fidDir.listFiles()?.forEach { f ->
+            if (f.isFile && f.name.endsWith(".tmp")) f.delete()
+        }
 
-            val plan = planSharedFileBlocks(file.sizeBytes, blockBytes)
-            var blockIndex = plan.offsets.indexOfFirst { it >= nextOffset }
-            if (blockIndex < 0) blockIndex = 0
-
-            while (blockIndex < plan.offsets.size) {
-                currentCoroutineContext().ensureActive()
-                val offset = plan.offsets[blockIndex]
-
-                val res =
-                    try {
-                        fetcher.fetchChunk(sessionId, file.fileId, offset)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: CommandException) {
-                        currentCoroutineContext().ensureActive()
-                        if (e.code == "not_found") {
-                            part.delete()
-                            meta.delete()
-                            setState(sessionId, file.fileId, SharedFileTransferState.CleanedUp)
-                            return
-                        }
-                        if (isTransientDisconnect(e) && !retriedOnce) {
-                            retriedOnce = true
-                            val currentDownloaded = offset.coerceAtMost(file.sizeBytes)
-                            val reconnected = waitForReconnect(sessionId, file.fileId, currentDownloaded, file.sizeBytes)
-                            if (reconnected) {
-                                continue
+        val committedMeta = committedMetaFile(fidDir)
+        if (committedMeta.exists()) {
+            val props = readMeta(committedMeta)
+            val format = props?.getProperty("format")
+            val sid = props?.getProperty("session_id").orEmpty()
+            val fid = props?.getProperty("file_id").orEmpty()
+            val displayName = props?.getProperty("display_name").orEmpty()
+            val expectedSize = props?.getProperty("total_size_bytes")?.toLongOrNull()
+            val durationMs = props?.getProperty("duration_ms")?.toLongOrNull()
+            if (
+                format == META_FORMAT_VERSION &&
+                sid.isNotEmpty() &&
+                fid.isNotEmpty() &&
+                displayName.isNotEmpty() &&
+                expectedSize != null &&
+                expectedSize >= 0L
+            ) {
+                val finalFile = File(File(fidDir, COMMITTED_FILE_DIR), safeLocalFileName(displayName))
+                if (finalFile.isFile) {
+                    val onDisk = finalFile.length()
+                    if (expectedSize == 0L && onDisk != 0L) {
+                        fidDir.deleteRecursively()
+                        return null
+                    }
+                    // Clean any stale partial leftovers alongside an already committed file.
+                    deletePartialFiles(fidDir)
+                    return SharedFileLocalEntry.newBuilder()
+                        .setSessionId(sid)
+                        .setFileId(fid)
+                        .setCompleted(true)
+                        .setBytesOnDisk(onDisk)
+                        .setExpectedSizeBytes(expectedSize)
+                        .apply {
+                            if (durationMs != null && durationMs > 0L) {
+                                setHasDuration(true).setDurationMs(durationMs)
                             }
-                            setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED))
-                            return
                         }
-                        if (isTransientDisconnect(e)) {
-                            setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED))
-                            return
-                        }
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_OTHER, e.message.orEmpty()))
-                        return
-                    } catch (e: IOException) {
-                        val kind =
-                            if (isDiskFull(e)) CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL
-                            else CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_DISCONNECTED
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(kind, e.message.orEmpty()))
-                        return
-                    }
-
-                // A response can arrive as pause/cancel is being processed. Commit the
-                // block and its visible state atomically with those controls.
-                val activeContext = currentCoroutineContext()
-                synchronized(this) {
-                    activeContext.ensureActive()
-                    if (!res.hasTotalBytes() || res.totalBytes != file.sizeBytes) {
-                        part.delete()
-                        meta.delete()
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH))
-                        return
-                    }
-                    val chunkBytes = res.data.toByteArray()
-                    val remaining = (file.sizeBytes - offset).coerceAtLeast(0L)
-                    val expectedWrite = minOf(remaining, blockBytes.toLong()).toInt()
-                    if (chunkBytes.size != blockBytes && !(file.sizeBytes == 0L && chunkBytes.isEmpty())) {
-                        part.delete()
-                        meta.delete()
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH))
-                        return
-                    }
-                    if (chunkBytes.size < expectedWrite) {
-                        part.delete()
-                        meta.delete()
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH))
-                        return
-                    }
-
-                    try {
-                        RandomAccessFile(part, "rw").use { raf ->
-                            raf.seek(offset)
-                            if (expectedWrite > 0) raf.write(chunkBytes, 0, expectedWrite)
-                            raf.setLength(offset + expectedWrite)
-                        }
-                    } catch (e: IOException) {
-                        val kind =
-                            if (isDiskFull(e)) CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL
-                            else CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_OTHER
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(kind, e.message.orEmpty()))
-                        return
-                    }
-
-                    val committedOffset = offset + blockBytes
-                    val downloadedNow = minOf(file.sizeBytes, offset + expectedWrite)
-                    sessionBytes += expectedWrite
-                    writeMeta(meta, file.sizeBytes, blockBytes, committedOffset, expectedHashHex, durationMs = null)
-
-                    val elapsedMs = (clock() - startTimeMs).coerceAtLeast(0L)
-                    val eta =
-                        if (elapsedMs >= 3_000L && sessionBytes > 0L && downloadedNow < file.sizeBytes) {
-                            val ratePerSec = sessionBytes / (elapsedMs / 1000.0)
-                            ((file.sizeBytes - downloadedNow) / ratePerSec).toLong().coerceAtLeast(1L)
-                        } else null
-                    setState(sessionId, file.fileId, SharedFileTransferState.Downloading(downloadedNow, file.sizeBytes, eta))
-                    blockIndex++
+                        .build()
                 }
             }
+            // Missing committed file (OS cache eviction) or corrupt committed.meta: discard committed artifacts.
+            committedMeta.delete()
+            File(fidDir, COMMITTED_FILE_DIR).deleteRecursively()
+        }
 
-            val finalContext = currentCoroutineContext()
-            synchronized(this) {
-                finalContext.ensureActive()
-                // Full file fetched: verify SHA-256 over the truncated payload.
-                if (expectedHash.size == 32) {
-                    val actualHash = sha256File(part, file.sizeBytes)
-                    if (!MessageDigest.isEqual(actualHash, expectedHash)) {
-                        part.delete()
-                        meta.delete()
-                        setState(sessionId, file.fileId, SharedFileTransferState.Failed(CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_CHECKSUM_MISMATCH))
-                        return
-                    }
-                }
-
-                if (finalFile.exists()) finalFile.delete()
-                if (file.sizeBytes == 0L && !part.exists()) {
-                    finalFile.createNewFile()
-                } else if (!part.renameTo(finalFile)) {
-                    part.copyTo(finalFile, overwrite = true)
-                    part.delete()
-                }
-
-                val durationMs = durationExtractor(finalFile, file.hasMediaDuration)
-                writeMeta(meta, file.sizeBytes, blockBytes, file.sizeBytes, expectedHashHex, durationMs)
-                setState(sessionId, file.fileId, SharedFileTransferState.Downloaded(finalFile, durationMs))
-                _completions.tryEmit(
-                    SharedFileCompletion(
-                        sessionId = sessionId,
-                        fileId = file.fileId,
-                        displayName = file.displayName,
-                        sizeBytes = file.sizeBytes,
-                        kind = file.kind,
-                        localFile = finalFile,
-                        userInitiated = userInitiated,
-                    ),
-                )
+        val partialMeta = partialMetaFile(fidDir)
+        if (partialMeta.exists()) {
+            val props = readMeta(partialMeta)
+            val format = props?.getProperty("format")
+            val sid = props?.getProperty("session_id").orEmpty()
+            val fid = props?.getProperty("file_id").orEmpty()
+            if (format == META_FORMAT_VERSION && sid.isNotEmpty() && fid.isNotEmpty()) {
+                val expectedSize = props?.getProperty("total_size_bytes")?.toLongOrNull() ?: 0L
+                val chunkBytes = props?.getProperty("chunk_bytes")?.toIntOrNull() ?: 0
+                val committedOffset = props?.getProperty("committed_offset")?.toLongOrNull() ?: 0L
+                val sha256Bytes = decodeHex32(props?.getProperty("expected_sha256").orEmpty())
+                val part = partFile(fidDir)
+                val bytesOnDisk = if (part.isFile) part.length() else 0L
+                return SharedFileLocalEntry.newBuilder()
+                    .setSessionId(sid)
+                    .setFileId(fid)
+                    .setCompleted(false)
+                    .setBytesOnDisk(bytesOnDisk)
+                    .setExpectedSizeBytes(expectedSize)
+                    .setChunkBytes(chunkBytes)
+                    .setCommittedOffset(committedOffset)
+                    .setSha256(ByteString.copyFrom(sha256Bytes))
+                    .build()
             }
-        } catch (e: CancellationException) {
-            if (controlModes[k] == ControlMode.CANCEL) {
+            deletePartialFiles(fidDir)
+        }
+
+        // Legacy/unrecognized format (e.g. old meta.properties) or orphan files: treat as corrupt and clean up.
+        fidDir.deleteRecursively()
+        return null
+    }
+
+    internal fun executeInspectDisk(eff: SharedFileInspectDiskEffect): SharedFileDiskInspectedEvent {
+        val builder = SharedFileDiskInspectedEvent.newBuilder()
+            .setOpId(eff.opId)
+            .setSessionId(eff.sessionId)
+            .setFileId(eff.fileId)
+        return try {
+            val avail = availableBytesProvider(rootDir)
+            if (avail != null) {
+                builder.setKnown(true).setAvailableBytes(avail.coerceAtLeast(0L)).build()
+            } else {
+                builder.setKnown(false).build()
+            }
+        } catch (e: Throwable) {
+            val kind = classifyIoError(e)
+            if (kind == SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL) {
+                builder
+                    .setKnown(false)
+                    .setErrorKind(kind)
+                    .setErrorDetail(e.message.orEmpty())
+                    .build()
+            } else {
+                // Non-ENOSPC probe failures fall back to write-time enforcement.
+                builder.setKnown(false).build()
+            }
+        }
+    }
+
+    internal fun executeWriteChunk(eff: SharedFileWriteChunkEffect): SharedFileWriteChunkResultEvent {
+        val builder = SharedFileWriteChunkResultEvent.newBuilder()
+            .setOpId(eff.opId)
+            .setSessionId(eff.sessionId)
+            .setFileId(eff.fileId)
+        return try {
+            val dir = fileDir(eff.sessionId, eff.fileId)
+            if (!dir.exists() && !dir.mkdirs() && !dir.isDirectory) {
+                throw IOException("failed to create directory ${dir.path}")
+            }
+            val part = partFile(dir)
+            val data = eff.data.toByteArray()
+            if (eff.resetPartial && part.exists()) {
                 part.delete()
-                meta.delete()
             }
-            throw e
-        } catch (e: IOException) {
-            val kind =
-                if (isDiskFull(e)) CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL
-                else CoreSharedFileFailureKind.SHARED_FILE_FAILURE_KIND_OTHER
-            setState(sessionId, file.fileId, SharedFileTransferState.Failed(kind, e.message.orEmpty()))
+            RandomAccessFile(part, "rw").use { raf ->
+                if (eff.resetPartial) raf.setLength(0L)
+                raf.seek(eff.offset)
+                if (data.isNotEmpty()) raf.write(data)
+                raf.setLength(eff.offset + data.size.toLong())
+            }
+            val props = Properties().apply {
+                setProperty("format", META_FORMAT_VERSION)
+                setProperty("session_id", eff.sessionId)
+                setProperty("file_id", eff.fileId)
+                setProperty("display_name", eff.displayName)
+                setProperty("total_size_bytes", eff.totalSizeBytes.toString())
+                setProperty("chunk_bytes", eff.chunkBytes.toString())
+                setProperty("committed_offset", eff.committedOffset.toString())
+                setProperty("expected_sha256", eff.expectedSha256.toByteArray().toHex())
+            }
+            writePropertiesAtomic(partialMetaFile(dir), props)
+            builder.setOk(true).build()
+        } catch (e: Throwable) {
+            builder
+                .setOk(false)
+                .setErrorKind(classifyIoError(e))
+                .setErrorDetail(e.message.orEmpty())
+                .build()
         }
     }
 
-    private suspend fun waitForReconnect(
-        sessionId: String,
-        fileId: String,
-        downloadedBytes: Long,
-        totalBytes: Long,
-    ): Boolean {
-        val deadline = clock() + SHARED_FILE_RECONNECT_WAIT_MS
-        setState(
-            sessionId,
-            fileId,
-            SharedFileTransferState.Downloading(
-                downloadedBytes = downloadedBytes,
-                totalBytes = totalBytes,
-                etaSeconds = null,
-                waitingReconnect = true,
-            ),
-        )
-        // Brief pause on transient drop even if the machine flag appears online.
-        sleeper(1_000L)
-        while (clock() < deadline) {
-            currentCoroutineContext().ensureActive()
-            if (isMachineOnline(sessionId)) return true
-            val step = minOf(1_000L, (deadline - clock()).coerceAtLeast(1L))
-            sleeper(step)
+    internal fun executeVerifyAndCommit(eff: SharedFileVerifyAndCommitEffect): SharedFileVerifyAndCommitResultEvent {
+        val builder = SharedFileVerifyAndCommitResultEvent.newBuilder()
+            .setOpId(eff.opId)
+            .setSessionId(eff.sessionId)
+            .setFileId(eff.fileId)
+        val dir = fileDir(eff.sessionId, eff.fileId)
+        val part = partFile(dir)
+        val expectedHash = eff.expectedSha256.toByteArray()
+        val totalBytes = eff.totalSizeBytes
+
+        if (expectedHash.size != 32 || totalBytes < 0L) {
+            deletePartialFiles(dir)
+            pruneEmptyDirs(dir)
+            return builder
+                .setOk(false)
+                .setErrorKind(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH)
+                .build()
         }
-        return isMachineOnline(sessionId)
-    }
-
-    private fun setState(sessionId: String, fileId: String, state: SharedFileTransferState) {
-        val k = key(sessionId, fileId)
-        entryKeys[k] = sessionId to fileId
-        _states.update { it + (k to state) }
-        emitSingle(sessionId, fileId, state, force = false)
-    }
-
-    private fun emitSingle(sessionId: String, fileId: String, state: SharedFileTransferState, force: Boolean) {
-        val k = key(sessionId, fileId)
-        if (state is SharedFileTransferState.Downloading && !force) {
-            val now = clock()
-            val percent = if (state.totalBytes > 0L) {
-                ((state.downloadedBytes * 100L) / state.totalBytes).toInt().coerceIn(0, 100)
-            } else 0
-            val prev = lastProgressReport[k]
-            val shouldSend = prev == null ||
-                now - prev.timeMs >= SHARED_FILE_PROGRESS_THROTTLE_MS ||
-                percent != prev.percent ||
-                state.waitingReconnect != prev.waitingReconnect ||
-                state.etaSeconds != prev.etaSeconds ||
-                (state.totalBytes > 0L && state.downloadedBytes >= state.totalBytes)
-            if (!shouldSend) return
-            lastProgressReport[k] = ProgressStamp(now, percent, state.waitingReconnect, state.etaSeconds)
-        } else {
-            lastProgressReport.remove(k)
+        if (totalBytes > 0L && (!part.isFile || part.length() < totalBytes)) {
+            deletePartialFiles(dir)
+            pruneEmptyDirs(dir)
+            return builder
+                .setOk(false)
+                .setErrorKind(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH)
+                .build()
         }
-        onLocalStateEvent(
-            SharedFileLocalStateEvent.newBuilder()
-                .addUpdates(state.toLocalStateUpdate(sessionId, fileId))
-                .build(),
-        )
+
+        val actualHash = try {
+            sha256File(part, totalBytes)
+        } catch (e: Throwable) {
+            return builder
+                .setOk(false)
+                .setErrorKind(classifyIoError(e))
+                .setErrorDetail(e.message.orEmpty())
+                .build()
+        }
+
+        if (!MessageDigest.isEqual(actualHash, expectedHash)) {
+            deletePartialFiles(dir)
+            pruneEmptyDirs(dir)
+            return builder
+                .setOk(false)
+                .setErrorKind(SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_CHECKSUM_MISMATCH)
+                .build()
+        }
+
+        if (eff.deliverOnly) {
+            deletePartialFiles(dir)
+            pruneEmptyDirs(dir)
+            return builder.setOk(true).build()
+        }
+
+        return try {
+            val fileSubDir = File(dir, COMMITTED_FILE_DIR)
+            if (!fileSubDir.exists() && !fileSubDir.mkdirs() && !fileSubDir.isDirectory) {
+                throw IOException("failed to create committed directory ${fileSubDir.path}")
+            }
+            val safeName = safeLocalFileName(eff.displayName)
+            val finalFile = File(fileSubDir, safeName)
+
+            if (totalBytes > 0L && part.length() > totalBytes) {
+                RandomAccessFile(part, "rw").use { it.setLength(totalBytes) }
+            }
+
+            // Remove any prior committed file under a different filename.
+            fileSubDir.listFiles()?.forEach { existing ->
+                if (existing != finalFile) existing.deleteRecursively()
+            }
+
+            var movedFromPart = false
+            if (totalBytes == 0L && !part.exists()) {
+                finalFile.writeBytes(ByteArray(0))
+            } else {
+                if (finalFile.exists()) finalFile.delete()
+                if (part.renameTo(finalFile)) {
+                    movedFromPart = true
+                } else {
+                    val tmpTarget = File(fileSubDir, "$safeName.tmp")
+                    try {
+                        part.inputStream().use { input ->
+                            tmpTarget.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        if (!tmpTarget.renameTo(finalFile)) {
+                            Files.move(tmpTarget.toPath(), finalFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                        }
+                    } catch (e: Throwable) {
+                        tmpTarget.delete()
+                        throw e
+                    }
+                }
+            }
+
+            val durationMs = if (eff.probeDuration) {
+                runCatching { durationExtractor(finalFile) }.getOrNull()?.takeIf { it > 0L }
+            } else {
+                null
+            }
+
+            val props = Properties().apply {
+                setProperty("format", META_FORMAT_VERSION)
+                setProperty("session_id", eff.sessionId)
+                setProperty("file_id", eff.fileId)
+                setProperty("display_name", eff.displayName)
+                setProperty("total_size_bytes", totalBytes.toString())
+                if (durationMs != null) {
+                    setProperty("duration_ms", durationMs.toString())
+                }
+            }
+            try {
+                writePropertiesAtomic(committedMetaFile(dir), props)
+            } catch (e: Throwable) {
+                // Roll back so partial chunks stay resumable if disk filled right on meta write.
+                if (movedFromPart && !part.exists() && finalFile.isFile) {
+                    finalFile.renameTo(part)
+                } else {
+                    finalFile.delete()
+                }
+                throw e
+            }
+
+            deletePartialFiles(dir)
+            builder.setOk(true).apply {
+                if (durationMs != null) {
+                    setHasDuration(true).setDurationMs(durationMs)
+                }
+            }.build()
+        } catch (e: Throwable) {
+            builder
+                .setOk(false)
+                .setErrorKind(classifyIoError(e))
+                .setErrorDetail(e.message.orEmpty())
+                .build()
+        }
     }
 
-    /** Seeds a transfer state directly for deterministic UI and screenshot tests. */
-    fun setStateForTest(sessionId: String, fileId: String, state: SharedFileTransferState) {
-        setState(sessionId, fileId, state)
+    internal fun executeDeletePartial(eff: SharedFileDeletePartialEffect) {
+        val dir = fileDir(eff.sessionId, eff.fileId)
+        deletePartialFiles(dir)
+        pruneEmptyDirs(dir)
     }
 
-    private fun isTransientDisconnect(e: CommandException): Boolean =
-        e.code in setOf("network", CommandException.UNAVAILABLE, CommandException.UNKNOWN) ||
-            e.failureKind == CommandFailureKind.CONNECTION_DROPPED ||
-            e.failureKind == CommandFailureKind.COMPUTER_OFFLINE
+    internal fun executeDeleteLocal(eff: SharedFileDeleteLocalEffect) {
+        val dir = fileDir(eff.sessionId, eff.fileId)
+        dir.deleteRecursively()
+        pruneEmptySessionDir(dir.parentFile)
+        onLocalDeleted(eff.sessionId, eff.fileId)
+    }
 
-    private fun isDiskFull(e: IOException): Boolean {
-        val msg = e.message?.lowercase(Locale.ROOT).orEmpty()
-        return "enospc" in msg || "no space" in msg || "disk full" in msg
+    internal fun executeDeleteSession(eff: SharedFileDeleteSessionEffect) {
+        sessionDir(eff.sessionId).deleteRecursively()
+        onLocalDeleted(eff.sessionId, null)
+    }
+
+    internal fun executeClearAll(@Suppress("UNUSED_PARAMETER") eff: SharedFileClearAllEffect) {
+        rootDir.listFiles()?.forEach { it.deleteRecursively() }
+        onLocalDeleted(null, null)
+    }
+
+    // --- Helpers ---
+
+    private fun safeSegment(raw: String): String =
+        raw.replace(Regex("[^A-Za-z0-9_-]"), "_").ifEmpty { "_" }
+
+    private fun sessionDir(sessionId: String): File = File(rootDir, safeSegment(sessionId))
+
+    private fun fileDir(sessionId: String, fileId: String): File =
+        File(sessionDir(sessionId), safeSegment(fileId))
+
+    private fun partFile(dir: File): File = File(dir, PART_FILE_NAME)
+
+    private fun partialMetaFile(dir: File): File = File(dir, PARTIAL_META_NAME)
+
+    private fun committedMetaFile(dir: File): File = File(dir, COMMITTED_META_NAME)
+
+    private fun deletePartialFiles(dir: File) {
+        partFile(dir).delete()
+        partialMetaFile(dir).delete()
+        File(dir, "$PARTIAL_META_NAME.tmp").delete()
+    }
+
+    private fun pruneEmptyDirs(fidDir: File) {
+        if (fidDir.isDirectory && fidDir.listFiles().isNullOrEmpty()) {
+            fidDir.delete()
+            pruneEmptySessionDir(fidDir.parentFile)
+        }
+    }
+
+    private fun pruneEmptySessionDir(sidDir: File?) {
+        if (sidDir != null && sidDir != rootDir && sidDir.isDirectory && sidDir.listFiles().isNullOrEmpty()) {
+            sidDir.delete()
+        }
+    }
+
+    private fun classifyIoError(t: Throwable): SharedFileIOErrorKind {
+        var cur: Throwable? = t
+        while (cur != null) {
+            if (isStorageFullError(cur)) return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL
+            val msg = cur.message?.lowercase(Locale.ROOT).orEmpty()
+            if (
+                "enospc" in msg ||
+                "no space" in msg ||
+                "disk full" in msg ||
+                "edquot" in msg ||
+                "quota exceeded" in msg
+            ) {
+                return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_STORAGE_FULL
+            }
+            cur = cur.cause
+        }
+        return SharedFileIOErrorKind.SHARED_FILE_IO_ERROR_KIND_OTHER
     }
 
     private fun readMeta(file: File): Properties? {
@@ -694,38 +606,59 @@ class SharedFileStore(
         }.getOrNull()
     }
 
-    private fun writeMeta(
-        file: File,
-        sizeBytes: Long,
-        blockBytes: Int,
-        completedOffset: Long,
-        sha256Hex: String,
-        durationMs: Long?,
-    ) {
-        val props = Properties()
-        props.setProperty("sizeBytes", sizeBytes.toString())
-        props.setProperty("blockBytes", blockBytes.toString())
-        props.setProperty("completedOffset", completedOffset.toString())
-        props.setProperty("sha256", sha256Hex)
-        if (durationMs != null) props.setProperty("durationMs", durationMs.toString())
-        file.outputStream().use { props.store(it, null) }
+    private fun writePropertiesAtomic(target: File, props: Properties) {
+        val parent = target.parentFile
+        if (parent != null && !parent.exists()) parent.mkdirs()
+        val tmp = File(parent, "${target.name}.tmp")
+        try {
+            tmp.outputStream().use { props.store(it, null) }
+            try {
+                Files.move(
+                    tmp.toPath(),
+                    target.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE,
+                )
+            } catch (_: Exception) {
+                Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            }
+        } catch (e: Throwable) {
+            tmp.delete()
+            throw e
+        }
     }
 
     private fun sha256File(file: File, exactBytes: Long): ByteArray {
         val md = MessageDigest.getInstance("SHA-256")
-        if (exactBytes == 0L || !file.isFile) return md.digest()
+        if (exactBytes == 0L) return md.digest()
         val buf = ByteArray(8192)
         var remaining = exactBytes
         file.inputStream().use { input ->
             while (remaining > 0L) {
                 val read = input.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
-                if (read <= 0) break
+                if (read <= 0) throw IOException("unexpected EOF while hashing partial file")
                 md.update(buf, 0, read)
                 remaining -= read
             }
         }
         return md.digest()
     }
-}
 
-private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+    companion object {
+        fun safeLocalFileName(displayName: String): String =
+            displayName.substringAfterLast('/').substringAfterLast('\\').trim().takeIf {
+                it.isNotEmpty() && it != "." && it != ".."
+            } ?: "file"
+
+        private fun decodeHex32(hex: String): ByteArray {
+            if (hex.length != 64) return ByteArray(0)
+            return try {
+                ByteArray(32) { i -> hex.substring(i * 2, i * 2 + 2).toInt(16).toByte() }
+            } catch (_: NumberFormatException) {
+                ByteArray(0)
+            }
+        }
+
+        private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+    }
+}

@@ -342,6 +342,7 @@ class Remote(
     val scheduleNavigationEvents: SharedFlow<ScheduleNavigateEffect> get() = coreHost.scheduleNavigationEvents
     val restoreComposerEvents: SharedFlow<SessionRestoreComposerEffect> get() = coreHost.restoreComposerEvents
     val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> get() = coreHost.resendAttachmentsEvents
+    val sharedFileCompletedEvents: SharedFlow<SharedFileCompletedEffect> get() = coreHost.sharedFileCompletedEvents
     val securityClient: SecurityClient get() = coreHost.securityClient
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
@@ -1610,8 +1611,35 @@ class Remote(
 
     fun retrySessionLoad(sid: String) = coreHost.retrySessionLoad(sid)
 
-    fun sendSharedFileLocalState(event: io.github.lewin671.remoteagent.core.proto.SharedFileLocalStateEvent) =
-        coreHost.sendSharedFileLocalState(event)
+    fun startSharedFileDownload(sessionId: String, fileId: String, autoOpenIfStaying: Boolean = true) =
+        coreHost.startSharedFileDownload(sessionId, fileId, autoOpenIfStaying)
+
+    fun pauseSharedFileDownload(sessionId: String, fileId: String) =
+        coreHost.pauseSharedFileDownload(sessionId, fileId)
+
+    fun cancelSharedFileDownload(sessionId: String, fileId: String) =
+        coreHost.cancelSharedFileDownload(sessionId, fileId)
+
+    fun deleteSharedFileLocal(sessionId: String, fileId: String) =
+        coreHost.deleteSharedFileLocal(sessionId, fileId)
+
+    fun setSharedFileVisibleSession(sessionId: String) =
+        coreHost.setSharedFileVisibleSession(sessionId)
+
+    fun forgetSharedFileSession(sessionId: String) =
+        coreHost.forgetSharedFileSession(sessionId)
+
+    fun clearAllSharedFiles() =
+        coreHost.clearAllSharedFiles()
+
+    suspend fun clearAllSharedFilesAndWait() =
+        coreHost.clearAllSharedFilesAndWait()
+
+    fun reportSharedFileDurationProbed(sessionId: String, fileId: String, durationMs: Long) =
+        coreHost.reportSharedFileDurationProbed(sessionId, fileId, durationMs)
+
+    fun reportSharedFileLocalMissing(sessionId: String, fileId: String) =
+        coreHost.reportSharedFileLocalMissing(sessionId, fileId)
 
     fun openSessionImageViewer(sid: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
         coreHost.openSessionImageViewer(sid, seq, imageIndex, viewerIndex)

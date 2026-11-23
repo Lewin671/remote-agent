@@ -196,6 +196,15 @@ class CoreHost(
     var onRender: (List<ScreenTarget>) -> Unit = {}
     var onUsageCacheWrite: (UsageCacheWriteEffect) -> Unit = {}
     var onHydrateUsageCache: (String) -> Unit = {}
+    var onSharedFileScanLocal: (SharedFileScanLocalEffect) -> Unit = {}
+    var onSharedFileInspectDisk: (SharedFileInspectDiskEffect) -> Unit = {}
+    var onSharedFileWriteChunk: (SharedFileWriteChunkEffect) -> Unit = {}
+    var onSharedFileVerifyAndCommit: (SharedFileVerifyAndCommitEffect) -> Unit = {}
+    var onSharedFileDeletePartial: (SharedFileDeletePartialEffect) -> Unit = {}
+    var onSharedFileDeleteLocal: (SharedFileDeleteLocalEffect) -> Unit = {}
+    var onSharedFileDeleteSession: (SharedFileDeleteSessionEffect) -> Unit = {}
+    var onSharedFileClearAll: (SharedFileClearAllEffect) -> Unit = {}
+    var onSharedFileCompleted: (SharedFileCompletedEffect) -> Unit = {}
 
     private val nextDirectCallId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
@@ -378,6 +387,9 @@ class CoreHost(
 
     private val _resendAttachmentsEvents = MutableSharedFlow<SessionResendAttachmentsEffect>(extraBufferCapacity = 16)
     val resendAttachmentsEvents: SharedFlow<SessionResendAttachmentsEffect> = _resendAttachmentsEvents.asSharedFlow()
+
+    private val _sharedFileCompletedEvents = MutableSharedFlow<SharedFileCompletedEffect>(extraBufferCapacity = 32)
+    val sharedFileCompletedEvents: SharedFlow<SharedFileCompletedEffect> = _sharedFileCompletedEvents.asSharedFlow()
 
     init {
         if (!closed.get()) {
@@ -630,6 +642,18 @@ class CoreHost(
             Effect.EffectCase.TERMINAL_REOPEN -> {
                 val tid = effect.terminalReopen.terminalId
                 terminalReopenListeners[tid]?.invoke()
+            }
+            Effect.EffectCase.SHARED_FILE_SCAN_LOCAL -> onSharedFileScanLocal(effect.sharedFileScanLocal)
+            Effect.EffectCase.SHARED_FILE_INSPECT_DISK -> onSharedFileInspectDisk(effect.sharedFileInspectDisk)
+            Effect.EffectCase.SHARED_FILE_WRITE_CHUNK -> onSharedFileWriteChunk(effect.sharedFileWriteChunk)
+            Effect.EffectCase.SHARED_FILE_VERIFY_AND_COMMIT -> onSharedFileVerifyAndCommit(effect.sharedFileVerifyAndCommit)
+            Effect.EffectCase.SHARED_FILE_DELETE_PARTIAL -> onSharedFileDeletePartial(effect.sharedFileDeletePartial)
+            Effect.EffectCase.SHARED_FILE_DELETE_LOCAL -> onSharedFileDeleteLocal(effect.sharedFileDeleteLocal)
+            Effect.EffectCase.SHARED_FILE_DELETE_SESSION -> onSharedFileDeleteSession(effect.sharedFileDeleteSession)
+            Effect.EffectCase.SHARED_FILE_CLEAR_ALL -> onSharedFileClearAll(effect.sharedFileClearAll)
+            Effect.EffectCase.SHARED_FILE_COMPLETED -> {
+                _sharedFileCompletedEvents.tryEmit(effect.sharedFileCompleted)
+                onSharedFileCompleted(effect.sharedFileCompleted)
             }
             else -> {}
         }
@@ -1138,8 +1162,113 @@ class CoreHost(
     fun retrySessionLoad(sessionId: String) =
         send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
 
-    fun sendSharedFileLocalState(event: SharedFileLocalStateEvent) =
-        send { setSharedFileLocalState(event) }
+    fun sendSharedFileConfig(
+        localCacheMaxBytes: Long = 0L,
+        storageFullKind: SharedFileFailureKind = SharedFileFailureKind.SHARED_FILE_FAILURE_KIND_PHONE_STORAGE_FULL,
+        scanLocal: Boolean = true,
+    ) = send {
+        setSharedFileConfig(
+            SharedFileConfigEvent.newBuilder()
+                .setLocalCacheMaxBytes(localCacheMaxBytes)
+                .setStorageFullKind(storageFullKind)
+                .setScanLocal(scanLocal),
+        )
+    }
+
+    fun deliverSharedFileLocalScanned(event: SharedFileLocalScannedEvent) =
+        send { setSharedFileLocalScanned(event) }
+
+    fun startSharedFileDownload(sessionId: String, fileId: String, autoOpenIfStaying: Boolean = true) =
+        send {
+            setSharedFileStartDownload(
+                SharedFileStartDownloadAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId)
+                    .setAutoOpenIfStaying(autoOpenIfStaying),
+            )
+        }
+
+    fun pauseSharedFileDownload(sessionId: String, fileId: String) =
+        send {
+            setSharedFilePauseDownload(
+                SharedFilePauseDownloadAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId),
+            )
+        }
+
+    fun cancelSharedFileDownload(sessionId: String, fileId: String) =
+        send {
+            setSharedFileCancelDownload(
+                SharedFileCancelDownloadAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId),
+            )
+        }
+
+    fun deleteSharedFileLocal(sessionId: String, fileId: String) =
+        send {
+            setSharedFileDeleteLocal(
+                SharedFileDeleteLocalAction.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId),
+            )
+        }
+
+    fun setSharedFileVisibleSession(sessionId: String) =
+        send {
+            setSharedFileSetVisibleSession(
+                SharedFileSetVisibleSessionAction.newBuilder()
+                    .setSessionId(sessionId),
+            )
+        }
+
+    fun forgetSharedFileSession(sessionId: String) =
+        send {
+            setSharedFileForgetSession(
+                SharedFileForgetSessionAction.newBuilder()
+                    .setSessionId(sessionId),
+            )
+        }
+
+    fun clearAllSharedFiles() =
+        send { setSharedFileClearAll(SharedFileClearAllAction.getDefaultInstance()) }
+
+    suspend fun clearAllSharedFilesAndWait() {
+        dispatchAndWait(
+            CoreEvent.newBuilder()
+                .setSharedFileClearAll(SharedFileClearAllAction.getDefaultInstance())
+                .build(),
+        )
+    }
+
+    fun reportSharedFileDurationProbed(sessionId: String, fileId: String, durationMs: Long) =
+        send {
+            setSharedFileDurationProbed(
+                SharedFileDurationProbedEvent.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId)
+                    .setDurationMs(durationMs),
+            )
+        }
+
+    fun reportSharedFileLocalMissing(sessionId: String, fileId: String) =
+        send {
+            setSharedFileLocalMissing(
+                SharedFileLocalMissingEvent.newBuilder()
+                    .setSessionId(sessionId)
+                    .setFileId(fileId),
+            )
+        }
+
+    fun deliverSharedFileDiskInspected(event: SharedFileDiskInspectedEvent) =
+        send { setSharedFileDiskInspected(event) }
+
+    fun deliverSharedFileWriteChunkResult(event: SharedFileWriteChunkResultEvent) =
+        send { setSharedFileWriteChunkResult(event) }
+
+    fun deliverSharedFileVerifyAndCommitResult(event: SharedFileVerifyAndCommitResultEvent) =
+        send { setSharedFileVerifyAndCommitResult(event) }
 
     fun openSessionImageViewer(sessionId: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
         send {
