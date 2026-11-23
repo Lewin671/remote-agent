@@ -11,7 +11,7 @@ import { ArrowUp, Check, ChevronDown, ChevronRight, X } from "../icons";
 import { useKeyboardDismiss } from "../keyboard";
 import type { Remote } from "../remote";
 import { anchorOf, Avatar, Banner, sendKeys, Sheet, StateMark, usePointerFine, useRemote } from "../ui";
-import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
+import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
 import { useAutoGrow } from "./Composer";
 import { ComposerPicker, keepComposerFocus } from "./ComposerPicker";
 import { DiskFullCard } from "./DiskFullCard";
@@ -94,10 +94,17 @@ export function NewBoxView(p: {
   useAutoGrow(input, vm.prompt, 240);
   useEffect(() => { if (p.autoFocus) input.current?.focus(); }, [p.autoFocus]);
 
-  const machineObj = remote?.machines.get(machineId);
+  const attachWhy = renderText(vm.imageUploadBlockedReason);
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const tray = remote ? useTray(remote, "new:" + projectKey, machineId, maxImages(remote, machineObj)) : undefined;
-  const attachWhy = remote ? attachBlocked(remote, machineObj) : "";
+  const tray = remote
+    ? useTray(remote, "new:" + projectKey, machineId, {
+        maxImages: vm.maxImages,
+        maxFiles: vm.maxFiles,
+        maxFileBytes: vm.maxFileBytes,
+        supportsFiles: vm.supportsFiles,
+        blocked: attachWhy,
+      })
+    : undefined;
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const drop = remote && tray ? useDropPaste(tray, attachWhy, setToast) : { over: false, props: {} };
   if (tray) tray.onAdd = () => onDraft?.();
@@ -217,7 +224,13 @@ export function NewBoxView(p: {
         </div>
       );
     }
-    if (n.kind === NoticeKind.DISK_FULL || (n.kind === NoticeKind.FAILED && n.action === NoticeActionKind.RETRY_START && renderText(n.text).includes(t("machine_status.disk_full")))) {
+    // TODO(core): remove text fallback once clientcore/app/core.go sets draft.DiskFull on createSession errorCode=="disk_full".
+    if (
+      n.kind === NoticeKind.DISK_FULL ||
+      (n.kind === NoticeKind.FAILED &&
+        n.action === NoticeActionKind.RETRY_START &&
+        (vm.diskFull || renderText(n.text).includes(t("machine_status.disk_full"))))
+    ) {
       return <DiskFullCard key={`disk-${idx}`} onUsage={() => p.onOpenDiskUsage(n.targetMachineId || machineId)} onRetry={p.onRetryDiskFull ?? submit} />;
     }
     const label = NOTICE_ACTION_LABEL[n.action]?.();

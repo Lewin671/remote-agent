@@ -47,7 +47,7 @@ import { previewBlobForFile, saveBlobAsDownload, sharedFilesOf } from "../shared
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
-import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
+import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
 import { Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { FileChips } from "./Files";
@@ -1332,7 +1332,7 @@ export function SessionPage({
   const vm = useSessionView(host, sessionId, windowOpts, { refreshModels: true, refreshSettings: true });
   const header = vm.header;
   const machineId = header?.machineId ?? "";
-  const machine = remote.machines.get(machineId);
+  const caps = header?.capabilities;
 
   const [toast, setToast] = useState("");
   const toastRef = useRef(setToast);
@@ -1342,8 +1342,14 @@ export function SessionPage({
   const [composerKey, setComposerKey] = useState(0);
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
-  const tray = useTray(remote, sessionId, machineId, maxImages(remote, machine));
-  const attachWhy = attachBlocked(remote, machine);
+  const attachWhy = renderText(caps?.imageUploadBlockedReason);
+  const tray = useTray(remote, sessionId, machineId, {
+    maxImages: caps?.maxImages ?? 0,
+    maxFiles: caps?.maxFiles ?? 0,
+    maxFileBytes: caps?.maxFileBytes ?? 0n,
+    supportsFiles: !!caps?.supportsFiles,
+    blocked: attachWhy,
+  });
   const drop = useDropPaste(tray, attachWhy, toastRef.current);
   const stash = getSendAttachments(remote);
   const pendingRestoreFiles = useRef(new Map<string, LocalSendAttachments["files"]>());

@@ -11,16 +11,25 @@ import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import { Tray, type TrayItem } from "../attach";
 import { imageFailureLine, imageProblem, originalImageHint } from "../image-problem";
 import { DraftImageViewer } from "./Images";
-import { clock, machineName } from "../model";
-import type { MachineView, Remote } from "../remote";
+import { clock } from "../model";
+import type { Remote } from "../remote";
 import { Banner } from "../ui";
 import { useGrow } from "../motion";
 import { FileChip } from "./Files";
 import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
 
+export interface TrayCapabilities {
+  maxImages: number;
+  maxFiles: number;
+  maxFileBytes: bigint | number;
+  supportsFiles: boolean;
+  blocked: string;
+}
+
 /** The tray of a draft (a session's input, or a project's new-session
  * card), kept on the Remote so it survives leaving the page. */
-export function useTray(remote: Remote, key: string, machineId: string, max: number): Tray {
+export function useTray(remote: Remote, key: string, machineId: string, caps: TrayCapabilities): Tray {
+  const max = caps.maxImages > 0 ? caps.maxImages : 6;
   let t = remote.trays.get(key);
   if (!t) {
     t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => { remote.persistDraft(key); remote.touch(); }, max);
@@ -29,17 +38,16 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
     void remote.restoreDraft(key, t).catch(() => undefined);
   }
   t.max = max;
-  const caps = remote.peer(machineId).capabilities;
-  t.fileSupported = !!caps?.fileUpload;
-  t.maxFiles = caps?.maxFilesPerMessage || 6;
-  t.maxFileBytes = Number(caps?.maxFileUploadBytes || 100n * 1024n * 1024n);
+  t.fileSupported = caps.supportsFiles;
+  t.maxFiles = caps.maxFiles > 0 ? caps.maxFiles : 6;
+  t.maxFileBytes = Number(caps.maxFileBytes) > 0 ? Number(caps.maxFileBytes) : 100 * 1024 * 1024;
   const tray = t;
   useEffect(() => { void remote.restoreDraft(key, tray).catch(() => undefined); }, [remote, key, tray]);
   useEffect(() => {
     tray.retarget(machineId);
   }, [tray, machineId]);
   const deadlines = tray.items.map((i) => i.expiresMs ?? 0).join(",");
-  const online = !attachBlocked(remote, remote.machines.get(machineId));
+  const online = !caps.blocked;
   useEffect(() => {
     if (!online) return;
     const refresh = () => { tray.refreshExpired(); remote.touch(); };
@@ -55,20 +63,6 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
     };
   }, [tray, remote, online, deadlines, tray.items.length]);
   return tray;
-}
-
-/** Why images cannot be added now, or "". */
-export function attachBlocked(remote: Remote, m: MachineView | undefined): string {
-  const name = machineName(m);
-  if (!m || !remote.peer(m.id).reachable) return i18n.t("attachment.computer_offline", { name });
-  if (!remote.peer(m?.id).ready) return i18n.t("attachment.disconnected");
-  if (!m.meta) return i18n.t("attachment.computer_unread", { name });
-  if (!remote.peer(m?.id).capabilities?.imageUpload) return i18n.t("attachment.path_spaces", { name });
-  return "";
-}
-
-export function maxImages(remote: Remote, m: MachineView | undefined): number {
-  return remote.peer(m?.id).capabilities?.maxImagesPerMessage || 6;
 }
 
 /** Image files in a drop or a paste. */
