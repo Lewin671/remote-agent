@@ -96,7 +96,7 @@ struct SharedFileCardView: View {
                         key,
                         name: item.displayName,
                         kind: item.kind,
-                        hasMediaDuration: item.hasMediaDuration,
+                        hasMediaDuration: item.hasMediaDuration_p,
                         hasDurationText: !item.durationText.isEmpty
                     )
                 }
