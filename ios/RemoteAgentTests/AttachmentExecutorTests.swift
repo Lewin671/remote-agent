@@ -1,3 +1,4 @@
+import AVFoundation
 import CryptoKit
 import Foundation
 import RACore
@@ -227,6 +228,189 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(daemon.sentCommands.first?.send.imageIds.count == 1)
     }
 
+    @Test func originalToggleAndOriginalTotalSizeWorkWithRealCore() async throws {
+        let store = PendingStore.ephemeral()
+        let daemon = FakeUploadDaemon()
+        let h = try await makeHarness(store: store, daemon: daemon, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let scope = PBDraftScope.session("s1")
+        await h.host.openDraft(scope: scope, machineID: "m1")
+        h.center.addImageData(scope: scope, [samplePNG(.systemRed)])
+
+        await eventually("picked image has original source enabled and becomes ready") {
+            let d = h.screens.sessions["s1"]?.composer.draft
+            return d?.images.count == 1 && d?.images.first?.state == .ready && d?.canToggleOriginal == true
+        }
+
+        await h.host.setDraftOriginal(scope: scope, original: true)
+        await eventually("original toggle prepares original image and renders total size") {
+            let d = h.screens.sessions["s1"]?.composer.draft
+            return d?.original == true
+                && d?.images.first?.state == .ready
+                && d?.hasOriginalTotalSizeText == true
+                && !(d?.originalTotalSizeText.rendered().isEmpty ?? true)
+                && d?.canSend == true
+        }
+    }
+
+    @Test func readChunkNeverFallsBackToRawSourceRefForImages() async throws {
+        let store = PendingStore.ephemeral()
+        let rawSourceRef = try store.storeBlob(Data("raw-exif-bytes".utf8), prefix: "src")
+        let h = try await makeHarness(store: store, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let res = await h.host.readChunkForTesting(.with {
+            $0.opID = 77
+            $0.scope = .session("s1")
+            $0.itemID = "img-1"
+            $0.kind = .image
+            $0.sourceRef = rawSourceRef
+            $0.preparedRef = ""
+            $0.offset = 0
+            $0.length = 14
+            $0.expectedSizeBytes = 14
+        })
+        #expect(res.opID == 77)
+        #expect(!res.ok)
+        #expect(res.errorKind == .sourceMissing)
+        #expect(res.data.isEmpty)
+    }
+
+    @Test func inFlightPrepareCannotWriteFilesAfterClearAllDrafts() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "att-clear-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? vault.clear()
+        }
+
+        let store = PendingStore(directory: dir, vault: vault)
+        let h = try await makeHarness(store: store, persist: true)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let srcRef = try store.storeBlob(samplePNG(.systemOrange), prefix: "src")
+        await h.host.clearAllDrafts()
+        #expect(!FileManager.default.fileExists(atPath: dir.path))
+
+        // Late prepare effect executing on the pre-logout host's stale PendingScope must write nothing to disk.
+        await h.host.processEffectBatchForTesting([
+            .with {
+                $0.attachmentPrepareImage = .with {
+                    $0.opID = 88
+                    $0.scope = .session("s1")
+                    $0.itemID = "late-1"
+                    $0.sourceRef = srcRef
+                    $0.original = false
+                    $0.maxOriginalBytes = 20 * 1024 * 1024
+                    $0.maxDimensionPx = 2048
+                    $0.maxCompressedBytes = 900 * 1024
+                }
+            },
+        ])
+        await h.host.drainDraftStorageQueue()
+        #expect(!FileManager.default.fileExists(atPath: dir.path))
+    }
+
+    @Test func hashFileBookmarkProbesVideoDurationWithHasDurationFlag() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "att-vid-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let videoURL = dir.appending(path: "sample.mov")
+        let writer = try AVAssetWriter(outputURL: videoURL, fileType: .mov)
+        let settings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoWidthKey: 32,
+            AVVideoHeightKey: 32,
+        ]
+        let input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: input,
+            sourcePixelBufferAttributes: [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32ARGB,
+                kCVPixelBufferWidthKey as String: 32,
+                kCVPixelBufferHeightKey as String: 32,
+            ]
+        )
+        writer.add(input)
+        #expect(writer.startWriting())
+        writer.startSession(atSourceTime: .zero)
+        var pb: CVPixelBuffer?
+        CVPixelBufferCreate(kCFAllocatorDefault, 32, 32, kCVPixelFormatType_32ARGB, nil, &pb)
+        let buffer = try #require(pb)
+        while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(adaptor.append(buffer, withPresentationTime: .zero))
+        while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(adaptor.append(buffer, withPresentationTime: CMTime(value: 1, timescale: 2)))
+        input.markAsFinished()
+        await writer.finishWriting()
+        #expect(writer.status == .completed)
+
+        let store = PendingStore.ephemeral()
+        let bmk = try PickedFile.bookmark(for: videoURL)
+        let bmkRef = try store.storeBookmark(bmk)
+        let h = try await makeHarness(store: store, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let res = await h.host.hashFileForTesting(.with {
+            $0.opID = 91
+            $0.scope = .session("s1")
+            $0.itemID = "vid-1"
+            $0.sourceRef = bmkRef
+            $0.maxBytes = 100 * 1024 * 1024
+            $0.isVideo = true
+        })
+        #expect(res.ok)
+        #expect(res.sizeBytes > 0 && res.sha256.count == 32)
+        #expect(res.hasDuration_p)
+        #expect(res.durationMs > 0)
+    }
+
+    @Test func localImageCacheRespectsLRUBound() async throws {
+        let store = PendingStore.ephemeral()
+        let h = try await makeHarness(store: store, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let png = samplePNG(.systemPurple)
+        var refs: [String] = []
+        for i in 0..<(ImageCenter.maxLocalImages + 6) {
+            refs.append(try store.storeBlob(png, prefix: "t\(i)"))
+        }
+        for ref in refs {
+            _ = h.center.localImage(for: ref)
+        }
+        await eventually("LRU thumbnail cache populated up to cap") {
+            h.center.localImageCacheCountForTesting == ImageCenter.maxLocalImages
+        }
+        #expect(h.center.localImageCacheCountForTesting <= ImageCenter.maxLocalImages)
+    }
+
     @Test func draftStorageEffectsEnqueueInBatchOrderAcrossActorReentrancy() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "att-order-\(UUID().uuidString)", directoryHint: .isDirectory)
         let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
@@ -395,16 +579,42 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             $0.fileCount = 1
             $0.maxFiles = 5
             $0.fileCountText = .with { $0.literal = "1 / 5" }
-            $0.images = [.with {
-                $0.itemID = "img-1"
-                $0.kind = .image
-                $0.state = .ready
-                $0.thumbRef = thumbRef
-                $0.canRemove = true
-                $0.positionText = .with { $0.literal = "1 / 1" }
-                $0.positionA11Y = .with { $0.literal = "第 1 张，共 1 张" }
-                $0.removeA11Y = .with { $0.literal = "移除第 1 张图片" }
-            }]
+            $0.images = [
+                .with {
+                    $0.itemID = "img-1"
+                    $0.kind = .image
+                    $0.state = .ready
+                    $0.thumbRef = thumbRef
+                    $0.canRemove = true
+                    $0.positionText = .with { $0.literal = "1 / 3" }
+                    $0.positionA11Y = .with { $0.literal = "第 1 张，共 3 张" }
+                    $0.removeA11Y = .with { $0.literal = "移除第 1 张图片" }
+                },
+                .with {
+                    $0.itemID = "img-2"
+                    $0.kind = .image
+                    $0.state = .paused
+                    $0.thumbRef = thumbRef
+                    $0.canResume = true
+                    $0.canRemove = true
+                    $0.badgeText = .with { $0.literal = "继续" }
+                    $0.positionText = .with { $0.literal = "2 / 3" }
+                    $0.positionA11Y = .with { $0.literal = "第 2 张，共 3 张" }
+                    $0.removeA11Y = .with { $0.literal = "移除第 2 张图片" }
+                },
+                .with {
+                    $0.itemID = "img-3"
+                    $0.kind = .image
+                    $0.state = .failed
+                    $0.thumbRef = thumbRef
+                    $0.canRetry = true
+                    $0.canRemove = true
+                    $0.badgeText = .with { $0.literal = "失败" }
+                    $0.positionText = .with { $0.literal = "3 / 3" }
+                    $0.positionA11Y = .with { $0.literal = "第 3 张，共 3 张" }
+                    $0.removeA11Y = .with { $0.literal = "移除第 3 张图片" }
+                },
+            ]
             $0.files = [.with {
                 $0.itemID = "file-1"
                 $0.kind = .file

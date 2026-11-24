@@ -94,8 +94,10 @@ final class ImageCenter {
         return c
     }()
 
-    /// Decoded thumbnails for Core's local attachment refs (`thumb_ref` / `prepared_ref`).
+    /// Bounded LRU cache of decoded thumbnails for Core's local attachment refs (`thumb_ref` / `prepared_ref`).
+    static let maxLocalImages = 64
     private var localImages: [String: UIImage] = [:]
+    @ObservationIgnored private var localImageOrder: [String] = []
     @ObservationIgnored private var loadingRefs = Set<String>()
     @ObservationIgnored private var loadTasks: [String: Task<Void, Never>] = [:]
 
@@ -128,6 +130,7 @@ final class ImageCenter {
         loadTasks.removeAll()
         loadingRefs.removeAll()
         localImages.removeAll()
+        localImageOrder.removeAll()
         notices.removeAll()
         picking.removeAll()
         viewed.clear()
@@ -135,11 +138,14 @@ final class ImageCenter {
     }
 
     private func evictLocalRefs(_ refs: [String]) {
+        guard !refs.isEmpty else { return }
+        let removed = Set(refs)
         for ref in refs {
             loadTasks.removeValue(forKey: ref)?.cancel()
             loadingRefs.remove(ref)
             localImages.removeValue(forKey: ref)
         }
+        localImageOrder.removeAll { removed.contains($0) }
     }
 
     private func clearLocalCache() {
@@ -147,7 +153,24 @@ final class ImageCenter {
         loadTasks.removeAll()
         loadingRefs.removeAll()
         localImages.removeAll()
+        localImageOrder.removeAll()
     }
+
+    private func cacheLocalImage(_ image: UIImage, for ref: String) {
+        localImages[ref] = image
+        if let idx = localImageOrder.firstIndex(of: ref) {
+            localImageOrder.remove(at: idx)
+        }
+        localImageOrder.append(ref)
+        while localImageOrder.count > Self.maxLocalImages {
+            let evicted = localImageOrder.removeFirst()
+            localImages.removeValue(forKey: evicted)
+        }
+    }
+
+    #if DEBUG
+    var localImageCacheCountForTesting: Int { localImages.count }
+    #endif
 
     // MARK: Viewed images & timeline previews
 
@@ -176,23 +199,28 @@ final class ImageCenter {
     /// Returns a cached thumbnail for `ref` (`thumb_ref` or `prepared_ref`), or triggers an async decode.
     func localImage(for ref: String) -> UIImage? {
         guard !ref.isEmpty, !closed else { return nil }
-        if let cached = localImages[ref] { return cached }
+        if let cached = localImages[ref] {
+            if localImageOrder.last != ref, let idx = localImageOrder.firstIndex(of: ref) {
+                localImageOrder.remove(at: idx)
+                localImageOrder.append(ref)
+            }
+            return cached
+        }
         guard loadingRefs.insert(ref).inserted else { return nil }
         let store = pending
         loadTasks[ref] = Task { [weak self] in
             let decoded: UIImage? = await Task.detached(priority: .userInitiated) {
-                guard let bytes = try? store.readBlob(ref) else { return nil }
-                if let cg = thumbnailImage(bytes, maxLong: 256) {
-                    return UIImage(cgImage: cg)
-                }
-                return UIImage(data: bytes)
+                guard let bytes = try? store.readBlob(ref),
+                      let cg = thumbnailImage(bytes, maxLong: 256)
+                else { return nil }
+                return UIImage(cgImage: cg)
             }.value
             guard let self else { return }
             self.loadingRefs.remove(ref)
             self.loadTasks.removeValue(forKey: ref)
             guard !self.closed, !Task.isCancelled else { return }
             if let decoded {
-                self.localImages[ref] = decoded
+                self.cacheLocalImage(decoded, for: ref)
             }
         }
         return nil
@@ -210,7 +238,7 @@ final class ImageCenter {
                       kCGImageSourceCreateThumbnailWithTransform: true,
                       kCGImageSourceThumbnailMaxPixelSize: 2048,
                   ] as CFDictionary)
-            else { return UIImage(data: bytes) }
+            else { return nil }
             return UIImage(cgImage: cg)
         }.value
     }
@@ -321,6 +349,7 @@ final class ImageCenter {
                             $0.forceFile = false
                         }
                         $0.sourceRef = ref
+                        $0.hasOriginalSource_p = true
                     })
                 } catch {
                     if firstError == nil { firstError = error }
@@ -337,6 +366,7 @@ final class ImageCenter {
                 return
             }
             await host.addDraftItems(scope: scope, reservationID: reservationID, items: picked)
+            if let firstError { self.say(scopeKey, errorText(firstError)) }
         }
     }
 
@@ -367,15 +397,20 @@ final class ImageCenter {
                             _ = provider.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
                         }
                         defer { LibraryVideos.discard(video.url) }
-                        let (inspection, ref) = try await Task.detached(priority: .userInitiated) {
+                        let (inspection, ref, durationMs) = try await Task.detached(priority: .userInitiated) {
                             let info = try PickedFile.inspect(url: video.url)
-                            let stored = try store.storeVideo(from: video.url, filename: info.name)
-                            return (info, stored.ref)
+                            let dur = await CoreHost.probeVideoDurationMs(at: video.url, securityScoped: false)
+                            let ref = try store.storeBlob(from: video.url, prefix: "vid")
+                            return (info, ref, dur)
                         }.value
                         createdRefs.append(ref)
                         picked.append(.with {
                             $0.candidate = inspection.candidate(forceFile: false)
                             $0.sourceRef = ref
+                            if durationMs > 0 {
+                                $0.hasDuration_p = true
+                                $0.durationMs = durationMs
+                            }
                         })
                     } catch {
                         copyFailed = true
@@ -401,6 +436,7 @@ final class ImageCenter {
                                 $0.forceFile = false
                             }
                             $0.sourceRef = ref
+                            $0.hasOriginalSource_p = true
                         })
                     } catch {
                         if firstError == nil { firstError = error }
@@ -424,6 +460,8 @@ final class ImageCenter {
             await host.addDraftItems(scope: scope, reservationID: reservationID, items: picked)
             if copyFailed {
                 self.say(scopeKey, L10n.imageIosCannotReadThisVideoSelectItAgain())
+            } else if let firstError {
+                self.say(scopeKey, errorText(firstError))
             }
         }
     }
@@ -478,6 +516,7 @@ final class ImageCenter {
                 return
             }
             await host.addDraftItems(scope: scope, reservationID: reservationID, items: picked)
+            if let firstError { self.say(scopeKey, errorText(firstError)) }
         }
     }
 
@@ -529,6 +568,7 @@ final class ImageCenter {
                             $0.forceFile = false
                         }
                         $0.sourceRef = ref
+                        $0.hasOriginalSource_p = true
                     })
                 } catch {
                     if firstError == nil { firstError = error }
@@ -545,6 +585,7 @@ final class ImageCenter {
                 return
             }
             await host.addDraftItems(scope: scope, reservationID: reservationID, items: picked)
+            if let firstError { self.say(scopeKey, errorText(firstError)) }
         }
     }
 }

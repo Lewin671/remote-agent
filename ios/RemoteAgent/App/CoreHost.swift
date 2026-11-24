@@ -2676,8 +2676,13 @@ actor CoreHost: SyncEngine {
     }
 
     private func executeHashFile(_ eff: PBAttachmentHashFileEffect) async {
+        let result = await runHashFile(eff)
+        await dispatch { $0.attachmentHashFileResult = result }
+    }
+
+    private func runHashFile(_ eff: PBAttachmentHashFileEffect) async -> PBAttachmentHashFileResultEvent {
         let store = self.pendingStore
-        let result: PBAttachmentHashFileResultEvent = await Task.detached(priority: .userInitiated) {
+        return await Task.detached(priority: .userInitiated) {
             var ev = PBAttachmentHashFileResultEvent.with {
                 $0.opID = eff.opID
                 $0.scope = eff.scope
@@ -2697,16 +2702,11 @@ actor CoreHost: SyncEngine {
                     ev.sizeBytes = hashed.sizeBytes
                     ev.sha256 = hashed.sha256
                     if eff.isVideo {
-                        ev.durationMs = await Self.probeVideoDurationMs(at: hashed.url, securityScoped: true)
-                    }
-                } else if ref.hasPrefix("vid:") {
-                    let url = try store.videoURL(ref)
-                    let hashed = try PickedFile.hashFile(at: url, maxBytes: eff.maxBytes)
-                    ev.ok = true
-                    ev.sizeBytes = hashed.sizeBytes
-                    ev.sha256 = hashed.sha256
-                    if eff.isVideo {
-                        ev.durationMs = await Self.probeVideoDurationMs(at: url, securityScoped: false)
+                        let dur = await Self.probeVideoDurationMs(at: hashed.url, securityScoped: true)
+                        if dur > 0 {
+                            ev.hasDuration_p = true
+                            ev.durationMs = dur
+                        }
                     }
                 } else if ref.hasPrefix("blob:") {
                     let hashed = try store.hashBlob(ref, maxBytes: eff.maxBytes)
@@ -2728,12 +2728,16 @@ actor CoreHost: SyncEngine {
             }
             return ev
         }.value
-        await dispatch { $0.attachmentHashFileResult = result }
     }
 
     private func executeReadChunk(_ eff: PBAttachmentReadChunkEffect) async {
+        let result = await runReadChunk(eff)
+        await dispatch { $0.attachmentReadChunkResult = result }
+    }
+
+    private func runReadChunk(_ eff: PBAttachmentReadChunkEffect) async -> PBAttachmentReadChunkResultEvent {
         let store = self.pendingStore
-        let result: PBAttachmentReadChunkResultEvent = await Task.detached(priority: .userInitiated) {
+        return await Task.detached(priority: .userInitiated) {
             var ev = PBAttachmentReadChunkResultEvent.with {
                 $0.opID = eff.opID
                 $0.scope = eff.scope
@@ -2743,12 +2747,7 @@ actor CoreHost: SyncEngine {
             }
             do {
                 try Task.checkCancellation()
-                let ref: String = {
-                    if eff.kind == .image {
-                        return eff.preparedRef.isEmpty ? eff.sourceRef : eff.preparedRef
-                    }
-                    return eff.sourceRef.isEmpty ? eff.preparedRef : eff.sourceRef
-                }()
+                let ref = eff.kind == .image ? eff.preparedRef : eff.sourceRef
                 let data: Data
                 if ref.hasPrefix("blob:") {
                     data = try store.readBlobChunk(
@@ -2761,14 +2760,6 @@ actor CoreHost: SyncEngine {
                     let bmk = try store.readBookmark(ref)
                     data = try PickedFile.readBookmarkChunk(
                         bmk,
-                        offset: eff.offset,
-                        length: Int(eff.length),
-                        expectedSizeBytes: eff.expectedSizeBytes
-                    )
-                } else if ref.hasPrefix("vid:") {
-                    let url = try store.videoURL(ref)
-                    data = try PickedFile.readChunk(
-                        at: url,
                         offset: eff.offset,
                         length: Int(eff.length),
                         expectedSizeBytes: eff.expectedSizeBytes
@@ -2790,10 +2781,19 @@ actor CoreHost: SyncEngine {
             }
             return ev
         }.value
-        await dispatch { $0.attachmentReadChunkResult = result }
     }
 
-    private static func probeVideoDurationMs(at url: URL, securityScoped: Bool) async -> Int64 {
+    #if DEBUG
+    func hashFileForTesting(_ eff: PBAttachmentHashFileEffect) async -> PBAttachmentHashFileResultEvent {
+        await runHashFile(eff)
+    }
+
+    func readChunkForTesting(_ eff: PBAttachmentReadChunkEffect) async -> PBAttachmentReadChunkResultEvent {
+        await runReadChunk(eff)
+    }
+    #endif
+
+    static func probeVideoDurationMs(at url: URL, securityScoped: Bool) async -> Int64 {
         let scoped = securityScoped ? url.startAccessingSecurityScopedResource() : false
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         let asset = AVURLAsset(url: url)
