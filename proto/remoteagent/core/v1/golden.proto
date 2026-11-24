@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/app.proto";
+
+// ScreenGoldenView pairs a named ViewModel snapshot with its serialized Core ViewModel.
+message ScreenGoldenView {
+  string name = 1;
+  ViewModel view_model = 2;
+}
+
+// ScreenGoldenStep records the EffectBatch and named ViewModel snapshots produced
+// by one step of a testdata/screens/*.input.json scenario.
+message ScreenGoldenStep {
+  EffectBatch effects = 1;
+  repeated ScreenGoldenView views = 2;
+}
+
+// ScreenGoldenFile is the canonical binary protobuf golden exported by Go TestScreenGoldens
+// and parsed directly by Web, Android, and iOS tests without custom JSON loaders.
+message ScreenGoldenFile {
+  repeated ScreenGoldenStep steps = 1;
+}

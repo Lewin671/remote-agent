@@ -3,7 +3,7 @@ import Foundation
 import RAProto
 import SwiftProtobuf
 
-/// Loads ViewModel snapshots from `testdata/screens/*.golden.json` for SwiftUI `#Preview`s
+/// Loads ViewModel snapshots from `testdata/screens/*.golden.pb` for SwiftUI `#Preview`s
 /// and UI rendering tests.
 enum ScreenGoldens {
     private static let repoRoot: URL = URL(fileURLWithPath: #filePath)
@@ -13,24 +13,15 @@ enum ScreenGoldens {
         .deletingLastPathComponent() // repo root
 
     static func viewModels(named name: String) -> [PBCoreViewModel] {
-        let url = repoRoot.appendingPathComponent("testdata/screens/\(name).golden.json")
+        let url = repoRoot.appendingPathComponent("testdata/screens/\(name).golden.pb")
         guard let data = try? Data(contentsOf: url),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let steps = root["steps"] as? [[String: Any]]
+              let golden = try? PBScreenGoldenFile(serializedBytes: data)
         else { return [] }
 
-        var options = JSONDecodingOptions()
-        options.ignoreUnknownFields = true
-
         var out: [PBCoreViewModel] = []
-        for step in steps {
-            guard let views = step["views"] as? [String: Any] else { continue }
-            for key in views.keys.sorted() {
-                guard let obj = views[key],
-                      let json = try? JSONSerialization.data(withJSONObject: obj),
-                      let vm = try? PBCoreViewModel(jsonUTF8Data: json, options: options)
-                else { continue }
-                out.append(vm)
+        for step in golden.steps {
+            for view in step.views where view.hasViewModel {
+                out.append(view.viewModel)
             }
         }
         return out

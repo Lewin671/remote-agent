@@ -1,30 +1,15 @@
 // @vitest-environment happy-dom
 // Golden ViewModel layout and interaction tests rendered directly from
-// testdata/screens/*.golden.json without TS rules or Remote.
+// testdata/screens/*.golden.pb binary protobuf goldens without TS rules or Remote.
 
-import { fromJson } from "@bufbuild/protobuf";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fromBinary } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import homeTimelineGolden from "../../../testdata/screens/home_timeline.golden.json";
-import homeEmptyGolden from "../../../testdata/screens/home_empty_errors.golden.json";
-import projectManageGolden from "../../../testdata/screens/project_manage_detail.golden.json";
-import newSessionGolden from "../../../testdata/screens/new_session_lifecycle.golden.json";
-import sessionApprovalGolden from "../../../testdata/screens/session_approval_flow.golden.json";
-import sessionCliErrorGolden from "../../../testdata/screens/session_cli_error_turn.golden.json";
-import sessionLongWindowGolden from "../../../testdata/screens/session_long_window.golden.json";
-import sessionQuestionPlanGolden from "../../../testdata/screens/session_question_plan.golden.json";
-import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
-import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
-import sessionSharedFilesImagesGolden from "../../../testdata/screens/session_shared_files_images.golden.json";
-import sessionAttachmentsDraftGolden from "../../../testdata/screens/session_attachments_draft.golden.json";
-import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
-import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
-import settingsOverviewGolden from "../../../testdata/screens/settings_overview.golden.json";
-import machineSettingsEditGolden from "../../../testdata/screens/machine_settings_edit.golden.json";
-import machineStatusLifecycleGolden from "../../../testdata/screens/machine_status_lifecycle.golden.json";
-import machineQuotaGolden from "../../../testdata/screens/machine_quota.golden.json";
-import { ViewModelSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { type ScreenGoldenFile, ScreenGoldenFileSchema } from "../gen/remoteagent/core/v1/golden_pb";
+import type { ViewModel } from "../gen/remoteagent/core/v1/app_pb";
 import { ScheduleFormMode, ScheduleOperationKind } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import type { SessionViewModel } from "../gen/remoteagent/core/v1/session_view_pb";
 import { MachinePollState, MachineUsageTab } from "../gen/remoteagent/core/v1/machine_view_pb";
@@ -54,18 +39,39 @@ import { MachineStatusScreenView } from "./MachineStatus";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-interface GoldenStep {
-  views?: Record<string, unknown>;
-}
-interface GoldenDoc {
-  steps: GoldenStep[];
+type GoldenDoc = ScreenGoldenFile;
+
+const GOLDENS_DIR = resolve(__dirname, "../../../testdata/screens");
+
+function loadGolden(name: string): GoldenDoc {
+  const bytes = readFileSync(resolve(GOLDENS_DIR, `${name}.golden.pb`));
+  return fromBinary(ScreenGoldenFileSchema, new Uint8Array(bytes));
 }
 
-function goldenView(doc: GoldenDoc, viewName: string) {
+const homeTimelineGolden = loadGolden("home_timeline");
+const homeEmptyGolden = loadGolden("home_empty_errors");
+const projectManageGolden = loadGolden("project_manage_detail");
+const newSessionGolden = loadGolden("new_session_lifecycle");
+const sessionApprovalGolden = loadGolden("session_approval_flow");
+const sessionCliErrorGolden = loadGolden("session_cli_error_turn");
+const sessionLongWindowGolden = loadGolden("session_long_window");
+const sessionQuestionPlanGolden = loadGolden("session_question_plan");
+const sessionQueueRetryGolden = loadGolden("session_queue_retry");
+const sessionScheduledFoldGolden = loadGolden("session_scheduled_fold");
+const sessionSharedFilesImagesGolden = loadGolden("session_shared_files_images");
+const sessionAttachmentsDraftGolden = loadGolden("session_attachments_draft");
+const schedulesInboxDetailGolden = loadGolden("schedules_inbox_detail");
+const schedulesFormLifecycleGolden = loadGolden("schedules_form_lifecycle");
+const settingsOverviewGolden = loadGolden("settings_overview");
+const machineSettingsEditGolden = loadGolden("machine_settings_edit");
+const machineStatusLifecycleGolden = loadGolden("machine_status_lifecycle");
+const machineQuotaGolden = loadGolden("machine_quota");
+
+function goldenView(doc: GoldenDoc, viewName: string): ViewModel {
   for (const step of doc.steps) {
-    const raw = step.views?.[viewName];
-    if (raw) {
-      return fromJson(ViewModelSchema, raw as never);
+    const found = step.views.find((v) => v.name === viewName);
+    if (found?.viewModel) {
+      return found.viewModel;
     }
   }
   throw new Error(`Missing golden view: ${viewName}`);
@@ -165,16 +171,12 @@ describe("golden ViewModel layout and interaction", () => {
     expect(host.querySelectorAll(".side .sess").length).toBeGreaterThanOrEqual(3);
   });
 
-  it("renders empty and error Home states from home_empty_errors.golden.json", () => {
-    const firstHomeStep = (homeEmptyGolden as GoldenDoc).steps.find((s) =>
-      Object.values(s.views ?? {}).some((v) => (v as { home?: unknown }).home),
-    );
-    expect(firstHomeStep?.views).toBeTruthy();
-    const viewName = Object.keys(firstHomeStep!.views!).find(
-      (k) => (firstHomeStep!.views![k] as { home?: unknown }).home,
-    )!;
-    const decoded = fromJson(ViewModelSchema, firstHomeStep!.views![viewName] as never);
-    if (decoded.view.case !== "home") throw new Error("expected home view");
+  it("renders empty and error Home states from home_empty_errors.golden.pb", () => {
+    const decoded = homeEmptyGolden.steps
+      .flatMap((s) => s.views)
+      .find((v) => v.viewModel?.view.case === "home")?.viewModel;
+    expect(decoded).toBeTruthy();
+    if (!decoded || decoded.view.case !== "home") throw new Error("expected home view");
 
     mount(
       <HomeView
