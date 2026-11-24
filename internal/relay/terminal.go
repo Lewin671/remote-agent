@@ -965,6 +965,9 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 		if gen > 0 {
 			lt.stream.CloseLeg("direct", gen)
 		}
+		// N3: reset directGen when direct leg closes so re-attaching after a new direct session
+		// (whose generation restarts at 1) is never silently ignored.
+		lt.directGen = 0
 		rp := lt.relayPath
 		var replayFrames []linkcore.TermFrame
 		if rp != nil {
@@ -1049,7 +1052,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		}
 		if strings.HasPrefix(msg.LegID, "d:") {
 			lt.mu.Lock()
-			if msg.PathGeneration > lt.directGen {
+			if !lt.stream.HasLeg("direct") || msg.PathGeneration > lt.directGen || (msg.PathGeneration == lt.directGen && msg.LegID != lt.stream.LegID("direct")) {
 				lt.directGen = msg.PathGeneration
 				_ = lt.stream.AttachLeg("direct", msg.LegID, hub.instance, msg.PathGeneration)
 				lt.noteLegStateLocked(hub.now())
@@ -1290,6 +1293,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		if strings.HasPrefix(msg.LegID, "d:") {
 			if lt.stream.LegID("direct") == msg.LegID {
 				lt.stream.CloseLeg("direct", msg.PathGeneration)
+				lt.directGen = 0
 			}
 			lt.noteLegStateLocked(nowT)
 			cancelNow := msg.Reason == 1 && lt.relayPath == nil && !lt.stream.HasLeg("direct")

@@ -86,6 +86,7 @@ type clientTermStream struct {
 	directAttached  bool
 	directPCID      uint64
 	directGen       uint64
+	directAttachGen uint64
 	phase3Used      bool
 	disconnectedAll bool
 	disconnectedAt  int64
@@ -581,8 +582,8 @@ func (c *Coordinator) sendInputStatusQuery(now int64, r *coordRound, ct *clientT
 	_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlInputStatus, Body: body})
 }
 
-func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, gen uint64, ct *clientTermStream) {
-	if ct.directAttached && ct.directPCID == pcID && ct.directGen == gen {
+func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, _ uint64, ct *clientTermStream) {
+	if ct.directAttached && ct.directPCID == pcID {
 		return
 	}
 	var rawRand [7]byte
@@ -599,17 +600,19 @@ func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, gen u
 		leg[2+i*2] = hexDigits[b>>4]
 		leg[2+i*2+1] = hexDigits[b&0x0f]
 	}
+	ct.directAttachGen++
+	attachGen := ct.directAttachGen
 	ct.directAttached = true
 	ct.directPCID = pcID
-	ct.directGen = gen
+	ct.directGen = attachGen
 	ct.phase3Used = true
-	_ = ct.stream.AttachLeg("direct", string(leg), string(c.instance), gen)
+	_ = ct.stream.AttachLeg("direct", string(leg), string(c.instance), attachGen)
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
 		Session:        ct.sessionID,
 		Sender:         c.snap.SelfID,
 		LegID:          string(leg),
-		PathGeneration: gen,
+		PathGeneration: attachGen,
 		State: linkcore.TermFlowState{
 			ToDaemon: ct.stream.CurrentInputWatermark(),
 			ToClient: ct.stream.CurrentOutputWatermark(),
@@ -626,7 +629,7 @@ func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream)
 	if !ok {
 		return
 	}
-	if ct.directAttached && ct.directPCID == pcID && ct.directGen == gen {
+	if ct.directAttached && ct.directPCID == pcID {
 		return
 	}
 	// M4: after full disconnect or with unconfirmed inputs on a new direct round,
