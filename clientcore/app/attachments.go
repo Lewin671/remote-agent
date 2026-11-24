@@ -92,10 +92,11 @@ const (
 )
 
 type pendingDraftWriteBarrier struct {
-	writeSeq  uint64
-	outboxKey string
-	sessionID string
-	requestID string
+	pendingLoad bool
+	writeSeq    uint64
+	outboxKey   string
+	sessionID   string
+	requestID   string
 }
 
 type attPendingSend struct {
@@ -651,8 +652,9 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 		if ev.ErrorKind == corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE {
 			d.loadState = draftLoadLoaded
 			effects = append(effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, d.key))
-			if d.textRev != d.loadStartTextRev {
-				c.enqueueDraftWrite(d, &effects)
+			if d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d) {
+				targetSeq := c.enqueueDraftWrite(d, &effects)
+				c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
 			}
 			c.markDraftDirty(ctx, d.scope)
 			return effects
@@ -689,12 +691,41 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 		d.loadState = draftLoadLoaded
 	}
 
-	if d.textRev != d.loadStartTextRev && d.loadState == draftLoadLoaded {
-		c.enqueueDraftWrite(d, &effects)
+	if d.loadState == draftLoadLoaded && (d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d)) {
+		targetSeq := c.enqueueDraftWrite(d, &effects)
+		c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
 	}
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
 	return effects
+}
+
+func hasPendingLoadOutboxBarriers(d *attDraft) bool {
+	if d == nil {
+		return false
+	}
+	for _, b := range d.pendingOutboxDeletes {
+		if b.pendingLoad {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Core) bindPendingLoadOutboxBarriers(d *attDraft, targetSeq uint64, effects *[]*corev1.Effect) {
+	if d == nil || !hasPendingLoadOutboxBarriers(d) {
+		return
+	}
+	for i := range d.pendingOutboxDeletes {
+		if d.pendingOutboxDeletes[i].pendingLoad {
+			d.pendingOutboxDeletes[i].pendingLoad = false
+			d.pendingOutboxDeletes[i].writeSeq = targetSeq
+		}
+	}
+	if d.activeWriteOpID == 0 {
+		// Draft write resolved synchronously (e.g. empty draft delete); flush bound barriers now.
+		c.flushDraftWriteBarriers(d, targetSeq, effects)
+	}
 }
 
 func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec *corev1.PersistedDraftRecord, startUploads bool, effects *[]*corev1.Effect) {
@@ -703,7 +734,11 @@ func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec
 	}
 	userTypedDuringLoad := d.textRev != d.loadStartTextRev
 	if !userTypedDuringLoad {
-		d.text = rec.Text
+		if d.text == "" {
+			d.text = rec.Text
+		} else if rec.Text != "" {
+			d.text = attachments.MergePutBackText(rec.Text, d.text)
+		}
 		c.syncNewSessionPromptFromDraft(d)
 	}
 	if len(d.items) == 0 {
@@ -1321,7 +1356,7 @@ func (c *Core) flushDraftWriteBarriers(d *attDraft, settledSeq uint64, effects *
 	}
 	kept := d.pendingOutboxDeletes[:0]
 	for _, b := range d.pendingOutboxDeletes {
-		if b.writeSeq <= settledSeq {
+		if !b.pendingLoad && b.writeSeq <= settledSeq {
 			*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, b.outboxKey))
 		} else {
 			kept = append(kept, b)

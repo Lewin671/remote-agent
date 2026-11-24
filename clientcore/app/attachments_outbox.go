@@ -1151,14 +1151,29 @@ func (c *Core) applyPutBackToDraft(
 
 	// 3. Persist updated draft FIRST; only after draft write succeeds do we delete the old Outbox record (whenKept barrier)!
 	var targetSeq uint64
-	if mgr.persistDrafts && d.loadState == draftLoadLoaded {
-		targetSeq = c.enqueueDraftWrite(d, effects)
+	waitingLoad := false
+	if mgr.persistDrafts {
+		if d.loadState == draftLoadLoaded {
+			targetSeq = c.enqueueDraftWrite(d, effects)
+		} else {
+			waitingLoad = true
+			if d.loadState == draftLoadUnloaded || d.loadState == draftLoadFailed {
+				c.startDraftLoad(d, effects)
+			}
+		}
 	}
 	if outRec != nil {
-		// Drop from in-memory outbox & release transfer protection; defer disk deletion until draft write lands!
+		// Drop from in-memory outbox & release transfer protection; defer disk deletion until draft load+write lands!
 		c.removeOutboxFromMemory(outRec)
 		if outRec.persisted {
-			if targetSeq > 0 && d.activeWriteOpID != 0 {
+			if waitingLoad {
+				d.pendingOutboxDeletes = append(d.pendingOutboxDeletes, pendingDraftWriteBarrier{
+					pendingLoad: true,
+					outboxKey:   outRec.storageKey,
+					sessionID:   outRec.sessionID,
+					requestID:   outRec.requestID,
+				})
+			} else if targetSeq > 0 && d.activeWriteOpID != 0 {
 				d.pendingOutboxDeletes = append(d.pendingOutboxDeletes, pendingDraftWriteBarrier{
 					writeSeq:  targetSeq,
 					outboxKey: outRec.storageKey,

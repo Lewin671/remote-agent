@@ -2383,3 +2383,106 @@ func TestAttachments_ServerCanceledPutBackPreCheckFails_PreservesTextAndOutbox(t
 		t.Fatalf("expected restorable tray row preserved for deferred attachment put-back")
 	}
 }
+
+func TestAttachments_PutBackWhileDraftUnloaded_WaitsForDraftLoadAndWriteBeforeDeletingOutbox(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// Restore a crash outbox for h.sessionID WITHOUT loading/opening the session draft yet!
+	outRec := &corev1.PersistedOutboxRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		SessionId:     h.sessionID,
+		RequestId:     "req-unloaded-pb",
+		MachineId:     h.machineA,
+		Text:          "put back msg",
+		Mode:          v1.SendMode_SEND_MODE_STEER,
+		ImageIds:      []string{"old-id"},
+		Items: []*corev1.PersistedAttachmentItem{
+			{
+				ItemId:            "pb-item-1",
+				Kind:              corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+				FileName:          "pb.jpg",
+				MimeType:          "image/jpeg",
+				SizeBytes:         4,
+				Sha256:            attTestHash(0xba),
+				ImageFormat:       v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				HasOriginalSource: true,
+				HasPrepared:       true,
+				SourceRef:         "src-pb-9",
+				PreparedRef:       "prep-pb-9",
+			},
+		},
+		CreatedMs: h.nowMs - 5000,
+	}
+	rawOut, _ := attachments.EncodePersistedOutbox(outRec)
+	cfgEff := h.dispatch(&corev1.Event{Event: &corev1.Event_AttachmentConfig{AttachmentConfig: &corev1.AttachmentConfigEvent{PersistDrafts: true, PersistOutbox: true, ScanStorage: true}}})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, Key: attachments.OutboxStorageKey(h.sessionID, "req-unloaded-pb"), Data: rawOut},
+				},
+			},
+		},
+	})
+
+	// Put back while draft is STILL draftLoadUnloaded!
+	pbEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRestoreTrayItem{SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: "req-unloaded-pb"}},
+	})
+	// MUST NOT delete OUTBOX yet; MUST emit DraftStorageRead(DRAFT)!
+	if len(findDraftDeleteEffects(pbEff)) != 0 {
+		t.Fatalf("whenKept barrier violated: deleted OUTBOX while draft was unloaded!")
+	}
+	var readOp uint64
+	for _, ef := range pbEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil && rd.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+			readOp = rd.OpId
+		}
+	}
+	if readOp == 0 {
+		t.Fatalf("expected DraftStorageRead(DRAFT) triggered by put-back on unloaded draft")
+	}
+
+	// Draft read completes with existing disk text -> merges text & emits DraftStorageWrite(DRAFT), STILL no OUTBOX delete!
+	diskDraft := &corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         scope,
+		Text:          "disk draft text",
+		UpdatedMs:     h.nowMs - 1000,
+	}
+	rawDraft, _ := attachments.EncodePersistedDraft(diskDraft)
+	readDoneEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: readOp, Found: true, Data: rawDraft},
+		},
+	})
+	if len(findDraftDeleteEffects(readDoneEff)) != 0 {
+		t.Fatalf("whenKept barrier violated: deleted OUTBOX before merged DRAFT write succeeded!")
+	}
+	if got := h.draftView(scope).Text; got != "disk draft text\nput back msg" {
+		t.Fatalf("expected disk text merged with put-back text, got %q", got)
+	}
+	draftWrites := findDraftWriteEffects(readDoneEff)
+	if len(draftWrites) != 1 || draftWrites[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+		t.Fatalf("expected 1 DRAFT write after load, got %+v", draftWrites)
+	}
+
+	// Acknowledge DRAFT write -> NOW OUTBOX is deleted!
+	writeDoneEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: draftWrites[0].OpId, Ok: true},
+		},
+	})
+	dels := findDraftDeleteEffects(writeDoneEff)
+	if len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected OUTBOX delete ONLY after merged DRAFT write succeeded, got %+v", dels)
+	}
+}
