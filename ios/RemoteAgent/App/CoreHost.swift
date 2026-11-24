@@ -373,6 +373,8 @@ actor CoreHost: SyncEngine {
     private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
     private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
+    private var terminalHistoryRequestListeners: [String: (token: UUID, handler: @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void)] = [:]
+    private var terminalHistoryUpdatedListeners: [String: (token: UUID, handler: @MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void)] = [:]
     private var syncStateRenderNeeded = false
     private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
     #if DEBUG
@@ -769,6 +771,8 @@ actor CoreHost: SyncEngine {
             }
         }
         terminalReopenListeners.removeAll()
+        terminalHistoryRequestListeners.removeAll()
+        terminalHistoryUpdatedListeners.removeAll()
         executor.detachDirectStreams()
         await executor.close()
         client.close()
@@ -885,6 +889,47 @@ actor CoreHost: SyncEngine {
             return
         }
         terminalReopenListeners.removeValue(forKey: terminalID)
+    }
+
+    func sendTerminalHistory(
+        terminalID: String,
+        kind: PBCoreTerminalHistoryEventKind,
+        page: PBTerminalHistoryPage? = nil
+    ) async {
+        guard !closed, !terminalID.isEmpty else { return }
+        await dispatch {
+            $0.terminalHistory = .with {
+                $0.terminalID = terminalID
+                $0.kind = kind
+                if let page { $0.page = page }
+            }
+        }
+    }
+
+    func registerTerminalHistory(
+        terminalID: String,
+        token: UUID = UUID(),
+        onRequest: @escaping @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void,
+        onUpdated: @escaping @MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void
+    ) {
+        guard !closed, !terminalID.isEmpty else { return }
+        terminalHistoryRequestListeners[terminalID] = (token: token, handler: onRequest)
+        terminalHistoryUpdatedListeners[terminalID] = (token: token, handler: onUpdated)
+    }
+
+    func unregisterTerminalHistory(terminalID: String, token: UUID? = nil) {
+        guard !terminalID.isEmpty else { return }
+        if let token {
+            if let existing = terminalHistoryRequestListeners[terminalID], existing.token == token {
+                terminalHistoryRequestListeners.removeValue(forKey: terminalID)
+            }
+            if let existing = terminalHistoryUpdatedListeners[terminalID], existing.token == token {
+                terminalHistoryUpdatedListeners.removeValue(forKey: terminalID)
+            }
+            return
+        }
+        terminalHistoryRequestListeners.removeValue(forKey: terminalID)
+        terminalHistoryUpdatedListeners.removeValue(forKey: terminalID)
     }
 
     // MARK: - Screen & Subscription Events
@@ -1987,11 +2032,11 @@ actor CoreHost: SyncEngine {
                 break
 
             case .scheduleTimer(let t):
-                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
+                guard !demoMode || t.kind == .sharedFileReconnect || t.kind == .terminalHistoryTimeout else { continue }
                 scheduleTimer(timerId: t.timerID, kind: t.kind, key: t.key, delayMs: t.delayMs)
 
             case .cancelTimer(let t):
-                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
+                guard !demoMode || t.kind == .sharedFileReconnect || t.kind == .terminalHistoryTimeout else { continue }
                 cancelTimer(timerId: t.timerID, kind: t.kind, key: t.key)
 
             case .cacheRead(let r):
@@ -2267,10 +2312,17 @@ actor CoreHost: SyncEngine {
                 // AttachmentConfig, so Core does not emit these effects here.
                 break
 
-            case .terminalHistorySendRequest, .terminalHistoryUpdated:
-                // iOS still uses its legacy terminal history path and does not dispatch
-                // TerminalHistoryEvent yet, so Core does not emit these effects here.
-                break
+            case .terminalHistorySendRequest(let eff):
+                if let entry = terminalHistoryRequestListeners[eff.terminalID] {
+                    let cb = entry.handler
+                    await MainActor.run { cb(eff) }
+                }
+
+            case .terminalHistoryUpdated(let eff):
+                if let entry = terminalHistoryUpdatedListeners[eff.terminalID] {
+                    let cb = entry.handler
+                    await MainActor.run { cb(eff) }
+                }
 
             case nil:
                 break
