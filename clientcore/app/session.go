@@ -880,6 +880,9 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		store.pendingDirty = true
 		return nil
 	default:
+		if eff, ok := c.dispatchAttachmentEvent(ctx, ev); ok {
+			return eff
+		}
 		return c.dispatchSharedFileEvent(ctx, ev)
 	}
 }
@@ -1186,21 +1189,27 @@ func (c *Core) resendTrayContent(
 	sid, machineID, sourceReqID, textStr string,
 	mode v1.SendMode,
 	imgIDs, fileIDs []string,
-) *corev1.Effect {
+) []*corev1.Effect {
 	newReqID := c.m.sync.NextID(ctx)
 	if len(imgIDs) > 0 || len(fileIDs) > 0 {
+		var resendEff []*corev1.Effect
+		if c.startOutboxResend(ctx, sid, machineID, sourceReqID, newReqID, textStr, mode, &resendEff) {
+			return resendEff
+		}
 		ui.PendingResendSources[sourceReqID] = newReqID
-		return &corev1.Effect{
-			Effect: &corev1.Effect_SessionResendAttachments{
-				SessionResendAttachments: &corev1.SessionResendAttachmentsEffect{
-					SessionId:       sid,
-					MachineId:       machineID,
-					SourceRequestId: sourceReqID,
-					NewRequestId:    newReqID,
-					Text:            textStr,
-					Mode:            mode,
-					ImageIds:        append([]string(nil), imgIDs...),
-					FileIds:         append([]string(nil), fileIDs...),
+		return []*corev1.Effect{
+			{
+				Effect: &corev1.Effect_SessionResendAttachments{
+					SessionResendAttachments: &corev1.SessionResendAttachmentsEffect{
+						SessionId:       sid,
+						MachineId:       machineID,
+						SourceRequestId: sourceReqID,
+						NewRequestId:    newReqID,
+						Text:            textStr,
+						Mode:            mode,
+						ImageIds:        append([]string(nil), imgIDs...),
+						FileIds:         append([]string(nil), fileIDs...),
+					},
 				},
 			},
 		}
@@ -1300,24 +1309,36 @@ func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore,
 	if item == nil || !item.CanRestore {
 		return nil
 	}
+	attActive := c.m.attachments != nil && (c.m.attachments.configured || c.m.attachments.outbox[reqID] != nil || c.m.attachments.drafts["session:"+sid] != nil)
+	if attActive {
+		if reason, ok := c.canPutBackRequest(sid, reqID, item.ImageIds, item.FileIds); !ok {
+			scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sid}
+			d := c.ensureDraftState(scope)
+			d.notice = reason
+			c.markDraftDirty(ctx, d.scope)
+			return nil
+		}
+	}
 	if !item.ServerBacked {
 		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, true)
 		ui.DismissedInputIDs[reqID] = true
+		var effects []*corev1.Effect
+		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, &effects)
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
-		return []*corev1.Effect{
-			{
-				Effect: &corev1.Effect_SessionRestoreComposer{
-					SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-						SessionId: sid,
-						RequestId: reqID,
-						Text:      item.Text,
-						ImageIds:  append([]string(nil), item.ImageIds...),
-						FileIds:   append([]string(nil), item.FileIds...),
-					},
+		effects = append(effects, &corev1.Effect{
+			Effect: &corev1.Effect_SessionRestoreComposer{
+				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+					SessionId:     sid,
+					RequestId:     reqID,
+					Text:          item.Text,
+					ImageIds:      append([]string(nil), item.ImageIds...),
+					FileIds:       append([]string(nil), item.FileIds...),
+					HandledByCore: handled,
 				},
 			},
-		}
+		})
+		return effects
 	}
 	if item.NetworkActionsDisabled {
 		return nil
@@ -1343,13 +1364,10 @@ func (c *Core) handleRetryTrayItem(ctx *sync.StepContext, store *sessionStore, s
 	}
 	c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
 	ui.DismissedInputIDs[reqID] = true
-	eff := c.resendTrayContent(ctx, store, ui, sid, c.sessionMachineID(sid, snap), reqID, item.Text, item.Mode, item.ImageIds, item.FileIds)
+	effs := c.resendTrayContent(ctx, store, ui, sid, c.sessionMachineID(sid, snap), reqID, item.Text, item.Mode, item.ImageIds, item.FileIds)
 	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 	store.pendingDirty = true
-	if eff != nil {
-		return []*corev1.Effect{eff}
-	}
-	return nil
+	return effs
 }
 
 func (c *Core) handleResumeTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
@@ -1423,8 +1441,8 @@ func (c *Core) handleUndoCancel(ctx *sync.StepContext, store *sessionStore, sid 
 		if it == nil {
 			continue
 		}
-		if eff := c.resendTrayContent(ctx, store, ui, sid, machineID, it.SourceReqID, it.Text, it.Mode, it.ImageIDs, it.FileIDs); eff != nil {
-			outEffects = append(outEffects, eff)
+		if effs := c.resendTrayContent(ctx, store, ui, sid, machineID, it.SourceReqID, it.Text, it.Mode, it.ImageIDs, it.FileIDs); len(effs) > 0 {
+			outEffects = append(outEffects, effs...)
 		}
 	}
 	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
@@ -1436,8 +1454,15 @@ func (c *Core) handleSessionTimerFired(ctx *sync.StepContext, store *sessionStor
 	if ev == nil || !c.m.sync.ConsumeAppTimer(ev) || ev.Key == "" {
 		return nil
 	}
-	if ev.Kind == corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT {
+	switch ev.Kind {
+	case corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT:
 		return c.handleSharedFileReconnectTimer(ctx, ev.Key)
+	case corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL:
+		return c.handleUploadPollTimer(ctx, ev.Key)
+	case corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT:
+		return c.handleUploadReconnectTimer(ctx, ev.Key)
+	case corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY:
+		return c.handleDraftExpiryTimer(ctx, ev.Key)
 	}
 	sid := ev.Key
 	ui := store.ensureUI(sid)
@@ -1501,18 +1526,20 @@ func (c *Core) settleCancelInput(
 	stepPrev, ctx := c.m.sync.BeginStep()
 	switch intent.Kind {
 	case screens.CancelIntentPromote:
-		if eff := c.resendTrayContent(ctx, store, ui, meta.sessionID, machineID, intent.SourceReqID, intent.Text, v1.SendMode_SEND_MODE_STEER, intent.ImageIDs, intent.FileIDs); eff != nil {
-			*effects = append(*effects, eff)
+		if effs := c.resendTrayContent(ctx, store, ui, meta.sessionID, machineID, intent.SourceReqID, intent.Text, v1.SendMode_SEND_MODE_STEER, intent.ImageIDs, intent.FileIDs); len(effs) > 0 {
+			*effects = append(*effects, effs...)
 		}
 	case screens.CancelIntentRestore:
+		handled := c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, effects)
 		*effects = append(*effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
 				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-					SessionId: meta.sessionID,
-					RequestId: intent.SourceReqID,
-					Text:      intent.Text,
-					ImageIds:  append([]string(nil), intent.ImageIDs...),
-					FileIds:   append([]string(nil), intent.FileIDs...),
+					SessionId:     meta.sessionID,
+					RequestId:     intent.SourceReqID,
+					Text:          intent.Text,
+					ImageIds:      append([]string(nil), intent.ImageIDs...),
+					FileIds:       append([]string(nil), intent.FileIDs...),
+					HandledByCore: handled,
 				},
 			},
 		})

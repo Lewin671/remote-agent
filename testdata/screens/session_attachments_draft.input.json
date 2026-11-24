@@ -1,0 +1,266 @@
+{
+  "steps": [
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "entropyProvided": {
+          "randomIds": [
+            "att-req-01",
+            "att-req-02",
+            "att-req-03",
+            "att-req-04",
+            "att-req-05",
+            "att-req-06",
+            "att-req-07",
+            "att-req-08",
+            "att-req-09",
+            "att-req-10"
+          ],
+          "unitFloats": [0.5, 0.5, 0.5]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "syncLifecycle": {
+          "kind": "SYNC_LIFECYCLE_KIND_START"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "tokenResult": {
+          "opId": "2",
+          "token": "tok-gold",
+          "expiresMs": "1791081660000"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "streamReady": {
+          "legId": "1",
+          "serverTimeMs": "1791078060000"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "seedDemoWorld": {
+          "security": {
+            "isMember": true,
+            "selfDeviceId": "dev-1",
+            "authorityDeviceId": "dev-1",
+            "leaseEndMs": "1791164460000",
+            "trustedMachineIds": ["m-gold"],
+            "trustedClientIds": ["dev-1"]
+          },
+          "machines": [
+            {
+              "machineId": "m-gold",
+              "online": true,
+              "meta": {
+                "hostname": "Workstation",
+                "home": "/Users/dev",
+                "protocolVersion": 17,
+                "capabilities": {
+                  "imageUpload": true,
+                  "fileUpload": true,
+                  "sharedFiles": true,
+                  "sharedFileChunkBytes": 524288
+                }
+              }
+            }
+          ],
+          "sessions": [
+            {
+              "sessionId": "s-gold",
+              "machineId": "m-gold",
+              "lastSeq": "1",
+              "meta": {
+                "id": "s-gold",
+                "cwd": "/Users/dev/app",
+                "agent": "AGENT_CODEX",
+                "status": "SESSION_STATUS_RUNNING"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "attachmentConfig": {
+          "persistDrafts": false,
+          "persistOutbox": false
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "draftSetText": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-gold"
+          },
+          "text": "review screenshot"
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "draftAddItems": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-gold"
+          },
+          "items": [
+            {
+              "candidate": {
+                "name": "screen.jpg",
+                "mimeType": "image/jpeg",
+                "sizeBytes": "4"
+              },
+              "sourceRef": "src-gold-1",
+              "hasOriginalSource": true
+            }
+          ]
+        }
+      },
+      "views": [
+        {
+          "name": "draft_preparing",
+          "screen": {
+            "attachmentDraft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_SESSION",
+                "id": "s-gold"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "attachmentPrepareImageResult": {
+          "opId": "1",
+          "ok": true,
+          "preparedRef": "prep-gold-1",
+          "thumbRef": "thumb-gold-1",
+          "format": "IMAGE_FORMAT_JPEG",
+          "sizeBytes": "4",
+          "width": 1280,
+          "height": 720,
+          "sha256": "ERERERERERERERERERERERERERERERERERERERERERE="
+        }
+      }
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "commandOutcome": {
+          "requestId": "att-req-02",
+          "attemptId": "att-req-03",
+          "source": "OUTCOME_SOURCE_DAEMON",
+          "signed": true,
+          "hashesMatch": true,
+          "attemptBound": true,
+          "outerMatchesInner": true,
+          "outerOutcome": "executed",
+          "outerReason": "executed",
+          "result": {
+            "outcome": "executed",
+            "reason": "executed",
+            "resultAvailable": true,
+            "beginImageUpload": {
+              "status": {
+                "transferId": "att-req-01",
+                "state": "IMAGE_UPLOAD_STATE_COMPLETE",
+                "imageId": "img-gold-1",
+                "expiresMs": "1791078660000"
+              }
+            }
+          }
+        }
+      },
+      "views": [
+        {
+          "name": "draft_ready",
+          "screen": {
+            "attachmentDraft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_SESSION",
+                "id": "s-gold"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "draftImageViewerOpen": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_SESSION",
+            "id": "s-gold"
+          },
+          "index": 0
+        }
+      },
+      "views": [
+        {
+          "name": "draft_viewer_open",
+          "screen": {
+            "attachmentDraft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_SESSION",
+                "id": "s-gold"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "event": {
+        "nowMs": "1791078060000",
+        "monoMs": "10000",
+        "draftSendSession": {
+          "sessionId": "s-gold",
+          "mode": "SEND_MODE_STEER"
+        }
+      },
+      "views": [
+        {
+          "name": "session_after_send",
+          "screen": {
+            "session": {
+              "sessionId": "s-gold"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

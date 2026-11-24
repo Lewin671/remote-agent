@@ -485,6 +485,13 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 
 	modelPanel := buildModelPanelView(st, cfg, modelsResp, hasModels, modelsLoading, modelsErrText, modelsErr, pickedModel, efforts, selectedEffort, defaultModelLabel, frozen, busy, machineOnline)
 
+	var draftView *corev1.AttachmentDraftView
+	if st != nil && st.DraftViewFn != nil && key != "" {
+		draftView = st.DraftViewFn(&corev1.DraftScope{
+			Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION,
+			Id:   key,
+		})
+	}
 	return &corev1.NewSessionViewModel{
 		ProjectSelectable: projectSelectable,
 		ProjectKey:        key,
@@ -536,6 +543,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		OriginalImageMaxBytes:    attdomain.OriginalImageMaxBytes,
 		OriginalImageHint:        text.Msg(text.KeyImageOriginalHint),
 		FileMetadataNotice:       text.Msg(text.KeyAttachmentMetadata),
+		Draft:                    draftView,
 	}
 }
 

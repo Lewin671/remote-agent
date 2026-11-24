@@ -21,7 +21,11 @@ type Core struct {
 
 // New constructs a Core instance with fresh sync state and screen caches.
 func New() *Core {
-	return &Core{m: newModel()}
+	c := &Core{m: newModel()}
+	c.m.state.DraftViewFn = func(scope *corev1.DraftScope) *corev1.AttachmentDraftView {
+		return c.buildAttachmentDraftView(scope, false)
+	}
+	return c
 }
 
 // Close releases references held by Core.
@@ -110,6 +114,9 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 			},
 		}, nil
 
+	case *corev1.Screen_AttachmentDraft:
+		return c.viewAttachmentDraft(s.AttachmentDraft)
+
 	default:
 		if vm, ok, err := c.viewSettings(screen); ok || err != nil {
 			return vm, err
@@ -147,6 +154,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		effects = c.appendSettingsRender(effects, syncRes.Dirty)
 		effects = c.appendUsageRender(effects, syncRes.Dirty)
 		effects = c.appendSessionRenderTarget(syncRes.Dirty, effects)
+		effects = c.appendAttachmentDraftRenderTarget(effects)
 		effects = c.m.mergeScheduleRender(effects)
 		return &corev1.EffectBatch{Effects: effects}
 	}
@@ -170,6 +178,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	effects = c.appendSettingsRender(effects, stepRes.Dirty)
 	effects = c.appendUsageRender(effects, stepRes.Dirty)
 	effects = c.appendSessionRenderTarget(stepRes.Dirty, effects)
+	effects = c.appendAttachmentDraftRenderTarget(effects)
 	effects = c.m.mergeScheduleRender(effects)
 	return &corev1.EffectBatch{Effects: effects}
 }
@@ -191,6 +200,9 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			continue
 		}
 		if c.settleSharedFileChunk(sc, &effects, &dirty) {
+			continue
+		}
+		if c.settleAttachmentUpload(sc, &effects, &dirty) {
 			continue
 		}
 		c.processSessionSettled(sc, &effects, &dirty)
@@ -407,6 +419,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 					},
 				})
 			}
+			c.onNewSessionCreateSettled(meta.projectKey, sc, &effects)
 			dirty.Add(true, true, true)
 		default:
 			effects = append(effects, c.onOtherSettingsCmdSettled(sc, meta)...)
@@ -454,6 +467,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 
 	c.processSchedulesSyncStep(res, &effects)
 	c.reconcileSharedFileDownloads(&effects, &dirty)
+	c.reconcileAttachments(&effects, &dirty)
 
 	return effects, dirty
 }
@@ -726,6 +740,13 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				c.m.maybeFetchMachineConfig(ctx, d.Config.MachineID, d.Config.Agent)
 				op := buildFullSettingsOp(d.Config, true)
 				c.m.sync.EnqueuePrefsOp(ctx, op, true, key)
+				if c.m.attachments != nil {
+					if ad := c.m.attachments.drafts["new:"+key]; ad != nil {
+						if c.retargetDraftLocked(ctx, ad, d.Config.MachineID, &effects) {
+							c.pumpAttachmentQueues(ctx, &effects)
+						}
+					}
+				}
 				ctx.Dirty.Add(false, false, true)
 			}
 		}
@@ -825,6 +846,17 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				if cfg.Cwd == "" {
 					cfg.Cwd = key
 				}
+				imgIDs := k.NewSessionSubmit.ImageIds
+				fileIDs := k.NewSessionSubmit.FileIds
+				coreImgs, coreFiles, blocked := c.prepareNewSessionAttachments(ctx, key, cfg.MachineID, "", &effects)
+				if blocked {
+					ctx.Dirty.Add(false, false, true)
+					break
+				}
+				if len(coreImgs) > 0 || len(coreFiles) > 0 {
+					imgIDs = coreImgs
+					fileIDs = coreFiles
+				}
 				cmd := &v1.Command{
 					Kind: &v1.Command_CreateSession{
 						CreateSession: &v1.CreateSessionRequest{
@@ -834,8 +866,8 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 							Effort:          cfg.Effort,
 							Mode:            cfg.Mode,
 							Agent:           lists.EffectiveAgent(cfg.Agent),
-							ImageIds:        k.NewSessionSubmit.ImageIds,
-							FileIds:         k.NewSessionSubmit.FileIds,
+							ImageIds:        imgIDs,
+							FileIds:         fileIDs,
 							StandardContext: cfg.StandardContext,
 						},
 					},
@@ -853,11 +885,18 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					}
 				}
 				if dispatched {
+					if c.m.attachments != nil {
+						if stStart := c.m.attachments.newSessionStarts[key]; stStart != nil {
+							stStart.requestID = reqID
+						}
+					}
 					d.Busy = true
 					d.DiskFull = false
 					d.StartError = ""
 					d.StartErrorText = nil
 					d.ActiveStartRequestID = reqID
+				} else {
+					c.releaseNewSessionStartProtection(key)
 				}
 				c.noteCreateSessionSubmitted(key, cmd.GetCreateSession())
 				ctx.Dirty.Add(true, true, true)
@@ -871,6 +910,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 		}
 		key = c.m.activeNewSessionKey(key)
 		c.m.sync.AbandonAttempt(ctx, "create_session:"+key)
+		c.releaseNewSessionStartProtection(key)
 		if d := c.m.state.NewSessions[key]; d != nil {
 			d.Busy = false
 			d.Frozen = false

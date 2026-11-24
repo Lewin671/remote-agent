@@ -75,11 +75,12 @@ type SessionCancelIntent struct {
 
 // LocalSentContent retains local text/attachments for retry, promote, restore, and 5-second undo.
 type LocalSentContent struct {
-	RequestID string
-	Text      string
-	ImageIDs  []string
-	FileIDs   []string
-	Mode      v1.SendMode
+	RequestID        string
+	Text             string
+	ImageIDs         []string
+	FileIDs          []string
+	Mode             v1.SendMode
+	LocalAttachments []*corev1.OutboxAttachmentSummary
 }
 
 // SessionUndoItem records one canceled message that can be re-sent within the 5-second undo window.
@@ -99,20 +100,22 @@ type SessionUndoBatch struct {
 
 // SessionOutgoingRecord tracks one outgoing user message from send until projection/dismissal.
 type SessionOutgoingRecord struct {
-	RequestID      string
-	SlotKey        string
-	Text           string
-	ImageIDs       []string
-	FileIDs        []string
-	Mode           v1.SendMode
-	State          SessionOutgoingState
-	Frozen         bool
-	Expired        bool
-	ErrorCode      string
-	ErrorText      *corev1.Text
-	Restored       bool
-	CreatedMs      int64
-	VisibleAfterMs int64
+	RequestID         string
+	SlotKey           string
+	Text              string
+	ImageIDs          []string
+	FileIDs           []string
+	Mode              v1.SendMode
+	State             SessionOutgoingState
+	Frozen            bool
+	Expired           bool
+	ErrorCode         string
+	ErrorText         *corev1.Text
+	Restored          bool
+	RestoredFromCrash bool
+	LocalAttachments  []*corev1.OutboxAttachmentSummary
+	CreatedMs         int64
+	VisibleAfterMs    int64
 }
 
 // PendingStartPrompt captures the initial prompt passed to CreateSession until recorded in timeline.
@@ -1523,6 +1526,12 @@ func buildSessionComposer(
 		nowMs:         nowMs,
 	})
 	out.RetainedAttachmentRequestIds = collectRetainedAttachmentIDs(in.Projection, ui)
+	if st != nil && st.DraftViewFn != nil && sid != "" {
+		out.Draft = st.DraftViewFn(&corev1.DraftScope{
+			Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION,
+			Id:   sid,
+		})
+	}
 	return out
 }
 
@@ -1727,6 +1736,10 @@ func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *c
 	}
 
 	idle := activity == corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_IDLE
+	var localAtts []*corev1.OutboxAttachmentSummary
+	if local != nil && len(local.LocalAttachments) > 0 {
+		localAtts = local.LocalAttachments
+	}
 	return &corev1.SessionTrayItemView{
 		RequestId:              pi.RequestId,
 		SlotKey:                "send:" + p.sid + ":" + pi.RequestId,
@@ -1751,6 +1764,7 @@ func buildPendingInputTrayItem(p trayBuildParams, pi *corev1.PendingInput, ip *c
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           true,
 		IsSkeleton:             projection.IsSkeletonText(pi.RequestId) || projection.IsSkeletonText(itemText),
+		LocalAttachments:       localAtts,
 	}, true
 }
 
@@ -1857,6 +1871,12 @@ func buildTerminalInputTrayItem(p trayBuildParams, ip *corev1.InputProjection, o
 		reasonText = trayFailureReasonText(p.caps.Name, code, errText)
 	}
 
+	var localAtts []*corev1.OutboxAttachmentSummary
+	if local != nil && len(local.LocalAttachments) > 0 {
+		localAtts = local.LocalAttachments
+	} else if og != nil && len(og.LocalAttachments) > 0 {
+		localAtts = og.LocalAttachments
+	}
 	return &corev1.SessionTrayItemView{
 		RequestId:              ip.RequestId,
 		SlotKey:                "send:" + p.sid + ":" + ip.RequestId,
@@ -1882,6 +1902,8 @@ func buildTerminalInputTrayItem(p trayBuildParams, ip *corev1.InputProjection, o
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           false,
 		IsSkeleton:             projection.IsSkeletonText(ip.RequestId) || projection.IsSkeletonText(itemText),
+		LocalAttachments:       localAtts,
+		RestoredFromCrash:      og != nil && og.RestoredFromCrash,
 	}, true
 }
 
@@ -1905,6 +1927,8 @@ func buildLocalOutgoingTrayItem(p trayBuildParams, og *SessionOutgoingRecord) (*
 		NetworkActionsDisabled: !p.onlineReady,
 		ServerBacked:           false,
 		IsSkeleton:             projection.IsSkeletonText(og.RequestID) || projection.IsSkeletonText(og.Text),
+		LocalAttachments:       og.LocalAttachments,
+		RestoredFromCrash:      og.RestoredFromCrash,
 	}
 
 	switch og.State {

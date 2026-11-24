@@ -679,6 +679,10 @@ func (e *Engine) trackCommandTransferLifecycle(cmd *v1.Command, machineID string
 		return
 	}
 	switch k := cmd.Kind.(type) {
+	case *v1.Command_BeginImageUpload:
+		if k.BeginImageUpload != nil && k.BeginImageUpload.TransferId != "" {
+			e.transportCoord.BeginTransfer(machineID, k.BeginImageUpload.TransferId, k.BeginImageUpload.FileName != "")
+		}
 	case *v1.Command_CompleteImageUpload:
 		if k.CompleteImageUpload != nil && k.CompleteImageUpload.TransferId != "" {
 			e.transportCoord.EndTransfer(machineID, k.CompleteImageUpload.TransferId)

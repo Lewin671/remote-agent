@@ -131,6 +131,9 @@ type State struct {
 
 	// DirectReportFn returns the live direct-path preference & report when transport is owned by Core.
 	DirectReportFn func(machineID string) (enabled bool, report *corev1.DirectRouteReport, ok bool)
+
+	// DraftViewFn returns the live AttachmentDraftView for a scope when managed by Core (nil when absent).
+	DraftViewFn func(scope *corev1.DraftScope) *corev1.AttachmentDraftView
 }
 
 // NewState constructs a State over w with empty UI lookup maps. A nil w gets a

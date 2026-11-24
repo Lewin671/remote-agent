@@ -104,7 +104,10 @@ func (e *Engine) ConsumeAppTimer(ev *corev1.TimerFiredEvent) bool {
 func isAppTimerKind(k corev1.TimerKind) bool {
 	return k == corev1.TimerKind_TIMER_KIND_SESSION_UNDO ||
 		k == corev1.TimerKind_TIMER_KIND_SESSION_STEER_GRACE ||
-		k == corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT
+		k == corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT ||
+		k == corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL ||
+		k == corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT ||
+		k == corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY
 }
 
 func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) {

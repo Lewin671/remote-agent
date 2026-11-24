@@ -63,6 +63,7 @@ type Model struct {
 	settingsDirty         settingsDirtyFlags
 	sessions              *sessionStore
 	sharedFiles           *sfManager
+	attachments           *attManager
 	schedActive           bool
 	schedDirty            scheduleDirty
 	nextScheduleCacheOpID uint64

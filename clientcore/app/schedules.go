@@ -418,6 +418,7 @@ func (c *Core) submitSchedTaskMutation(ctx *sync.StepContext, slotKey, mutKey, m
 // onSyncEventConsumed runs lightweight app-layer hooks for events handled inside sync.Engine.
 func (c *Core) onSyncEventConsumed(ev *corev1.Event, effects *[]*corev1.Effect) {
 	c.onSharedFilesSyncEvent(ev, effects)
+	c.onAttachmentsSyncEvent(ev, effects)
 	if !c.m.schedActive {
 		return
 	}

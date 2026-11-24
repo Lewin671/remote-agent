@@ -1,0 +1,1726 @@
+package app
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/Lewin671/remote-agent/clientcore/domain/attachments"
+	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
+)
+
+func attTestHash(b byte) []byte {
+	return bytes.Repeat([]byte{b}, 32)
+}
+
+type attDispatchedCmd struct {
+	dc  *corev1.DispatchCommandEffect
+	cmd *v1.Command
+}
+
+type attHarness struct {
+	t         *testing.T
+	core      *Core
+	nowMs     int64
+	monoMs    int64
+	sessionID string
+	machineA  string
+	machineB  string
+	project   string
+}
+
+func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness {
+	t.Helper()
+	h := &attHarness{
+		t:         t,
+		core:      New(),
+		nowMs:     1_791_078_060_000,
+		monoMs:    10_000,
+		sessionID: "s-att",
+		machineA:  "m-a",
+		machineB:  "m-b",
+		project:   "/Users/me/proj",
+	}
+	t.Cleanup(h.core.Close)
+
+	ids := make([]string, 0, 128)
+	for i := 1; i <= 128; i++ {
+		ids = append(ids, "att-id-"+string(rune('a'+(i/26)%26))+string(rune('a'+i%26)))
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_EntropyProvided{
+			EntropyProvided: &corev1.EntropyProvided{
+				RandomIds:  ids,
+				UnitFloats: []float64{0.5, 0.5, 0.5, 0.5, 0.5, 0.5},
+			},
+		},
+	})
+	effStart := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START},
+		},
+	})
+	var tokOp uint64
+	for _, ef := range effStart.GetEffects() {
+		if et := ef.GetEnsureToken(); et != nil {
+			tokOp = et.GetOpId()
+		}
+	}
+	effTok := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_TokenResult{
+			TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-att", ExpiresMs: h.nowMs + 3_600_000},
+		},
+	})
+	var legID uint64
+	for _, ef := range effTok.GetEffects() {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.GetLegId()
+		}
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamReady{
+			StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs},
+		},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SeedDemoWorld{
+			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
+				Security: &corev1.DemoSecurity{
+					IsMember:          true,
+					SelfDeviceId:      "dev-1",
+					AuthorityDeviceId: "dev-1",
+					LeaseEndMs:        h.nowMs + 86_400_000,
+					TrustedMachineIds: []string{h.machineA, h.machineB},
+					TrustedClientIds:  []string{"dev-1"},
+				},
+				Machines: []*corev1.DemoMachine{
+					{
+						MachineId: h.machineA,
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:        "Alpha",
+							Home:            "/Users/me",
+							ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{
+								ImageUpload:          true,
+								FileUpload:           true,
+								SharedFiles:          true,
+								SharedFileChunkBytes: 512 * 1024,
+							},
+						},
+					},
+					{
+						MachineId: h.machineB,
+						Online:    true,
+						Meta: &v1.MachineMeta{
+							Hostname:        "Beta",
+							Home:            "/Users/me",
+							ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{
+								ImageUpload: true,
+								FileUpload:  false, // Beta does NOT support files
+							},
+						},
+					},
+				},
+				Sessions: []*corev1.DemoSession{
+					{
+						SessionId: h.sessionID,
+						MachineId: h.machineA,
+						LastSeq:   1,
+						Meta: &v1.Session{
+							Id:     h.sessionID,
+							Cwd:    h.project,
+							Agent:  v1.Agent_AGENT_CODEX,
+							Status: v1.SessionStatus_SESSION_STATUS_RUNNING,
+						},
+					},
+				},
+				SessionEvents: []*corev1.DemoSessionEvents{
+					{
+						SessionId: h.sessionID,
+						Events: []*v1.Event{
+							{
+								Seq:       1,
+								SessionId: h.sessionID,
+								Kind:      &v1.Event_UserMessage{UserMessage: &v1.UserMessage{Text: "init"}},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts: persistDrafts,
+				PersistOutbox: persistOutbox,
+			},
+		},
+	})
+	return h
+}
+
+func (h *attHarness) advance(deltaMs int64) {
+	h.nowMs += deltaMs
+	h.monoMs += deltaMs
+}
+
+func (h *attHarness) dispatch(ev *corev1.Event) *corev1.EffectBatch {
+	if ev.NowMs == 0 {
+		ev.NowMs = h.nowMs
+	}
+	if ev.MonoMs == 0 {
+		ev.MonoMs = h.monoMs
+	}
+	return h.core.Dispatch(ev)
+}
+
+func (h *attHarness) sessionScope() *corev1.DraftScope {
+	return &corev1.DraftScope{
+		Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION,
+		Id:   h.sessionID,
+	}
+}
+
+func (h *attHarness) newSessionScope() *corev1.DraftScope {
+	return &corev1.DraftScope{
+		Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION,
+		Id:   h.project,
+	}
+}
+
+func (h *attHarness) draftView(scope *corev1.DraftScope) *corev1.AttachmentDraftView {
+	h.t.Helper()
+	vm, err := h.core.View(&corev1.Screen{
+		Screen: &corev1.Screen_AttachmentDraft{
+			AttachmentDraft: &corev1.AttachmentDraftScreenRequest{Scope: scope},
+		},
+	})
+	if err != nil {
+		h.t.Fatalf("View(AttachmentDraft): %v", err)
+	}
+	return vm.GetAttachmentDraft().GetDraft()
+}
+
+func (h *attHarness) sessionView() *corev1.SessionViewModel {
+	h.t.Helper()
+	vm, err := h.core.View(&corev1.Screen{
+		Screen: &corev1.Screen_Session{
+			Session: &corev1.SessionScreenRequest{SessionId: h.sessionID},
+		},
+	})
+	if err != nil {
+		h.t.Fatalf("View(Session): %v", err)
+	}
+	return vm.GetSession()
+}
+
+func pickedImage(name string, sizeBytes int64, sourceRef string, hasOrig bool) *corev1.DraftPickedItem {
+	return &corev1.DraftPickedItem{
+		Candidate: &corev1.AttachmentCandidateInput{
+			Name:      name,
+			MimeType:  "image/jpeg",
+			SizeBytes: sizeBytes,
+		},
+		SourceRef:         sourceRef,
+		HasOriginalSource: hasOrig,
+	}
+}
+
+func pickedFile(name, mime string, sizeBytes int64, sourceRef string) *corev1.DraftPickedItem {
+	return &corev1.DraftPickedItem{
+		Candidate: &corev1.AttachmentCandidateInput{
+			Name:      name,
+			MimeType:  mime,
+			SizeBytes: sizeBytes,
+			ForceFile: true,
+		},
+		SourceRef: sourceRef,
+	}
+}
+
+func findPrepareEffects(b *corev1.EffectBatch) []*corev1.AttachmentPrepareImageEffect {
+	var out []*corev1.AttachmentPrepareImageEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetAttachmentPrepareImage(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findHashEffects(b *corev1.EffectBatch) []*corev1.AttachmentHashFileEffect {
+	var out []*corev1.AttachmentHashFileEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetAttachmentHashFile(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findReadChunkEffects(b *corev1.EffectBatch) []*corev1.AttachmentReadChunkEffect {
+	var out []*corev1.AttachmentReadChunkEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetAttachmentReadChunk(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findDraftWriteEffects(b *corev1.EffectBatch) []*corev1.DraftStorageWriteEffect {
+	var out []*corev1.DraftStorageWriteEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetDraftStorageWrite(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findDraftDeleteEffects(b *corev1.EffectBatch) []*corev1.DraftStorageDeleteEffect {
+	var out []*corev1.DraftStorageDeleteEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetDraftStorageDelete(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findReleaseLocalEffects(b *corev1.EffectBatch) []*corev1.AttachmentReleaseLocalEffect {
+	var out []*corev1.AttachmentReleaseLocalEffect
+	for _, ef := range b.GetEffects() {
+		if p := ef.GetAttachmentReleaseLocal(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func findDispatchedCmds(b *corev1.EffectBatch) []attDispatchedCmd {
+	var out []attDispatchedCmd
+	for _, ef := range b.GetEffects() {
+		if dc := ef.GetDispatchCommand(); dc != nil {
+			var cmd v1.Command
+			if err := cmd.Unmarshal(dc.GetCommandBytes()); err == nil {
+				out = append(out, attDispatchedCmd{dc: dc, cmd: &cmd})
+			}
+		}
+	}
+	return out
+}
+
+func findTimers(b *corev1.EffectBatch, kind corev1.TimerKind) []*corev1.ScheduleTimerEffect {
+	var out []*corev1.ScheduleTimerEffect
+	for _, ef := range b.GetEffects() {
+		if st := ef.GetScheduleTimer(); st != nil && st.GetKind() == kind {
+			out = append(out, st)
+		}
+	}
+	return out
+}
+
+func (h *attHarness) settleCmdOK(dc *corev1.DispatchCommandEffect, res *v1.CommandResult) *corev1.EffectBatch {
+	res.Outcome = "executed"
+	res.Reason = "executed"
+	res.ResultAvailable = true
+	return h.dispatch(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.GetRequestId(),
+				AttemptId:         dc.GetAttemptId(),
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "executed",
+				Result:            res,
+			},
+		},
+	})
+}
+
+func (h *attHarness) settleCmdDaemonErr(dc *corev1.DispatchCommandEffect, code string) *corev1.EffectBatch {
+	return h.dispatch(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.GetRequestId(),
+				AttemptId:         dc.GetAttemptId(),
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "executed",
+				Result: &v1.CommandResult{
+					Outcome:      "executed",
+					Reason:       "executed",
+					ErrorCode:    code,
+					ErrorMessage: code,
+				},
+			},
+		},
+	})
+}
+
+func (h *attHarness) settleCmdTransportDrop(dc *corev1.DispatchCommandEffect, code string) *corev1.EffectBatch {
+	return h.dispatch(&corev1.Event{
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:     dc.GetRequestId(),
+				AttemptId:     dc.GetAttemptId(),
+				Source:        corev1.OutcomeSource_OUTCOME_SOURCE_TRANSPORT,
+				NotForwarded:  true,
+				TransportCode: code,
+			},
+		},
+	})
+}
+
+func beginOK(tid string, persisted int64, maxChunk int32, expiresMs int64) *v1.CommandResult {
+	return &v1.CommandResult{
+		Kind: &v1.CommandResult_BeginImageUpload{
+			BeginImageUpload: &v1.BeginImageUploadResponse{
+				Status: &v1.ImageUploadStatus{
+					TransferId:     tid,
+					State:          v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING,
+					PersistedBytes: persisted,
+					MaxChunkBytes:  maxChunk,
+					ExpiresMs:      expiresMs,
+				},
+			},
+		},
+	}
+}
+
+func beginCompleteOK(tid, imgID, fileID string, expiresMs int64) *v1.CommandResult {
+	return &v1.CommandResult{
+		Kind: &v1.CommandResult_BeginImageUpload{
+			BeginImageUpload: &v1.BeginImageUploadResponse{
+				Status: &v1.ImageUploadStatus{
+					TransferId: tid,
+					State:      v1.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE,
+					ImageId:    imgID,
+					FileId:     fileID,
+					ExpiresMs:  expiresMs,
+				},
+			},
+		},
+	}
+}
+
+func putOK(tid string, persisted int64) *v1.CommandResult {
+	return &v1.CommandResult{
+		Kind: &v1.CommandResult_PutImageChunk{
+			PutImageChunk: &v1.PutImageChunkResponse{
+				Status: &v1.ImageUploadStatus{
+					TransferId:     tid,
+					State:          v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING,
+					PersistedBytes: persisted,
+				},
+			},
+		},
+	}
+}
+
+func statusOK(tid string, persisted int64, maxChunk int32) *v1.CommandResult {
+	return &v1.CommandResult{
+		Kind: &v1.CommandResult_GetImageUploadStatus{
+			GetImageUploadStatus: &v1.GetImageUploadStatusResponse{
+				Status: &v1.ImageUploadStatus{
+					TransferId:     tid,
+					State:          v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING,
+					PersistedBytes: persisted,
+					MaxChunkBytes:  maxChunk,
+				},
+			},
+		},
+	}
+}
+
+func completeStatusOK(tid string, state v1.ImageUploadState, imgID, fileID string, persisted, expiresMs int64) *v1.CommandResult {
+	return &v1.CommandResult{
+		Kind: &v1.CommandResult_CompleteImageUpload{
+			CompleteImageUpload: &v1.CompleteImageUploadResponse{
+				Status: &v1.ImageUploadStatus{
+					TransferId:     tid,
+					State:          state,
+					PersistedBytes: persisted,
+					ImageId:        imgID,
+					FileId:         fileID,
+					ExpiresMs:      expiresMs,
+				},
+			},
+		},
+	}
+}
+
+// driveImageUploadReady drives a single image item from prepare through chunk upload to READY.
+func (h *attHarness) driveImageUploadReady(
+	eff *corev1.EffectBatch,
+	prepRef, thumbRef string,
+	sizeBytes int64,
+	hash []byte,
+	remoteID string,
+	expiresMs int64,
+) {
+	h.t.Helper()
+	preps := findPrepareEffects(eff)
+	if len(preps) != 1 {
+		h.t.Fatalf("expected 1 prepare effect, got %d", len(preps))
+	}
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId:        preps[0].OpId,
+				Ok:          true,
+				PreparedRef: prepRef,
+				ThumbRef:    thumbRef,
+				Format:      v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				SizeBytes:   sizeBytes,
+				Width:       800,
+				Height:      600,
+				Sha256:      hash,
+			},
+		},
+	})
+	for _, dw := range findDraftWriteEffects(eff) {
+		if dw.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftStorageWriteResult{
+					DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true},
+				},
+			})
+		}
+	}
+	cmds := findDispatchedCmds(eff)
+	if len(cmds) != 1 || cmds[0].cmd.GetBeginImageUpload() == nil {
+		h.t.Fatalf("expected BeginImageUpload command, got %d cmds", len(cmds))
+	}
+	begin := cmds[0]
+	tid := begin.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(begin.dc, beginOK(tid, 0, 4, expiresMs))
+	var offset int64
+	for offset < sizeBytes {
+		reads := findReadChunkEffects(eff)
+		if len(reads) != 1 {
+			h.t.Fatalf("offset=%d: expected 1 ReadChunk effect, got %d", offset, len(reads))
+		}
+		chunkLen := min(int64(reads[0].Length), sizeBytes-offset)
+		eff = h.dispatch(&corev1.Event{
+			Event: &corev1.Event_AttachmentReadChunkResult{
+				AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+					OpId:   reads[0].OpId,
+					Ok:     true,
+					Offset: offset,
+					Data:   bytes.Repeat([]byte{'x'}, int(chunkLen)),
+				},
+			},
+		})
+		putCmds := findDispatchedCmds(eff)
+		if len(putCmds) != 1 || putCmds[0].cmd.GetPutImageChunk() == nil {
+			h.t.Fatalf("offset=%d: expected PutImageChunk, got %d", offset, len(putCmds))
+		}
+		offset += chunkLen
+		eff = h.settleCmdOK(putCmds[0].dc, putOK(tid, offset))
+	}
+	compCmds := findDispatchedCmds(eff)
+	if len(compCmds) != 1 || compCmds[0].cmd.GetCompleteImageUpload() == nil {
+		h.t.Fatalf("expected CompleteImageUpload, got %d", len(compCmds))
+	}
+	doneEff := h.settleCmdOK(compCmds[0].dc, completeStatusOK(tid, v1.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE, remoteID, "", sizeBytes, expiresMs))
+	for _, dw := range findDraftWriteEffects(doneEff) {
+		if dw.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftStorageWriteResult{
+					DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true},
+				},
+			})
+		}
+	}
+}
+
+func TestAttachments_ImageUpload_ChunkedAndReceivingPoll(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("photo.jpg", 10, "src-img-1", true),
+				},
+			},
+		},
+	})
+
+	preps := findPrepareEffects(eff)
+	if len(preps) != 1 || preps[0].SourceRef != "src-img-1" {
+		t.Fatalf("expected prepare effect for src-img-1, got %+v", preps)
+	}
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId:        preps[0].OpId,
+				Ok:          true,
+				PreparedRef: "prep-1",
+				ThumbRef:    "thumb-1",
+				Format:      v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				SizeBytes:   6,
+				Width:       640,
+				Height:      480,
+				Sha256:      attTestHash(0x11),
+			},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	if beginCmd.cmd.GetBeginImageUpload() == nil {
+		t.Fatalf("expected BeginImageUpload")
+	}
+	tid := beginCmd.cmd.GetBeginImageUpload().TransferId
+
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(tid, 0, 4, h.nowMs+600_000))
+	// Chunk 1: 4 bytes.
+	read1 := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+				OpId: read1.OpId, Ok: true, Offset: 0, Data: []byte("abcd"),
+			},
+		},
+	})
+	put1 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(put1.dc, putOK(tid, 4))
+	dv := h.draftView(scope)
+	if len(dv.Images) != 1 || dv.Images[0].ProgressPercent <= 0 {
+		t.Fatalf("expected progress > 0 after chunk 1, got %+v", dv.Images)
+	}
+
+	// Chunk 2: remaining 2 bytes.
+	read2 := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{
+				OpId: read2.OpId, Ok: true, Offset: 4, Data: []byte("ef"),
+			},
+		},
+	})
+	put2 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(put2.dc, putOK(tid, 6))
+
+	// CompleteImageUpload returns RECEIVING -> schedules 250ms poll timer.
+	comp1 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(comp1.dc, completeStatusOK(tid, v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING, "", "", 6, 0))
+	polls := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL)
+	if len(polls) != 1 || polls[0].DelayMs != 250 {
+		t.Fatalf("expected 250ms poll timer, got %+v", polls)
+	}
+
+	// Fire poll #1 -> second CompleteImageUpload -> returns RECEIVING again -> 500ms timer.
+	h.advance(250)
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: polls[0].TimerId,
+				Kind:    corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL,
+				Key:     polls[0].Key,
+			},
+		},
+	})
+	comp2 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(comp2.dc, completeStatusOK(tid, v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING, "", "", 6, 0))
+	polls2 := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL)
+	if len(polls2) != 1 || polls2[0].DelayMs != 500 {
+		t.Fatalf("expected 500ms poll timer, got %+v", polls2)
+	}
+
+	// Fire poll #2 -> CompleteImageUpload returns COMPLETE!
+	h.advance(500)
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_TimerFired{
+			TimerFired: &corev1.TimerFiredEvent{
+				TimerId: polls2[0].TimerId,
+				Kind:    corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL,
+				Key:     polls2[0].Key,
+			},
+		},
+	})
+	comp3 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(comp3.dc, completeStatusOK(tid, v1.ImageUploadState_IMAGE_UPLOAD_STATE_COMPLETE, "img-remote-1", "", 6, h.nowMs+600_000))
+	expTimers := findTimers(eff, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY)
+	if len(expTimers) != 1 {
+		t.Fatalf("expected DRAFT_EXPIRY timer scheduled on READY, got %+v", expTimers)
+	}
+	dv = h.draftView(scope)
+	if !dv.Ready || !dv.CanSend || dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY {
+		t.Fatalf("expected ready draft, got ready=%v canSend=%v state=%v", dv.Ready, dv.CanSend, dv.Images[0].State)
+	}
+}
+
+func TestAttachments_GlobalPrepareQueueAndFileSerialGate(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("a.jpg", 4, "src-i1", true),
+					pickedImage("b.jpg", 4, "src-i2", true),
+					pickedFile("f1.pdf", "application/pdf", 4, "src-f1"),
+					pickedFile("f2.pdf", "application/pdf", 4, "src-f2"),
+				},
+			},
+		},
+	})
+
+	preps := findPrepareEffects(eff)
+	hashes := findHashEffects(eff)
+	if len(preps) != 1 || len(hashes) != 0 {
+		t.Fatalf("expected strictly 1 prepare effect and 0 hash effects, got %d / %d", len(preps), len(hashes))
+	}
+
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: preps[0].OpId, Ok: true, PreparedRef: "prep-i1", ThumbRef: "thumb-i1",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(1),
+			},
+		},
+	})
+	if len(findDispatchedCmds(eff)) != 1 || len(findPrepareEffects(eff)) != 1 {
+		t.Fatalf("expected image 1 begin + image 2 prepare, got cmds=%d preps=%d", len(findDispatchedCmds(eff)), len(findPrepareEffects(eff)))
+	}
+	prep2 := findPrepareEffects(eff)[0]
+
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prep2.OpId, Ok: true, PreparedRef: "prep-i2", ThumbRef: "thumb-i2",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(2),
+			},
+		},
+	})
+	if len(findDispatchedCmds(eff)) != 1 || len(findHashEffects(eff)) != 1 {
+		t.Fatalf("expected image 2 concurrent begin + file 1 hash, got cmds=%d hashes=%d", len(findDispatchedCmds(eff)), len(findHashEffects(eff)))
+	}
+	hash1 := findHashEffects(eff)[0]
+
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hash1.OpId, Ok: true, SizeBytes: 4, Sha256: attTestHash(3),
+			},
+		},
+	})
+	cmdsF1 := findDispatchedCmds(eff)
+	hashes2 := findHashEffects(eff)
+	if len(cmdsF1) != 1 || cmdsF1[0].cmd.GetBeginImageUpload() == nil || len(hashes2) != 1 {
+		t.Fatalf("expected file 1 begin + file 2 hash, got cmds=%d hashes=%d", len(cmdsF1), len(hashes2))
+	}
+
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashes2[0].OpId, Ok: true, SizeBytes: 4, Sha256: attTestHash(4),
+			},
+		},
+	})
+	if len(findDispatchedCmds(eff)) != 0 {
+		t.Fatalf("expected file 2 queued behind file 1 serial gate, but got %d commands", len(findDispatchedCmds(eff)))
+	}
+
+	// Complete file 1 -> file 2 immediately dequeues and starts BeginImageUpload!
+	eff = h.settleCmdOK(cmdsF1[0].dc, beginCompleteOK(cmdsF1[0].cmd.GetBeginImageUpload().TransferId, "", "file-remote-1", h.nowMs+600_000))
+	cmdsF2 := findDispatchedCmds(eff)
+	if len(cmdsF2) != 1 || cmdsF2[0].cmd.GetBeginImageUpload() == nil {
+		t.Fatalf("expected file 2 BeginImageUpload after file 1 completed, got %d cmds", len(cmdsF2))
+	}
+}
+
+func TestAttachments_MonotonicProgressGuard_RetryReset_AndAutoRestart(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedFile("doc.txt", "text/plain", 8, "src-doc"),
+				},
+			},
+		},
+	})
+	hashOp := findHashEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashOp.OpId, Ok: true, SizeBytes: 8, Sha256: attTestHash(0x22),
+			},
+		},
+	})
+	begin1 := findDispatchedCmds(eff)[0]
+	tid1 := begin1.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(begin1.dc, beginOK(tid1, 0, 4, 0))
+
+	// Chunk 1: transient transport error -> status probe -> retries chunk 1 -> succeeds (resets retry counter to 0)!
+	read1 := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: read1.OpId, Ok: true, Offset: 0, Data: []byte("1234")},
+		},
+	})
+	put1 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdTransportDrop(put1.dc, "timeout")
+	probe1 := findDispatchedCmds(eff)[0]
+	if probe1.cmd.GetGetImageUploadStatus() == nil || probe1.cmd.GetGetImageUploadStatus().TransferId != tid1 {
+		t.Fatalf("expected GetImageUploadStatus probe on transient Put failure, got %+v", probe1.cmd)
+	}
+	eff = h.settleCmdOK(probe1.dc, statusOK(tid1, 0, 4))
+	read1Retry := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: read1Retry.OpId, Ok: true, Offset: 0, Data: []byte("1234")},
+		},
+	})
+	put1Retry := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(put1Retry.dc, putOK(tid1, 4))
+
+	// Chunk 2: daemon returns "not_found" -> triggers 1x auto-restart with FRESH transfer_id!
+	read2 := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: read2.OpId, Ok: true, Offset: 4, Data: []byte("5678")},
+		},
+	})
+	put2 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdDaemonErr(put2.dc, "not_found")
+	var begin2 *attDispatchedCmd
+	for _, sc := range findDispatchedCmds(eff) {
+		if sc.cmd.GetBeginImageUpload() != nil {
+			cp := sc
+			begin2 = &cp
+		}
+	}
+	if begin2 == nil {
+		t.Fatalf("expected auto-restart BeginImageUpload on not_found")
+	}
+	tid2 := begin2.cmd.GetBeginImageUpload().TransferId
+	if tid2 == tid1 {
+		t.Fatalf("expected fresh transfer_id on auto-restart, got same %s", tid2)
+	}
+
+	// Begin2 succeeds, then PutImageChunk returns non-advancing persisted_bytes == 0 -> monotonic guard fails item!
+	eff = h.settleCmdOK(begin2.dc, beginOK(tid2, 0, 4, 0))
+	readRestart := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: readRestart.OpId, Ok: true, Offset: 0, Data: []byte("1234")},
+		},
+	})
+	putRestart := findDispatchedCmds(eff)[0]
+	h.settleCmdOK(putRestart.dc, putOK(tid2, 0)) // did NOT advance!
+	dv := h.draftView(scope)
+	if dv.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+		t.Fatalf("expected FAILED on non-advancing persisted_bytes, got %v", dv.Files[0].State)
+	}
+	if dv.Files[0].FileErrorText.GetKey() != text.KeyErrorsUploadMadeNoProgress {
+		t.Fatalf("expected KeyErrorsUploadMadeNoProgress, got %+v", dv.Files[0].FileErrorText)
+	}
+}
+
+func TestAttachments_PauseDisconnectAnd30sReconnectResume(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedFile("big.bin", "application/octet-stream", 12, "src-big"),
+				},
+			},
+		},
+	})
+	hashOp := findHashEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashOp.OpId, Ok: true, SizeBytes: 12, Sha256: attTestHash(0x33),
+			},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	origTID := beginCmd.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(origTID, 0, 4, 0))
+	// Upload chunk 1 (4 bytes).
+	r1 := findReadChunkEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: r1.OpId, Ok: true, Offset: 0, Data: []byte("aaaa")},
+		},
+	})
+	p1 := findDispatchedCmds(eff)[0]
+	eff = h.settleCmdOK(p1.dc, putOK(origTID, 4))
+	// Pause while chunk 2 read is in-flight!
+	itemID := h.draftView(scope).Files[0].ItemId
+	pauseEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPauseUpload{
+			AttachmentPauseUpload: &corev1.AttachmentPauseUploadAction{Scope: scope, ItemId: itemID},
+		},
+	})
+	for _, sc := range findDispatchedCmds(pauseEff) {
+		if sc.cmd.GetAbortImageUpload() != nil {
+			t.Fatalf("pause must NOT emit AbortImageUpload")
+		}
+	}
+	dv := h.draftView(scope)
+	if dv.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PAUSED || !dv.Files[0].CanResume {
+		t.Fatalf("expected PAUSED with CanResume=true, got state=%v canResume=%v", dv.Files[0].State, dv.Files[0].CanResume)
+	}
+
+	// Resume -> probes GetImageUploadStatus with SAME transfer_id!
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentResumeUpload{
+			AttachmentResumeUpload: &corev1.AttachmentResumeUploadAction{Scope: scope, ItemId: itemID},
+		},
+	})
+	statusCmd := findDispatchedCmds(eff)[0]
+	if statusCmd.cmd.GetGetImageUploadStatus() == nil || statusCmd.cmd.GetGetImageUploadStatus().TransferId != origTID {
+		t.Fatalf("expected GetImageUploadStatus with same transfer_id %s, got %+v", origTID, statusCmd.cmd)
+	}
+	eff = h.settleCmdOK(statusCmd.dc, statusOK(origTID, 4, 4))
+	r2 := findReadChunkEffects(eff)[0]
+	if r2.Offset != 4 {
+		t.Fatalf("expected resumed ReadChunk at offset 4, got %d", r2.Offset)
+	}
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: r2.OpId, Ok: true, Offset: 4, Data: []byte("bbbb")},
+		},
+	})
+	p2 := findDispatchedCmds(eff)[0]
+
+	// Machine goes offline + transient disconnect during chunk 2 -> enters WAITING_RECONNECT with 30s timer!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA,
+						Online:    false,
+						MetaRev:   2,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	eff = h.settleCmdTransportDrop(p2.dc, "machine_offline")
+	dv = h.draftView(scope)
+	if dv.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT {
+		t.Fatalf("expected WAITING_RECONNECT, got state=%v", dv.Files[0].State)
+	}
+	recTimers := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT)
+	if len(recTimers) != 1 || recTimers[0].DelayMs != 30_000 {
+		t.Fatalf("expected 30s reconnect timer scheduled, got %+v", recTimers)
+	}
+
+	// Machine comes back online -> reconcileAttachments immediately resumes via GetImageUploadStatus on SAME transfer_id!
+	h.advance(1000)
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA,
+						Online:    true,
+						MetaRev:   3,
+						Meta: &v1.MachineMeta{
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
+						},
+					},
+				},
+			},
+		},
+	})
+	probeCmd := findDispatchedCmds(eff)[0]
+	if probeCmd.cmd.GetGetImageUploadStatus() == nil || probeCmd.cmd.GetGetImageUploadStatus().TransferId != origTID {
+		t.Fatalf("expected reconnect GetImageUploadStatus with same transfer_id %s", origTID)
+	}
+
+	// SYNC_LIFECYCLE_KIND_STOP pauses active upload without aborting!
+	stopEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{
+			SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP},
+		},
+	})
+	for _, sc := range findDispatchedCmds(stopEff) {
+		if sc.cmd.GetAbortImageUpload() != nil {
+			t.Fatalf("SYNC_LIFECYCLE_KIND_STOP must NOT abort uploads")
+		}
+	}
+	if h.draftView(scope).Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PAUSED {
+		t.Fatalf("expected PAUSED after SYNC_LIFECYCLE_KIND_STOP")
+	}
+}
+
+func TestAttachments_MachineSwitchRapidABA_AndCapabilityRecheck(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.newSessionScope()
+
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: h.project}},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineA}},
+	})
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("pic.jpg", 4, "src-pic", true),
+					pickedFile("notes.txt", "text/plain", 4, "src-txt"),
+				},
+			},
+		},
+	})
+	prep := findPrepareEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prep.OpId, Ok: true, PreparedRef: "prep-pic", ThumbRef: "thumb-pic",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(0x44),
+			},
+		},
+	})
+	beginOnA := findDispatchedCmds(eff)[0]
+	tidA := beginOnA.cmd.GetBeginImageUpload().TransferId
+	hashOp := findHashEffects(eff)[0]
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashOp.OpId, Ok: true, SizeBytes: 4, Sha256: attTestHash(0x45),
+			},
+		},
+	})
+
+	// Switch to machineB (no FileUpload capability):
+	effB := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineB}},
+	})
+	dvB := h.draftView(scope)
+	if dvB.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+		t.Fatalf("expected file failed on machineB without FileUpload, got %v", dvB.Files[0].State)
+	}
+	if !h.core.m.state.NewSessions[h.project].AttachmentsMoved {
+		t.Fatalf("expected NewSession.AttachmentsMoved == true after machine switch")
+	}
+	var sawBeginB, sawAbortA bool
+	for _, sc := range findDispatchedCmds(effB) {
+		if sc.cmd.GetBeginImageUpload() != nil && sc.dc.MachineId == h.machineB {
+			sawBeginB = true
+		}
+		if ab := sc.cmd.GetAbortImageUpload(); ab != nil && ab.TransferId == tidA && sc.dc.MachineId == h.machineA {
+			sawAbortA = true
+		}
+	}
+	if !sawBeginB || !sawAbortA {
+		t.Fatalf("expected BeginImageUpload on machineB and AbortImageUpload for old machineA transfer; sawBeginB=%v sawAbortA=%v", sawBeginB, sawAbortA)
+	}
+
+	// Rapidly switch BACK to machineA (A -> B -> A)!
+	effA2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineA}},
+	})
+	var sawBeginA2 bool
+	for _, sc := range findDispatchedCmds(effA2) {
+		if sc.cmd.GetBeginImageUpload() != nil && sc.dc.MachineId == h.machineA {
+			sawBeginA2 = true
+		}
+	}
+	if !sawBeginA2 {
+		t.Fatalf("expected fresh BeginImageUpload on machineA after rapid A->B->A")
+	}
+
+	// Late stale BeginImageUpload outcome from FIRST machineA upload arrives -> MUST be ignored without corrupting A2!
+	h.settleCmdOK(beginOnA.dc, beginOK(tidA, 0, 4, 0))
+	if dv := h.draftView(scope); len(dv.Images) != 1 || dv.Images[0].State == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY {
+		t.Fatalf("stale A outcome must not corrupt active A2 upload: %+v", dv.Images)
+	}
+}
+
+func TestAttachments_OriginalToggle_3AGaps_AndDraftImageViewer(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("1.jpg", 2*1024*1024, "src-1", true),
+					pickedImage("2.jpg", 1*1024*1024, "src-2", false),
+				},
+			},
+		},
+	})
+	dv := h.draftView(scope)
+	if dv.CanToggleOriginal {
+		t.Fatalf("expected CanToggleOriginal=false when second image lacks original source")
+	}
+	if dv.OriginalToggleDisabledReason.GetKey() != text.KeyImageOriginalMissing {
+		t.Fatalf("expected image.original_missing reason, got %+v", dv.OriginalToggleDisabledReason)
+	}
+
+	// Test DraftImageViewer open, navigate, close + 3A gap #2 position_text ("1 / 2" -> "2 / 2")!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftImageViewerOpen{
+			DraftImageViewerOpen: &corev1.DraftImageViewerOpenAction{Scope: scope, Index: 0},
+		},
+	})
+	dv = h.draftView(scope)
+	if !dv.ImageViewer.Open || dv.ImageViewer.PositionText.GetLiteral() != "1 / 2" || !dv.ImageViewer.HasNext || dv.ImageViewer.HasPrev {
+		t.Fatalf("unexpected viewer state at index 0: %+v", dv.ImageViewer)
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftImageViewerNavigate{
+			DraftImageViewerNavigate: &corev1.DraftImageViewerNavigateAction{Scope: scope, Delta: 1},
+		},
+	})
+	dv = h.draftView(scope)
+	if dv.ImageViewer.CurrentIndex != 1 || dv.ImageViewer.PositionText.GetLiteral() != "2 / 2" || dv.ImageViewer.HasNext || !dv.ImageViewer.HasPrev {
+		t.Fatalf("unexpected viewer state at index 1: %+v", dv.ImageViewer)
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftImageViewerClose{
+			DraftImageViewerClose: &corev1.DraftImageViewerCloseAction{Scope: scope},
+		},
+	})
+	if h.draftView(scope).ImageViewer.Open {
+		t.Fatalf("expected viewer closed")
+	}
+
+	// Remove image 2 -> now CanToggleOriginal=true! Drive image 1 to ready, then toggle original=true.
+	img2ID := dv.Images[1].ItemId
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftRemoveItem{
+			DraftRemoveItem: &corev1.DraftRemoveItemAction{Scope: scope, ItemId: img2ID},
+		},
+	})
+	h.driveImageUploadReady(eff, "prep-comp-1", "thumb-1", 4, attTestHash(0x55), "img-comp-1", h.nowMs+600_000)
+
+	dv = h.draftView(scope)
+	if !dv.CanToggleOriginal || !dv.Ready {
+		t.Fatalf("expected CanToggleOriginal=true and Ready=true")
+	}
+
+	// Toggle original=true -> invalidates compressed image and emits prepare with Original=true!
+	effOrig := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetOriginal{
+			DraftSetOriginal: &corev1.DraftSetOriginalAction{Scope: scope, Original: true},
+		},
+	})
+	prepsOrig := findPrepareEffects(effOrig)
+	if len(prepsOrig) != 1 || !prepsOrig[0].Original {
+		t.Fatalf("expected re-prepare with Original=true, got %+v", prepsOrig)
+	}
+	// If original prepare fails, old compressed bytes MUST NOT be sent!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId:      prepsOrig[0].OpId,
+				Ok:        false,
+				ErrorKind: corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE,
+			},
+		},
+	})
+	dv = h.draftView(scope)
+	if dv.CanSend || dv.Ready || dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+		t.Fatalf("old compressed bytes must not remain sendable after original prepare failed: canSend=%v state=%v", dv.CanSend, dv.Images[0].State)
+	}
+
+	// Retry original prepare with 2 MiB size -> check 3A gap #1 original_total_size_text!
+	effRetry := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftRetryItem{
+			DraftRetryItem: &corev1.DraftRetryItemAction{Scope: scope, ItemId: dv.Images[0].ItemId},
+		},
+	})
+	prepRetry := findPrepareEffects(effRetry)[0]
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prepRetry.OpId, Ok: true, PreparedRef: "prep-orig-1", ThumbRef: "thumb-1",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 2 * 1024 * 1024, Width: 2000, Height: 1500, Sha256: attTestHash(0x56),
+			},
+		},
+	})
+	dv = h.draftView(scope)
+	if dv.OriginalTotalSizeText == nil || dv.OriginalTotalSizeText.GetKey() != text.KeyImageTotalSize {
+		t.Fatalf("expected original_total_size_text key image.total_size, got %+v", dv.OriginalTotalSizeText)
+	}
+}
+
+func TestAttachments_ReservedSlots_AndDraftExpiry(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "hello"}},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftReserveSlots{
+			DraftReserveSlots: &corev1.DraftReserveSlotsAction{Scope: scope, ReservationId: "pick-1", ImageSlots: 4, FileSlots: 4},
+		},
+	})
+	dv := h.draftView(scope)
+	if !dv.HasPendingPicks || dv.LibraryRoom != 4 || dv.CanSend {
+		t.Fatalf("expected HasPendingPicks=true, LibraryRoom=4, CanSend=false; got %v %d %v", dv.HasPendingPicks, dv.LibraryRoom, dv.CanSend)
+	}
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope:         scope,
+				ReservationId: "pick-1",
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("p.jpg", 4, "src-exp", true),
+				},
+			},
+		},
+	})
+	dv = h.draftView(scope)
+	if dv.HasPendingPicks || dv.ReservedImages != 0 {
+		t.Fatalf("expected reservation released atomically, got pending=%v reserved=%d", dv.HasPendingPicks, dv.ReservedImages)
+	}
+
+	expAt := h.nowMs + 5000
+	h.driveImageUploadReady(eff, "prep-exp", "thumb-exp", 4, attTestHash(0x66), "img-exp", expAt)
+	if !h.draftView(scope).CanSend {
+		t.Fatalf("expected CanSend=true before expiry")
+	}
+
+	// Advance past expiry and attempt DraftSendSession -> pre-send expiry check blocks send and triggers re-upload!
+	h.advance(6000)
+	sendEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER},
+		},
+	})
+	var sawSend, sawReBegin bool
+	for _, sc := range findDispatchedCmds(sendEff) {
+		if sc.cmd.GetSend() != nil {
+			sawSend = true
+		}
+		if sc.cmd.GetBeginImageUpload() != nil {
+			sawReBegin = true
+		}
+	}
+	if sawSend || !sawReBegin {
+		t.Fatalf("expired attachment must block SendRequest and trigger BeginImageUpload re-upload; sawSend=%v sawReBegin=%v", sawSend, sawReBegin)
+	}
+}
+
+func TestAttachments_SendPersistOutbox_CancelPutBack_AndWhenKeptBarrier(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// Open draft and complete initial empty read.
+	openEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}},
+	})
+	var readOp uint64
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			readOp = rd.OpId
+		}
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: readOp, Found: false},
+		},
+	})
+
+	// Type text + add 1 ready image.
+	w1 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "first message"}},
+	})
+	for _, dw := range findDraftWriteEffects(w1) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true}},
+		})
+	}
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("pic.jpg", 4, "src-send-1", true),
+				},
+			},
+		},
+	})
+	for _, dw := range findDraftWriteEffects(addEff) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true}},
+		})
+	}
+	h.driveImageUploadReady(addEff, "prep-send-1", "thumb-send-1", 4, attTestHash(0x77), "img-remote-send-1", h.nowMs+600_000)
+
+	// Send session message -> MUST emit DraftStorageWrite(OUTBOX) BEFORE detaching draft or submitting SendRequest!
+	sendEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER},
+		},
+	})
+	outWrites := findDraftWriteEffects(sendEff)
+	if len(outWrites) != 1 || outWrites[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected 1 OUTBOX DraftStorageWrite before send, got %+v", outWrites)
+	}
+	if len(findDispatchedCmds(sendEff)) != 0 {
+		t.Fatalf("must NOT submit SendRequest before Outbox write succeeds")
+	}
+
+	// Acknowledge Outbox write -> detaches draft WITHOUT aborting daemon transfer, and submits SendRequest!
+	commitEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: outWrites[0].OpId, Ok: true},
+		},
+	})
+	var sendCmd *attDispatchedCmd
+	for _, sc := range findDispatchedCmds(commitEff) {
+		if sc.cmd.GetAbortImageUpload() != nil {
+			t.Fatalf("draft detach on send must NOT abort protected daemon transfer")
+		}
+		if sc.cmd.GetSend() != nil {
+			cp := sc
+			sendCmd = &cp
+		}
+	}
+	if sendCmd == nil || len(sendCmd.cmd.GetSend().ImageIds) != 1 || sendCmd.cmd.GetSend().ImageIds[0] != "img-remote-send-1" {
+		t.Fatalf("expected SendRequest with img-remote-send-1, got %+v", sendCmd)
+	}
+	reqID := sendCmd.cmd.GetSend().RequestId
+
+	for _, dw := range findDraftWriteEffects(commitEff) {
+		if dw.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true}},
+			})
+		}
+	}
+
+	// Fail the SendRequest so the tray item becomes Failed (restorable without server cancel).
+	h.settleCmdDaemonErr(sendCmd.dc, "failed")
+	svm := h.sessionView()
+	var trayItem *corev1.SessionTrayItemView
+	for _, it := range svm.GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.RequestId == reqID {
+			trayItem = it
+		}
+	}
+	if trayItem == nil || len(trayItem.LocalAttachments) != 1 || trayItem.LocalAttachments[0].ThumbRef != "thumb-send-1" {
+		t.Fatalf("expected unified tray item with LocalAttachments, got %+v", trayItem)
+	}
+
+	// User types new text in composer, then puts back the failed message!
+	wTextEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "already typed"}},
+	})
+	for _, dw := range findDraftWriteEffects(wTextEff) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true}},
+		})
+	}
+
+	restoreEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRestoreTrayItem{
+			SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: reqID},
+		},
+	})
+	var sawRestoreEff bool
+	for _, ef := range restoreEff.GetEffects() {
+		if rc := ef.GetSessionRestoreComposer(); rc != nil && rc.HandledByCore {
+			sawRestoreEff = true
+		}
+	}
+	if !sawRestoreEff {
+		t.Fatalf("expected SessionRestoreComposerEffect with HandledByCore=true")
+	}
+	dv := h.draftView(scope)
+	if dv.Text != "already typed\nfirst message" {
+		t.Fatalf("unexpected merged put-back text: %q", dv.Text)
+	}
+	if dv.Ready || dv.Images[0].State == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY {
+		t.Fatalf("put-back attachment must invalidate old remote_id and re-upload, got state=%v", dv.Images[0].State)
+	}
+	// whenKept barrier: DraftStorageWrite(DRAFT) emitted, DraftStorageDelete(OUTBOX) NOT emitted yet!
+	if len(findDraftDeleteEffects(restoreEff)) != 0 {
+		t.Fatalf("whenKept barrier violated: must NOT delete OUTBOX before DRAFT write completes!")
+	}
+	draftWrites := findDraftWriteEffects(restoreEff)
+	if len(draftWrites) != 1 || draftWrites[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+		t.Fatalf("expected 1 DRAFT write on put-back, got %+v", draftWrites)
+	}
+
+	// Acknowledge DRAFT write -> NOW DraftStorageDelete(OUTBOX) is emitted!
+	barrierEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: draftWrites[0].OpId, Ok: true},
+		},
+	})
+	dels := findDraftDeleteEffects(barrierEff)
+	if len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected OUTBOX delete after DRAFT write succeeded, got %+v", dels)
+	}
+}
+
+func TestAttachments_CrashRecovery_CoreResend_AndAutoPrune(t *testing.T) {
+	h := newAttHarness(t, true, true)
+
+	validOutbox := &corev1.PersistedOutboxRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		SessionId:     h.sessionID,
+		RequestId:     "req-crashed-1",
+		MachineId:     h.machineA,
+		Text:          "crashed msg",
+		Mode:          v1.SendMode_SEND_MODE_STEER,
+		ImageIds:      []string{"old-img-id"},
+		Items: []*corev1.PersistedAttachmentItem{
+			{
+				ItemId:            "old-item-1",
+				Kind:              corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+				FileName:          "shot.jpg",
+				MimeType:          "image/jpeg",
+				SizeBytes:         4,
+				Sha256:            attTestHash(0x88),
+				ImageFormat:       v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				Width:             320,
+				Height:            240,
+				HasOriginalSource: true,
+				HasPrepared:       true,
+				SourceRef:         "src-crash-1",
+				PreparedRef:       "prep-crash-1",
+				ThumbRef:          "thumb-crash-1",
+			},
+		},
+		CreatedMs: h.nowMs - 5000,
+	}
+	rawValid, err := attachments.EncodePersistedOutbox(validOutbox)
+	if err != nil {
+		t.Fatalf("encode outbox: %v", err)
+	}
+
+	cfgEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{PersistDrafts: true, PersistOutbox: true, ScanStorage: true},
+		},
+	})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	listEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{
+						Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX,
+						Key:    attachments.OutboxStorageKey(h.sessionID, "req-crashed-1"),
+						Data:   rawValid,
+					},
+					{
+						Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX,
+						Key:    "legacy-json-key",
+						Data:   []byte(`{"legacy":true}`),
+					},
+				},
+			},
+		},
+	})
+	dels := findDraftDeleteEffects(listEff)
+	if len(dels) != 1 || dels[0].Key != "legacy-json-key" {
+		t.Fatalf("expected corrupt/legacy record deleted, got %+v", dels)
+	}
+
+	svm := h.sessionView()
+	var restoredItem *corev1.SessionTrayItemView
+	for _, it := range svm.GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.RequestId == "req-crashed-1" {
+			restoredItem = it
+		}
+	}
+	if restoredItem == nil || !restoredItem.RestoredFromCrash || len(restoredItem.LocalAttachments) != 1 || !restoredItem.CanRestore || restoredItem.CanRetry {
+		t.Fatalf("expected crash-restored unsure tray item (RestoredFromCrash=true, CanRestore=true, CanRetry=false), got %+v", restoredItem)
+	}
+
+	// Simulate an InputStatus=FAILED projection for req-crashed-1 (or OutgoingFailed) -> now CanRetry=true -> Core-driven resend!
+	h.core.m.sessions.uiBySession[h.sessionID].Outgoing[0].State = 2 // screens.OutgoingFailed
+	retryEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRetryTrayItem{
+			SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: "req-crashed-1"},
+		},
+	})
+	for _, ef := range retryEff.GetEffects() {
+		if ef.GetSessionResendAttachments() != nil {
+			t.Fatalf("expected Core-driven resend, NOT legacy SessionResendAttachmentsEffect")
+		}
+	}
+	beginResend := findDispatchedCmds(retryEff)[0]
+	if beginResend.cmd.GetBeginImageUpload() == nil {
+		t.Fatalf("expected BeginImageUpload for Core-driven resend")
+	}
+	eff := h.settleCmdOK(beginResend.dc, beginCompleteOK(beginResend.cmd.GetBeginImageUpload().TransferId, "new-img-remote-2", "", h.nowMs+600_000))
+	resendOutWrites := findDraftWriteEffects(eff)
+	if len(resendOutWrites) != 1 || resendOutWrites[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected new OUTBOX write before resend SendRequest, got %+v", resendOutWrites)
+	}
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: resendOutWrites[0].OpId, Ok: true},
+		},
+	})
+	resendSend := findDispatchedCmds(eff)[0]
+	if resendSend.cmd.GetSend() == nil || resendSend.cmd.GetSend().ImageIds[0] != "new-img-remote-2" {
+		t.Fatalf("expected resent SendRequest with new-img-remote-2, got %+v", resendSend.cmd)
+	}
+	newReqID := resendSend.cmd.GetSend().RequestId
+
+	// Mark resend Executed + deliver UserMessage event -> auto-prunes outbox & releases unreferenced local refs!
+	h.settleCmdOK(resendSend.dc, &v1.CommandResult{})
+	evEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: h.sessionID,
+						Events: []*corev1.PlainEvent{
+							{
+								Seq:      2,
+								Verified: true,
+								Event: &v1.Event{
+									Seq:       2,
+									SessionId: h.sessionID,
+									Kind: &v1.Event_UserMessage{
+										UserMessage: &v1.UserMessage{
+											RequestId: newReqID,
+											Text:      "crashed msg",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+	var prunedOutbox, releasedLocal bool
+	for _, d := range findDraftDeleteEffects(evEff) {
+		if d.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+			prunedOutbox = true
+		}
+	}
+	for _, rel := range findReleaseLocalEffects(evEff) {
+		for _, r := range rel.Refs {
+			if r == "src-crash-1" {
+				releasedLocal = true
+			}
+		}
+	}
+	if !prunedOutbox || !releasedLocal {
+		t.Fatalf("expected settled outbox pruned and unreferenced local refs released; pruned=%v released=%v", prunedOutbox, releasedLocal)
+	}
+}
+
+func TestAttachments_ComposerTextDraft_EditRace_AndCleanup(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// 1. Open draft -> emits DraftStorageRead.
+	openEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}},
+	})
+	var readOp uint64
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			readOp = rd.OpId
+		}
+	}
+	if readOp == 0 {
+		t.Fatalf("expected DraftStorageReadEffect on DraftOpen")
+	}
+
+	// 2. BEFORE disk read completes, user types new text (bumping text_revision)!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "fresh user typing"}},
+	})
+	dv := h.draftView(scope)
+	if dv.Text != "fresh user typing" || dv.TextRevision == 0 {
+		t.Fatalf("expected user typing preserved, got text=%q rev=%d", dv.Text, dv.TextRevision)
+	}
+
+	// 3. Disk read completes with older persisted text -> user's typing MUST win!
+	diskDraft := &corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         scope,
+		Text:          "stale disk text",
+		UpdatedMs:     h.nowMs - 10_000,
+	}
+	rawDisk, _ := attachments.EncodePersistedDraft(diskDraft)
+	loadEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: readOp, Found: true, Data: rawDisk},
+		},
+	})
+	dv = h.draftView(scope)
+	if dv.Text != "fresh user typing" {
+		t.Fatalf("edit race violated: stale disk text overwrote user typing! got %q", dv.Text)
+	}
+	wEffs := findDraftWriteEffects(loadEff)
+	if len(wEffs) != 1 || wEffs[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+		t.Fatalf("expected flushed DRAFT write after edit-race load, got %+v", wEffs)
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: wEffs[0].OpId, Ok: true},
+		},
+	})
+
+	// 4. Clearing text to empty emits DraftStorageDelete(DRAFT).
+	clearEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: ""}},
+	})
+	dels := findDraftDeleteEffects(clearEff)
+	if len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+		t.Fatalf("expected DRAFT delete when empty, got %+v", dels)
+	}
+
+	// 5. DraftClearAll emits DraftStorageClearAllEffect.
+	allEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftClearAll{DraftClearAll: &corev1.DraftClearAllAction{}},
+	})
+	var sawClearAll bool
+	for _, ef := range allEff.GetEffects() {
+		if ef.GetDraftStorageClearAll() != nil {
+			sawClearAll = true
+		}
+	}
+	if !sawClearAll {
+		t.Fatalf("expected DraftStorageClearAllEffect")
+	}
+}
+
+func TestAttachments_StaleCallbacksAndNewSessionProtection(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.newSessionScope()
+
+	// 1. Add image on NewSession, remove it BEFORE prepare finishes -> late PrepareImageResult releases orphan refs!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: h.project}},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineA}},
+	})
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("orphan.jpg", 4, "src-orphan", true),
+				},
+			},
+		},
+	})
+	prepOp := findPrepareEffects(addEff)[0].OpId
+	itemID := h.draftView(scope).Images[0].ItemId
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftRemoveItem{
+			DraftRemoveItem: &corev1.DraftRemoveItemAction{Scope: scope, ItemId: itemID},
+		},
+	})
+	lateEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prepOp, Ok: true, PreparedRef: "orphan-prep", ThumbRef: "orphan-thumb",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Sha256: attTestHash(0x99),
+			},
+		},
+	})
+	rels := findReleaseLocalEffects(lateEff)
+	if len(rels) != 1 || len(rels[0].Refs) != 2 {
+		t.Fatalf("expected orphan prepared_ref + thumb_ref released on stale prepare result, got %+v", rels)
+	}
+
+	// 2. Add ready image to NewSession + Submit -> protects transfer, passes ImageIds in CreateSession, detaches on Executed without abort!
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "build app"}},
+	})
+	addEff2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{
+					pickedImage("spec.jpg", 4, "src-ns-1", true),
+				},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff2, "prep-ns-1", "thumb-ns-1", 4, attTestHash(0xaa), "img-ns-1", h.nowMs+600_000)
+
+	subEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSubmit{
+			NewSessionSubmit: &corev1.NewSessionSubmitAction{ProjectKey: h.project},
+		},
+	})
+	var createCmd *attDispatchedCmd
+	for _, sc := range findDispatchedCmds(subEff) {
+		if sc.cmd.GetCreateSession() != nil {
+			cp := sc
+			createCmd = &cp
+		}
+	}
+	if createCmd == nil || len(createCmd.cmd.GetCreateSession().ImageIds) != 1 || createCmd.cmd.GetCreateSession().ImageIds[0] != "img-ns-1" {
+		t.Fatalf("expected CreateSession with Core draft image img-ns-1, got %+v", createCmd)
+	}
+
+	// Settle CreateSession as Executed -> detaches draft without abort and releases local refs!
+	doneEff := h.settleCmdOK(createCmd.dc, &v1.CommandResult{
+		Kind: &v1.CommandResult_CreateSession{
+			CreateSession: &v1.CreateSessionResponse{
+				Session: &v1.Session{Id: "s-new-1", Cwd: h.project, Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+			},
+		},
+	})
+	for _, sc := range findDispatchedCmds(doneEff) {
+		if sc.cmd.GetAbortImageUpload() != nil {
+			t.Fatalf("CreateSession Executed must NOT abort consumed transfer")
+		}
+	}
+	if len(h.draftView(scope).Items) != 0 || h.draftView(scope).Text != "" {
+		t.Fatalf("expected NewSession draft cleared after CreateSession Executed")
+	}
+}
