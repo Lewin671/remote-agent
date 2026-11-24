@@ -2108,9 +2108,17 @@ export class Remote implements CoreExecutor {
       },
       deliver: (payloads) => {
         for (const p of payloads) {
+          const pSize = p.byteLength;
+          pendingBytes += pSize;
+          pendingFrames++;
           deliverQueue = deliverQueue.then(async () => {
-            if (closed) return;
-            await onFrame(fromBinary(TerminalFrameSchema, p));
+            try {
+              if (closed) return;
+              await onFrame(fromBinary(TerminalFrameSchema, p));
+            } finally {
+              pendingBytes -= pSize;
+              pendingFrames--;
+            }
           });
         }
       },
