@@ -450,6 +450,7 @@ actor CoreHost: SyncEngine {
     private var timers: [TimerKey: ScheduledTimer] = [:]
     private var machinePollTimers: [String: ScheduledTimer] = [:]
     private var ioTasks: [UUID: Task<Void, Never>] = [:]
+    private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
     private var cacheChain: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
     private var renderSeq: UInt64 = 0
@@ -758,6 +759,7 @@ actor CoreHost: SyncEngine {
         clockTask = nil
         cancelAllTimers()
         cancelAllMachinePollTimers()
+        cancelAllInFlightDispatches()
         cancelIOTasks()
         executor.detachDirectStreams()
         await executor.setSecurityForeground(false)
@@ -853,6 +855,7 @@ actor CoreHost: SyncEngine {
         clockTask = nil
         cancelAllTimers()
         cancelAllMachinePollTimers()
+        cancelAllInFlightDispatches()
         cancelIOTasks()
         cacheChain?.cancel()
         cacheChain = nil
@@ -2678,8 +2681,11 @@ actor CoreHost: SyncEngine {
             case .directRetryNowResult(let eff):
                 resumeRetryNowWaiters(machineID: eff.machineID, started: eff.started)
 
-            case .runMachineCommandResult, .cancelDispatch:
-                // iOS still uses its legacy command path until migrated.
+            case .cancelDispatch(let eff):
+                cancelInFlightDispatches(requestID: eff.requestID)
+
+            case .runMachineCommandResult:
+                // Wired in the RunMachineCommand migration commit.
                 break
 
             case .renameClient(let eff):
@@ -3162,9 +3168,45 @@ actor CoreHost: SyncEngine {
             }
         }
 
-        spawnIO { host in
-            let outcome = await host.executor.dispatchCommandAttempt(c)
-            await host.dispatch { $0.commandOutcome = outcome }
+        let requestID = c.requestID
+        let attemptID = c.attemptID
+        let task = Task { [weak self] in
+            guard let self else { return }
+            let outcome = await self.executor.dispatchCommandAttempt(c)
+            let shouldEmit = await self.finishInFlightDispatch(requestID: requestID, attemptID: attemptID)
+            if shouldEmit && !Task.isCancelled {
+                await self.dispatch { $0.commandOutcome = outcome }
+            }
+        }
+        inFlightDispatches[requestID, default: [:]][attemptID] = task
+    }
+
+    private func finishInFlightDispatch(requestID: String, attemptID: String) -> Bool {
+        guard var byAttempt = inFlightDispatches[requestID], byAttempt.removeValue(forKey: attemptID) != nil else {
+            return false
+        }
+        if byAttempt.isEmpty {
+            inFlightDispatches.removeValue(forKey: requestID)
+        } else {
+            inFlightDispatches[requestID] = byAttempt
+        }
+        return !closed
+    }
+
+    private func cancelInFlightDispatches(requestID: String) {
+        guard !requestID.isEmpty, let byAttempt = inFlightDispatches.removeValue(forKey: requestID) else { return }
+        for task in byAttempt.values {
+            task.cancel()
+        }
+    }
+
+    private func cancelAllInFlightDispatches() {
+        let all = inFlightDispatches
+        inFlightDispatches.removeAll()
+        for byAttempt in all.values {
+            for task in byAttempt.values {
+                task.cancel()
+            }
         }
     }
 

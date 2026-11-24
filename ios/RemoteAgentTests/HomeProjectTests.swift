@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import os
 @testable import RACore
 import RAProto
 import SwiftProtobuf
@@ -25,6 +26,11 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     var savedPrefsRequests: [PBCorePutAccountPrefsRpc] = []
     var createdRequests: [PBCreateSessionRequest] = []
     var autoReadyOnOpen = true
+    var dispatchCommandHandler: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?
+
+    func setDispatchCommandHandler(_ handler: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?) {
+        dispatchCommandHandler = handler
+    }
 
     var machines: [PBCorePlainMachine]
     var sessions: [PBCorePlainSession]
@@ -212,6 +218,9 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     }
 
     func dispatchCommandAttempt(_ effect: PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent {
+        if let handler = dispatchCommandHandler {
+            return await handler(effect)
+        }
         var outcome = PBCoreCommandOutcomeEvent()
         outcome.requestID = effect.requestID
         outcome.attemptID = effect.attemptID
@@ -483,6 +492,65 @@ private actor NavRecorder {
         }
         await host.maybeDescribeSelf(sync)
         #expect(await executor.describedCalls.isEmpty)
+
+        await host.closeAsync()
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    @Test func cancelDispatchEffectCancelsInFlightAttemptByRequestId() async throws {
+        let executor = FakeCoreExecutor()
+        let screens = CoreScreens()
+        let client = try CoreClient()
+        let suiteName = "corehost-cancel-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        await executor.setDispatchCommandHandler { eff in
+            started.withLock { $0 = true }
+            await withTaskCancellationHandler {
+                try? await Task.sleep(for: .seconds(60))
+            } onCancel: {
+                cancelled.withLock { $0 = true }
+            }
+            return PBCoreCommandOutcomeEvent.with {
+                $0.requestID = eff.requestID
+                $0.attemptID = eff.attemptID
+                $0.source = .transport
+                $0.notForwarded = true
+                $0.transportCode = "canceled"
+            }
+        }
+
+        let host = CoreHost(
+            client: client,
+            executor: executor,
+            screens: screens,
+            defaults: ScopeDefaults(defaults),
+            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
+            clock: { 1_791_000_000_000 },
+            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+        )
+        await host.wireExecutorHooks()
+        await host.startAsync()
+        await waitUntil { screens.syncState.connection == .connected }
+
+        await host.dispatch(PBCoreEvent.with {
+            $0.runMachineCommand = .with {
+                $0.opID = 77
+                $0.machineID = executor.machineID
+                $0.command = .with { $0.getSettings = PBGetSettingsRequest() }
+                $0.skipConnectivityPreflight = true
+            }
+        })
+        await waitUntil { started.withLock { $0 } }
+
+        await host.dispatch(PBCoreEvent.with {
+            $0.cancelMachineCommand = .with { $0.opID = 77 }
+        })
+        await waitUntil { cancelled.withLock { $0 } }
+        #expect(cancelled.withLock { $0 })
 
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
