@@ -271,11 +271,6 @@ export class AttachmentExecutor {
     }
   }
 
-  /** Waits only for the storage FIFO queue to drain. */
-  whenStorageIdle(): Promise<void> {
-    return this.storageQueue;
-  }
-
   subscribeBlobs(listener: () => void): () => void {
     this.blobListeners.add(listener);
     return () => this.blobListeners.delete(listener);

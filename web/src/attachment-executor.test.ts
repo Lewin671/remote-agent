@@ -453,13 +453,14 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
         const host2 = getCoreHost(r2);
         await host2.warmLocalCache("");
         r2.start();
+        // Open draft immediately while startup scan is still in flight (must not duplicate text).
+        host2.draftOpen(s2, "mac");
         await host2.attachments.whenIdle();
 
         // Orphan blob from before reload should have been GC'd by Core's startup scan
         expect(await sharedStore.getLocalBlob(orphanRef)).toBeUndefined();
 
         // Persisted draft for s-run is restored with text + 1 image (not duplicated!)
-        host2.draftOpen(s2, "mac");
         const restoredDraft = host2.viewAttachmentDraft(s2).draft!;
         expect(restoredDraft.text).toBe("persisted draft text");
         expect(restoredDraft.items).toHaveLength(1);

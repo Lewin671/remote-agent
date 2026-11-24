@@ -83,7 +83,6 @@ import {
   NewSessionSelectAgentActionSchema,
   NewSessionSelectMachineActionSchema,
   NewSessionSelectModelActionSchema,
-  NewSessionSetPromptActionSchema,
   NewSessionSubmitActionSchema,
   OutcomeSource,
   ProjectAddActionSchema,
@@ -865,7 +864,6 @@ export class CoreHost {
   private directDiagnosticsCache = new Map<string, { version: number; vm: DirectDiagnosticsViewModel }>();
   private attachmentDraftCache = new Map<string, { version: number; vm: AttachmentDraftViewModel }>();
   private knownDraftScopes = new Map<string, DraftScope>();
-  private pendingTextOnlyStarts = new Map<string, string>();
   private usageHydratedMachines = new Set<string>();
   private nextDirectCallId = 0n;
   private bulkRouteWaiters = new Map<bigint, (eff: DirectBulkRouteEffect) => void>();
@@ -1116,8 +1114,6 @@ export class CoreHost {
     await this.attachments.store.probe().catch(() => false);
     if (this.closed) return;
     this.ensureAttachmentConfigured();
-    await raceTimeout(this.attachments.whenStorageIdle(), CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS).catch(() => undefined);
-    if (this.closed) return;
     if (!this.bootstrapped) {
       try {
         const boot = await raceTimeout(
@@ -1418,21 +1414,10 @@ export class CoreHost {
   newSessionRetrySaveConfig = (projectKey: string) => this.emit({ case: "newSessionRetrySaveConfig", value: create(NewSessionProjectActionSchema, { projectKey }) });
   newSessionSubmit = (projectKey: string) => {
     this.ensureAttachmentConfigured();
-    if (projectKey) {
-      const scope = newSessionDraftScope(projectKey);
-      const draft = this.viewAttachmentDraft(scope).draft;
-      if (draft && draft.items.length === 0) {
-        this.pendingTextOnlyStarts.set(projectKey, draft.text.trim());
-      } else {
-        this.pendingTextOnlyStarts.delete(projectKey);
-      }
-    }
     this.emit({ case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey }) });
   };
-  newSessionAbandonStart = (projectKey: string) => {
-    this.pendingTextOnlyStarts.delete(projectKey);
+  newSessionAbandonStart = (projectKey: string) =>
     this.emit({ case: "newSessionAbandonStart", value: create(NewSessionProjectActionSchema, { projectKey }) });
-  };
 
   // --- Attachment & Draft Intents (Contract §1.3) ---
 
@@ -2887,31 +2872,6 @@ export class CoreHost {
         const replaceSession = nav.route === NavigateRoute.SESSION && this.pendingStart;
         if (nav.route === NavigateRoute.SESSION && nav.sessionId) {
           this.pendingStart = false;
-          if (nav.projectKey && this.pendingTextOnlyStarts.has(nav.projectKey)) {
-            // Core's prepareNewSessionAttachments skips recording text-only starts,
-            // leaving attDraft.text stale and wiping newly-typed NewSessionDraft.Prompt on settle.
-            const submitted = this.pendingTextOnlyStarts.get(nav.projectKey)!;
-            this.pendingTextOnlyStarts.delete(nav.projectKey);
-            const scope = newSessionDraftScope(nav.projectKey);
-            const cur = this.viewAttachmentDraft(scope).draft?.text ?? "";
-            if (cur.trim() === submitted) {
-              this.pendingEvents.push({
-                ev: create(EventSchema, {
-                  nowMs: BigInt(Date.now()),
-                  monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-                  event: { case: "draftSetText", value: create(DraftSetTextActionSchema, { scope, text: "" }) },
-                }),
-              });
-            } else if (cur) {
-              this.pendingEvents.push({
-                ev: create(EventSchema, {
-                  nowMs: BigInt(Date.now()),
-                  monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-                  event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: cur }) },
-                }),
-              });
-            }
-          }
         }
         if (nav.route === NavigateRoute.SESSION && !replaceSession && this.watchCounts.size === 0) {
           break;
