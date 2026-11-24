@@ -256,6 +256,9 @@ message DraftStorageListedEvent {
   repeated DraftStorageEntry entries = 2;
   AttachmentIOErrorKind error_kind = 3;
   string error_detail = 4;
+  // Opaque local handles currently present in local attachment storage, used by Core to
+  // garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+  repeated string local_refs = 5;
 }
 
 message DraftStorageReadResultEvent {
@@ -468,6 +471,10 @@ message AttachmentPrepareImageEffect {
   string source_ref = 5;
   bool original = 6;
   int64 max_original_bytes = 7;
+  // Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+  int32 max_dimension_px = 8;
+  // Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+  int64 max_compressed_bytes = 9;
 }
 
 message AttachmentHashFileEffect {

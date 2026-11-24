@@ -1894,11 +1894,14 @@ func (x *DraftStorageEntry) GetCorrupt() bool {
 }
 
 type DraftStorageListedEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	Entries       []*DraftStorageEntry   `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
-	ErrorKind     AttachmentIOErrorKind  `protobuf:"varint,3,opt,name=error_kind,json=errorKind,proto3,enum=remoteagent.core.v1.AttachmentIOErrorKind" json:"error_kind,omitempty"`
-	ErrorDetail   string                 `protobuf:"bytes,4,opt,name=error_detail,json=errorDetail,proto3" json:"error_detail,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	OpId        uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	Entries     []*DraftStorageEntry   `protobuf:"bytes,2,rep,name=entries,proto3" json:"entries,omitempty"`
+	ErrorKind   AttachmentIOErrorKind  `protobuf:"varint,3,opt,name=error_kind,json=errorKind,proto3,enum=remoteagent.core.v1.AttachmentIOErrorKind" json:"error_kind,omitempty"`
+	ErrorDetail string                 `protobuf:"bytes,4,opt,name=error_detail,json=errorDetail,proto3" json:"error_detail,omitempty"`
+	// Opaque local handles currently present in local attachment storage, used by Core to
+	// garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+	LocalRefs     []string `protobuf:"bytes,5,rep,name=local_refs,json=localRefs,proto3" json:"local_refs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1959,6 +1962,13 @@ func (x *DraftStorageListedEvent) GetErrorDetail() string {
 		return x.ErrorDetail
 	}
 	return ""
+}
+
+func (x *DraftStorageListedEvent) GetLocalRefs() []string {
+	if x != nil {
+		return x.LocalRefs
+	}
+	return nil
 }
 
 type DraftStorageReadResultEvent struct {
@@ -3937,8 +3947,12 @@ type AttachmentPrepareImageEffect struct {
 	SourceRef        string                 `protobuf:"bytes,5,opt,name=source_ref,json=sourceRef,proto3" json:"source_ref,omitempty"`
 	Original         bool                   `protobuf:"varint,6,opt,name=original,proto3" json:"original,omitempty"`
 	MaxOriginalBytes int64                  `protobuf:"varint,7,opt,name=max_original_bytes,json=maxOriginalBytes,proto3" json:"max_original_bytes,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+	MaxDimensionPx int32 `protobuf:"varint,8,opt,name=max_dimension_px,json=maxDimensionPx,proto3" json:"max_dimension_px,omitempty"`
+	// Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+	MaxCompressedBytes int64 `protobuf:"varint,9,opt,name=max_compressed_bytes,json=maxCompressedBytes,proto3" json:"max_compressed_bytes,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AttachmentPrepareImageEffect) Reset() {
@@ -4016,6 +4030,20 @@ func (x *AttachmentPrepareImageEffect) GetOriginal() bool {
 func (x *AttachmentPrepareImageEffect) GetMaxOriginalBytes() int64 {
 	if x != nil {
 		return x.MaxOriginalBytes
+	}
+	return 0
+}
+
+func (x *AttachmentPrepareImageEffect) GetMaxDimensionPx() int32 {
+	if x != nil {
+		return x.MaxDimensionPx
+	}
+	return 0
+}
+
+func (x *AttachmentPrepareImageEffect) GetMaxCompressedBytes() int64 {
+	if x != nil {
+		return x.MaxCompressedBytes
 	}
 	return 0
 }
@@ -4472,13 +4500,15 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\x06bucket\x18\x01 \x01(\x0e2'.remoteagent.core.v1.DraftStorageBucketR\x06bucket\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
 	"\x04data\x18\x03 \x01(\fR\x04data\x12\x18\n" +
-	"\acorrupt\x18\x04 \x01(\bR\acorrupt\"\xde\x01\n" +
+	"\acorrupt\x18\x04 \x01(\bR\acorrupt\"\xfd\x01\n" +
 	"\x17DraftStorageListedEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12@\n" +
 	"\aentries\x18\x02 \x03(\v2&.remoteagent.core.v1.DraftStorageEntryR\aentries\x12I\n" +
 	"\n" +
 	"error_kind\x18\x03 \x01(\x0e2*.remoteagent.core.v1.AttachmentIOErrorKindR\terrorKind\x12!\n" +
-	"\ferror_detail\x18\x04 \x01(\tR\verrorDetail\"\x9d\x02\n" +
+	"\ferror_detail\x18\x04 \x01(\tR\verrorDetail\x12\x1d\n" +
+	"\n" +
+	"local_refs\x18\x05 \x03(\tR\tlocalRefs\"\x9d\x02\n" +
 	"\x1bDraftStorageReadResultEvent\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12?\n" +
 	"\x06bucket\x18\x02 \x01(\x0e2'.remoteagent.core.v1.DraftStorageBucketR\x06bucket\x12\x10\n" +
@@ -4636,7 +4666,7 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\x18DraftStorageDeleteEffect\x12?\n" +
 	"\x06bucket\x18\x01 \x01(\x0e2'.remoteagent.core.v1.DraftStorageBucketR\x06bucket\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"\x1c\n" +
-	"\x1aDraftStorageClearAllEffect\"\x98\x02\n" +
+	"\x1aDraftStorageClearAllEffect\"\xf4\x02\n" +
 	"\x1cAttachmentPrepareImageEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x125\n" +
 	"\x05scope\x18\x02 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\x12*\n" +
@@ -4645,7 +4675,9 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\n" +
 	"source_ref\x18\x05 \x01(\tR\tsourceRef\x12\x1a\n" +
 	"\boriginal\x18\x06 \x01(\bR\boriginal\x12,\n" +
-	"\x12max_original_bytes\x18\a \x01(\x03R\x10maxOriginalBytes\"\x82\x02\n" +
+	"\x12max_original_bytes\x18\a \x01(\x03R\x10maxOriginalBytes\x12(\n" +
+	"\x10max_dimension_px\x18\b \x01(\x05R\x0emaxDimensionPx\x120\n" +
+	"\x14max_compressed_bytes\x18\t \x01(\x03R\x12maxCompressedBytes\"\x82\x02\n" +
 	"\x18AttachmentHashFileEffect\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x125\n" +
 	"\x05scope\x18\x02 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\x12*\n" +

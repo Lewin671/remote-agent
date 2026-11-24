@@ -1176,6 +1176,10 @@ public struct PBDraftStorageListedEvent: Sendable {
 
   public var errorDetail: String = String()
 
+  /// Opaque local handles currently present in local attachment storage, used by Core to
+  /// garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+  public var localRefs: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1956,6 +1960,12 @@ public struct PBAttachmentPrepareImageEffect: Sendable {
   public var original: Bool = false
 
   public var maxOriginalBytes: Int64 = 0
+
+  /// Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+  public var maxDimensionPx: Int32 = 0
+
+  /// Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+  public var maxCompressedBytes: Int64 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3517,7 +3527,7 @@ extension PBDraftStorageEntry: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
 
 extension PBDraftStorageListedEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DraftStorageListedEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}entries\0\u{3}error_kind\0\u{3}error_detail\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}entries\0\u{3}error_kind\0\u{3}error_detail\0\u{3}local_refs\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3529,6 +3539,7 @@ extension PBDraftStorageListedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.entries) }()
       case 3: try { try decoder.decodeSingularEnumField(value: &self.errorKind) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.errorDetail) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.localRefs) }()
       default: break
       }
     }
@@ -3547,6 +3558,9 @@ extension PBDraftStorageListedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.errorDetail.isEmpty {
       try visitor.visitSingularStringField(value: self.errorDetail, fieldNumber: 4)
     }
+    if !self.localRefs.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.localRefs, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3555,6 +3569,7 @@ extension PBDraftStorageListedEvent: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if lhs.entries != rhs.entries {return false}
     if lhs.errorKind != rhs.errorKind {return false}
     if lhs.errorDetail != rhs.errorDetail {return false}
+    if lhs.localRefs != rhs.localRefs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5001,7 +5016,7 @@ extension PBDraftStorageClearAllEffect: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBAttachmentPrepareImageEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentPrepareImageEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}scope\0\u{3}outbox_request_id\0\u{3}item_id\0\u{3}source_ref\0\u{1}original\0\u{3}max_original_bytes\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}scope\0\u{3}outbox_request_id\0\u{3}item_id\0\u{3}source_ref\0\u{1}original\0\u{3}max_original_bytes\0\u{3}max_dimension_px\0\u{3}max_compressed_bytes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5016,6 +5031,8 @@ extension PBAttachmentPrepareImageEffect: SwiftProtobuf.Message, SwiftProtobuf._
       case 5: try { try decoder.decodeSingularStringField(value: &self.sourceRef) }()
       case 6: try { try decoder.decodeSingularBoolField(value: &self.original) }()
       case 7: try { try decoder.decodeSingularInt64Field(value: &self.maxOriginalBytes) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.maxDimensionPx) }()
+      case 9: try { try decoder.decodeSingularInt64Field(value: &self.maxCompressedBytes) }()
       default: break
       }
     }
@@ -5047,6 +5064,12 @@ extension PBAttachmentPrepareImageEffect: SwiftProtobuf.Message, SwiftProtobuf._
     if self.maxOriginalBytes != 0 {
       try visitor.visitSingularInt64Field(value: self.maxOriginalBytes, fieldNumber: 7)
     }
+    if self.maxDimensionPx != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxDimensionPx, fieldNumber: 8)
+    }
+    if self.maxCompressedBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxCompressedBytes, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5058,6 +5081,8 @@ extension PBAttachmentPrepareImageEffect: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.sourceRef != rhs.sourceRef {return false}
     if lhs.original != rhs.original {return false}
     if lhs.maxOriginalBytes != rhs.maxOriginalBytes {return false}
+    if lhs.maxDimensionPx != rhs.maxDimensionPx {return false}
+    if lhs.maxCompressedBytes != rhs.maxCompressedBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

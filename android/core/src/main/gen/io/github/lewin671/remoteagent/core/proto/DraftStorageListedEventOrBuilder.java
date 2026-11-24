@@ -52,4 +52,49 @@ public interface DraftStorageListedEventOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorDetailBytes();
+
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @return A list containing the localRefs.
+   */
+  java.util.List<java.lang.String>
+      getLocalRefsList();
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @return The count of localRefs.
+   */
+  int getLocalRefsCount();
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param index The index of the element to return.
+   * @return The localRefs at the given index.
+   */
+  java.lang.String getLocalRefs(int index);
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param index The index of the element to return.
+   * @return The localRefs at the given index.
+   */
+  com.google.protobuf.ByteString
+      getLocalRefsBytes(int index);
 }

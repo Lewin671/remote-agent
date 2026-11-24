@@ -74,4 +74,24 @@ public interface AttachmentPrepareImageEffectOrBuilder extends
    * @return The maxOriginalBytes.
    */
   long getMaxOriginalBytes();
+
+  /**
+   * <pre>
+   * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+   * </pre>
+   *
+   * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+   * @return The maxDimensionPx.
+   */
+  int getMaxDimensionPx();
+
+  /**
+   * <pre>
+   * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+   * </pre>
+   *
+   * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+   * @return The maxCompressedBytes.
+   */
+  long getMaxCompressedBytes();
 }

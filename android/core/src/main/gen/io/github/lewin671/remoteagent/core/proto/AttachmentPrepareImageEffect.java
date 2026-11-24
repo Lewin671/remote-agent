@@ -290,6 +290,82 @@ public  final class AttachmentPrepareImageEffect extends
     maxOriginalBytes_ = 0L;
   }
 
+  public static final int MAX_DIMENSION_PX_FIELD_NUMBER = 8;
+  private int maxDimensionPx_;
+  /**
+   * <pre>
+   * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+   * </pre>
+   *
+   * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+   * @return The maxDimensionPx.
+   */
+  @java.lang.Override
+  public int getMaxDimensionPx() {
+    return maxDimensionPx_;
+  }
+  /**
+   * <pre>
+   * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+   * </pre>
+   *
+   * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+   * @param value The maxDimensionPx to set.
+   */
+  private void setMaxDimensionPx(int value) {
+    
+    maxDimensionPx_ = value;
+  }
+  /**
+   * <pre>
+   * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+   * </pre>
+   *
+   * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+   */
+  private void clearMaxDimensionPx() {
+
+    maxDimensionPx_ = 0;
+  }
+
+  public static final int MAX_COMPRESSED_BYTES_FIELD_NUMBER = 9;
+  private long maxCompressedBytes_;
+  /**
+   * <pre>
+   * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+   * </pre>
+   *
+   * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+   * @return The maxCompressedBytes.
+   */
+  @java.lang.Override
+  public long getMaxCompressedBytes() {
+    return maxCompressedBytes_;
+  }
+  /**
+   * <pre>
+   * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+   * </pre>
+   *
+   * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+   * @param value The maxCompressedBytes to set.
+   */
+  private void setMaxCompressedBytes(long value) {
+    
+    maxCompressedBytes_ = value;
+  }
+  /**
+   * <pre>
+   * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+   * </pre>
+   *
+   * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+   */
+  private void clearMaxCompressedBytes() {
+
+    maxCompressedBytes_ = 0L;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -665,6 +741,86 @@ public  final class AttachmentPrepareImageEffect extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+     * </pre>
+     *
+     * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+     * @return The maxDimensionPx.
+     */
+    @java.lang.Override
+    public int getMaxDimensionPx() {
+      return instance.getMaxDimensionPx();
+    }
+    /**
+     * <pre>
+     * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+     * </pre>
+     *
+     * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+     * @param value The maxDimensionPx to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxDimensionPx(int value) {
+      copyOnWrite();
+      instance.setMaxDimensionPx(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Maximum long edge in pixels when original == false (2048 per docs/session-images.md).
+     * </pre>
+     *
+     * <code>int32 max_dimension_px = 8 [json_name = "maxDimensionPx"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxDimensionPx() {
+      copyOnWrite();
+      instance.clearMaxDimensionPx();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+     * </pre>
+     *
+     * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+     * @return The maxCompressedBytes.
+     */
+    @java.lang.Override
+    public long getMaxCompressedBytes() {
+      return instance.getMaxCompressedBytes();
+    }
+    /**
+     * <pre>
+     * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+     * </pre>
+     *
+     * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+     * @param value The maxCompressedBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxCompressedBytes(long value) {
+      copyOnWrite();
+      instance.setMaxCompressedBytes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Maximum encoded byte budget when original == false (900 KiB so the sealed envelope stays under 1 MiB).
+     * </pre>
+     *
+     * <code>int64 max_compressed_bytes = 9 [json_name = "maxCompressedBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxCompressedBytes() {
+      copyOnWrite();
+      instance.clearMaxCompressedBytes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentPrepareImageEffect)
   }
   @java.lang.Override
@@ -689,10 +845,12 @@ public  final class AttachmentPrepareImageEffect extends
             "sourceRef_",
             "original_",
             "maxOriginalBytes_",
+            "maxDimensionPx_",
+            "maxCompressedBytes_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0003\u0002\u1009" +
-              "\u0000\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0002";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0003\u0002\u1009\u0000\u0003" +
+              "\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0002\b\u0004\t\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

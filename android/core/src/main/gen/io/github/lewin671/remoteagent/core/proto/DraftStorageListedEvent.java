@@ -17,6 +17,7 @@ public  final class DraftStorageListedEvent extends
   private DraftStorageListedEvent() {
     entries_ = emptyProtobufList();
     errorDetail_ = "";
+    localRefs_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int OP_ID_FIELD_NUMBER = 1;
   private long opId_;
@@ -229,6 +230,146 @@ public  final class DraftStorageListedEvent extends
     checkByteStringIsUtf8(value);
     errorDetail_ = value.toStringUtf8();
 
+  }
+
+  public static final int LOCAL_REFS_FIELD_NUMBER = 5;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> localRefs_;
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @return A list containing the localRefs.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getLocalRefsList() {
+    return localRefs_;
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @return The count of localRefs.
+   */
+  @java.lang.Override
+  public int getLocalRefsCount() {
+    return localRefs_.size();
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param index The index of the element to return.
+   * @return The localRefs at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getLocalRefs(int index) {
+    return localRefs_.get(index);
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the localRefs at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getLocalRefsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        localRefs_.get(index));
+  }
+  private void ensureLocalRefsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        localRefs_;  if (!tmp.isModifiable()) {
+      localRefs_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param index The index to set the value at.
+   * @param value The localRefs to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLocalRefs(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureLocalRefsIsMutable();
+    localRefs_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param value The localRefs to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addLocalRefs(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureLocalRefsIsMutable();
+    localRefs_.add(value);
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param values The localRefs to add.
+   */
+  private void addAllLocalRefs(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureLocalRefsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, localRefs_);
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   */
+  private void clearLocalRefs() {
+    localRefs_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Opaque local handles currently present in local attachment storage, used by Core to
+   * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+   * </pre>
+   *
+   * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+   * @param value The bytes of the localRefs to add.
+   */
+  private void addLocalRefsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureLocalRefsIsMutable();
+    localRefs_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.core.proto.DraftStorageListedEvent parseFrom(
@@ -553,6 +694,143 @@ public  final class DraftStorageListedEvent extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @return A list containing the localRefs.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getLocalRefsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getLocalRefsList());
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @return The count of localRefs.
+     */
+    @java.lang.Override
+    public int getLocalRefsCount() {
+      return instance.getLocalRefsCount();
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param index The index of the element to return.
+     * @return The localRefs at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getLocalRefs(int index) {
+      return instance.getLocalRefs(index);
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the localRefs at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getLocalRefsBytes(int index) {
+      return instance.getLocalRefsBytes(index);
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param index The index to set the value at.
+     * @param value The localRefs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLocalRefs(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setLocalRefs(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param value The localRefs to add.
+     * @return This builder for chaining.
+     */
+    public Builder addLocalRefs(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addLocalRefs(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param values The localRefs to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllLocalRefs(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllLocalRefs(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLocalRefs() {
+      copyOnWrite();
+      instance.clearLocalRefs();
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque local handles currently present in local attachment storage, used by Core to
+     * garbage-collect orphaned local files once all valid draft and outbox records are indexed.
+     * </pre>
+     *
+     * <code>repeated string local_refs = 5 [json_name = "localRefs"];</code>
+     * @param value The bytes of the localRefs to add.
+     * @return This builder for chaining.
+     */
+    public Builder addLocalRefsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addLocalRefsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.DraftStorageListedEvent)
   }
   @java.lang.Override
@@ -574,10 +852,11 @@ public  final class DraftStorageListedEvent extends
             io.github.lewin671.remoteagent.core.proto.DraftStorageEntry.class,
             "errorKind_",
             "errorDetail_",
+            "localRefs_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0003\u0002\u001b" +
-              "\u0003\f\u0004\u0208";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0002\u0000\u0001\u0003\u0002\u001b" +
+              "\u0003\f\u0004\u0208\u0005\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

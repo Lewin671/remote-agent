@@ -351,13 +351,15 @@ func (c *Core) pumpAttachmentQueues(ctx *sync.StepContext, effects *[]*corev1.Ef
 			*effects = append(*effects, &corev1.Effect{
 				Effect: &corev1.Effect_AttachmentPrepareImage{
 					AttachmentPrepareImage: &corev1.AttachmentPrepareImageEffect{
-						OpId:             opID,
-						Scope:            cloneDraftScope(scope),
-						OutboxRequestId:  outboxReqID,
-						ItemId:           it.id,
-						SourceRef:        it.sourceRef,
-						Original:         original,
-						MaxOriginalBytes: attachments.OriginalImageMaxBytes,
+						OpId:               opID,
+						Scope:              cloneDraftScope(scope),
+						OutboxRequestId:    outboxReqID,
+						ItemId:             it.id,
+						SourceRef:          it.sourceRef,
+						Original:           original,
+						MaxOriginalBytes:   attachments.OriginalImageMaxBytes,
+						MaxDimensionPx:     attachments.CompressedImageMaxDimensionPx,
+						MaxCompressedBytes: attachments.CompressedImageMaxBytes,
 					},
 				},
 			})

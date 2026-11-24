@@ -176,7 +176,9 @@
               },
               "itemId": "att-1",
               "sourceRef": "src-gold-1",
-              "maxOriginalBytes": "20971520"
+              "maxOriginalBytes": "20971520",
+              "maxDimensionPx": 2048,
+              "maxCompressedBytes": "921600"
             }
           },
           {

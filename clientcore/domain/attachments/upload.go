@@ -14,6 +14,12 @@ import (
 const (
 	// DefaultUploadChunkBytes is the standard 768 KiB upload chunk cap shared by images and files.
 	DefaultUploadChunkBytes int32 = 768 * 1024
+	// CompressedImageMaxDimensionPx is the compressed image long edge limit (docs/session-images.md).
+	CompressedImageMaxDimensionPx int32 = 2048
+	// CompressedImageMaxBytes is the compressed image encoded byte budget so the sealed envelope stays under 1 MiB.
+	CompressedImageMaxBytes int64 = 900 * 1024
+	// DraftIdleExpiryMs is the 7-day idle retention window for persisted drafts (docs/session-images.md).
+	DraftIdleExpiryMs int64 = 7 * 24 * 60 * 60 * 1000
 	// UploadStepMaxRetries is the per-step retry limit (3 retries = 4 total attempts) for Begin/Put/Complete.
 	// Resets after every step/chunk that makes forward progress.
 	UploadStepMaxRetries = 3

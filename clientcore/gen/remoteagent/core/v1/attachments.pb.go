@@ -1494,6 +1494,7 @@ type DraftStorageListedEvent struct {
 	Entries     []*DraftStorageEntry
 	ErrorKind   AttachmentIOErrorKind
 	ErrorDetail string
+	LocalRefs   []string
 }
 
 func (m *DraftStorageListedEvent) GetOpId() uint64 {
@@ -1520,6 +1521,12 @@ func (m *DraftStorageListedEvent) GetErrorDetail() string {
 	}
 	return ""
 }
+func (m *DraftStorageListedEvent) GetLocalRefs() []string {
+	if m != nil {
+		return m.LocalRefs
+	}
+	return nil
+}
 
 var LitewireDesc_DraftStorageListedEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&DraftStorageListedEvent{}) },
@@ -1527,6 +1534,7 @@ var LitewireDesc_DraftStorageListedEvent = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(DraftStorageListedEvent{}.OpId), Kind: litewire.KindUint64},
 		{Num: 3, Offset: unsafe.Offsetof(DraftStorageListedEvent{}.ErrorKind), Kind: litewire.KindInt32},
 		{Num: 4, Offset: unsafe.Offsetof(DraftStorageListedEvent{}.ErrorDetail), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(DraftStorageListedEvent{}.LocalRefs), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 	},
 }
 
@@ -2889,14 +2897,16 @@ func (m *DraftStorageClearAllEffect) AppendMarshal(b []byte) []byte {
 }
 
 type AttachmentPrepareImageEffect struct {
-	_                [0]func()
-	OpId             uint64
-	Scope            *DraftScope
-	OutboxRequestId  string
-	ItemId           string
-	SourceRef        string
-	Original         bool
-	MaxOriginalBytes int64
+	_                  [0]func()
+	OpId               uint64
+	Scope              *DraftScope
+	OutboxRequestId    string
+	ItemId             string
+	SourceRef          string
+	Original           bool
+	MaxOriginalBytes   int64
+	MaxDimensionPx     int32
+	MaxCompressedBytes int64
 }
 
 func (m *AttachmentPrepareImageEffect) GetOpId() uint64 {
@@ -2941,6 +2951,18 @@ func (m *AttachmentPrepareImageEffect) GetMaxOriginalBytes() int64 {
 	}
 	return 0
 }
+func (m *AttachmentPrepareImageEffect) GetMaxDimensionPx() int32 {
+	if m != nil {
+		return m.MaxDimensionPx
+	}
+	return 0
+}
+func (m *AttachmentPrepareImageEffect) GetMaxCompressedBytes() int64 {
+	if m != nil {
+		return m.MaxCompressedBytes
+	}
+	return 0
+}
 
 var LitewireDesc_AttachmentPrepareImageEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2951,6 +2973,8 @@ var LitewireDesc_AttachmentPrepareImageEffect = litewire.MessageDesc{
 		{Num: 5, Offset: unsafe.Offsetof(AttachmentPrepareImageEffect{}.SourceRef), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(AttachmentPrepareImageEffect{}.Original), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(AttachmentPrepareImageEffect{}.MaxOriginalBytes), Kind: litewire.KindInt64},
+		{Num: 8, Offset: unsafe.Offsetof(AttachmentPrepareImageEffect{}.MaxDimensionPx), Kind: litewire.KindInt32},
+		{Num: 9, Offset: unsafe.Offsetof(AttachmentPrepareImageEffect{}.MaxCompressedBytes), Kind: litewire.KindInt64},
 	},
 }
 
