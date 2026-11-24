@@ -1,299 +1,242 @@
-// Images sent from the phone (architecture §17): reading formats and
-// orientation, taking metadata out of files sent as originals, the limits
-// of one message, and uploading in chunks. Decoding and re-encoding pixels
-// needs the platform and is in :app.
+// Images sent from the phone (architecture §17): container format sniffing,
+// orientation inspection, and lossless metadata stripping delegate to
+// clientcore/domain/imageparse via Corebind using header/seek windows and
+// local range splicing (no full-file copy across JNI). Decoding and
+// re-encoding pixels remain in :app.
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
+import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.ImageFormat
-import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
-/** The format of encoded image bytes, by their signature; null for anything else (HEIC and the like). */
-fun detectFormat(b: ByteArray): ImageFormat? = when {
-    b.size >= 8 && b[0] == 0x89.toByte() && b[1] == 'P'.code.toByte() && b[2] == 'N'.code.toByte() && b[3] == 'G'.code.toByte() -> ImageFormat.IMAGE_FORMAT_PNG
-    b.size >= 3 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte() && b[2] == 0xFF.toByte() -> ImageFormat.IMAGE_FORMAT_JPEG
-    b.size >= 12 && String(b, 0, 4, Charsets.ISO_8859_1) == "RIFF" && String(b, 8, 4, Charsets.ISO_8859_1) == "WEBP" -> ImageFormat.IMAGE_FORMAT_WEBP
-    b.size >= 6 && String(b, 0, 6, Charsets.ISO_8859_1).let { it == "GIF87a" || it == "GIF89a" } -> ImageFormat.IMAGE_FORMAT_GIF
+private const val IMG_FMT_UNKNOWN = 0
+private const val IMG_FMT_JPEG = 1
+private const val IMG_FMT_PNG = 2
+private const val IMG_FMT_WEBP = 3
+private const val IMG_FMT_GIF = 4
+
+private const val IMG_MODE_INSPECT = 1
+private const val IMG_MODE_STRIP = 2
+
+private const val IMG_STATUS_DONE = 0
+private const val IMG_STATUS_NEED_READ = 1
+private const val IMG_STATUS_NEED_SCAN_JPEG_ENTROPY = 2
+private const val IMG_STATUS_NEED_SKIP_GIF_SUB_BLOCKS = 3
+private const val IMG_STATUS_ERROR = 4
+
+private const val IMG_SNIFF_HEADER_BYTES = 256
+private const val IMG_INITIAL_HEADER_BYTES = 64 * 1024
+
+private fun formatFromCore(code: Int): ImageFormat? = when (code) {
+    IMG_FMT_JPEG -> ImageFormat.IMAGE_FORMAT_JPEG
+    IMG_FMT_PNG -> ImageFormat.IMAGE_FORMAT_PNG
+    IMG_FMT_WEBP -> ImageFormat.IMAGE_FORMAT_WEBP
+    IMG_FMT_GIF -> ImageFormat.IMAGE_FORMAT_GIF
     else -> null
 }
 
-private fun u16(b: ByteArray, i: Int, le: Boolean): Int =
-    if (le) (b[i].toInt() and 0xff) or ((b[i + 1].toInt() and 0xff) shl 8) else ((b[i].toInt() and 0xff) shl 8) or (b[i + 1].toInt() and 0xff)
-
-private fun u32(b: ByteArray, i: Int, le: Boolean): Long =
-    if (le) (u16(b, i, true).toLong()) or (u16(b, i + 2, true).toLong() shl 16) else (u16(b, i, false).toLong() shl 16) or u16(b, i + 2, false).toLong()
+/** The format of encoded image bytes, by their signature; null for anything else (HEIC and the like). */
+fun detectFormat(b: ByteArray): ImageFormat? {
+    val head = if (b.size > IMG_SNIFF_HEADER_BYTES) b.copyOfRange(0, IMG_SNIFF_HEADER_BYTES) else b
+    return formatFromCore(Corebind.sniffImageFormat(head))
+}
 
 /** The orientation (1 to 8) a TIFF/Exif block records; 1 when it says none or cannot be read. */
 fun tiffOrientation(t: ByteArray, off: Int = 0, end: Int = t.size): Int {
-    try {
-        if (end - off < 8) return 1
-        val le = when (String(t, off, 2, Charsets.ISO_8859_1)) {
-            "II" -> true
-            "MM" -> false
-            else -> return 1
+    if (off < 0 || end < off || end > t.size || end - off < 8) return 1
+    val slice = if (off == 0 && end == t.size) t else t.copyOfRange(off, end)
+    return Corebind.tiffOrientation(slice)
+}
+
+/** In-place 8-byte SWAR scan for the first real JPEG marker after entropy-coded data; -1 on EOF. */
+private fun scanJpegEntropy(b: ByteArray, pos: Int): Int {
+    val len = b.size
+    val bb = ByteBuffer.wrap(b).order(ByteOrder.LITTLE_ENDIAN)
+    var i = pos
+    while (i + 1 < len) {
+        while (i + 8 <= len) {
+            val w = bb.getLong(i).inv()
+            if (((w - 0x0101010101010101L) and w.inv() and -0x7f7f7f7f7f7f7f80L) != 0L) break
+            i += 8
         }
-        if (u16(t, off + 2, le) != 42) return 1
-        val ifd = off + u32(t, off + 4, le).toInt()
-        if (ifd < off || ifd + 2 > end) return 1
-        val n = u16(t, ifd, le)
-        for (i in 0 until n) {
-            val e = ifd + 2 + i * 12
-            if (e + 12 > end) return 1
-            if (u16(t, e, le) == 0x0112) {
-                val v = u16(t, e + 8, le)
-                return if (v in 1..8) v else 1
-            }
+        while (i + 1 < len && b[i] != 0xFF.toByte()) i++
+        if (i + 1 >= len) return -1
+        var k = i
+        while (k + 1 < len && b[k + 1] == 0xFF.toByte()) k++
+        if (k + 1 >= len) return -1
+        val next = b[k + 1].toInt() and 0xff
+        if (next == 0x00 || next in 0xD0..0xD7) {
+            i = k + 2
+            continue
         }
-    } catch (e: IndexOutOfBoundsException) {
-        return 1
+        return i
     }
-    return 1
+    return -1
 }
 
-/** A JPEG's segments before the image data: marker, and payload offset and length. */
-private class Segment(val marker: Int, val start: Int, val end: Int)
-
-private fun jpegSegments(b: ByteArray): Pair<List<Segment>, Int>? {
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_JPEG) return null
-    val out = mutableListOf<Segment>()
-    var i = 2
-    while (i + 4 <= b.size) {
-        if (b[i] != 0xFF.toByte()) return null
-        val marker = b[i + 1].toInt() and 0xff
-        if (marker == 0xFF) { i++; continue }
-        // Start of scan: everything from here on is image data.
-        if (marker == 0xDA) return out to i
-        if (marker == 0xD8 || marker in 0xD0..0xD7 || marker == 0x01) { i += 2; continue }
-        val len = u16(b, i + 2, false)
-        if (len < 2 || i + 2 + len > b.size) return null
-        out += Segment(marker, i, i + 2 + len)
-        i += 2 + len
-    }
-    return null
-}
-
-/** A JPEG's Exif orientation, 1 when none. */
-fun jpegOrientation(b: ByteArray): Int {
-    val (segs, _) = jpegSegments(b) ?: return 1
-    for (s in segs) {
-        if (s.marker == 0xE1 && s.end - s.start > 10 && String(b, s.start + 4, 6, Charsets.ISO_8859_1) == "Exif\u0000\u0000") {
-            return tiffOrientation(b, s.start + 10, s.end)
-        }
-    }
-    return 1
-}
-
-/** Whether an application or comment segment is kept: JFIF, the color profile and Adobe's color transform. */
-private fun keepJpegSegment(b: ByteArray, marker: Int, start: Int, end: Int): Boolean = when (marker) {
-    0xE0 -> String(b, start + 4, minOf(5, end - start - 4), Charsets.ISO_8859_1).startsWith("JFIF")
-    0xE2 -> String(b, start + 4, minOf(12, end - start - 4), Charsets.ISO_8859_1).startsWith("ICC_PROFILE")
-    0xEE -> true
-    0xFE -> false
-    in 0xE1..0xEF -> false
-    else -> true
-}
-
-/**
- * A JPEG without its metadata: Exif and XMP (APP1), IPTC (APP13), comments
- * and the other application segments go wherever they are, before the
- * first scan, between the scans of a progressive JPEG or right before the
- * end; JFIF (APP0), the color profile (APP2 ICC_PROFILE) and Adobe's color
- * transform (APP14) stay, since the picture depends on them. Only the
- * entropy-coded data of each scan is copied without being parsed, up to the
- * next marker; anything after the end marker goes. Take the orientation
- * into account first: without Exif the picture shows as stored.
- */
-fun stripJpeg(b: ByteArray): ByteArray {
-    fun bad(): Nothing = throw MessageException(UiMessages.imageAndroidUnreadableJpeg().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_JPEG) bad()
-    val out = ByteArrayOutputStream(b.size)
-    out.write(b, 0, 2)
-    var i = 2
+/** In-place skip over a GIF sub-block chain; returns offset after 0x00 terminator or -1 on EOF. */
+private fun skipGifSubBlocks(b: ByteArray, pos: Int): Int {
+    var p = pos
+    val len = b.size
     while (true) {
-        if (i + 2 > b.size || b[i] != 0xFF.toByte()) bad()
-        val marker = b[i + 1].toInt() and 0xff
-        when {
-            // Fill bytes before a marker.
-            marker == 0xFF -> i++
-            marker == 0xD9 -> {
-                out.write(b, i, 2)
-                return out.toByteArray()
+        if (p >= len) return -1
+        val n = b[p].toInt() and 0xff
+        p += 1 + n
+        if (p > len) return -1
+        if (n == 0) return p
+    }
+}
+
+private fun runImagePlan(
+    b: ByteArray,
+    mode: Int,
+    expectedFormat: Int,
+    onError: (String) -> Nothing,
+): ByteArray {
+    val plan = Corebind.newImagePlan(mode, expectedFormat, b.size.toLong())
+    var offset = 0L
+    var slice = if (b.size > IMG_INITIAL_HEADER_BYTES) b.copyOfRange(0, IMG_INITIAL_HEADER_BYTES) else b
+    while (true) {
+        val res = plan.step(offset, slice)
+        val status = res[0].toInt() and 0xff
+        if (status == IMG_STATUS_DONE) return res
+        if (status == IMG_STATUS_ERROR) {
+            val detail = String(res, 2, res.size - 2, Charsets.UTF_8)
+            onError(detail)
+        }
+        val bb = ByteBuffer.wrap(res).order(ByteOrder.LITTLE_ENDIAN)
+        when (status) {
+            IMG_STATUS_NEED_READ -> {
+                offset = bb.getLong(1)
+                val need = bb.getInt(9)
+                val start = offset.toInt().coerceIn(0, b.size)
+                val end = (offset + need.toLong()).coerceAtMost(b.size.toLong()).toInt()
+                slice = b.copyOfRange(start, end)
             }
-            marker in 0xD0..0xD7 || marker == 0x01 -> {
-                out.write(b, i, 2)
-                i += 2
-            }
-            else -> {
-                if (i + 4 > b.size) bad()
-                val len = u16(b, i + 2, false)
-                if (len < 2 || i + 2 + len > b.size) bad()
-                val end = i + 2 + len
-                if (keepJpegSegment(b, marker, i, end)) out.write(b, i, end - i)
-                i = end
-                if (marker == 0xDA) {
-                    // The scan's coded data runs to the next marker other than
-                    // a stuffed zero or a restart marker. Fill bytes (more
-                    // 0xFF) may come before a restart marker too.
-                    var j = i
-                    while (j + 1 < b.size) {
-                        if (b[j] == 0xFF.toByte()) {
-                            var k = j
-                            while (k + 1 < b.size && b[k + 1] == 0xFF.toByte()) k++
-                            if (k + 1 >= b.size) bad()
-                            val n = b[k + 1].toInt() and 0xff
-                            if (n != 0x00 && n !in 0xD0..0xD7) break
-                            j = k + 2
-                        } else j++
-                    }
-                    if (j + 1 >= b.size) bad()
-                    out.write(b, i, j - i)
-                    i = j
+            IMG_STATUS_NEED_SCAN_JPEG_ENTROPY -> {
+                val from = bb.getLong(1).toInt()
+                val found = scanJpegEntropy(b, from)
+                offset = found.toLong()
+                slice = if (found >= 0) {
+                    b.copyOfRange(found, minOf(found + IMG_INITIAL_HEADER_BYTES, b.size))
+                } else {
+                    ByteArray(0)
                 }
             }
+            IMG_STATUS_NEED_SKIP_GIF_SUB_BLOCKS -> {
+                val from = bb.getLong(1).toInt()
+                val end = skipGifSubBlocks(b, from)
+                offset = end.toLong()
+                slice = if (end >= 0) {
+                    b.copyOfRange(end, minOf(end + IMG_INITIAL_HEADER_BYTES, b.size))
+                } else {
+                    ByteArray(0)
+                }
+            }
+            else -> onError("unexpected_plan_status")
         }
     }
 }
 
-private fun pngChunks(b: ByteArray): List<Triple<String, Int, Int>>? {
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_PNG) return null
-    val out = mutableListOf<Triple<String, Int, Int>>()
-    var i = 8
-    while (i + 12 <= b.size) {
-        val len = u32(b, i, false)
-        if (len > b.size) return null
-        val type = String(b, i + 4, 4, Charsets.ISO_8859_1)
-        val end = i + 12 + len.toInt()
-        if (end > b.size) return null
-        out += Triple(type, i, end)
-        i = end
-        if (type == "IEND") break
+private fun spliceImagePlan(src: ByteArray, done: ByteArray): ByteArray {
+    val bb = ByteBuffer.wrap(done).order(ByteOrder.LITTLE_ENDIAN)
+    val count = bb.getInt(12)
+    var at = 16
+    var total = 0
+    for (i in 0 until count) {
+        val kind = done[at++].toInt() and 0xff
+        if (kind == 0) {
+            val s = bb.getLong(at).toInt()
+            val e = bb.getLong(at + 8).toInt()
+            total += e - s
+            at += 16
+        } else {
+            val n = bb.getInt(at)
+            total += n
+            at += 4 + n
+        }
+    }
+    val out = ByteArray(total)
+    at = 16
+    var dst = 0
+    for (i in 0 until count) {
+        val kind = done[at++].toInt() and 0xff
+        if (kind == 0) {
+            val s = bb.getLong(at).toInt()
+            val e = bb.getLong(at + 8).toInt()
+            val n = e - s
+            System.arraycopy(src, s, out, dst, n)
+            dst += n
+            at += 16
+        } else {
+            val n = bb.getInt(at)
+            System.arraycopy(done, at + 4, out, dst, n)
+            dst += n
+            at += 4 + n
+        }
     }
     return out
 }
 
+private fun inspectOrientation(b: ByteArray, expectedFormat: Int): Int {
+    return try {
+        val done = runImagePlan(b, IMG_MODE_INSPECT, expectedFormat) { throw IllegalStateException(it) }
+        val o = done[2].toInt() and 0xff
+        if (o in 1..8) o else 1
+    } catch (_: Throwable) {
+        1
+    }
+}
+
+/** A JPEG's Exif orientation, 1 when none. */
+fun jpegOrientation(b: ByteArray): Int = inspectOrientation(b, IMG_FMT_JPEG)
+
 /** A PNG's orientation from its eXIf chunk, 1 when none. */
-fun pngOrientation(b: ByteArray): Int {
-    val chunks = pngChunks(b) ?: return 1
-    val c = chunks.firstOrNull { it.first == "eXIf" } ?: return 1
-    return tiffOrientation(b, c.second + 8, c.third - 4)
+fun pngOrientation(b: ByteArray): Int = inspectOrientation(b, IMG_FMT_PNG)
+
+/** A WebP's orientation from its EXIF chunk, 1 when none. */
+fun webpOrientation(b: ByteArray): Int = inspectOrientation(b, IMG_FMT_WEBP)
+
+/** An image's orientation, by format; 1 for GIF and anything without one. */
+fun orientationOf(b: ByteArray): Int = inspectOrientation(b, IMG_FMT_UNKNOWN)
+
+/** A JPEG without its metadata (EXIF, XMP, IPTC, comments, trailing data); JFIF/ICC/Adobe stay. */
+fun stripJpeg(b: ByteArray): ByteArray {
+    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_JPEG) {
+        throw MessageException(UiMessages.imageAndroidUnreadableJpeg().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
+    }
+    return spliceImagePlan(b, done)
 }
 
 /** A PNG without text, time and Exif chunks; the image data is not touched. */
 fun stripPng(b: ByteArray): ByteArray {
-    val chunks = pngChunks(b) ?: throw MessageException(UiMessages.imageAndroidUnreadablePng().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-    val drop = setOf("tEXt", "zTXt", "iTXt", "eXIf", "tIME")
-    val out = ByteArrayOutputStream(b.size)
-    out.write(b, 0, 8)
-    for ((type, start, end) in chunks) if (type !in drop) out.write(b, start, end - start)
-    return out.toByteArray()
-}
-
-private fun webpChunks(b: ByteArray): List<Triple<String, Int, Int>>? {
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_WEBP) return null
-    val out = mutableListOf<Triple<String, Int, Int>>()
-    var i = 12
-    while (i + 8 <= b.size) {
-        val type = String(b, i, 4, Charsets.ISO_8859_1)
-        val len = u32(b, i + 4, true)
-        val end = i + 8 + len.toInt() + (len.toInt() and 1)
-        if (len > b.size || end > b.size + 1) return null
-        out += Triple(type, i, minOf(end, b.size))
-        i = end
+    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_PNG) {
+        throw MessageException(UiMessages.imageAndroidUnreadablePng().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
     }
-    return out
-}
-
-/** A WebP's orientation from its EXIF chunk, 1 when none. */
-fun webpOrientation(b: ByteArray): Int {
-    val c = (webpChunks(b) ?: return 1).firstOrNull { it.first == "EXIF" } ?: return 1
-    val start = c.second + 8
-    // Some writers put the Exif header in front of the TIFF block.
-    val tiff = if (c.third - start > 6 && String(b, start, 6, Charsets.ISO_8859_1) == "Exif\u0000\u0000") start + 6 else start
-    return tiffOrientation(b, tiff, c.third)
+    return spliceImagePlan(b, done)
 }
 
 /** A WebP without its EXIF and XMP chunks, with the extended header's flags and the file size to match. */
 fun stripWebp(b: ByteArray): ByteArray {
-    val chunks = webpChunks(b) ?: throw MessageException(UiMessages.imageAndroidUnreadableWebp().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-    val out = ByteArrayOutputStream(b.size)
-    out.write(b, 0, 12)
-    for ((type, start, end) in chunks) {
-        if (type == "EXIF" || type == "XMP ") continue
-        if (type == "VP8X" && end - start >= 9) {
-            val chunk = b.copyOfRange(start, end)
-            // Flags: bit 3 Exif, bit 2 XMP.
-            chunk[8] = (chunk[8].toInt() and 0x08.inv() and 0x04.inv()).toByte()
-            out.write(chunk)
-        } else {
-            out.write(b, start, end - start)
-        }
+    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_WEBP) {
+        throw MessageException(UiMessages.imageAndroidUnreadableWebp().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
     }
-    val r = out.toByteArray()
-    val size = r.size - 8
-    r[4] = size.toByte(); r[5] = (size ushr 8).toByte(); r[6] = (size ushr 16).toByte(); r[7] = (size ushr 24).toByte()
-    return r
+    return spliceImagePlan(b, done)
 }
 
-/**
- * A GIF without comments and without application blocks other than the
- * animation loop (NETSCAPE2.0), where XMP and the like live; frames are not
- * touched.
- */
+/** A GIF without comments and non-loop application blocks; frames are not touched. */
 fun stripGif(b: ByteArray): ByteArray {
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_GIF || b.size < 13) throw MessageException(UiMessages.imageAndroidUnreadableGif().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-    val out = ByteArrayOutputStream(b.size)
-    var i = 13
-    val flags = b[10].toInt() and 0xff
-    if (flags and 0x80 != 0) i += 3 * (1 shl ((flags and 7) + 1))
-    out.write(b, 0, i)
-    fun subBlocks(from: Int): Int {
-        var j = from
-        while (true) {
-            if (j >= b.size) throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-            val n = b[j].toInt() and 0xff
-            j += 1 + n
-            if (n == 0) return j
+    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_GIF) { detail ->
+        val msg = when {
+            detail.contains("unknown block") -> UiMessages.imageAndroidGifContainsAnUnrecognizedBlock()
+            detail.contains("not a GIF") || detail.contains("empty") || detail.contains("does not match") -> UiMessages.imageAndroidUnreadableGif()
+            else -> UiMessages.imageAndroidGifIsTruncated()
         }
+        throw MessageException(msg.messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
     }
-    while (i < b.size) {
-        when (b[i].toInt() and 0xff) {
-            0x3B -> {
-                out.write(0x3B)
-                return out.toByteArray()
-            }
-            0x2C -> {
-                if (i + 10 > b.size) throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-                val f = b[i + 9].toInt() and 0xff
-                var j = i + 10
-                if (f and 0x80 != 0) j += 3 * (1 shl ((f and 7) + 1))
-                j = subBlocks(j + 1)
-                out.write(b, i, j - i)
-                i = j
-            }
-            0x21 -> {
-                val label = b[i + 1].toInt() and 0xff
-                val j = subBlocks(i + 2)
-                val app = label == 0xFF && i + 14 <= b.size && String(b, i + 3, 11, Charsets.ISO_8859_1).let { it == "NETSCAPE2.0" || it == "ANIMEXTS1.0" }
-                val keep = when (label) {
-                    0xFE -> false
-                    0xFF -> app
-                    else -> true
-                }
-                if (keep) out.write(b, i, j - i)
-                i = j
-            }
-            else -> throw MessageException(UiMessages.imageAndroidGifContainsAnUnrecognizedBlock().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-        }
-    }
-    throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-}
-
-/** An image's orientation, by format; 1 for GIF and anything without one. */
-fun orientationOf(b: ByteArray): Int = when (detectFormat(b)) {
-    ImageFormat.IMAGE_FORMAT_JPEG -> jpegOrientation(b)
-    ImageFormat.IMAGE_FORMAT_PNG -> pngOrientation(b)
-    ImageFormat.IMAGE_FORMAT_WEBP -> webpOrientation(b)
-    else -> 1
+    return spliceImagePlan(b, done)
 }
 
 /**
