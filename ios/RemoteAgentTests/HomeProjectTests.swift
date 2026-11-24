@@ -312,6 +312,7 @@ private actor NavRecorder {
             screens: screens,
             defaults: ScopeDefaults(defaults),
             scopeHmacKey: key,
+            draftStorageQueue: DraftStorageQueue(),
             clock: { 1_791_000_000_000 },
             sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
             onNavigate: { eff in Task { await navRecorder.record(eff) } }
@@ -340,6 +341,11 @@ private actor NavRecorder {
         #expect(screens.newSession.modelPanel.models.first?.slug == "gpt-5")
 
         await host.setDraftText(scope: .newSession("/Users/me/Code/foo"), text: "Run checks")
+        await waitUntil {
+            screens.newSession.draft.text == "Run checks"
+                && screens.newSession.draft.canSend
+                && !screens.newSession.draft.restoring
+        }
         await host.submitNewSession(
             projectKey: "/Users/me/Code/foo",
             autoModeSupported: false
