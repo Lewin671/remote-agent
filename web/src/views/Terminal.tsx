@@ -6,7 +6,6 @@ import {
   EMPTY_TERMINAL_HISTORY,
   TerminalReader,
   TERM_FONT,
-  type TerminalHistoryViewState,
 } from "./TerminalHistory";
 import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
@@ -92,10 +91,14 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const terminalIdRef = useRef("");
   if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
   const terminalId = terminalIdRef.current;
-  const [history, setHistory] = useState<TerminalHistoryViewState>(EMPTY_TERMINAL_HISTORY);
-  const historyRef = useRef<TerminalHistoryViewState>(EMPTY_TERMINAL_HISTORY);
-  const loadEarlierHistory = () => hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.LOAD_EARLIER);
-  const retryHistory = () => hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.RETRY);
+  const [history, setHistory] = useState(EMPTY_TERMINAL_HISTORY);
+  const historyRef = useRef(EMPTY_TERMINAL_HISTORY);
+  const loadEarlierHistory = () => {
+    hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.LOAD_EARLIER);
+  };
+  const retryHistory = () => {
+    hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.RETRY);
+  };
   // How the reader shows text, and how far up the first page opens: taken
   // from the live terminal at the moment the gesture opened it.
   const [reader, setReader] = useState<{ font: number; height: number; offset: number; left: number; grid: number }>();
