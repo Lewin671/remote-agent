@@ -222,6 +222,8 @@ type liveTerminal struct {
 	relayDialInFlight int
 	relayCancel       context.CancelFunc
 	directGen         uint64
+	phase3Eligible    bool
+	explicitClosed    bool
 	zeroLegSince      time.Time
 	outSeq            uint64
 
@@ -318,6 +320,7 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 	hub.live[streamID] = lt
 	if pd, ok := hub.takePendingDirectLocked(streamID, peer, sessionID, hub.now()); ok {
 		lt.directGen = pd.gen
+		lt.phase3Eligible = true
 		_ = lt.stream.AttachLeg("direct", pd.legID, hub.instance, pd.gen)
 		lt.noteLegStateLocked(hub.now())
 	}
@@ -579,7 +582,9 @@ func (lt *liveTerminal) onRelayLegEnded(path transport.Path, gen uint64) {
 	}
 	lt.relayPath = nil
 	lt.stream.CloseLeg("relay", gen)
-	keepAlive := lt.stream.HasLeg("direct") && lt.ep.directPeerActive(lt.ownerPeer)
+	// N4: Phase 3 streams (not explicitly closed by user) stay alive in the unified
+	// 30s zero-leg TTL window even when the direct leg closed BEFORE the relay leg.
+	keepAlive := !lt.explicitClosed && (lt.phase3Eligible || (lt.stream.HasLeg("direct") && lt.ep.directPeerActive(lt.ownerPeer)))
 	lt.noteLegStateLocked(lt.hub.now())
 	lt.mu.Unlock()
 	if !keepAlive {
@@ -1054,6 +1059,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			lt.mu.Lock()
 			if !lt.stream.HasLeg("direct") || msg.PathGeneration > lt.directGen || (msg.PathGeneration == lt.directGen && msg.LegID != lt.stream.LegID("direct")) {
 				lt.directGen = msg.PathGeneration
+				lt.phase3Eligible = true
 				_ = lt.stream.AttachLeg("direct", msg.LegID, hub.instance, msg.PathGeneration)
 				lt.noteLegStateLocked(hub.now())
 			}
@@ -1295,8 +1301,11 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 				lt.stream.CloseLeg("direct", msg.PathGeneration)
 				lt.directGen = 0
 			}
+			if msg.Reason == 1 {
+				lt.explicitClosed = true
+			}
 			lt.noteLegStateLocked(nowT)
-			cancelNow := msg.Reason == 1 && lt.relayPath == nil && !lt.stream.HasLeg("direct")
+			cancelNow := msg.Reason == 1
 			lt.mu.Unlock()
 			if cancelNow {
 				lt.cancel()
@@ -1309,8 +1318,11 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			lt.relayPath = nil
 			lt.relayCancel = nil
 			lt.stream.CloseLeg("relay", lt.relayGen)
+			if msg.Reason == 1 {
+				lt.explicitClosed = true
+			}
 			lt.noteLegStateLocked(nowT)
-			cancelNow := msg.Reason == 1 && !lt.stream.HasLeg("direct")
+			cancelNow := msg.Reason == 1 || !lt.phase3Eligible
 			lt.mu.Unlock()
 			if rc != nil {
 				rc()
