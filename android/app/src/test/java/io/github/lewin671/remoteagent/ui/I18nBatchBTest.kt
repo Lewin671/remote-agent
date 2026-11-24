@@ -381,7 +381,14 @@ class I18nBatchBTest(private val locale: String) {
         show { Column(Modifier.fillMaxSize().background(TermColors.bg)) {
             Text(text(UiMessages.terminalReadonly()), color = TermColors.tool, modifier = Modifier.padding(12.dp))
             Text("$ git diff --stat\n example.txt | 2 +-\n", color = Color.White, modifier = Modifier.weight(1f).padding(12.dp))
-            HistoryStatusLine(TerminalHistory.State(disconnected = true), false, {})
+            HistoryStatusLine(
+                TerminalHistoryState(
+                    phase = io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPEN,
+                    status = io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_DISCONNECTED,
+                    statusText = Text.newBuilder().setKey("terminal.history_closed").build(),
+                ),
+                {},
+            )
             HistoryPill(true, {})
             KeyBar(true, {}, {})
         } }; shot("terminal-reader")

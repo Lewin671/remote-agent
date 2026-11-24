@@ -1,8 +1,15 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.isCoreTextNotEmpty
 import io.github.lewin671.remoteagent.ui.uiText
-import io.github.lewin671.remoteagent.ui.sessionText
+import io.github.lewin671.remoteagent.core.PagedList
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryRun
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect
+import io.github.lewin671.remoteagent.core.proto.TerminalSgrColorKind
+import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.view.ViewConfiguration
@@ -123,18 +130,44 @@ internal fun readerWidth(viewportWidthPx: Int, gridWidthPx: Int): Int =
 internal fun gridColumnX(column: Int, offset: Int, cellWidth: Float): Int =
     (column * cellWidth).roundToInt() - offset
 
-/** The cells one captured line takes, by the same wide-character rule the reader draws it with. */
-internal fun lineCells(line: List<SgrRun>): Int {
-    var cells = 0
-    for (run in line) {
-        var i = 0
-        while (i < run.text.length) {
-            val codePoint = run.text.codePointAt(i)
-            cells += WcWidth.width(codePoint)
-            i += Character.charCount(codePoint)
+/**
+ * Read-only history reader state driven by clientcore (`TerminalHistoryUpdatedEffect`).
+ * Pages arrive pre-parsed into styled runs once on the core worker thread and are appended
+ * to [items] in bottom-up order for the reversed LazyColumn without mutating earlier rows.
+ */
+data class TerminalHistoryState(
+    val phase: TerminalHistoryPhase = TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_IDLE,
+    val status: TerminalHistoryStatus = TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_NONE,
+    val statusText: CoreText? = null,
+    val canRetry: Boolean = false,
+    val canLoadEarlier: Boolean = false,
+    val pending: Boolean = false,
+    val maxCells: Int = 0,
+    val items: PagedList<Pair<String, List<TerminalHistoryRun>>> = PagedList.empty(),
+) {
+    val visible: Boolean get() = phase != TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_IDLE
+    val entered: Boolean get() = phase == TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPEN
+
+    fun applyUpdate(upd: TerminalHistoryUpdatedEffect): TerminalHistoryState {
+        var nextItems = if (upd.resetPages) PagedList.empty() else items
+        if (upd.hasAddedPage()) {
+            val page = upd.addedPage
+            val pageItems = page.linesList.indices.reversed().map { i ->
+                "${page.id}:$i" to page.linesList[i].runsList
+            }
+            nextItems = nextItems.append(pageItems)
         }
+        return TerminalHistoryState(
+            phase = upd.phase,
+            status = upd.status,
+            statusText = if (upd.hasStatusText()) upd.statusText else null,
+            canRetry = upd.canRetry,
+            canLoadEarlier = upd.canLoadEarlier,
+            pending = upd.pending,
+            maxCells = upd.maxCells,
+            items = nextItems,
+        )
     }
-    return cells
 }
 
 /**
@@ -201,7 +234,7 @@ internal fun scrollThumb(offsetPx: Int, viewportPx: Int, extentPx: Int, trackPx:
  */
 @Composable
 internal fun TerminalHistoryReader(
-    history: TerminalHistory.State,
+    history: TerminalHistoryState,
     typeface: Typeface,
     palette: IntArray,
     fontPx: Int,
@@ -241,11 +274,10 @@ internal fun TerminalHistoryReader(
     }
     val list = rememberLazyListState()
     val items = history.items
-    val canLoadOlder = history.pending.isEmpty() && !history.failed && !history.expired && !history.disconnected
     val last = items.lastIndex
     val nearTop by remember(last) { derivedStateOf { list.layoutInfo.visibleItemsInfo.any { it.index >= last } } }
-    LaunchedEffect(nearTop, last, canLoadOlder, history.cursor) {
-        if (nearTop && canLoadOlder && history.cursor.isNotEmpty()) onLoadOlder()
+    LaunchedEffect(nearTop, last, history.canLoadEarlier) {
+        if (nearTop && history.canLoadEarlier) onLoadOlder()
     }
     // Opens where the gesture left off: the newest lines are at the bottom, [entryRows] rows of
     // them just below the fold.
@@ -370,7 +402,7 @@ internal fun TerminalHistoryReader(
                         )
                     }
                     // Last here is the top of the screen: the one line about what the reader is doing.
-                    item(key = "status") { HistoryStatusLine(history, waiting = false, onRetry = onRetry) }
+                    item(key = "status") { HistoryStatusLine(history, onRetry = onRetry) }
                 }
             }
         }
@@ -441,34 +473,19 @@ private const val FLING_FRICTION = 6f
 /** The grey line at the top of the reader's content, with a retry after a failure. */
 @Composable
 internal fun HistoryStatusLine(
-    history: TerminalHistory.State,
-    waiting: Boolean,
+    history: TerminalHistoryState,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val statusText = history.statusText?.takeIf { it.isCoreTextNotEmpty() } ?: return
     val copy = uiText()
-    val status = historyStatus(history, waiting, copy = copy) ?: return
     Row(modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(status, style = T.s12, color = TermColors.tool, softWrap = false, maxLines = 1)
-        if (history.failed) Text(
+        Text(uiText(statusText), style = T.s12, color = TermColors.tool, softWrap = false, maxLines = 1)
+        if (history.canRetry) Text(
             copy(UiMessages.commonRetry()), style = T.s12b, color = TermColors.link,
             modifier = Modifier.clickable(onClick = onRetry).padding(start = 8.dp, top = 12.dp, bottom = 12.dp),
         )
     }
-}
-
-/**
- * What the top line says, in the words of the design; null while there is nothing to say.
- * [waiting] is the first capture, which has no reader yet to put a line in.
- */
-internal fun historyStatus(history: TerminalHistory.State, waiting: Boolean, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String? = when {
-    history.disconnected -> copy(UiMessages.terminalHistoryClosed())
-    history.expired -> copy(UiMessages.terminalHistoryExpired())
-    history.failed -> copy(UiMessages.terminalReadFailed())
-    history.pending.isNotEmpty() -> if (waiting) copy(UiMessages.terminalReading()) else copy(UiMessages.terminalEarlier())
-    !history.entered -> null
-    history.cursor.isEmpty() -> copy(UiMessages.terminalHistoryStart())
-    else -> null
 }
 
 /** The floating way back to the live screen; it says when output has arrived since. */
@@ -528,7 +545,7 @@ private class Past {
 }
 
 /** A line as styled runs that take the cells the live terminal gives them. */
-private fun sgrText(line: List<SgrRun>, paint: Paint, cellWidth: Float, fontPx: Int, palette: IntArray): AnnotatedString =
+private fun sgrText(line: List<TerminalHistoryRun>, paint: Paint, cellWidth: Float, fontPx: Int, palette: IntArray): AnnotatedString =
     buildAnnotatedString {
         for (run in line) withStyle(styleOf(run, palette)) {
             var i = 0
@@ -553,10 +570,10 @@ private fun sgrText(line: List<SgrRun>, paint: Paint, cellWidth: Float, fontPx: 
 private const val HALF_PIXEL = 0.5f
 
 /** A run's style, with its colours and attributes resolved as the live renderer has them. */
-private fun styleOf(run: SgrRun, palette: IntArray): SpanStyle {
+private fun styleOf(run: TerminalHistoryRun, palette: IntArray): SpanStyle {
     val default = palette[TermStyle.COLOR_INDEX_BACKGROUND]
-    var fg = color(run.fg, palette[TermStyle.COLOR_INDEX_FOREGROUND], run.bold, palette)
-    var bg = color(run.bg, default, false, palette)
+    var fg = color(run.fgKind, run.fgValue, palette[TermStyle.COLOR_INDEX_FOREGROUND], run.bold, palette)
+    var bg = color(run.bgKind, run.bgValue, default, false, palette)
     if (run.inverse) {
         val swap = fg
         fg = bg
@@ -574,13 +591,13 @@ private fun styleOf(run: SgrRun, palette: IntArray): SpanStyle {
     )
 }
 
-/** The colour of a palette index or truecolor value; null is the terminal's own default. */
-private fun color(c: SgrColor?, fallback: Int, bold: Boolean, palette: IntArray): Color = when (c) {
-    null -> Color(fallback)
-    is SgrColor.Rgb -> Color(0xff shl 24 or c.hex.removePrefix("#").toInt(16))
-    is SgrColor.Palette -> {
+/** The colour of a palette index or packed 0xRRGGBB truecolor value; DEFAULT is the terminal's own default. */
+private fun color(kind: TerminalSgrColorKind, value: Int, fallback: Int, bold: Boolean, palette: IntArray): Color = when (kind) {
+    TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_RGB -> Color(0xff000000.toInt() or (value and 0xffffff))
+    TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_PALETTE -> {
         // Bold brightens the first eight colours, as the live renderer does.
-        val index = if (bold && c.index < 8) c.index + 8 else c.index
+        val index = if (bold && value < 8) value + 8 else value
         Color(if (index in palette.indices) palette[index] else fallback)
     }
+    else -> Color(fallback)
 }

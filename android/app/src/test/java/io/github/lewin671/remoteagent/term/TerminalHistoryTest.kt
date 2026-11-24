@@ -1,148 +1,211 @@
 package io.github.lewin671.remoteagent.term
 
-import io.github.lewin671.remoteagent.ui.messageTextForTest
-
-import io.github.lewin671.remoteagent.core.UiMessages
-
+import io.github.lewin671.remoteagent.core.CoreHost
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryEventKind
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
+import io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus
+import io.github.lewin671.remoteagent.core.proto.TerminalSgrColorKind
 import io.github.lewin671.remoteagent.proto.TerminalHistoryPage
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.Assert.*
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicReference
 
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
-@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
+/**
+ * Integration tests verifying Android's CoreHost <-> clientcore terminal history
+ * paging state machine, SGR parsing, immutable PagedList updates, and timeout/error handling.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
 class TerminalHistoryTest {
-    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
-    private fun plain(page: TerminalHistory.Page) = page.lines.map { line -> line.joinToString("") { it.text } }
+    private fun plainLines(state: TerminalHistoryState): List<String> =
+        state.items.map { (_, runs) -> runs.joinToString("") { it.text } }
 
-    @Test fun emptyCaptureDoesNotCreateABlankPageAndDoesNotEnter() = runTest {
-        val history = TerminalHistory(this, StandardTestDispatcher(testScheduler))
-        history.request(true) { _, _ -> }
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).build())
-        runCurrent()
-        assertTrue(history.state.value.pages.isEmpty())
-        assertEquals("", history.state.value.cursor)
-        // Nothing to read: reading is not entered, and the toolbar goes back to the live one.
-        assertFalse(history.state.value.entered)
-        assertFalse(history.state.value.visible)
-        history.close()
+    private fun withCoreHistory(
+        terminalId: String = "term-test-1",
+        block: TestScope.(CoreHost, AtomicReference<TerminalHistoryState>, CopyOnWriteArrayList<TerminalHistorySendRequestEffect>) -> Unit,
+    ) = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val host = CoreHost(externalScope = backgroundScope, workerDispatcher = dispatcher)
+        val state = AtomicReference(TerminalHistoryState())
+        val requests = CopyOnWriteArrayList<TerminalHistorySendRequestEffect>()
+        val offReq = host.onTerminalHistorySendRequest(terminalId) { requests += it }
+        val offUpd = host.onTerminalHistoryUpdated(terminalId) { upd ->
+            state.updateAndGet { it.applyUpdate(upd) }
+        }
+        try {
+            runCurrent()
+            block(host, state, requests)
+        } finally {
+            offReq()
+            offUpd()
+            host.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISPOSED)
+            runCurrent()
+            host.close()
+        }
     }
 
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    @Test fun pagesAreOrderedTimeoutsRetryAndStaleFramesAreIgnored() = runTest {
-        val history = TerminalHistory(this, StandardTestDispatcher(testScheduler))
-        val requests = mutableListOf<Pair<String, String>>()
-        val send: (String, String) -> Unit = { id, cursor -> requests += id to cursor }
-        history.request(true, send)
-        val first = history.state.value.pending
-        history.request(false, send)
+    @Test fun emptyCaptureDoesNotEnterReader() = withCoreHistory { host, state, requests ->
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+        runCurrent()
         assertEquals(1, requests.size)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(first).addLines("new \u001b[31m中文\u001b[0m").setNextCursor("capture:200").build())
+        assertEquals(TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPENING, state.get().phase)
+
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder().setRequestId(requests[0].requestId).build(),
+        )
         runCurrent()
-        // The page's lines arrive parsed: the colours of the capture are kept for the reader.
-        assertTrue(history.state.value.entered)
-        assertEquals(SgrColor.Palette(1), history.state.value.pages.single().lines.single().first { it.fg != null }.fg)
-        history.request(false, send)
-        val timedOut = history.state.value.pending
+        assertFalse(state.get().visible)
+        assertFalse(state.get().entered)
+        assertTrue(state.get().items.isEmpty())
+    }
+
+    @Test fun pagesAreParsedOnceOrderedBottomUpAndKeepPriorItemIdentity() = withCoreHistory { host, state, requests ->
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+        runCurrent()
+        val firstReq = requests.last()
+        assertEquals("", firstReq.cursor)
+
+        // Duplicate open while pending is ignored.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+        runCurrent()
+        assertEquals(1, requests.size)
+
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder()
+                .setRequestId(firstReq.requestId)
+                .addLines("a")
+                .addLines("new \u001b[31m中文\u001b[0m")
+                .setNextCursor("capture:200")
+                .build(),
+        )
+        runCurrent()
+
+        val afterFirst = state.get()
+        assertTrue(afterFirst.entered)
+        assertTrue(afterFirst.canLoadEarlier)
+        assertEquals(8, afterFirst.maxCells)
+        assertEquals(listOf("new 中文", "a"), plainLines(afterFirst))
+        val coloredRun = afterFirst.items[0].second.first { it.fgKind != TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_DEFAULT }
+        assertEquals(TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_PALETTE, coloredRun.fgKind)
+        assertEquals(1, coloredRun.fgValue)
+
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER)
+        runCurrent()
+        val secondReq = requests.last()
+        assertEquals("capture:200", secondReq.cursor)
+
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder()
+                .setRequestId(secondReq.requestId)
+                .addLines("1234567890")
+                .build(),
+        )
+        runCurrent()
+
+        val afterSecond = state.get()
+        assertEquals(10, afterSecond.maxCells)
+        assertEquals(listOf("new 中文", "a", "1234567890"), plainLines(afterSecond))
+        // PagedList preserves object identity of already-published rows.
+        assertSame(afterFirst.items[0], afterSecond.items[0])
+        assertEquals(TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_START, afterSecond.status)
+        assertEquals("terminal.history_start", afterSecond.statusText?.key)
+        assertFalse(afterSecond.canLoadEarlier)
+
+        // Close resets pages and ignores stale replies.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE)
+        runCurrent()
+        assertFalse(state.get().visible)
+        assertTrue(state.get().items.isEmpty())
+    }
+
+    @Test fun timeoutRetryExpiredAndDisconnectFollowUnifiedCoreRules() = withCoreHistory { host, state, requests ->
+        // Opening failure stays retryable (never expired).
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+        runCurrent()
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder()
+                .setRequestId(requests.last().requestId)
+                .setError("history expired; reopen history")
+                .build(),
+        )
+        runCurrent()
+        assertEquals(TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPENING_FAILED, state.get().phase)
+        assertTrue(state.get().canRetry)
+        assertEquals("terminal.read_failed", state.get().statusText?.key)
+
+        // Retry opens fresh capture.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_RETRY)
+        runCurrent()
+        assertEquals("", requests.last().cursor)
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder()
+                .setRequestId(requests.last().requestId)
+                .addLines("here")
+                .setNextCursor("capture:5")
+                .build(),
+        )
+        runCurrent()
+        assertTrue(state.get().entered)
+
+        // Load earlier times out -> FAILED + retryable, late reply ignored.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER)
+        runCurrent()
+        val timedOutId = requests.last().requestId
         advanceTimeBy(10_001)
-        assertEquals("", history.state.value.pending)
-        assertTrue(history.state.value.failed)
-        history.request(false, send)
-        assertEquals("capture:200", requests.last().second)
-        // A late answer to the request that timed out, and a page from before this reading, are
-        // both dropped: only the newest request's answer counts.
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(timedOut).addLines("late").build())
         runCurrent()
-        assertEquals(1, history.state.value.pages.size)
-        val id = history.state.value.pending
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(id).addLines("old").build())
+        assertEquals(TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_FAILED, state.get().status)
+        assertTrue(state.get().canRetry)
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder().setRequestId(timedOutId).addLines("late").build(),
+        )
         runCurrent()
-        assertEquals(listOf(listOf("new 中文"), listOf("old")), history.state.value.pages.map { plain(it) })
-        assertFalse(history.state.value.failed)
-        // The last page carried no cursor: the oldest record is here, so nothing more is asked.
-        history.request(false, send)
-        assertEquals(3, requests.size)
-        history.close()
-        history.request(true, send)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(id).addLines("stale").build())
-        runCurrent()
-        assertTrue(history.state.value.pages.isEmpty())
-        history.disconnected()
-        assertEquals("", history.state.value.pending)
-        history.close()
-    }
+        assertEquals(1, state.get().items.size)
 
-    @Test fun aBrokenConnectionAndAnExpiredCaptureKeepWhatWasRead() = runTest {
-        val history = TerminalHistory(this, StandardTestDispatcher(testScheduler))
-        val send: (String, String) -> Unit = { _, _ -> }
-        history.request(true, send)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).addLines("read so far").setNextCursor("capture:1").build())
+        // Retry reuses cursor, receives expired error -> EXPIRED, not retryable.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_RETRY)
         runCurrent()
-        history.disconnected()
-        assertTrue(history.state.value.disconnected)
-        assertEquals(listOf(listOf("read so far")), history.state.value.pages.map { plain(it) })
-        assertEquals(messageTextForTest(UiMessages.terminalHistoryClosed()), historyStatus(history.state.value, waiting = false))
-        history.close()
-        // A cursor that expired in the reader has its own wording and no retry: it went with its
-        // stream, so earlier pages have to be asked for from the live screen again.
-        history.request(true, send)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).addLines("here").setNextCursor("capture:5").build())
+        assertEquals("capture:5", requests.last().cursor)
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder()
+                .setRequestId(requests.last().requestId)
+                .setError("history expired; reopen history")
+                .build(),
+        )
         runCurrent()
-        history.request(false, send)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).setError("history expired; reopen history").build())
-        runCurrent()
-        assertTrue(history.state.value.expired)
-        assertFalse(history.state.value.failed)
-        assertEquals(messageTextForTest(UiMessages.terminalHistoryExpired()), historyStatus(history.state.value, waiting = false))
-        history.close()
-    }
+        assertEquals(TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_EXPIRED, state.get().status)
+        assertFalse(state.get().canRetry)
+        assertEquals("terminal.history_expired", state.get().statusText?.key)
 
-    @Test fun aFailedFirstCaptureDoesNotOpenTheReaderAndIsRetriedFromScratch() = runTest {
-        val history = TerminalHistory(this, StandardTestDispatcher(testScheduler))
-        val requests = mutableListOf<Pair<String, String>>()
-        val send: (String, String) -> Unit = { id, cursor -> requests += id to cursor }
-        history.request(true, send)
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).setError("cannot capture terminal history; retry or return to the live terminal").build())
+        // Disconnected while open keeps loaded lines.
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED)
         runCurrent()
-        // No reader: the live screen stays, with one line over it and its retry at hand.
-        assertFalse(history.state.value.entered)
-        assertTrue(history.state.value.failed)
-        assertEquals(messageTextForTest(UiMessages.terminalReadFailed()), historyStatus(history.state.value, waiting = true))
-        history.request(true, send)
-        assertEquals("", requests.last().second)
-        assertFalse(history.state.value.failed)
-        // Before the reader is open even an expired capture is a failure, with a plain retry.
-        history.receive(TerminalHistoryPage.newBuilder().setRequestId(history.state.value.pending).setError("history expired; reopen history").build())
-        runCurrent()
-        assertTrue(history.state.value.failed)
-        assertFalse(history.state.value.expired)
-        history.close()
-    }
-
-    @Test fun aDisconnectWhileOpeningJustEndsReading() = runTest {
-        val history = TerminalHistory(this, StandardTestDispatcher(testScheduler))
-        history.request(true) { _, _ -> }
-        history.disconnected()
-        assertFalse(history.state.value.visible)
-        assertFalse(history.state.value.disconnected)
-        history.close()
-    }
-
-    @Test fun theStatusLineSaysOneThingAtATime() {
-        fun state(visible: Boolean = true, entered: Boolean = true, cursor: String = "", pending: String = "", failed: Boolean = false, expired: Boolean = false, disconnected: Boolean = false) =
-            TerminalHistory.State(visible, entered, emptyList(), cursor, pending, failed, expired, disconnected)
-        assertEquals(messageTextForTest(UiMessages.terminalReading()), historyStatus(state(entered = false, pending = "r"), waiting = true))
-        assertEquals(messageTextForTest(UiMessages.terminalEarlier()), historyStatus(state(pending = "r"), waiting = false))
-        assertEquals(messageTextForTest(UiMessages.terminalReadFailed()), historyStatus(state(failed = true, pending = "r"), waiting = false))
-        assertEquals(messageTextForTest(UiMessages.terminalHistoryExpired()), historyStatus(state(expired = true), waiting = false))
-        assertEquals(messageTextForTest(UiMessages.terminalHistoryStart()), historyStatus(state(), waiting = false))
-        assertEquals(messageTextForTest(UiMessages.terminalHistoryClosed()), historyStatus(state(disconnected = true, cursor = "capture:1"), waiting = false))
-        // A page still to come is no reason to say anything, and the first capture says nothing else.
-        assertNull(historyStatus(state(cursor = "capture:1"), waiting = false))
-        assertNull(historyStatus(state(entered = false), waiting = true))
+        assertTrue(state.get().entered)
+        assertEquals(TerminalHistoryStatus.TERMINAL_HISTORY_STATUS_DISCONNECTED, state.get().status)
+        assertEquals("terminal.history_closed", state.get().statusText?.key)
+        assertEquals(listOf("here"), plainLines(state.get()))
     }
 }

@@ -222,6 +222,8 @@ class CoreHost(
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
     private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
+    private val terminalHistoryRequestListeners = ConcurrentHashMap<String, (TerminalHistorySendRequestEffect) -> Unit>()
+    private val terminalHistoryUpdatedListeners = ConcurrentHashMap<String, (TerminalHistoryUpdatedEffect) -> Unit>()
 
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
     private var projectKey: String = ""
@@ -636,6 +638,14 @@ class CoreHost(
             Effect.EffectCase.TERMINAL_REOPEN -> {
                 val tid = effect.terminalReopen.terminalId
                 terminalReopenListeners[tid]?.invoke()
+            }
+            Effect.EffectCase.TERMINAL_HISTORY_SEND_REQUEST -> {
+                val eff = effect.terminalHistorySendRequest
+                terminalHistoryRequestListeners[eff.terminalId]?.invoke(eff)
+            }
+            Effect.EffectCase.TERMINAL_HISTORY_UPDATED -> {
+                val eff = effect.terminalHistoryUpdated
+                terminalHistoryUpdatedListeners[eff.terminalId]?.invoke(eff)
             }
             Effect.EffectCase.SHARED_FILE_SCAN_LOCAL -> onSharedFileScanLocal(effect.sharedFileScanLocal)
             Effect.EffectCase.SHARED_FILE_INSPECT_DISK -> onSharedFileInspectDisk(effect.sharedFileInspectDisk)
@@ -2100,6 +2110,37 @@ class CoreHost(
         return { terminalReopenListeners.remove(terminalId, listener) }
     }
 
+    fun sendTerminalHistory(
+        terminalId: String,
+        kind: TerminalHistoryEventKind,
+        page: io.github.lewin671.remoteagent.proto.TerminalHistoryPage? = null,
+    ) {
+        if (terminalId.isEmpty() || closed.get()) return
+        send {
+            val b = TerminalHistoryEvent.newBuilder()
+                .setTerminalId(terminalId)
+                .setKind(kind)
+            if (page != null) b.setPage(page)
+            setTerminalHistory(b)
+        }
+    }
+
+    fun onTerminalHistorySendRequest(
+        terminalId: String,
+        listener: (TerminalHistorySendRequestEffect) -> Unit,
+    ): () -> Unit {
+        terminalHistoryRequestListeners[terminalId] = listener
+        return { terminalHistoryRequestListeners.remove(terminalId, listener) }
+    }
+
+    fun onTerminalHistoryUpdated(
+        terminalId: String,
+        listener: (TerminalHistoryUpdatedEffect) -> Unit,
+    ): () -> Unit {
+        terminalHistoryUpdatedListeners[terminalId] = listener
+        return { terminalHistoryUpdatedListeners.remove(terminalId, listener) }
+    }
+
     fun reportNotificationPrefs(
         supported: Boolean? = null,
         permission: NotificationPermissionState? = null,
@@ -2397,6 +2438,8 @@ class CoreHost(
                 retryNowWaiters.clear()
             }
             terminalReopenListeners.clear()
+            terminalHistoryRequestListeners.clear()
+            terminalHistoryUpdatedListeners.clear()
             mailbox.close()
             if (ownsScope) scope.cancel()
             synchronized(coreLock) { core.close() }

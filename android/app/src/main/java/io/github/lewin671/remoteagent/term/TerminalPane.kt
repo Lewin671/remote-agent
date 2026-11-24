@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.term
 import io.github.lewin671.remoteagent.ui.uiText
 import io.github.lewin671.remoteagent.ui.sessionText
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -136,16 +137,16 @@ internal class ReadingPull {
     }
 
     /** Reads a scroll of [rowsDown]; true when a fresh capture should be asked for now. */
-    fun onScroll(reading: TerminalHistory.State, rowsDown: Int): Boolean {
+    fun onScroll(reading: TerminalHistoryState, rowsDown: Int): Boolean {
         // The reader is on screen: it scrolls itself, and nothing here opens one or asks for a capture.
-        if (reading.visible && reading.entered) return false
+        if (reading.entered) return false
         rows = (rows - rowsDown).coerceAtLeast(0)
         if (rows < ENTER_ROWS) return false
         // The pull opened the reader: it keeps its distance, which is where the reader opens.
         if (!reading.visible) return true
         // The first page is on its way, and pulling further only sizes the reader. A capture that
         // failed is the one case that is asked for again, by a pull of its own.
-        if (!reading.failed || reading.pending.isNotEmpty()) return false
+        if (reading.phase != TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPENING_FAILED || reading.pending) return false
         reset()
         return true
     }
@@ -159,7 +160,7 @@ internal data class TerminalToolbar(val text: String, val fit: Boolean)
  * then does the fit button go away: while the first page is on its way, or after it failed, the
  * screen behind the grey line is still the live one.
  */
-internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHistory.State, fitted: Boolean, resized: Boolean, cols: Int, rows: Int, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText) =
+internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHistoryState, fitted: Boolean, resized: Boolean, cols: Int, rows: Int, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText) =
     TerminalToolbar(
         text = when {
             reading.entered -> copy(UiMessages.terminalReadonly())
@@ -203,7 +204,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
         }
         owner.lifecycle.addObserver(observer)
-        onDispose { owner.lifecycle.removeObserver(observer); term.close() }
+        onDispose { owner.lifecycle.removeObserver(observer); term.dispose() }
     }
     LaunchedEffect(online, waitingReachability) {
         if (online && owner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
@@ -214,7 +215,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     }
     val state by term.state.collectAsState()
     val size by term.size.collectAsState()
-    val history by term.history.state.collectAsState()
+    val history by term.history.collectAsState()
     val fitted by term.fitted.collectAsState()
     val resized by term.resizedElsewhere.collectAsState()
     LaunchedEffect(resized) {
@@ -244,20 +245,20 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     var newOutput by remember { mutableStateOf(false) }
     val gestures = remember { ScrollInbox() }
     gestures.onRows = { rowsDown ->
-        if (pull.onScroll(term.history.state.value, rowsDown)) {
+        if (pull.onScroll(term.history.value, rowsDown)) {
             newOutput = false
-            term.loadHistory(fresh = true)
+            term.openHistory()
         }
     }
     fun leaveReading() {
         pull.reset()
         newOutput = false
-        term.history.close()
+        term.closeHistory()
     }
     // A capture that came back empty, or failed, starts the pull over: asking again takes a fresh
     // pull, not the distance this one had already gathered.
-    LaunchedEffect(history.visible, history.failed, history.entered) {
-        if (!history.visible || (history.failed && !history.entered)) pull.reset()
+    LaunchedEffect(history.phase) {
+        if (!history.visible || history.phase == TerminalHistoryPhase.TERMINAL_HISTORY_PHASE_OPENING_FAILED) pull.reset()
     }
     // Reading is read-only, and the keyboard belongs to the live screen.
     LaunchedEffect(history.entered) {
@@ -332,7 +333,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             LaunchedEffect(imeVisible, heightPx) { followCursor() }
             term.onScreen = {
                 followCursor()
-                if (term.history.state.value.entered) newOutput = true
+                if (term.history.value.entered) newOutput = true
             }
             Box(Modifier.fillMaxSize().verticalScroll(scroll, enabled = false)) {
                 AndroidView(
@@ -367,7 +368,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             if (history.visible && !history.entered) {
                 // The first page is on its way, or failed: the live screen stays, with one grey
                 // line over it, and its retry captures the terminal again from scratch.
-                HistoryStatusLine(history, waiting = true, onRetry = { term.loadHistory(fresh = true) }, modifier = Modifier.align(Alignment.TopStart))
+                HistoryStatusLine(history, onRetry = { term.retryHistory() }, modifier = Modifier.align(Alignment.TopStart))
             }
             if (history.entered) {
                 val palette = term.session.emulator?.mColors?.mCurrentColors ?: TerminalColors.COLOR_SCHEME.mDefaultColors
@@ -381,7 +382,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                     history = history, typeface = typeface, palette = palette, fontPx = fontPx,
                     lineHeightPx = lineHeightPx, cellWidth = cellWidth, viewportPx = heightPx,
                     viewportWidthPx = widthPx, liveGridWidthPx = liveGridWidthPx, entryX = term.view?.panOffset ?: 0,
-                    entryRows = pull.rows, onLoadOlder = { term.loadHistory() }, onRetry = { term.loadHistory() },
+                    entryRows = pull.rows, onLoadOlder = { term.loadEarlierHistory() }, onRetry = { term.retryHistory() },
                     onLeave = { leaveReading() }, modifier = Modifier.fillMaxSize(),
                 )
                 HistoryPill(newOutput, { leaveReading() }, Modifier.align(Alignment.BottomEnd).padding(12.dp))
@@ -417,12 +418,12 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             compact = compact,
             enabled = state == RemoteTerminal.State.Live,
             onKey = { key ->
-                if (term.history.state.value.visible) leaveReading()
+                if (term.history.value.visible) leaveReading()
                 term.sendText(keySequence(key, term.session.emulator?.isCursorKeysApplicationMode == true))
             },
             onKeyboard = {
                 val v = term.view ?: return@KeyBar
-                val reading = term.history.state.value.visible
+                val reading = term.history.value.visible
                 if (reading) leaveReading()
                 val imm = v.context.getSystemService(InputMethodManager::class.java)
                 // Leaving reading opens the keyboard; otherwise the key goes on toggling it.

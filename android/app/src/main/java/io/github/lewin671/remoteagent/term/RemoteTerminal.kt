@@ -17,9 +17,11 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
+import io.github.lewin671.remoteagent.core.proto.TerminalHistoryEventKind
 import io.github.lewin671.remoteagent.core.proto.TerminalStreamEventKind
 import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.TerminalFrame
+import io.github.lewin671.remoteagent.proto.TerminalHistoryRequest
 import io.github.lewin671.remoteagent.proto.TerminalResize
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -49,16 +51,49 @@ class RemoteTerminal(
         data class Closed(val reason: MessageText) : State
     }
 
-    val history = TerminalHistory(scope)
     private val terminalId = "term-${nextId.getAndIncrement()}"
+    private val _history = MutableStateFlow(TerminalHistoryState())
+    val history: StateFlow<TerminalHistoryState> = _history
     private var unsubReopen: (() -> Unit)? = null
+    private var unsubHistoryReq: (() -> Unit)? = null
+    private var unsubHistoryUpd: (() -> Unit)? = null
     @Volatile private var active = false
     @Volatile private var liveNotified = false
-    fun loadHistory(fresh: Boolean = false) {
-        if (_state.value != State.Live) return
-        history.request(fresh) { id, cursor ->
-            conn?.send(TerminalFrame.newBuilder().setHistoryRequest(io.github.lewin671.remoteagent.proto.TerminalHistoryRequest.newBuilder().setRequestId(id).setCursor(cursor)).build())
+
+    init {
+        unsubHistoryReq = remote.coreHost.onTerminalHistorySendRequest(terminalId) { req ->
+            conn?.send(
+                TerminalFrame.newBuilder()
+                    .setHistoryRequest(
+                        TerminalHistoryRequest.newBuilder()
+                            .setRequestId(req.requestId)
+                            .setCursor(req.cursor),
+                    )
+                    .build(),
+            )
         }
+        unsubHistoryUpd = remote.coreHost.onTerminalHistoryUpdated(terminalId) { upd ->
+            _history.value = _history.value.applyUpdate(upd)
+        }
+    }
+
+    fun openHistory() {
+        if (_state.value != State.Live) return
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+    }
+
+    fun loadEarlierHistory() {
+        if (_state.value != State.Live) return
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER)
+    }
+
+    fun retryHistory() {
+        if (_state.value != State.Live) return
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_RETRY)
+    }
+
+    fun closeHistory() {
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE)
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -133,7 +168,7 @@ class RemoteTerminal(
     }
 
     private fun openAttempt() {
-        history.close()
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE)
         if (!remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) { close(); return }
         active = true
         ensureReopenSubscription()
@@ -158,7 +193,7 @@ class RemoteTerminal(
                 TerminalFrames.Offer.OVERFLOW -> main.post {
                     if (gen == generation) {
                         val wasOpened = conn != null
-                        history.disconnected()
+                        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED)
                         conn?.close()
                         conn = null
                         _state.value = State.Closed(UiMessages.terminalAndroidClosed().messageText())
@@ -213,7 +248,12 @@ class RemoteTerminal(
 
     private fun apply(f: TerminalFrame) {
         when (f.kindCase) {
-            TerminalFrame.KindCase.HISTORY_PAGE -> history.receive(f.historyPage)
+            TerminalFrame.KindCase.HISTORY_PAGE ->
+                remote.coreHost.sendTerminalHistory(
+                    terminalId,
+                    TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+                    f.historyPage,
+                )
             TerminalFrame.KindCase.SNAPSHOT -> {
                 val s = f.snapshot
                 session.snapshot(s.cols, s.rows, s.data.toByteArray())
@@ -229,7 +269,7 @@ class RemoteTerminal(
             }
             // The daemon says why before it hangs up; the end of the connection that follows says less.
             TerminalFrame.KindCase.CLOSED -> {
-                history.disconnected()
+                remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED)
                 if (_state.value !is State.Closed) {
                     val opened = conn != null
                     _state.value = State.Closed(f.closed.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.terminalAndroidClosed().messageText())
@@ -246,7 +286,7 @@ class RemoteTerminal(
     }
 
     fun send(data: ByteArray) {
-        if (_state.value != State.Live || history.state.value.visible) return
+        if (_state.value != State.Live || _history.value.visible) return
         conn?.send(TerminalFrame.newBuilder().setInput(ByteString.copyFrom(data)).build())
     }
 
@@ -305,7 +345,7 @@ class RemoteTerminal(
         unsubReopen?.invoke()
         unsubReopen = null
         remote.coreHost.sendTerminalStream(terminalId, TerminalStreamEventKind.TERMINAL_STREAM_EVENT_KIND_DISPOSED, false)
-        history.disconnected()
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED)
         generation++
         frames.close()
         _state.value = State.Closed(UiMessages.terminalAndroidPaused().messageText())
@@ -313,6 +353,15 @@ class RemoteTerminal(
         val previous = conn
         conn = null
         previous?.close()
+    }
+
+    fun dispose() {
+        close()
+        unsubHistoryReq?.invoke()
+        unsubHistoryReq = null
+        unsubHistoryUpd?.invoke()
+        unsubHistoryUpd = null
+        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_DISPOSED)
     }
 
     private inner class SessionClient : TerminalSessionClient {
