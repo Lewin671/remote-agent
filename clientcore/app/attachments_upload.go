@@ -209,6 +209,9 @@ func (c *Core) startItemPipeline(
 	}
 	if it.remoteOnly || !it.hasLocalCopy() {
 		c.markItemMissingLocal(it)
+		if ownerKind == attOwnerResend {
+			c.failItem(ctx, ownerKind, ownerKey, it, it.problem, it.fileError, effects)
+		}
 		return
 	}
 	it.targetMachineID = machineID
@@ -238,8 +241,11 @@ func (c *Core) startItemPipeline(
 
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE {
 		if !it.preparedValid(original) {
-			if !it.hasOriginalSource || it.sourceRef == "" {
+			if (original && !it.hasOriginalSource) || it.sourceRef == "" {
 				c.markItemMissingLocal(it)
+				if ownerKind == attOwnerResend {
+					c.failItem(ctx, ownerKind, ownerKey, it, it.problem, it.fileError, effects)
+				}
 				return
 			}
 			it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PREPARING

@@ -1929,3 +1929,83 @@ func TestAttachments_PutFailsStatusProbeNoAdvance_DoesNotLoopInfinitely(t *testi
 		t.Fatalf("expected upload to terminate in FAILED instead of looping infinitely")
 	}
 }
+
+func TestAttachments_ResendWithMissingLocalItem_FailsCleanlyInsteadOfHanging(t *testing.T) {
+	h := newAttHarness(t, true, true)
+
+	// Restore an outbox record mixing 1 valid local image + 1 item missing local copy!
+	mixedOutbox := &corev1.PersistedOutboxRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		SessionId:     h.sessionID,
+		RequestId:     "req-mixed-1",
+		MachineId:     h.machineA,
+		Text:          "mixed msg",
+		Mode:          v1.SendMode_SEND_MODE_STEER,
+		ImageIds:      []string{"old-img-1", "old-img-2"},
+		Items: []*corev1.PersistedAttachmentItem{
+			{
+				ItemId:            "ok-1",
+				Kind:              corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+				FileName:          "ok.jpg",
+				MimeType:          "image/jpeg",
+				SizeBytes:         4,
+				Sha256:            attTestHash(0xb4),
+				ImageFormat:       v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				HasOriginalSource: true,
+				HasPrepared:       true,
+				SourceRef:         "src-mix-ok",
+				PreparedRef:       "prep-mix-ok",
+			},
+			{
+				ItemId:            "missing-2",
+				Kind:              corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+				FileName:          "gone.jpg",
+				MimeType:          "image/jpeg",
+				HasOriginalSource: false,
+				HasPrepared:       false,
+				SourceRef:         "",
+				PreparedRef:       "",
+			},
+		},
+		CreatedMs: h.nowMs - 1000,
+	}
+	raw, _ := attachments.EncodePersistedOutbox(mixedOutbox)
+	cfgEff := h.dispatch(&corev1.Event{Event: &corev1.Event_AttachmentConfig{AttachmentConfig: &corev1.AttachmentConfigEvent{PersistDrafts: true, PersistOutbox: true, ScanStorage: true}}})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, Key: attachments.OutboxStorageKey(h.sessionID, "req-mixed-1"), Data: raw},
+				},
+			},
+		},
+	})
+	h.core.m.sessions.uiBySession[h.sessionID].Outgoing[0].State = 2 // OutgoingFailed
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: "req-mixed-1"}},
+	})
+
+	// Must NOT hang in SENDING! Resend job must be cleaned up and tray row must be FAILED.
+	if len(h.core.m.attachments.resendJobs) != 0 {
+		t.Fatalf("expected resend job aborted immediately when item lacks local copy, still have %d jobs", len(h.core.m.attachments.resendJobs))
+	}
+	var sawFailed bool
+	for _, it := range h.sessionView().GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.Group == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED {
+			sawFailed = true
+		}
+		if it.Activity == corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING {
+			t.Fatalf("resend with missing local item must NOT stay stuck in SENDING: %+v", it)
+		}
+	}
+	if !sawFailed {
+		t.Fatalf("expected failed tray item after missing-local resend failure")
+	}
+}

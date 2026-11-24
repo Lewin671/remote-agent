@@ -633,6 +633,9 @@ func (c *Core) startOutboxResend(
 
 	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sid}
 	for _, it := range job.items {
+		if job.aborted {
+			break
+		}
 		c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, machineID, job.original, it, effects)
 	}
 	c.pumpAttachmentQueues(ctx, effects)
