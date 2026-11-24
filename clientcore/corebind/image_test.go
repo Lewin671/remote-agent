@@ -17,10 +17,22 @@ func TestImageBindSmoke(t *testing.T) {
 	if _, err := nilPlan.Step(0, nil); err == nil {
 		t.Fatalf("expected error on nil ImagePlan")
 	}
-	p := NewImagePlan(int32(imageparse.ModeInspect), 0, 13)
-	res, err := p.Step(0, []byte("GIF89a\x04\x00\x03\x00\x00\x00\x00"))
+	gif := []byte{
+		'G', 'I', 'F', '8', '9', 'a', 4, 0, 3, 0, 0x00, 0, 0,
+		0x2c, 0, 0, 0, 0, 4, 0, 3, 0, 0, 2, 2, 0x44, 0x01, 0,
+		0x3b,
+	}
+	p := NewImagePlan(int32(imageparse.ModeInspect), 0, int64(len(gif)))
+	res, err := p.Step(0, gif)
 	if err != nil {
-		t.Fatalf("Step error: %v", err)
+		t.Fatalf("Step 1 error: %v", err)
+	}
+	if len(res) != 9 || res[0] != imageparse.StatusNeedSkipGifSubBlocks {
+		t.Fatalf("unexpected step 1 response: %x", res)
+	}
+	res, err = p.Step(28, gif[28:])
+	if err != nil {
+		t.Fatalf("Step 2 error: %v", err)
 	}
 	if len(res) < 16 || res[0] != imageparse.StatusDone || res[1] != byte(imageparse.FormatGIF) || res[3] != 1 {
 		t.Fatalf("unexpected inspect response: %x", res)

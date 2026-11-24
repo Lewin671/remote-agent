@@ -332,10 +332,6 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 
 	p.format = SniffFormat(buf)
 	if p.expectedFormat != FormatUnknown && p.format != p.expectedFormat {
-		if p.mode == ModeInspect {
-			// Mismatched format during inspect: return format and default orientation=1, no size.
-			return p.finish(), nil
-		}
 		return p.fail(ErrCodeMalformed, "image signature does not match expected format"), nil
 	}
 
@@ -370,17 +366,9 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 		riffSize := uint64(u32le(buf, 4))
 		end := uint64(8) + riffSize
 		if end > p.totalLen {
-			if p.mode == ModeInspect {
-				// Best-effort inspect: stop at file end rather than failing.
-				end = p.totalLen
-			} else {
-				return p.fail(ErrCodeMalformed, "WebP RIFF size runs past the end"), nil
-			}
+			return p.fail(ErrCodeMalformed, "WebP RIFF size runs past the end"), nil
 		}
 		if end <= 12 {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "WebP has no chunks"), nil
 		}
 		p.limit = end
@@ -442,9 +430,6 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 
 	for {
 		if p.pos >= p.totalLen {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "JPEG ends before EOI"), nil
 		}
 		if p.pos < base || p.pos >= bufEnd {
@@ -452,9 +437,6 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		}
 		rel := int(p.pos - base)
 		if buf[rel] != 0xff {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "JPEG expected a marker"), nil
 		}
 		m := rel + 1
@@ -463,9 +445,6 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		}
 		if m >= len(buf) {
 			if bufEnd >= p.totalLen {
-				if p.mode == ModeInspect {
-					return p.finish(), nil
-				}
 				return p.fail(ErrCodeMalformed, "JPEG ends before EOI"), nil
 			}
 			// Advance p.pos to the last 0xFF so fill bytes across window boundaries make forward progress.
@@ -478,13 +457,13 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		p.pos = start
 
 		if marker == 0xd9 { // EOI
+			if p.mode != ModeJpegSegments && !p.sawScan {
+				return p.fail(ErrCodeMalformed, "JPEG has no image data"), nil
+			}
 			if p.mode == ModeInspect {
 				return p.finish(), nil
 			}
 			if p.mode == ModeStrip {
-				if !p.sawScan {
-					return p.fail(ErrCodeMalformed, "JPEG has no image data"), nil
-				}
 				if !p.addKeep(start, start+2) {
 					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
 				}
@@ -503,29 +482,20 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		}
 
 		if marker == 0x00 || marker == 0x01 || marker == 0xd8 || (marker >= 0xd0 && marker <= 0xd7) {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "JPEG unexpected marker"), nil
 		}
 
 		// Need 2-byte length field at start+2..start+4.
 		if start+4 > bufEnd {
 			if start+4 > p.totalLen {
-				if p.mode == ModeInspect {
-					return p.finish(), nil
-				}
 				return p.fail(ErrCodeMalformed, "JPEG truncated segment header"), nil
 			}
-			return p.needRead(start, minU32(p.totalLen-start, defaultReadWindow)), nil
+			return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
 		}
 		relStart := int(start - base)
 		segLen := uint64(u16be(buf, relStart+2))
 		end := start + 2 + segLen
 		if segLen < 2 || end > p.totalLen {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "JPEG segment runs past the end"), nil
 		}
 
@@ -533,7 +503,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		if !p.sawScan && !p.hasSize && isJpegSOF(marker) {
 			if segLen >= 7 {
 				if start+9 > bufEnd {
-					return p.needRead(start, minU32(p.totalLen-start, defaultReadWindow)), nil
+					return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
 				}
 				p.height = uint32(u16be(buf, relStart+5))
 				p.width = uint32(u16be(buf, relStart+7))
@@ -558,9 +528,6 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 
 		if marker == 0xda { // SOS
 			p.sawScan = true
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			p.pendingSegStart = start
 			p.pendingSegEnd = end
 			p.pendingSegMarker = marker
@@ -571,20 +538,22 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 
 		// Determine keep flag for APPn / COM (needs at most 16 bytes past start+4).
 		keep := true
-		if marker == 0xfe {
-			keep = false
-		} else if marker >= 0xe0 && marker <= 0xef {
-			if marker == 0xe0 || marker == 0xe2 || marker == 0xee {
-				checkEnd := start + 16
-				if checkEnd > end {
-					checkEnd = end
-				}
-				if checkEnd > bufEnd {
-					return p.needRead(start, minU32(p.totalLen-start, defaultReadWindow)), nil
-				}
-				keep = keepJpegApp(marker, buf[relStart+4:int(checkEnd-base)])
-			} else {
+		if p.mode != ModeInspect {
+			if marker == 0xfe {
 				keep = false
+			} else if marker >= 0xe0 && marker <= 0xef {
+				if marker == 0xe0 || marker == 0xe2 || marker == 0xee {
+					checkEnd := start + 16
+					if checkEnd > end {
+						checkEnd = end
+					}
+					if checkEnd > bufEnd {
+						return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
+					}
+					keep = keepJpegApp(marker, buf[relStart+4:int(checkEnd-base)])
+				} else {
+					keep = false
+				}
 			}
 		}
 
@@ -604,10 +573,6 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 			}
 		}
 
-		// In Inspect mode, once we have both SOF dimensions and EXIF orientation, stop early!
-		if p.mode == ModeInspect && p.hasSize && p.haveExif {
-			return p.finish(), nil
-		}
 		p.pos = end
 	}
 }
@@ -640,9 +605,6 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 
 	for {
 		if p.pos+12 > p.totalLen {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "PNG chunk runs past the end"), nil
 		}
 		if p.pos < base || p.pos+8 > bufEnd {
@@ -657,17 +619,11 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 		chunkLen := uint64(u32be(buf, rel))
 		end := p.pos + 12 + chunkLen
 		if chunkLen > 0x7fffffff || end > p.totalLen {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "PNG chunk runs past the end"), nil
 		}
 		t0, t1, t2, t3 := buf[rel+4], buf[rel+5], buf[rel+6], buf[rel+7]
 		isIHDR := t0 == 'I' && t1 == 'H' && t2 == 'D' && t3 == 'R'
 		if p.pos == 8 && !isIHDR {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "PNG does not start with IHDR"), nil
 		}
 
@@ -708,7 +664,7 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 
 		isIEND := t0 == 'I' && t1 == 'E' && t2 == 'N' && t3 == 'D'
 		if isIEND {
-			if p.mode == ModeStrip && !p.sawData {
+			if !p.sawData {
 				return p.fail(ErrCodeMalformed, "PNG has no IDAT"), nil
 			}
 			return p.finish(), nil
@@ -744,9 +700,6 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 			return p.finish(), nil
 		}
 		if p.pos+8 > p.limit {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "WebP chunk header runs past the end"), nil
 		}
 		if p.pos < base || p.pos+8 > bufEnd {
@@ -763,9 +716,6 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 		dataStart := p.pos + 8
 		dataEnd := dataStart + size
 		if dataEnd > p.limit {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
 			return p.fail(ErrCodeMalformed, "WebP chunk runs past the end"), nil
 		}
 
@@ -773,9 +723,10 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 		isVP8L := t0 == 'V' && t1 == 'P' && t2 == '8' && t3 == 'L'
 		isVP8X := t0 == 'V' && t1 == 'P' && t2 == '8' && t3 == 'X'
 		if p.pos == 12 && !isVP8 && !isVP8L && !isVP8X {
-			if p.mode == ModeStrip {
-				return p.fail(ErrCodeMalformed, "WebP does not start with VP8, VP8L or VP8X"), nil
-			}
+			return p.fail(ErrCodeMalformed, "WebP does not start with VP8, VP8L or VP8X"), nil
+		}
+		if isVP8X && size < 10 {
+			return p.fail(ErrCodeMalformed, "WebP VP8X chunk too short"), nil
 		}
 
 		// Read dimensions from VP8X / VP8L / VP8.
@@ -865,24 +816,15 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 
 func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 	if p.stage == stageGifHeader {
-		if p.totalLen < 10 {
-			if p.mode == ModeInspect {
-				return p.finish(), nil
-			}
-			return p.fail(ErrCodeMalformed, "GIF too short"), nil
+		if p.totalLen < 13 {
+			return p.fail(ErrCodeMalformed, "not a GIF"), nil
 		}
-		if offset != 0 || len(buf) < 10 {
+		if offset != 0 || len(buf) < 13 {
 			return p.needRead(0, minU32(p.totalLen, defaultReadWindow)), nil
 		}
 		p.width = uint32(u16le(buf, 6))
 		p.height = uint32(u16le(buf, 8))
 		p.hasSize = true
-		if p.mode == ModeInspect {
-			return p.finish(), nil
-		}
-		if p.totalLen < 13 || len(buf) < 13 {
-			return p.fail(ErrCodeMalformed, "not a GIF"), nil
-		}
 		flags := buf[10]
 		pos := uint64(13)
 		if flags&0x80 != 0 {
@@ -891,7 +833,9 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 		if pos > p.totalLen {
 			return p.fail(ErrCodeMalformed, "GIF color table runs past the end"), nil
 		}
-		p.addKeep(0, pos)
+		if p.mode == ModeStrip {
+			p.addKeep(0, pos)
+		}
 		p.pos = pos
 		p.stage = stageGifWalk
 	}
@@ -901,7 +845,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			return p.fail(ErrCodeMalformed, "GIF data runs past the end"), nil
 		}
 		end := uint64(offset)
-		if p.pendingGifKeep {
+		if p.mode == ModeStrip && p.pendingGifKeep {
 			if !p.addKeep(p.pendingGifStart, end) {
 				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
 			}
@@ -933,8 +877,10 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			if p.gifFrames == 0 {
 				return p.fail(ErrCodeMalformed, "GIF has no image"), nil
 			}
-			if !p.addKeep(p.pos, p.pos+1) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			if p.mode == ModeStrip {
+				if !p.addKeep(p.pos, p.pos+1) {
+					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				}
 			}
 			return p.finish(), nil
 		case 0x21: // Extension

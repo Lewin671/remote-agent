@@ -224,25 +224,30 @@ func TestSharedImageVectors(t *testing.T) {
 				t.Errorf("%s (win=%d): SniffFormat = %q, want %q", tc.Name, maxWin, gotFmt, tc.Format)
 			}
 
-			// 2. ModeInspect (format, orientation, dimensions)
+			// 2. ModeInspect (format, orientation, dimensions) — acceptance matches ModeStrip!
 			done, errCode, errDetail := runPlanWithWindow(t, input, ModeInspect, FormatUnknown, maxWin)
-			if errCode != 0 {
+			if tc.StripError == "malformed" {
+				if errCode == 0 {
+					t.Errorf("%s (win=%d): ModeInspect accepted malformed input (must match ModeStrip)", tc.Name, maxWin)
+				}
+			} else if errCode != 0 {
 				t.Errorf("%s (win=%d): ModeInspect unexpected error %d: %s", tc.Name, maxWin, errCode, errDetail)
 				continue
-			}
-			if got := formatName(Format(done[1])); got != tc.Format {
-				t.Errorf("%s (win=%d): Inspect format = %q, want %q", tc.Name, maxWin, got, tc.Format)
-			}
-			if got := int32(done[2]); got != tc.Orientation {
-				t.Errorf("%s (win=%d): Inspect orientation = %d, want %d", tc.Name, maxWin, got, tc.Orientation)
-			}
-			if tc.Width != nil && tc.Height != nil {
-				if done[3] == 0 {
-					t.Errorf("%s (win=%d): expected size %dx%d, got hasSize=0", tc.Name, maxWin, *tc.Width, *tc.Height)
-				} else {
-					w, h := u32le(done, 4), u32le(done, 8)
-					if w != *tc.Width || h != *tc.Height {
-						t.Errorf("%s (win=%d): size = %dx%d, want %dx%d", tc.Name, maxWin, w, h, *tc.Width, *tc.Height)
+			} else {
+				if got := formatName(Format(done[1])); got != tc.Format {
+					t.Errorf("%s (win=%d): Inspect format = %q, want %q", tc.Name, maxWin, got, tc.Format)
+				}
+				if got := int32(done[2]); got != tc.Orientation {
+					t.Errorf("%s (win=%d): Inspect orientation = %d, want %d", tc.Name, maxWin, got, tc.Orientation)
+				}
+				if tc.Width != nil && tc.Height != nil {
+					if done[3] == 0 {
+						t.Errorf("%s (win=%d): expected size %dx%d, got hasSize=0", tc.Name, maxWin, *tc.Width, *tc.Height)
+					} else {
+						w, h := u32le(done, 4), u32le(done, 8)
+						if w != *tc.Width || h != *tc.Height {
+							t.Errorf("%s (win=%d): size = %dx%d, want %dx%d", tc.Name, maxWin, w, h, *tc.Width, *tc.Height)
+						}
 					}
 				}
 			}
@@ -628,5 +633,51 @@ func TestMemoryAmplificationGuards(t *testing.T) {
 	}
 	if len(stripped) != 12+8+len(bigVp8x)+8+6 {
 		t.Fatalf("VP8X stripped len = %d, want %d", len(stripped), 12+8+len(bigVp8x)+8+6)
+	}
+}
+
+func TestInspectAndStripAcceptanceIdentical(t *testing.T) {
+	// Malformed inputs carrying valid EXIF orientation must be rejected by BOTH ModeInspect and ModeStrip,
+	// so mobile stripOriginal rejects instead of silently falling back to pixel re-encoding.
+	webpExifFirst := makeWebpFile(makeRiffChunk("EXIF", makeTiffOrient(6, 64)))
+	webpTruncRiff := append([]byte{}, makeWebpFile(
+		makeRiffChunk("VP8X", func() []byte { b := make([]byte, 10); b[0] = 0x08; return b }()),
+		makeRiffChunk("EXIF", makeTiffOrient(6, 64)),
+		makeRiffChunk("VP8L", []byte{0x2f, 0, 0, 0, 0, 0}),
+	)...)
+	webpTruncRiff = webpTruncRiff[:len(webpTruncRiff)-2] // RIFF declared size > len
+
+	ihdr := makePngChunk("IHDR", []byte{0, 0, 0, 2, 0, 0, 0, 1, 8, 6, 0, 0, 0})
+	pngNoIdat := append(append(append([]byte{}, pngSignature[:]...), ihdr...), makePngChunk("eXIf", makeTiffOrient(6, 64))...)
+	pngNoIdat = append(pngNoIdat, makePngChunk("IEND", nil)...)
+	pngNoIend := append(append(append([]byte{}, pngSignature[:]...), ihdr...), makePngChunk("eXIf", makeTiffOrient(6, 64))...)
+	pngNoIend = append(pngNoIend, makePngChunk("IDAT", []byte{1, 2})...)
+
+	app1 := append([]byte{0xff, 0xe1, 0, 0}, append([]byte("Exif\x00\x00"), makeTiffOrient(6, 64)...)...)
+	app1[2] = byte((len(app1) - 2) >> 8)
+	app1[3] = byte(len(app1) - 2)
+	jpegNoEoi := append(append([]byte{0xff, 0xd8}, app1...), makeMinimalJpegBody()...)
+	jpegNoEoi = jpegNoEoi[:len(jpegNoEoi)-2]
+
+	gifNoTrailer := []byte{'G', 'I', 'F', '8', '9', 'a', 1, 0, 1, 0, 0, 0, 0, 0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, 0x44, 0x01, 0}
+
+	cases := []struct {
+		name string
+		data []byte
+		fmt  Format
+	}{
+		{"webp_exif_first", webpExifFirst, FormatWebP},
+		{"webp_trunc_riff", webpTruncRiff, FormatWebP},
+		{"png_no_idat", pngNoIdat, FormatPNG},
+		{"png_no_iend", pngNoIend, FormatPNG},
+		{"jpeg_no_eoi", jpegNoEoi, FormatJPEG},
+		{"gif_no_trailer", gifNoTrailer, FormatGIF},
+	}
+	for _, tc := range cases {
+		_, ic, _ := runPlanWithWindow(t, tc.data, ModeInspect, tc.fmt, 64*1024)
+		_, sc, _ := runPlanWithWindow(t, tc.data, ModeStrip, tc.fmt, 64*1024)
+		if ic == 0 || sc == 0 {
+			t.Errorf("%s: inspectCode=%d stripCode=%d, want both non-zero error", tc.name, ic, sc)
+		}
 	}
 }

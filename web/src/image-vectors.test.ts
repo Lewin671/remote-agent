@@ -29,6 +29,8 @@ describe("shared image parse & strip vectors (testdata/images/vectors.json)", ()
 
       if (tc.width !== undefined && tc.height !== undefined) {
         expect(imageSize(input, fmt)).toEqual({ width: tc.width, height: tc.height });
+      } else if (tc.stripError === "malformed") {
+        expect(() => imageSize(input, fmt as ImageFormat)).toThrow(ImageError);
       }
 
       if (tc.stripError) {
