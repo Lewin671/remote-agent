@@ -176,10 +176,10 @@ extension Remote {
         let initialSocket = deviceLink.relay.openStream("/v1/term", hello: try hello.serializedData())
         let socketBox = OSAllocatedUnfairLock<any TerminalSocket>(initialState: initialSocket)
         let activeLegBox = OSAllocatedUnfairLock<Data>(initialState: Data(streamId.utf8))
-        let hasCore = coreEventSink != nil
+        let hasCore = hostHooks != nil
         let terminals = activeTerminals
 
-        let stream = deviceLink.openStream(stop: { cancelPath in
+        let stream = deviceLink.openStream(stop: { [weak self] cancelPath in
             closed.withLock { $0 = true }
             terminals.unregister(streamId)
             if hasCore {
@@ -263,7 +263,7 @@ extension Remote {
             }
         }
 
-        let startReadLoop: @Sendable (any TerminalSocket, Data) -> Void = { [weak self] sock, legData in
+        let startReadLoop: @Sendable (any FrameStream, Data) -> Void = { [weak self] sock, legData in
             Task.detached {
                 while let bytes = try? await sock.receive() {
                     if closed.withLock({ $0 }) { continue }
@@ -382,42 +382,42 @@ extension Remote {
             await emitCoreEvent(openEv)
         }
 
-        return TermConn(
-            socket: initialSocket,
-            socketBox: socketBox,
-            seal: { frame, seq, deadline in
-                guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
-                let purpose: SecurityPurpose
-                let isInput: Bool
-                switch frame.kind {
-                case .input:
-                    purpose = .terminalInput
-                    isInput = true
-                case .resize:
-                    purpose = .terminalResize
-                    isInput = false
-                case .historyRequest:
-                    purpose = .terminalHistory
-                    isInput = false
-                default:
-                    throw SecurityFailure.invalid
-                }
-                let plain = try frame.serializedData()
-                let sealed = try await self.sealEnvelopeOp(
-                    purpose: purpose,
-                    machineId: machineId,
-                    sessionId: sid,
-                    requestId: streamId,
-                    seq: seq,
-                    deadlineMs: Int64(bitPattern: deadline),
-                    plaintext: plain,
-                    useSessionSeed: true
-                )
-                guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
-                let hash = Data(SHA256.hash(data: plain))
-                return (try sealed.envelope.serializedData(), hash, isInput)
-            },
-            dispatchInput: hasCore ? { [weak self] seq, isInput, encoded, frameHash in
+        let sealFn: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool) = { [weak self] frame, seq, deadline in
+            guard let self, !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
+            let purpose: SecurityPurpose
+            let isInput: Bool
+            switch frame.kind {
+            case .input:
+                purpose = .terminalInput
+                isInput = true
+            case .resize:
+                purpose = .terminalResize
+                isInput = false
+            case .historyRequest:
+                purpose = .terminalHistory
+                isInput = false
+            default:
+                throw SecurityFailure.invalid
+            }
+            let plain = try frame.serializedData()
+            let sealed = try await self.sealEnvelopeOp(
+                purpose: purpose,
+                machineId: machineId,
+                sessionId: sid,
+                requestId: streamId,
+                seq: seq,
+                deadlineMs: Int64(bitPattern: deadline),
+                plaintext: plain,
+                useSessionSeed: true
+            )
+            guard !closed.withLock({ $0 }) else { throw SecurityFailure.storage }
+            let hash = Data(SHA256.hash(data: plain))
+            return (try sealed.envelope.serializedData(), hash, isInput)
+        }
+
+        let dispatchInputFn: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)?
+        if hasCore {
+            dispatchInputFn = { [weak self] seq, isInput, encoded, frameHash in
                 guard let self else { return false }
                 var ev = PBCoreEvent()
                 ev.terminalDirectInput = .with {
@@ -429,7 +429,16 @@ extension Remote {
                 }
                 await self.emitCoreEvent(ev)
                 return true
-            } : nil,
+            }
+        } else {
+            dispatchInputFn = nil
+        }
+
+        return TermConn(
+            socket: initialSocket,
+            socketBox: socketBox,
+            seal: sealFn,
+            dispatchInput: dispatchInputFn,
             finish: finish,
             closeLocal: { stream.end(cancelPath: false) }
         )

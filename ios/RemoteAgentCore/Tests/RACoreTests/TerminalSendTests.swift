@@ -33,7 +33,7 @@ private final class DelayedTerminalSocket: TerminalSocket, Sendable {
         let socket = DelayedTerminalSocket()
         let closed = Mailbox<String>()
         let conn = TermConn(socket: socket, sendBudget: 100,
-            seal: { _, _, _ in Data(repeating: 0, count: 99) },
+            seal: { _, _, _ in (Data(repeating: 0, count: 99), Data(), true) },
             finish: { closed.put($0) }, closeLocal: {})
         conn.send(input)
         #expect(try await socket.writes.take().count == 99)
@@ -50,7 +50,7 @@ private final class DelayedTerminalSocket: TerminalSocket, Sendable {
         let closed = Mailbox<String>()
         let sealed = Mailbox<UInt64>()
         let conn = TermConn(socket: socket,
-            seal: { _, seq, _ in sealed.put(seq); return Data([UInt8(seq)]) },
+            seal: { _, seq, _ in sealed.put(seq); return (Data([UInt8(seq)]), Data(), true) },
             finish: { closed.put($0) }, closeLocal: {})
         conn.send(input)
         _ = try await socket.writes.take()
@@ -72,7 +72,7 @@ private final class DelayedTerminalSocket: TerminalSocket, Sendable {
         let socket = DelayedTerminalSocket()
         let closed = Mailbox<String>()
         let conn = TermConn(socket: socket, sendBudget: 100,
-            seal: { _, _, _ in Data(repeating: 0, count: 101) },
+            seal: { _, _, _ in (Data(repeating: 0, count: 101), Data(), true) },
             finish: { closed.put($0) }, closeLocal: {})
         conn.send(input)
         _ = try await closed.take()
