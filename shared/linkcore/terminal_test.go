@@ -379,23 +379,40 @@ func TestTerminalTwoFakePathsFaultInjection(t *testing.T) {
 		}
 	})
 
-	t.Run("h2_resize_and_history_not_cached_and_idle_30s_allows_input", func(t *testing.T) {
+	t.Run("h2_ha_resize_cached_for_reconcile_without_30s_pause_and_evicted_on_processed", func(t *testing.T) {
 		s := NewTerminalStream("stream-h2-000000000000001", "sess-1", "peer-1", "inst-a", base)
 		resize := TermFrame{Seq: 1, PayloadHash: sha256.Sum256([]byte("resize")), RawBytes: 16, IsInput: false, RawEnvelope: []byte("resize")}
 		if err := s.CacheInput(base, resize); err != nil {
 			t.Fatalf("CacheInput resize: %v", err)
 		}
-		if s.InputCacheLen() != 0 {
-			t.Fatalf("non-input frame must not enter input cache, got len=%d", s.InputCacheLen())
+		if s.InputCacheLen() != 1 {
+			t.Fatalf("H-A: non-input frame must enter cache for full-disconnect reconciliation, got len=%d", s.InputCacheLen())
 		}
-		s.ApplyInputAck(TermWatermark{Processed: 1, InputSuccess: 0})
+		// Even 31s WITHOUT ACK, non-input frame must NEVER pause the stream (H2).
 		s.Advance(base + 31_000)
 		if s.Paused {
-			t.Fatal("stream paused after 31s idle following Resize")
+			t.Fatal("stream paused after 31s idle following unACKed Resize")
 		}
-		key := TermFrame{Seq: 2, PayloadHash: sha256.Sum256([]byte("ls\n")), RawBytes: 16, IsInput: true, InputBytes: 3, RawEnvelope: []byte("ls\n")}
-		if err := s.CacheInput(base+31_000, key); err != nil {
-			t.Fatalf("CacheInput after 31s idle following Resize failed: %v", err)
+		// Processed watermark evicts non-input frame cleanly.
+		s.ApplyInputAck(TermWatermark{Processed: 1, InputSuccess: 0})
+		if s.InputCacheLen() != 0 {
+			t.Fatalf("expected Resize evicted on Processed=1, got len=%d", s.InputCacheLen())
+		}
+		// H-A: Resize (seq=2) + Input (seq=3) sent during disconnect -> ReconcileStatus resends BOTH in order!
+		resize2 := TermFrame{Seq: 2, PayloadHash: sha256.Sum256([]byte("resize2")), RawBytes: 16, IsInput: false, RawEnvelope: []byte("resize2")}
+		key3 := TermFrame{Seq: 3, PayloadHash: sha256.Sum256([]byte("ls\n")), RawBytes: 16, IsInput: true, InputBytes: 3, RawEnvelope: []byte("ls\n")}
+		if err := s.CacheInput(base+31_000, resize2); err != nil {
+			t.Fatalf("CacheInput resize2: %v", err)
+		}
+		if err := s.CacheInput(base+31_010, key3); err != nil {
+			t.Fatalf("CacheInput key3: %v", err)
+		}
+		resend, needBar, needConfirm := s.ReconcileStatus(base+32_000, TermStatusSnapshot{
+			Available: true,
+			State:     TermFlowState{ToDaemon: TermWatermark{Processed: 1, InputSuccess: 0}},
+		})
+		if needBar || needConfirm || len(resend) != 2 || resend[0].Seq != 2 || resend[1].Seq != 3 {
+			t.Fatalf("H-A: expected resend [seq=2, seq=3], got resend=%+v bar=%v confirm=%v", resend, needBar, needConfirm)
 		}
 	})
 

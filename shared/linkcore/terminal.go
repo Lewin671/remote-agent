@@ -802,17 +802,31 @@ func (s *TerminalStream) ReplayOutput(now uint64, fromSeq, throughSeq uint64, ma
 	return out, nil
 }
 
-// CacheInput records a client->daemon Input frame in the bounded 64 KiB / 30s / 128-frame input cache.
-// Non-input frames (Resize, HistoryRequest) are never retained in the input replay cache (H2).
+// CacheInput records a client->daemon frame (Input, Resize, HistoryRequest) in
+// the bounded client cache so full-disconnect reconciliation resends every frame
+// with seq > Processed in order without leaving seq holes on the daemon (H-A).
+// Non-input frames (Resize/History) never trigger the 30s pause rule (H2) and
+// receive a small dedicated reserve above the 128-frame / 64 KiB Input budget.
 func (s *TerminalStream) CacheInput(now uint64, f TermFrame) error {
-	if !f.IsInput {
-		return nil
-	}
 	if f.DeadlineMs > 0 && now >= f.DeadlineMs {
 		return ErrTermExpired
 	}
+	if s.NeedsUserConfirm {
+		s.Paused = true
+		return ErrTermBudget
+	}
 	charge := len(f.RawEnvelope) + len(f.PlainBytes) + 128
-	if s.Paused || s.NeedsUserConfirm || s.inputCacheBytes+charge > TermInputCacheMaxBytes || len(s.inputCache) >= TermInputCacheMaxFrames {
+	if !f.IsInput {
+		const nonInputReserveFrames = 16
+		const nonInputReserveBytes = 16 << 10
+		if s.inputCacheBytes+charge > TermInputCacheMaxBytes+nonInputReserveBytes || len(s.inputCache) >= TermInputCacheMaxFrames+nonInputReserveFrames {
+			return ErrTermBudget
+		}
+		s.inputCache[f.Seq] = termInputCacheItem{frame: f, cachedAt: now, charge: charge}
+		s.inputCacheBytes += charge
+		return nil
+	}
+	if s.Paused || s.inputCacheBytes+charge > TermInputCacheMaxBytes || len(s.inputCache) >= TermInputCacheMaxFrames {
 		s.Paused = true
 		return ErrTermBudget
 	}
@@ -924,7 +938,13 @@ func (s *TerminalStream) ReconcileStatus(now uint64, snap TermStatusSnapshot) (t
 			continue
 		}
 		if seq <= snap.State.ToDaemon.Processed {
-			// Processed without detail -> conservative: require user confirmation rather than guessing.
+			if !item.frame.IsInput {
+				// Non-input frame already processed on daemon (H-A): safe to evict.
+				s.inputCacheBytes -= item.charge
+				delete(s.inputCache, seq)
+				continue
+			}
+			// Processed Input without detail -> conservative: require user confirmation rather than guessing.
 			s.Paused = true
 			s.NeedsUserConfirm = true
 			needUserConfirm = true
@@ -1011,6 +1031,9 @@ func (s *TerminalStream) Advance(now uint64) (emitACK bool) {
 		s.NetworkRecovery = true
 	}
 	for _, item := range s.inputCache {
+		if !item.frame.IsInput {
+			continue
+		}
 		if now-item.cachedAt >= TermInputCacheMaxMs || (item.frame.DeadlineMs > 0 && now >= item.frame.DeadlineMs) {
 			s.Paused = true
 		}
@@ -1045,6 +1068,9 @@ func (s *TerminalStream) NextDue() (uint64, bool) {
 		add(s.lastACK + TermAckIntervalMs)
 	}
 	for _, item := range s.inputCache {
+		if !item.frame.IsInput {
+			continue
+		}
 		add(item.cachedAt + TermInputCacheMaxMs)
 		add(item.frame.DeadlineMs)
 	}

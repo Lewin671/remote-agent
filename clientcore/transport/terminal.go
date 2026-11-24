@@ -151,6 +151,7 @@ func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, session
 		relayOpen:  true,
 		relayLegID: legStr,
 		relayGen:   1,
+		phase3Used: c.engine.TerminalReady(now, machineID),
 	}
 	c.termStreams[streamID] = ct
 	c.maybeAttachDirectTerminal(now, ct)
@@ -286,43 +287,50 @@ func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64
 			delete(c.termStreams, streamID)
 			return c.take()
 		}
-		if isInput {
-			var hash32 [32]byte
-			copy(hash32[:], frameHash)
-			if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
-				Seq:         seq,
-				PayloadHash: hash32,
-				RawBytes:    len(sealedEnvelope),
-				IsInput:     true,
-				RawEnvelope: append([]byte(nil), sealedEnvelope...),
-			}); err != nil {
-				c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "input_cache_full"})
-				delete(c.termStreams, streamID)
-				return c.take()
-			}
-		}
-		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "no_leg"})
-		return c.take()
-	}
-
-	// H1/H2: Only cache Input frames when sending over a negotiated Phase 3 direct leg.
-	// Pure-relay / legacy-daemon streams and non-input frames (Resize/History) never
-	// depend on direct Control 2 ACKs to release the cache.
-	if directPC != 0 && isInput {
+		// H-A: cache ALL frames (including Resize/History) during full-disconnect so
+		// InputStatus reconciliation resends them in order without leaving seq gaps on daemon.
 		var hash32 [32]byte
 		copy(hash32[:], frameHash)
 		if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
 			Seq:         seq,
 			PayloadHash: hash32,
 			RawBytes:    len(sealedEnvelope),
-			IsInput:     true,
+			IsInput:     isInput,
 			RawEnvelope: append([]byte(nil), sealedEnvelope...),
 		}); err != nil {
-			// Never silently drop a frame while keeping the stream open (H1):
-			// fail/close explicitly so no unrecoverable seq hole is created on the daemon.
 			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "input_cache_full"})
 			delete(c.termStreams, streamID)
 			return c.take()
+		}
+		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "no_leg"})
+		return c.take()
+	}
+
+	// H1/H2/H-A: Cache all frames (Input + Resize/History) whenever the stream is Phase 3-capable
+	// (active direct leg OR previously negotiated Phase 3 so in-flight relay frames survive WS drop).
+	// Pure-relay / legacy-daemon streams never enter the direct-ACK cache (H1).
+	if directPC != 0 || ct.phase3Used {
+		var hash32 [32]byte
+		copy(hash32[:], frameHash)
+		if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
+			Seq:         seq,
+			PayloadHash: hash32,
+			RawBytes:    len(sealedEnvelope),
+			IsInput:     isInput,
+			RawEnvelope: append([]byte(nil), sealedEnvelope...),
+		}); err != nil {
+			// If direct has been absent long enough to fill cache while relay is healthy,
+			// degrade cleanly to pure-relay instead of killing a healthy relay stream.
+			if directPC == 0 && ct.relayOpen && !ct.stream.NeedsUserConfirm && ct.stream.FailedInputSeq() == 0 {
+				ct.stream.ClearInputCache()
+				ct.phase3Used = false
+			} else {
+				// Never silently drop a frame while keeping the stream open (H1):
+				// fail/close explicitly so no unrecoverable seq hole is created on the daemon.
+				c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "input_cache_full"})
+				delete(c.termStreams, streamID)
+				return c.take()
+			}
 		}
 	}
 
