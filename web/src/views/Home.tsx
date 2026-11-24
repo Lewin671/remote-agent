@@ -78,7 +78,7 @@ function ListError({ remote }: { remote: Remote }) {
 function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: boolean }) {
   const host = useCoreHost(remote);
   const sync = useSyncState(host);
-  const clockWarning = sync.accountClockSkewed ? t("errors.this_device_s_clock_is_behind_the_account_state") : "";
+  const clockWarning = renderText(sync.clockSkewBannerText);
   return (
     <div className="home-banners">
       <UpdateBanner />
@@ -835,7 +835,7 @@ export function SidebarView(p: {
   const scopeBtn = useRef<HTMLButtonElement>(null);
   const scopeTitle = renderText(vm.scopeTitle) || t("home.all_projects");
   const isAllScope = !vm.scopeKey;
-  const connText = renderText(vm.connection?.badgeText);
+  const connText = renderText(vm.connection?.sidebarBadgeText);
   const fresh = useFresh(vm.running.map((r) => r.sessionId), vm.headline?.kind !== HeadlineKind.UNSPECIFIED);
 
   return (
@@ -900,22 +900,18 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
   const host = useCoreHost(remote, go);
   const [endedLimit, setEndedLimit] = useState(30);
   const vm = useHomeView(host, endedLimit);
-  const sync = useSyncState(host);
   const schedVm = useSchedulesView(host, 1);
   const [connOpen, setConnOpen] = useState(false);
   const showTasks = tasks ?? active === "tasks";
 
   useEffect(() => { host.homeSelectSession(selected ?? ""); }, [host, selected]);
 
-  // Don't render stale "已连接" while reconnecting during grace window.
-  const connView = sync.connection !== ConnState.CONNECTED && sync.displayGrace ? (vm.connection ? { ...vm.connection, badgeText: undefined } : undefined) : vm.connection;
-  const viewVm = connView === vm.connection ? vm : { ...vm, connection: connView };
   const activeScope = project ?? vm.scopeKey;
 
   return (
     <>
       <SidebarView
-        vm={viewVm}
+        vm={vm}
         remote={remote}
         selected={selected}
         tasks={showTasks}

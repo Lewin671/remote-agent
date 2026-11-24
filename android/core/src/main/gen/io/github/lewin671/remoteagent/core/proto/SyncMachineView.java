@@ -21,6 +21,7 @@ public  final class SyncMachineView extends
     SyncMachineViewOrBuilder {
   private SyncMachineView() {
     machineId_ = "";
+    displayName_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -429,6 +430,54 @@ public  final class SyncMachineView extends
   private void clearTerminalReady() {
 
     terminalReady_ = false;
+  }
+
+  public static final int DISPLAY_NAME_FIELD_NUMBER = 15;
+  private java.lang.String displayName_;
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  @java.lang.Override
+  public java.lang.String getDisplayName() {
+    return displayName_;
+  }
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisplayNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(displayName_);
+  }
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @param value The displayName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    displayName_ = value;
+  }
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   */
+  private void clearDisplayName() {
+
+    displayName_ = getDefaultInstance().getDisplayName();
+  }
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @param value The bytes for displayName to set.
+   */
+  private void setDisplayNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    displayName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SyncMachineView parseFrom(
@@ -965,6 +1014,55 @@ public  final class SyncMachineView extends
       return this;
     }
 
+    /**
+     * <code>string display_name = 15 [json_name = "displayName"];</code>
+     * @return The displayName.
+     */
+    @java.lang.Override
+    public java.lang.String getDisplayName() {
+      return instance.getDisplayName();
+    }
+    /**
+     * <code>string display_name = 15 [json_name = "displayName"];</code>
+     * @return The bytes for displayName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisplayNameBytes() {
+      return instance.getDisplayNameBytes();
+    }
+    /**
+     * <code>string display_name = 15 [json_name = "displayName"];</code>
+     * @param value The displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisplayName(value);
+      return this;
+    }
+    /**
+     * <code>string display_name = 15 [json_name = "displayName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisplayName() {
+      copyOnWrite();
+      instance.clearDisplayName();
+      return this;
+    }
+    /**
+     * <code>string display_name = 15 [json_name = "displayName"];</code>
+     * @param value The bytes for displayName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisplayNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisplayNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncMachineView)
   }
   @java.lang.Override
@@ -996,11 +1094,12 @@ public  final class SyncMachineView extends
             "clientOutOfDate_",
             "reachabilityUnknown_",
             "terminalReady_",
+            "displayName_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
               "\u0003\u0002\u0004\u1009\u0000\u0005\u0003\u0006\u0007\u0007\u0007\b\u0007\t\u0007" +
-              "\n\u000b\u000b\u0007\f\u0007\r\u0007\u000e\u0007";
+              "\n\u000b\u000b\u0007\f\u0007\r\u0007\u000e\u0007\u000f\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

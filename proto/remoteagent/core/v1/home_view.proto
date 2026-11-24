@@ -21,6 +21,7 @@ message ConnectionStatusView {
   bool live_push_connected = 4;
   string reason = 5;
   int64 disconnected_at_ms = 6;
+  Text sidebar_badge_text = 7;
 }
 
 enum SessionTone {

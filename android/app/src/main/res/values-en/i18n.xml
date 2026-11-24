@@ -232,7 +232,6 @@
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
-    <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
     <string name="errors_android_secure_connection_failed">"Secure connection failed: %1$s"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"Security state unavailable"</string>

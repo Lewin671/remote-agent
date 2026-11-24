@@ -178,6 +178,7 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	case lists.ConnConnected:
 		view.State = corev1.ConnState_CONN_STATE_CONNECTED
 		view.BadgeText = text.Msg(text.KeyConnectionConnected)
+		view.SidebarBadgeText = text.Msg(text.KeyConnectionConnected)
 		if !st.LivePushConnected {
 			if !text.IsEmpty(st.ConnectionReasonText) {
 				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, text.ArgText("value", st.ConnectionReasonText))
@@ -188,6 +189,9 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	case lists.ConnReconnecting:
 		view.State = corev1.ConnState_CONN_STATE_RECONNECTING
 		view.BadgeText = text.Msg(text.KeyConnectionReconnectingConnCheck)
+		if !st.DisplayGrace {
+			view.SidebarBadgeText = text.Msg(text.KeyConnectionReconnectingConnCheck)
+		}
 		view.DetailText = text.Msg(text.KeyConnectionReconnecting)
 	case lists.ConnOffline:
 		view.State = corev1.ConnState_CONN_STATE_OFFLINE
@@ -204,6 +208,9 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	default:
 		view.State = corev1.ConnState_CONN_STATE_CONNECTING
 		view.BadgeText = text.Msg(text.KeyConnectionConnectingConnCheck)
+		if !st.DisplayGrace {
+			view.SidebarBadgeText = text.Msg(text.KeyConnectionConnectingConnCheck)
+		}
 		view.DetailText = text.Msg(text.KeyConnectionConnecting)
 	}
 	return view

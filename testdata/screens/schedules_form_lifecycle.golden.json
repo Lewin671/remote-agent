@@ -1177,7 +1177,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "machineOnline": true,
             "machineSupported": true,

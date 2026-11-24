@@ -208,7 +208,6 @@ object UiMessages {
     fun errorsAndroidImageContentDoesNotMatchItsFormat(): UiMessage = UiMessage("errors.android_image_content_does_not_match_its_format", emptyMap())
     fun errorsAndroidInvalidServerAddress(): UiMessage = UiMessage("errors.android_invalid_server_address", emptyMap())
     fun errorsAndroidLoginExpired(reason: String): UiMessage = UiMessage("errors.android_login_expired", mapOf("reason" to reason))
-    fun errorsAndroidOpenValue1ToRenew(value1: String): UiMessage = UiMessage("errors.android_open_value1_to_renew", mapOf("value1" to value1))
     fun errorsAndroidRemoteControlAuthorizationExpiredCannotSaveChangesControlSessionsOr(value1: String): UiMessage = UiMessage("errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or", mapOf("value1" to value1))
     fun errorsAndroidSecureConnectionFailed(reason: String): UiMessage = UiMessage("errors.android_secure_connection_failed", mapOf("reason" to reason))
     fun errorsAndroidSecurityStateUnavailable(): UiMessage = UiMessage("errors.android_security_state_unavailable", emptyMap())

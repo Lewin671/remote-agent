@@ -9,6 +9,16 @@ import (
 	unsafe "unsafe"
 )
 
+type ConnBannerKind int32
+
+const (
+	ConnBannerKind_CONN_BANNER_KIND_UNSPECIFIED ConnBannerKind = 0
+	ConnBannerKind_CONN_BANNER_KIND_NONE        ConnBannerKind = 1
+	ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK  ConnBannerKind = 2
+	ConnBannerKind_CONN_BANNER_KIND_NO_SERVER   ConnBannerKind = 3
+	ConnBannerKind_CONN_BANNER_KIND_WAITING     ConnBannerKind = 4
+)
+
 type SyncPendingQuestionOption struct {
 	_           [0]func()
 	Label       string
@@ -279,6 +289,7 @@ type SyncMachineView struct {
 	ClientOutOfDate     bool
 	ReachabilityUnknown bool
 	TerminalReady       bool
+	DisplayName         string
 }
 
 func (m *SyncMachineView) GetMachineId() string {
@@ -365,6 +376,12 @@ func (m *SyncMachineView) GetTerminalReady() bool {
 	}
 	return false
 }
+func (m *SyncMachineView) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
 
 var LitewireDesc_SyncMachineView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -382,6 +399,7 @@ var LitewireDesc_SyncMachineView = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(SyncMachineView{}.ClientOutOfDate), Kind: litewire.KindBool},
 		{Num: 13, Offset: unsafe.Offsetof(SyncMachineView{}.ReachabilityUnknown), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(SyncMachineView{}.TerminalReady), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(SyncMachineView{}.DisplayName), Kind: litewire.KindString},
 	},
 }
 
@@ -637,6 +655,72 @@ func (m *SyncDeviceView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SyncDeviceView)
 }
 
+type ConnBannerView struct {
+	_          [0]func()
+	Kind       ConnBannerKind
+	Visible    bool
+	ErrorTone  bool
+	KeptData   bool
+	Text       *Text
+	DetailText *Text
+}
+
+func (m *ConnBannerView) GetKind() ConnBannerKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *ConnBannerView) GetVisible() bool {
+	if m != nil {
+		return m.Visible
+	}
+	return false
+}
+func (m *ConnBannerView) GetErrorTone() bool {
+	if m != nil {
+		return m.ErrorTone
+	}
+	return false
+}
+func (m *ConnBannerView) GetKeptData() bool {
+	if m != nil {
+		return m.KeptData
+	}
+	return false
+}
+func (m *ConnBannerView) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+func (m *ConnBannerView) GetDetailText() *Text {
+	if m != nil {
+		return m.DetailText
+	}
+	return nil
+}
+
+var LitewireDesc_ConnBannerView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ConnBannerView{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(ConnBannerView{}.Visible), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(ConnBannerView{}.ErrorTone), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(ConnBannerView{}.KeptData), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(ConnBannerView{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(ConnBannerView{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *ConnBannerView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ConnBannerView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ConnBannerView)
+}
+
 type SyncStateView struct {
 	_                      [0]func()
 	Connection             ConnState
@@ -688,6 +772,9 @@ type SyncStateView struct {
 	DevicesLoadFailed      bool
 	DevicesErrorText       *Text
 	HasHandoffOffer        bool
+	ConnBanner             *ConnBannerView
+	ClockSkewBannerText    *Text
+	LeaseRenewalAdvice     *Text
 }
 
 func (m *SyncStateView) GetConnection() ConnState {
@@ -984,6 +1071,24 @@ func (m *SyncStateView) GetHasHandoffOffer() bool {
 	}
 	return false
 }
+func (m *SyncStateView) GetConnBanner() *ConnBannerView {
+	if m != nil {
+		return m.ConnBanner
+	}
+	return nil
+}
+func (m *SyncStateView) GetClockSkewBannerText() *Text {
+	if m != nil {
+		return m.ClockSkewBannerText
+	}
+	return nil
+}
+func (m *SyncStateView) GetLeaseRenewalAdvice() *Text {
+	if m != nil {
+		return m.LeaseRenewalAdvice
+	}
+	return nil
+}
 
 var LitewireDesc_SyncStateView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1036,6 +1141,9 @@ var LitewireDesc_SyncStateView = litewire.MessageDesc{
 		{Num: 47, Offset: unsafe.Offsetof(SyncStateView{}.DevicesLoadFailed), Kind: litewire.KindBool},
 		{Num: 48, Offset: unsafe.Offsetof(SyncStateView{}.DevicesErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 49, Offset: unsafe.Offsetof(SyncStateView{}.HasHandoffOffer), Kind: litewire.KindBool},
+		{Num: 50, Offset: unsafe.Offsetof(SyncStateView{}.ConnBanner), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnBannerView},
+		{Num: 51, Offset: unsafe.Offsetof(SyncStateView{}.ClockSkewBannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 52, Offset: unsafe.Offsetof(SyncStateView{}.LeaseRenewalAdvice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

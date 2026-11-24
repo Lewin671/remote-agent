@@ -684,6 +684,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	}
 	if m == nil {
 		vm.Name = machine.ShortID(machineID)
+		vm.ShortId = machine.ShortMachineID(machineID)
 		if !unlinked && waitingForMachineList(st) {
 			vm.Loading = true
 			vm.OfflineOrMismatchBanner = text.Msg(text.KeyCommonLoading)

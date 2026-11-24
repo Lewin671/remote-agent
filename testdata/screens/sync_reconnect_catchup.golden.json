@@ -479,6 +479,9 @@
               },
               "detailText": {
                 "key": "connection.reconnecting"
+              },
+              "sidebarBadgeText": {
+                "key": "connection.reconnecting_conn_check"
               }
             },
             "headline": {
@@ -643,6 +646,9 @@
               },
               "detailText": {
                 "key": "connection.reconnecting"
+              },
+              "sidebarBadgeText": {
+                "key": "connection.reconnecting_conn_check"
               }
             },
             "headline": {

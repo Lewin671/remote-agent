@@ -256,6 +256,54 @@ public  final class ConnectionStatusView extends
     disconnectedAtMs_ = 0L;
   }
 
+  public static final int SIDEBAR_BADGE_TEXT_FIELD_NUMBER = 7;
+  private io.github.lewin671.remoteagent.core.proto.Text sidebarBadgeText_;
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSidebarBadgeText() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSidebarBadgeText() {
+    return sidebarBadgeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : sidebarBadgeText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSidebarBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    sidebarBadgeText_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSidebarBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (sidebarBadgeText_ != null &&
+        sidebarBadgeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      sidebarBadgeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(sidebarBadgeText_).mergeFrom(value).buildPartial();
+    } else {
+      sidebarBadgeText_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   */
+  private void clearSidebarBadgeText() {
+    sidebarBadgeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnectionStatusView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -598,6 +646,53 @@ public  final class ConnectionStatusView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSidebarBadgeText() {
+      return instance.hasSidebarBadgeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSidebarBadgeText() {
+      return instance.getSidebarBadgeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    public Builder setSidebarBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSidebarBadgeText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    public Builder setSidebarBadgeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSidebarBadgeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    public Builder mergeSidebarBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSidebarBadgeText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+     */
+    public Builder clearSidebarBadgeText() {  copyOnWrite();
+      instance.clearSidebarBadgeText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnectionStatusView)
   }
   @java.lang.Override
@@ -621,10 +716,11 @@ public  final class ConnectionStatusView extends
             "livePushConnected_",
             "reason_",
             "disconnectedAtMs_",
+            "sidebarBadgeText_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0208\u0006\u0002";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\f\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0208\u0006\u0002\u0007\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

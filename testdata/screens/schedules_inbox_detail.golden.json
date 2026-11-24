@@ -364,7 +364,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "headline": {
               "kind": "SCHEDULE_HEADLINE_KIND_STOPPED",
@@ -718,7 +721,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "machineOnline": true,
             "machineSupported": true,
@@ -969,7 +975,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "headline": {
               "kind": "SCHEDULE_HEADLINE_KIND_STOPPED",
@@ -1271,7 +1280,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "machineOnline": true,
             "machineSupported": true,

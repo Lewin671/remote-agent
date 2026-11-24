@@ -4,7 +4,7 @@ import { t } from "./i18n";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject, type TouchEvent } from "react";
 import { useCoreHost, useSyncState } from "./core/host";
 import { renderText } from "./core/text";
-import { ConnState as CoreConnState } from "./gen/remoteagent/core/v1/home_view_pb";
+import { ConnBannerKind } from "./gen/remoteagent/core/v1/sync_view_pb";
 import { useExit, useKnob, useMarkSwap } from "./motion";
 import type { Tone } from "./model";
 import type { Remote } from "./remote";
@@ -530,29 +530,22 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   const host = useCoreHost(remote);
   const sync = useSyncState(host);
   const [details, setDetails] = useState(false);
-  const link = !sync.networkAvailable
-    ? "no-network"
-    : sync.removed || sync.connection === CoreConnState.OFFLINE || (sync.unlinked && !sync.reachabilityUnknown)
-      ? "no-server"
-      : sync.connection === CoreConnState.CONNECTED
-        ? "online"
-        : "waiting";
-  if (link === "online" || sync.displayGrace) return null;
-  // Nothing kept from before to show: the bar says what the connection is for.
-  const kept = (sync.machinesListed && sync.sessionsListed) || sync.sessions.length > 0;
-  if (link === "no-network") return <div className={className}><WifiOff /><span>{kept ? t("connection.no_network_previous") : t("connection.no_network_empty")}</span></div>;
-  if (link === "no-server") {
-    const reason = renderText(sync.connectionReason) || t("connection.no_response");
+  const banner = sync.connBanner;
+  if (!banner?.visible) return null;
+  if (banner.kind === ConnBannerKind.NO_NETWORK) {
+    return <div className={className}><WifiOff /><span>{renderText(banner.text)}</span></div>;
+  }
+  if (banner.kind === ConnBannerKind.NO_SERVER) {
     return (
-      <div className={className + (kept ? "" : " err")}>
+      <div className={className + (banner.errorTone ? " err" : "")}>
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
-        {kept ? <CloudOff /> : <X />}
-        <span>{details ? t("connection.server_details", { reason }) : t("connection.server_retrying")}</span>
+        {banner.keptData ? <CloudOff /> : <X />}
+        <span>{details ? renderText(banner.detailText) : renderText(banner.text)}</span>
         {details ? <button onClick={() => host.reconnectNow()}>{t("common.retry")}</button> : <button onClick={() => setDetails(true)}>{t("common.details")}</button>}
       </div>
     );
   }
-  return <div className={className}><LoaderCircle /><span>{sync.liveLoaded ? t("connection.reconnecting") : t("connection.connecting")}</span></div>;
+  return <div className={className}><LoaderCircle /><span>{renderText(banner.text)}</span></div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {

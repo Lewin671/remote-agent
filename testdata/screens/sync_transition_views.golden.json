@@ -199,7 +199,8 @@
                 },
                 "reachable": true,
                 "protocolVersion": 17,
-                "terminalReady": true
+                "terminalReady": true,
+                "displayName": "MacStudio"
               }
             ],
             "machinesListed": true,
@@ -260,7 +261,10 @@
             ],
             "connectionStartedAtMs": "1791078060000",
             "networkAvailable": true,
-            "everOnline": true
+            "everOnline": true,
+            "leaseRenewalAdvice": {
+              "key": "security.renew_now"
+            }
           }
         }
       }
@@ -575,7 +579,8 @@
                 },
                 "reachable": true,
                 "protocolVersion": 17,
-                "terminalReady": true
+                "terminalReady": true,
+                "displayName": "MacStudio"
               }
             ],
             "machinesListed": true,
@@ -647,7 +652,10 @@
             ],
             "connectionStartedAtMs": "1791078060000",
             "networkAvailable": true,
-            "everOnline": true
+            "everOnline": true,
+            "leaseRenewalAdvice": {
+              "key": "security.renew_now"
+            }
           }
         }
       }

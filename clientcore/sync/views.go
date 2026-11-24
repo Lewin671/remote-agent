@@ -4,8 +4,10 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 func protoConnState(c lists.ConnectionKind) corev1.ConnState {
@@ -88,6 +90,7 @@ func (e *Engine) buildSyncMachineView(m *MachineEntry) *corev1.SyncMachineView {
 		ClientOutOfDate:     m.ClientOutOfDate,
 		ReachabilityUnknown: e.machineReachabilityUnknown(m),
 		TerminalReady:       e.machineTerminalReady(m.ID),
+		DisplayName:         lists.MachineName(&lists.Machine{ID: m.ID, Meta: m.Meta}, m.ID),
 	}
 }
 
@@ -153,6 +156,65 @@ type syncDevicesByID []*corev1.SyncDeviceView
 func (s syncDevicesByID) Len() int           { return len(s) }
 func (s syncDevicesByID) Less(i, j int) bool { return s[i].DeviceId < s[j].DeviceId }
 func (s syncDevicesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func (e *Engine) buildConnBanner(w *world.State) *corev1.ConnBannerView {
+	var kind corev1.ConnBannerKind
+	switch {
+	case !e.networkAvailable:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK
+	case e.removed || w.World.Connection == lists.ConnOffline || (e.unlinkedFlag && !w.ReachabilityUnknown):
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER
+	case w.World.Connection == lists.ConnConnected:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NONE
+	default:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING
+	}
+	if kind == corev1.ConnBannerKind_CONN_BANNER_KIND_NONE || w.DisplayGrace {
+		return nil
+	}
+	kept := (w.World.MachinesListed && w.World.SessionsListed) || len(e.sessions) > 0
+	out := &corev1.ConnBannerView{
+		Kind:     kind,
+		Visible:  true,
+		KeptData: kept,
+	}
+	switch kind {
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK:
+		if kept {
+			out.Text = text.Msg(text.KeyConnectionNoNetworkPrevious)
+		} else {
+			out.Text = text.Msg(text.KeyConnectionNoNetworkEmpty)
+		}
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER:
+		out.ErrorTone = !kept
+		out.Text = text.Msg(text.KeyConnectionServerRetrying)
+		reason := w.ConnectionReasonText
+		if text.IsEmpty(reason) {
+			reason = text.Msg(text.KeyConnectionNoResponse)
+		}
+		out.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", reason))
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING:
+		if w.World.LiveLoaded {
+			out.Text = text.Msg(text.KeyConnectionReconnecting)
+		} else {
+			out.Text = text.Msg(text.KeyConnectionConnecting)
+		}
+	}
+	return out
+}
+
+func (e *Engine) buildLeaseRenewalAdvice(w *world.State) *corev1.Text {
+	if !e.security.Loaded {
+		return nil
+	}
+	if w.World.IsManager {
+		return text.Msg(text.KeySecurityRenewNow)
+	}
+	if !text.IsEmpty(w.ManagerNameText) {
+		return text.Msg(text.KeySecurityOpenToRenew, text.ArgText("value", w.ManagerNameText))
+	}
+	return nil
+}
 
 // BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
 // from the engine's world.
@@ -259,7 +321,17 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		DevicesLoadFailed:      e.devicesLoadFailed,
 		DevicesErrorText:       e.devicesErrorText,
 		HasHandoffOffer:        e.security.HasHandoffOffer,
+		ConnBanner:             e.buildConnBanner(w),
+		ClockSkewBannerText:    clockSkewBannerText(w.World.AccountClockSkewed),
+		LeaseRenewalAdvice:     e.buildLeaseRenewalAdvice(w),
 	}
+}
+
+func clockSkewBannerText(skewed bool) *corev1.Text {
+	if !skewed {
+		return nil
+	}
+	return text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
 }
 
 // BuildSessionDataView constructs the transitional SessionDataView for sessionID.

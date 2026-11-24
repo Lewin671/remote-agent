@@ -3249,3 +3249,74 @@ func TestTerminalReadyAndWaitingView(t *testing.T) {
 		t.Fatalf("expected terminal_ready=false terminal_waiting=false after grace expires, got machine=%+v session=%+v", v4.Machines[0], v4.Sessions[0])
 	}
 }
+
+func TestSyncViewBannerClockSkewDisplayNameAndRenewalAdvice(t *testing.T) {
+	e := NewEngine()
+	now := int64(1_700_000_000_000)
+	_, listsOp := startAndConnect(t, e, now)
+
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 20,
+		MonoMs: now + 20,
+		Event: &corev1.Event_ListsFetched{
+			ListsFetched: &corev1.ListsFetchedEvent{
+				OpId:     listsOp,
+				Machines: []*corev1.PlainMachine{{MachineId: "m-1234567890", Online: true, Meta: &v1.MachineMeta{Hostname: "MacStudio"}}},
+			},
+		},
+	})
+	vConnected := e.BuildSyncStateView()
+	if vConnected.ConnBanner != nil {
+		t.Fatalf("expected nil ConnBanner when connected, got %+v", vConnected.ConnBanner)
+	}
+	if len(vConnected.Machines) != 1 || vConnected.Machines[0].DisplayName != "MacStudio" {
+		t.Fatalf("expected DisplayName=MacStudio, got %+v", vConnected.Machines)
+	}
+	if vConnected.ClockSkewBannerText != nil {
+		t.Fatalf("expected nil ClockSkewBannerText when not skewed, got %+v", vConnected.ClockSkewBannerText)
+	}
+
+	// Clock skew populates banner text.
+	e.security.Loaded = true
+	e.security.IsMember = true
+	e.security.SelfDeviceID = "c-self"
+	e.security.AuthorityDeviceID = "c-mgr"
+	e.security.ClockSkewed = true
+	e.devices["c-mgr"] = &DeviceEntry{
+		ID:   "c-mgr",
+		Kind: v1.DeviceKind_DEVICE_KIND_CLIENT,
+		Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 16 · Pixel 9"},
+	}
+	e.refreshWorld()
+	vSkew := e.BuildSyncStateView()
+	if vSkew.GetClockSkewBannerText().GetKey() != text.KeyErrorsThisDeviceSClockIsBehindTheAccountState {
+		t.Fatalf("expected clock skew banner key, got %+v", vSkew.ClockSkewBannerText)
+	}
+	if vSkew.GetLeaseRenewalAdvice().GetKey() != text.KeySecurityOpenToRenew {
+		t.Fatalf("expected non-manager leaseRenewalAdvice=security.open_to_renew, got %+v", vSkew.LeaseRenewalAdvice)
+	}
+
+	// Manager gets security.renew_now.
+	e.security.AuthorityDeviceID = "c-self"
+	e.refreshWorld()
+	if got := e.BuildSyncStateView().GetLeaseRenewalAdvice().GetKey(); got != text.KeySecurityRenewNow {
+		t.Fatalf("expected manager leaseRenewalAdvice=security.renew_now, got %q", got)
+	}
+
+	// No network produces NO_NETWORK ConnBanner.
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 200,
+		MonoMs: now + 200,
+		Event:  &corev1.Event_NetworkChanged{NetworkChanged: &corev1.NetworkChangedEvent{Available: false, Signature: "none"}},
+	})
+	// Advance past display grace so ConnBanner becomes visible.
+	e.HandleEvent(&corev1.Event{
+		NowMs:  now + 200 + DisplayGraceMs + 100,
+		MonoMs: now + 200 + DisplayGraceMs + 100,
+		Event:  &corev1.Event_ClockUpdated{ClockUpdated: &corev1.LocalCalendar{NowMs: now + 200 + DisplayGraceMs + 100}},
+	})
+	vNoNet := e.BuildSyncStateView()
+	if vNoNet.ConnBanner == nil || !vNoNet.ConnBanner.Visible || vNoNet.ConnBanner.Kind != corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK {
+		t.Fatalf("expected NO_NETWORK visible ConnBanner, got %+v", vNoNet.ConnBanner)
+	}
+}

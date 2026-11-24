@@ -203,14 +203,10 @@ fun errorText(e: Throwable, sync: io.github.lewin671.remoteagent.core.proto.Sync
             "invalid", "untrusted" -> copy(UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed())
             "conflict" -> copy(UiMessages.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd())
             "lease" -> {
-                val advice = when {
-                    sync == null -> copy(UiMessages.securityAndroidRenewOnAuthority())
-                    sync.isManager -> copy(UiMessages.securityRenewNow())
-                    else -> {
-                        val name = if (sync.hasManagerName()) coreTextToMessageText(sync.managerName).resolve(copy) else ""
-                        if (name.isNotEmpty()) copy(UiMessages.errorsAndroidOpenValue1ToRenew(name))
-                        else copy(UiMessages.securityAndroidRenewOnAuthority())
-                    }
+                val advice = if (sync != null && sync.hasLeaseRenewalAdvice()) {
+                    coreTextToMessageText(sync.leaseRenewalAdvice).resolve(copy)
+                } else {
+                    copy(UiMessages.securityAndroidRenewOnAuthority())
                 }
                 copy(UiMessages.errorsAndroidRemoteControlAuthorizationExpiredCannotSaveChangesControlSessionsOr(advice))
             }

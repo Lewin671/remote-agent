@@ -532,3 +532,31 @@ func TestNewSessionPrefsBlocked(t *testing.T) {
 		})
 	}
 }
+
+func TestConnectionSidebarBadgeText(t *testing.T) {
+	cases := []struct {
+		name         string
+		conn         lists.ConnectionKind
+		displayGrace bool
+		wantKey      string
+	}{
+		{"connected", lists.ConnConnected, false, "connection.connected"},
+		{"connecting_no_grace", lists.ConnConnecting, false, "connection.connecting_conn_check"},
+		{"connecting_grace", lists.ConnConnecting, true, ""},
+		{"reconnecting_no_grace", lists.ConnReconnecting, false, "connection.reconnecting_conn_check"},
+		{"reconnecting_grace", lists.ConnReconnecting, true, ""},
+		{"offline_hidden", lists.ConnOffline, false, ""},
+		{"no_network_hidden", lists.ConnNoNetwork, false, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := NewState(nil)
+			st.World.Connection = tc.conn
+			st.DisplayGrace = tc.displayGrace
+			vm := BuildHome(st, 0)
+			if got := vm.GetConnection().GetSidebarBadgeText().GetKey(); got != tc.wantKey {
+				t.Fatalf("sidebarBadgeText.key=%q, want %q", got, tc.wantKey)
+			}
+		})
+	}
+}

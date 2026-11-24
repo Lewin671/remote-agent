@@ -1297,7 +1297,7 @@ internal fun DeviceScreenContent(
                         copy(UiMessages.settingsDeviceId()),
                         trailing = {
                             Text(
-                                vm.shortId.ifEmpty { vm.machineId.take(8) },
+                                vm.shortId,
                                 style = T.s13.copy(fontFamily = FontFamily.Monospace),
                                 color = p.ink2,
                                 maxLines = 1,
@@ -1940,9 +1940,12 @@ fun PairScreen(replacesDeviceId: String = "") {
             Hint(copy(UiMessages.securityComputerRunRemoteAgentAccountJoinAndEnterThe()))
             if (replacesDeviceId.isNotEmpty()) {
                 val settingsVm by remote.settingsView.collectAsState()
+                val syncVm by remote.coreHost.syncStateView.collectAsState()
                 val label = settingsVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.name
                     ?.takeIf { it.isNotEmpty() }
-                    ?: replacesDeviceId.take(8).ifEmpty { copy(UiMessages.commonUnknownComputer()) }
+                    ?: syncVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.displayName
+                        ?.takeIf { it.isNotEmpty() }
+                    ?: copy(UiMessages.commonUnknownComputer())
                 Hint(
                     copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions(label)),
                 )

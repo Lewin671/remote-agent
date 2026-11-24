@@ -223,7 +223,6 @@
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
-    <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
     <string name="errors_android_secure_connection_failed">"安全连接失败：%1$s"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"安全状态不可用"</string>

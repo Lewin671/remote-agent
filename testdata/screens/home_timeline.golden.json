@@ -196,7 +196,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "headline": {
               "kind": "HEADLINE_KIND_WAITING",
@@ -752,7 +755,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "headline": {
               "kind": "HEADLINE_KIND_WAITING",
@@ -1202,7 +1208,10 @@
               "badgeText": {
                 "key": "connection.connected"
               },
-              "livePushConnected": true
+              "livePushConnected": true,
+              "sidebarBadgeText": {
+                "key": "connection.connected"
+              }
             },
             "headline": {
               "kind": "HEADLINE_KIND_WAITING",

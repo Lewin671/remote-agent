@@ -61,25 +61,6 @@
     "zh-CN": "登录失效：{reason}"
   },
   {
-    "en": "Open {value1} to renew",
-    "key": "errors.android_open_value1_to_renew",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "请打开{value1}续期"
-  },
-  {
     "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
     "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",

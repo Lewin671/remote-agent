@@ -417,4 +417,37 @@ public interface SyncStateViewOrBuilder extends
    * @return The hasHandoffOffer.
    */
   boolean getHasHandoffOffer();
+
+  /**
+   * <code>.remoteagent.core.v1.ConnBannerView conn_banner = 50 [json_name = "connBanner"];</code>
+   * @return Whether the connBanner field is set.
+   */
+  boolean hasConnBanner();
+  /**
+   * <code>.remoteagent.core.v1.ConnBannerView conn_banner = 50 [json_name = "connBanner"];</code>
+   * @return The connBanner.
+   */
+  io.github.lewin671.remoteagent.core.proto.ConnBannerView getConnBanner();
+
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 51 [json_name = "clockSkewBannerText"];</code>
+   * @return Whether the clockSkewBannerText field is set.
+   */
+  boolean hasClockSkewBannerText();
+  /**
+   * <code>.remoteagent.core.v1.Text clock_skew_banner_text = 51 [json_name = "clockSkewBannerText"];</code>
+   * @return The clockSkewBannerText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getClockSkewBannerText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 52 [json_name = "leaseRenewalAdvice"];</code>
+   * @return Whether the leaseRenewalAdvice field is set.
+   */
+  boolean hasLeaseRenewalAdvice();
+  /**
+   * <code>.remoteagent.core.v1.Text lease_renewal_advice = 52 [json_name = "leaseRenewalAdvice"];</code>
+   * @return The leaseRenewalAdvice.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getLeaseRenewalAdvice();
 }
