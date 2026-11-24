@@ -137,7 +137,10 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_633_600_055,
-		Event: &corev1.Event_NewSessionSetPrompt{NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: "unsent draft text"}},
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{
+			Scope: &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/proj"},
+			Text:  "unsent draft text",
+		}},
 	})
 
 	// Open MachineSettings and verify CliSwitches visible with 3 CLIs enabled.

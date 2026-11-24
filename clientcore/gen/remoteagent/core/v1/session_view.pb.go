@@ -5920,13 +5920,9 @@ func (m *SessionImageViewerCloseAction) Unmarshal(b []byte) error {
 }
 
 type SessionRestoreComposerEffect struct {
-	_             [0]func()
-	SessionId     string
-	RequestId     string
-	Text          string
-	ImageIds      []string
-	FileIds       []string
-	HandledByCore bool
+	_         [0]func()
+	SessionId string
+	RequestId string
 }
 
 func (m *SessionRestoreComposerEffect) GetSessionId() string {
@@ -5941,39 +5937,11 @@ func (m *SessionRestoreComposerEffect) GetRequestId() string {
 	}
 	return ""
 }
-func (m *SessionRestoreComposerEffect) GetText() string {
-	if m != nil {
-		return m.Text
-	}
-	return ""
-}
-func (m *SessionRestoreComposerEffect) GetImageIds() []string {
-	if m != nil {
-		return m.ImageIds
-	}
-	return nil
-}
-func (m *SessionRestoreComposerEffect) GetFileIds() []string {
-	if m != nil {
-		return m.FileIds
-	}
-	return nil
-}
-func (m *SessionRestoreComposerEffect) GetHandledByCore() bool {
-	if m != nil {
-		return m.HandledByCore
-	}
-	return false
-}
 
 var LitewireDesc_SessionRestoreComposerEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.SessionId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.RequestId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.Text), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
-		{Num: 5, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
-		{Num: 6, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.HandledByCore), Kind: litewire.KindBool},
 	},
 }
 
@@ -5983,88 +5951,6 @@ func (m *SessionRestoreComposerEffect) Marshal() ([]byte, error) {
 
 func (m *SessionRestoreComposerEffect) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionRestoreComposerEffect)
-}
-
-type SessionResendAttachmentsEffect struct {
-	_               [0]func()
-	SessionId       string
-	MachineId       string
-	SourceRequestId string
-	NewRequestId    string
-	Text            string
-	Mode            v1.SendMode
-	ImageIds        []string
-	FileIds         []string
-}
-
-func (m *SessionResendAttachmentsEffect) GetSessionId() string {
-	if m != nil {
-		return m.SessionId
-	}
-	return ""
-}
-func (m *SessionResendAttachmentsEffect) GetMachineId() string {
-	if m != nil {
-		return m.MachineId
-	}
-	return ""
-}
-func (m *SessionResendAttachmentsEffect) GetSourceRequestId() string {
-	if m != nil {
-		return m.SourceRequestId
-	}
-	return ""
-}
-func (m *SessionResendAttachmentsEffect) GetNewRequestId() string {
-	if m != nil {
-		return m.NewRequestId
-	}
-	return ""
-}
-func (m *SessionResendAttachmentsEffect) GetText() string {
-	if m != nil {
-		return m.Text
-	}
-	return ""
-}
-func (m *SessionResendAttachmentsEffect) GetMode() v1.SendMode {
-	if m != nil {
-		return m.Mode
-	}
-	return 0
-}
-func (m *SessionResendAttachmentsEffect) GetImageIds() []string {
-	if m != nil {
-		return m.ImageIds
-	}
-	return nil
-}
-func (m *SessionResendAttachmentsEffect) GetFileIds() []string {
-	if m != nil {
-		return m.FileIds
-	}
-	return nil
-}
-
-var LitewireDesc_SessionResendAttachmentsEffect = litewire.MessageDesc{
-	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.SessionId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.MachineId), Kind: litewire.KindString},
-		{Num: 3, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.SourceRequestId), Kind: litewire.KindString},
-		{Num: 4, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.NewRequestId), Kind: litewire.KindString},
-		{Num: 5, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.Text), Kind: litewire.KindString},
-		{Num: 6, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.Mode), Kind: litewire.KindInt32},
-		{Num: 7, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
-		{Num: 8, Offset: unsafe.Offsetof(SessionResendAttachmentsEffect{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
-	},
-}
-
-func (m *SessionResendAttachmentsEffect) Marshal() ([]byte, error) {
-	return m.AppendMarshal(nil), nil
-}
-
-func (m *SessionResendAttachmentsEffect) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SessionResendAttachmentsEffect)
 }
 
 func init() {

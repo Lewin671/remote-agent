@@ -2406,9 +2406,6 @@ actor CoreHost: SyncEngine {
                 }
                 #endif
 
-            case .attachmentsSettled:
-                break
-
             case .requestEntropy(let req):
                 replenishEntropy(
                     minIds: max(Int(req.minIds), 8),
@@ -2429,9 +2426,6 @@ actor CoreHost: SyncEngine {
 
             case .sessionRestoreComposer(let r):
                 restoredComposers.append(r)
-
-            case .sessionResendAttachments:
-                break
 
             case .scheduleReadCache(let r):
                 if demoMode {

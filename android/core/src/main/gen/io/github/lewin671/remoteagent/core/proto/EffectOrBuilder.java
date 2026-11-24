@@ -165,17 +165,6 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NavigateEffect getNavigate();
 
   /**
-   * <code>.remoteagent.core.v1.AttachmentsSettledEffect attachments_settled = 16 [json_name = "attachmentsSettled"];</code>
-   * @return Whether the attachmentsSettled field is set.
-   */
-  boolean hasAttachmentsSettled();
-  /**
-   * <code>.remoteagent.core.v1.AttachmentsSettledEffect attachments_settled = 16 [json_name = "attachmentsSettled"];</code>
-   * @return The attachmentsSettled.
-   */
-  io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect getAttachmentsSettled();
-
-  /**
    * <code>.remoteagent.core.v1.RequestEntropyEffect request_entropy = 17 [json_name = "requestEntropy"];</code>
    * @return Whether the requestEntropy field is set.
    */
@@ -372,17 +361,6 @@ public interface EffectOrBuilder extends
    * @return The sessionRestoreComposer.
    */
   io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect getSessionRestoreComposer();
-
-  /**
-   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
-   * @return Whether the sessionResendAttachments field is set.
-   */
-  boolean hasSessionResendAttachments();
-  /**
-   * <code>.remoteagent.core.v1.SessionResendAttachmentsEffect session_resend_attachments = 41 [json_name = "sessionResendAttachments"];</code>
-   * @return The sessionResendAttachments.
-   */
-  io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect getSessionResendAttachments();
 
   /**
    * <code>.remoteagent.core.v1.SharedFileScanLocalEffect shared_file_scan_local = 42 [json_name = "sharedFileScanLocal"];</code>

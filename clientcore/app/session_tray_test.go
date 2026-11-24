@@ -609,7 +609,8 @@ func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 		t.Fatalf("expected [att-1] retained during 5s undo window, got %+v", ids)
 	}
 
-	// UndoCancel -> emits SessionResendAttachmentsEffect for att-1 AND direct QUEUE Send for txt-2, plus keeps att-1 retained until new Send submits!
+	// UndoCancel -> Core handles att-1 resend directly (fails explicitly with missing local outbox copy)
+	// AND dispatches direct QUEUE Send for txt-2.
 	undoBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_000,
 		Event: &corev1.Event_SessionUndoCancel{
@@ -619,58 +620,30 @@ func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 	if !hasCancelTimer(undoBatch, corev1.TimerKind_TIMER_KIND_SESSION_UNDO) {
 		t.Fatalf("expected TIMER_KIND_SESSION_UNDO canceled on undo")
 	}
-	var resendEff *corev1.SessionResendAttachmentsEffect
-	for _, eff := range undoBatch.GetEffects() {
-		if r := eff.GetSessionResendAttachments(); r != nil {
-			resendEff = r
-		}
-	}
-	if resendEff == nil || resendEff.GetSourceRequestId() != "att-1" || resendEff.GetMode() != v1.SendMode_SEND_MODE_QUEUE || len(resendEff.GetImageIds()) != 1 || len(resendEff.GetFileIds()) != 1 {
-		t.Fatalf("unexpected SessionResendAttachmentsEffect on undo: %+v", resendEff)
-	}
 	undoSendCmds := extractSendCommands(undoBatch)
 	if len(undoSendCmds) != 1 || undoSendCmds[0].cmd.GetSend().GetText() != "second paused" || undoSendCmds[0].cmd.GetSend().GetMode() != v1.SendMode_SEND_MODE_QUEUE {
 		t.Fatalf("expected direct QUEUE Send for text-only undo item, got %+v", undoSendCmds)
 	}
-	// att-1 MUST still remain in retainedAttachmentRequestIds while shell re-uploads resendEff.NewRequestId!
-	if ids := viewSession(t, c, sessID).GetComposer().GetRetainedAttachmentRequestIds(); len(ids) != 1 || ids[0] != "att-1" {
-		t.Fatalf("expected att-1 still retained until shell submits newReqID %q, got %+v", resendEff.GetNewRequestId(), ids)
+	// att-1 had no Core outbox local copy, so Core surfaces an explicit failed row in the pending tray.
+	trayAfterUndo := viewSession(t, c, sessID).GetComposer().GetPendingTray()
+	var sawFailedMissing bool
+	for _, it := range trayAfterUndo.GetOrderedItems() {
+		if it.GetGroup() == corev1.SessionTrayGroupKind_SESSION_TRAY_GROUP_KIND_FAILED && it.GetText() == "check screenshot" {
+			sawFailedMissing = true
+		}
+	}
+	if !sawFailedMissing {
+		t.Fatalf("expected failed tray item for attachment undo without local outbox copy, got %+v", trayAfterUndo.GetOrderedItems())
 	}
 
-	// Shell submits resendEff.NewRequestId -> att-1 drops, newReqID is retained until UserMessage, and Undo bar can re-trigger & expire.
-	reSendBatch := c.Dispatch(&corev1.Event{
-		NowMs: 1_791_078_061_100,
-		Event: &corev1.Event_SessionSubmitCommand{
-			SessionSubmitCommand: &corev1.SessionSubmitCommandAction{
-				SessionId: sessID,
-				Command: &v1.Command{
-					Kind: &v1.Command_Send{
-						Send: &v1.SendRequest{
-							SessionId: sessID,
-							RequestId: resendEff.GetNewRequestId(),
-							Text:      resendEff.GetText(),
-							Mode:      resendEff.GetMode(),
-							ImageIds:  []string{"img-2"},
-							FileIds:   []string{"file-2"},
-						},
-					},
-				},
-			},
-		},
-	})
-	dispatchExecutedOutcome(c, 1_791_078_061_110, extractSendCommands(reSendBatch)[0], "")
-	if ids := viewSession(t, c, sessID).GetComposer().GetRetainedAttachmentRequestIds(); len(ids) != 1 || ids[0] != resendEff.GetNewRequestId() {
-		t.Fatalf("expected retention transferred to %q, got %+v", resendEff.GetNewRequestId(), ids)
-	}
-
-	// Cancel txt-2 (from QUEUE/Sending -> mock stream QUEUED then cancel) and test 5s Undo timer expiry clears Undo + retention!
+	// Simulate a queued item and verify CancelInput failure vs success on SessionRestoreTrayItem.
 	appendStreamEvents(c, sessID, 1_791_078_061_120, []*v1.Event{
-		{Seq: 6, Kind: &v1.Event_InputState{InputState: &v1.InputState{RequestId: resendEff.GetNewRequestId(), Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "check screenshot", Mode: v1.SendMode_SEND_MODE_QUEUE, ImageIds: []string{"img-2"}}}},
+		{Seq: 6, Kind: &v1.Event_InputState{InputState: &v1.InputState{RequestId: "queued-txt-2", Status: v1.InputStatus_INPUT_STATUS_QUEUED, Text: "restore me", Mode: v1.SendMode_SEND_MODE_QUEUE}}},
 	})
 	restoreFailBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_150,
 		Event: &corev1.Event_SessionRestoreTrayItem{
-			SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: resendEff.GetNewRequestId()},
+			SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: "queued-txt-2"},
 		},
 	})
 	rCmd := extractCancelCommands(restoreFailBatch)[0]
@@ -678,16 +651,19 @@ func TestRestoreCancelAllUndoTimerAndAttachmentRetention(t *testing.T) {
 	if effs := dispatchExecutedOutcome(c, 1_791_078_061_160, rCmd, "busy").GetEffects(); hasRestoreEffect(effs) {
 		t.Fatalf("must NOT restore composer when CancelInput fails")
 	}
-	// Restore retry succeeds -> emits SessionRestoreComposerEffect.
+	// Restore retry succeeds -> emits SessionRestoreComposerEffect and puts text back into Core draft.
 	restoreOkBatch := c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_061_200,
 		Event: &corev1.Event_SessionRestoreTrayItem{
-			SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: resendEff.GetNewRequestId()},
+			SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: sessID, RequestId: "queued-txt-2"},
 		},
 	})
 	restoreSettled := dispatchExecutedOutcome(c, 1_791_078_061_210, extractCancelCommands(restoreOkBatch)[0], "")
 	if !hasRestoreEffect(restoreSettled.GetEffects()) {
 		t.Fatalf("expected SessionRestoreComposerEffect after CancelInput succeeded")
+	}
+	if got := viewSession(t, c, sessID).GetComposer().GetDraft().GetText(); got != "restore me" {
+		t.Fatalf("expected restored draft text %q, got %q", "restore me", got)
 	}
 
 	// Cancel another item then fire 5s TIMER_KIND_SESSION_UNDO -> Undo disappears.

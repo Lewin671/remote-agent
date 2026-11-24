@@ -368,7 +368,10 @@ func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1070,
-		Event: &corev1.Event_NewSessionSetPrompt{NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: "hello"}},
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{
+			Scope: &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: projKey},
+			Text:  "hello",
+		}},
 	})
 
 	viewNS := func() *corev1.NewSessionViewModel {

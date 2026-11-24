@@ -508,26 +508,19 @@ func (c *Core) restoreOutboxRecordFromPersisted(rec *corev1.PersistedOutboxRecor
 }
 
 // startOutboxResend handles Retry / Promote / Undo of a message with local attachments directly in Core.
-// Returns true if Core took ownership of the resend (false ONLY for legacy unmigrated shells that never
-// sent AttachmentConfigEvent; configured Core shells never fall back to SessionResendAttachmentsEffect).
 func (c *Core) startOutboxResend(
 	ctx *sync.StepContext,
 	sid, machineID, sourceReqID, newReqID, msgText string,
 	mode v1.SendMode,
 	effects *[]*corev1.Effect,
-) bool {
-	if c.m.attachments == nil || !c.m.attachments.configured {
-		if c.m.attachments == nil || c.m.attachments.outbox[sourceReqID] == nil {
-			return false
-		}
-	}
-	mgr := c.m.attachments
+) {
+	mgr := c.m.ensureAttachments()
 	src := mgr.outbox[sourceReqID]
 	store := c.m.ensureSessionStore()
 	ui := store.ensureUI(sid)
 
 	if src == nil || len(src.items) == 0 {
-		// Core-configured path with no local outbox copy: fail explicitly instead of emitting legacy effect.
+		// No local outbox copy available: fail explicitly in the pending tray.
 		ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
 			RequestID: newReqID,
 			SlotKey:   "send:" + sid + ":" + newReqID,
@@ -544,7 +537,7 @@ func (c *Core) startOutboxResend(
 			Mode:      mode,
 		}
 		store.pendingDirty = true
-		return true
+		return
 	}
 	if machineID == "" {
 		machineID = src.machineID
@@ -580,7 +573,7 @@ func (c *Core) startOutboxResend(
 	}
 	summaries := makeOutboxSummaries(clones)
 
-	recordImmediateFailure := func(errCode string, errText *corev1.Text) bool {
+	recordImmediateFailure := func(errCode string, errText *corev1.Text) {
 		c.registerFailedOutboxRecord(sid, machineID, newReqID, msgText, mode, src.original, src.imageIDs, src.fileIDs, clones, effects)
 		ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
 			RequestID:        newReqID,
@@ -604,19 +597,21 @@ func (c *Core) startOutboxResend(
 			LocalAttachments: summaries,
 		}
 		store.pendingDirty = true
-		return true
 	}
 
 	if !hasLocal {
-		return recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentFileMissing))
+		recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentFileMissing))
+		return
 	}
 	caps, onlineReady := c.resolveAttachmentCaps(machineID, false)
 	if !onlineReady || machineID == "" {
-		return recordImmediateFailure("unavailable", text.Msg(text.KeyAttachmentDisconnected))
+		recordImmediateFailure("unavailable", text.Msg(text.KeyAttachmentDisconnected))
+		return
 	}
 	if hasFiles && !caps.SupportsFiles {
 		// Per docs/session-files.md: reject whole resend if computer lacks file_upload.
-		return recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentUpdateRequired))
+		recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentUpdateRequired))
+		return
 	}
 
 	job := &attResendJob{
@@ -663,7 +658,6 @@ func (c *Core) startOutboxResend(
 		c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, machineID, job.original, it, effects)
 	}
 	c.pumpAttachmentQueues(ctx, effects)
-	return true
 }
 
 func (c *Core) registerFailedOutboxRecord(
@@ -1024,13 +1018,7 @@ func (c *Core) applyPutBackToDraft(
 	imgIDs, fileIDs []string,
 	alreadyCanceled bool,
 	effects *[]*corev1.Effect,
-) bool {
-	if c.m.attachments == nil || !c.m.attachments.configured {
-		// Only apply in-core when attachment manager is configured/active, OR when Core owns the outbox/draft.
-		if c.m.attachments == nil || (c.m.attachments.outbox[reqID] == nil && c.m.attachments.drafts["session:"+sid] == nil) {
-			return false
-		}
-	}
+) {
 	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sid}
 	d := c.ensureDraftState(scope)
 	d.activated = true
@@ -1100,7 +1088,7 @@ func (c *Core) applyPutBackToDraft(
 			}
 		}
 		c.markDraftDirty(ctx, d.scope)
-		return true
+		return
 	}
 
 	// 1. Merge text preserving what user already typed.
@@ -1214,7 +1202,6 @@ func (c *Core) applyPutBackToDraft(
 	c.startPendingDraftUploads(ctx, d, effects)
 	c.pumpAttachmentQueues(ctx, effects)
 	c.markDraftDirty(ctx, d.scope)
-	return true
 }
 
 func (c *Core) handleDraftPutBackInput(ctx *sync.StepContext, act *corev1.DraftPutBackInputAction) []*corev1.Effect {
@@ -1287,12 +1274,8 @@ func (c *Core) handleDraftPutBackInput(ctx *sync.StepContext, act *corev1.DraftP
 	effects = append(effects, &corev1.Effect{
 		Effect: &corev1.Effect_SessionRestoreComposer{
 			SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-				SessionId:     sid,
-				RequestId:     reqID,
-				Text:          textStr,
-				ImageIds:      slices.Clone(imgIDs),
-				FileIds:       slices.Clone(fileIDs),
-				HandledByCore: true,
+				SessionId: sid,
+				RequestId: reqID,
 			},
 		},
 	})
@@ -1423,57 +1406,44 @@ func (c *Core) pruneSettledOutboxRecords(ctx *sync.StepContext, effects *[]*core
 }
 
 // prepareNewSessionAttachments checks and captures Core-managed draft state for NewSessionSubmit.
-// Returns (imageIDs, fileIDs, blocked). When Core attachments are not configured and the new-session
-// draft has no items, returns (nil, nil, false) so legacy NewSessionSubmitAction.ImageIds/FileIds
-// continue working seamlessly. When configured, text-only submits are also recorded in
+// Returns (imageIDs, fileIDs, blocked). Text-only submits are also recorded in
 // newSessionStarts so settlement clears only the submitted text revision and preserves edits made
 // while CreateSession is in flight.
 func (c *Core) prepareNewSessionAttachments(ctx *sync.StepContext, projectKey, machineID, reqID string, effects *[]*corev1.Effect) ([]string, []string, bool) {
-	if c.m.attachments == nil || projectKey == "" {
+	if projectKey == "" {
 		return nil, nil, false
 	}
-	d := c.m.attachments.drafts["new:"+projectKey]
-	if !c.m.attachments.configured {
-		if d == nil || len(d.items) == 0 {
-			return nil, nil, false
+	mgr := c.m.ensureAttachments()
+	d := mgr.drafts["new:"+projectKey]
+	if d == nil {
+		prompt := ""
+		if nd := c.m.state.NewSessions[projectKey]; nd != nil {
+			prompt = nd.Prompt
 		}
-	} else {
-		if d == nil {
-			prompt := ""
-			if nd := c.m.state.NewSessions[projectKey]; nd != nil {
-				prompt = nd.Prompt
-			}
-			c.m.attachments.newSessionStarts[projectKey] = &attNewSessionStart{
-				projectKey: projectKey,
-				requestID:  reqID,
-				machineID:  machineID,
-				prompt:     prompt,
-				promptRev:  0,
-			}
-			return nil, nil, false
+		mgr.newSessionStarts[projectKey] = &attNewSessionStart{
+			projectKey: projectKey,
+			requestID:  reqID,
+			machineID:  machineID,
+			prompt:     prompt,
+			promptRev:  0,
 		}
-		if d.loadState == draftLoadLoading {
-			return nil, nil, true
-		}
-		if rImg, rFile := d.reservedCounts(); rImg > 0 || rFile > 0 {
-			return nil, nil, true
-		}
-		if len(d.items) == 0 {
-			c.m.attachments.newSessionStarts[projectKey] = &attNewSessionStart{
-				projectKey: projectKey,
-				requestID:  reqID,
-				machineID:  machineID,
-				prompt:     d.text,
-				promptRev:  d.textRev,
-			}
-			return nil, nil, false
-		}
+		return nil, nil, false
 	}
 	if d.loadState == draftLoadLoading {
 		return nil, nil, true
 	}
 	if rImg, rFile := d.reservedCounts(); rImg > 0 || rFile > 0 {
 		return nil, nil, true
+	}
+	if len(d.items) == 0 {
+		mgr.newSessionStarts[projectKey] = &attNewSessionStart{
+			projectKey: projectKey,
+			requestID:  reqID,
+			machineID:  machineID,
+			prompt:     d.text,
+			promptRev:  d.textRev,
+		}
+		return nil, nil, false
 	}
 	if c.refreshDraftExpiredItems(ctx, d, effects) {
 		c.pumpAttachmentQueues(ctx, effects)

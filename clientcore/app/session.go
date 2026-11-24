@@ -208,11 +208,6 @@ func pruneSessionLocalContents(ui *screens.SessionUIState, userMsgReqs, activeIn
 	if ui == nil {
 		return
 	}
-	for srcReqID, dstReqID := range ui.PendingResendSources {
-		if userMsgReqs[dstReqID] || (dstReqID != "" && ui.LocalContents[dstReqID] != nil) {
-			delete(ui.PendingResendSources, srcReqID)
-		}
-	}
 	keep := make(map[string]bool, len(activeInputReqs))
 	for reqID := range activeInputReqs {
 		keep[reqID] = true
@@ -233,9 +228,6 @@ func pruneSessionLocalContents(ui *screens.SessionUIState, userMsgReqs, activeIn
 				keep[it.SourceReqID] = true
 			}
 		}
-	}
-	for srcReqID := range ui.PendingResendSources {
-		keep[srcReqID] = true
 	}
 	for reqID := range ui.LocalContents {
 		if userMsgReqs[reqID] && !keep[reqID] {
@@ -421,11 +413,6 @@ func (c *Core) submitSessionCommandDirect(
 
 	if kind == slotKindSend && cmd.GetSend() != nil && outReqID != "" {
 		sr := cmd.GetSend()
-		for srcReqID, dstReqID := range ui.PendingResendSources {
-			if dstReqID == outReqID {
-				delete(ui.PendingResendSources, srcReqID)
-			}
-		}
 		ui.LocalContents[outReqID] = &screens.LocalSentContent{
 			RequestID: outReqID,
 			Text:      sr.Text,
@@ -1199,26 +1186,8 @@ func (c *Core) resendTrayContent(
 	newReqID := c.m.sync.NextID(ctx)
 	if len(imgIDs) > 0 || len(fileIDs) > 0 {
 		var resendEff []*corev1.Effect
-		if c.startOutboxResend(ctx, sid, machineID, sourceReqID, newReqID, textStr, mode, &resendEff) {
-			return resendEff
-		}
-		ui.PendingResendSources[sourceReqID] = newReqID
-		return []*corev1.Effect{
-			{
-				Effect: &corev1.Effect_SessionResendAttachments{
-					SessionResendAttachments: &corev1.SessionResendAttachmentsEffect{
-						SessionId:       sid,
-						MachineId:       machineID,
-						SourceRequestId: sourceReqID,
-						NewRequestId:    newReqID,
-						Text:            textStr,
-						Mode:            mode,
-						ImageIds:        append([]string(nil), imgIDs...),
-						FileIds:         append([]string(nil), fileIDs...),
-					},
-				},
-			},
-		}
+		c.startOutboxResend(ctx, sid, machineID, sourceReqID, newReqID, textStr, mode, &resendEff)
+		return resendEff
 	}
 	cmd := &v1.Command{
 		ProtocolVersion: sync.PeerVersion,
@@ -1334,22 +1303,15 @@ func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore,
 		c.abortResendJob(ctx, reqID, true, &effects)
 		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, true)
 		ui.DismissedInputIDs[reqID] = true
-		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, false, &effects)
+		c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, false, &effects)
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
-		restoreEff := &corev1.SessionRestoreComposerEffect{
-			SessionId:     sid,
-			RequestId:     reqID,
-			HandledByCore: handled,
-		}
-		if !handled {
-			restoreEff.Text = item.Text
-			restoreEff.ImageIds = append([]string(nil), item.ImageIds...)
-			restoreEff.FileIds = append([]string(nil), item.FileIds...)
-		}
 		effects = append(effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
-				SessionRestoreComposer: restoreEff,
+				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+					SessionId: sid,
+					RequestId: reqID,
+				},
 			},
 		})
 		return effects
@@ -1544,20 +1506,13 @@ func (c *Core) settleCancelInput(
 			*effects = append(*effects, effs...)
 		}
 	case screens.CancelIntentRestore:
-		handled := c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, true, effects)
-		restoreEff := &corev1.SessionRestoreComposerEffect{
-			SessionId:     meta.sessionID,
-			RequestId:     intent.SourceReqID,
-			HandledByCore: handled,
-		}
-		if !handled {
-			restoreEff.Text = intent.Text
-			restoreEff.ImageIds = append([]string(nil), intent.ImageIDs...)
-			restoreEff.FileIds = append([]string(nil), intent.FileIDs...)
-		}
+		c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, true, effects)
 		*effects = append(*effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
-				SessionRestoreComposer: restoreEff,
+				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
+					SessionId: meta.sessionID,
+					RequestId: intent.SourceReqID,
+				},
 			},
 		})
 	case screens.CancelIntentCancel, screens.CancelIntentCancelAll:

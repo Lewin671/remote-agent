@@ -495,17 +495,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NewSessionSelectModelAction getNewSessionSelectModel();
 
   /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   * @return Whether the newSessionSetPrompt field is set.
-   */
-  boolean hasNewSessionSetPrompt();
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   * @return The newSessionSetPrompt.
-   */
-  io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction getNewSessionSetPrompt();
-
-  /**
    * <code>.remoteagent.core.v1.NewSessionProjectAction new_session_retry_models = 56 [json_name = "newSessionRetryModels"];</code>
    * @return Whether the newSessionRetryModels field is set.
    */

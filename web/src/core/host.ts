@@ -2885,11 +2885,6 @@ export class CoreHost {
         writeStoredScope(val.value.scopeToken);
         break;
 
-      case "attachmentsSettled":
-        // Core manages new-session draft consumption directly when configured; clear pendingStart flag if not consumed.
-        if (!val.value.consumed) this.pendingStart = false;
-        break;
-
       case "navigate": {
         const nav = val.value;
         const replaceSession = nav.route === NavigateRoute.SESSION && this.pendingStart;
@@ -2920,10 +2915,6 @@ export class CoreHost {
         if (set) for (const fn of [...set]) fn(eff);
         break;
       }
-
-      case "sessionResendAttachments":
-        // Core-configured path never relies on legacy SessionResendAttachmentsEffect (Contract §6).
-        break;
 
       case "scheduleReadCache": {
         const { opId, machineId } = val.value;

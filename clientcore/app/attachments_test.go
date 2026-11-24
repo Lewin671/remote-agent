@@ -1383,12 +1383,12 @@ func TestAttachments_SendPersistOutbox_CancelPutBack_AndWhenKeptBarrier(t *testi
 	})
 	var sawRestoreEff bool
 	for _, ef := range restoreEff.GetEffects() {
-		if rc := ef.GetSessionRestoreComposer(); rc != nil && rc.HandledByCore {
+		if rc := ef.GetSessionRestoreComposer(); rc != nil && rc.SessionId == h.sessionID && rc.RequestId == reqID {
 			sawRestoreEff = true
 		}
 	}
 	if !sawRestoreEff {
-		t.Fatalf("expected SessionRestoreComposerEffect with HandledByCore=true")
+		t.Fatalf("expected SessionRestoreComposerEffect")
 	}
 	dv := h.draftView(scope)
 	if dv.Text != "already typed\nfirst message" {
@@ -1507,11 +1507,6 @@ func TestAttachments_CrashRecovery_CoreResend_AndAutoPrune(t *testing.T) {
 			SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: "req-crashed-1"},
 		},
 	})
-	for _, ef := range retryEff.GetEffects() {
-		if ef.GetSessionResendAttachments() != nil {
-			t.Fatalf("expected Core-driven resend, NOT legacy SessionResendAttachmentsEffect")
-		}
-	}
 	beginResend := findDispatchedCmds(retryEff)[0]
 	if beginResend.cmd.GetBeginImageUpload() == nil {
 		t.Fatalf("expected BeginImageUpload for Core-driven resend")
@@ -1804,15 +1799,10 @@ func TestAttachments_ResendFailure_RetainsOutboxForRetryAndPutBack(t *testing.T)
 		t.Fatalf("expected failed resend row in pending tray")
 	}
 
-	// Retry #2 on the failed resend row -> MUST start BeginImageUpload in Core (NOT fall back to legacy SessionResendAttachmentsEffect)!
+	// Retry #2 on the failed resend row -> MUST start BeginImageUpload directly in Core.
 	retry2Eff := h.dispatch(&corev1.Event{
 		Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: failedNewReqID}},
 	})
-	for _, ef := range retry2Eff.GetEffects() {
-		if ef.GetSessionResendAttachments() != nil {
-			t.Fatalf("retry after failed resend must NOT fall back to legacy SessionResendAttachmentsEffect")
-		}
-	}
 	var sawBegin2 bool
 	for _, sc := range findDispatchedCmds(retry2Eff) {
 		if sc.cmd.GetBeginImageUpload() != nil {

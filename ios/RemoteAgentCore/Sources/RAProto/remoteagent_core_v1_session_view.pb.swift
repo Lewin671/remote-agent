@@ -4658,8 +4658,8 @@ public struct PBSessionImageViewerCloseAction: Sendable {
   public init() {}
 }
 
-/// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
-/// (or simply focus the composer when handled_by_core is true).
+/// SessionRestoreComposerEffect instructs the shell to focus the composer
+/// after Core puts a message's text and attachments back into the draft.
 public struct PBSessionRestoreComposerEffect: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -4668,41 +4668,6 @@ public struct PBSessionRestoreComposerEffect: Sendable {
   public var sessionID: String = String()
 
   public var requestID: String = String()
-
-  public var text: String = String()
-
-  public var imageIds: [String] = []
-
-  public var fileIds: [String] = []
-
-  public var handledByCore: Bool = false
-
-  public var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  public init() {}
-}
-
-/// SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.
-public struct PBSessionResendAttachmentsEffect: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  public var sessionID: String = String()
-
-  public var machineID: String = String()
-
-  public var sourceRequestID: String = String()
-
-  public var newRequestID: String = String()
-
-  public var text: String = String()
-
-  public var mode: PBSendMode = .unspecified
-
-  public var imageIds: [String] = []
-
-  public var fileIds: [String] = []
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -11225,7 +11190,7 @@ extension PBSessionImageViewerCloseAction: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension PBSessionRestoreComposerEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionRestoreComposerEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}request_id\0\u{1}text\0\u{3}image_ids\0\u{3}file_ids\0\u{3}handled_by_core\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}request_id\0\u{b}text\0\u{b}image_ids\0\u{b}file_ids\0\u{b}handled_by_core\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}\u{c}\u{5}\u{1}\u{c}\u{6}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -11235,10 +11200,6 @@ extension PBSessionRestoreComposerEffect: SwiftProtobuf.Message, SwiftProtobuf._
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.requestID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.text) }()
-      case 4: try { try decoder.decodeRepeatedStringField(value: &self.imageIds) }()
-      case 5: try { try decoder.decodeRepeatedStringField(value: &self.fileIds) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.handledByCore) }()
       default: break
       }
     }
@@ -11251,93 +11212,12 @@ extension PBSessionRestoreComposerEffect: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.requestID.isEmpty {
       try visitor.visitSingularStringField(value: self.requestID, fieldNumber: 2)
     }
-    if !self.text.isEmpty {
-      try visitor.visitSingularStringField(value: self.text, fieldNumber: 3)
-    }
-    if !self.imageIds.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.imageIds, fieldNumber: 4)
-    }
-    if !self.fileIds.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.fileIds, fieldNumber: 5)
-    }
-    if self.handledByCore != false {
-      try visitor.visitSingularBoolField(value: self.handledByCore, fieldNumber: 6)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionRestoreComposerEffect, rhs: PBSessionRestoreComposerEffect) -> Bool {
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs.requestID != rhs.requestID {return false}
-    if lhs.text != rhs.text {return false}
-    if lhs.imageIds != rhs.imageIds {return false}
-    if lhs.fileIds != rhs.fileIds {return false}
-    if lhs.handledByCore != rhs.handledByCore {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBSessionResendAttachmentsEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SessionResendAttachmentsEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}session_id\0\u{3}machine_id\0\u{3}source_request_id\0\u{3}new_request_id\0\u{1}text\0\u{1}mode\0\u{3}image_ids\0\u{3}file_ids\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.sourceRequestID) }()
-      case 4: try { try decoder.decodeSingularStringField(value: &self.newRequestID) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.text) }()
-      case 6: try { try decoder.decodeSingularEnumField(value: &self.mode) }()
-      case 7: try { try decoder.decodeRepeatedStringField(value: &self.imageIds) }()
-      case 8: try { try decoder.decodeRepeatedStringField(value: &self.fileIds) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.sessionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sessionID, fieldNumber: 1)
-    }
-    if !self.machineID.isEmpty {
-      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 2)
-    }
-    if !self.sourceRequestID.isEmpty {
-      try visitor.visitSingularStringField(value: self.sourceRequestID, fieldNumber: 3)
-    }
-    if !self.newRequestID.isEmpty {
-      try visitor.visitSingularStringField(value: self.newRequestID, fieldNumber: 4)
-    }
-    if !self.text.isEmpty {
-      try visitor.visitSingularStringField(value: self.text, fieldNumber: 5)
-    }
-    if self.mode != .unspecified {
-      try visitor.visitSingularEnumField(value: self.mode, fieldNumber: 6)
-    }
-    if !self.imageIds.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.imageIds, fieldNumber: 7)
-    }
-    if !self.fileIds.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.fileIds, fieldNumber: 8)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBSessionResendAttachmentsEffect, rhs: PBSessionResendAttachmentsEffect) -> Bool {
-    if lhs.sessionID != rhs.sessionID {return false}
-    if lhs.machineID != rhs.machineID {return false}
-    if lhs.sourceRequestID != rhs.sourceRequestID {return false}
-    if lhs.newRequestID != rhs.newRequestID {return false}
-    if lhs.text != rhs.text {return false}
-    if lhs.mode != rhs.mode {return false}
-    if lhs.imageIds != rhs.imageIds {return false}
-    if lhs.fileIds != rhs.fileIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

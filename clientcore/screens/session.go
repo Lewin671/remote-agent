@@ -134,7 +134,6 @@ type SessionUIState struct {
 	Outgoing               []*SessionOutgoingRecord
 	LocalContents          map[string]*LocalSentContent
 	CancelIntents          map[string]*SessionCancelIntent
-	PendingResendSources   map[string]string
 	DismissedInputIDs      map[string]bool
 	SteerVisibleAfterMs    map[string]int64
 	SteerGraceNextTargetMs int64
@@ -180,7 +179,6 @@ func NewSessionUIState() *SessionUIState {
 		Commands:             make(map[string]*SessionCommandRecord),
 		LocalContents:        make(map[string]*LocalSentContent),
 		CancelIntents:        make(map[string]*SessionCancelIntent),
-		PendingResendSources: make(map[string]string),
 		DismissedInputIDs:    make(map[string]bool),
 		SteerVisibleAfterMs:  make(map[string]int64),
 		QuestionIndexByID:    make(map[string]int32),
@@ -2164,11 +2162,6 @@ func collectRetainedAttachmentIDs(p *corev1.ProjectionState, ui *SessionUIState)
 		for _, intent := range ui.CancelIntents {
 			if intent != nil && intent.SourceReqID != "" && intent.HasAttachments {
 				set[intent.SourceReqID] = true
-			}
-		}
-		for srcReqID := range ui.PendingResendSources {
-			if srcReqID != "" {
-				set[srcReqID] = true
 			}
 		}
 	}

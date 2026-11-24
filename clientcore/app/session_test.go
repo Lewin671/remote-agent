@@ -154,9 +154,10 @@ func TestSessionStartPromptDeduplicationAndForkNavigation(t *testing.T) {
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_050,
-		Event: &corev1.Event_NewSessionSetPrompt{
-			NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{
-				Prompt: "Build core session tests",
+		Event: &corev1.Event_DraftSetText{
+			DraftSetText: &corev1.DraftSetTextAction{
+				Scope: &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/proj"},
+				Text:  "Build core session tests",
 			},
 		},
 	})
@@ -1167,8 +1168,11 @@ func startSessionForStartupPromptTest(t *testing.T, sid, prompt string) (*Core, 
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_050,
-		Event: &corev1.Event_NewSessionSetPrompt{
-			NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: prompt},
+		Event: &corev1.Event_DraftSetText{
+			DraftSetText: &corev1.DraftSetTextAction{
+				Scope: &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/proj"},
+				Text:  prompt,
+			},
 		},
 	})
 	submitBatch := c.Dispatch(&corev1.Event{
@@ -1575,8 +1579,11 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	})
 	c.Dispatch(&corev1.Event{
 		NowMs: 1_791_078_060_050,
-		Event: &corev1.Event_NewSessionSetPrompt{
-			NewSessionSetPrompt: &corev1.NewSessionSetPromptAction{Prompt: "hi"},
+		Event: &corev1.Event_DraftSetText{
+			DraftSetText: &corev1.DraftSetTextAction{
+				Scope: &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/proj"},
+				Text:  "hi",
+			},
 		},
 	})
 	submitBatch := c.Dispatch(&corev1.Event{
