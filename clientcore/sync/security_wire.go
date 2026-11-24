@@ -50,6 +50,7 @@ type decodedDevice struct {
 	Meta       *v1.DeviceMeta
 	MetaRev    uint64
 	MetaBroken bool
+	Registered bool
 }
 
 type decodedPrefs struct {
@@ -464,6 +465,7 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 				CreatedMs:  d.CreatedMs,
 				LastSeenMs: d.LastSeenMs,
 				Meta:       d.Meta,
+				Registered: true,
 			})
 		}
 		if ev.Prefs != nil {
@@ -875,7 +877,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if d == nil || d.Id == "" {
 			continue
 		}
-		dd := decodedDevice{DeviceID: d.Id, Kind: d.Kind, CreatedMs: d.CreatedMs, LastSeenMs: d.LastSeenMs}
+		dd := decodedDevice{DeviceID: d.Id, Kind: d.Kind, CreatedMs: d.CreatedMs, LastSeenMs: d.LastSeenMs, Registered: true}
 		if idx := op.dIdx[i]; idx >= 0 {
 			r := results[idx]
 			if r.Err != nil {

@@ -208,7 +208,12 @@ private fun DeviceClientRow(c: ClientRowView, unfinished: Boolean, onClick: () -
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-            Ic(clientIconForDescription(c.description), 20.dp, p.ink2)
+            val icon = if (c.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_MACHINE) {
+                Lucide.Laptop
+            } else {
+                clientIconForDescription(c.description)
+            }
+            Ic(icon, 20.dp, p.ink2)
         }
         Column(Modifier.weight(1f)) {
             Text(c.displayName, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)

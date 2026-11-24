@@ -96,6 +96,7 @@ message SyncDeviceView {
   uint64 meta_rev = 6;
   bool meta_broken = 7;
   bool trusted = 8;
+  bool registered = 9;
 }
 
 // Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.

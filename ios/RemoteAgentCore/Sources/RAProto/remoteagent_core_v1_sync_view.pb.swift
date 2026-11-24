@@ -327,6 +327,8 @@ public struct PBCoreSyncDeviceView: Sendable {
 
   public var trusted: Bool = false
 
+  public var registered: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1316,7 +1318,7 @@ extension PBCoreSyncSessionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SyncDeviceView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}kind\0\u{3}created_ms\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}trusted\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{1}kind\0\u{3}created_ms\0\u{3}last_seen_ms\0\u{1}meta\0\u{3}meta_rev\0\u{3}meta_broken\0\u{1}trusted\0\u{1}registered\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1332,6 +1334,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 6: try { try decoder.decodeSingularUInt64Field(value: &self.metaRev) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.metaBroken) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.trusted) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.registered) }()
       default: break
       }
     }
@@ -1366,6 +1369,9 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if self.trusted != false {
       try visitor.visitSingularBoolField(value: self.trusted, fieldNumber: 8)
     }
+    if self.registered != false {
+      try visitor.visitSingularBoolField(value: self.registered, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1378,6 +1384,7 @@ extension PBCoreSyncDeviceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.metaRev != rhs.metaRev {return false}
     if lhs.metaBroken != rhs.metaBroken {return false}
     if lhs.trusted != rhs.trusted {return false}
+    if lhs.registered != rhs.registered {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

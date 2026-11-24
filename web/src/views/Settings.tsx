@@ -712,7 +712,10 @@ export function ClientsPage({
                 </span>
                 <span className="row-name">
                   <b>{kind === DeviceKind.MACHINE ? l10n.t("settings.computer") : l10n.t("security.client")}</b>
-                  <small>{l10n.t("settings.clients_pairing_incomplete_desc")}</small>
+                  <small>
+                    {l10n.t("settings.clients_pairing_incomplete_desc")}
+                    {d.shortId ? ` · ${d.shortId}` : ""}
+                  </small>
                 </span>
                 <span className="v warn-txt">{l10n.t("settings.clients_pairing_incomplete_badge")}</span>
               </div>

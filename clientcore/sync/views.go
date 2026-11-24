@@ -136,6 +136,7 @@ func (e *Engine) buildSyncDeviceView(d *DeviceEntry) *corev1.SyncDeviceView {
 		MetaRev:    d.MetaRev,
 		MetaBroken: d.MetaBroken,
 		Trusted:    trusted,
+		Registered: d.Registered,
 	}
 }
 

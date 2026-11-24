@@ -170,6 +170,7 @@ type DeviceEntry struct {
 	Meta       *v1.DeviceMeta
 	MetaRev    uint64
 	MetaBroken bool
+	Registered bool
 }
 
 // PrefsState holds the decrypted project preferences and CAS revision.

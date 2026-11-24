@@ -23,20 +23,24 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 		IsManager:         true,
 		Devices: []*corev1.SyncDeviceView{
 			{
-				DeviceId: "m1",
-				Kind:     v1.DeviceKind_DEVICE_KIND_MACHINE,
-				Trusted:  true,
-				Meta:     &v1.DeviceMeta{Name: "BuildBox"},
+				DeviceId:   "m1",
+				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
+				Trusted:    true,
+				Registered: true,
+				Meta:       &v1.DeviceMeta{Name: "BuildBox"},
 			},
 			{
-				DeviceId: "m-incomplete",
-				Kind:     v1.DeviceKind_DEVICE_KIND_MACHINE,
-				Meta:     &v1.DeviceMeta{Name: "JoiningMac"},
+				DeviceId:   "m-incomplete",
+				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
+				Trusted:    true,
+				Registered: false,
+				Meta:       &v1.DeviceMeta{Name: "JoiningMac"},
 			},
 			{
 				DeviceId:   "c1",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
+				Registered: true,
 				LastSeenMs: 1_700_000_000_000,
 				Meta:       &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"},
 			},
@@ -47,8 +51,12 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 	if len(dvm.Clients) != 1 || dvm.Clients[0].DeviceId != "c1" {
 		t.Fatalf("expected only client c1 in Clients, got %+v", dvm.Clients)
 	}
-	if len(dvm.UnfinishedPairings) != 1 || dvm.UnfinishedPairings[0].DeviceId != "m-incomplete" {
-		t.Fatalf("expected incomplete machine in UnfinishedPairings, got %+v", dvm.UnfinishedPairings)
+	if len(dvm.UnfinishedPairings) != 1 || dvm.UnfinishedPairings[0].DeviceId != "m-incomplete" || !dvm.UnfinishedPairings[0].Member || !dvm.UnfinishedPairings[0].PairingIncomplete {
+		t.Fatalf("expected incomplete trusted machine in UnfinishedPairings, got %+v", dvm.UnfinishedPairings)
+	}
+	detail := BuildClientDetail(st, sv, nil, "m-incomplete")
+	if !detail.Found || !detail.Member || !detail.CanRemove {
+		t.Fatalf("expected unfinished machine pairing detail to be removable, got %+v", detail)
 	}
 
 	svm := BuildSettings(st, sv, nil)
@@ -253,9 +261,9 @@ func TestSettingsRedesignProjections(t *testing.T) {
 		IsManager:         false,
 		RecoveryPending:   true,
 		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "c-self", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true},
-			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
-			{DeviceId: "c-pending", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: false},
+			{DeviceId: "c-self", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true},
+			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
+			{DeviceId: "c-pending", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: false},
 		},
 	}
 
@@ -411,7 +419,7 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 		AuthorityDeviceId: "c-auth",
 		IsManager:         false,
 		Devices: []*corev1.SyncDeviceView{
-			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
+			{DeviceId: "c-auth", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Trusted: true, Registered: true, Meta: &v1.DeviceMeta{Name: "Pixel 9"}},
 		},
 	}
 
@@ -484,7 +492,7 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	sv.ConnectionStartedAtMs = now - 5_000
 	sv.ConnectionStep = text.Plain("step")
 	sv.Machines = []*corev1.SyncMachineView{{MachineId: "1234567890abcdef", DirectReady: true}}
-	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{DeviceId: "1234567890abcdef", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Trusted: true})
+	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{DeviceId: "1234567890abcdef", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Trusted: true, Registered: true})
 	setVM := BuildSettings(st, sv, nil)
 	if !setVM.Security.HasHandoffOffer || !setVM.Security.RecoveryStatusStale || setVM.Security.LeaseEndMs != now+600_000 {
 		t.Fatalf("unexpected SecuritySummaryView fields: %+v", setVM.Security)

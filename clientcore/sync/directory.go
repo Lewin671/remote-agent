@@ -831,6 +831,7 @@ func (e *Engine) reconcileDevices(items []*corev1.PlainDevice, removedSnapshot, 
 			Meta:       d.Meta,
 			MetaRev:    d.MetaRev,
 			MetaBroken: d.MetaBroken,
+			Registered: true,
 		})
 	}
 	e.reconcileDecodedDevices(decoded, removedSnapshot, deviceSnapshot, allowEmpty)
@@ -962,6 +963,7 @@ func plainToDeviceEntry(pd *corev1.PlainDevice) *DeviceEntry {
 		Meta:       pd.Meta,
 		MetaRev:    pd.MetaRev,
 		MetaBroken: pd.MetaBroken,
+		Registered: true,
 	})
 }
 
@@ -978,6 +980,7 @@ func decodedToDeviceEntry(dd decodedDevice) *DeviceEntry {
 		Meta:       meta,
 		MetaRev:    dd.MetaRev,
 		MetaBroken: dd.MetaBroken,
+		Registered: dd.Registered,
 	}
 }
 

@@ -1655,3 +1655,43 @@ func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
 		t.Fatalf("expected verification error on tampered prefs, got %+v", e.w.PrefsGlobalErrorText)
 	}
 }
+
+func TestBuildAuthoritativeDevicesSeparatesTrustedAndRegistered(t *testing.T) {
+	e := NewEngine()
+	e.security.Loaded = true
+	e.security.SelfDeviceID = "c-self"
+	e.security.AuthorityDeviceID = "c-self"
+	e.security.TrustedClients = map[string]bool{
+		"c-self":        true,
+		"c-unreg-phone": true,
+	}
+	e.security.TrustedMachines = map[string]bool{
+		"m-reg":   true,
+		"m-unreg": true,
+	}
+
+	opened := []decodedDevice{
+		{DeviceID: "c-self", Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, CreatedMs: 100, LastSeenMs: 200, Registered: true},
+		{DeviceID: "m-reg", Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, CreatedMs: 100, LastSeenMs: 200, Registered: true},
+	}
+	auth := e.buildAuthoritativeDevices(opened)
+	e.reconcileDecodedDevices(auth, nil, nil, true)
+
+	sv := e.BuildSyncStateView()
+	byID := make(map[string]*corev1.SyncDeviceView, len(sv.Devices))
+	for _, d := range sv.Devices {
+		byID[d.DeviceId] = d
+	}
+	for _, id := range []string{"c-self", "m-reg"} {
+		d := byID[id]
+		if d == nil || !d.Trusted || !d.Registered {
+			t.Fatalf("expected registered member %s to have Trusted=true, Registered=true, got %+v", id, d)
+		}
+	}
+	for _, id := range []string{"c-unreg-phone", "m-unreg"} {
+		d := byID[id]
+		if d == nil || !d.Trusted || d.Registered {
+			t.Fatalf("expected unregistered candidate %s to have Trusted=true, Registered=false, got %+v", id, d)
+		}
+	}
+}
