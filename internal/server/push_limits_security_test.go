@@ -74,12 +74,12 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 		completed <- struct{}{}
 		return &http.Response{StatusCode: http.StatusCreated, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
 	})}
-	sub := pushSubscription(t, "https://push.example/endpoint")
-	// Each account has two clients subscribed.
+	// Each account has two clients subscribed, each with its own endpoint.
 	accounts := maxPushDeliveries / maxAccountPushDeliveries
 	for a := range accounts + 1 {
 		seedPushAccount(t, ts, fmt.Sprint("acct-", a))
 		for _, id := range []string{"a", "b"} {
+			sub := pushSubscription(t, fmt.Sprintf("https://push.example/endpoint/%d/%s", a, id))
 			if err := p.subscribe(context.Background(), st(fmt.Sprint("acct-", a)), fmt.Sprint(a, "-client-", id), sub, []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}); err != nil {
 				t.Fatal(err)
 			}
