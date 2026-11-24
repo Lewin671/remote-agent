@@ -8,6 +8,7 @@ import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.UsageRangePreset
 import io.github.lewin671.remoteagent.proto.UsageStatsResponse
 import kotlinx.coroutines.*
@@ -142,6 +143,7 @@ class CoreHost(
     private val scheduleStripWatchers = HashMap<String, KeyedWatcher<ScheduleSessionStripViewModel, Unit>>()
     private val testScheduleStripViews = HashMap<String, ScheduleSessionStripViewModel>()
     private val dirPickerWatchers = HashMap<String, KeyedWatcher<DirPickerView, Unit>>()
+    private val draftWatchers = HashMap<String, KeyedWatcher<AttachmentDraftView, DraftScope>>()
 
     var onOpenStream: (OpenStreamEffect) -> Unit = {}
     var onCloseStream: (CloseStreamEffect) -> Unit = {}
@@ -205,6 +207,15 @@ class CoreHost(
     var onSharedFileDeleteSession: (SharedFileDeleteSessionEffect) -> Unit = {}
     var onSharedFileClearAll: (SharedFileClearAllEffect) -> Unit = {}
     var onSharedFileCompleted: (SharedFileCompletedEffect) -> Unit = {}
+    var onDraftStorageList: (DraftStorageListEffect) -> Unit = {}
+    var onDraftStorageRead: (DraftStorageReadEffect) -> Unit = {}
+    var onDraftStorageWrite: (DraftStorageWriteEffect) -> Unit = {}
+    var onDraftStorageDelete: (DraftStorageDeleteEffect) -> Unit = {}
+    var onDraftStorageClearAll: (DraftStorageClearAllEffect) -> Unit = {}
+    var onAttachmentPrepareImage: (AttachmentPrepareImageEffect) -> Unit = {}
+    var onAttachmentHashFile: (AttachmentHashFileEffect) -> Unit = {}
+    var onAttachmentReadChunk: (AttachmentReadChunkEffect) -> Unit = {}
+    var onAttachmentReleaseLocal: (AttachmentReleaseLocalEffect) -> Unit = {}
 
     private val nextDirectCallId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
@@ -649,6 +660,15 @@ class CoreHost(
             Effect.EffectCase.SHARED_FILE_DELETE_SESSION -> onSharedFileDeleteSession(effect.sharedFileDeleteSession)
             Effect.EffectCase.SHARED_FILE_CLEAR_ALL -> onSharedFileClearAll(effect.sharedFileClearAll)
             Effect.EffectCase.SHARED_FILE_COMPLETED -> onSharedFileCompleted(effect.sharedFileCompleted)
+            Effect.EffectCase.DRAFT_STORAGE_LIST -> onDraftStorageList(effect.draftStorageList)
+            Effect.EffectCase.DRAFT_STORAGE_READ -> onDraftStorageRead(effect.draftStorageRead)
+            Effect.EffectCase.DRAFT_STORAGE_WRITE -> onDraftStorageWrite(effect.draftStorageWrite)
+            Effect.EffectCase.DRAFT_STORAGE_DELETE -> onDraftStorageDelete(effect.draftStorageDelete)
+            Effect.EffectCase.DRAFT_STORAGE_CLEAR_ALL -> onDraftStorageClearAll(effect.draftStorageClearAll)
+            Effect.EffectCase.ATTACHMENT_PREPARE_IMAGE -> onAttachmentPrepareImage(effect.attachmentPrepareImage)
+            Effect.EffectCase.ATTACHMENT_HASH_FILE -> onAttachmentHashFile(effect.attachmentHashFile)
+            Effect.EffectCase.ATTACHMENT_READ_CHUNK -> onAttachmentReadChunk(effect.attachmentReadChunk)
+            Effect.EffectCase.ATTACHMENT_RELEASE_LOCAL -> onAttachmentReleaseLocal(effect.attachmentReleaseLocal)
             else -> {}
         }
     }
@@ -737,6 +757,7 @@ class CoreHost(
         when (target) {
             ScreenTarget.SCREEN_TARGET_SESSION -> refreshAllKeyed(sessionWatchers, ::refreshSessionOnWorker)
             ScreenTarget.SCREEN_TARGET_SCHEDULE_SESSION_STRIP -> refreshAllKeyed(scheduleStripWatchers, ::refreshScheduleStripOnWorker)
+            ScreenTarget.SCREEN_TARGET_ATTACHMENT_DRAFT -> refreshAllKeyed(draftWatchers, ::refreshDraftOnWorker)
             ScreenTarget.SCREEN_TARGET_PROJECT -> {
                 val slot = screenSlots[target]
                 if (slot != null) {
@@ -797,6 +818,19 @@ class CoreHost(
             .build()
         val vm = viewOnWorker(screen) ?: return
         if (vm.viewCase == ViewModel.ViewCase.SESSION) watcher.flow.value = vm.session
+    }
+
+    private fun refreshDraftOnWorker(scopeKey: String) {
+        if (scopeKey.isEmpty() || closed.get() || testOverrideViews) return
+        val (watcher, scope) = synchronized(draftWatchers) {
+            val w = draftWatchers[scopeKey] ?: return
+            w to w.meta
+        }
+        val screen = Screen.newBuilder()
+            .setAttachmentDraft(AttachmentDraftScreenRequest.newBuilder().setScope(scope))
+            .build()
+        val vm = viewOnWorker(screen) ?: return
+        if (vm.viewCase == ViewModel.ViewCase.ATTACHMENT_DRAFT) watcher.flow.value = vm.attachmentDraft.draft
     }
 
     private fun viewOnWorker(screen: Screen): ViewModel? {
@@ -862,6 +896,32 @@ class CoreHost(
                 if (--existing.refCount <= 0) dirPickerWatchers.remove(pickerKey)
             }
         }
+    }
+
+    fun watchAttachmentDraft(scope: DraftScope): Flow<AttachmentDraftView> {
+        val key = draftScopeStorageKey(scope)
+        require(key.isNotEmpty()) { "draft scope must not be empty" }
+        return KeyedWatchFlow(draftWatchers, key, { acquireDraftWatcher(key, scope) }) {
+            synchronized(draftWatchers) {
+                val existing = draftWatchers[key] ?: return@synchronized
+                if (--existing.refCount <= 0) draftWatchers.remove(key)
+            }
+        }
+    }
+
+    fun snapshotAttachmentDraft(scope: DraftScope): AttachmentDraftView {
+        val key = draftScopeStorageKey(scope)
+        if (key.isEmpty() || closed.get()) return AttachmentDraftView.getDefaultInstance()
+        synchronized(draftWatchers) {
+            draftWatchers[key]?.flow?.value?.let { return it }
+        }
+        val vm = viewOnWorker(
+            Screen.newBuilder()
+                .setAttachmentDraft(AttachmentDraftScreenRequest.newBuilder().setScope(scope))
+                .build(),
+        )
+        return if (vm != null && vm.viewCase == ViewModel.ViewCase.ATTACHMENT_DRAFT) vm.attachmentDraft.draft
+        else AttachmentDraftView.getDefaultInstance()
     }
 
     fun updateSessionWindow(sessionId: String, window: SessionWindowRequest) {
@@ -1129,6 +1189,26 @@ class CoreHost(
         return watcher
     }
 
+    private fun acquireDraftWatcher(scopeKey: String, scope: DraftScope): KeyedWatcher<AttachmentDraftView, DraftScope> {
+        val (watcher, becameActive) = synchronized(draftWatchers) {
+            val existing = draftWatchers[scopeKey]
+            if (existing != null) {
+                existing.refCount++
+                existing to false
+            } else {
+                val created = KeyedWatcher(
+                    MutableStateFlow(AttachmentDraftView.getDefaultInstance()),
+                    scope,
+                    refCount = 1,
+                )
+                draftWatchers[scopeKey] = created
+                created to true
+            }
+        }
+        if (becameActive) dispatchAction { refreshDraftOnWorker(scopeKey) }
+        return watcher
+    }
+
     private inline fun send(block: CoreEvent.Builder.() -> Unit) = dispatch(CoreEvent.newBuilder().apply(block).build())
 
     private inline fun sendOnWorker(block: CoreEvent.Builder.() -> Unit) {
@@ -1263,6 +1343,196 @@ class CoreHost(
 
     fun deliverSharedFileVerifyAndCommitResult(event: SharedFileVerifyAndCommitResultEvent) =
         send { setSharedFileVerifyAndCommitResult(event) }
+
+    // --- Attachment upload, draft tray, outbox, and composer draft events (240..266) ---
+
+    fun sendAttachmentConfig(
+        persistDrafts: Boolean = true,
+        persistOutbox: Boolean = true,
+        scanStorage: Boolean = true,
+        maxChunkBytes: Int = 0,
+        hasPersistedPreparedImages: Boolean = true,
+    ) = send {
+        setAttachmentConfig(
+            AttachmentConfigEvent.newBuilder()
+                .setPersistDrafts(persistDrafts)
+                .setPersistOutbox(persistOutbox)
+                .setScanStorage(scanStorage)
+                .setMaxChunkBytes(maxChunkBytes)
+                .setHasPersistedPreparedImages(hasPersistedPreparedImages),
+        )
+    }
+
+    fun deliverDraftStorageListed(event: DraftStorageListedEvent) =
+        send { setDraftStorageListed(event) }
+
+    fun deliverDraftStorageReadResult(event: DraftStorageReadResultEvent) =
+        send { setDraftStorageReadResult(event) }
+
+    fun deliverDraftStorageWriteResult(event: DraftStorageWriteResultEvent) =
+        send { setDraftStorageWriteResult(event) }
+
+    fun openDraft(scope: DraftScope, machineId: String = "") = send {
+        setDraftOpen(
+            DraftOpenAction.newBuilder()
+                .setScope(scope)
+                .setMachineId(machineId),
+        )
+    }
+
+    fun setDraftText(scope: DraftScope, text: String) = send {
+        setDraftSetText(
+            DraftSetTextAction.newBuilder()
+                .setScope(scope)
+                .setText(text),
+        )
+    }
+
+    fun setDraftTargetMachine(scope: DraftScope, machineId: String) = send {
+        setDraftSetTargetMachine(
+            DraftSetTargetMachineAction.newBuilder()
+                .setScope(scope)
+                .setMachineId(machineId),
+        )
+    }
+
+    fun reserveDraftSlots(scope: DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) = send {
+        setDraftReserveSlots(
+            DraftReserveSlotsAction.newBuilder()
+                .setScope(scope)
+                .setReservationId(reservationId)
+                .setImageSlots(imageSlots)
+                .setFileSlots(fileSlots),
+        )
+    }
+
+    fun releaseDraftSlots(scope: DraftScope, reservationId: String) = send {
+        setDraftReleaseSlots(
+            DraftReleaseSlotsAction.newBuilder()
+                .setScope(scope)
+                .setReservationId(reservationId),
+        )
+    }
+
+    fun addDraftItems(scope: DraftScope, items: List<DraftPickedItem>, reservationId: String = "") = send {
+        setDraftAddItems(
+            DraftAddItemsAction.newBuilder()
+                .setScope(scope)
+                .setReservationId(reservationId)
+                .addAllItems(items),
+        )
+    }
+
+    fun removeDraftItem(scope: DraftScope, itemId: String) = send {
+        setDraftRemoveItem(
+            DraftRemoveItemAction.newBuilder()
+                .setScope(scope)
+                .setItemId(itemId),
+        )
+    }
+
+    fun retryDraftItem(scope: DraftScope, itemId: String) = send {
+        setDraftRetryItem(
+            DraftRetryItemAction.newBuilder()
+                .setScope(scope)
+                .setItemId(itemId),
+        )
+    }
+
+    fun setDraftOriginal(scope: DraftScope, original: Boolean) = send {
+        setDraftSetOriginal(
+            DraftSetOriginalAction.newBuilder()
+                .setScope(scope)
+                .setOriginal(original),
+        )
+    }
+
+    fun clearDraft(scope: DraftScope) = send {
+        setDraftClear(DraftClearAction.newBuilder().setScope(scope))
+    }
+
+    fun forgetDraftSession(sessionId: String) = send {
+        setDraftForgetSession(DraftForgetSessionAction.newBuilder().setSessionId(sessionId))
+    }
+
+    fun clearAllDrafts() = send {
+        setDraftClearAll(DraftClearAllAction.getDefaultInstance())
+    }
+
+    suspend fun clearAllDraftsAndWait() {
+        dispatchAndWait(
+            CoreEvent.newBuilder()
+                .setDraftClearAll(DraftClearAllAction.getDefaultInstance())
+                .build(),
+        )
+    }
+
+    fun dismissDraftNotice(scope: DraftScope) = send {
+        setDraftDismissNotice(DraftDismissNoticeAction.newBuilder().setScope(scope))
+    }
+
+    fun pauseAttachmentUpload(scope: DraftScope, itemId: String) = send {
+        setAttachmentPauseUpload(
+            AttachmentPauseUploadAction.newBuilder()
+                .setScope(scope)
+                .setItemId(itemId),
+        )
+    }
+
+    fun resumeAttachmentUpload(scope: DraftScope, itemId: String) = send {
+        setAttachmentResumeUpload(
+            AttachmentResumeUploadAction.newBuilder()
+                .setScope(scope)
+                .setItemId(itemId),
+        )
+    }
+
+    fun deliverAttachmentPrepareImageResult(event: AttachmentPrepareImageResultEvent) =
+        send { setAttachmentPrepareImageResult(event) }
+
+    fun deliverAttachmentHashFileResult(event: AttachmentHashFileResultEvent) =
+        send { setAttachmentHashFileResult(event) }
+
+    fun deliverAttachmentReadChunkResult(event: AttachmentReadChunkResultEvent) =
+        send { setAttachmentReadChunkResult(event) }
+
+    fun sendDraftSession(sessionId: String, mode: SendMode = SendMode.SEND_MODE_STEER) = send {
+        setDraftSendSession(
+            DraftSendSessionAction.newBuilder()
+                .setSessionId(sessionId)
+                .setMode(mode),
+        )
+    }
+
+    fun putBackDraftInput(sessionId: String, requestId: String) = send {
+        setDraftPutBackInput(
+            DraftPutBackInputAction.newBuilder()
+                .setSessionId(sessionId)
+                .setRequestId(requestId),
+        )
+    }
+
+    fun openDraftImageViewer(scope: DraftScope, index: Int) = send {
+        setDraftImageViewerOpen(
+            DraftImageViewerOpenAction.newBuilder()
+                .setScope(scope)
+                .setIndex(index),
+        )
+    }
+
+    fun navigateDraftImageViewer(scope: DraftScope, delta: Int = 0, setIndex: Boolean = false, index: Int = 0) = send {
+        setDraftImageViewerNavigate(
+            DraftImageViewerNavigateAction.newBuilder()
+                .setScope(scope)
+                .setDelta(delta)
+                .setSetIndex(setIndex)
+                .setIndex(index),
+        )
+    }
+
+    fun closeDraftImageViewer(scope: DraftScope) = send {
+        setDraftImageViewerClose(DraftImageViewerCloseAction.newBuilder().setScope(scope))
+    }
 
     fun openSessionImageViewer(sessionId: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
         send {

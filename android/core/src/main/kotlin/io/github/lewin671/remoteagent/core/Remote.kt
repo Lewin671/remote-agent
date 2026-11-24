@@ -1640,6 +1640,76 @@ class Remote(
     fun reportSharedFileLocalMissing(sessionId: String, fileId: String) =
         coreHost.reportSharedFileLocalMissing(sessionId, fileId)
 
+    fun openDraft(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, machineId: String = "") =
+        coreHost.openDraft(scope, machineId)
+
+    fun setDraftText(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, text: String) =
+        coreHost.setDraftText(scope, text)
+
+    fun setDraftTargetMachine(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, machineId: String) =
+        coreHost.setDraftTargetMachine(scope, machineId)
+
+    fun reserveDraftSlots(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) =
+        coreHost.reserveDraftSlots(scope, reservationId, imageSlots, fileSlots)
+
+    fun releaseDraftSlots(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, reservationId: String) =
+        coreHost.releaseDraftSlots(scope, reservationId)
+
+    fun addDraftItems(
+        scope: io.github.lewin671.remoteagent.core.proto.DraftScope,
+        items: List<io.github.lewin671.remoteagent.core.proto.DraftPickedItem>,
+        reservationId: String = "",
+    ) = coreHost.addDraftItems(scope, items, reservationId)
+
+    fun removeDraftItem(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
+        coreHost.removeDraftItem(scope, itemId)
+
+    fun retryDraftItem(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
+        coreHost.retryDraftItem(scope, itemId)
+
+    fun setDraftOriginal(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, original: Boolean) =
+        coreHost.setDraftOriginal(scope, original)
+
+    fun clearDraft(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
+        coreHost.clearDraft(scope)
+
+    fun forgetDraftSession(sessionId: String) =
+        coreHost.forgetDraftSession(sessionId)
+
+    fun clearAllDrafts() =
+        coreHost.clearAllDrafts()
+
+    suspend fun clearAllDraftsAndWait() =
+        coreHost.clearAllDraftsAndWait()
+
+    fun dismissDraftNotice(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
+        coreHost.dismissDraftNotice(scope)
+
+    fun pauseAttachmentUpload(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
+        coreHost.pauseAttachmentUpload(scope, itemId)
+
+    fun resumeAttachmentUpload(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, itemId: String) =
+        coreHost.resumeAttachmentUpload(scope, itemId)
+
+    fun sendDraftSession(sessionId: String, mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER) =
+        coreHost.sendDraftSession(sessionId, mode)
+
+    fun putBackDraftInput(sessionId: String, requestId: String) =
+        coreHost.putBackDraftInput(sessionId, requestId)
+
+    fun openDraftImageViewer(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, index: Int) =
+        coreHost.openDraftImageViewer(scope, index)
+
+    fun navigateDraftImageViewer(
+        scope: io.github.lewin671.remoteagent.core.proto.DraftScope,
+        delta: Int = 0,
+        setIndex: Boolean = false,
+        index: Int = 0,
+    ) = coreHost.navigateDraftImageViewer(scope, delta, setIndex, index)
+
+    fun closeDraftImageViewer(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
+        coreHost.closeDraftImageViewer(scope)
+
     fun openSessionImageViewer(sid: String, seq: Long = 0L, imageIndex: Int = 0, viewerIndex: Int = 0) =
         coreHost.openSessionImageViewer(sid, seq, imageIndex, viewerIndex)
 
