@@ -20,7 +20,7 @@ import {
 } from "../gen/remoteagent/core/v1/usage_view_pb";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import type { Remote } from "../remote";
-import { Banner, NavBar, Segmented, useRemote } from "../ui";
+import { Banner, NavBar, Segmented } from "../ui";
 import {
   buildStripPaths,
   buildUsageAxisTicks,
@@ -984,7 +984,6 @@ export function UsagePage({
   go?: Go;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote, go);
   const [preset, setPreset] = useState(UsageRangePreset.SEVEN_DAYS as UsageRangePreset);
   const [customRange, setCustomRange] = useState(() => clampUsageCustomRange(0n, 0n));

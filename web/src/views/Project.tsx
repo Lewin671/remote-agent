@@ -4,10 +4,8 @@
 // sheet in its place. A wide window has no such page: the main area is the
 // new task.
 
-import { create } from "@bufbuild/protobuf";
 import { useEffect, useState } from "react";
 import { useCoreHost, useProjectView, type Go } from "../core/host";
-import { EventSchema, ProjectKeyActionSchema } from "../gen/remoteagent/core/v1/app_pb";
 import type { Remote } from "../remote";
 import { NewBox, NewFlow } from "./NewSession";
 import { RemovedNotice } from "./Projects";
@@ -37,16 +35,7 @@ export function ProjectPage({
   const notice = hiddenNotice?.active ? (
     <RemovedNotice
       notice={hiddenNotice}
-      onReadd={() =>
-        host.dispatch(
-          create(EventSchema, {
-            event: {
-              case: "projectToggleHide",
-              value: create(ProjectKeyActionSchema, { projectKey: pkey }),
-            },
-          }),
-        )
-      }
+      onReadd={() => host.projectToggleHide(pkey)}
     />
   ) : undefined;
 

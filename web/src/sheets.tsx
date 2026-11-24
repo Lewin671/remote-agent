@@ -4,7 +4,6 @@ import * as i18n from "./i18n";
 
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState } from "react";
-import { agentInfo } from "./agents";
 import { renderText } from "./core/text";
 import {
   SessionCommandStatus,
@@ -12,7 +11,7 @@ import {
   type SessionCommandState,
   type SessionHeaderView,
 } from "./gen/remoteagent/core/v1/session_view_pb";
-import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import {
   CommandSchema,
   type Command,
@@ -371,7 +370,6 @@ export function SessionSheet({
   const modelsError = renderText(actions?.modelsError);
   const pct = header?.hasContext ? header.contextPercent : undefined;
   const activeEffort = effortChoices.find((e) => e.selected)?.id ?? header?.effort ?? "";
-  const agent = header?.agent ?? Agent.UNSPECIFIED;
 
   const setModel = (slug: string, label: string, effort: string) => {
     setSwitchingName(label);
@@ -456,11 +454,7 @@ export function SessionSheet({
                   {m.efforts.length === 0 ? (
                     <small>{i18n.t("session.no_effort")}</small>
                   ) : (
-                    agentInfo(agent).showMaxEffort &&
-                    m.efforts[m.efforts.length - 1] !== "max" &&
-                    m.efforts[m.efforts.length - 1] !== "ultra" && (
-                      <small>{i18n.t("session.max_effort", { effort: m.efforts[m.efforts.length - 1] })}</small>
-                    )
+                    m.maxEffortHint && <small>{renderText(m.maxEffortHint)}</small>
                   )}
                 </div>
                 {m.selected && (

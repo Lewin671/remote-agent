@@ -33,7 +33,7 @@ export function pushSupported(): boolean {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
-export type PushState = "ok" | "default" | "denied" | "unsupported" | "ios-browser";
+type PushState = "ok" | "default" | "denied" | "unsupported" | "ios-browser";
 
 /** Whether push can work here: iPhones only allow it for pages added to
  * the home screen, and the browser may have refused permission. */

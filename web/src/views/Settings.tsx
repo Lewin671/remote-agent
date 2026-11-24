@@ -367,7 +367,6 @@ export function SettingsScreenView({
 }
 
 export function Settings({ remote, go, onBack }: { remote: Remote; go: Go; onBack?: () => void }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useSettingsView(host);
   const update = useUpdate();
@@ -561,7 +560,6 @@ export function NotificationsScreenView({
 }
 
 export function NotificationsPage({ remote, onBack }: { remote: Remote; onBack: () => void }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useSettingsView(host);
   return (
@@ -690,7 +688,6 @@ export function ClientsPage({
   go: Go;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useDevicesView(host);
   useEffect(() => {
@@ -884,7 +881,6 @@ export function ClientPage({
   id: string;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useClientDetailView(host, id);
   const rename = useClientRenameState(host, id);
@@ -964,7 +960,6 @@ export function QuotaPage({
   go?: Go;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useQuotaView(host, id);
   return <QuotaScreenView vm={vm} onBack={onBack} />;

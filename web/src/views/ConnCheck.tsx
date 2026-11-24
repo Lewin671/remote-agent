@@ -14,7 +14,7 @@ import {
   type MachineListCardView,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { errorText, type Remote } from "../remote";
-import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
+import { Banner, StateMark, Sheet, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
 import { connFooter } from "./direct-status";
 
@@ -203,7 +203,6 @@ export function ConnCheckScreenView({
 }
 
 export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => void }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const settingsVm = useSettingsView(host);
   const pingServer = useCallback(() => remote.pingServer(), [remote]);
@@ -213,7 +212,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       host.reportConnCheckStatus(state, latencyMs, lastFailure),
     [host],
   );
-  const onReconnect = useCallback(() => remote.reconnectNow(true), [remote]);
+  const onReconnect = useCallback(() => host.reconnectNow(), [host]);
   return (
     <ConnCheckScreenView
       cc={settingsVm.connCheck}

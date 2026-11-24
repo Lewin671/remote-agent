@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { Remote } from "./remote";
 import { DemoRemote } from "./dev/demo";
-import { forgetAccount } from "./storage";
+import { clearAllSecurityV4, securityStoreV4 } from "./core/security-store-v4";
 import * as securityClient from "./core/security-client";
 import { SecurityBootstrapKind, SecurityWorkflowStatusSchema } from "./gen/remoteagent/core/v1/security_pb";
 
@@ -109,13 +109,13 @@ it("stops another tab and reloads the joining page after the user forgets the ac
     await vi.waitFor(() => expect(start).toHaveBeenCalled());
     location.hash = "/settings";
     // The source page leaves reloading to its caller, after cache cleanup.
-    await act(async () => forgetAccount());
+    await act(async () => clearAllSecurityV4(securityStoreV4));
     expect(stop).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
     // A separate module instance models the other tab's own channel.
     vi.resetModules();
-    const other = await import("./storage");
-    await act(async () => other.forgetAccount());
+    const other = await import("./core/security-store-v4");
+    await act(async () => other.clearAllSecurityV4(other.securityStoreV4));
     expect(stop).toHaveBeenCalled();
     expect(location.hash).toBe("");
     expect(reload).toHaveBeenCalledOnce();
@@ -144,6 +144,6 @@ for (const failure of ["onabort", "onerror"] as const) {
         return req;
       },
     });
-    await expect(forgetAccount()).rejects.toBeDefined();
+    await expect(clearAllSecurityV4(securityStoreV4)).rejects.toBeDefined();
   });
 }

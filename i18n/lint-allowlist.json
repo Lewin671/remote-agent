@@ -3665,21 +3665,6 @@
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   },
   {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "; case MachineRingKind.MEMORY: return",
-    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
-  },
-  {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "true",
-    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
-  },
-  {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "; case MachineRingKind.DISK: return",
-    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
-  },
-  {
     "path": "web/src/views/MachineStatus.tsx",
     "literal": "${renderText(chart.scrubValue)} (${renderText(chart.scrubAge)})",
     "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."

@@ -2,27 +2,25 @@ import { t } from "../i18n";
 // Everything that lists or manages projects (client-v34): one row and one
 // list for the scope menu, the project picker and 项目管理.
 
-import { create } from "@bufbuild/protobuf";
 import { useState, type ReactNode } from "react";
-import { useCoreHost, useProjectView, type Go } from "../core/host";
+import { useCoreHost, useProjectView, useSyncState, type Go } from "../core/host";
 import { renderText } from "../core/text";
 import type { ProjectListingView, ProjectRowView } from "../gen/remoteagent/core/v1/home_view_pb";
 import type { DirPickerView, HiddenProjectNoticeView, ManageProjectsView } from "../gen/remoteagent/core/v1/project_view_pb";
-import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import type { Remote } from "../remote";
-import { ActionSheet, Alert, Avatar, Banner, NavBar, PathText, Segmented, Sheet, StateMark, useNow } from "../ui";
+import { ActionSheet, Alert, Avatar, Banner, NavBar, PathText, Segmented, Sheet, StateMark } from "../ui";
 import { Ellipsis, Laptop, LoaderCircle, Plus, Search, X } from "../icons";
 import { DirBrowserView } from "./DirBrowser";
 
-/** What the list's sync is doing on Home banners: saving, failed, or changed elsewhere. */
+/** What the list's sync is doing on Home banners: saving or load failed. */
 export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean }) {
-  const now = useNow(1000);
-  const p = remote.prefs;
-  if (p.failed) return <Banner kind="err" action={t("common.retry")} onAction={() => remote.retryPrefs()}>{t("projects.save_failed", { reason: p.failed.error })}</Banner>;
-  if (p.pending.size > 0) return <Banner><LoaderCircle /> {t("projects.syncing")}</Banner>;
+  const host = useCoreHost(remote);
+  const sync = useSyncState(host);
+  if (sync.prefsSyncing) return <Banner><LoaderCircle /> {t("projects.syncing")}</Banner>;
   if (quiet) return null;
-  if (p.status === "error" && !p.snap) return <Banner kind="err" action={t("common.retry")} onAction={() => void remote.retryPrefs()}>{t("projects.load_failed")}</Banner>;
-  if (p.changedAt && now - p.changedAt < 8000) return <Banner>{t("projects.changed_elsewhere")}</Banner>;
+  if ((sync.prefsLoadFailed || sync.prefsBroken) && !sync.prefs) {
+    return <Banner kind="err" action={t("common.retry")} onAction={() => host.retryPrefs()}>{t("projects.load_failed")}</Banner>;
+  }
   return null;
 }
 
@@ -77,14 +75,17 @@ export function RemoveProjectAlert({ name, onOk, onCancel }: { name: string; onO
 }
 
 /** Core-driven directory picker sheet for adding a project. */
-export function DirPickerSheet({ picker, onNavigate, onConfirm, onBack, onClose }: { picker: DirPickerView; onNavigate: (machineId: string, path: string) => void; onConfirm: (path: string) => void; onBack?: () => void; onClose: () => void }) {
+export function DirPickerSheet({ picker, fixedMachine, title, onNavigate, onConfirm, onBack, onClose }: { picker: DirPickerView; fixedMachine?: string; title?: string; onNavigate: (machineId: string, path: string) => void; onConfirm: (path: string) => void; onBack?: () => void; onClose: () => void }) {
   const [initialPath] = useState(() => `${picker.machineId}:${picker.currentPath}`);
   const dirty = picker.canConfirm && `${picker.machineId}:${picker.currentPath}` !== initialPath;
   const crumbs = picker.crumbs.map((c) => ({ label: renderText(c.label), path: c.path }));
   const confirmLabel = renderText(picker.confirmLabel) || t("projects.use_directory", { name: crumbs[crumbs.length - 1]?.label || "/" });
+  const fixedEntry = fixedMachine ? picker.machines.find((x) => x.machineId === fixedMachine) : undefined;
   return (
-    <Sheet onClose={onClose} dirty={dirty} title={t("projects.new_choose_directory")} back={onBack}>
-      {picker.machines.length > 1 && (
+    <Sheet onClose={onClose} dirty={dirty} title={title ?? t("projects.new_choose_directory")} back={onBack}>
+      {fixedEntry ? (
+        <div className="seg machines"><button type="button" className="on" disabled>{fixedEntry.name}</button></div>
+      ) : !fixedMachine && picker.machines.length > 1 && (
         <Segmented className="full machines" label={t("common.machine")} value={picker.machineId || undefined} onChange={(id) => onNavigate(id, "")} options={picker.machines.map((x) => ({ value: x.machineId, disabled: !x.online, label: <><StateMark kind={x.online ? "online" : "off"} />{x.name}</> }))} />
       )}
       {!picker.machineId ? <div className="hint">{t("projects.no_online_computers")}</div> : (
@@ -160,24 +161,18 @@ export function ManagePage({ remote, machineId = "", go, onBack }: { remote: Rem
   const host = useCoreHost(remote, go);
   const manage = useProjectView(host, "", true, 30, machineId, MANAGE_PICKER_KEY).manage;
   if (!manage) return null;
-  const effectiveManage = remote.conn !== "online" && manage.canEdit
-    ? { ...manage, canEdit: false, blockedReason: manage.blockedReason ?? create(TextSchema, { literal: t("projects.connect_to_edit") }) }
-    : manage;
   return (
     <ManageProjectsScreen
-      vm={effectiveManage}
+      vm={manage}
       onSearch={host.projectSetSearch}
       onTogglePin={host.projectTogglePin}
       onToggleHide={host.projectToggleHide}
       onOpenDirPicker={() => host.projectOpenDirPicker(false, "", "", MANAGE_PICKER_KEY)}
       onDirNavigate={(mid, path) => host.projectDirNavigate(mid, path, MANAGE_PICKER_KEY)}
       onCloseDirPicker={() => host.projectCloseDirPicker(MANAGE_PICKER_KEY)}
-      onAddProject={(path) => {
-        if (remote.projectPrefs().hidden.some((h) => h.path === path)) host.projectToggleHide(path);
-        host.projectAdd(path, MANAGE_PICKER_KEY);
-      }}
+      onAddProject={(path) => host.projectAdd(path, MANAGE_PICKER_KEY)}
       onSelectProject={(scopeKey) => { host.homeSetScope(scopeKey); go(""); }}
-      onRetryPrefs={() => remote.retryPrefs()}
+      onRetryPrefs={() => host.retryPrefs()}
       onResetFilter={machineId ? () => go("projects", true) : undefined}
       onBack={onBack}
     />

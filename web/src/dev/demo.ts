@@ -1636,8 +1636,18 @@ export class DemoRemote extends Remote {
       recoveryReadyMs: this.demoRecoveryReadyMs,
     });
   }
-  private demoBoot(opId: bigint) {
-    return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken: this.demoScope(), scopeHmacKey: new Uint8Array(32) });
+  private demoBoot(opId: bigint, includeCached = false) {
+    return create(CacheBootstrapLoadedEventSchema, {
+      opId,
+      homeScopeToken: this.demoScope(),
+      scopeHmacKey: new Uint8Array(32),
+      ...(includeCached
+        ? {
+            machines: [...this.demoMachines.values()].map(this.plainMachine),
+            sessions: [...this.demoSessions.values()].map(this.plainSession),
+          }
+        : {}),
+    });
   }
   private demoWorld(includeWorld: boolean) {
     if (!includeWorld) {
@@ -1685,8 +1695,8 @@ export class DemoRemote extends Remote {
       try {
         host.start();
         this.demoBootConsumed = true;
-        host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId) } }));
-        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail") } }));
+        host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId, conn === "connecting") } }));
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail" && conn !== "connecting") } }));
         host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
         drainRpc();
         if (conn === "noserver" && this.demoStream) {

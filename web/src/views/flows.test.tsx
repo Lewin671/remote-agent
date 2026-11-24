@@ -28,7 +28,13 @@ import { Home, Sidebar, WideHome } from "./Home";
 import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { ManagePage } from "./Projects";
-import { addProject } from "./ScheduleConfig";
+function addProject(remote: DemoRemote, machineId: string, path: string) {
+  remote.draftMachines.set(path, machineId);
+  const host = getCoreHost(remote);
+  host.projectOpenDirPicker(false, machineId, path, "machine-status");
+  host.projectAdd(path, "machine-status");
+  host.projectCloseDirPicker("machine-status");
+}
 
 const ALL = "all";
 const saveScope = (scopeKey: string, r?: DemoRemote) => {

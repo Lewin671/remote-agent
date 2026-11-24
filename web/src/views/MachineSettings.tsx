@@ -40,7 +40,7 @@ import {
   LoaderCircle,
   MemoryIcon,
 } from "../icons";
-import { Alert, Banner, NavBar, Sheet, StateMark, useRemote, type Mark } from "../ui";
+import { Alert, Banner, NavBar, Sheet, StateMark, type Mark } from "../ui";
 
 const RING_R = 23;
 const RING_C = 2 * Math.PI * RING_R;
@@ -1029,7 +1029,6 @@ export function MachinePage({
   go: Go;
   onBack: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useMachineSettingsView(host, id);
   const statusVm = useMachineStatusView(host, id, MachinePollMode.OVERVIEW);

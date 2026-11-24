@@ -2,12 +2,13 @@ import * as i18n from "../i18n";
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
-import { usePointerFine, useRemote } from "../ui";
+import { usePointerFine } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { TerminalStreamEventKind, useCoreHost } from "../core/host";
-import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
+import { TerminalStreamEventKind, useCoreHost, useSyncState } from "../core/host";
+import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
+import { errorText, type Remote, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
 let nextTerminalStreamId = 0;
@@ -47,10 +48,12 @@ const keys2: [ReactNode, string, string][] = [
 /** The session's terminal, streamed live. Typing goes to the session like
  * the local keyboard. Opening it fits the tmux window to this screen.
  * Scrolling up opens the read-only reader over the same area. */
-export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: Pick<SessionView, "id" | "machineId">; compact?: boolean; wide?: boolean; running: boolean }) {
-  useRemote(remote);
-  const online = remote.peer(session.machineId).ready;
-  const waitingPeer = !online && (remote.reachabilityUnknown || remote.displayGrace);
+export function TerminalView({ remote, session, compact, wide, running }: { remote: Remote; session: { id: string; machineId: string }; compact?: boolean; wide?: boolean; running: boolean }) {
+  const coreHost = useCoreHost(remote);
+  const sync = useSyncState(coreHost);
+  const machine = sync.machines.find((m) => m.machineId === session.machineId);
+  const online = Boolean((sync.connection === ConnState.CONNECTED && machine?.reachable) || machine?.directReady);
+  const waitingPeer = !online && (sync.reachabilityUnknown || sync.displayGrace);
   const onlineRef = useRef(online);
   onlineRef.current = online;
   const waitingPeerRef = useRef(waitingPeer);
@@ -263,7 +266,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hostBridge = useCoreHost(remote);
+  const hostBridge = coreHost;
   const terminalIdRef = useRef("");
   if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
   const terminalId = terminalIdRef.current;

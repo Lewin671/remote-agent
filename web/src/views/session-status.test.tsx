@@ -71,7 +71,7 @@ describe("a list row", () => {
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
-    act(() => root!.render(<SessionRow row={vm} remote={r} onSelect={() => undefined} />));
+    act(() => root!.render(<SessionRow row={vm} onSelect={() => undefined} />));
     return host.textContent ?? "";
   }
 
