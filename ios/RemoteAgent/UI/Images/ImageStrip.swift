@@ -159,7 +159,7 @@ struct ImageStrip: View {
         .accessibilityHint(canChange ? L10n.imageIosOnlyMessage() : (disabledReason.isEmpty ? L10n.imageIosRetainedOriginal() : disabledReason))
         .accessibilityAddTraits(.isToggle)
 
-        let countDisplay = draft.hasImageCountText ? draft.imageCountText.rendered() : "\(draft.imageCount) / \(draft.maxImages)"
+        let countDisplay = draft.imageCountText.rendered()
         let count = Text(countDisplay).font(.footnote).ink(DS.ink2)
             .accessibilityLabel(L10n.imageIosSelectedCount(count: Int(draft.imageCount), limit: Int(draft.maxImages)))
 

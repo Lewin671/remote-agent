@@ -62,10 +62,7 @@ struct ImageViewerScreen: View {
             if header?.missing == true { return header?.missingText.rendered() ?? L10n.sessionIosMissing() }
             return L10n.commonLoading()
         }()
-        let positionText: String? = {
-            guard let viewer, viewer.hasPositionText, Int(viewer.currentIndex) == localPage else { return nil }
-            return viewer.positionText.rendered()
-        }()
+        let positionText = viewer?.positionText.rendered() ?? ""
 
         PagedImageViewer(
             count: activeCount,

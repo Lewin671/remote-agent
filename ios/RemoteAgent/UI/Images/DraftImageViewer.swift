@@ -22,10 +22,12 @@ struct DraftImageViewer: View {
         let images = draft.images
         let viewer = draft.imageViewer
         let emptyText = viewer.hasEmptyText ? viewer.emptyText.rendered() : L10n.imageIosEmpty()
-        let positionText: String? = {
-            guard viewer.hasPositionText, Int(viewer.currentIndex) == localPage else { return nil }
-            let rendered = viewer.positionText.rendered()
-            return rendered.isEmpty ? nil : rendered
+        let positionText: String = {
+            if images.indices.contains(localPage) {
+                let itemPos = images[localPage].positionText.rendered()
+                if !itemPos.isEmpty { return itemPos }
+            }
+            return viewer.positionText.rendered()
         }()
 
         PagedImageViewer(
@@ -48,7 +50,7 @@ struct DraftImageViewer: View {
             },
             info: { i in
                 let img = images[i]
-                let pos = img.hasPositionText ? img.positionText.rendered() : L10n.imagePosition(count: images.count, index: i + 1)
+                let pos = img.positionText.rendered()
                 let caption: String = {
                     if img.state == .failed, img.hasProblem, img.problem.hasMessage {
                         let msg = img.problem.message.rendered()

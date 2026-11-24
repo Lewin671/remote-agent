@@ -17,6 +17,40 @@ enum ImageDebug {
 
     private static var added = false
     private static var filesAdded = false
+    private static var seeded = false
+
+    private static func picture(_ hue: CGFloat, w: Int = 240, h: Int = 180) -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: w, height: h)
+        return UIGraphicsImageRenderer(size: size, format: format).image { ctx in
+            let colors = [
+                UIColor(hue: hue, saturation: 0.45, brightness: 0.95, alpha: 1),
+                UIColor(hue: hue + 0.1, saturation: 0.7, brightness: 0.65, alpha: 1),
+            ]
+            let gradient = CGGradient(colorsSpace: nil, colors: colors.map(\.cgColor) as CFArray, locations: nil)!
+            ctx.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+            UIColor.white.withAlphaComponent(0.85).setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: size.width * 0.55, y: size.height * 0.2, width: size.width * 0.25, height: size.width * 0.25))
+        }.pngData() ?? Data()
+    }
+
+    static func seed(_ center: ImageCenter, host: CoreHost, scope: PBDraftScope) {
+        guard !center.live, !seeded, let state = value("-imageDraft") else { return }
+        seeded = true
+        let count: Int
+        switch state {
+        case "full", "crowded": count = 6
+        default: count = 3
+        }
+        let images = (1...count).map { n in
+            picture(CGFloat(n) * 0.14 + 0.05, w: n % 2 == 0 ? 240 : 160, h: n % 2 == 0 ? 180 : 260)
+        }
+        center.addImageData(scope: scope, images)
+        if state == "original" {
+            Task { await host.setDraftOriginal(scope: scope, original: true) }
+        }
+    }
 
     static func documentURLs() -> [URL] {
         guard !filesAdded, let paths = value("-fileAdd") else { return [] }
@@ -84,11 +118,14 @@ private struct ImageDraftDebug: ViewModifier {
         let host = attachments.host
         let draft = attachments.draft
         content
-            .task(id: scope.debugKey) {
-                let documents = ImageDebug.documentURLs()
-                if !documents.isEmpty { center.addFiles(scope: scope, documents) }
-                let files = ImageDebug.launchFiles()
-                if !files.isEmpty { center.addImageData(scope: scope, files) }
+            .task(id: "\(scope.debugKey)/\(draft.canPickGallery)") {
+                if draft.canPickGallery {
+                    ImageDebug.seed(center, host: host, scope: scope)
+                    let documents = ImageDebug.documentURLs()
+                    if !documents.isEmpty { center.addFiles(scope: scope, documents) }
+                    let files = ImageDebug.launchFiles()
+                    if !files.isEmpty { center.addImageData(scope: scope, files) }
+                }
             }
             .debugSignal("files.add") {
                 let paths = UserDefaults.standard.string(forKey: "debug.filePaths") ?? ""

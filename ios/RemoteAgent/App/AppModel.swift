@@ -817,6 +817,11 @@ final class AppModel {
                 await host.setPersistClientPrefsHandler { eff in
                     self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
                 }
+                await host.configureAttachments(
+                    persistDrafts: true,
+                    persistOutbox: true,
+                    scanStorage: false
+                )
                 guard let self else { return }
                 await load()
                 if gen == self.generation { self.follow(remote.state, gen: gen) }

@@ -97,30 +97,104 @@ enum SessionSamples {
         let fakeFiles = SharedFileDebug.fake
             ? Dictionary(uniqueKeysWithValues: SharedFileDebug.fakes.map { ($0.id, $0.data) })
             : [:]
-        await coreHost.setDemoCommandResponder { eff, cmd in
-            if case .getSharedFileChunk(let req)? = cmd.kind, !fakeFiles.isEmpty {
-                return SharedFileDebug.demoChunkAction(effect: eff, request: req, files: fakeFiles)
+        final class DemoUploadTracker: @unchecked Sendable {
+            private let lock = NSLock()
+            private var persisted: [String: Int64] = [:]
+            func begin(_ id: String) { lock.withLock { persisted[id] = 0 } }
+            func put(_ id: String, end: Int64) -> Int64 {
+                lock.withLock {
+                    let next = max(persisted[id] ?? 0, end)
+                    persisted[id] = next
+                    return next
+                }
             }
-            guard case .send(let s)? = cmd.kind else { return nil }
-            switch s.requestID {
-            case "s1":
-                return .hold
-            case "s2":
-                return .respond(.with {
-                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
-                    $0.source = .transport; $0.notForwarded = true
-                    $0.transportCode = "unavailable"
-                    $0.transportDetail = "电脑不在线，指令没有发出"
+            func status(_ id: String) -> Int64 { lock.withLock { persisted[id] ?? 0 } }
+            func abort(_ id: String) { _ = lock.withLock { persisted.removeValue(forKey: id) } }
+        }
+        let uploads = DemoUploadTracker()
+        await coreHost.setDemoCommandResponder { eff, cmd in
+            switch cmd.kind {
+            case .getSharedFileChunk(let req)? where !fakeFiles.isEmpty:
+                return SharedFileDebug.demoChunkAction(effect: eff, request: req, files: fakeFiles)
+            case .beginImageUpload(let req)?:
+                uploads.begin(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.beginImageUpload = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = 0
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
                 })
-            case "s3":
-                return .respond(.with {
-                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
-                    $0.source = .transport; $0.notForwarded = false
-                    $0.transportCode = "network"
-                    $0.transportDetail = "不确定电脑有没有执行：连接中途断了"
+            case .putImageChunk(let req)?:
+                let persisted = uploads.put(req.transferID, end: req.offset + Int64(req.data.count))
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.putImageChunk = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
                 })
-            case "f1", "f2", "f3", "u1":
+            case .getImageUploadStatus(let req)?:
+                let persisted = uploads.status(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.getImageUploadStatus = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
+                })
+            case .completeImageUpload(let req)?:
+                let persisted = uploads.status(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.completeImageUpload = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .complete
+                            $0.imageID = "demo-img-\(req.transferID.prefix(8))"
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
+                })
+            case .abortImageUpload(let req)?:
+                uploads.abort(req.transferID)
                 return .respond(CoreHost.demoExecutedOutcome(for: eff))
+            case .send(let s)?:
+                switch s.requestID {
+                case "s1":
+                    return .hold
+                case "s2":
+                    return .respond(.with {
+                        $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                        $0.source = .transport; $0.notForwarded = true
+                        $0.transportCode = "unavailable"
+                        $0.transportDetail = "电脑不在线，指令没有发出"
+                    })
+                case "s3":
+                    return .respond(.with {
+                        $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                        $0.source = .transport; $0.notForwarded = false
+                        $0.transportCode = "network"
+                        $0.transportDetail = "不确定电脑有没有执行：连接中途断了"
+                    })
+                case "f1", "f2", "f3", "u1":
+                    return .respond(CoreHost.demoExecutedOutcome(for: eff))
+                default:
+                    return nil
+                }
             default:
                 return nil
             }
