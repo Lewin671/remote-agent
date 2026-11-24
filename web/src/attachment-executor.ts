@@ -188,6 +188,29 @@ function errorDetailOf(err: unknown): string {
   return String(err ?? "");
 }
 
+function errorNameOf(err: unknown): string {
+  return err && typeof err === "object" && typeof (err as { name?: unknown }).name === "string"
+    ? (err as { name: string }).name
+    : "";
+}
+
+function classifySourceIOError(err: unknown): AttachmentIOErrorKind {
+  if (err instanceof PartialTruncatedError) {
+    return AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED;
+  }
+  const name = errorNameOf(err);
+  if (name === "NotReadableError") {
+    return AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED;
+  }
+  if (name === "NotFoundError") {
+    return AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING;
+  }
+  if (hasQuotaExceeded(err)) {
+    return AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_STORAGE_FULL;
+  }
+  return AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER;
+}
+
 function classifyStorageIOError(err: unknown): { errorKind: AttachmentIOErrorKind; errorDetail: string } {
   if (hasQuotaExceeded(err)) {
     return { errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_STORAGE_FULL, errorDetail: "" };
@@ -231,6 +254,7 @@ export class AttachmentExecutor {
   private readonly probeVideoDurationFn: (blob: Blob) => Promise<number | undefined>;
   private storageQueue: Promise<void> = Promise.resolve();
   private readonly activeIO = new Set<Promise<void>>();
+  private clearEpoch = 0;
   private readonly blobCache = new Map<string, Blob>();
   private readonly blobLoads = new Map<string, Promise<Blob | undefined>>();
   private readonly blobListeners = new Set<() => void>();
@@ -254,9 +278,10 @@ export class AttachmentExecutor {
   }
 
   private trackIO(work: Promise<void>) {
-    this.activeIO.add(work);
-    void work.finally(() => {
-      this.activeIO.delete(work);
+    const guarded = work.catch(() => undefined);
+    this.activeIO.add(guarded);
+    void guarded.finally(() => {
+      this.activeIO.delete(guarded);
     });
   }
 
@@ -291,14 +316,15 @@ export class AttachmentExecutor {
     if (cached) return Promise.resolve(cached);
     const inflight = this.blobLoads.get(ref);
     if (inflight) return inflight;
+    const epoch = this.clearEpoch;
     const job = this.store
       .getLocalBlob(ref)
       .then((blob) => {
-        if (blob) {
+        if (blob && this.clearEpoch === epoch) {
           this.blobCache.set(ref, blob);
           this.emitBlobs();
         }
-        return blob;
+        return this.clearEpoch === epoch ? blob : undefined;
       })
       .catch(() => undefined)
       .finally(() => {
@@ -319,9 +345,10 @@ export class AttachmentExecutor {
 
   handleDraftStorageList(eff: DraftStorageListEffect) {
     void this.enqueueStorage(async () => {
+      let ev: Event["event"];
       try {
         const { entries, localRefs } = await this.store.list();
-        this.onEvent({
+        ev = {
           case: "draftStorageListed",
           value: create(DraftStorageListedEventSchema, {
             opId: eff.opId,
@@ -335,27 +362,29 @@ export class AttachmentExecutor {
             ),
             localRefs,
           }),
-        });
+        };
       } catch (err) {
         const io = classifyStorageIOError(err);
-        this.onEvent({
+        ev = {
           case: "draftStorageListed",
           value: create(DraftStorageListedEventSchema, {
             opId: eff.opId,
             errorKind: io.errorKind,
             errorDetail: io.errorDetail,
           }),
-        });
+        };
       }
+      this.onEvent(ev);
     });
   }
 
   handleDraftStorageRead(eff: DraftStorageReadEffect) {
     void this.enqueueStorage(async () => {
+      let ev: Event["event"];
       try {
         const res = await this.store.read(eff.bucket, eff.key);
         if (res.corrupt) {
-          this.onEvent({
+          ev = {
             case: "draftStorageReadResult",
             value: create(DraftStorageReadResultEventSchema, {
               opId: eff.opId,
@@ -364,22 +393,22 @@ export class AttachmentExecutor {
               found: false,
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE,
             }),
-          });
-          return;
+          };
+        } else {
+          ev = {
+            case: "draftStorageReadResult",
+            value: create(DraftStorageReadResultEventSchema, {
+              opId: eff.opId,
+              bucket: eff.bucket,
+              key: eff.key,
+              found: res.found,
+              data: (res.data ?? new Uint8Array()) as Uint8Array<ArrayBuffer>,
+            }),
+          };
         }
-        this.onEvent({
-          case: "draftStorageReadResult",
-          value: create(DraftStorageReadResultEventSchema, {
-            opId: eff.opId,
-            bucket: eff.bucket,
-            key: eff.key,
-            found: res.found,
-            data: (res.data ?? new Uint8Array()) as Uint8Array<ArrayBuffer>,
-          }),
-        });
       } catch (err) {
         const io = classifyStorageIOError(err);
-        this.onEvent({
+        ev = {
           case: "draftStorageReadResult",
           value: create(DraftStorageReadResultEventSchema, {
             opId: eff.opId,
@@ -389,16 +418,18 @@ export class AttachmentExecutor {
             errorKind: io.errorKind,
             errorDetail: io.errorDetail,
           }),
-        });
+        };
       }
+      this.onEvent(ev);
     });
   }
 
   handleDraftStorageWrite(eff: DraftStorageWriteEffect) {
     void this.enqueueStorage(async () => {
+      let ev: Event["event"];
       try {
         await this.store.write(eff.bucket, eff.key, eff.data, eff.referencedRefs);
-        this.onEvent({
+        ev = {
           case: "draftStorageWriteResult",
           value: create(DraftStorageWriteResultEventSchema, {
             opId: eff.opId,
@@ -406,10 +437,10 @@ export class AttachmentExecutor {
             key: eff.key,
             ok: true,
           }),
-        });
+        };
       } catch (err) {
         const io = classifyStorageIOError(err);
-        this.onEvent({
+        ev = {
           case: "draftStorageWriteResult",
           value: create(DraftStorageWriteResultEventSchema, {
             opId: eff.opId,
@@ -419,8 +450,9 @@ export class AttachmentExecutor {
             errorKind: io.errorKind,
             errorDetail: io.errorDetail,
           }),
-        });
+        };
       }
+      this.onEvent(ev);
     });
   }
 
@@ -431,7 +463,9 @@ export class AttachmentExecutor {
   }
 
   handleDraftStorageClearAll() {
+    this.clearEpoch++;
     void this.enqueueStorage(async () => {
+      this.clearEpoch++;
       await this.store.clearAll().catch(() => undefined);
       if (this.blobCache.size > 0) {
         this.blobCache.clear();
@@ -455,6 +489,7 @@ export class AttachmentExecutor {
   // --- Prepare / Hash / ReadChunk Effects (Contract §2.1-2.3) ---
 
   handlePrepareImage(eff: AttachmentPrepareImageEffect) {
+    const epoch = this.clearEpoch;
     const work = (async () => {
       const base = {
         opId: eff.opId,
@@ -464,10 +499,21 @@ export class AttachmentExecutor {
       };
       let preparedRef = "";
       let thumbRef = "";
+      let ev: Event["event"];
       try {
         const source = await this.store.getLocalBlob(eff.sourceRef);
-        if (!source) {
-          this.onEvent({
+        if (this.clearEpoch !== epoch) {
+          ev = {
+            case: "attachmentPrepareImageResult",
+            value: create(AttachmentPrepareImageResultEventSchema, {
+              ...base,
+              ok: false,
+              errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
+              errorDetail: "cleared",
+            }),
+          };
+        } else if (!source) {
+          ev = {
             case: "attachmentPrepareImageResult",
             value: create(AttachmentPrepareImageResultEventSchema, {
               ...base,
@@ -475,54 +521,95 @@ export class AttachmentExecutor {
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
               isReadingSource: true,
             }),
+          };
+        } else {
+          const prepared = await this.prepareImageFn(source, {
+            original: eff.original,
+            maxOriginalBytes: Number(eff.maxOriginalBytes),
+            maxDimensionPx: eff.maxDimensionPx,
+            maxCompressedBytes: Number(eff.maxCompressedBytes),
           });
-          return;
+          if (this.clearEpoch !== epoch) {
+            ev = {
+              case: "attachmentPrepareImageResult",
+              value: create(AttachmentPrepareImageResultEventSchema, {
+                ...base,
+                ok: false,
+                errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
+                errorDetail: "cleared",
+              }),
+            };
+          } else {
+            const protoFmt = formatToProto(prepared.format);
+            const mime = mimeOf(protoFmt) || "image/jpeg";
+            const sha256 = await sha256Bytes(prepared.bytes);
+            const preparedBlob = new Blob([prepared.bytes as Uint8Array<ArrayBuffer>], { type: mime });
+            preparedRef = await this.store.putLocalBlob(preparedBlob, {
+              mimeType: mime,
+              ext: formatToExt(prepared.format),
+            });
+            if (this.clearEpoch !== epoch) {
+              await this.store.deleteLocalRefs([preparedRef]).catch(() => undefined);
+              preparedRef = "";
+              ev = {
+                case: "attachmentPrepareImageResult",
+                value: create(AttachmentPrepareImageResultEventSchema, {
+                  ...base,
+                  ok: false,
+                  errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
+                  errorDetail: "cleared",
+                }),
+              };
+            } else {
+              const thumb = await makeThumbnailBlob(prepared);
+              thumbRef = await this.store.putLocalBlob(thumb.blob, {
+                mimeType: thumb.blob.type || mime,
+                ext: thumb.ext,
+              });
+              if (this.clearEpoch !== epoch) {
+                await this.store.deleteLocalRefs([preparedRef, thumbRef]).catch(() => undefined);
+                preparedRef = "";
+                thumbRef = "";
+                ev = {
+                  case: "attachmentPrepareImageResult",
+                  value: create(AttachmentPrepareImageResultEventSchema, {
+                    ...base,
+                    ok: false,
+                    errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
+                    errorDetail: "cleared",
+                  }),
+                };
+              } else {
+                if (!this.store.hasPersistedPreparedImages) {
+                  this.blobCache.set(preparedRef, preparedBlob);
+                }
+                this.blobCache.set(thumbRef, thumb.blob);
+                this.emitBlobs();
+                ev = {
+                  case: "attachmentPrepareImageResult",
+                  value: create(AttachmentPrepareImageResultEventSchema, {
+                    ...base,
+                    ok: true,
+                    preparedRef,
+                    thumbRef,
+                    format: protoFmt,
+                    width: prepared.width,
+                    height: prepared.height,
+                    sizeBytes: BigInt(prepared.bytes.byteLength),
+                    sha256,
+                  }),
+                };
+              }
+            }
+          }
         }
-        const prepared = await this.prepareImageFn(source, {
-          original: eff.original,
-          maxOriginalBytes: Number(eff.maxOriginalBytes),
-          maxDimensionPx: eff.maxDimensionPx,
-          maxCompressedBytes: Number(eff.maxCompressedBytes),
-        });
-        const protoFmt = formatToProto(prepared.format);
-        const mime = mimeOf(protoFmt) || "image/jpeg";
-        const sha256 = await sha256Bytes(prepared.bytes);
-        const preparedBlob = new Blob([prepared.bytes as Uint8Array<ArrayBuffer>], { type: mime });
-        preparedRef = await this.store.putLocalBlob(preparedBlob, {
-          mimeType: mime,
-          ext: formatToExt(prepared.format),
-        });
-        const thumb = await makeThumbnailBlob(prepared);
-        thumbRef = await this.store.putLocalBlob(thumb.blob, {
-          mimeType: thumb.blob.type || mime,
-          ext: thumb.ext,
-        });
-        if (!this.store.hasPersistedPreparedImages) {
-          this.blobCache.set(preparedRef, preparedBlob);
-        }
-        this.blobCache.set(thumbRef, thumb.blob);
-        this.emitBlobs();
-        this.onEvent({
-          case: "attachmentPrepareImageResult",
-          value: create(AttachmentPrepareImageResultEventSchema, {
-            ...base,
-            ok: true,
-            preparedRef,
-            thumbRef,
-            format: protoFmt,
-            width: prepared.width,
-            height: prepared.height,
-            sizeBytes: BigInt(prepared.bytes.byteLength),
-            sha256,
-          }),
-        });
       } catch (err) {
         const cleanup = [preparedRef, thumbRef].filter(Boolean);
         if (cleanup.length > 0) {
           await this.store.deleteLocalRefs(cleanup).catch(() => undefined);
         }
         const c = classifyPrepareError(err);
-        this.onEvent({
+        ev = {
           case: "attachmentPrepareImageResult",
           value: create(AttachmentPrepareImageResultEventSchema, {
             ...base,
@@ -532,8 +619,9 @@ export class AttachmentExecutor {
             errorDetail: c.errorDetail,
             isReadingSource: c.isReadingSource,
           }),
-        });
+        };
       }
+      this.onEvent(ev);
     })();
     this.trackIO(work);
   }
@@ -546,21 +634,20 @@ export class AttachmentExecutor {
         outboxRequestId: eff.outboxRequestId,
         itemId: eff.itemId,
       };
+      let ev: Event["event"];
       try {
         const hashed = await this.store.hashLocalBlob(eff.sourceRef, Number(eff.maxBytes));
         if (hashed.kind === "missing") {
-          this.onEvent({
+          ev = {
             case: "attachmentHashFileResult",
             value: create(AttachmentHashFileResultEventSchema, {
               ...base,
               ok: false,
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
             }),
-          });
-          return;
-        }
-        if (hashed.kind === "too_large") {
-          this.onEvent({
+          };
+        } else if (hashed.kind === "too_large") {
+          ev = {
             case: "attachmentHashFileResult",
             value: create(AttachmentHashFileResultEventSchema, {
               ...base,
@@ -568,58 +655,51 @@ export class AttachmentExecutor {
               sizeBytes: BigInt(hashed.sizeBytes),
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_FILE_TOO_LARGE,
             }),
-          });
-          return;
-        }
-        if (hashed.kind === "changed") {
-          this.onEvent({
+          };
+        } else if (hashed.kind === "changed") {
+          ev = {
             case: "attachmentHashFileResult",
             value: create(AttachmentHashFileResultEventSchema, {
               ...base,
               ok: false,
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
             }),
-          });
-          return;
-        }
-        let hasDuration = false;
-        let durationMs = 0n;
-        if (eff.isVideo) {
-          const source = await this.store.getLocalBlob(eff.sourceRef);
-          const ms = source ? await this.probeVideoDurationFn(source).catch(() => undefined) : undefined;
-          if (ms !== undefined && Number.isFinite(ms) && ms > 0) {
-            hasDuration = true;
-            durationMs = BigInt(Math.round(ms));
+          };
+        } else {
+          let hasDuration = false;
+          let durationMs = 0n;
+          if (eff.isVideo) {
+            const source = await this.store.getLocalBlob(eff.sourceRef);
+            const ms = source ? await this.probeVideoDurationFn(source).catch(() => undefined) : undefined;
+            if (ms !== undefined && Number.isFinite(ms) && ms > 0) {
+              hasDuration = true;
+              durationMs = BigInt(Math.round(ms));
+            }
           }
+          ev = {
+            case: "attachmentHashFileResult",
+            value: create(AttachmentHashFileResultEventSchema, {
+              ...base,
+              ok: true,
+              sizeBytes: BigInt(hashed.sizeBytes),
+              sha256: hashed.sha256,
+              hasDuration,
+              durationMs,
+            }),
+          };
         }
-        this.onEvent({
-          case: "attachmentHashFileResult",
-          value: create(AttachmentHashFileResultEventSchema, {
-            ...base,
-            ok: true,
-            sizeBytes: BigInt(hashed.sizeBytes),
-            sha256: hashed.sha256,
-            hasDuration,
-            durationMs,
-          }),
-        });
       } catch (err) {
-        const errorKind =
-          err instanceof PartialTruncatedError
-            ? AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED
-            : hasQuotaExceeded(err)
-              ? AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_STORAGE_FULL
-              : AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER;
-        this.onEvent({
+        ev = {
           case: "attachmentHashFileResult",
           value: create(AttachmentHashFileResultEventSchema, {
             ...base,
             ok: false,
-            errorKind,
+            errorKind: classifySourceIOError(err),
             errorDetail: errorDetailOf(err),
           }),
-        });
+        };
       }
+      this.onEvent(ev);
     })();
     this.trackIO(work);
   }
@@ -634,65 +714,65 @@ export class AttachmentExecutor {
         offset: eff.offset,
       };
       const ref = eff.kind === AttachmentItemKind.IMAGE ? eff.preparedRef : eff.sourceRef;
+      let ev: Event["event"];
       if (!ref) {
-        this.onEvent({
+        ev = {
           case: "attachmentReadChunkResult",
           value: create(AttachmentReadChunkResultEventSchema, {
             ...base,
             ok: false,
             errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
           }),
-        });
-        return;
-      }
-      try {
-        const res = await this.store.readLocalSlice(
-          ref,
-          Number(eff.offset),
-          eff.length,
-          Number(eff.expectedSizeBytes),
-        );
-        if (res.kind === "missing") {
-          this.onEvent({
+        };
+      } else {
+        try {
+          const res = await this.store.readLocalSlice(
+            ref,
+            Number(eff.offset),
+            eff.length,
+            Number(eff.expectedSizeBytes),
+          );
+          if (res.kind === "missing") {
+            ev = {
+              case: "attachmentReadChunkResult",
+              value: create(AttachmentReadChunkResultEventSchema, {
+                ...base,
+                ok: false,
+                errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+              }),
+            };
+          } else if (res.kind === "changed") {
+            ev = {
+              case: "attachmentReadChunkResult",
+              value: create(AttachmentReadChunkResultEventSchema, {
+                ...base,
+                ok: false,
+                errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+              }),
+            };
+          } else {
+            ev = {
+              case: "attachmentReadChunkResult",
+              value: create(AttachmentReadChunkResultEventSchema, {
+                ...base,
+                ok: true,
+                data: res.data as Uint8Array<ArrayBuffer>,
+              }),
+            };
+          }
+        } catch (err) {
+          ev = {
             case: "attachmentReadChunkResult",
             value: create(AttachmentReadChunkResultEventSchema, {
               ...base,
               ok: false,
-              errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+              errorKind: classifySourceIOError(err),
+              errorDetail: errorDetailOf(err),
             }),
-          });
-          return;
+          };
         }
-        if (res.kind === "changed") {
-          this.onEvent({
-            case: "attachmentReadChunkResult",
-            value: create(AttachmentReadChunkResultEventSchema, {
-              ...base,
-              ok: false,
-              errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-            }),
-          });
-          return;
-        }
-        this.onEvent({
-          case: "attachmentReadChunkResult",
-          value: create(AttachmentReadChunkResultEventSchema, {
-            ...base,
-            ok: true,
-            data: res.data as Uint8Array<ArrayBuffer>,
-          }),
-        });
-      } catch (err) {
-        this.onEvent({
-          case: "attachmentReadChunkResult",
-          value: create(AttachmentReadChunkResultEventSchema, {
-            ...base,
-            ok: false,
-            errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
-            errorDetail: errorDetailOf(err),
-          }),
-        });
       }
+      this.onEvent(ev);
     })();
     this.trackIO(work);
   }

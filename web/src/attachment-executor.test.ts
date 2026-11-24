@@ -666,4 +666,116 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
     await store2.clearAll();
     expect(rawFiles.size).toBe(0);
   });
+
+  it("clearEpoch prevents in-flight prepareImage from leaving orphan blobs after clearAll (M2)", async () => {
+    const store = new MemoryAttachmentStore();
+    const events: Event["event"][] = [];
+    let releasePrepare!: () => void;
+    const prepareGate = new Promise<void>((res) => {
+      releasePrepare = res;
+    });
+    const exec = new AttachmentExecutor({
+      store,
+      onEvent: (ev) => events.push(ev),
+      prepareImage: async () => {
+        await prepareGate;
+        return { bytes: new Uint8Array([1, 2, 3, 4]), format: "jpeg", width: 10, height: 10 };
+      },
+    });
+    const srcRef = exec.stagePickedBlob(new Blob([new Uint8Array([9, 9])], { type: "image/jpeg" }));
+    exec.handlePrepareImage(
+      create(AttachmentPrepareImageEffectSchema, {
+        opId: 101n,
+        scope: SESSION_SCOPE,
+        itemId: "img-clear-race",
+        sourceRef: srcRef,
+        original: false,
+        maxOriginalBytes: 20_971_520n,
+        maxDimensionPx: 2048,
+        maxCompressedBytes: 921_600n,
+      }),
+    );
+    // Clear runs while prepareImage is still in flight; then prepare finishes.
+    exec.handleDraftStorageClearAll();
+    releasePrepare();
+    await exec.whenIdle();
+
+    expect((await store.list()).localRefs).toEqual([]);
+    const res = events.filter((e) => e.case === "attachmentPrepareImageResult" && e.value.opId === 101n);
+    expect(res).toHaveLength(1);
+    expect(res[0]?.case === "attachmentPrepareImageResult" && res[0].value.ok).toBe(false);
+  });
+
+  it("delivers each op_id at most once even if onEvent throws (L2) and maps NotReadableError/NotFoundError on readChunk (L6)", async () => {
+    const store = new MemoryAttachmentStore();
+    let deliverCount = 0;
+    const execThrowing = new AttachmentExecutor({
+      store,
+      onEvent: () => {
+        deliverCount++;
+        throw new Error("boom in core");
+      },
+      prepareImage: async () => ({ bytes: new Uint8Array([1, 2, 3]), format: "png", width: 8, height: 8 }),
+    });
+    const srcRef = execThrowing.stagePickedBlob(new Blob([new Uint8Array([1])], { type: "image/png" }));
+    execThrowing.handlePrepareImage(
+      create(AttachmentPrepareImageEffectSchema, {
+        opId: 201n,
+        scope: SESSION_SCOPE,
+        itemId: "img-once",
+        sourceRef: srcRef,
+        original: false,
+        maxOriginalBytes: 20_971_520n,
+        maxDimensionPx: 2048,
+        maxCompressedBytes: 921_600n,
+      }),
+    );
+    await execThrowing.whenIdle();
+    expect(deliverCount).toBe(1);
+
+    // L6: NotReadableError -> SOURCE_CHANGED, NotFoundError -> SOURCE_MISSING.
+    const events: Event["event"][] = [];
+    const flakyStore = new MemoryAttachmentStore();
+    const refA = flakyStore.stageBlob(new Blob(["abc"]));
+    const refB = flakyStore.stageBlob(new Blob(["def"]));
+    flakyStore.readLocalSlice = async (ref) => {
+      const err = new Error("disk error");
+      err.name = ref === refA ? "NotReadableError" : "NotFoundError";
+      throw err;
+    };
+    const exec2 = new AttachmentExecutor({ store: flakyStore, onEvent: (ev) => events.push(ev) });
+    exec2.handleReadChunk(
+      create(AttachmentReadChunkEffectSchema, {
+        opId: 202n,
+        scope: SESSION_SCOPE,
+        itemId: "f-a",
+        kind: AttachmentItemKind.FILE,
+        sourceRef: refA,
+        offset: 0n,
+        length: 3,
+        expectedSizeBytes: 3n,
+      }),
+    );
+    exec2.handleReadChunk(
+      create(AttachmentReadChunkEffectSchema, {
+        opId: 203n,
+        scope: SESSION_SCOPE,
+        itemId: "f-b",
+        kind: AttachmentItemKind.FILE,
+        sourceRef: refB,
+        offset: 0n,
+        length: 3,
+        expectedSizeBytes: 3n,
+      }),
+    );
+    await exec2.whenIdle();
+    const rA = events.find((e) => e.case === "attachmentReadChunkResult" && e.value.opId === 202n);
+    const rB = events.find((e) => e.case === "attachmentReadChunkResult" && e.value.opId === 203n);
+    expect(rA?.case === "attachmentReadChunkResult" && rA.value.errorKind).toBe(
+      AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+    );
+    expect(rB?.case === "attachmentReadChunkResult" && rB.value.errorKind).toBe(
+      AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+    );
+  });
 });
