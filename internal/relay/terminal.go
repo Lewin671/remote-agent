@@ -1106,10 +1106,10 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 				}
 			}
 			// Explicitly reject unknown-stream AttachPath instead of silently dropping (H-B).
-			return 8, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, 0))
+			return linkcore.ControlUnsupported, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, o.Context.Seq), peerwire.B(4, o.Hash))
 		}
 		if lt.ownerPeer != peerID || lt.sessionID != msg.Session {
-			return 8, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, 0))
+			return linkcore.ControlUnsupported, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, o.Context.Seq), peerwire.B(4, o.Hash))
 		}
 		if strings.HasPrefix(msg.LegID, "d:") {
 			lt.mu.Lock()

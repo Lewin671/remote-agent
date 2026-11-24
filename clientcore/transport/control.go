@@ -52,7 +52,7 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 		})
 		return 4, ackPayload(o)
 
-	case linkcore.ControlAck, linkcore.ControlStreamFailed, linkcore.ControlInputStatusReply, linkcore.ControlBarrierReply:
+	case linkcore.ControlAck, linkcore.ControlStreamFailed, linkcore.ControlClosePath, linkcore.ControlInputStatusReply, linkcore.ControlBarrierReply:
 		return c.handleInboundTerminalControl(now, r, o)
 
 	default:
