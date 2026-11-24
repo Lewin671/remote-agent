@@ -556,6 +556,76 @@ private actor NavRecorder {
         defaults.removePersistentDomain(forName: suiteName)
     }
 
+    @Test func runMachineCommandReturnsResultAndPropagatesCancellation() async throws {
+        let executor = FakeCoreExecutor()
+        let screens = CoreScreens()
+        let client = try CoreClient()
+        let suiteName = "corehost-run-cmd-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let host = CoreHost(
+            client: client,
+            executor: executor,
+            screens: screens,
+            defaults: ScopeDefaults(defaults),
+            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
+            clock: { 1_791_000_000_000 },
+            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+        )
+        await host.wireExecutorHooks()
+        await host.startAsync()
+        await waitUntil { screens.syncState.connection == .connected }
+
+        // 1. Happy path returns the daemon CommandResult through Core.
+        let okRes = try await host.runMachineCommand(
+            machineID: executor.machineID,
+            command: .with { $0.getSettings = PBGetSettingsRequest() },
+            skipConnectivityPreflight: true
+        )
+        #expect(okRes.outcome == "executed")
+        #expect(okRes.hasGetSettings)
+
+        // 2. Cancelling the caller task sends CancelMachineCommandAction and cancels the in-flight dispatch.
+        let started = OSAllocatedUnfairLock(initialState: false)
+        let cancelled = OSAllocatedUnfairLock(initialState: false)
+        await executor.setDispatchCommandHandler { eff in
+            started.withLock { $0 = true }
+            await withTaskCancellationHandler {
+                try? await Task.sleep(for: .seconds(60))
+            } onCancel: {
+                cancelled.withLock { $0 = true }
+            }
+            return PBCoreCommandOutcomeEvent.with {
+                $0.requestID = eff.requestID
+                $0.attemptID = eff.attemptID
+                $0.source = .transport
+                $0.notForwarded = true
+                $0.transportCode = "canceled"
+            }
+        }
+        let task = Task {
+            try await host.runMachineCommand(
+                machineID: executor.machineID,
+                command: .with { $0.getSettings = PBGetSettingsRequest() },
+                skipConnectivityPreflight: true
+            )
+        }
+        await waitUntil { started.withLock { $0 } }
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("expected CancellationError")
+        } catch is CancellationError {
+            // expected
+        }
+        await waitUntil { cancelled.withLock { $0 } }
+        #expect(cancelled.withLock { $0 })
+
+        await host.closeAsync()
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
     private func waitUntil(_ cond: @escaping () async -> Bool) async {
         for _ in 0..<100 {
             if await cond() { return }

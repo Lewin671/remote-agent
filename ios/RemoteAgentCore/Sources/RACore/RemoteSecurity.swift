@@ -49,7 +49,7 @@ extension Remote {
         ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
-    private func ensureFallbackSecurityDriver() -> CoreSecurityDriver? {
+    func ensureFallbackSecurityDriver() -> CoreSecurityDriver? {
         guard !closed else { return nil }
         if let fallbackSecurityDriver { return fallbackSecurityDriver }
         let driver = try? CoreSecurityDriver(
@@ -62,6 +62,18 @@ extension Remote {
             },
             onTokenUpdated: { [weak self] eff in
                 Task { await self?.applySecurityTokenUpdated(eff) }
+            },
+            onDispatchCommand: { [weak self] eff in
+                guard let self else {
+                    return PBCoreCommandOutcomeEvent.with {
+                        $0.requestID = eff.requestID
+                        $0.attemptID = eff.attemptID
+                        $0.source = .local
+                        $0.notForwarded = true
+                        $0.transportCode = "canceled"
+                    }
+                }
+                return await self.dispatchCommandAttempt(eff)
             }
         )
         fallbackSecurityDriver = driver

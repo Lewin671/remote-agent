@@ -256,6 +256,27 @@ extension Remote {
         try await forward(try prepare(machineId: machineId, sessionId: "", cmd))
     }
 
+    @discardableResult
+    public func runMachineCommand(
+        machineId: String,
+        sessionId: String = "",
+        _ cmd: PBCommand,
+        skipConnectivityPreflight: Bool = false
+    ) async throws -> PBCommandResult {
+        if let onRun = hostHooks?.onRunMachineCommand {
+            return try await onRun(machineId, sessionId, cmd, skipConnectivityPreflight)
+        }
+        guard let driver = ensureFallbackSecurityDriver() else {
+            throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled())
+        }
+        return try await driver.runMachineCommand(
+            machineID: machineId,
+            sessionID: sessionId,
+            command: cmd,
+            skipConnectivityPreflight: skipConnectivityPreflight
+        )
+    }
+
     public nonisolated func pingServer(timeoutMs: Int64 = 8_000) async throws -> Int64 {
         var request = URLRequest(url: URL(string: api.server + "/healthz")!)
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
@@ -282,7 +303,7 @@ extension Remote {
         let started = ContinuousClock.now
         do {
             _ = try await withTimeout(timeoutMs, sleep: sleep) { [cmd] in
-                try await self.machineCommand(machineId, cmd)
+                try await self.runMachineCommand(machineId: machineId, sessionId: "", cmd, skipConnectivityPreflight: true)
             }
         } catch is TimedOut {
             throw UserError(L10nMessage.connectionNoResponse())

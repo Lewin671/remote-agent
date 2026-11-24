@@ -236,6 +236,7 @@ public final actor Remote {
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
         public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
         public var onFinishDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void
+        public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
@@ -243,7 +244,8 @@ public final actor Remote {
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
             onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
-            onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in }
+            onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in },
+            onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil
         ) {
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
@@ -252,6 +254,7 @@ public final actor Remote {
             self.onCoreEvent = onCoreEvent
             self.onBeginDirectBulkTransfer = onBeginDirectBulkTransfer
             self.onFinishDirectBulkTransfer = onFinishDirectBulkTransfer
+            self.onRunMachineCommand = onRunMachineCommand
         }
     }
 

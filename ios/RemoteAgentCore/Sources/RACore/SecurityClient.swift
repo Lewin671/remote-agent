@@ -497,12 +497,15 @@ final class CoreSecurityDriver: @unchecked Sendable {
     private let sleep: Sleeper
     private let onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)?
     private let onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)?
+    private let onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)?
     private let queue = DispatchQueue(label: "ra.core.security.driver")
     private let lock = NSLock()
     private var closed = false
     private var nextOpID: UInt64 = 1
     private var timers: [String: (id: UInt64, task: Task<Void, Never>)] = [:]
     private var securityOpWaiters: [UInt64: ContinuationWaiter<PBSecurityOpResultEffect>] = [:]
+    private var machineCmdWaiters: [UInt64: ContinuationWaiter<PBCommandResult>] = [:]
+    private var inFlightDispatches: [String: [String: Task<Void, Never>]] = [:]
 
     init(
         executor: SecurityExecutor,
@@ -511,6 +514,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         sleep: @escaping Sleeper = realSleep,
         onStatusSnapshot: (@Sendable (PBSecurityWorkflowStatus) -> Void)? = nil,
         onTokenUpdated: (@Sendable (PBSecurityTokenUpdatedEffect) -> Void)? = nil,
+        onDispatchCommand: (@Sendable (PBCoreDispatchCommandEffect) async -> PBCoreCommandOutcomeEvent)? = nil,
         initialConfig: PBSecurityConfigEvent? = nil
     ) throws {
         self.core = try CoreClient()
@@ -520,11 +524,15 @@ final class CoreSecurityDriver: @unchecked Sendable {
         self.sleep = sleep
         self.onStatusSnapshot = onStatusSnapshot
         self.onTokenUpdated = onTokenUpdated
+        self.onDispatchCommand = onDispatchCommand
         enqueueEvent(PBCoreEvent.with {
             $0.entropyProvided = Self.buildEntropy(minIds: 16, minFloats: 16, minRandomBytes: 4096)
         })
         if let initialConfig {
             enqueueEvent(PBCoreEvent.with { $0.securityConfig = initialConfig })
+        }
+        if onDispatchCommand != nil {
+            enqueueEvent(PBCoreEvent.with { $0.syncLifecycle.kind = .start })
         }
     }
 
@@ -561,6 +569,48 @@ final class CoreSecurityDriver: @unchecked Sendable {
                 req.opID = id
                 configure(&req)
                 enqueueEvent(PBCoreEvent.with { $0.securityOpRequest = req })
+            }
+        )
+    }
+
+    func runMachineCommand(
+        machineID: String,
+        sessionID: String,
+        command: PBCommand,
+        skipConnectivityPreflight: Bool
+    ) async throws -> PBCommandResult {
+        try await awaitWaiter(
+            isClosed: { self.isClosed() },
+            closedError: { CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()) },
+            register: { waiter in
+                try lock.withLock {
+                    guard !closed else { throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()) }
+                    try Task.checkCancellation()
+                    let id = nextOpID
+                    nextOpID &+= 1
+                    machineCmdWaiters[id] = waiter
+                    return id
+                }
+            },
+            unregister: { [self] id in
+                let removed = lock.withLock { machineCmdWaiters.removeValue(forKey: id) }
+                if removed != nil && !self.isClosed() {
+                    self.enqueueEvent(PBCoreEvent.with {
+                        $0.cancelMachineCommand = .with { $0.opID = id }
+                    })
+                }
+                return removed
+            },
+            dispatch: { id in
+                enqueueEvent(PBCoreEvent.with {
+                    $0.runMachineCommand = .with {
+                        $0.opID = id
+                        $0.machineID = machineID
+                        $0.sessionID = sessionID
+                        $0.command = command
+                        $0.skipConnectivityPreflight = skipConnectivityPreflight
+                    }
+                })
             }
         )
     }
@@ -646,22 +696,77 @@ final class CoreSecurityDriver: @unchecked Sendable {
         case .securityOpResult(let res):
             let waiter = lock.withLock { securityOpWaiters.removeValue(forKey: res.opID) }
             waiter?.resolve(.success(res))
+        case .dispatchCommand(let cmdEff):
+            guard let dispatchFn = onDispatchCommand else { break }
+            let reqID = cmdEff.requestID
+            let attID = cmdEff.attemptID
+            let task = Task { [weak self] in
+                guard let self else { return }
+                let outcome = await dispatchFn(cmdEff)
+                let stillTracked = self.lock.withLock { () -> Bool in
+                    guard var byAttempt = self.inFlightDispatches[reqID], byAttempt.removeValue(forKey: attID) != nil else {
+                        return false
+                    }
+                    if byAttempt.isEmpty {
+                        self.inFlightDispatches.removeValue(forKey: reqID)
+                    } else {
+                        self.inFlightDispatches[reqID] = byAttempt
+                    }
+                    return !self.closed
+                }
+                if stillTracked && !Task.isCancelled {
+                    self.enqueueEvent(PBCoreEvent.with { $0.commandOutcome = outcome })
+                }
+            }
+            lock.withLock {
+                if !closed {
+                    inFlightDispatches[reqID, default: [:]][attID] = task
+                } else {
+                    task.cancel()
+                }
+            }
+        case .cancelDispatch(let eff):
+            let tasks = lock.withLock {
+                eff.requestID.isEmpty ? [] : Array((inFlightDispatches.removeValue(forKey: eff.requestID) ?? [:]).values)
+            }
+            for task in tasks { task.cancel() }
+        case .runMachineCommandResult(let res):
+            let waiter = lock.withLock { machineCmdWaiters.removeValue(forKey: res.opID) }
+            if res.ok {
+                waiter?.resolve(.success(res.result))
+            } else {
+                let code = res.errorCode.isEmpty ? "failed" : res.errorCode
+                let msg = res.hasErrorText ? renderCoreText(res.errorText) : ""
+                let fromDaemon = res.hasResult && (!res.result.errorCode.isEmpty || !res.result.outcome.isEmpty)
+                waiter?.resolve(.failure(CommandError(
+                    code,
+                    msg.isEmpty ? L10nMessage.errorsCommandFailed() : LocalizedMessage(raw: msg),
+                    fromDaemon: fromDaemon
+                )))
+            }
         default: break
         }
     }
 
     func close() {
-        let (pendingTimers, pendingOps) = lock.withLock { () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>]) in
-            guard !closed else { return ([], []) }
+        let (pendingTimers, pendingOps, pendingCmds, pendingDispatches) = lock.withLock {
+            () -> ([Task<Void, Never>], [ContinuationWaiter<PBSecurityOpResultEffect>], [ContinuationWaiter<PBCommandResult>], [Task<Void, Never>]) in
+            guard !closed else { return ([], [], [], []) }
             closed = true
             let ts = timers.values.map(\.task)
             let ops = Array(securityOpWaiters.values)
+            let cmds = Array(machineCmdWaiters.values)
+            let dispatches = inFlightDispatches.values.flatMap(\.values)
             timers.removeAll()
             securityOpWaiters.removeAll()
-            return (ts, ops)
+            machineCmdWaiters.removeAll()
+            inFlightDispatches.removeAll()
+            return (ts, ops, cmds, dispatches)
         }
         for t in pendingTimers { t.cancel() }
+        for t in pendingDispatches { t.cancel() }
         for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
+        for waiter in pendingCmds { waiter.resolve(.failure(CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()))) }
         queue.sync {
             core.close()
         }
