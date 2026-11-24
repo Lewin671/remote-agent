@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -512,8 +513,8 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	if !setVM.ConnCheck.NetworkAvailable || !setVM.ConnCheck.EverOnline || setVM.ConnCheck.Failures != 2 || setVM.ConnCheck.ConnStartedAtMs != now-5_000 {
 		t.Fatalf("unexpected ConnCheckSummaryView fields: %+v", setVM.ConnCheck)
 	}
-	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady || setVM.Machines[0].ShortId != "…90abcdef" {
-		t.Fatalf("expected InDeviceDirectory, DirectReady, and ShortId on machine card, got %+v", setVM.Machines)
+	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady || setVM.Machines[0].ShortId != "" {
+		t.Fatalf("expected InDeviceDirectory, DirectReady, and no ShortId on a uniquely named machine card, got %+v", setVM.Machines)
 	}
 	devVM := BuildDevices(st, sv, nil)
 	if !devVM.LoadFailed || devVM.GetErrorText().GetLiteral() != "devices rpc failed" || devVM.LeaseEndMs != now+600_000 {
@@ -710,5 +711,51 @@ func TestOfflineNetworkDoesNotShowRemovedBannerOrRemovedMachines(t *testing.T) {
 	svmRemoved := BuildSettings(st, sv, nil)
 	if svmRemoved.GetUnlinkedBannerText().GetKey() != text.KeySettingsThisDeviceWasRemovedFromTheAccount {
 		t.Fatalf("removed account must show removed-from-account banner, got %+v", svmRemoved.GetUnlinkedBannerText())
+	}
+}
+
+// The short ID appears only when two computers share a name, and it comes last
+// in the subtitle so the quota summary stays first.
+func TestMachineCardShortIDOnlyForDuplicateNames(t *testing.T) {
+	now := int64(1_791_633_600_000)
+	st := NewState(nil)
+	st.Cal = lists.Calendar{NowMs: now, TodayStartMs: now - 10_800_000}
+	st.World.Connection = lists.ConnConnected
+	st.World.ClientVersion = 17
+	st.World.MachinesListed = true
+	mk := func(id, host string) *lists.Machine {
+		return &lists.Machine{ID: id, Online: true, Meta: &v1.MachineMeta{
+			Hostname: host, ProtocolVersion: 17,
+			Quotas: []*v1.AgentQuota{{
+				Agent: v1.Agent_AGENT_CLAUDE, State: v1.QuotaState_QUOTA_STATE_OK, ObservedMs: now - 60_000,
+				Windows: []*v1.QuotaWindow{{Name: "seven_day", UsedPercent: ptrF64(30), ResetsAtMs: now + 3_600_000}},
+			}},
+		}}
+	}
+	st.World.Machines = []*lists.Machine{
+		mk("aaaaaaaa11111111", "Mac"),
+		mk("bbbbbbbb22222222", "Mac"),
+		mk("cccccccc33333333", "Studio"),
+	}
+	vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+	if len(vm.Machines) != 3 {
+		t.Fatalf("want 3 machine cards, got %d", len(vm.Machines))
+	}
+	for _, c := range vm.Machines {
+		if c.ShortId != "" {
+			t.Fatalf("%s: ShortId must stay empty, got %q", c.MachineId, c.ShortId)
+		}
+		parts := c.SubtitleParts
+		if len(parts) == 0 {
+			t.Fatalf("%s: missing subtitle", c.MachineId)
+		}
+		last := parts[len(parts)-1].GetText().GetLiteral()
+		hasShort := strings.HasPrefix(last, "…")
+		if dup := c.Name == "Mac"; dup != hasShort {
+			t.Fatalf("%s (%s): short id last=%q, want present=%v", c.MachineId, c.Name, last, dup)
+		}
+		if parts[0].GetText().GetLiteral() != "" && strings.HasPrefix(parts[0].GetText().GetLiteral(), "…") && len(parts) > 1 {
+			t.Fatalf("%s: short id must not lead the subtitle", c.MachineId)
+		}
 	}
 }

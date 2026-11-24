@@ -176,6 +176,12 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 	}
 
 	removed := st.Removed || syncView.GetRemoved()
+	// The short ID only tells apart computers that share a name; it trails the
+	// subtitle so the quota summary stays first.
+	nameCount := make(map[string]int, len(sorted))
+	for _, m := range sorted {
+		nameCount[lists.MachineName(m, m.ID)]++
+	}
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	for _, m := range sorted {
 		online := lists.MachineReachable(m)
@@ -248,10 +254,13 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			}
 		}
 
+		name := lists.MachineName(m, m.ID)
+		if nameCount[name] > 1 {
+			subParts = append(subParts, &corev1.SubtitleSegment{Text: text.Plain(machine.ShortMachineID(m.ID))})
+		}
 		card := &corev1.MachineListCardView{
 			MachineId:         m.ID,
-			Name:              lists.MachineName(m, m.ID),
-			ShortId:           machine.ShortMachineID(m.ID),
+			Name:              name,
 			Online:            online,
 			Member:            !archived,
 			ProtocolMismatch:  mismatch,
