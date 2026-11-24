@@ -1337,16 +1337,19 @@ func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore,
 		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, false, &effects)
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
+		restoreEff := &corev1.SessionRestoreComposerEffect{
+			SessionId:     sid,
+			RequestId:     reqID,
+			HandledByCore: handled,
+		}
+		if !handled {
+			restoreEff.Text = item.Text
+			restoreEff.ImageIds = append([]string(nil), item.ImageIds...)
+			restoreEff.FileIds = append([]string(nil), item.FileIds...)
+		}
 		effects = append(effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
-				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-					SessionId:     sid,
-					RequestId:     reqID,
-					Text:          item.Text,
-					ImageIds:      append([]string(nil), item.ImageIds...),
-					FileIds:       append([]string(nil), item.FileIds...),
-					HandledByCore: handled,
-				},
+				SessionRestoreComposer: restoreEff,
 			},
 		})
 		return effects
@@ -1542,16 +1545,19 @@ func (c *Core) settleCancelInput(
 		}
 	case screens.CancelIntentRestore:
 		handled := c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, true, effects)
+		restoreEff := &corev1.SessionRestoreComposerEffect{
+			SessionId:     meta.sessionID,
+			RequestId:     intent.SourceReqID,
+			HandledByCore: handled,
+		}
+		if !handled {
+			restoreEff.Text = intent.Text
+			restoreEff.ImageIds = append([]string(nil), intent.ImageIDs...)
+			restoreEff.FileIds = append([]string(nil), intent.FileIDs...)
+		}
 		*effects = append(*effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
-				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
-					SessionId:     meta.sessionID,
-					RequestId:     intent.SourceReqID,
-					Text:          intent.Text,
-					ImageIds:      append([]string(nil), intent.ImageIDs...),
-					FileIds:       append([]string(nil), intent.FileIDs...),
-					HandledByCore: handled,
-				},
+				SessionRestoreComposer: restoreEff,
 			},
 		})
 	case screens.CancelIntentCancel, screens.CancelIntentCancelAll:

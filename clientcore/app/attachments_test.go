@@ -2636,3 +2636,56 @@ func TestAttachments_AddItemsWhileDraftLoading_ReleasesPickedHandlesAndReservati
 		t.Fatalf("expected AttachmentReleaseLocal for both rejected refs, got %+v", rels)
 	}
 }
+
+func TestAttachments_DraftEventBeforeConfig_HoldsEditUntilConfigAndNeverOverwritesDisk(t *testing.T) {
+	// Fresh Core WITHOUT AttachmentConfigEvent yet!
+	c := New()
+	defer c.Close()
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: "s-precfg"}
+
+	// 1. User types text BEFORE AttachmentConfigEvent arrives -> must NOT emit DraftStorageWrite or mark loaded!
+	earlyEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_000,
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "typed before config"}},
+	})
+	if len(findDraftWriteEffects(earlyEff)) != 0 {
+		t.Fatalf("must NOT write draft before AttachmentConfigEvent arrives")
+	}
+	if c.m.attachments.drafts["session:s-precfg"].loadState != draftLoadUnloaded {
+		t.Fatalf("draft touched before config must stay unloaded until config arrives")
+	}
+
+	// 2. AttachmentConfigEvent arrives with PersistDrafts=true -> emits DraftStorageRead(DRAFT) for the activated draft!
+	cfgEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_000,
+		Event: &corev1.Event_AttachmentConfig{AttachmentConfig: &corev1.AttachmentConfigEvent{PersistDrafts: true, PersistOutbox: true}},
+	})
+	var readOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			readOp = rd.OpId
+		}
+	}
+	if readOp == 0 {
+		t.Fatalf("expected DraftStorageRead after AttachmentConfigEvent arrives for pre-activated draft")
+	}
+
+	// 3. Disk read returns older text -> pre-config typing MUST win and flush back to disk!
+	rawDisk, _ := attachments.EncodePersistedDraft(&corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         scope,
+		Text:          "older disk text",
+		UpdatedMs:     1_791_078_000_000,
+	})
+	readEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_000,
+		Event: &corev1.Event_DraftStorageReadResult{DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: readOp, Found: true, Data: rawDisk}},
+	})
+	vm, _ := c.View(&corev1.Screen{Screen: &corev1.Screen_AttachmentDraft{AttachmentDraft: &corev1.AttachmentDraftScreenRequest{Scope: scope}}})
+	if got := vm.GetAttachmentDraft().GetDraft().GetText(); got != "typed before config" {
+		t.Fatalf("pre-config user typing must win over stale disk draft, got %q", got)
+	}
+	if len(findDraftWriteEffects(readEff)) != 1 {
+		t.Fatalf("expected merged draft flushed to disk after load, got %+v", findDraftWriteEffects(readEff))
+	}
+}

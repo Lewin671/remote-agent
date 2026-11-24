@@ -190,6 +190,7 @@ type attDraft struct {
 
 	loadState            draftLoadState
 	activated            bool
+	hasLocalTextEdit     bool
 	activeLoadOpID       uint64
 	loadStartTextRev     uint64
 	activeWriteOpID      uint64
@@ -332,9 +333,9 @@ func (c *Core) ensureDraftState(scope *corev1.DraftScope) *attDraft {
 	if d := mgr.drafts[key]; d != nil {
 		return d
 	}
-	loadSt := draftLoadLoaded
-	if mgr.persistDrafts {
-		loadSt = draftLoadUnloaded
+	loadSt := draftLoadUnloaded
+	if mgr.configured && !mgr.persistDrafts {
+		loadSt = draftLoadLoaded
 	}
 	d := &attDraft{
 		scope:        cloneDraftScope(scope),
@@ -508,18 +509,42 @@ func (c *Core) handleAttachmentConfig(ctx *sync.StepContext, ev *corev1.Attachme
 	} else {
 		mgr.maxChunkBytes = attachments.DefaultUploadChunkBytes
 	}
-	if !ev.ScanStorage {
-		return nil
+	var effects []*corev1.Effect
+	// Reconcile any drafts touched before AttachmentConfigEvent arrived.
+	if len(mgr.drafts) > 0 {
+		keys := make([]string, 0, len(mgr.drafts))
+		for k := range mgr.drafts {
+			keys = append(keys, k)
+		}
+		sortutil.Strings(keys)
+		for _, k := range keys {
+			d := mgr.drafts[k]
+			if d == nil || d.loadState != draftLoadUnloaded {
+				continue
+			}
+			if !mgr.persistDrafts {
+				d.loadState = draftLoadLoaded
+				d.hasLocalTextEdit = false
+				if d.activated {
+					c.startPendingDraftUploads(ctx, d, &effects)
+				}
+			} else if d.activated && !ev.ScanStorage {
+				c.startDraftLoad(d, &effects)
+			}
+			c.markDraftDirty(ctx, d.scope)
+		}
 	}
-	opID := mgr.allocOpID()
-	mgr.activeListOpID = opID
-	return []*corev1.Effect{
-		{
+	if ev.ScanStorage {
+		opID := mgr.allocOpID()
+		mgr.activeListOpID = opID
+		effects = append(effects, &corev1.Effect{
 			Effect: &corev1.Effect_DraftStorageList{
 				DraftStorageList: &corev1.DraftStorageListEffect{OpId: opID},
 			},
-		},
+		})
 	}
+	c.pumpAttachmentQueues(ctx, &effects)
+	return effects
 }
 
 func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftStorageListedEvent) []*corev1.Effect {
@@ -576,7 +601,12 @@ func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftS
 			d := c.ensureDraftState(rec.Scope)
 			if d != nil && d.loadState != draftLoadLoaded {
 				// Only hydrate on startup scan; do NOT eagerly prepare/upload unopened sessions!
+				hadPreConfigEdit := d.hasLocalTextEdit
 				c.hydrateDraftFromPersisted(ctx, d, rec, d.activated, &effects)
+				d.hasLocalTextEdit = false
+				if hadPreConfigEdit {
+					c.enqueueDraftWrite(d, &effects)
+				}
 			}
 		}
 	}
@@ -697,7 +727,8 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 		d.loadState = draftLoadLoaded
 	}
 
-	if d.loadState == draftLoadLoaded && (d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d)) {
+	if d.loadState == draftLoadLoaded && (d.textRev != d.loadStartTextRev || d.hasLocalTextEdit || hasPendingLoadOutboxBarriers(d)) {
+		d.hasLocalTextEdit = false
 		targetSeq := c.enqueueDraftWrite(d, &effects)
 		c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
 	}
@@ -738,7 +769,7 @@ func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec
 	if d == nil || rec == nil {
 		return
 	}
-	userTypedDuringLoad := d.textRev != d.loadStartTextRev
+	userTypedDuringLoad := d.textRev != d.loadStartTextRev || d.hasLocalTextEdit
 	if !userTypedDuringLoad {
 		if d.text == "" {
 			d.text = rec.Text
@@ -796,12 +827,17 @@ func (c *Core) handleDraftSetText(ctx *sync.StepContext, act *corev1.DraftSetTex
 	d.text = act.Text
 	d.textRev++
 	c.syncNewSessionPromptFromDraft(d)
-	if mgr.persistDrafts {
+	if !mgr.configured {
+		// Hold edit in memory until AttachmentConfigEvent arrives; never assume loaded or overwrite disk!
+		d.hasLocalTextEdit = true
+	} else if mgr.persistDrafts {
 		switch d.loadState {
 		case draftLoadUnloaded, draftLoadFailed:
-			// Never overwrite an unloaded disk draft; start load and keep user edit via textRev.
+			// Never overwrite an unloaded disk draft; start load and keep user edit via hasLocalTextEdit/textRev.
+			d.hasLocalTextEdit = true
 			c.startDraftLoad(d, &effects)
 		case draftLoadLoading:
+			d.hasLocalTextEdit = true
 			// In-flight load will see textRev != loadStartTextRev and flush merged draft.
 		case draftLoadLoaded:
 			c.enqueueDraftWrite(d, &effects)
@@ -969,7 +1005,7 @@ func (c *Core) handleDraftAddItems(ctx *sync.StepContext, act *corev1.DraftAddIt
 	if act.ReservationId != "" {
 		delete(d.reservations, act.ReservationId)
 	}
-	if d.loadState == draftLoadLoading {
+	if !mgr.configured || d.loadState == draftLoadLoading {
 		var rejectedRefs []string
 		for _, picked := range act.Items {
 			if picked == nil {

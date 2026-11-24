@@ -345,15 +345,17 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.AttachmentsMoved = false
 				d.ResetOnNextOpen = true
 
-				effects = append(effects, &corev1.Effect{
-					Effect: &corev1.Effect_AttachmentsSettled{
-						AttachmentsSettled: &corev1.AttachmentsSettledEffect{
-							ProjectKey: meta.projectKey,
-							RequestId:  sc.RequestID,
-							Consumed:   true,
+				if c.m.attachments == nil || !c.m.attachments.configured {
+					effects = append(effects, &corev1.Effect{
+						Effect: &corev1.Effect_AttachmentsSettled{
+							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
+								ProjectKey: meta.projectKey,
+								RequestId:  sc.RequestID,
+								Consumed:   true,
+							},
 						},
-					},
-				})
+					})
+				}
 				savePrev, saveCtx := c.m.sync.BeginStep()
 				if sess != nil && sess.Id != "" {
 					c.m.sync.SeedSession(saveCtx, sc.MachineID, sess)
@@ -387,7 +389,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.DiskFull = false
 				d.StartErrorText = sc.ErrorText
 				d.StartError = sc.ErrorCode
-				if sc.Expired {
+				if sc.Expired && (c.m.attachments == nil || !c.m.attachments.configured) {
 					effects = append(effects, &corev1.Effect{
 						Effect: &corev1.Effect_AttachmentsSettled{
 							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
@@ -409,15 +411,17 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				if d.StartError == "" && d.StartErrorText == nil {
 					d.StartError = "failed"
 				}
-				effects = append(effects, &corev1.Effect{
-					Effect: &corev1.Effect_AttachmentsSettled{
-						AttachmentsSettled: &corev1.AttachmentsSettledEffect{
-							ProjectKey: meta.projectKey,
-							RequestId:  sc.RequestID,
-							Consumed:   false,
+				if c.m.attachments == nil || !c.m.attachments.configured {
+					effects = append(effects, &corev1.Effect{
+						Effect: &corev1.Effect_AttachmentsSettled{
+							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
+								ProjectKey: meta.projectKey,
+								RequestId:  sc.RequestID,
+								Consumed:   false,
+							},
 						},
-					},
-				})
+					})
+				}
 			}
 			c.onNewSessionCreateSettled(meta.projectKey, sc, &effects)
 			dirty.Add(true, true, true)
@@ -853,7 +857,11 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					ctx.Dirty.Add(false, false, true)
 					break
 				}
-				if len(coreImgs) > 0 || len(coreFiles) > 0 {
+				if c.m.attachments != nil && c.m.attachments.configured {
+					// Core-configured path exclusively uses Core draft attachments (never dual-path fallback).
+					imgIDs = coreImgs
+					fileIDs = coreFiles
+				} else if len(coreImgs) > 0 || len(coreFiles) > 0 {
 					imgIDs = coreImgs
 					fileIDs = coreFiles
 				}
