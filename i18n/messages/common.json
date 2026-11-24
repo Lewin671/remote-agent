@@ -683,5 +683,30 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "common.sentence_join",
+    "zh-CN": "{first}{second}",
+    "en": "{first} {second}",
+    "notes": "将两句完整说明按语言习惯拼在同一段里（中文句号后不加空格，英文句号后加半角空格）。",
+    "params": {
+      "first": {
+        "type": "string",
+        "example": "延迟是一次往返的时间。"
+      },
+      "second": {
+        "type": "string",
+        "example": "当前应用版本暂不支持直连，已全部经中继连接。"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

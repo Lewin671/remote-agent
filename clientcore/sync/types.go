@@ -455,6 +455,7 @@ type Engine struct {
 	transportCoord         *transport.Coordinator
 	platformAgent          string
 	directPrefs            map[string]bool
+	demoDirectReports      map[string]*corev1.DemoDirectReport
 	directEngineAt         int64
 	directEngineScheduled  bool
 	directSessionAt        int64

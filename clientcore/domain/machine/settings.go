@@ -216,15 +216,76 @@ func deviceClientBase(d *corev1.SyncDeviceView) clientBase {
 
 // Last4 returns the last 4 runes of an ID without a leading ellipsis, or the ID itself if <= 4 runes.
 func Last4(id string) string {
-	r := []rune(id)
-	if len(r) <= 4 {
-		return id
-	}
-	return string(r[len(r)-4:])
+	return idSuffix(id, 4)
 }
 
-func last4(id string) string {
-	return Last4(id)
+func idSuffix(id string, length int) string {
+	r := []rune(id)
+	if len(r) <= length {
+		return id
+	}
+	return string(r[len(r)-length:])
+}
+
+// MachineIdentity pairs a computer ID with its display name for disambiguation.
+type MachineIdentity struct {
+	ID   string
+	Name string
+}
+
+// BuildDisambiguators returns the shortest unique ID suffix (at least 4 runes,
+// extended until every distinct ID in a colliding group is unique) for computers
+// whose trimmed, case-folded display names collide.
+func BuildDisambiguators(items []MachineIdentity) map[string]string {
+	groups := make(map[string][]string, len(items))
+	seenByKey := make(map[string]map[string]struct{}, len(items))
+	for _, it := range items {
+		if it.ID == "" {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(it.Name))
+		if seenByKey[key] == nil {
+			seenByKey[key] = make(map[string]struct{})
+		}
+		if _, dup := seenByKey[key][it.ID]; dup {
+			continue
+		}
+		seenByKey[key][it.ID] = struct{}{}
+		groups[key] = append(groups[key], it.ID)
+	}
+	out := make(map[string]string)
+	for _, ids := range groups {
+		if len(ids) <= 1 {
+			continue
+		}
+		maxLen := 0
+		for _, id := range ids {
+			if n := len([]rune(id)); n > maxLen {
+				maxLen = n
+			}
+		}
+		suffixLen := 4
+		for suffixLen < maxLen {
+			seen := make(map[string]struct{}, len(ids))
+			collision := false
+			for _, id := range ids {
+				s := idSuffix(id, suffixLen)
+				if _, ok := seen[s]; ok {
+					collision = true
+					break
+				}
+				seen[s] = struct{}{}
+			}
+			if !collision {
+				break
+			}
+			suffixLen++
+		}
+		for _, id := range ids {
+			out[id] = idSuffix(id, suffixLen)
+		}
+	}
+	return out
 }
 
 func hasDuplicateClientBase(d *corev1.SyncDeviceView, base clientBase, allDevices []*corev1.SyncDeviceView) bool {
@@ -262,7 +323,7 @@ func ReadableClientNameText(d *corev1.SyncDeviceView, allDevices []*corev1.SyncD
 		baseText = text.Msg(text.KeySecurityClient)
 	}
 	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
-		return text.JoinLiteral(" · ", baseText, text.Plain(last4(d.DeviceId)))
+		return text.JoinLiteral(" · ", baseText, text.Plain(Last4(d.DeviceId)))
 	}
 	return baseText
 }
@@ -278,12 +339,12 @@ func ReadableClientPlainName(d *corev1.SyncDeviceView, allDevices []*corev1.Sync
 	base := deviceClientBase(d)
 	if base.kind != clientBaseRaw {
 		if d != nil && d.DeviceId != "" {
-			return last4(d.DeviceId)
+			return Last4(d.DeviceId)
 		}
 		return ""
 	}
 	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
-		return base.value + " · " + last4(d.DeviceId)
+		return base.value + " · " + Last4(d.DeviceId)
 	}
 	return base.value
 }

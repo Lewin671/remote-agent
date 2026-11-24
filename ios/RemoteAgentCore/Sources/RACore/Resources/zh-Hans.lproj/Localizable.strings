@@ -103,6 +103,7 @@
 "common_save" = "保存";
 "common_save_failed" = "没能保存：%1$@";
 "common_saving" = "保存中…";
+"common_sentence_join" = "%1$@%2$@";
 "common_settings" = "设置";
 "common_unknown_computer" = "未知电脑";
 "composer_android_unknown_reason" = "原因未知";
@@ -1463,6 +1464,7 @@
 "settings_light" = "亮色";
 "settings_local_cache" = "本机缓存";
 "settings_machine_count" = "%1$lld 台";
+"settings_machine_disambiguator_a11y" = "设备编号 %1$@";
 "settings_machine_sub_disk_alert" = "磁盘剩 %1$@";
 "settings_machine_sub_removed" = "保留历史会话记录";
 "settings_machine_sub_version_mismatch" = "协议版本不一致，需在电脑上更新";
@@ -1711,6 +1713,7 @@
 "tools_tool" = "工具";
 "tools_waiting_sync" = "等待同步";
 "transport_conn_footer_unsupported_app" = "当前应用版本暂不支持直连，已全部经中继连接。";
+"transport_conn_footer_unsupported_browser" = "这个浏览器不支持直连，已全部经中继连接。";
 "transport_detail_daemon_disabled" = "在这台电脑上开启后可用";
 "transport_detail_relay_only" = "已全部经中继连接，不影响正常使用";
 "transport_diag_at" = "%2$@ %1$@ 秒";

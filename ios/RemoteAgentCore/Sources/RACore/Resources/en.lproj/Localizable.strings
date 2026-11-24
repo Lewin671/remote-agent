@@ -103,6 +103,7 @@
 "common_save" = "Save";
 "common_save_failed" = "Could not save: %1$@";
 "common_saving" = "Saving…";
+"common_sentence_join" = "%1$@ %2$@";
 "common_settings" = "Settings";
 "common_unknown_computer" = "Unknown computer";
 "composer_android_unknown_reason" = "Unknown reason";
@@ -1463,6 +1464,7 @@
 "settings_light" = "Light";
 "settings_local_cache" = "Local cache";
 "settings_machine_count" = "%1$lld";
+"settings_machine_disambiguator_a11y" = "Device ID %1$@";
 "settings_machine_sub_disk_alert" = "Disk %1$@ free";
 "settings_machine_sub_removed" = "Retaining session history";
 "settings_machine_sub_version_mismatch" = "Protocol mismatch; update on the computer";
@@ -1711,6 +1713,7 @@
 "tools_tool" = "Tool";
 "tools_waiting_sync" = "Waiting to sync";
 "transport_conn_footer_unsupported_app" = "This app version does not support direct connections yet; everything connects via relay.";
+"transport_conn_footer_unsupported_browser" = "This browser does not support direct connections; everything connects via relay.";
 "transport_detail_daemon_disabled" = "Turn it on from this computer to use direct connections";
 "transport_detail_relay_only" = "Everything connects via relay as usual";
 "transport_diag_at" = "%2$@ %1$@ s";

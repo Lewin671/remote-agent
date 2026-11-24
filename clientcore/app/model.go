@@ -102,9 +102,13 @@ func newModel() *Model {
 		return events, m.sync.SessionEventsSettled(sid)
 	}
 	m.state.DirectReportFn = func(machineID string) (bool, *corev1.DirectRouteReport, bool) {
+		if enabled, report, ok := m.sync.DemoDirectReport(machineID); ok {
+			return enabled, report, true
+		}
 		prefEnabled, daemonDisabled, status, rounds, _, _ := m.sync.DirectMachineReport(machineID)
 		return prefEnabled, screens.BuildDirectRouteReport(status, prefEnabled, daemonDisabled, len(rounds)), true
 	}
+	m.state.PlatformAgentFn = m.sync.PlatformAgent
 	return m
 }
 

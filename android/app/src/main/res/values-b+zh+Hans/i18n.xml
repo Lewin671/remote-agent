@@ -113,6 +113,7 @@
     <string name="common_save" formatted="false">"保存"</string>
     <string name="common_save_failed">"没能保存：%1$s"</string>
     <string name="common_saving" formatted="false">"保存中…"</string>
+    <string name="common_sentence_join">"%1$s%2$s"</string>
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
     <string name="composer_android_unknown_reason" formatted="false">"原因未知"</string>
@@ -1723,6 +1724,7 @@
     <string name="settings_light" formatted="false">"亮色"</string>
     <string name="settings_local_cache" formatted="false">"本机缓存"</string>
     <string name="settings_machine_count">"%1$d 台"</string>
+    <string name="settings_machine_disambiguator_a11y">"设备编号 %1$s"</string>
     <string name="settings_machine_sub_disk_alert">"磁盘剩 %1$s"</string>
     <string name="settings_machine_sub_removed" formatted="false">"保留历史会话记录"</string>
     <string name="settings_machine_sub_version_mismatch" formatted="false">"协议版本不一致，需在电脑上更新"</string>
@@ -2004,6 +2006,7 @@
     <string name="tools_tool" formatted="false">"工具"</string>
     <string name="tools_waiting_sync" formatted="false">"等待同步"</string>
     <string name="transport_conn_footer_unsupported_app" formatted="false">"当前应用版本暂不支持直连，已全部经中继连接。"</string>
+    <string name="transport_conn_footer_unsupported_browser" formatted="false">"这个浏览器不支持直连，已全部经中继连接。"</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"在这台电脑上开启后可用"</string>
     <string name="transport_detail_relay_only" formatted="false">"已全部经中继连接，不影响正常使用"</string>
     <string name="transport_diag_at">"%2$s %1$s 秒"</string>

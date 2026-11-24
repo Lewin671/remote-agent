@@ -1688,14 +1688,55 @@ func (m *DemoSecurity) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoSecurity)
 }
 
+type DemoDirectReport struct {
+	_         [0]func()
+	MachineId string
+	Enabled   bool
+	Report    *DirectRouteReport
+}
+
+func (m *DemoDirectReport) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+func (m *DemoDirectReport) GetEnabled() bool {
+	if m != nil {
+		return m.Enabled
+	}
+	return false
+}
+func (m *DemoDirectReport) GetReport() *DirectRouteReport {
+	if m != nil {
+		return m.Report
+	}
+	return nil
+}
+
+var LitewireDesc_DemoDirectReport = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DemoDirectReport{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DemoDirectReport{}.MachineId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(DemoDirectReport{}.Enabled), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(DemoDirectReport{}.Report), Kind: litewire.KindMessage, Sub: &LitewireDesc_DirectRouteReport},
+	},
+}
+
+func (m *DemoDirectReport) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DemoDirectReport)
+}
+
 type SeedDemoWorldEvent struct {
-	_             [0]func()
-	Machines      []*DemoMachine
-	Sessions      []*DemoSession
-	Devices       []*DemoDevice
-	Prefs         *v1.ProjectPrefs
-	SessionEvents []*DemoSessionEvents
-	Security      *DemoSecurity
+	_                  [0]func()
+	Machines           []*DemoMachine
+	Sessions           []*DemoSession
+	Devices            []*DemoDevice
+	Prefs              *v1.ProjectPrefs
+	SessionEvents      []*DemoSessionEvents
+	Security           *DemoSecurity
+	DirectReports      []*DemoDirectReport
+	ClearDirectReports bool
 }
 
 func (m *SeedDemoWorldEvent) GetMachines() []*DemoMachine {
@@ -1734,12 +1775,25 @@ func (m *SeedDemoWorldEvent) GetSecurity() *DemoSecurity {
 	}
 	return nil
 }
+func (m *SeedDemoWorldEvent) GetDirectReports() []*DemoDirectReport {
+	if m != nil {
+		return m.DirectReports
+	}
+	return nil
+}
+func (m *SeedDemoWorldEvent) GetClearDirectReports() bool {
+	if m != nil {
+		return m.ClearDirectReports
+	}
+	return false
+}
 
 var LitewireDesc_SeedDemoWorldEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SeedDemoWorldEvent{}) },
 	Fields: []litewire.Field{
 		{Num: 4, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Prefs), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_ProjectPrefs},
 		{Num: 6, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.Security), Kind: litewire.KindMessage, Sub: &LitewireDesc_DemoSecurity},
+		{Num: 8, Offset: unsafe.Offsetof(SeedDemoWorldEvent{}.ClearDirectReports), Kind: litewire.KindBool},
 	},
 }
 
@@ -1768,6 +1822,10 @@ func extraUnmarshal_SeedDemoWorldEvent(base unsafe.Pointer, num litewire.Number,
 		case 5:
 			elem := &DemoSessionEvents{}
 			m.SessionEvents = append(m.SessionEvents, elem)
+			sub = elem
+		case 7:
+			elem := &DemoDirectReport{}
+			m.DirectReports = append(m.DirectReports, elem)
 			sub = elem
 		}
 		if sub != nil {

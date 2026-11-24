@@ -19,6 +19,7 @@ public  final class SeedDemoWorldEvent extends
     sessions_ = emptyProtobufList();
     devices_ = emptyProtobufList();
     sessionEvents_ = emptyProtobufList();
+    directReports_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINES_FIELD_NUMBER = 1;
@@ -503,6 +504,129 @@ public  final class SeedDemoWorldEvent extends
   private void clearSecurity() {
     security_ = null;
     bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int DIRECT_REPORTS_FIELD_NUMBER = 7;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.DemoDirectReport> directReports_;
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.DemoDirectReport> getDirectReportsList() {
+    return directReports_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.DemoDirectReportOrBuilder> 
+      getDirectReportsOrBuilderList() {
+    return directReports_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.Override
+  public int getDirectReportsCount() {
+    return directReports_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DemoDirectReport getDirectReports(int index) {
+    return directReports_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.DemoDirectReportOrBuilder getDirectReportsOrBuilder(
+      int index) {
+    return directReports_.get(index);
+  }
+  private void ensureDirectReportsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.DemoDirectReport> tmp = directReports_;
+    if (!tmp.isModifiable()) {
+      directReports_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDirectReports(
+      int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+    value.getClass();  // minimal bytecode null check
+    ensureDirectReportsIsMutable();
+    directReports_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addDirectReports(io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+    value.getClass();  // minimal bytecode null check
+    ensureDirectReportsIsMutable();
+    directReports_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addDirectReports(
+      int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+    value.getClass();  // minimal bytecode null check
+    ensureDirectReportsIsMutable();
+    directReports_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  private void addAllDirectReports(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.DemoDirectReport> values) {
+    ensureDirectReportsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, directReports_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  private void clearDirectReports() {
+    directReports_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  private void removeDirectReports(int index) {
+    ensureDirectReportsIsMutable();
+    directReports_.remove(index);
+  }
+
+  public static final int CLEAR_DIRECT_REPORTS_FIELD_NUMBER = 8;
+  private boolean clearDirectReports_;
+  /**
+   * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+   * @return The clearDirectReports.
+   */
+  @java.lang.Override
+  public boolean getClearDirectReports() {
+    return clearDirectReports_;
+  }
+  /**
+   * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+   * @param value The clearDirectReports to set.
+   */
+  private void setClearDirectReports(boolean value) {
+    
+    clearDirectReports_ = value;
+  }
+  /**
+   * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+   */
+  private void clearClearDirectReports() {
+
+    clearDirectReports_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SeedDemoWorldEvent parseFrom(
@@ -1104,6 +1228,136 @@ public  final class SeedDemoWorldEvent extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.DemoDirectReport> getDirectReportsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getDirectReportsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    @java.lang.Override
+    public int getDirectReportsCount() {
+      return instance.getDirectReportsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DemoDirectReport getDirectReports(int index) {
+      return instance.getDirectReports(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder setDirectReports(
+        int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+      copyOnWrite();
+      instance.setDirectReports(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder setDirectReports(
+        int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDirectReports(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder addDirectReports(io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+      copyOnWrite();
+      instance.addDirectReports(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder addDirectReports(
+        int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport value) {
+      copyOnWrite();
+      instance.addDirectReports(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder addDirectReports(
+        io.github.lewin671.remoteagent.core.proto.DemoDirectReport.Builder builderForValue) {
+      copyOnWrite();
+      instance.addDirectReports(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder addDirectReports(
+        int index, io.github.lewin671.remoteagent.core.proto.DemoDirectReport.Builder builderForValue) {
+      copyOnWrite();
+      instance.addDirectReports(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder addAllDirectReports(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.DemoDirectReport> values) {
+      copyOnWrite();
+      instance.addAllDirectReports(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder clearDirectReports() {
+      copyOnWrite();
+      instance.clearDirectReports();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+     */
+    public Builder removeDirectReports(int index) {
+      copyOnWrite();
+      instance.removeDirectReports(index);
+      return this;
+    }
+
+    /**
+     * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+     * @return The clearDirectReports.
+     */
+    @java.lang.Override
+    public boolean getClearDirectReports() {
+      return instance.getClearDirectReports();
+    }
+    /**
+     * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+     * @param value The clearDirectReports to set.
+     * @return This builder for chaining.
+     */
+    public Builder setClearDirectReports(boolean value) {
+      copyOnWrite();
+      instance.setClearDirectReports(value);
+      return this;
+    }
+    /**
+     * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearClearDirectReports() {
+      copyOnWrite();
+      instance.clearClearDirectReports();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SeedDemoWorldEvent)
   }
   @java.lang.Override
@@ -1131,10 +1385,13 @@ public  final class SeedDemoWorldEvent extends
             "sessionEvents_",
             io.github.lewin671.remoteagent.core.proto.DemoSessionEvents.class,
             "security_",
+            "directReports_",
+            io.github.lewin671.remoteagent.core.proto.DemoDirectReport.class,
+            "clearDirectReports_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0004\u0000\u0001\u001b\u0002\u001b" +
-              "\u0003\u001b\u0004\u1009\u0000\u0005\u001b\u0006\u1009\u0001";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0005\u0000\u0001\u001b\u0002\u001b\u0003\u001b" +
+              "\u0004\u1009\u0000\u0005\u001b\u0006\u1009\u0001\u0007\u001b\b\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

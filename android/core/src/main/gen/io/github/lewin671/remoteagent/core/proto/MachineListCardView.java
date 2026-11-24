@@ -20,6 +20,8 @@ public  final class MachineListCardView extends
     disambiguator_ = "";
     alerts_ = emptyProtobufList();
     quotaItems_ = emptyProtobufList();
+    metaSegments_ = emptyProtobufList();
+    metaSeparator_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -752,6 +754,241 @@ public  final class MachineListCardView extends
   private void clearDirectActive() {
 
     directActive_ = false;
+  }
+
+  public static final int APPEARANCE_FIELD_NUMBER = 22;
+  private int appearance_;
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @return The enum numeric value on the wire for appearance.
+   */
+  @java.lang.Override
+  public int getAppearanceValue() {
+    return appearance_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @return The appearance.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineCardAppearance getAppearance() {
+    io.github.lewin671.remoteagent.core.proto.MachineCardAppearance result = io.github.lewin671.remoteagent.core.proto.MachineCardAppearance.forNumber(appearance_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineCardAppearance.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @param value The enum numeric value on the wire for appearance to set.
+   */
+  private void setAppearanceValue(int value) {
+      appearance_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @param value The appearance to set.
+   */
+  private void setAppearance(io.github.lewin671.remoteagent.core.proto.MachineCardAppearance value) {
+    appearance_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   */
+  private void clearAppearance() {
+
+    appearance_ = 0;
+  }
+
+  public static final int META_SEGMENTS_FIELD_NUMBER = 23;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> metaSegments_;
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> getMetaSegmentsList() {
+    return metaSegments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegmentOrBuilder> 
+      getMetaSegmentsOrBuilderList() {
+    return metaSegments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.Override
+  public int getMetaSegmentsCount() {
+    return metaSegments_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment getMetaSegments(int index) {
+    return metaSegments_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegmentOrBuilder getMetaSegmentsOrBuilder(
+      int index) {
+    return metaSegments_.get(index);
+  }
+  private void ensureMetaSegmentsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> tmp = metaSegments_;
+    if (!tmp.isModifiable()) {
+      metaSegments_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMetaSegments(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMetaSegmentsIsMutable();
+    metaSegments_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMetaSegments(io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMetaSegmentsIsMutable();
+    metaSegments_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addMetaSegments(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+    value.getClass();  // minimal bytecode null check
+    ensureMetaSegmentsIsMutable();
+    metaSegments_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  private void addAllMetaSegments(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> values) {
+    ensureMetaSegmentsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, metaSegments_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  private void clearMetaSegments() {
+    metaSegments_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  private void removeMetaSegments(int index) {
+    ensureMetaSegmentsIsMutable();
+    metaSegments_.remove(index);
+  }
+
+  public static final int META_SEPARATOR_FIELD_NUMBER = 24;
+  private java.lang.String metaSeparator_;
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @return The metaSeparator.
+   */
+  @java.lang.Override
+  public java.lang.String getMetaSeparator() {
+    return metaSeparator_;
+  }
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @return The bytes for metaSeparator.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getMetaSeparatorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(metaSeparator_);
+  }
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @param value The metaSeparator to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMetaSeparator(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    metaSeparator_ = value;
+  }
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   */
+  private void clearMetaSeparator() {
+
+    metaSeparator_ = getDefaultInstance().getMetaSeparator();
+  }
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @param value The bytes for metaSeparator to set.
+   */
+  private void setMetaSeparatorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    metaSeparator_ = value.toStringUtf8();
+
+  }
+
+  public static final int DISAMBIGUATOR_A11Y_FIELD_NUMBER = 25;
+  private io.github.lewin671.remoteagent.core.proto.Text disambiguatorA11Y_;
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDisambiguatorA11Y() {
+    return ((bitField0_ & 0x00000008) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDisambiguatorA11Y() {
+    return disambiguatorA11Y_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : disambiguatorA11Y_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisambiguatorA11Y(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    disambiguatorA11Y_ = value;
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDisambiguatorA11Y(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (disambiguatorA11Y_ != null &&
+        disambiguatorA11Y_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      disambiguatorA11Y_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(disambiguatorA11Y_).mergeFrom(value).buildPartial();
+    } else {
+      disambiguatorA11Y_ = value;
+    }
+    bitField0_ |= 0x00000008;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   */
+  private void clearDisambiguatorA11Y() {
+    disambiguatorA11Y_ = null;
+    bitField0_ = (bitField0_ & ~0x00000008);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
@@ -1613,6 +1850,250 @@ public  final class MachineListCardView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+     * @return The enum numeric value on the wire for appearance.
+     */
+    @java.lang.Override
+    public int getAppearanceValue() {
+      return instance.getAppearanceValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+     * @param value The appearance to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAppearanceValue(int value) {
+      copyOnWrite();
+      instance.setAppearanceValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+     * @return The appearance.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineCardAppearance getAppearance() {
+      return instance.getAppearance();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+     * @param value The enum numeric value on the wire for appearance to set.
+     * @return This builder for chaining.
+     */
+    public Builder setAppearance(io.github.lewin671.remoteagent.core.proto.MachineCardAppearance value) {
+      copyOnWrite();
+      instance.setAppearance(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearAppearance() {
+      copyOnWrite();
+      instance.clearAppearance();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> getMetaSegmentsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getMetaSegmentsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    @java.lang.Override
+    public int getMetaSegmentsCount() {
+      return instance.getMetaSegmentsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment getMetaSegments(int index) {
+      return instance.getMetaSegments(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder setMetaSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+      copyOnWrite();
+      instance.setMetaSegments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder setMetaSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMetaSegments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder addMetaSegments(io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+      copyOnWrite();
+      instance.addMetaSegments(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder addMetaSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment value) {
+      copyOnWrite();
+      instance.addMetaSegments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder addMetaSegments(
+        io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMetaSegments(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder addMetaSegments(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment.Builder builderForValue) {
+      copyOnWrite();
+      instance.addMetaSegments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder addAllMetaSegments(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> values) {
+      copyOnWrite();
+      instance.addAllMetaSegments(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder clearMetaSegments() {
+      copyOnWrite();
+      instance.clearMetaSegments();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+     */
+    public Builder removeMetaSegments(int index) {
+      copyOnWrite();
+      instance.removeMetaSegments(index);
+      return this;
+    }
+
+    /**
+     * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+     * @return The metaSeparator.
+     */
+    @java.lang.Override
+    public java.lang.String getMetaSeparator() {
+      return instance.getMetaSeparator();
+    }
+    /**
+     * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+     * @return The bytes for metaSeparator.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getMetaSeparatorBytes() {
+      return instance.getMetaSeparatorBytes();
+    }
+    /**
+     * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+     * @param value The metaSeparator to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMetaSeparator(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setMetaSeparator(value);
+      return this;
+    }
+    /**
+     * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMetaSeparator() {
+      copyOnWrite();
+      instance.clearMetaSeparator();
+      return this;
+    }
+    /**
+     * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+     * @param value The bytes for metaSeparator to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMetaSeparatorBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setMetaSeparatorBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDisambiguatorA11Y() {
+      return instance.hasDisambiguatorA11Y();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDisambiguatorA11Y() {
+      return instance.getDisambiguatorA11Y();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    public Builder setDisambiguatorA11Y(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDisambiguatorA11Y(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    public Builder setDisambiguatorA11Y(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDisambiguatorA11Y(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    public Builder mergeDisambiguatorA11Y(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDisambiguatorA11Y(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+     */
+    public Builder clearDisambiguatorA11Y() {  copyOnWrite();
+      instance.clearDisambiguatorA11Y();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineListCardView)
   }
   @java.lang.Override
@@ -1649,12 +2130,17 @@ public  final class MachineListCardView extends
             io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.class,
             "secondaryNote_",
             "directActive_",
+            "appearance_",
+            "metaSegments_",
+            io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment.class,
+            "metaSeparator_",
+            "disambiguatorA11Y_",
           };
           java.lang.String info =
-              "\u0000\u0011\u0000\u0001\u0001\u0015\u0011\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0015\u0000\u0001\u0001\u0019\u0015\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0007\u0004\u0007\u0005\u0004\u0006\u1009\u0000\b\u0002\t\u1009\u0001\n\f" +
               "\r\u0007\u000e\u0007\u0010\u0208\u0011\u0007\u0012\u001b\u0013\u001b\u0014\u1009" +
-              "\u0002\u0015\u0007";
+              "\u0002\u0015\u0007\u0016\f\u0017\u001b\u0018\u0208\u0019\u1009\u0003";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

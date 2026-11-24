@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/settings_view.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/envelope.proto";
 import "remoteagent/v1/event.proto";
@@ -256,6 +257,12 @@ message DemoSecurity {
   uint64 network_generation = 14;
 }
 
+message DemoDirectReport {
+  string machine_id = 1;
+  bool enabled = 2;
+  DirectRouteReport report = 3;
+}
+
 message SeedDemoWorldEvent {
   repeated DemoMachine machines = 1;
   repeated DemoSession sessions = 2;
@@ -263,6 +270,8 @@ message SeedDemoWorldEvent {
   remoteagent.v1.ProjectPrefs prefs = 4;
   repeated DemoSessionEvents session_events = 5;
   DemoSecurity security = 6;
+  repeated DemoDirectReport direct_reports = 7;
+  bool clear_direct_reports = 8;
 }
 
 // ---- Wire Cache Helpers ----

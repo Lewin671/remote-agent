@@ -117,6 +117,7 @@
     <string name="common_save" formatted="false">"Save"</string>
     <string name="common_save_failed">"Could not save: %1$s"</string>
     <string name="common_saving" formatted="false">"Saving…"</string>
+    <string name="common_sentence_join">"%1$s %2$s"</string>
     <string name="common_settings" formatted="false">"Settings"</string>
     <string name="common_unknown_computer" formatted="false">"Unknown computer"</string>
     <string name="composer_android_unknown_reason" formatted="false">"Unknown reason"</string>
@@ -1808,6 +1809,7 @@
     <string name="settings_light" formatted="false">"Light"</string>
     <string name="settings_local_cache" formatted="false">"Local cache"</string>
     <string name="settings_machine_count">"%1$d"</string>
+    <string name="settings_machine_disambiguator_a11y">"Device ID %1$s"</string>
     <string name="settings_machine_sub_disk_alert">"Disk %1$s free"</string>
     <string name="settings_machine_sub_removed" formatted="false">"Retaining session history"</string>
     <string name="settings_machine_sub_version_mismatch" formatted="false">"Protocol mismatch; update on the computer"</string>
@@ -2099,6 +2101,7 @@
     <string name="tools_tool" formatted="false">"Tool"</string>
     <string name="tools_waiting_sync" formatted="false">"Waiting to sync"</string>
     <string name="transport_conn_footer_unsupported_app" formatted="false">"This app version does not support direct connections yet; everything connects via relay."</string>
+    <string name="transport_conn_footer_unsupported_browser" formatted="false">"This browser does not support direct connections; everything connects via relay."</string>
     <string name="transport_detail_daemon_disabled" formatted="false">"Turn it on from this computer to use direct connections"</string>
     <string name="transport_detail_relay_only" formatted="false">"Everything connects via relay as usual"</string>
     <string name="transport_diag_at">"%2$s %1$s s"</string>

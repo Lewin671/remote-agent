@@ -500,6 +500,82 @@ public enum PBMachineAlertKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBMachineCardAppearance: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case normal // = 1
+  case offline // = 2
+  case removed // = 3
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .normal
+    case 2: self = .offline
+    case 3: self = .removed
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .normal: return 1
+    case .offline: return 2
+    case .removed: return 3
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBMachineCardAppearance] = [
+    .unspecified,
+    .normal,
+    .offline,
+    .removed,
+  ]
+
+}
+
+public enum PBMachineCardMetaIcon: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case direct // = 1
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .direct
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .direct: return 1
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBMachineCardMetaIcon] = [
+    .unspecified,
+    .direct,
+  ]
+
+}
+
 public enum PBDiagCheckMark: SwiftProtobuf.Enum, Swift.CaseIterable {
   public typealias RawValue = Int
   case unspecified // = 0
@@ -550,6 +626,29 @@ public struct PBSettingsScreenRequest: Sendable {
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+public struct PBMachineCardMetaSegment: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var text: PBCoreText {
+    get {return _text ?? PBCoreText()}
+    set {_text = newValue}
+  }
+  /// Returns true if `text` has been explicitly set.
+  public var hasText: Bool {return self._text != nil}
+  /// Clears the value of `text`. Subsequent reads from it will return its default value.
+  public mutating func clearText() {self._text = nil}
+
+  public var icon: PBMachineCardMetaIcon = .unspecified
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _text: PBCoreText? = nil
 }
 
 public struct PBMachineCardAlert: Sendable {
@@ -709,6 +808,30 @@ public struct PBMachineListCardView: @unchecked Sendable {
     get {return _storage._directActive}
     set {_uniqueStorage()._directActive = newValue}
   }
+
+  public var appearance: PBMachineCardAppearance {
+    get {return _storage._appearance}
+    set {_uniqueStorage()._appearance = newValue}
+  }
+
+  public var metaSegments: [PBMachineCardMetaSegment] {
+    get {return _storage._metaSegments}
+    set {_uniqueStorage()._metaSegments = newValue}
+  }
+
+  public var metaSeparator: String {
+    get {return _storage._metaSeparator}
+    set {_uniqueStorage()._metaSeparator = newValue}
+  }
+
+  public var disambiguatorA11Y: PBCoreText {
+    get {return _storage._disambiguatorA11Y ?? PBCoreText()}
+    set {_uniqueStorage()._disambiguatorA11Y = newValue}
+  }
+  /// Returns true if `disambiguatorA11Y` has been explicitly set.
+  public var hasDisambiguatorA11Y: Bool {return _storage._disambiguatorA11Y != nil}
+  /// Clears the value of `disambiguatorA11Y`. Subsequent reads from it will return its default value.
+  public mutating func clearDisambiguatorA11Y() {_uniqueStorage()._disambiguatorA11Y = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3600,6 +3723,14 @@ extension PBMachineAlertKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MACHINE_ALERT_KIND_UNSPECIFIED\0\u{1}MACHINE_ALERT_KIND_DISK_LOW\0\u{1}MACHINE_ALERT_KIND_PROTOCOL_MISMATCH\0")
 }
 
+extension PBMachineCardAppearance: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MACHINE_CARD_APPEARANCE_UNSPECIFIED\0\u{1}MACHINE_CARD_APPEARANCE_NORMAL\0\u{1}MACHINE_CARD_APPEARANCE_OFFLINE\0\u{1}MACHINE_CARD_APPEARANCE_REMOVED\0")
+}
+
+extension PBMachineCardMetaIcon: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0MACHINE_CARD_META_ICON_UNSPECIFIED\0\u{1}MACHINE_CARD_META_ICON_DIRECT\0")
+}
+
 extension PBDiagCheckMark: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DIAG_CHECK_MARK_UNSPECIFIED\0\u{1}DIAG_CHECK_MARK_ONLINE\0\u{1}DIAG_CHECK_MARK_OFF\0\u{1}DIAG_CHECK_MARK_RUN\0")
 }
@@ -3618,6 +3749,45 @@ extension PBSettingsScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._Message
   }
 
   public static func ==(lhs: PBSettingsScreenRequest, rhs: PBSettingsScreenRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBMachineCardMetaSegment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MachineCardMetaSegment"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{1}icon\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._text) }()
+      case 2: try { try decoder.decodeSingularEnumField(value: &self.icon) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._text {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if self.icon != .unspecified {
+      try visitor.visitSingularEnumField(value: self.icon, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBMachineCardMetaSegment, rhs: PBMachineCardMetaSegment) -> Bool {
+    if lhs._text != rhs._text {return false}
+    if lhs.icon != rhs.icon {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3728,7 +3898,7 @@ extension PBMachineCardQuotaItem: SwiftProtobuf.Message, SwiftProtobuf._MessageI
 
 extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineListCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{4}\u{2}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{4}\u{3}in_device_directory\0\u{3}direct_ready\0\u{2}\u{2}disambiguator\0\u{1}dimmed\0\u{1}alerts\0\u{3}quota_items\0\u{3}secondary_note\0\u{3}direct_active\0\u{b}quota_summaries\0\u{b}status_warn\0\u{b}subtitle_parts\0\u{b}short_id\0\u{c}\u{7}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{f}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{4}\u{2}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{4}\u{3}in_device_directory\0\u{3}direct_ready\0\u{2}\u{2}disambiguator\0\u{1}dimmed\0\u{1}alerts\0\u{3}quota_items\0\u{3}secondary_note\0\u{3}direct_active\0\u{1}appearance\0\u{3}meta_segments\0\u{3}meta_separator\0\u{3}disambiguator_a11y\0\u{b}quota_summaries\0\u{b}status_warn\0\u{b}subtitle_parts\0\u{b}short_id\0\u{c}\u{7}\u{1}\u{c}\u{b}\u{1}\u{c}\u{c}\u{1}\u{c}\u{f}\u{1}")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -3748,6 +3918,10 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _quotaItems: [PBMachineCardQuotaItem] = []
     var _secondaryNote: PBCoreText? = nil
     var _directActive: Bool = false
+    var _appearance: PBMachineCardAppearance = .unspecified
+    var _metaSegments: [PBMachineCardMetaSegment] = []
+    var _metaSeparator: String = String()
+    var _disambiguatorA11Y: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3775,6 +3949,10 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _quotaItems = source._quotaItems
       _secondaryNote = source._secondaryNote
       _directActive = source._directActive
+      _appearance = source._appearance
+      _metaSegments = source._metaSegments
+      _metaSeparator = source._metaSeparator
+      _disambiguatorA11Y = source._disambiguatorA11Y
     }
   }
 
@@ -3810,6 +3988,10 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 19: try { try decoder.decodeRepeatedMessageField(value: &_storage._quotaItems) }()
         case 20: try { try decoder.decodeSingularMessageField(value: &_storage._secondaryNote) }()
         case 21: try { try decoder.decodeSingularBoolField(value: &_storage._directActive) }()
+        case 22: try { try decoder.decodeSingularEnumField(value: &_storage._appearance) }()
+        case 23: try { try decoder.decodeRepeatedMessageField(value: &_storage._metaSegments) }()
+        case 24: try { try decoder.decodeSingularStringField(value: &_storage._metaSeparator) }()
+        case 25: try { try decoder.decodeSingularMessageField(value: &_storage._disambiguatorA11Y) }()
         default: break
         }
       }
@@ -3873,6 +4055,18 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._directActive != false {
         try visitor.visitSingularBoolField(value: _storage._directActive, fieldNumber: 21)
       }
+      if _storage._appearance != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._appearance, fieldNumber: 22)
+      }
+      if !_storage._metaSegments.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._metaSegments, fieldNumber: 23)
+      }
+      if !_storage._metaSeparator.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._metaSeparator, fieldNumber: 24)
+      }
+      try { if let v = _storage._disambiguatorA11Y {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 25)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3899,6 +4093,10 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._quotaItems != rhs_storage._quotaItems {return false}
         if _storage._secondaryNote != rhs_storage._secondaryNote {return false}
         if _storage._directActive != rhs_storage._directActive {return false}
+        if _storage._appearance != rhs_storage._appearance {return false}
+        if _storage._metaSegments != rhs_storage._metaSegments {return false}
+        if _storage._metaSeparator != rhs_storage._metaSeparator {return false}
+        if _storage._disambiguatorA11Y != rhs_storage._disambiguatorA11Y {return false}
         return true
       }
       if !storagesAreEqual {return false}

@@ -28,6 +28,18 @@ func (e *Engine) PlatformAgent() string {
 	return e.platformAgent
 }
 
+// DemoDirectReport returns a seeded demo direct-route report for machineID when present.
+func (e *Engine) DemoDirectReport(machineID string) (bool, *corev1.DirectRouteReport, bool) {
+	if e == nil || len(e.demoDirectReports) == 0 {
+		return false, nil, false
+	}
+	entry, ok := e.demoDirectReports[machineID]
+	if !ok || entry == nil || entry.Report == nil {
+		return false, nil, false
+	}
+	return entry.Enabled, entry.Report, true
+}
+
 // DirectMachineReport returns the live direct-path preference, daemon policy state,
 // status summary, and retained diagnostic rounds for machineID.
 func (e *Engine) DirectMachineReport(machineID string) (

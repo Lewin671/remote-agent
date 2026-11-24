@@ -763,6 +763,45 @@ func TestMachineCardDisambiguatorOnlyForDuplicateNames(t *testing.T) {
 			t.Fatalf("new_session choice %s: disambiguator=%q want %q", ch.MachineId, ch.Disambiguator, wantDisambig[ch.MachineId])
 		}
 	}
+
+	t.Run("case-insensitive trimmed names and last-4 suffix collision extension", func(t *testing.T) {
+		st2 := NewState(nil)
+		st2.Cal = lists.Calendar{NowMs: now}
+		st2.World.Connection = lists.ConnConnected
+		st2.World.ClientVersion = 17
+		st2.World.Machines = []*lists.Machine{
+			{ID: "aaaa1234", Online: true, Meta: &v1.MachineMeta{Hostname: "MacBook", ProtocolVersion: 17}},
+			{ID: "bbbb1234", Online: true, Meta: &v1.MachineMeta{Hostname: "  macbook  ", ProtocolVersion: 17}},
+			{ID: "xxab9999", Online: true, Meta: &v1.MachineMeta{Hostname: "Studio", ProtocolVersion: 17}},
+			{ID: "yyab9999", Online: true, Meta: &v1.MachineMeta{Hostname: "STUDIO", ProtocolVersion: 17}},
+			{ID: "unique01", Online: true, Meta: &v1.MachineMeta{Hostname: "UniqueBox", ProtocolVersion: 17}},
+		}
+		want := map[string]string{
+			"aaaa1234": "a1234",
+			"bbbb1234": "b1234",
+			"xxab9999": "xab9999",
+			"yyab9999": "yab9999",
+			"unique01": "",
+		}
+		vm2 := BuildSettings(st2, &corev1.SyncStateView{}, nil)
+		for _, c := range vm2.Machines {
+			if c.Disambiguator != want[c.MachineId] {
+				t.Fatalf("settings %s: disambiguator=%q want %q", c.MachineId, c.Disambiguator, want[c.MachineId])
+			}
+			if want[c.MachineId] != "" && c.GetDisambiguatorA11Y().GetKey() != text.KeySettingsMachineDisambiguatorA11Y {
+				t.Fatalf("settings %s: expected disambiguator_a11y key, got %+v", c.MachineId, c.DisambiguatorA11Y)
+			}
+			if want[c.MachineId] == "" && c.DisambiguatorA11Y != nil {
+				t.Fatalf("settings %s: expected nil disambiguator_a11y, got %+v", c.MachineId, c.DisambiguatorA11Y)
+			}
+		}
+		ns2 := BuildNewSession(st2, "")
+		for _, ch := range ns2.GetModelPanel().GetMachineChoices() {
+			if ch.Disambiguator != want[ch.MachineId] {
+				t.Fatalf("new_session %s: disambiguator=%q want %q", ch.MachineId, ch.Disambiguator, want[ch.MachineId])
+			}
+		}
+	})
 }
 
 func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
@@ -858,12 +897,29 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 			ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
 			FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
 		}
+		backoffReport := &corev1.DirectRouteReport{
+			Enabled:   true,
+			Capable:   true,
+			State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+			ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+			FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+			ReadSlow:  true,
+		}
+		fileOnlyReport := &corev1.DirectRouteReport{
+			Enabled:   true,
+			Capable:   true,
+			State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+			ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+			FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		}
 
 		cases := []struct {
-			name            string
-			reports         map[string]*corev1.DirectRouteReport
-			wantDirect      map[string]bool
-			wantFooterKey   string
+			name          string
+			reports       map[string]*corev1.DirectRouteReport
+			directReady   bool
+			m1ProtoVer    uint32
+			wantDirect    map[string]bool
+			wantFooterKey string
 		}{
 			{
 				name:          "all online direct",
@@ -883,6 +939,33 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
 				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
 			},
+			{
+				name:          "direct ready channel in read backoff uses relay",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": backoffReport, "m2": backoffReport},
+				directReady:   true,
+				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
+			},
+			{
+				name:          "direct ready without route report stays relay",
+				reports:       map[string]*corev1.DirectRouteReport{},
+				directReady:   true,
+				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
+			},
+			{
+				name:          "file-only direct does not enable direct_active or direct footer",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": fileOnlyReport, "m2": fileOnlyReport},
+				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
+			},
+			{
+				name:          "protocol mismatch excludes machine from direct_active and direct footer",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": directReport, "m2": relayReport},
+				m1ProtoVer:    15,
+				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
+			},
 		}
 
 		for _, tc := range cases {
@@ -891,8 +974,12 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 				st.Cal = lists.Calendar{NowMs: now}
 				st.World.Connection = lists.ConnConnected
 				st.World.ClientVersion = 17
+				m1Ver := tc.m1ProtoVer
+				if m1Ver == 0 {
+					m1Ver = 17
+				}
 				st.World.Machines = []*lists.Machine{
-					{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Alpha", ProtocolVersion: 17}},
+					{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Alpha", ProtocolVersion: m1Ver}},
 					{ID: "m2", Online: true, Meta: &v1.MachineMeta{Hostname: "Beta", ProtocolVersion: 17}},
 					{ID: "m3", Online: false, Meta: &v1.MachineMeta{Hostname: "Gamma", ProtocolVersion: 17}},
 				}
@@ -900,7 +987,14 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 					r, ok := tc.reports[id]
 					return true, r, ok
 				}
-				vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+				syncView := &corev1.SyncStateView{}
+				if tc.directReady {
+					syncView.Machines = []*corev1.SyncMachineView{
+						{MachineId: "m1", DirectReady: true},
+						{MachineId: "m2", DirectReady: true},
+					}
+				}
+				vm := BuildSettings(st, syncView, nil)
 				if vm.GetConnCheck().GetFooterText().GetKey() != tc.wantFooterKey {
 					t.Fatalf("footer=%q want %q", vm.GetConnCheck().GetFooterText().GetKey(), tc.wantFooterKey)
 				}
@@ -908,8 +1002,63 @@ func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
 					if m.DirectActive != tc.wantDirect[m.MachineId] {
 						t.Fatalf("%s: DirectActive=%v want %v", m.MachineId, m.DirectActive, tc.wantDirect[m.MachineId])
 					}
+					if m.DirectActive {
+						if len(m.MetaSegments) != 2 || m.MetaSegments[1].Icon != corev1.MachineCardMetaIcon_MACHINE_CARD_META_ICON_DIRECT || m.MetaSegments[1].GetText().GetKey() != text.KeyTransportDirect {
+							t.Fatalf("%s: expected direct meta segment, got %+v", m.MachineId, m.MetaSegments)
+						}
+					}
 				}
 			})
+		}
+	})
+
+	t.Run("appearance, meta segments, and unsupported connCheck footer come from Core", func(t *testing.T) {
+		unsupportedReport := &corev1.DirectRouteReport{
+			Enabled: false,
+			Capable: false,
+			State:   corev1.DirectRouteState_DIRECT_ROUTE_STATE_UNSUPPORTED,
+		}
+		for _, tc := range []struct {
+			platform string
+			wantKey  string
+		}{
+			{"ios", text.KeyTransportConnFooterUnsupportedApp},
+			{"android", text.KeyTransportConnFooterUnsupportedApp},
+			{"Mozilla/5.0", text.KeyTransportConnFooterUnsupportedBrowser},
+		} {
+			st := NewState(nil)
+			st.Cal = lists.Calendar{NowMs: now}
+			st.World.Connection = lists.ConnConnected
+			st.World.ClientVersion = 17
+			st.World.Machines = []*lists.Machine{
+				{ID: "m-on", Online: true, Meta: &v1.MachineMeta{Hostname: "On", ProtocolVersion: 17}},
+				{ID: "m-off", Online: false, LastSeenMs: now - 3_600_000, Meta: &v1.MachineMeta{Hostname: "Off", ProtocolVersion: 17}},
+				{ID: "m-rem", Online: false, Archived: true, Meta: &v1.MachineMeta{Hostname: "Rem", ProtocolVersion: 17}},
+			}
+			st.PlatformAgentFn = func() string { return tc.platform }
+			st.DirectReportFn = func(id string) (bool, *corev1.DirectRouteReport, bool) {
+				if id == "m-on" {
+					return false, unsupportedReport, true
+				}
+				return false, nil, false
+			}
+			vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+			if got := vm.GetConnCheck().GetFooterText(); got.GetKey() != text.KeyCommonSentenceJoin || len(got.Args) != 2 || got.Args[1].GetTextValue().GetKey() != tc.wantKey {
+				t.Fatalf("platform=%s: unexpected unsupported footer %+v", tc.platform, got)
+			}
+			byID := make(map[string]*corev1.MachineListCardView, len(vm.Machines))
+			for _, m := range vm.Machines {
+				byID[m.MachineId] = m
+			}
+			if byID["m-on"].Appearance != corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_NORMAL {
+				t.Fatalf("m-on appearance=%v", byID["m-on"].Appearance)
+			}
+			if byID["m-off"].Appearance != corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_OFFLINE {
+				t.Fatalf("m-off appearance=%v", byID["m-off"].Appearance)
+			}
+			if byID["m-rem"].Appearance != corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_REMOVED || len(byID["m-rem"].MetaSegments) != 2 || byID["m-rem"].MetaSeparator != "·" {
+				t.Fatalf("m-rem appearance/meta=%+v", byID["m-rem"])
+			}
 		}
 	})
 }

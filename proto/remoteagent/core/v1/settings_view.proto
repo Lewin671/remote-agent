@@ -99,6 +99,23 @@ enum MachineAlertKind {
   MACHINE_ALERT_KIND_PROTOCOL_MISMATCH = 2;
 }
 
+enum MachineCardAppearance {
+  MACHINE_CARD_APPEARANCE_UNSPECIFIED = 0;
+  MACHINE_CARD_APPEARANCE_NORMAL = 1;
+  MACHINE_CARD_APPEARANCE_OFFLINE = 2;
+  MACHINE_CARD_APPEARANCE_REMOVED = 3;
+}
+
+enum MachineCardMetaIcon {
+  MACHINE_CARD_META_ICON_UNSPECIFIED = 0;
+  MACHINE_CARD_META_ICON_DIRECT = 1;
+}
+
+message MachineCardMetaSegment {
+  Text text = 1;
+  MachineCardMetaIcon icon = 2;
+}
+
 message MachineCardAlert {
   MachineAlertKind kind = 1;
   Text text = 2;
@@ -135,6 +152,10 @@ message MachineListCardView {
   repeated MachineCardQuotaItem quota_items = 19;
   Text secondary_note = 20;
   bool direct_active = 21;
+  MachineCardAppearance appearance = 22;
+  repeated MachineCardMetaSegment meta_segments = 23;
+  string meta_separator = 24;
+  Text disambiguator_a11y = 25;
 }
 
 message ClientRowView {

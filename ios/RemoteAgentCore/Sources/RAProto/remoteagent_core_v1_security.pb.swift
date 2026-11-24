@@ -1110,6 +1110,31 @@ public struct PBDemoSecurity: Sendable {
   public init() {}
 }
 
+public struct PBDemoDirectReport: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var machineID: String = String()
+
+  public var enabled: Bool = false
+
+  public var report: PBDirectRouteReport {
+    get {return _report ?? PBDirectRouteReport()}
+    set {_report = newValue}
+  }
+  /// Returns true if `report` has been explicitly set.
+  public var hasReport: Bool {return self._report != nil}
+  /// Clears the value of `report`. Subsequent reads from it will return its default value.
+  public mutating func clearReport() {self._report = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _report: PBDirectRouteReport? = nil
+}
+
 public struct PBSeedDemoWorldEvent: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1152,6 +1177,16 @@ public struct PBSeedDemoWorldEvent: @unchecked Sendable {
   public var hasSecurity: Bool {return _storage._security != nil}
   /// Clears the value of `security`. Subsequent reads from it will return its default value.
   public mutating func clearSecurity() {_uniqueStorage()._security = nil}
+
+  public var directReports: [PBDemoDirectReport] {
+    get {return _storage._directReports}
+    set {_uniqueStorage()._directReports = newValue}
+  }
+
+  public var clearDirectReports_p: Bool {
+    get {return _storage._clearDirectReports_p}
+    set {_uniqueStorage()._clearDirectReports_p = newValue}
+  }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4165,9 +4200,53 @@ extension PBDemoSecurity: SwiftProtobuf.Message, SwiftProtobuf._MessageImplement
   }
 }
 
+extension PBDemoDirectReport: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DemoDirectReport"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}enabled\0\u{1}report\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._report) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 1)
+    }
+    if self.enabled != false {
+      try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 2)
+    }
+    try { if let v = self._report {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDemoDirectReport, rhs: PBDemoDirectReport) -> Bool {
+    if lhs.machineID != rhs.machineID {return false}
+    if lhs.enabled != rhs.enabled {return false}
+    if lhs._report != rhs._report {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SeedDemoWorldEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machines\0\u{1}sessions\0\u{1}devices\0\u{1}prefs\0\u{3}session_events\0\u{1}security\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}machines\0\u{1}sessions\0\u{1}devices\0\u{1}prefs\0\u{3}session_events\0\u{1}security\0\u{3}direct_reports\0\u{3}clear_direct_reports\0")
 
   fileprivate class _StorageClass {
     var _machines: [PBDemoMachine] = []
@@ -4176,6 +4255,8 @@ extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     var _prefs: PBProjectPrefs? = nil
     var _sessionEvents: [PBDemoSessionEvents] = []
     var _security: PBDemoSecurity? = nil
+    var _directReports: [PBDemoDirectReport] = []
+    var _clearDirectReports_p: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -4192,6 +4273,8 @@ extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       _prefs = source._prefs
       _sessionEvents = source._sessionEvents
       _security = source._security
+      _directReports = source._directReports
+      _clearDirectReports_p = source._clearDirectReports_p
     }
   }
 
@@ -4216,6 +4299,8 @@ extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         case 4: try { try decoder.decodeSingularMessageField(value: &_storage._prefs) }()
         case 5: try { try decoder.decodeRepeatedMessageField(value: &_storage._sessionEvents) }()
         case 6: try { try decoder.decodeSingularMessageField(value: &_storage._security) }()
+        case 7: try { try decoder.decodeRepeatedMessageField(value: &_storage._directReports) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._clearDirectReports_p) }()
         default: break
         }
       }
@@ -4246,6 +4331,12 @@ extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       try { if let v = _storage._security {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
       } }()
+      if !_storage._directReports.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._directReports, fieldNumber: 7)
+      }
+      if _storage._clearDirectReports_p != false {
+        try visitor.visitSingularBoolField(value: _storage._clearDirectReports_p, fieldNumber: 8)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4261,6 +4352,8 @@ extension PBSeedDemoWorldEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
         if _storage._prefs != rhs_storage._prefs {return false}
         if _storage._sessionEvents != rhs_storage._sessionEvents {return false}
         if _storage._security != rhs_storage._security {return false}
+        if _storage._directReports != rhs_storage._directReports {return false}
+        if _storage._clearDirectReports_p != rhs_storage._clearDirectReports_p {return false}
         return true
       }
       if !storagesAreEqual {return false}

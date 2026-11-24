@@ -87,4 +87,24 @@ public interface SeedDemoWorldEventOrBuilder extends
    * @return The security.
    */
   io.github.lewin671.remoteagent.core.proto.DemoSecurity getSecurity();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.DemoDirectReport> 
+      getDirectReportsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.DemoDirectReport getDirectReports(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.DemoDirectReport direct_reports = 7 [json_name = "directReports"];</code>
+   */
+  int getDirectReportsCount();
+
+  /**
+   * <code>bool clear_direct_reports = 8 [json_name = "clearDirectReports"];</code>
+   * @return The clearDirectReports.
+   */
+  boolean getClearDirectReports();
 }

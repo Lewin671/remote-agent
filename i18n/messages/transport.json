@@ -2386,6 +2386,7 @@
     "notes": "Android 连接检测页面整体不支持直连时的末尾补充说明。",
     "params": {},
     "platforms": [
+      "web",
       "android",
       "ios"
     ],
@@ -2401,7 +2402,9 @@
     "notes": "Web 连接检测页面浏览器不支持直连时的末尾补充说明。",
     "params": {},
     "platforms": [
-      "web"
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

@@ -161,6 +161,25 @@ func (s settingsMachinesSorted) Less(i, j int) bool {
 	return s.list[i].ID < s.list[j].ID
 }
 
+func isReadDirectActive(online, unlinked, archived bool, mismatch int32, report *corev1.DirectRouteReport) bool {
+	return online && !unlinked && !archived && mismatch == 0 &&
+		report != nil &&
+		report.State == corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED &&
+		report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
+}
+
+func isNativeAppPlatform(st *State) bool {
+	if st == nil || st.PlatformAgentFn == nil {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(st.PlatformAgentFn())) {
+	case "android", "ios":
+		return true
+	default:
+		return false
+	}
+}
+
 func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) ([]*corev1.MachineListCardView, map[string]bool) {
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
@@ -193,11 +212,15 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 	}
 
-	// Disambiguator (last 4 chars) only appears when two computers share a name.
-	nameCount := make(map[string]int, len(sorted))
+	identities := make([]machine.MachineIdentity, 0, len(sorted))
 	for _, m := range sorted {
-		nameCount[lists.MachineName(m, m.ID)]++
+		identities = append(identities, machine.MachineIdentity{
+			ID:   m.ID,
+			Name: lists.MachineName(m, m.ID),
+		})
 	}
+	disambiguators := machine.BuildDisambiguators(identities)
+
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	pingDirect := make(map[string]bool, len(sorted))
 	for _, m := range sorted {
@@ -206,6 +229,13 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		archived := m.Archived || removed
 		mismatch := lists.ProtocolMismatchDirection(m, clientVer)
 		dimmed := archived || !online
+
+		appearance := corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_NORMAL
+		if archived {
+			appearance = corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_REMOVED
+		} else if !online {
+			appearance = corev1.MachineCardAppearance_MACHINE_CARD_APPEARANCE_OFFLINE
+		}
 
 		var statusTxt *corev1.Text
 		var statusDot corev1.MachineStatusDot
@@ -279,9 +309,10 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 
 		name := lists.MachineName(m, m.ID)
-		var disambiguator string
-		if nameCount[name] > 1 {
-			disambiguator = machine.Last4(m.ID)
+		disambiguator := disambiguators[m.ID]
+		var disambiguatorA11y *corev1.Text
+		if disambiguator != "" {
+			disambiguatorA11y = text.Msg(text.KeySettingsMachineDisambiguatorA11Y, text.Str("value", disambiguator))
 		}
 		card := &corev1.MachineListCardView{
 			MachineId:         m.ID,
@@ -299,20 +330,33 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			Alerts:            alerts,
 			QuotaItems:        quotaItems,
 			SecondaryNote:     secondaryNote,
+			Appearance:        appearance,
+			MetaSeparator:     "·",
+			DisambiguatorA11Y: disambiguatorA11y,
 		}
 		if includeSummary {
 			directPref, directReport := machineDirectInputs(st, extra, m.ID)
 			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked && !archived, directPref, directReport)
-			card.DirectActive = online && !unlinked && !archived && mismatch == 0 &&
-				card.DirectRow != nil && card.DirectRow.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT
-			if online && !unlinked && !archived {
-				if card.DirectReady || (directReport != nil &&
-					directReport.State == corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED &&
-					directReport.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT) {
-					pingDirect[m.ID] = true
-				}
+			readDirect := isReadDirectActive(online, unlinked, archived, mismatch, directReport)
+			card.DirectActive = readDirect
+			if readDirect {
+				pingDirect[m.ID] = true
 			}
 		}
+		var metaSegments []*corev1.MachineCardMetaSegment
+		if !text.IsEmpty(statusTxt) {
+			metaSegments = append(metaSegments, &corev1.MachineCardMetaSegment{Text: statusTxt})
+		}
+		if card.DirectActive {
+			metaSegments = append(metaSegments, &corev1.MachineCardMetaSegment{
+				Text: text.Msg(text.KeyTransportDirect),
+				Icon: corev1.MachineCardMetaIcon_MACHINE_CARD_META_ICON_DIRECT,
+			})
+		}
+		if !text.IsEmpty(secondaryNote) {
+			metaSegments = append(metaSegments, &corev1.MachineCardMetaSegment{Text: secondaryNote})
+		}
+		card.MetaSegments = metaSegments
 		out = append(out, card)
 	}
 	return out, pingDirect
@@ -469,11 +513,15 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		networkAvailable = syncView.GetNetworkAvailable()
 	}
 	var onlineMembers, directMembers int
+	var hasUnsupportedDirect bool
 	for _, m := range machines {
 		if m != nil && m.Online && m.Member {
 			onlineMembers++
 			if pingDirect[m.MachineId] {
 				directMembers++
+			}
+			if m.DirectRow != nil && m.DirectRow.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_UNSUPPORTED {
+				hasUnsupportedDirect = true
 			}
 		}
 	}
@@ -485,6 +533,17 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		footerTxt = text.Msg(text.KeyConnectionLatencyFooterMixed)
 	default:
 		footerTxt = text.Msg(text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
+	}
+	if hasUnsupportedDirect {
+		unsupportedKey := text.KeyTransportConnFooterUnsupportedBrowser
+		if isNativeAppPlatform(st) {
+			unsupportedKey = text.KeyTransportConnFooterUnsupportedApp
+		}
+		footerTxt = text.Msg(
+			text.KeyCommonSentenceJoin,
+			text.ArgText("first", footerTxt),
+			text.ArgText("second", text.Msg(unsupportedKey)),
+		)
 	}
 	out := &corev1.ConnCheckSummaryView{
 		ServerState:       cc.ServerState,

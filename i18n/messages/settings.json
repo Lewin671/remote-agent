@@ -5120,5 +5120,26 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "settings.machine_disambiguator_a11y",
+    "zh-CN": "设备编号 {value}",
+    "en": "Device ID {value}",
+    "notes": "同名电脑旁等宽消歧短码的无障碍朗读标签。{value} 是设备 ID 末尾的区分字符。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "a7f2"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

@@ -449,7 +449,29 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 		}
 	}
 
-	seedWorld := ev.Security == nil || len(ev.Machines) > 0 || len(ev.Sessions) > 0 ||
+	if ev.ClearDirectReports {
+		e.demoDirectReports = nil
+		ctx.Dirty.MarkDirect()
+	}
+	if len(ev.DirectReports) > 0 {
+		if e.demoDirectReports == nil {
+			e.demoDirectReports = make(map[string]*corev1.DemoDirectReport, len(ev.DirectReports))
+		}
+		for _, dr := range ev.DirectReports {
+			if dr == nil || dr.MachineId == "" {
+				continue
+			}
+			if dr.Report == nil {
+				delete(e.demoDirectReports, dr.MachineId)
+			} else {
+				e.demoDirectReports[dr.MachineId] = dr
+			}
+		}
+		ctx.Dirty.MarkDirect()
+	}
+
+	seedWorld := (ev.Security == nil && len(ev.DirectReports) == 0 && !ev.ClearDirectReports) ||
+		len(ev.Machines) > 0 || len(ev.Sessions) > 0 ||
 		len(ev.Devices) > 0 || ev.Prefs != nil || len(ev.SessionEvents) > 0
 	if seedWorld {
 		e.coldStartGraceExpired = true

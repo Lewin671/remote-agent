@@ -165,4 +165,52 @@ public interface MachineListCardViewOrBuilder extends
    * @return The directActive.
    */
   boolean getDirectActive();
+
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @return The enum numeric value on the wire for appearance.
+   */
+  int getAppearanceValue();
+  /**
+   * <code>.remoteagent.core.v1.MachineCardAppearance appearance = 22 [json_name = "appearance"];</code>
+   * @return The appearance.
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineCardAppearance getAppearance();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment> 
+      getMetaSegmentsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment getMetaSegments(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardMetaSegment meta_segments = 23 [json_name = "metaSegments"];</code>
+   */
+  int getMetaSegmentsCount();
+
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @return The metaSeparator.
+   */
+  java.lang.String getMetaSeparator();
+  /**
+   * <code>string meta_separator = 24 [json_name = "metaSeparator"];</code>
+   * @return The bytes for metaSeparator.
+   */
+  com.google.protobuf.ByteString
+      getMetaSeparatorBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   * @return Whether the disambiguatorA11y field is set.
+   */
+  boolean hasDisambiguatorA11Y();
+  /**
+   * <code>.remoteagent.core.v1.Text disambiguator_a11y = 25 [json_name = "disambiguatorA11y"];</code>
+   * @return The disambiguatorA11y.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDisambiguatorA11Y();
 }

@@ -140,6 +140,7 @@ export interface MessageArgs {
   "common.save": { [name: string]: never };
   "common.save_failed": { reason: string };
   "common.saving": { [name: string]: never };
+  "common.sentence_join": { first: string; second: string };
   "common.settings": { [name: string]: never };
   "common.unknown_computer": { [name: string]: never };
   "composer.android_unknown_reason": { [name: string]: never };
@@ -1318,6 +1319,7 @@ export interface MessageArgs {
   "settings.light": { [name: string]: never };
   "settings.local_cache": { [name: string]: never };
   "settings.machine_count": { count: number };
+  "settings.machine_disambiguator_a11y": { value: string };
   "settings.machine_sub_disk_alert": { size: string };
   "settings.machine_sub_removed": { [name: string]: never };
   "settings.machine_sub_version_mismatch": { [name: string]: never };
@@ -1546,6 +1548,7 @@ export interface MessageArgs {
   "tools.exit_code": { code: string };
   "tools.tool": { [name: string]: never };
   "tools.waiting_sync": { [name: string]: never };
+  "transport.conn_footer_unsupported_app": { [name: string]: never };
   "transport.conn_footer_unsupported_browser": { [name: string]: never };
   "transport.detail_daemon_disabled": { [name: string]: never };
   "transport.detail_relay_only": { [name: string]: never };
@@ -1924,6 +1927,7 @@ export const messages = {
     "common.save": "Save",
     "common.save_failed": "Could not save: {reason}",
     "common.saving": "Saving…",
+    "common.sentence_join": "{first} {second}",
     "common.settings": "Settings",
     "common.unknown_computer": "Unknown computer",
     "composer.android_unknown_reason": "Unknown reason",
@@ -3582,6 +3586,7 @@ export const messages = {
     "settings.light": "Light",
     "settings.local_cache": "Local cache",
     "settings.machine_count": "{count}",
+    "settings.machine_disambiguator_a11y": "Device ID {value}",
     "settings.machine_sub_disk_alert": "Disk {size} free",
     "settings.machine_sub_removed": "Retaining session history",
     "settings.machine_sub_version_mismatch": "Protocol mismatch; update on the computer",
@@ -3882,6 +3887,7 @@ export const messages = {
     "tools.exit_code": "Exit code {code}",
     "tools.tool": "Tool",
     "tools.waiting_sync": "Waiting to sync",
+    "transport.conn_footer_unsupported_app": "This app version does not support direct connections yet; everything connects via relay.",
     "transport.conn_footer_unsupported_browser": "This browser does not support direct connections; everything connects via relay.",
     "transport.detail_daemon_disabled": "Turn it on from this computer to use direct connections",
     "transport.detail_relay_only": "Everything connects via relay as usual",
@@ -4278,6 +4284,7 @@ export const messages = {
     "common.save": "保存",
     "common.save_failed": "没能保存：{reason}",
     "common.saving": "保存中…",
+    "common.sentence_join": "{first}{second}",
     "common.settings": "设置",
     "common.unknown_computer": "未知电脑",
     "composer.android_unknown_reason": "原因未知",
@@ -5856,6 +5863,7 @@ export const messages = {
     "settings.light": "亮色",
     "settings.local_cache": "本机缓存",
     "settings.machine_count": "{count} 台",
+    "settings.machine_disambiguator_a11y": "设备编号 {value}",
     "settings.machine_sub_disk_alert": "磁盘剩 {size}",
     "settings.machine_sub_removed": "保留历史会话记录",
     "settings.machine_sub_version_mismatch": "协议版本不一致，需在电脑上更新",
@@ -6146,6 +6154,7 @@ export const messages = {
     "tools.exit_code": "退出码 {code}",
     "tools.tool": "工具",
     "tools.waiting_sync": "等待同步",
+    "transport.conn_footer_unsupported_app": "当前应用版本暂不支持直连，已全部经中继连接。",
     "transport.conn_footer_unsupported_browser": "这个浏览器不支持直连，已全部经中继连接。",
     "transport.detail_daemon_disabled": "在这台电脑上开启后可用",
     "transport.detail_relay_only": "已全部经中继连接，不影响正常使用",

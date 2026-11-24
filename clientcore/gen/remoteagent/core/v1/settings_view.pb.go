@@ -114,6 +114,22 @@ const (
 	MachineAlertKind_MACHINE_ALERT_KIND_PROTOCOL_MISMATCH MachineAlertKind = 2
 )
 
+type MachineCardAppearance int32
+
+const (
+	MachineCardAppearance_MACHINE_CARD_APPEARANCE_UNSPECIFIED MachineCardAppearance = 0
+	MachineCardAppearance_MACHINE_CARD_APPEARANCE_NORMAL      MachineCardAppearance = 1
+	MachineCardAppearance_MACHINE_CARD_APPEARANCE_OFFLINE     MachineCardAppearance = 2
+	MachineCardAppearance_MACHINE_CARD_APPEARANCE_REMOVED     MachineCardAppearance = 3
+)
+
+type MachineCardMetaIcon int32
+
+const (
+	MachineCardMetaIcon_MACHINE_CARD_META_ICON_UNSPECIFIED MachineCardMetaIcon = 0
+	MachineCardMetaIcon_MACHINE_CARD_META_ICON_DIRECT      MachineCardMetaIcon = 1
+)
+
 type DiagCheckMark int32
 
 const (
@@ -132,6 +148,40 @@ var LitewireDesc_SettingsScreenRequest = litewire.MessageDesc{
 
 func (m *SettingsScreenRequest) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SettingsScreenRequest)
+}
+
+type MachineCardMetaSegment struct {
+	_    [0]func()
+	Text *Text
+	Icon MachineCardMetaIcon
+}
+
+func (m *MachineCardMetaSegment) GetText() *Text {
+	if m != nil {
+		return m.Text
+	}
+	return nil
+}
+func (m *MachineCardMetaSegment) GetIcon() MachineCardMetaIcon {
+	if m != nil {
+		return m.Icon
+	}
+	return 0
+}
+
+var LitewireDesc_MachineCardMetaSegment = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineCardMetaSegment{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 2, Offset: unsafe.Offsetof(MachineCardMetaSegment{}.Icon), Kind: litewire.KindInt32},
+	},
+}
+
+func (m *MachineCardMetaSegment) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineCardMetaSegment) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineCardMetaSegment)
 }
 
 type MachineCardAlert struct {
@@ -261,6 +311,10 @@ type MachineListCardView struct {
 	QuotaItems        []*MachineCardQuotaItem
 	SecondaryNote     *Text
 	DirectActive      bool
+	Appearance        MachineCardAppearance
+	MetaSegments      []*MachineCardMetaSegment
+	MetaSeparator     string
+	DisambiguatorA11Y *Text
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -365,6 +419,30 @@ func (m *MachineListCardView) GetDirectActive() bool {
 	}
 	return false
 }
+func (m *MachineListCardView) GetAppearance() MachineCardAppearance {
+	if m != nil {
+		return m.Appearance
+	}
+	return 0
+}
+func (m *MachineListCardView) GetMetaSegments() []*MachineCardMetaSegment {
+	if m != nil {
+		return m.MetaSegments
+	}
+	return nil
+}
+func (m *MachineListCardView) GetMetaSeparator() string {
+	if m != nil {
+		return m.MetaSeparator
+	}
+	return ""
+}
+func (m *MachineListCardView) GetDisambiguatorA11Y() *Text {
+	if m != nil {
+		return m.DisambiguatorA11Y
+	}
+	return nil
+}
 
 var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -385,6 +463,10 @@ var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 		{Num: 19, Offset: unsafe.Offsetof(MachineListCardView{}.QuotaItems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineCardQuotaItem},
 		{Num: 20, Offset: unsafe.Offsetof(MachineListCardView{}.SecondaryNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 21, Offset: unsafe.Offsetof(MachineListCardView{}.DirectActive), Kind: litewire.KindBool},
+		{Num: 22, Offset: unsafe.Offsetof(MachineListCardView{}.Appearance), Kind: litewire.KindInt32},
+		{Num: 23, Offset: unsafe.Offsetof(MachineListCardView{}.MetaSegments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineCardMetaSegment},
+		{Num: 24, Offset: unsafe.Offsetof(MachineListCardView{}.MetaSeparator), Kind: litewire.KindString},
+		{Num: 25, Offset: unsafe.Offsetof(MachineListCardView{}.DisambiguatorA11Y), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -1593,6 +1675,7 @@ func (m *DirectRouteReport) GetTerminalRoute() DirectPathChoice {
 }
 
 var LitewireDesc_DirectRouteReport = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DirectRouteReport{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(DirectRouteReport{}.Enabled), Kind: litewire.KindBool},
 		{Num: 2, Offset: unsafe.Offsetof(DirectRouteReport{}.Capable), Kind: litewire.KindBool},
@@ -1626,6 +1709,10 @@ func (m *DirectRouteReport) Marshal() ([]byte, error) {
 
 func (m *DirectRouteReport) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRouteReport)
+}
+
+func (m *DirectRouteReport) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DirectRouteReport)
 }
 
 type ConnCheckDirectRowView struct {
