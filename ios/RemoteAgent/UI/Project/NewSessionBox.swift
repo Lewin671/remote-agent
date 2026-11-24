@@ -46,17 +46,12 @@ struct NewSessionBox: View {
         let scope = PBDraftScope.newSession(projectKey)
         let draft = vm.draft
         let images = ComposerAttachments(context: context, scope: scope, draft: draft)
-        let storageError: String? = draft.hasStorageError ? {
-            let s = draft.storageError.rendered()
-            return s.isEmpty ? nil : s
-        }() : nil
         NewSessionContent(
             vm: vm,
             text: Binding(get: { text }, set: { updateText(scope: scope, next: $0) }),
             focus: focus,
             images: images,
             blockedReason: vm.prefsBlocked ? vm.prefsBlockedReason.rendered() : nil,
-            draftError: storageError,
             onPromptChanged: { prompt in
                 updateText(scope: scope, next: prompt)
             },
@@ -87,7 +82,7 @@ struct NewSessionBox: View {
                 }
             },
             onSubmit: {
-                guard vm.canStart, draft.ready, !draft.restoring, !draft.hasPendingPicks_p else { return }
+                guard vm.canStart, draft.canSend, !draft.sending, !draft.restoring else { return }
                 let promptText = text
                 let autoModeSupported = vm.modelPanel.canSelectAutoMode
                 Haptics.confirm()
@@ -147,7 +142,6 @@ struct NewSessionContent: View {
     var focus = false
     var images: ComposerAttachments? = nil
     var blockedReason: String? = nil
-    var draftError: String? = nil
     var onPromptChanged: (String) -> Void = { _ in }
     var onSelectAgent: (PBAgent) -> Void = { _ in }
     var onSelectMachineChoice: (String) -> Void = { _ in }
@@ -169,18 +163,12 @@ struct NewSessionContent: View {
     @State private var modelPanelHeight: CGFloat = 0
 
     var body: some View {
-        let canSend = vm.canStart && (images?.ready ?? true)
+        let canSend = vm.canStart && (images?.canSend ?? true)
         Group {
             if let sheet {
                 taskPage(sheet, canSend: canSend)
             } else {
                 box(canSend: canSend)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let draftError {
-                Notice(draftError, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
-                    .accessibilityIdentifier("new-session-draft-error")
             }
         }
         .onChange(of: text) { _, next in

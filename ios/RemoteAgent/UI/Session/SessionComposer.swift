@@ -178,11 +178,8 @@ struct SessionComposer: View {
     private func send(_ mode: PBSendMode) {
         guard composer.enabled && !header.protocolMismatch else { return }
         let draft = self.draft
+        guard draft.canSend && !draft.sending && !draft.restoring else { return }
         let currentText = text
-        let hasText = !currentText.jvmIsBlank
-        let hasItems = !draft.items.isEmpty
-        guard hasText || hasItems else { return }
-        guard !draft.restoring && !draft.sending && !draft.hasPendingPicks_p && draft.ready else { return }
         SessionHaptics.tap()
         onSent()
         let host = context.coreHost
@@ -210,8 +207,7 @@ struct SessionComposer: View {
         let draft = self.draft
         let images = self.images
         let hasDraft = draft.hasUnsavedContent_p || !text.jvmIsBlank
-        let canSend = composer.enabled && !header.protocolMismatch && !draft.restoring && !draft.sending
-            && !draft.hasPendingPicks_p && draft.ready && hasDraft
+        let canSend = composer.enabled && !header.protocolMismatch && draft.canSend && !draft.sending && !draft.restoring
         let placeholder = composer.hasPlaceholder ? composer.placeholder.rendered() : L10n.composerMessage()
         let interruptBusy = actions.interrupt.status == .pending || actions.interrupt.busy
         let interruptError: String = {

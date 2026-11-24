@@ -21,6 +21,7 @@ struct ComposerAttachments {
 
     var hasAttachments: Bool { !draft.items.isEmpty || draft.hasPendingPicks_p }
     var ready: Bool { draft.ready }
+    var canSend: Bool { draft.canSend && !draft.sending && !draft.restoring }
 
     var blocked: String? {
         guard !draft.canPickGallery && !draft.canPickFiles else { return nil }

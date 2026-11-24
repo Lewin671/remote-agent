@@ -55,7 +55,7 @@ struct FileChip: View {
         default:
             self.progress = nil
         }
-        self.removeLabel = item.hasRemoveA11Y ? item.removeA11Y.rendered() : L10n.attachmentRemoveFile(name: item.displayName)
+        self.removeLabel = item.hasRemoveA11Y ? item.removeA11Y.rendered() : ""
         self.pause = pause
         self.resume = resume
         self.retry = retry

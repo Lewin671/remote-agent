@@ -21,7 +21,7 @@ struct DraftImageViewer: View {
     var body: some View {
         let images = draft.images
         let viewer = draft.imageViewer
-        let emptyText = viewer.hasEmptyText ? viewer.emptyText.rendered() : L10n.imageIosEmpty()
+        let emptyText = viewer.hasEmptyText ? viewer.emptyText.rendered() : ""
         let positionText: String = {
             if images.indices.contains(localPage) {
                 let itemPos = images[localPage].positionText.rendered()
@@ -64,6 +64,16 @@ struct DraftImageViewer: View {
                         Text(caption).font(.body)
                     }
                     HStack(spacing: 24) {
+                        if img.canPause {
+                            action(L10n.sharedFileActionPause()) {
+                                Task { await host.pauseAttachmentUpload(scope: scope, itemID: img.itemID) }
+                            }
+                        }
+                        if img.canResume {
+                            action(L10n.sharedFileActionResume()) {
+                                Task { await host.resumeAttachmentUpload(scope: scope, itemID: img.itemID) }
+                            }
+                        }
                         if img.canRetry {
                             action(L10n.commonRetry()) {
                                 Task { await host.retryDraftItem(scope: scope, itemID: img.itemID) }

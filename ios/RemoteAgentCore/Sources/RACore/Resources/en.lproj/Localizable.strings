@@ -346,7 +346,6 @@
 "image_ios_download_failed" = "Could not download: %1$@ · Tap to retry";
 "image_ios_downloading" = "Downloading full image";
 "image_ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages" = "Drafts are cleared after 7 idle days. Unconfirmed messages remain until confirmed or removed. Storage warnings preserve existing content. When viewing cache exceeds its limit, the least recently viewed items are cleared first.";
-"image_ios_empty" = "No images";
 "image_ios_full_size_images_viewed_on_will_be_cleared_and" = "Full-size images viewed on %1$@ will be cleared and downloaded again when needed. Pending images, drafts, and session history are unaffected.";
 "image_ios_generated_size" = "Generated image%1$@";
 "image_ios_gif_contains_an_unrecognized_block" = "GIF contains an unrecognized block";
@@ -363,7 +362,6 @@
 "image_ios_open" = "Open image";
 "image_ios_original_exceeds_mb" = "Original exceeds %1$lld MB";
 "image_ios_pending_and_unconfirmed_attachments" = "Pending and unconfirmed attachments";
-"image_ios_retained_original" = "These images were retained from last time; they can no longer switch between original and compressed versions";
 "image_ios_save_permission" = "Could not save: no Photos permission";
 "image_ios_saved" = "Saved to Photos";
 "image_ios_unselected" = "Not selected";

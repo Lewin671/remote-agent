@@ -688,20 +688,6 @@
     }
   },
   {
-    "key": "image.ios_empty",
-    "zh-CN": "没有图片",
-    "en": "No images",
-    "notes": "DraftImageViewer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "image.ios_full_size_images_viewed_on_will_be_cleared_and",
     "zh-CN": "看过的大图会从{value}上清掉，再看时重新下载。待发的图片、草稿和会话历史不受影响。",
     "en": "Full-size images viewed on {value} will be cleared and downloaded again when needed. Pending images, drafts, and session history are unaffected.",
@@ -1000,20 +986,6 @@
     "zh-CN": "待发和待确认附件",
     "en": "Pending and unconfirmed attachments",
     "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "image.ios_retained_original",
-    "zh-CN": "这些图片是上次留下的，不能再换成原图或压缩图",
-    "en": "These images were retained from last time; they can no longer switch between original and compressed versions",
-    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
       "ios"

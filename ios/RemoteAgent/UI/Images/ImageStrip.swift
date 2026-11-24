@@ -156,7 +156,7 @@ struct ImageStrip: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(L10n.imageOriginal())
         .accessibilityValue(draft.original ? toggleText : L10n.imageIosUnselected())
-        .accessibilityHint(canChange ? L10n.imageIosOnlyMessage() : (disabledReason.isEmpty ? L10n.imageIosRetainedOriginal() : disabledReason))
+        .accessibilityHint(canChange ? L10n.imageIosOnlyMessage() : disabledReason)
         .accessibilityAddTraits(.isToggle)
 
         let countDisplay = draft.imageCountText.rendered()
@@ -203,7 +203,7 @@ private struct DraftThumb: View {
         let geometry = DraftThumbGeometry(side: side)
         let posLabel = item.hasPositionA11Y ? item.positionA11Y.rendered() : item.positionText.rendered()
         let statusVal = item.hasStatusText ? item.statusText.rendered() : ""
-        let removeLabel = item.hasRemoveA11Y ? item.removeA11Y.rendered() : L10n.commonRemove()
+        let removeLabel = item.hasRemoveA11Y ? item.removeA11Y.rendered() : ""
         ZStack(alignment: .topLeading) {
             Button(action: onOpen) {
                 DS.fill
@@ -251,13 +251,23 @@ private struct DraftThumb: View {
                 }
             }
         case .paused:
+            let badge = item.hasBadgeText ? item.badgeText.rendered() : ""
             Color.black.opacity(0.45)
             SymbolImage("pause.fill", size: 16, color: Color.white)
+            if !badge.isEmpty {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Text(badge).font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+                }
+            }
         case .failed:
+            let badge = item.hasBadgeText ? item.badgeText.rendered() : ""
             Color.black.opacity(0.6)
-            VStack(spacing: 0) {
-                Spacer(minLength: 0)
-                Text(L10n.attachmentFailed()).font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+            if !badge.isEmpty {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Text(badge).font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+                }
             }
         case .ready, .unspecified, .UNRECOGNIZED:
             EmptyView()

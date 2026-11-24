@@ -346,7 +346,6 @@
 "image_ios_download_failed" = "没能下载：%1$@ · 点按重试";
 "image_ios_downloading" = "正在下载大图";
 "image_ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages" = "草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。查看缓存超过上限时先清最久没看的。";
-"image_ios_empty" = "没有图片";
 "image_ios_full_size_images_viewed_on_will_be_cleared_and" = "看过的大图会从%1$@上清掉，再看时重新下载。待发的图片、草稿和会话历史不受影响。";
 "image_ios_generated_size" = "生成的图片%1$@";
 "image_ios_gif_contains_an_unrecognized_block" = "GIF 里有认不出的块";
@@ -363,7 +362,6 @@
 "image_ios_open" = "打开图片";
 "image_ios_original_exceeds_mb" = "原图超过 %1$lld MB";
 "image_ios_pending_and_unconfirmed_attachments" = "待发和待确认附件";
-"image_ios_retained_original" = "这些图片是上次留下的，不能再换成原图或压缩图";
 "image_ios_save_permission" = "没有相册权限，没能保存";
 "image_ios_saved" = "已保存到相册";
 "image_ios_unselected" = "未选";
