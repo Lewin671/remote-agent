@@ -2801,7 +2801,15 @@ actor CoreHost: SyncEngine {
             do {
                 if preCancelled { throw CancellationError() }
                 try Task.checkCancellation()
-                let ref = eff.kind == .image ? eff.preparedRef : eff.sourceRef
+                let ref: String
+                switch eff.kind {
+                case .image:
+                    ref = eff.preparedRef
+                case .file:
+                    ref = eff.sourceRef
+                case .unspecified, .UNRECOGNIZED:
+                    throw AttachmentFileIOError(.sourceMissing)
+                }
                 let data: Data
                 if ref.hasPrefix("blob:") {
                     data = try store.readBlobChunk(

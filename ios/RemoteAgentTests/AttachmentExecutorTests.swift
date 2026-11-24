@@ -285,6 +285,23 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(!res.ok)
         #expect(res.errorKind == .sourceMissing)
         #expect(res.data.isEmpty)
+
+        // Unspecified kind must never read sourceRef or preparedRef either.
+        let unspecRes = await h.host.readChunkForTesting(.with {
+            $0.opID = 78
+            $0.scope = .session("s1")
+            $0.itemID = "img-unspec"
+            $0.kind = .unspecified
+            $0.sourceRef = rawSourceRef
+            $0.preparedRef = rawSourceRef
+            $0.offset = 0
+            $0.length = 14
+            $0.expectedSizeBytes = 14
+        })
+        #expect(unspecRes.opID == 78)
+        #expect(!unspecRes.ok)
+        #expect(unspecRes.errorKind == .sourceMissing)
+        #expect(unspecRes.data.isEmpty)
     }
 
     @Test func preparePropagatesCancellationAndReportsVaultLockedWithoutDecodeMisclassification() async throws {
