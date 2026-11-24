@@ -101,7 +101,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                         remote.resumeSecurityOperation()
                         read()
                     } catch (e: Exception) {
-                        error = displayError(e, state)
+                        error = displayError(e, syncView)
                     }
                 }
             },
