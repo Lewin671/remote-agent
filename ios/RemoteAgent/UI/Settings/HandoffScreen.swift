@@ -17,20 +17,28 @@ struct HandoffScreen: View {
     @Environment(Navigator.self) private var nav
     @State private var draft = HandoffDraft()
     @State private var action = ActionRunner()
-    @State private var candidates: [PBSecurityHandoffCandidate] = []
-    @State private var target: PBSecurityHandoffCandidate?
+    @State private var target: PBHandoffCandidateView?
     @State private var confirming = false
     @State private var publicCode = ""
     @State private var completedProfile = false
     @State private var handedOff = false
 
+    static func candidateLabel(_ candidate: PBHandoffCandidateView) -> String {
+        if candidate.hasDisplayNameText {
+            let rendered = candidate.displayNameText.rendered()
+            if !rendered.isEmpty { return rendered }
+        }
+        return candidate.displayName.or(L10n.securityClient())
+    }
+
     var body: some View {
         let settings = context.core.settings
         let sec = settings.security
+        let candidates = sec.handoffCandidates
         let isClient = settings.hasAccount_p && !sec.unlinked
         let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: sec.authorityName))
         SettingsPage {
-            if sec.isManager { outgoing }
+            if sec.isManager { outgoing(candidates: candidates) }
             else if isClient { incoming(hasHandoffOffer: sec.hasHandoffOffer_p) }
             else { GroupNote(addHint) }
             if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
@@ -39,24 +47,13 @@ struct HandoffScreen: View {
         .task {
             await context.coreHost.openSettings()
             draft = context.memory.value { HandoffDraft() }
-            if app.isDemo {
-                #if DEBUG
-                if AuthorityDemo.mode == "outgoing" {
-                    let displayName = context.core.settings.recentClients.first { $0.deviceID == AuthorityDemo.other }?.displayName ?? ""
-                    candidates = [
-                        PBSecurityHandoffCandidate.with {
-                            $0.deviceID = AuthorityDemo.other
-                            $0.recoveryEd = Data(repeating: 4, count: 32)
-                            $0.displayName = displayName
-                        }
-                    ]
-                }
-                #endif
-            } else if context.core.settings.security.isManager { loadCandidates() }
+            if !app.isDemo && context.core.settings.security.isManager {
+                refreshCandidates()
+            }
         }
         .confirm(isPresented: $confirming, title: L10n.securityIosTransferManagement(),
             text: L10n.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(
-                value: String(describing: target.flatMap { $0.displayName.isEmpty ? nil : $0.displayName } ?? L10n.securityIosSuccessorDevice())),
+                value: String(describing: target.map(Self.candidateLabel) ?? L10n.securityIosSuccessorDevice())),
             confirm: L10n.securityConfirmTransfer(), danger: true) {
                 action.run {
                     guard let target else { return }
@@ -70,17 +67,17 @@ struct HandoffScreen: View {
                 }
             }
     }
-    private var outgoing: some View {
+    private func outgoing(candidates: [PBHandoffCandidateView]) -> some View {
         Group {
             GroupLabel(L10n.securityTransferManagement())
             GroupNote(L10n.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts())
             GroupCard {
                 ForEach(candidates, id: \.deviceID) { candidate in
-                    let label = candidate.displayName.or(candidate.deviceID)
+                    let label = Self.candidateLabel(candidate)
                     GRow(L10n.securityIosTransferTo(value: String(describing: label)),
                         chevron: true, enabled: !action.running) { target = candidate; confirming = true }
                 }
-                GRow(L10n.securityRefreshSuccessorDevices(), action: true, enabled: !action.running) { loadCandidates() }
+                GRow(L10n.securityRefreshSuccessorDevices(), action: true, enabled: !action.running) { refreshCandidates() }
             }
             if candidates.isEmpty { GroupNote(L10n.securityWaitingForTheSuccessorDeviceToGenerateAndSave()) }
             if handedOff { GroupBanner(L10n.securityIosManagementTransferredThisDeviceWasRemoved()) }
@@ -133,8 +130,10 @@ struct HandoffScreen: View {
             if completedProfile { GroupBanner(L10n.securityIosAccountPublicKeyInformationRestoredYouCanPrepareTo()) }
         }
     }
-    private func loadCandidates() {
+    private func refreshCandidates() {
         guard !app.isDemo else { return }
-        action.run { candidates = try await context.remote.listHandoffCandidates() }
+        action.run {
+            await context.remote.refreshDevices()
+        }
     }
 }

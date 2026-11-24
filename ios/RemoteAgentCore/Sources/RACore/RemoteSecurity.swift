@@ -200,12 +200,6 @@ extension Remote {
         try await withSecurityAndRefresh { try await $0.publishHandoffOffer() }
     }
 
-    public func listHandoffCandidates() async throws -> [PBSecurityHandoffCandidate] {
-        try await ensureSecurityBootstrapped()
-        await refreshDevices()
-        return try await securityClient.listHandoffCandidates()
-    }
-
     public func handoffAuthority(targetDeviceId: String) async throws {
         try await withSecurity { try await $0.handoffAuthority(targetDeviceId: targetDeviceId) }
     }

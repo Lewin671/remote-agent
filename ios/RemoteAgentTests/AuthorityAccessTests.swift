@@ -86,4 +86,25 @@ import UIKit
         #expect(model.selectedRemoveDeviceIDs == ["old-iphone-active"])
     }
 
+    @Test func handoffCandidateLabelPrefersCoreDisplayNameTextOverRawFallback() {
+        let localized = PBHandoffCandidateView.with {
+            $0.deviceID = "dev-raw-id-1234"
+            $0.displayName = "1234"
+            $0.displayNameText = .with { $0.key = "security.browser" }
+        }
+        #expect(HandoffScreen.candidateLabel(localized) == L10n.securityBrowser())
+
+        let literal = PBHandoffCandidateView.with {
+            $0.deviceID = "dev-raw-id-5678"
+            $0.displayName = "iPhone 16 Pro · 5678"
+            $0.displayNameText = .with { $0.literal = "iPhone 16 Pro · 5678" }
+        }
+        #expect(HandoffScreen.candidateLabel(literal) == "iPhone 16 Pro · 5678")
+
+        let empty = PBHandoffCandidateView.with {
+            $0.deviceID = "dev-raw-id-9999"
+        }
+        #expect(HandoffScreen.candidateLabel(empty) == L10n.securityClient())
+    }
+
 }
