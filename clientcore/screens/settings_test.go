@@ -59,6 +59,19 @@ func TestBuildDevicesAndSettingsExcludeMachinesFromClientRows(t *testing.T) {
 		t.Fatalf("expected unfinished machine pairing detail to be removable, got %+v", detail)
 	}
 
+	// Unfinished pairing with no Meta yet must still have a non-empty DisplayName
+	// (falling back to ShortId) so detail header and removal dialog never render blank.
+	sv.Devices = append(sv.Devices, &corev1.SyncDeviceView{
+		DeviceId:   "4b5cb72cf559ecbf3593590a77aafc04",
+		Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+		Trusted:    true,
+		Registered: false,
+	})
+	unnamedDetail := BuildClientDetail(st, sv, nil, "4b5cb72cf559ecbf3593590a77aafc04")
+	if !unnamedDetail.Found || unnamedDetail.DisplayName != "…fc04" || unnamedDetail.ShortId != "…fc04" {
+		t.Fatalf("expected unnamed unfinished pairing DisplayName to fall back to ShortId, got %+v", unnamedDetail)
+	}
+
 	svm := BuildSettings(st, sv, nil)
 	if len(svm.RecentClients) != 1 || svm.RecentClients[0].DeviceId != "c1" {
 		t.Fatalf("expected only client c1 in RecentClients, got %+v", svm.RecentClients)

@@ -1317,9 +1317,12 @@ func BuildClientDetail(st *State, syncView *corev1.SyncStateView, extra *Setting
 	if dev.Meta != nil {
 		vm.CustomName = dev.Meta.Name
 	}
-	vm.DisplayName = machine.ClientName(dev)
-	vm.Description = vm.DefaultName
 	vm.ShortId = machine.ShortID(deviceID)
+	vm.DisplayName = machine.ClientName(dev)
+	if vm.DisplayName == "" {
+		vm.DisplayName = vm.ShortId
+	}
+	vm.Description = vm.DefaultName
 
 	if vm.IsSelf {
 		vm.RoleLabel = text.Msg(text.KeySettingsCurrent)
