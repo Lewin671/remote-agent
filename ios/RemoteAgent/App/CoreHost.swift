@@ -3466,6 +3466,9 @@ actor CoreHost: SyncEngine {
                     onlineCount += 1
                     if demoWorld.directMachineIds.contains(vm.machines[idx].machineID) {
                         vm.machines[idx].directActive = true
+                        vm.machines[idx].directRow.stage = .direct
+                        vm.machines[idx].directRow.visible = true
+                        vm.machines[idx].directRow.statusText = .with { $0.key = "transport.status_direct" }
                         directCount += 1
                     }
                 }
