@@ -7237,6 +7237,10 @@ public enum L10n {
         let key = "terminal_remote_dimensions"
         return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
     }
+    public static func terminalReplayOverflow(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_replay_overflow"
+        return format(key, locale: locale, args: [])
+    }
     public static func terminalRestore(locale: String = MessageLocale.current) -> String {
         let key = "terminal_restore"
         return format(key, locale: locale, args: [])
@@ -15625,6 +15629,10 @@ public enum L10nMessage {
         let key = "terminal_remote_dimensions"
         return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
     }
+    public static func terminalReplayOverflow() -> LocalizedMessage {
+        let key = "terminal_replay_overflow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
     public static func terminalRestore() -> LocalizedMessage {
         let key = "terminal_restore"
         return LocalizedMessage(key: key, arguments: [])
@@ -18728,6 +18736,7 @@ public enum L10nText {
         case "terminal.readonly": return L10n.format("terminal_readonly", locale: locale, args: [])
         case "terminal.reconnect": return L10n.format("terminal_reconnect", locale: locale, args: [])
         case "terminal.remote_dimensions": return L10n.format("terminal_remote_dimensions", locale: locale, args: [intArg(args["cols"]), intArg(args["rows"])])
+        case "terminal.replay_overflow": return L10n.format("terminal_replay_overflow", locale: locale, args: [])
         case "terminal.restore": return L10n.format("terminal_restore", locale: locale, args: [])
         case "terminal.right": return L10n.format("terminal_right", locale: locale, args: [])
         case "terminal.size_changed": return L10n.format("terminal_size_changed", locale: locale, args: [])
@@ -18883,12 +18892,12 @@ public enum L10nText {
         case "transport.diag_status_enabled": return L10n.format("transport_diag_status_enabled", locale: locale, args: [])
         case "transport.diag_status_no_reply": return L10n.format("transport_diag_status_no_reply", locale: locale, args: [])
         case "transport.diag_status_not_started": return L10n.format("transport_diag_status_not_started", locale: locale, args: [])
-        case "transport.diag_status_ok": return L10n.format("transport_diag_status_ok", locale: locale, args: [])
         default: return nil
         }
     }
     private static func resolve13(_ key: String, args: [String: L10nTextValue], locale: String) -> String? {
         switch key {
+        case "transport.diag_status_ok": return L10n.format("transport_diag_status_ok", locale: locale, args: [])
         case "transport.diag_status_peer_old": return L10n.format("transport_diag_status_peer_old", locale: locale, args: [])
         case "transport.diag_status_wait_update": return L10n.format("transport_diag_status_wait_update", locale: locale, args: [])
         case "transport.diag_stun_error": return L10n.format("transport_diag_stun_error", locale: locale, args: [intArg(args["code"]), intArg(args["count"]), strArg(args["family"])])

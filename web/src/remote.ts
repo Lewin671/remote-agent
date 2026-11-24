@@ -2151,7 +2151,9 @@ export class Remote implements CoreExecutor {
           finish(
             reason === "conflict"
               ? l10n.t("errors.terminal_frames_are_out_of_order")
-              : l10n.t("errors.terminal_connection_dropped"),
+              : reason === "replay_overflow"
+                ? l10n.t("terminal.replay_overflow")
+                : l10n.t("errors.terminal_connection_dropped"),
           );
           activeWs.close();
         }

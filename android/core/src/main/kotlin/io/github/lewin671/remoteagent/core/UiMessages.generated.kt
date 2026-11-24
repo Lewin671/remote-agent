@@ -1762,6 +1762,7 @@ object UiMessages {
     fun terminalReadonly(): UiMessage = UiMessage("terminal.readonly", emptyMap())
     fun terminalReconnect(): UiMessage = UiMessage("terminal.reconnect", emptyMap())
     fun terminalRemoteDimensions(cols: Int, rows: Int): UiMessage = UiMessage("terminal.remote_dimensions", mapOf("cols" to cols, "rows" to rows))
+    fun terminalReplayOverflow(): UiMessage = UiMessage("terminal.replay_overflow", emptyMap())
     fun terminalRestore(): UiMessage = UiMessage("terminal.restore", emptyMap())
     fun terminalRight(): UiMessage = UiMessage("terminal.right", emptyMap())
     fun terminalSizeChanged(): UiMessage = UiMessage("terminal.size_changed", emptyMap())

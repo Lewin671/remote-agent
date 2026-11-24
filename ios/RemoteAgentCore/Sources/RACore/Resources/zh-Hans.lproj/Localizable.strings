@@ -1711,6 +1711,7 @@
 "terminal_readonly" = "回看中 · 只读";
 "terminal_reconnect" = "重新连接";
 "terminal_remote_dimensions" = "远端 %1$lld×%2$lld";
+"terminal_replay_overflow" = "终端输出超出补发缓冲，请重新连接获取最新画面。";
 "terminal_restore" = "还原";
 "terminal_right" = "右";
 "terminal_size_changed" = "远端尺寸已变化";

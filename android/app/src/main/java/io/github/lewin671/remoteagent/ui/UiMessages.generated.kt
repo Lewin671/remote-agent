@@ -5866,6 +5866,9 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val rows = message.args.getValue("rows") as Int
             resources.getString(R.string.terminal_remote_dimensions, cols, rows)
         }
+        "terminal.replay_overflow" -> {
+            resources.getString(R.string.terminal_replay_overflow)
+        }
         "terminal.restore" -> {
             resources.getString(R.string.terminal_restore)
         }
@@ -6026,16 +6029,16 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val elapsed = message.args.getValue("elapsed") as String
             resources.getString(R.string.tools_elapsed_sync, elapsed)
         }
-        "tools.exit_code" -> {
-            val code = message.args.getValue("code") as String
-            resources.getString(R.string.tools_exit_code, code)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "tools.exit_code" -> {
+            val code = message.args.getValue("code") as String
+            resources.getString(R.string.tools_exit_code, code)
+        }
         "tools.tool" -> {
             resources.getString(R.string.tools_tool)
         }
@@ -6518,15 +6521,15 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_file_only" -> {
             resources.getString(R.string.transport_popover_file_only)
         }
-        "transport.popover_read_only" -> {
-            resources.getString(R.string.transport_popover_read_only)
-        }
         else -> null
     }
 }
 
 private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
     return when (message.key) {
+        "transport.popover_read_only" -> {
+            resources.getString(R.string.transport_popover_read_only)
+        }
         "transport.popover_relay_body" -> {
             resources.getString(R.string.transport_popover_relay_body)
         }

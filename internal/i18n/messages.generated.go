@@ -381,6 +381,10 @@ func StartupCliUsage(locale string, agentLines string, agents string) string {
 	return render(locale, "startup.cli_usage", map[string]any{"agentLines": agentLines, "agents": agents})
 }
 
+func TerminalReplayOverflow(locale string) string {
+	return render(locale, "terminal.replay_overflow", map[string]any{})
+}
+
 func TransportStunBytes(locale string) string {
 	return render(locale, "transport.stun_bytes", map[string]any{})
 }

@@ -337,6 +337,8 @@ extension Remote {
                     let msg: String
                     if reason == "conflict" {
                         msg = L10n.errorsTerminalFramesAreOutOfOrder()
+                    } else if reason == "replay_overflow" {
+                        msg = L10n.terminalReplayOverflow()
                     } else if let err = lastRelayError.withLock({ let e = $0; $0 = nil; return e }) {
                         msg = L10n.errorsIosTerminalConnectionDropped(value: String(describing: errorText(err)))
                     } else {

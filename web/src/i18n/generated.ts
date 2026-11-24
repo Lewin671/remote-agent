@@ -1500,6 +1500,7 @@ export interface MessageArgs {
   "terminal.readonly": { [name: string]: never };
   "terminal.reconnect": { [name: string]: never };
   "terminal.remote_dimensions": { cols: number; rows: number };
+  "terminal.replay_overflow": { [name: string]: never };
   "terminal.restore": { [name: string]: never };
   "terminal.right": { [name: string]: never };
   "terminal.size_changed": { [name: string]: never };
@@ -3775,6 +3776,7 @@ export const messages = {
     "terminal.readonly": "Reviewing history · Read only",
     "terminal.reconnect": "Reconnect",
     "terminal.remote_dimensions": "Remote {cols}×{rows}",
+    "terminal.replay_overflow": "Terminal output exceeded the replay buffer. Reconnect for the latest screen.",
     "terminal.restore": "Restore",
     "terminal.right": "Right",
     "terminal.size_changed": "Remote size changed",
@@ -6033,6 +6035,7 @@ export const messages = {
     "terminal.readonly": "回看中 · 只读",
     "terminal.reconnect": "重新连接",
     "terminal.remote_dimensions": "远端 {cols}×{rows}",
+    "terminal.replay_overflow": "终端输出超出补发缓冲，请重新连接获取最新画面。",
     "terminal.restore": "还原",
     "terminal.right": "右",
     "terminal.size_changed": "远端尺寸已变化",

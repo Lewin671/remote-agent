@@ -1935,6 +1935,7 @@
     <string name="terminal_readonly" formatted="false">"回看中 · 只读"</string>
     <string name="terminal_reconnect" formatted="false">"重新连接"</string>
     <string name="terminal_remote_dimensions">"远端 %1$d×%2$d"</string>
+    <string name="terminal_replay_overflow" formatted="false">"终端输出超出补发缓冲，请重新连接获取最新画面。"</string>
     <string name="terminal_restore" formatted="false">"还原"</string>
     <string name="terminal_right" formatted="false">"右"</string>
     <string name="terminal_size_changed" formatted="false">"远端尺寸已变化"</string>

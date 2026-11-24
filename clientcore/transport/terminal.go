@@ -935,6 +935,26 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 			})
 		}
 		return 0, nil
+
+	case linkcore.ControlClosePath:
+		msg, err := linkcore.DecodeClosePath(o.Payload)
+		if err != nil {
+			return 0, nil
+		}
+		ct := c.termStreams[msg.Stream]
+		if ct == nil || ct.machineID != r.machine {
+			return 0, nil
+		}
+		if msg.Reason == 2 {
+			// N8: daemon signaled explicit output replay buffer overflow -> fail immediately with hint.
+			c.emit(CoordTerminalState{
+				StreamID: ct.streamID,
+				State:    TermStateClosed,
+				Reason:   "replay_overflow",
+			})
+			delete(c.termStreams, ct.streamID)
+		}
+		return 4, ackPayload(o)
 	}
 	return 0, nil
 }

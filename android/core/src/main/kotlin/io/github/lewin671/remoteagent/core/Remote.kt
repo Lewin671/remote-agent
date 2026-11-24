@@ -2457,6 +2457,8 @@ class Remote(
                     val err = lastRelayError.getAndSet(null)
                     if (reason == "conflict") {
                         finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
+                    } else if (reason == "replay_overflow") {
+                        finish(UiMessages.terminalReplayOverflow().messageText())
                     } else if (err != null) {
                         finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, state.value).resolve(copy))) })
                     } else {

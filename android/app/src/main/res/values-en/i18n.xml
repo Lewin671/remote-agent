@@ -2023,6 +2023,7 @@
     <string name="terminal_readonly" formatted="false">"Reviewing history · Read only"</string>
     <string name="terminal_reconnect" formatted="false">"Reconnect"</string>
     <string name="terminal_remote_dimensions">"Remote %1$d×%2$d"</string>
+    <string name="terminal_replay_overflow" formatted="false">"Terminal output exceeded the replay buffer. Reconnect for the latest screen."</string>
     <string name="terminal_restore" formatted="false">"Restore"</string>
     <string name="terminal_right" formatted="false">"Right"</string>
     <string name="terminal_size_changed" formatted="false">"Remote size changed"</string>

@@ -1711,6 +1711,7 @@
 "terminal_readonly" = "Reviewing history · Read only";
 "terminal_reconnect" = "Reconnect";
 "terminal_remote_dimensions" = "Remote %1$lld×%2$lld";
+"terminal_replay_overflow" = "Terminal output exceeded the replay buffer. Reconnect for the latest screen.";
 "terminal_restore" = "Restore";
 "terminal_right" = "Right";
 "terminal_size_changed" = "Remote size changed";

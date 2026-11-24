@@ -14,6 +14,7 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"github.com/Lewin671/remote-agent/internal/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -53,6 +54,9 @@ const (
 	// arrivals before openTerminal finishes creating the stream (H-B).
 	termPendingDirectTTL = 5 * time.Second
 	termMaxPendingDirect = 16
+	// termCloseReasonReplayOverflow signals explicit failure when output replay
+	// exceeds the 1 MiB / 128-frame buffer instead of silently truncating (N8).
+	termCloseReasonReplayOverflow uint32 = 2
 )
 
 type frozenStatusCache struct {
@@ -941,6 +945,49 @@ func (lt *liveTerminal) sendControlStreamFailed(detail linkcore.TermFrameStatus,
 	}))
 }
 
+// replayIncomplete checks whether ReplayOutput failed or truncated before targetSeq (N8).
+func replayIncomplete(frames []linkcore.TermFrame, fromSeq, targetSeq uint64, err error) bool {
+	if err != nil || len(frames) == 0 {
+		return true
+	}
+	if frames[0].Seq > fromSeq {
+		return true
+	}
+	if targetSeq > 0 && frames[len(frames)-1].Seq < targetSeq {
+		return true
+	}
+	return false
+}
+
+// abortReplayOverflow explicitly fails and closes the terminal stream when output
+// replay exceeds the 1 MiB / 128-frame buffer instead of silently truncating (N8).
+func (lt *liveTerminal) abortReplayOverflow(rp transport.Path, fromSeq, targetSeq uint64, rerr error) {
+	slog.Warn("relay: terminal output replay overflow; closing stream",
+		"stream", lt.streamID[:min(8, len(lt.streamID))],
+		"from", fromSeq, "to", targetSeq, "err", rerr)
+	lt.mu.Lock()
+	lt.explicitClosed = true
+	legID := lt.stream.LegID("direct")
+	directGen := lt.directGen
+	if directGen == 0 {
+		directGen = 1
+	}
+	lt.mu.Unlock()
+	if len(legID) == 16 {
+		lt.sendDirectControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+			Stream:         lt.streamID,
+			LegID:          legID,
+			PathGeneration: directGen,
+			Reason:         termCloseReasonReplayOverflow,
+		}))
+	}
+	_ = lt.sendOutput(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Closed{Closed: i18n.TerminalReplayOverflow("en")}})
+	if rp != nil {
+		rp.Finish()
+	}
+	lt.cancel()
+}
+
 func (c *endpoint) directPeerActive(peerID string) bool {
 	dm := c.direct.Load()
 	if dm == nil {
@@ -975,16 +1022,25 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 		lt.directGen = 0
 		rp := lt.relayPath
 		var replayFrames []linkcore.TermFrame
+		var replayFrom, replayTo uint64
+		var replayErr error
+		var replayOverflow bool
 		if rp != nil {
-			// M4: replay any direct-only output frames unacknowledged by the client over the live relay leg
-			// so a direct disconnect never leaves a frozen output gap on the client.
-			fromSeq := lt.stream.ClientOutputAck() + 1
-			if fromSeq <= lt.outSeq {
-				replayFrames, _ = lt.stream.ReplayOutput(nowMs, fromSeq, lt.outSeq, 1<<20, 128)
+			// M4 + N8: replay any direct-only output frames unacknowledged by the client over the live relay leg;
+			// if replay overflows/truncates, explicitly fail and close instead of silently freezing.
+			replayFrom = lt.stream.ClientOutputAck() + 1
+			replayTo = lt.outSeq
+			if replayFrom <= replayTo {
+				replayFrames, replayErr = lt.stream.ReplayOutput(nowMs, replayFrom, replayTo, 1<<20, 128)
+				replayOverflow = replayIncomplete(replayFrames, replayFrom, replayTo, replayErr)
 			}
 		}
 		lt.noteLegStateLocked(nowT)
 		lt.mu.Unlock()
+		if replayOverflow {
+			lt.abortReplayOverflow(rp, replayFrom, replayTo, replayErr)
+			continue
+		}
 		if rp != nil && len(replayFrames) > 0 {
 			c.link.Run(func(context.Context) {
 				for _, f := range replayFrames {
@@ -1120,10 +1176,19 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			_ = lt.stream.AttachLeg("relay", relayStreamID, hub.instance, reqGen)
 			lt.noteLegStateLocked(hub.now())
 			var replayFrames []linkcore.TermFrame
+			var replayErr error
+			var replayOverflow bool
+			replayFrom := clientRendered + 1
+			replayTo := lt.outSeq
 			if clientRendered < lt.outSeq {
-				replayFrames, _ = lt.stream.ReplayOutput(uint64(hub.now().UnixMilli()), clientRendered+1, lt.outSeq, 1<<20, 128)
+				replayFrames, replayErr = lt.stream.ReplayOutput(uint64(hub.now().UnixMilli()), replayFrom, replayTo, 1<<20, 128)
+				replayOverflow = replayIncomplete(replayFrames, replayFrom, replayTo, replayErr)
 			}
 			lt.mu.Unlock()
+			if replayOverflow {
+				lt.abortReplayOverflow(newPath, replayFrom, replayTo, replayErr)
+				return
+			}
 			if oldCancel != nil {
 				oldCancel()
 			}
@@ -1245,9 +1310,15 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return 0, nil
 		}
 		lt.mu.Lock()
+		targetSeq := msg.ThroughSeq
+		if targetSeq == 0 {
+			targetSeq = lt.outSeq
+		}
 		frames, rerr := lt.stream.ReplayOutput(now, msg.FromSeq, msg.ThroughSeq, msg.MaxBytes, msg.MaxFrames)
+		rp := lt.relayPath
 		lt.mu.Unlock()
-		if rerr != nil {
+		if replayIncomplete(frames, msg.FromSeq, targetSeq, rerr) {
+			lt.abortReplayOverflow(rp, msg.FromSeq, targetSeq, rerr)
 			return receipt()
 		}
 		for _, f := range frames {
