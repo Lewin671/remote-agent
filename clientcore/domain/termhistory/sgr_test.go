@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"unicode/utf8"
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 )
@@ -161,4 +162,73 @@ func TestSgrUnifiedEdgeCases(t *testing.T) {
 			t.Fatalf("got maxCells %d, want 18", page.MaxCells)
 		}
 	})
+}
+
+func TestSgrColonUnderlineColorAndEscUtf8(t *testing.T) {
+	cases := []struct {
+		name string
+		line string
+		want []map[string]any
+	}{
+		{
+			name: "colon subparameter preserves sibling bold and red",
+			line: "\x1b[1;4:3;31mhi\x1b[0m",
+			want: []map[string]any{{"text": "hi", "fg": float64(1), "bold": true}},
+		},
+		{
+			name: "colon underline color does not affect following green",
+			line: "\x1b[58:2::0:1:7;32mok",
+			want: []map[string]any{{"text": "ok", "fg": float64(2)}},
+		},
+		{
+			name: "58;2;0;1;7 does not reset or enable bold/dim/inverse",
+			line: "\x1b[34;58;2;0;1;7mblue\x1b[59m!",
+			want: []map[string]any{{"text": "blue!", "fg": float64(4)}},
+		},
+		{
+			name: "58;5;7 does not leak inverse",
+			line: "\x1b[33;58;5;7;4myellow",
+			want: []map[string]any{{"text": "yellow", "fg": float64(3), "underline": true}},
+		},
+		{
+			name: "truncated 58;2 aborts remaining params without leaking",
+			line: "\x1b[31;58;2;1;7mred",
+			want: []map[string]any{{"text": "red", "fg": float64(1)}},
+		},
+		{
+			name: "non-rendered single codes 5/8/9/21/53 ignored cleanly",
+			line: "\x1b[5;8;9;21;53;36mcyan",
+			want: []map[string]any{{"text": "cyan", "fg": float64(6)}},
+		},
+		{
+			name: "ESC followed by multibyte UTF-8 skips whole rune without invalid UTF-8",
+			line: "a\x1b中b\x1b😀c",
+			want: []map[string]any{{"text": "abc"}},
+		},
+		{
+			name: "double ESC before CSI still parses SGR",
+			line: "a\x1b\x1b[31mred",
+			want: []map[string]any{{"text": "a"}, {"text": "red", "fg": float64(1)}},
+		},
+		{
+			name: "ESC intermediate charset designation skipped whole",
+			line: "x\x1b(By\x1b#8z",
+			want: []map[string]any{{"text": "xyz"}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			runs, _ := ParseSgrLine(tc.line)
+			got := make([]map[string]any, len(runs))
+			for i, r := range runs {
+				if !utf8.ValidString(r.Text) {
+					t.Fatalf("run[%d].Text is not valid UTF-8: %x", i, r.Text)
+				}
+				got[i] = runToMap(r)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("line %q:\nwant %#v\ngot  %#v", tc.line, tc.want, got)
+			}
+		})
+	}
 }

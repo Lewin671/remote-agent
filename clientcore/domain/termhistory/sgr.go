@@ -152,8 +152,27 @@ func ParseSgrLine(line string) ([]*corev1.TerminalHistoryRun, int32) {
 				i = j + 1
 			case ']', 'P', 'X', '^', '_':
 				i = skipControlString(line, i+2)
+			case 0x1b:
+				// Do not consume a second ESC so `ESC ESC [31m` still parses the CSI.
+				i++
 			default:
-				i += 2
+				if line[i+1] >= 0x20 && line[i+1] <= 0x2f {
+					// ECMA-48 nF escape sequence (e.g. `ESC ( B`, `ESC # 8`):
+					// intermediate bytes 0x20-0x2f followed by a final byte 0x30-0x7e.
+					j := i + 1
+					for j < n && line[j] >= 0x20 && line[j] <= 0x2f {
+						j++
+					}
+					if j < n && line[j] >= 0x30 && line[j] <= 0x7e {
+						j++
+					}
+					i = j
+				} else {
+					// Skip one full UTF-8 rune so multibyte characters after ESC
+					// are never split into invalid UTF-8.
+					_, size := utf8.DecodeRuneInString(line[i+1:])
+					i += 1 + size
+				}
 			}
 		} else if b == '\t' {
 			buf.WriteByte('\t')
@@ -224,7 +243,7 @@ func skipControlString(line string, start int) int {
 func isValidSgrParams(params string) bool {
 	for i := 0; i < len(params); i++ {
 		c := params[i]
-		if (c < '0' || c > '9') && c != ';' {
+		if (c < '0' || c > '9') && c != ';' && c != ':' {
 			return false
 		}
 	}
@@ -237,13 +256,24 @@ func parseSgrCodes(params string, scratch []int) []int {
 	}
 	out := scratch[:0]
 	val := 0
+	hasColon := false
 	for i := 0; i <= len(params); i++ {
 		if i == len(params) || params[i] == ';' {
-			out = append(out, val)
+			if hasColon {
+				// Colon subparameter (e.g. 4:3, 58:2::r:g:b): ignore only this parameter.
+				out = append(out, -1)
+			} else {
+				out = append(out, val)
+			}
 			val = 0
+			hasColon = false
 			continue
 		}
-		if val < 1000000 {
+		if params[i] == ':' {
+			hasColon = true
+			continue
+		}
+		if !hasColon && val < 1000000 {
 			val = val*10 + int(params[i]-'0')
 		}
 	}
@@ -257,6 +287,8 @@ func applySgr(style sgrStyle, params string) sgrStyle {
 	for i := 0; i < len(codes); i++ {
 		code := codes[i]
 		switch {
+		case code < 0:
+			// Ignored colon subparameter token.
 		case code == 0:
 			s = sgrStyle{}
 		case code == 1:
@@ -296,19 +328,18 @@ func applySgr(style sgrStyle, params string) sgrStyle {
 		case code >= 100 && code <= 107:
 			s.bgKind = corev1.TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_PALETTE
 			s.bgVal = uint32(code - 100 + 8)
-		case code == 38 || code == 48:
+		case code == 38 || code == 48 || code == 58:
 			if i+1 >= len(codes) {
 				return s
 			}
-			isFg := code == 38
 			switch codes[i+1] {
 			case 5:
 				if i+2 >= len(codes) {
 					return s
 				}
 				idx := codes[i+2]
-				if idx >= 0 && idx <= 255 {
-					setStyleColor(&s, isFg, corev1.TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_PALETTE, uint32(idx))
+				if code != 58 && idx >= 0 && idx <= 255 {
+					setStyleColor(&s, code == 38, corev1.TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_PALETTE, uint32(idx))
 				}
 				i += 2
 			case 2:
@@ -316,14 +347,16 @@ func applySgr(style sgrStyle, params string) sgrStyle {
 					return s
 				}
 				r, g, b := codes[i+2], codes[i+3], codes[i+4]
-				if r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 {
+				if code != 58 && r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255 {
 					rgb := uint32(r)<<16 | uint32(g)<<8 | uint32(b)
-					setStyleColor(&s, isFg, corev1.TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_RGB, rgb)
+					setStyleColor(&s, code == 38, corev1.TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_RGB, rgb)
 				}
 				i += 4
 			default:
 				return s
 			}
+		case code == 59:
+			// Default underline color: parsed and ignored (not rendered).
 		}
 	}
 	return s

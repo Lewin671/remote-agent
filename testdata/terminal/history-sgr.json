@@ -17,6 +17,9 @@
     { "name": "cursor movement and other CSI are dropped", "line": "a\u001b[2Kb\u001b[?25lc\u001b[10;5Hd", "runs": [ { "text": "abcd" } ] },
     { "name": "other controls are dropped", "line": "a\rb\u0007c\u0008d\te", "runs": [ { "text": "abcd\te" } ] },
     { "name": "unknown SGR codes are ignored", "line": "\u001b[5;31;53mx", "runs": [ { "text": "x", "fg": 1 } ] },
+    { "name": "colon subparameter ignores only that param", "line": "\u001b[1;4:3;31mstyled\u001b[0m", "runs": [ { "text": "styled", "fg": 1, "bold": true } ] },
+    { "name": "underline color 58 and 59 do not leak params", "line": "\u001b[32;58;2;0;1;7;58;5;7;59mok\u001b[0m", "runs": [ { "text": "ok", "fg": 2 } ] },
+    { "name": "charset designation and double ESC are skipped cleanly", "line": "\u001b(Ba\u001b\u001b[31mb", "runs": [ { "text": "a" }, { "text": "b", "fg": 1 } ] },
     { "name": "truncated sequence at the end is dropped", "line": "ok\u001b[31", "runs": [ { "text": "ok" } ] }
   ]
 }
