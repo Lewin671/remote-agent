@@ -15,6 +15,7 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
 	"github.com/Lewin671/remote-agent/clientcore/security"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	stdv1 "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -3159,5 +3160,37 @@ func TestEventRevMonotonicAcrossTrimHistoryAndSnapshotCache(t *testing.T) {
 	snap3 := e.SessionSnapshot("s1")
 	if snap3.EventRev <= snap1.EventRev {
 		t.Fatalf("expected EventRev to remain monotonic across trimHistory eviction (%d <= %d)", snap3.EventRev, snap1.EventRev)
+	}
+}
+
+func TestManagerNameTextFallbacks(t *testing.T) {
+	e := NewEngine()
+	e.security.AuthorityDeviceID = "auth-1"
+
+	// 1. Missing device entry falls back to security.client, never settings.unnamed.
+	if got := e.managerNameText(); got == nil || got.GetKey() != text.KeySecurityClient {
+		t.Fatalf("expected KeySecurityClient when authority device absent, got %+v", got)
+	}
+
+	// 2. Unnamed device with description uses description directly.
+	e.devices["auth-1"] = &DeviceEntry{
+		ID:   "auth-1",
+		Kind: v1.DeviceKind_DEVICE_KIND_CLIENT,
+		Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 16 · Pixel 9"},
+	}
+	if got := e.managerNameText(); got == nil || got.GetLiteral() != "Android 16 · Pixel 9" {
+		t.Fatalf("expected device description fallback, got %+v", got)
+	}
+
+	// 3. Unnamed web device with empty description uses security.browser.
+	e.devices["auth-1"].Meta = &v1.DeviceMeta{Platform: "web"}
+	if got := e.managerNameText(); got == nil || got.GetKey() != text.KeySecurityBrowser {
+		t.Fatalf("expected KeySecurityBrowser for bare web device, got %+v", got)
+	}
+
+	// 4. Custom name wins over description.
+	e.devices["auth-1"].Meta = &v1.DeviceMeta{Name: "My Phone", Platform: "android", Description: "Android 16 · Pixel 9"}
+	if got := e.managerNameText(); got == nil || got.GetLiteral() != "My Phone" {
+		t.Fatalf("expected custom name to win, got %+v", got)
 	}
 }

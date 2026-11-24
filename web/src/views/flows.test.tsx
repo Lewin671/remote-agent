@@ -4471,7 +4471,7 @@ describe("adding devices on the current authority", () => {
     r.start();
     const go = vi.fn();
     mount(<Home remote={r} go={go} />);
-    expect(host.textContent).toContain(message("home.add_via_manager", {"name":message("settings.unnamed", {}, "zh-CN")}, "zh-CN"));
+    expect(host.textContent).toContain(message("home.add_via_manager", { name: "Android 16 · Pixel 9" }, "zh-CN"));
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
   });

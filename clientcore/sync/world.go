@@ -2,8 +2,10 @@ package sync
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -99,14 +101,29 @@ func (e *Engine) isManager() bool {
 	return e.security.AuthorityDeviceID == e.security.SelfDeviceID
 }
 
+func (e *Engine) allSyncDeviceViews() []*corev1.SyncDeviceView {
+	out := make([]*corev1.SyncDeviceView, 0, len(e.devices))
+	for _, d := range e.devices {
+		if v := e.buildSyncDeviceView(d); v != nil {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 func (e *Engine) managerDevicePlainName() string {
 	id := e.security.AuthorityDeviceID
 	if id == "" {
 		return ""
 	}
 	d := e.devices[id]
-	if d != nil && d.Meta != nil && d.Meta.Name != "" {
-		return d.Meta.Name
+	if d != nil && d.Meta != nil {
+		if name := strings.TrimSpace(d.Meta.Name); name != "" {
+			return name
+		}
+		if desc := strings.TrimSpace(d.Meta.Description); desc != "" {
+			return desc
+		}
 	}
 	return ""
 }
@@ -115,10 +132,14 @@ func (e *Engine) managerNameText() *corev1.Text {
 	if name := e.managerDevicePlainName(); name != "" {
 		return text.Plain(name)
 	}
-	if e.security.AuthorityDeviceID != "" {
-		return text.Msg(text.KeySettingsUnnamed)
+	id := e.security.AuthorityDeviceID
+	if id == "" {
+		return nil
 	}
-	return nil
+	if d := e.devices[id]; d != nil {
+		return machine.ReadableClientNameText(e.buildSyncDeviceView(d), e.allSyncDeviceViews())
+	}
+	return text.Msg(text.KeySecurityClient)
 }
 
 // BeginStep enters a StepContext without closure allocation; pair with EndStep.

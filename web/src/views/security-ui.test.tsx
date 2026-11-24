@@ -149,7 +149,7 @@ it.each(["authority", "member", "machine"])(
     expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
-        message("home.add_via_manager", { name: message("settings.unnamed") }),
+        message("home.add_via_manager", { name: "Android 16 · Pixel 9" }),
       );
   },
 );
