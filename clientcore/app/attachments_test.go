@@ -3132,3 +3132,161 @@ func TestAttachments_NonRetryablePrepareFailure_DisablesCanRetryAndIgnoresRetryA
 		})
 	}
 }
+
+func TestAttachments_LoweredAttachmentLimits_BlockCanSendAndSendActions(t *testing.T) {
+	h := newAttHarness(t, false, true)
+	scope := h.sessionScope()
+
+	setLimits := func(maxImgs, maxFiles int32) {
+		lm := h.core.m.findMachine(h.machineA)
+		if lm == nil || lm.Meta == nil || lm.Meta.Capabilities == nil {
+			t.Fatalf("missing machineA capabilities")
+		}
+		lm.Meta.Capabilities.MaxImagesPerMessage = maxImgs
+		lm.Meta.Capabilities.MaxFilesPerMessage = maxFiles
+	}
+
+	// 1. Add and upload 2 ready images while limit is default (6).
+	addImg1 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("img1.jpg", 4, "src-lim-1", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addImg1, "prep-lim-1", "thumb-lim-1", 4, attTestHash(0xd1), "img-lim-1", h.nowMs+600_000)
+
+	addImg2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("img2.jpg", 4, "src-lim-2", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addImg2, "prep-lim-2", "thumb-lim-2", 4, attTestHash(0xd2), "img-lim-2", h.nowMs+600_000)
+
+	if dv := h.draftView(scope); !dv.CanSend || dv.SendBlockedReason != nil {
+		t.Fatalf("expected CanSend=true before limit lowered, got canSend=%v reason=%+v", dv.CanSend, dv.SendBlockedReason)
+	}
+
+	// 2. Lower max_images_per_message to 1 -> CanSend becomes false with attachment.max_images reason, and DraftSendSession is blocked.
+	setLimits(1, 6)
+	dv := h.draftView(scope)
+	if dv.CanSend || dv.Ready {
+		t.Fatalf("expected CanSend=false and Ready=false when images exceed lowered limit, got canSend=%v ready=%v", dv.CanSend, dv.Ready)
+	}
+	if dv.SendBlockedReason == nil || dv.SendBlockedReason.GetKey() != text.KeyAttachmentMaxImages {
+		t.Fatalf("expected SendBlockedReason attachment.max_images, got %+v", dv.SendBlockedReason)
+	}
+	blockedSend := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER},
+		},
+	})
+	if len(findDispatchedCmds(blockedSend)) != 0 || len(findDraftWriteEffects(blockedSend)) != 0 {
+		t.Fatalf("DraftSendSession must be blocked when images exceed limit, got cmds=%d writes=%d", len(findDispatchedCmds(blockedSend)), len(findDraftWriteEffects(blockedSend)))
+	}
+	if dv = h.draftView(scope); dv.Notice == nil || dv.Notice.GetKey() != text.KeyAttachmentMaxImages {
+		t.Fatalf("expected draft notice attachment.max_images on blocked send, got %+v", dv.Notice)
+	}
+
+	// 3. Raise limit back to 6, start pre-send outbox write, then lower max_images_per_message to 1 BEFORE write completes -> recheck must abort & delete orphan outbox!
+	setLimits(6, 6)
+	sendStart := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER},
+		},
+	})
+	outWrite := findDraftWriteEffects(sendStart)[0]
+	setLimits(1, 6)
+	postWrite := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: outWrite.OpId, Ok: true},
+		},
+	})
+	for _, sc := range findDispatchedCmds(postWrite) {
+		if sc.cmd.GetSend() != nil {
+			t.Fatalf("pre-send outbox recheck must block send when limit lowered during write")
+		}
+	}
+	if dels := findDraftDeleteEffects(postWrite); len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected orphan outbox deleted after limit recheck failure, got %+v", dels)
+	}
+	if dv = h.draftView(scope); dv.Notice == nil || dv.Notice.GetKey() != text.KeyAttachmentMaxImages {
+		t.Fatalf("expected notice attachment.max_images after outbox recheck failure, got %+v", dv.Notice)
+	}
+
+	// 4. Clear images, add 2 ready files, lower max_files_per_message to 1 -> CanSend becomes false and DraftSendSession is blocked with attachment.max_files.
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftClear{DraftClear: &corev1.DraftClearAction{Scope: scope}}})
+	setLimits(6, 6)
+	for i, name := range []string{"f1.txt", "f2.txt"} {
+		addF := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftAddItems{
+				DraftAddItems: &corev1.DraftAddItemsAction{
+					Scope: scope,
+					Items: []*corev1.DraftPickedItem{pickedFile(name, "text/plain", 4, "src-f-"+name)},
+				},
+			},
+		})
+		hashOp := findHashEffects(addF)[0].OpId
+		hEff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_AttachmentHashFileResult{
+				AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+					OpId: hashOp, Ok: true, SizeBytes: 4, Sha256: attTestHash(byte(0xe1 + i)),
+				},
+			},
+		})
+		bCmd := findDispatchedCmds(hEff)[0]
+		h.settleCmdOK(bCmd.dc, beginCompleteOK(bCmd.cmd.GetBeginImageUpload().TransferId, "", "file-lim-"+name, h.nowMs+600_000))
+	}
+	setLimits(6, 1)
+	dv = h.draftView(scope)
+	if dv.CanSend || dv.Ready {
+		t.Fatalf("expected CanSend=false and Ready=false when files exceed lowered limit")
+	}
+	if dv.SendBlockedReason == nil || dv.SendBlockedReason.GetKey() != text.KeyAttachmentMaxFiles {
+		t.Fatalf("expected SendBlockedReason attachment.max_files, got %+v", dv.SendBlockedReason)
+	}
+	blockedFileSend := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{
+			DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER},
+		},
+	})
+	if len(findDispatchedCmds(blockedFileSend)) != 0 || len(findDraftWriteEffects(blockedFileSend)) != 0 {
+		t.Fatalf("DraftSendSession must be blocked when files exceed limit")
+	}
+	if dv = h.draftView(scope); dv.Notice == nil || dv.Notice.GetKey() != text.KeyAttachmentMaxFiles {
+		t.Fatalf("expected notice attachment.max_files on blocked file send, got %+v", dv.Notice)
+	}
+
+	// 5. NewSessionSubmit also respects lowered max_images_per_message.
+	setLimits(6, 6)
+	nsScope := h.newSessionScope()
+	h.dispatch(&corev1.Event{Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: h.project}}})
+	h.dispatch(&corev1.Event{Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineA}}})
+	for i, name := range []string{"ns1.jpg", "ns2.jpg"} {
+		addNS := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftAddItems{
+				DraftAddItems: &corev1.DraftAddItemsAction{
+					Scope: nsScope,
+					Items: []*corev1.DraftPickedItem{pickedImage(name, 4, "src-"+name, true)},
+				},
+			},
+		})
+		h.driveImageUploadReady(addNS, "prep-"+name, "thumb-"+name, 4, attTestHash(byte(0xf1+i)), "img-"+name, h.nowMs+600_000)
+	}
+	setLimits(1, 6)
+	nsSub := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSubmit{NewSessionSubmit: &corev1.NewSessionSubmitAction{ProjectKey: h.project}},
+	})
+	for _, sc := range findDispatchedCmds(nsSub) {
+		if sc.cmd.GetCreateSession() != nil {
+			t.Fatalf("NewSessionSubmit must be blocked when images exceed lowered limit")
+		}
+	}
+	if dv = h.draftView(nsScope); dv.CanSend || dv.SendBlockedReason == nil || dv.SendBlockedReason.GetKey() != text.KeyAttachmentMaxImages {
+		t.Fatalf("expected NewSession draft blocked with attachment.max_images, got canSend=%v reason=%+v", dv.CanSend, dv.SendBlockedReason)
+	}
+}

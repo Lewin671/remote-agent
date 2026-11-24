@@ -128,6 +128,16 @@ func (c *Core) handleDraftSendSession(ctx *sync.StepContext, act *corev1.DraftSe
 		c.markDraftDirty(ctx, d.scope)
 		return effects
 	}
+	if len(imageIDs) > int(caps.MaxImages) {
+		d.notice = text.Msg(text.KeyAttachmentMaxImages, text.Int("count", int64(caps.MaxImages)))
+		c.markDraftDirty(ctx, d.scope)
+		return effects
+	}
+	if len(fileIDs) > int(caps.MaxFiles) {
+		d.notice = text.Msg(text.KeyAttachmentMaxFiles, text.Int("count", int64(caps.MaxFiles)))
+		c.markDraftDirty(ctx, d.scope)
+		return effects
+	}
 
 	mode := act.Mode
 	if mode == v1.SendMode_SEND_MODE_UNSPECIFIED {
@@ -270,8 +280,8 @@ func (c *Core) onPreSendOutboxWriteResult(
 	recheckOK := onlineReady &&
 		curMachineID == pending.machineID &&
 		d.original == pending.original &&
-		(len(pending.fileIDs) == 0 || caps.SupportsFiles) &&
-		(len(pending.imageIDs) == 0 || caps.SupportsImages)
+		(len(pending.fileIDs) == 0 || (caps.SupportsFiles && len(pending.fileIDs) <= int(caps.MaxFiles))) &&
+		(len(pending.imageIDs) == 0 || (caps.SupportsImages && len(pending.imageIDs) <= int(caps.MaxImages)))
 	if recheckOK {
 		for _, snap := range pending.items {
 			if snap == nil {
@@ -293,6 +303,10 @@ func (c *Core) onPreSendOutboxWriteResult(
 		*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, pending.outboxKey))
 		if len(pending.fileIDs) > 0 && !caps.SupportsFiles {
 			d.notice = text.Msg(text.KeyAttachmentUpdateRequired)
+		} else if len(pending.imageIDs) > int(caps.MaxImages) {
+			d.notice = text.Msg(text.KeyAttachmentMaxImages, text.Int("count", int64(caps.MaxImages)))
+		} else if len(pending.fileIDs) > int(caps.MaxFiles) {
+			d.notice = text.Msg(text.KeyAttachmentMaxFiles, text.Int("count", int64(caps.MaxFiles)))
 		}
 		c.refreshDraftExpiredItems(ctx, d, effects)
 		c.pumpAttachmentQueues(ctx, effects)
@@ -1497,6 +1511,16 @@ func (c *Core) prepareNewSessionAttachments(ctx *sync.StepContext, projectKey, m
 	}
 	if len(imageIDs) > 0 && !caps.SupportsImages {
 		d.notice = caps.ImageUploadBlockedReason
+		c.markDraftDirty(ctx, d.scope)
+		return nil, nil, true
+	}
+	if len(imageIDs) > int(caps.MaxImages) {
+		d.notice = text.Msg(text.KeyAttachmentMaxImages, text.Int("count", int64(caps.MaxImages)))
+		c.markDraftDirty(ctx, d.scope)
+		return nil, nil, true
+	}
+	if len(fileIDs) > int(caps.MaxFiles) {
+		d.notice = text.Msg(text.KeyAttachmentMaxFiles, text.Int("count", int64(caps.MaxFiles)))
 		c.markDraftDirty(ctx, d.scope)
 		return nil, nil, true
 	}

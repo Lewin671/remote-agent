@@ -1821,6 +1821,12 @@ func (c *Core) buildAttachmentDraftView(scope *corev1.DraftScope, alwaysBuild bo
 	} else if curImgs > 0 && !caps.SupportsImages {
 		allReady = false
 		sendBlocked = caps.ImageUploadBlockedReason
+	} else if curImgs > caps.MaxImages {
+		allReady = false
+		sendBlocked = text.Msg(text.KeyAttachmentMaxImages, text.Int("count", int64(caps.MaxImages)))
+	} else if curFiles > caps.MaxFiles {
+		allReady = false
+		sendBlocked = text.Msg(text.KeyAttachmentMaxFiles, text.Int("count", int64(caps.MaxFiles)))
 	} else if !allReady && firstFileErr != nil {
 		sendBlocked = firstFileErr
 	} else if !allReady && failureSummary != nil {
