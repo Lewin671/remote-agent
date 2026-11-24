@@ -280,6 +280,33 @@ func (s *TerminalStream) HasLeg(path string) bool {
 	return ok
 }
 
+// ActiveLegCount returns how many physical legs are currently attached.
+func (s *TerminalStream) ActiveLegCount() int { return len(s.legs) }
+
+// ClientOutputAck returns the highest output sequence confirmed by the client.
+func (s *TerminalStream) ClientOutputAck() uint64 { return s.clientAckOutput }
+
+// Stop marks the stream as stopped for retirement on normal close or timeout.
+func (s *TerminalStream) Stop(now uint64) {
+	s.Stopped = true
+	if s.RetiredAt == 0 {
+		s.RetiredAt = now
+	}
+}
+
+// ClearInputCache releases cached client inputs and clears non-fail-stop pause
+// (e.g., when a stream operates in pure-relay mode without direct ACK feedback).
+func (s *TerminalStream) ClearInputCache() {
+	clear(s.inputCache)
+	s.inputCacheBytes = 0
+	if !s.NeedsUserConfirm && s.failedInputSeq == 0 {
+		s.Paused = false
+	}
+}
+
+// HasUnconfirmedInputs reports whether any client inputs remain cached awaiting confirmation.
+func (s *TerminalStream) HasUnconfirmedInputs() bool { return len(s.inputCache) > 0 }
+
 // LegGen returns the active generation for path, or 0 if detached.
 func (s *TerminalStream) LegGen(path string) uint64 {
 	return s.legs[path].gen
@@ -363,6 +390,11 @@ func (s *TerminalStream) ReceiveInput(now uint64, f TermFrame) (TermInputAction,
 		}
 		return TermInputDuplicateACK, nil, nil
 	}
+	// Stale duplicate for an already-processed seq whose detail was pruned (M8):
+	// never buffer in inputPending and never re-execute.
+	if f.Seq <= s.processed {
+		return TermInputDuplicateACK, nil, nil
+	}
 	if s.inflight != nil && s.inflight.Seq == f.Seq {
 		if s.inflight.PayloadHash != f.PayloadHash {
 			return TermInputReject, nil, ErrTermConflict
@@ -392,12 +424,35 @@ func (s *TerminalStream) ReceiveInput(now uint64, f TermFrame) (TermInputAction,
 		s.refreshInputGap()
 		return TermInputBuffered, nil, nil
 	}
+	s.evictOldestDetailIfFull()
 	if len(s.details) >= TermInputDetailMax {
 		return TermInputReject, nil, ErrTermBudget
 	}
 	cp := f
 	s.inflight = &cp
 	return TermInputRun, &cp, nil
+}
+
+// evictOldestDetailIfFull keeps the daemon's sliding detail window bounded at
+// TermInputDetailMax during pure-relay or long-lived sessions without fail-stop.
+func (s *TerminalStream) evictOldestDetailIfFull() {
+	if s.failedInputSeq != 0 || len(s.details) < TermInputDetailMax {
+		return
+	}
+	var oldestSeq uint64
+	found := false
+	for seq, d := range s.details {
+		if d.Outcome == TermOutcomeInputPartialUnknown {
+			continue
+		}
+		if !found || seq < oldestSeq {
+			oldestSeq = seq
+			found = true
+		}
+	}
+	if found {
+		delete(s.details, oldestSeq)
+	}
 }
 
 // IsInputBlocked reports whether a newly admitted frame must be immediately rejected as INPUT_BLOCKED
@@ -508,10 +563,13 @@ func (s *TerminalStream) CompleteInput(
 		s.refreshInputGap()
 		if next.frame.DeadlineMs > 0 && now >= next.frame.DeadlineMs {
 			s.NetworkRecovery = true
-		} else if len(s.details) < TermInputDetailMax {
-			cp := next.frame
-			s.inflight = &cp
-			nextReady = &cp
+		} else {
+			s.evictOldestDetailIfFull()
+			if len(s.details) < TermInputDetailMax {
+				cp := next.frame
+				s.inflight = &cp
+				nextReady = &cp
+			}
 		}
 	} else {
 		s.refreshInputGap()
@@ -744,8 +802,12 @@ func (s *TerminalStream) ReplayOutput(now uint64, fromSeq, throughSeq uint64, ma
 	return out, nil
 }
 
-// CacheInput records a client->daemon frame in the bounded 64 KiB / 30s / 128-frame input cache.
+// CacheInput records a client->daemon Input frame in the bounded 64 KiB / 30s / 128-frame input cache.
+// Non-input frames (Resize, HistoryRequest) are never retained in the input replay cache (H2).
 func (s *TerminalStream) CacheInput(now uint64, f TermFrame) error {
+	if !f.IsInput {
+		return nil
+	}
 	if f.DeadlineMs > 0 && now >= f.DeadlineMs {
 		return ErrTermExpired
 	}
@@ -759,8 +821,9 @@ func (s *TerminalStream) CacheInput(now uint64, f TermFrame) error {
 	return nil
 }
 
-// ApplyInputAck evicts confirmed inputs up to inputSuccess (or details) from the client input cache.
-// If failedInputSeq != 0, activates fail-stop confirmation gating immediately.
+// ApplyInputAck evicts confirmed inputs up to inputSuccess (and non-input frames up to Processed,
+// plus settled Details) from the client input cache. If failedInputSeq != 0, activates fail-stop
+// confirmation gating immediately.
 func (s *TerminalStream) ApplyInputAck(wm TermWatermark) (failStopTriggered bool) {
 	if wm.FailedInputSeq != 0 {
 		s.failedInputSeq = wm.FailedInputSeq
@@ -769,17 +832,18 @@ func (s *TerminalStream) ApplyInputAck(wm TermWatermark) (failStopTriggered bool
 		failStopTriggered = true
 	}
 	for seq, item := range s.inputCache {
-		if seq <= wm.InputSuccess {
+		if seq <= wm.InputSuccess || (!item.frame.IsInput && seq <= wm.Processed) {
 			s.inputCacheBytes -= item.charge
 			delete(s.inputCache, seq)
 		}
 	}
 	for _, d := range wm.Details {
 		if item, ok := s.inputCache[d.Seq]; ok && item.frame.PayloadHash == d.PayloadHash {
-			if d.Outcome == TermOutcomeApplied || d.Outcome == TermOutcomeNonInputFailed {
+			switch d.Outcome {
+			case TermOutcomeApplied, TermOutcomeNonInputFailed, TermOutcomeNotApplied, TermOutcomeExpiredNotApplied:
 				s.inputCacheBytes -= item.charge
 				delete(s.inputCache, d.Seq)
-			} else if d.Outcome == TermOutcomeInputPartialUnknown {
+			case TermOutcomeInputPartialUnknown:
 				s.failedInputSeq = d.Seq
 				dCopy := d
 				s.FailStopDetail = &dCopy
@@ -788,6 +852,9 @@ func (s *TerminalStream) ApplyInputAck(wm TermWatermark) (failStopTriggered bool
 				failStopTriggered = true
 			}
 		}
+	}
+	if len(s.inputCache) == 0 && !s.NeedsUserConfirm && s.failedInputSeq == 0 {
+		s.Paused = false
 	}
 	return failStopTriggered
 }
@@ -1099,7 +1166,9 @@ func (r *TerminalRegistry) GetQueryable(id string) *TerminalStream {
 	return r.retired[id]
 }
 
-// Retire moves a barrier-stopped stream into the 30s retired query table.
+// Retire moves a stopped stream into the 30s retired query table.
+// If the retired table is already at maxRetired, the oldest retired stream is evicted
+// so active stream slots are always reclaimed on stream exit (H3).
 func (r *TerminalRegistry) Retire(id string, now uint64) error {
 	r.Prune(now)
 	s := r.active[id]
@@ -1110,7 +1179,19 @@ func (r *TerminalRegistry) Retire(id string, now uint64) error {
 		return ErrTermNotStopped
 	}
 	if len(r.retired) >= r.maxRetired {
-		return ErrTermRegistryFull
+		var oldestID string
+		var oldestAt uint64
+		first := true
+		for rid, rs := range r.retired {
+			if first || rs.RetiredAt < oldestAt {
+				oldestID = rid
+				oldestAt = rs.RetiredAt
+				first = false
+			}
+		}
+		if !first {
+			delete(r.retired, oldestID)
+		}
 	}
 	if s.RetiredAt == 0 {
 		s.RetiredAt = now
@@ -1118,6 +1199,16 @@ func (r *TerminalRegistry) Retire(id string, now uint64) error {
 	delete(r.active, id)
 	r.retired[id] = s
 	return nil
+}
+
+// ForceRetire stops an active stream (for normal/error exit without Barrier) and moves it to retired.
+func (r *TerminalRegistry) ForceRetire(id string, now uint64) {
+	s := r.active[id]
+	if s == nil {
+		return
+	}
+	s.Stop(now)
+	_ = r.Retire(id, now)
 }
 
 // Prune removes retired streams whose 30s query retention has elapsed.

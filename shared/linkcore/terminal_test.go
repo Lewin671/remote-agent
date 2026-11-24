@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -375,6 +376,72 @@ func TestTerminalTwoFakePathsFaultInjection(t *testing.T) {
 		cp, err := DecodeClosePath(EncodeClosePath(ClosePathMsg{Stream: streamID, LegID: legID1, PathGeneration: 2, Reason: 1}))
 		if err != nil || cp.PathGeneration != 2 {
 			t.Fatalf("close path roundtrip: %v %+v", err, cp)
+		}
+	})
+
+	t.Run("h2_resize_and_history_not_cached_and_idle_30s_allows_input", func(t *testing.T) {
+		s := NewTerminalStream("stream-h2-000000000000001", "sess-1", "peer-1", "inst-a", base)
+		resize := TermFrame{Seq: 1, PayloadHash: sha256.Sum256([]byte("resize")), RawBytes: 16, IsInput: false, RawEnvelope: []byte("resize")}
+		if err := s.CacheInput(base, resize); err != nil {
+			t.Fatalf("CacheInput resize: %v", err)
+		}
+		if s.InputCacheLen() != 0 {
+			t.Fatalf("non-input frame must not enter input cache, got len=%d", s.InputCacheLen())
+		}
+		s.ApplyInputAck(TermWatermark{Processed: 1, InputSuccess: 0})
+		s.Advance(base + 31_000)
+		if s.Paused {
+			t.Fatal("stream paused after 31s idle following Resize")
+		}
+		key := TermFrame{Seq: 2, PayloadHash: sha256.Sum256([]byte("ls\n")), RawBytes: 16, IsInput: true, InputBytes: 3, RawEnvelope: []byte("ls\n")}
+		if err := s.CacheInput(base+31_000, key); err != nil {
+			t.Fatalf("CacheInput after 31s idle following Resize failed: %v", err)
+		}
+	})
+
+	t.Run("h3_force_retire_reclaims_active_across_24_streams_within_30s", func(t *testing.T) {
+		reg := NewTerminalRegistry(16, 16)
+		for i := 0; i < 24; i++ {
+			id := fmt.Sprintf("stream-h3-%010d", i)
+			st := NewTerminalStream(id, "sess-1", "peer-1", "inst-a", base+uint64(i)*100)
+			if err := reg.Add(st); err != nil {
+				t.Fatalf("add stream %d failed: %v", i, err)
+			}
+			reg.ForceRetire(id, base+uint64(i)*100+50)
+			if reg.ActiveCount() != 0 {
+				t.Fatalf("active count after ForceRetire %d = %d, want 0", i, reg.ActiveCount())
+			}
+			if reg.RetiredCount() > 16 {
+				t.Fatalf("retired count exceeded cap 16: %d", reg.RetiredCount())
+			}
+		}
+		if reg.RetiredCount() != 16 {
+			t.Fatalf("expected retired capped at 16, got %d", reg.RetiredCount())
+		}
+	})
+
+	t.Run("m8_stale_seq_after_prune_returns_duplicate_ack_and_sliding_details_exceeds_128", func(t *testing.T) {
+		s := NewTerminalStream("stream-m8-000000000000001", "sess-1", "peer-1", "inst-a", base)
+		// Send 200 sequential inputs without PruneConfirmedDetails -> must never hit ErrTermBudget.
+		for seq := uint64(1); seq <= 200; seq++ {
+			f := TermFrame{Seq: seq, PayloadHash: sha256.Sum256([]byte(fmt.Sprintf("in-%d", seq))), RawBytes: 16, IsInput: true, InputBytes: 4}
+			act, ready, err := s.ReceiveInput(base+seq, f)
+			if err != nil || act != TermInputRun || ready == nil {
+				t.Fatalf("seq %d ReceiveInput failed: act=%d err=%v", seq, act, err)
+			}
+			s.CompleteInput(base+seq, seq, TermOutcomeApplied, 4, 4, 0)
+		}
+		if s.Processed() != 200 {
+			t.Fatalf("expected processed=200, got %d", s.Processed())
+		}
+		// Late duplicate of already-pruned seq=2 (even with different hash once detail evicted) -> DuplicateACK, NOT Buffered!
+		stale := TermFrame{Seq: 2, PayloadHash: sha256.Sum256([]byte("other")), RawBytes: 16, IsInput: true, InputBytes: 4}
+		act, _, err := s.ReceiveInput(base+300, stale)
+		if err != nil || act != TermInputDuplicateACK {
+			t.Fatalf("expected TermInputDuplicateACK for stale pruned seq=2, got act=%d err=%v", act, err)
+		}
+		if len(s.inputPending) != 0 {
+			t.Fatalf("stale seq leaked into inputPending: len=%d", len(s.inputPending))
 		}
 	})
 }
