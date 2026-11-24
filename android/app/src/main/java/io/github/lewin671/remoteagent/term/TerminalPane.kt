@@ -241,8 +241,8 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
 
     // Reading: the pull that opens the reader, and the output that has arrived since it opened.
     // The live screen keeps running behind the reader, which never follows it.
-    val pull = remember { ReadingPull() }
-    var newOutput by remember { mutableStateOf(false) }
+    val pull = remember(term) { ReadingPull() }
+    var newOutput by remember(term) { mutableStateOf(false) }
     val gestures = remember { ScrollInbox() }
     gestures.onRows = { rowsDown ->
         if (pull.onScroll(term.history.value, rowsDown)) {

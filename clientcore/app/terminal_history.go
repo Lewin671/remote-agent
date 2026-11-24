@@ -25,18 +25,27 @@ func (c *Core) handleTerminalHistoryEvent(ctx *sync.StepContext, ev *corev1.Term
 	}
 	tid := ev.TerminalId
 	if ev.Kind == corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_DISPOSED {
-		if c.m.termHistories != nil {
-			if h := c.m.termHistories[tid]; h != nil {
-				if h.Pending != "" {
-					c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT, tid)
-				}
-				delete(c.m.termHistories, tid)
-			}
+		if c.m.termHistories == nil {
+			return nil
 		}
-		return nil
+		h := c.m.termHistories[tid]
+		if h == nil {
+			return nil
+		}
+		tr := h.Close()
+		delete(c.m.termHistories, tid)
+		return c.applyTermHistoryTransition(ctx, tid, h, tr)
 	}
 
-	h := c.m.ensureTermHistory(tid)
+	var h *termhistory.Machine
+	if ev.Kind == corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_OPEN {
+		h = c.m.ensureTermHistory(tid)
+	} else if c.m.termHistories != nil {
+		h = c.m.termHistories[tid]
+	}
+	if h == nil {
+		return nil
+	}
 	nextID := func() string { return c.m.sync.NextID(ctx) }
 
 	var tr termhistory.Transition

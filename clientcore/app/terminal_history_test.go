@@ -160,7 +160,35 @@ func TestCoreTerminalHistoryLifecycleAndTimeout(t *testing.T) {
 	if findTermHistoryCancelTimer(b, corev1.TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT, tid) == nil {
 		t.Fatal("expected disposed to cancel active timer")
 	}
+	upd = findTermHistoryUpdated(b)
+	if upd == nil || upd.Phase != corev1.TerminalHistoryPhase_TERMINAL_HISTORY_PHASE_IDLE || !upd.ResetPages {
+		t.Fatalf("expected disposed to emit IDLE reset update, got %#v", upd)
+	}
 	if _, exists := c.m.termHistories[tid]; exists {
 		t.Fatal("expected disposed terminal history entry to be removed")
+	}
+
+	// 5. Post-dispose CLOSE / DISCONNECTED must not recreate an empty Machine or emit effects.
+	for _, kind := range []corev1.TerminalHistoryEventKind{
+		corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_CLOSE,
+		corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED,
+		corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER,
+		corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_RETRY,
+		corev1.TerminalHistoryEventKind_TERMINAL_HISTORY_EVENT_KIND_DISPOSED,
+	} {
+		b = c.Dispatch(&corev1.Event{
+			Event: &corev1.Event_TerminalHistory{
+				TerminalHistory: &corev1.TerminalHistoryEvent{
+					TerminalId: tid,
+					Kind:       kind,
+				},
+			},
+		})
+		if len(b.GetEffects()) != 0 {
+			t.Fatalf("post-dispose %v emitted unexpected effects: %#v", kind, b.GetEffects())
+		}
+		if _, exists := c.m.termHistories[tid]; exists {
+			t.Fatalf("post-dispose %v leaked empty machine entry", kind)
+		}
 	}
 }

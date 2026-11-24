@@ -297,13 +297,17 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       const next = applyTerminalHistoryUpdate(historyRef.current, upd);
       historyRef.current = next;
       setHistory(next);
+      if (next.phase === TerminalHistoryPhase.IDLE) setNewOutput(false);
     });
     return () => {
+      // Dispatch DISPOSED while listeners are still attached so a session prop
+      // switch on the same TerminalView instance synchronously receives Core's
+      // IDLE reset update and clears stale reader pages/newOutput.
+      hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.DISPOSED);
       offReopen();
       offHistReq();
       offHistUpd();
       allowedAttemptRef.current = 0;
-      hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.DISPOSED);
       hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.DISPOSED, false);
     };
   }, [hostBridge, terminalId, session.id]);

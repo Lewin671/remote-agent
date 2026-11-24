@@ -133,9 +133,6 @@ final class RemoteTerminal {
     func leaveReading() {
         hasNewOutput = false
         entryPull = 0
-        if history.reading {
-            history = TerminalHistoryState()
-        }
         link?.sendHistory(terminalId, .close, nil)
     }
 

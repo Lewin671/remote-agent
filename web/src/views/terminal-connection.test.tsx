@@ -7,13 +7,13 @@ import { patchSyncState } from "../test/remote-fixture";
 import type { Remote } from "../remote";
 import { TerminalView } from "./Terminal";
 
-const terminal = vi.hoisted(() => ({ writes: vi.fn(), resize: vi.fn() }));
+const terminal = vi.hoisted(() => ({ writes: vi.fn(), resize: vi.fn(), dataHandler: undefined as ((s: string) => void) | undefined }));
 vi.mock("@xterm/xterm", () => ({ Terminal: class {
   cols = 80; rows = 24; element?: HTMLElement;
   constructor(readonly options: { fontSize: number }) {}
   open(el: HTMLElement) { this.element = el; }
   attachCustomWheelEventHandler() {}
-  onData() { return { dispose() {} }; }
+  onData(cb: (s: string) => void) { terminal.dataHandler = cb; return { dispose() {} }; }
   resize(cols: number, rows: number) { this.cols = cols; this.rows = rows; terminal.resize(cols, rows); }
   write(data: Uint8Array, done?: () => void) { terminal.writes(data); done?.(); }
   reset() {} dispose() {} focus() {} blur() {}
@@ -300,4 +300,38 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
     patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false });
   });
   expect(open2).toHaveBeenCalledTimes(1);
+});
+
+it("clears open history reader and restores input when switching sessions on the same TerminalView", async () => {
+  const vm = await mount();
+  const s1 = vm.remote.sessions.get("s-run")!;
+  const s2 = { ...s1, id: "s-next" };
+
+  // Enter reading on s1 via wheel-up, accept a history page, and trigger live output while reading.
+  const termEl = host.querySelector<HTMLElement>(".term")!;
+  await act(async () => {
+    termEl.dispatchEvent(new WheelEvent("wheel", { deltaY: -40, bubbles: true, cancelable: true }));
+  });
+  const reqCall = vm.send.mock.calls.find((c) => c[0]?.kind?.case === "historyRequest");
+  expect(reqCall).toBeDefined();
+  const requestId = reqCall![0].kind.value.requestId as string;
+  await act(async () => {
+    await vm.frame({ kind: { case: "historyPage", value: { requestId, lines: ["old line"], nextCursor: "c:1", error: "" } } } as never);
+    await vm.frame({ kind: { case: "output", value: new Uint8Array([66]) } } as never);
+  });
+  expect(host.querySelector(".terminal-history")).not.toBeNull();
+  expect(host.querySelector(".tpill")).not.toBeNull();
+
+  // Switch session prop on the same mounted TerminalView instance.
+  vm.send.mockClear();
+  await act(async () => root!.render(<TerminalView remote={vm.remote} session={s2} running />));
+  await act(async () => {
+    await vm.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([67]) } } } as never);
+  });
+
+  // Stale reader from s1 must be cleared and keyboard input on s2 must go through.
+  expect(host.querySelector(".terminal-history")).toBeNull();
+  expect(host.querySelector(".tpill")).toBeNull();
+  await act(async () => { terminal.dataHandler?.("hi"); });
+  expect(vm.send.mock.calls.some((c) => c[0]?.kind?.case === "input")).toBe(true);
 });
