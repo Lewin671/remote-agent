@@ -3587,3 +3587,106 @@ func TestAttachments_DraftAppendText_QueuesDuringLoadAndPreservesPersistedText(t
 		t.Fatalf("expected DraftStorageWriteEffect for empty disk draft append")
 	}
 }
+
+func TestDraftRestoreAdvancesItemIDSequence(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: h.sessionID}
+	persistedDraft, err := attachments.EncodePersistedDraft(&corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         scope,
+		Text:          "restored",
+		UpdatedMs:     h.nowMs,
+		Items: []*corev1.PersistedAttachmentItem{{
+			ItemId:    "att-1",
+			Kind:      corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+			MimeType:  "image/jpeg",
+			SizeBytes: 1024,
+			SourceRef: "blob:src-restored",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	persistedOutbox, err := attachments.EncodePersistedOutbox(&corev1.PersistedOutboxRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		SessionId:     h.sessionID,
+		RequestId:     "req-old",
+		MachineId:     h.machineA,
+		CreatedMs:     h.nowMs,
+		Items: []*corev1.PersistedAttachmentItem{{
+			ItemId:    "att-5",
+			Kind:      corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+			MimeType:  "image/png",
+			SizeBytes: 512,
+			SourceRef: "blob:src-outbox",
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate startup storage scan hydrating persisted draft (att-1) + outbox (att-5).
+	cfgEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts: true, PersistOutbox: true, ScanStorage: true, HasPersistedPreparedImages: true,
+			},
+		},
+	})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	if listOp == 0 {
+		t.Fatalf("expected DraftStorageListEffect")
+	}
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{
+						Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX,
+						Key:    "req-old",
+						Data:   persistedOutbox,
+					},
+					{
+						Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT,
+						Key:    attachments.ScopeStorageKey(scope),
+						Data:   persistedDraft,
+					},
+				},
+			},
+		},
+	})
+
+	// Open draft and add a new image: must allocate att-6 (not att-1!) so items never collide.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftOpen{
+			DraftOpen: &corev1.DraftOpenAction{Scope: scope, MachineId: h.machineA},
+		},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{{
+					Candidate: &corev1.AttachmentCandidateInput{
+						MimeType: "image/png", SizeBytes: 2048,
+					},
+					SourceRef: "blob:src-new",
+				}},
+			},
+		},
+	})
+
+	vm := h.draftView(scope)
+	if len(vm.Images) != 2 {
+		t.Fatalf("images count = %d, want 2", len(vm.Images))
+	}
+	if vm.Images[0].ItemId != "att-1" || vm.Images[1].ItemId != "att-6" {
+		t.Fatalf("item IDs = [%q, %q], want [\"att-1\", \"att-6\"]", vm.Images[0].ItemId, vm.Images[1].ItemId)
+	}
+}
