@@ -1076,14 +1076,20 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			lt.mu.Unlock()
 			return receipt()
 		}
+		prevAttachGen := lt.relayAttachGen
 		lt.relayAttachGen = reqGen
 		lt.relayDialInFlight++
 		lt.mu.Unlock()
 
 		c.link.Run(func(runCtx context.Context) {
+			dialSucceeded := false
 			defer func() {
 				lt.mu.Lock()
 				lt.relayDialInFlight--
+				// N5: roll back relayAttachGen if dial failed so a retry at the same or higher gen is accepted.
+				if !dialSucceeded && lt.relayAttachGen == reqGen {
+					lt.relayAttachGen = prevAttachGen
+				}
 				lt.mu.Unlock()
 			}()
 			dialCtx, dialCancel := context.WithTimeout(lt.ctx, 20*time.Second)
@@ -1092,6 +1098,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			if err != nil {
 				return
 			}
+			dialSucceeded = true
 			if lt.closed.Load() || lt.ctx.Err() != nil {
 				newPath.Close()
 				return

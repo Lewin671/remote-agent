@@ -1496,6 +1496,13 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 			}
 			addSess(d)
 		}
+		if ct.relayRetryAt > 0 {
+			d := ct.relayRetryAt
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
 	}
 	for _, ts := range c.terms {
 		if ts.hasTimer && (!termOK || ts.nextAt < termAt) {

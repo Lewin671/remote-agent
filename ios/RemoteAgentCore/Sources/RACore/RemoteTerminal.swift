@@ -301,6 +301,16 @@ extension Remote {
                     let nextSock = self.deviceLink.relay.openStream("/v1/term", hello: helloBytes)
                     guard await nextSock.opened(), !closed.withLock({ $0 }) else {
                         nextSock.cancel()
+                        if !closed.withLock({ $0 }) {
+                            var failEv = PBCoreEvent()
+                            failEv.terminalDirectLeg = .with {
+                                $0.streamID = streamId
+                                $0.legID = legId
+                                $0.direct = false
+                                $0.open = false
+                            }
+                            await self.emitCoreEvent(failEv)
+                        }
                         return
                     }
                     let prev = socketBox.withLock { cur -> any TerminalSocket in

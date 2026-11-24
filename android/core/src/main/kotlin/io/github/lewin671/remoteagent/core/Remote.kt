@@ -2383,11 +2383,13 @@ class Remote(
             attachRelay = { legBytes ->
                 if (!closed.get()) {
                     val legStr = String(legBytes, Charsets.UTF_8)
+                    val dialOpened = AtomicBoolean(false)
                     val nextWs = deviceLink.path.openStream(
                         url,
                         object : FrameListener() {
                             override fun onOpen(stream: FrameStream) {
                                 if (closed.get()) { stream.cancel(); return }
+                                dialOpened.set(true)
                                 val hello = TermHello.newBuilder().setToken(tok).setStreamId(legStr).setMachineId(s.machineId).build()
                                 stream.send(hello.toByteArray())
                                 val prev = socket.getAndSet(stream)
@@ -2414,7 +2416,8 @@ class Remote(
                                 }
                             }
                             override fun onEnd(stream: FrameStream, code: Int) {
-                                if (socket.get() !== stream || closed.get()) return
+                                if (closed.get()) return
+                                if (dialOpened.get() && socket.get() !== stream) return
                                 coreHost.dispatch(
                                     CoreEvent.newBuilder()
                                         .setTerminalDirectLeg(
@@ -2428,8 +2431,9 @@ class Remote(
                                 )
                             }
                             override fun onFailure(stream: FrameStream, error: Throwable) {
-                                if (socket.get() !== stream || closed.get()) return
-                                lastRelayError.set(error)
+                                if (closed.get()) return
+                                if (dialOpened.get() && socket.get() !== stream) return
+                                if (dialOpened.get()) lastRelayError.set(error)
                                 coreHost.dispatch(
                                     CoreEvent.newBuilder()
                                         .setTerminalDirectLeg(

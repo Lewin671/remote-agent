@@ -2109,10 +2109,23 @@ export class Remote implements CoreExecutor {
         if (closed) return;
         const legStr = new TextDecoder().decode(legId);
         const nextWs = this.deviceLink.openPathStream(termUrl);
+        let settled = false;
+        const reportDialFailed = () => {
+          if (settled || closed) return;
+          settled = true;
+          nextWs.close();
+          this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
+            event: {
+              case: "terminalDirectLeg",
+              value: create(TerminalDirectLegEventSchema, { streamId, legId, direct: false, open: false }),
+            },
+          }));
+        };
         nextWs.onOpen = () => {
           if (closed) { nextWs.close(); return; }
           try {
             nextWs.send(toBinary(TermHelloSchema, create(TermHelloSchema, { token: this.token, streamId: legStr, machineId: s.machineId })));
+            settled = true;
             const old = activeWs;
             activeWs = nextWs;
             activeLegId = legId;
@@ -2125,10 +2138,11 @@ export class Remote implements CoreExecutor {
               },
             }));
           } catch {
-            nextWs.close();
+            reportDialFailed();
           }
         };
-        nextWs.onError = () => nextWs.close();
+        nextWs.onError = reportDialFailed;
+        nextWs.onEnd = reportDialFailed;
       },
       onState: (state, reason, needsConfirmation) => {
         if (closed) return;

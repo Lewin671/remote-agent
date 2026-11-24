@@ -80,9 +80,14 @@ type clientTermStream struct {
 	sessionID       string
 	stream          *linkcore.TerminalStream
 	daemonReady     bool
-	relayOpen       bool
-	relayLegID      string
-	relayGen        uint64
+	relayOpen             bool
+	relayLegID            string
+	relayGen              uint64
+	relayAttachGen        uint64
+	relayRecoveryInFlight bool
+	relayRecoveryLeg      string
+	relayRetryAt          int64
+	relayRetryAttempts    int
 	directAttached  bool
 	directPCID      uint64
 	directGen       uint64
@@ -150,10 +155,11 @@ func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, session
 		machineID:  machineID,
 		sessionID:  sessionID,
 		stream:     ts,
-		relayOpen:  true,
-		relayLegID: legStr,
-		relayGen:   1,
-		phase3Used: c.engine.TerminalReady(now, machineID),
+		relayOpen:      true,
+		relayLegID:     legStr,
+		relayGen:       1,
+		relayAttachGen: 1,
+		phase3Used:     c.engine.TerminalReady(now, machineID),
 	}
 	c.termStreams[streamID] = ct
 	// H-B: do NOT send direct AttachPath until daemon confirms openTerminal succeeded
@@ -210,6 +216,10 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 				return c.take()
 			}
 			ct.relayOpen = true
+			ct.relayRecoveryInFlight = false
+			ct.relayRecoveryLeg = ""
+			ct.relayRetryAt = 0
+			ct.relayRetryAttempts = 0
 			if len(legID) > 0 {
 				ct.relayLegID = string(legID)
 			}
@@ -219,6 +229,20 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 			ct.stream.NetworkRecovery = false
 			c.maybeAttachDirectTerminal(now, ct)
 			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive})
+			return c.take()
+		}
+		// N5: replacement relay dial failed -> schedule bounded retry with a new generation.
+		if ct.relayRecoveryInFlight && len(legID) > 0 && string(legID) == ct.relayRecoveryLeg {
+			ct.relayRecoveryInFlight = false
+			ct.relayRecoveryLeg = ""
+			ct.relayRetryAttempts++
+			if !ct.relayOpen && ct.directAttached && ct.relayRetryAttempts <= 5 {
+				shift := ct.relayRetryAttempts - 1
+				if shift > 3 {
+					shift = 3
+				}
+				ct.relayRetryAt = now + (int64(1000) << shift)
+			}
 			return c.take()
 		}
 		// Relay leg dropped: ignore stale leg closes.
@@ -537,10 +561,15 @@ func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientT
 	}
 	c.maybeLowWater()
 	newLeg := makeRelayAttachLegID(rawRand)
-	nextGen := ct.relayGen + 1
-	if nextGen == 0 {
-		nextGen = 1
+	// N5: strictly advance relayAttachGen on every recovery attempt so retries are never rejected as stale.
+	if ct.relayAttachGen < ct.relayGen {
+		ct.relayAttachGen = ct.relayGen
 	}
+	ct.relayAttachGen++
+	nextGen := ct.relayAttachGen
+	ct.relayRecoveryInFlight = true
+	ct.relayRecoveryLeg = string(newLeg)
+	ct.relayRetryAt = 0
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
 		Session:        ct.sessionID,
@@ -694,6 +723,14 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 			c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "reconnect_timeout"})
 			expiredIDs = append(expiredIDs, id)
 			continue
+		}
+		if ct.relayRetryAt > 0 && now >= ct.relayRetryAt {
+			ct.relayRetryAt = 0
+			if !ct.relayOpen && !ct.relayRecoveryInFlight && ct.directAttached {
+				if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok {
+					c.triggerRelayRecovery(now, r, ct)
+				}
+			}
 		}
 		emitAck := ct.stream.Advance(uint64(now))
 		if emitAck {
