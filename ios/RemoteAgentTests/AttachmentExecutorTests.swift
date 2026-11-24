@@ -287,6 +287,80 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(res.data.isEmpty)
     }
 
+    @Test func preparePropagatesCancellationAndReportsVaultLockedWithoutDecodeMisclassification() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "att-l3-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let service = "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"
+        let liveVault = Vault(service: service)
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? liveVault.clear()
+        }
+
+        // Write a real encrypted source blob first.
+        let writerStore = PendingStore(directory: dir, vault: liveVault)
+        let srcRef = try writerStore.storeBlob(samplePNG(.systemTeal), prefix: "src")
+
+        // 1) Locked Keychain Vault must NOT set isReadingSource = true (which Core would misclassify as DECODE)
+        //    and must return an ASCII diagnostic token rather than localized UI prose.
+        let lockedOps = KeychainOps(
+            copyMatching: { _, _ in errSecInteractionNotAllowed },
+            add: { _, _ in errSecInteractionNotAllowed },
+            update: { _, _ in errSecInteractionNotAllowed },
+            delete: { _ in errSecInteractionNotAllowed }
+        )
+        let lockedStore = PendingStore(directory: dir, vault: Vault(service: service, keychain: lockedOps))
+        let hLocked = try await makeHarness(store: lockedStore, persist: false)
+        defer {
+            Task {
+                await hLocked.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(hLocked.remote) }
+            }
+        }
+        let lockedRes = await hLocked.host.prepareImageForTesting(.with {
+            $0.opID = 101
+            $0.scope = .session("s1")
+            $0.itemID = "img-locked"
+            $0.sourceRef = srcRef
+            $0.maxOriginalBytes = 20 * 1024 * 1024
+            $0.maxDimensionPx = 2048
+            $0.maxCompressedBytes = 900 * 1024
+        })
+        #expect(!lockedRes.ok)
+        #expect(lockedRes.errorKind == .other)
+        #expect(!lockedRes.isReadingSource)
+        #expect(lockedRes.errorDetail == "vault_locked")
+
+        // 2) Cancelling the parent task must propagate into the detached worker (`canceled` instead of proceeding).
+        let hCancel = try await makeHarness(store: writerStore, persist: false)
+        defer {
+            Task {
+                await hCancel.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(hCancel.remote) }
+            }
+        }
+        let gate = AsyncStream<Void>.makeStream()
+        let cancelledTask = Task {
+            var it = gate.stream.makeAsyncIterator()
+            _ = await it.next()
+            return await hCancel.host.prepareImageForTesting(.with {
+                $0.opID = 102
+                $0.scope = .session("s1")
+                $0.itemID = "img-cancel"
+                $0.sourceRef = srcRef
+                $0.maxOriginalBytes = 20 * 1024 * 1024
+                $0.maxDimensionPx = 2048
+                $0.maxCompressedBytes = 900 * 1024
+            })
+        }
+        cancelledTask.cancel()
+        gate.continuation.finish()
+        let cancelRes = await cancelledTask.value
+        #expect(cancelRes.opID == 102)
+        #expect(!cancelRes.ok)
+        #expect(cancelRes.errorKind == .other)
+        #expect(cancelRes.errorDetail == "canceled")
+    }
+
     @Test func inFlightPrepareCannotWriteFilesAfterClearAllDrafts() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "att-clear-\(UUID().uuidString)", directoryHint: .isDirectory)
         let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")

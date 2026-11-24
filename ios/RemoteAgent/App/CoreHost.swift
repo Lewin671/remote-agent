@@ -2654,9 +2654,30 @@ actor CoreHost: SyncEngine {
 
     // MARK: - Attachment I/O Executors (guaranteed op_id replies)
 
+    private static func runCancellableDetached<T: Sendable>(
+        priority: TaskPriority = .userInitiated,
+        operation: @escaping @Sendable (_ preCancelled: Bool) async -> T
+    ) async -> T {
+        let preCancelled = Task.isCancelled
+        let worker = Task.detached(priority: priority) {
+            await operation(preCancelled)
+        }
+        if preCancelled { worker.cancel() }
+        return await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+    }
+
     private func executePrepareImage(_ eff: PBAttachmentPrepareImageEffect) async {
+        let result = await runPrepareImage(eff)
+        await dispatch { $0.attachmentPrepareImageResult = result }
+    }
+
+    private func runPrepareImage(_ eff: PBAttachmentPrepareImageEffect) async -> PBAttachmentPrepareImageResultEvent {
         let store = self.pendingStore
-        let result: PBAttachmentPrepareImageResultEvent = await Task.detached(priority: .userInitiated) {
+        return await Self.runCancellableDetached { preCancelled in
             var ev = PBAttachmentPrepareImageResultEvent.with {
                 $0.opID = eff.opID
                 $0.scope = eff.scope
@@ -2667,6 +2688,7 @@ actor CoreHost: SyncEngine {
             var storedPreparedRef: String?
             var storedThumbRef: String?
             do {
+                if preCancelled { throw CancellationError() }
                 try Task.checkCancellation()
                 let raw = try store.readBlob(eff.sourceRef)
                 readingSource = false
@@ -2701,18 +2723,13 @@ actor CoreHost: SyncEngine {
                 if let r = storedThumbRef { toClean.append(r) }
                 if !toClean.isEmpty { store.releaseLocal(refs: toClean) }
                 ev.ok = false
-                ev.isReadingSource = readingSource
-                if error is CancellationError {
-                    ev.errorKind = .other
-                    ev.errorDetail = "cancelled"
-                } else {
-                    ev.errorKind = attachmentIOErrorKind(for: error)
-                    ev.errorDetail = error.localizedDescription
-                }
+                // Locked/unavailable Keychain is a transient storage failure, not a corrupt image decode.
+                ev.isReadingSource = readingSource && !(error is VaultError)
+                ev.errorKind = error is CancellationError ? .other : attachmentIOErrorKind(for: error)
+                ev.errorDetail = PendingStore.asciiErrorDetail(error)
             }
             return ev
-        }.value
-        await dispatch { $0.attachmentPrepareImageResult = result }
+        }
     }
 
     private func executeHashFile(_ eff: PBAttachmentHashFileEffect) async {
@@ -2722,7 +2739,7 @@ actor CoreHost: SyncEngine {
 
     private func runHashFile(_ eff: PBAttachmentHashFileEffect) async -> PBAttachmentHashFileResultEvent {
         let store = self.pendingStore
-        return await Task.detached(priority: .userInitiated) {
+        return await Self.runCancellableDetached { preCancelled in
             var ev = PBAttachmentHashFileResultEvent.with {
                 $0.opID = eff.opID
                 $0.scope = eff.scope
@@ -2730,6 +2747,7 @@ actor CoreHost: SyncEngine {
                 $0.itemID = eff.itemID
             }
             do {
+                if preCancelled { throw CancellationError() }
                 try Task.checkCancellation()
                 let ref = eff.sourceRef
                 if ref.hasPrefix("bmk:") {
@@ -2758,16 +2776,11 @@ actor CoreHost: SyncEngine {
                 }
             } catch {
                 ev.ok = false
-                if error is CancellationError {
-                    ev.errorKind = .other
-                    ev.errorDetail = "cancelled"
-                } else {
-                    ev.errorKind = attachmentIOErrorKind(for: error)
-                    ev.errorDetail = error.localizedDescription
-                }
+                ev.errorKind = error is CancellationError ? .other : attachmentIOErrorKind(for: error)
+                ev.errorDetail = PendingStore.asciiErrorDetail(error)
             }
             return ev
-        }.value
+        }
     }
 
     private func executeReadChunk(_ eff: PBAttachmentReadChunkEffect) async {
@@ -2777,7 +2790,7 @@ actor CoreHost: SyncEngine {
 
     private func runReadChunk(_ eff: PBAttachmentReadChunkEffect) async -> PBAttachmentReadChunkResultEvent {
         let store = self.pendingStore
-        return await Task.detached(priority: .userInitiated) {
+        return await Self.runCancellableDetached { preCancelled in
             var ev = PBAttachmentReadChunkResultEvent.with {
                 $0.opID = eff.opID
                 $0.scope = eff.scope
@@ -2786,6 +2799,7 @@ actor CoreHost: SyncEngine {
                 $0.offset = eff.offset
             }
             do {
+                if preCancelled { throw CancellationError() }
                 try Task.checkCancellation()
                 let ref = eff.kind == .image ? eff.preparedRef : eff.sourceRef
                 let data: Data
@@ -2811,19 +2825,18 @@ actor CoreHost: SyncEngine {
                 ev.data = data
             } catch {
                 ev.ok = false
-                if error is CancellationError {
-                    ev.errorKind = .other
-                    ev.errorDetail = "cancelled"
-                } else {
-                    ev.errorKind = attachmentIOErrorKind(for: error)
-                    ev.errorDetail = error.localizedDescription
-                }
+                ev.errorKind = error is CancellationError ? .other : attachmentIOErrorKind(for: error)
+                ev.errorDetail = PendingStore.asciiErrorDetail(error)
             }
             return ev
-        }.value
+        }
     }
 
     #if DEBUG
+    func prepareImageForTesting(_ eff: PBAttachmentPrepareImageEffect) async -> PBAttachmentPrepareImageResultEvent {
+        await runPrepareImage(eff)
+    }
+
     func hashFileForTesting(_ eff: PBAttachmentHashFileEffect) async -> PBAttachmentHashFileResultEvent {
         await runHashFile(eff)
     }

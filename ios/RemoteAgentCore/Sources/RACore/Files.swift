@@ -106,13 +106,19 @@ public enum PickedFile {
             catch is CancellationError { throw CancellationError() }
             catch let error as AttachmentFileIOError { throw error }
             catch {
+                let kind = attachmentIOErrorKind(for: error)
                 throw AttachmentFileIOError(
-                    attachmentIOErrorKind(for: error) == .other ? .sourceMissing : attachmentIOErrorKind(for: error),
-                    detail: error.localizedDescription
+                    kind == .other ? .sourceMissing : kind,
+                    detail: asciiErrorCode(error)
                 )
             }
         }
-        throw AttachmentFileIOError(.sourceMissing, detail: coordinationError?.localizedDescription ?? "")
+        throw AttachmentFileIOError(.sourceMissing, detail: coordinationError.map(asciiErrorCode) ?? "")
+    }
+
+    private static func asciiErrorCode(_ error: Error) -> String {
+        let ns = error as NSError
+        return "\(ns.domain):\(ns.code)"
     }
 
     /// Reads metadata and byte length via `seekToEnd` without loading contents into memory.
@@ -200,7 +206,7 @@ public enum PickedFile {
         do {
             resolved = try resolve(bookmark)
         } catch {
-            throw AttachmentFileIOError(.sourceMissing, detail: error.localizedDescription)
+            throw AttachmentFileIOError(.sourceMissing, detail: asciiErrorCode(error))
         }
         var refreshed: Data?
         let (size, digest) = try coordinated(resolved.url) { readable in
@@ -284,7 +290,7 @@ public enum PickedFile {
         do {
             url = try resolve(bookmark).url
         } catch {
-            throw AttachmentFileIOError(.sourceMissing, detail: error.localizedDescription)
+            throw AttachmentFileIOError(.sourceMissing, detail: asciiErrorCode(error))
         }
         return try readChunk(at: url, offset: offset, length: length, expectedSizeBytes: expectedSizeBytes)
     }

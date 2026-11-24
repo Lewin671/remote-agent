@@ -238,7 +238,7 @@ final class PendingStore: @unchecked Sendable {
                 return .with {
                     $0.opID = opID; $0.bucket = bucket; $0.key = key
                     $0.found = false; $0.errorKind = attachmentIOErrorKind(for: error)
-                    $0.errorDetail = error.localizedDescription
+                    $0.errorDetail = Self.asciiErrorDetail(error)
                 }
             }
 
@@ -309,7 +309,7 @@ final class PendingStore: @unchecked Sendable {
                     $0.opID = opID; $0.bucket = bucket; $0.key = key
                     $0.ok = false
                     $0.errorKind = attachmentIOErrorKind(for: error)
-                    $0.errorDetail = error.localizedDescription
+                    $0.errorDetail = Self.asciiErrorDetail(error)
                 }
             }
         }
@@ -594,7 +594,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other)
+                throw AttachmentFileIOError(.corruptStore)
             }
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
@@ -655,7 +655,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other)
+                throw AttachmentFileIOError(.corruptStore)
             }
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
@@ -724,7 +724,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other)
+                throw AttachmentFileIOError(.corruptStore)
             }
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
@@ -790,7 +790,7 @@ final class PendingStore: @unchecked Sendable {
             do { sealed = try Data(contentsOf: file) }
             catch where Self.isMissing(error) { throw AttachmentFileIOError(.sourceMissing) }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other)
+                throw AttachmentFileIOError(.corruptStore)
             }
             return try AES.GCM.open(
                 AES.GCM.SealedBox(combined: sealed),
@@ -967,7 +967,10 @@ final class PendingStore: @unchecked Sendable {
         Data("\(ref):\(plainSize):\(chunkIndex)".utf8)
     }
 
-    private static func asciiErrorDetail(_ error: any Error) -> String {
+    static func asciiErrorDetail(_ error: any Error) -> String {
+        if error is CancellationError {
+            return "canceled"
+        }
         if let v = error as? VaultError {
             return v.isLocked ? "vault_locked" : "vault_status_\(v.status)"
         }
