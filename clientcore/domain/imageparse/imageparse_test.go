@@ -583,3 +583,50 @@ func TestPng20MB8KBIdatCrossBoundaryBytes(t *testing.T) {
 	t.Logf("20 MiB PNG (8 KiB IDAT x %d): Inspect=%d B (%d steps), Strip=%d B (%d steps, %d ops)",
 		idatCount, bytesInspect, stepsInspect, bytesStrip, stepsStrip, opCount)
 }
+
+func TestMemoryAmplificationGuards(t *testing.T) {
+	// 1. Alternating kept/dropped JPEG segments exceeding maxSpliceOps / maxJpegSegs must be rejected cleanly.
+	const pairs = maxSpliceOps + 100
+	body := makeMinimalJpegBody()
+	evil := make([]byte, 0, 2+pairs*8+len(body))
+	evil = append(evil, 0xff, 0xd8)
+	for i := 0; i < pairs; i++ {
+		evil = append(evil, 0xff, 0xdb, 0x00, 0x02) // DQT (kept)
+		evil = append(evil, 0xff, 0xe1, 0x00, 0x02) // APP1 (dropped)
+	}
+	evil = append(evil, body...)
+
+	_, stripCode, _ := runPlanWithWindow(t, evil, ModeStrip, FormatJPEG, 64*1024)
+	if stripCode == 0 {
+		t.Fatalf("expected alternating JPEG segments > maxSpliceOps to fail in ModeStrip")
+	}
+	_, segCode, _ := runPlanWithWindow(t, evil, ModeJpegSegments, FormatJPEG, 64*1024)
+	if segCode == 0 {
+		t.Fatalf("expected alternating JPEG segments > maxJpegSegs to fail in ModeJpegSegments")
+	}
+
+	// 2. Oversized 2 MiB VP8X chunk must patch only 1 flags byte as literal (tiny Done frame, no 2 MiB literal copy).
+	bigVp8x := make([]byte, 2*1024*1024)
+	bigVp8x[0] = 0x1c // alpha + EXIF + XMP
+	bigVp8x[4] = 9
+	bigVp8x[7] = 19
+	webp := makeWebpFile(
+		makeRiffChunk("VP8X", bigVp8x),
+		makeRiffChunk("VP8L", []byte{0x2f, 0, 0, 0, 0, 0}),
+		makeRiffChunk("EXIF", makeTiffOrient(1, 64)),
+	)
+	done, _, bytesCrossed := runPlanCountingBytes(t, webp, ModeStrip, FormatWebP, 64*1024)
+	if len(done) > 256 {
+		t.Fatalf("oversized VP8X Done frame = %d B, want <= 256 B", len(done))
+	}
+	if bytesCrossed > 128*1024 {
+		t.Fatalf("oversized VP8X crossed %d B, want <= 128 KiB", bytesCrossed)
+	}
+	stripped := spliceDone(webp, done)
+	if stripped[20] != 0x10 {
+		t.Fatalf("VP8X patched flags = 0x%02x, want 0x10", stripped[20])
+	}
+	if len(stripped) != 12+8+len(bigVp8x)+8+6 {
+		t.Fatalf("VP8X stripped len = %d, want %d", len(stripped), 12+8+len(bigVp8x)+8+6)
+	}
+}

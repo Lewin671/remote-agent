@@ -56,6 +56,10 @@ const (
 	maxExifReadBytes  = 256 * 1024
 	maxStalledReads   = 3
 
+	maxSpliceOps      = 65536
+	maxJpegSegs       = 65536
+	maxDoneFrameBytes = 4 * 1024 * 1024
+
 	planStepBytesDivisor int64 = 256
 	planStepBase         int64 = 4096
 	planStepCap          int64 = 262144
@@ -214,8 +218,9 @@ type Plan struct {
 	width       uint32
 	height      uint32
 
-	ops  []spliceOp
-	segs []jpegSeg
+	ops           []spliceOp
+	segs          []jpegSeg
+	doneFrameSize int
 
 	// Cursor state across Step calls.
 	stage     byte
@@ -268,6 +273,7 @@ func NewPlan(mode Mode, expectedFormat Format, totalLen int64) *Plan {
 		expectedFormat: expectedFormat,
 		totalLen:       uint64(totalLen),
 		orientation:    1,
+		doneFrameSize:  16,
 	}
 }
 
@@ -382,8 +388,11 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 		p.stage = stageWebpWalk
 		if p.mode == ModeStrip {
 			// Reserve op 0 for the 12-byte RIFF header (patched on finish).
-			p.ops = append(p.ops, spliceOp{kind: OpLiteral, lit: make([]byte, 12)})
-			copy(p.ops[0].lit, buf[:12])
+			hdr := make([]byte, 12)
+			copy(hdr, buf[:12])
+			if !p.addLiteral(hdr) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 			p.webpOutBodyLen = 4 // "WEBP"
 		}
 		return p.stepWebp(offset, buf)
@@ -407,15 +416,19 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		}
 		dataEnd := uint64(offset)
 		if p.mode == ModeStrip {
-			p.addKeep(p.pendingSegStart, dataEnd)
+			if !p.addKeep(p.pendingSegStart, dataEnd) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		} else if p.mode == ModeJpegSegments {
-			p.segs = append(p.segs, jpegSeg{
+			if !p.addJpegSeg(jpegSeg{
 				marker:  p.pendingSegMarker,
 				keep:    p.pendingSegKeep,
 				start:   p.pendingSegStart,
 				end:     p.pendingSegEnd,
 				dataEnd: dataEnd,
-			})
+			}) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		}
 		p.pos = dataEnd
 		p.stage = stageJpegWalk
@@ -472,16 +485,20 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 				if !p.sawScan {
 					return p.fail(ErrCodeMalformed, "JPEG has no image data"), nil
 				}
-				p.addKeep(start, start+2)
+				if !p.addKeep(start, start+2) {
+					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				}
 				return p.finish(), nil
 			}
-			p.segs = append(p.segs, jpegSeg{
+			if !p.addJpegSeg(jpegSeg{
 				marker:  0xd9,
 				keep:    true,
 				start:   start,
 				end:     start + 2,
 				dataEnd: start + 2,
-			})
+			}) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 			return p.finish(), nil
 		}
 
@@ -572,15 +589,19 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		}
 
 		if p.mode == ModeStrip && keep {
-			p.addKeep(start, end)
+			if !p.addKeep(start, end) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		} else if p.mode == ModeJpegSegments {
-			p.segs = append(p.segs, jpegSeg{
+			if !p.addJpegSeg(jpegSeg{
 				marker:  marker,
 				keep:    keep,
 				start:   start,
 				end:     end,
 				dataEnd: end,
-			})
+			}) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		}
 
 		// In Inspect mode, once we have both SOF dimensions and EXIF orientation, stop early!
@@ -680,7 +701,9 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 		}
 
 		if p.mode == ModeStrip && !isPngDropChunk(t0, t1, t2, t3) {
-			p.addKeep(p.pos, end)
+			if !p.addKeep(p.pos, end) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		}
 
 		isIEND := t0 == 'I' && t1 == 'E' && t2 == 'N' && t3 == 'D'
@@ -803,24 +826,32 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 				if size < 10 {
 					return p.fail(ErrCodeMalformed, "WebP VP8X chunk too short"), nil
 				}
-				if dataEnd > bufEnd {
-					return p.needRead(p.pos, uint32(dataEnd-p.pos)), nil
+				if p.pos+9 > bufEnd {
+					return p.needRead(p.pos, 9), nil
 				}
-				chunk := make([]byte, int(dataEnd-p.pos))
-				copy(chunk, buf[rel:int(dataEnd-base)])
-				// Clear EXIF (0x08) and XMP (0x04) flag bits.
-				chunk[8] &^= 0x0c
-				p.ops = append(p.ops, spliceOp{kind: OpLiteral, lit: chunk})
-				p.webpOutBodyLen += uint64(len(chunk))
+				// Patch only the single VP8X flags byte (offset 8); reference header & remainder via KeepRange.
+				patchedFlags := buf[rel+8] &^ 0x0c
+				if !p.addKeep(p.pos, p.pos+8) ||
+					!p.addLiteral([]byte{patchedFlags}) ||
+					!p.addKeep(p.pos+9, dataEnd) {
+					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				}
+				p.webpOutBodyLen += dataEnd - p.pos
 				if size&1 != 0 {
-					p.ops = append(p.ops, spliceOp{kind: OpLiteral, lit: []byte{0}})
+					if !p.addLiteral([]byte{0}) {
+						return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					}
 					p.webpOutBodyLen++
 				}
 			} else {
-				p.addKeep(p.pos, dataEnd)
+				if !p.addKeep(p.pos, dataEnd) {
+					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				}
 				p.webpOutBodyLen += dataEnd - p.pos
 				if size&1 != 0 {
-					p.ops = append(p.ops, spliceOp{kind: OpLiteral, lit: []byte{0}})
+					if !p.addLiteral([]byte{0}) {
+						return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					}
 					p.webpOutBodyLen++
 				}
 			}
@@ -871,7 +902,9 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 		}
 		end := uint64(offset)
 		if p.pendingGifKeep {
-			p.addKeep(p.pendingGifStart, end)
+			if !p.addKeep(p.pendingGifStart, end) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 		}
 		if p.pendingGifIsImg {
 			p.gifFrames++
@@ -900,7 +933,9 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			if p.gifFrames == 0 {
 				return p.fail(ErrCodeMalformed, "GIF has no image"), nil
 			}
-			p.addKeep(p.pos, p.pos+1)
+			if !p.addKeep(p.pos, p.pos+1) {
+				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+			}
 			return p.finish(), nil
 		case 0x21: // Extension
 			if p.pos+2 > p.totalLen {
@@ -955,15 +990,38 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 
 // ---------------------------------------------------------------- Encoding
 
-func (p *Plan) addKeep(start, end uint64) {
+func (p *Plan) addKeep(start, end uint64) bool {
 	if start >= end {
-		return
+		return true
 	}
 	if n := len(p.ops); n > 0 && p.ops[n-1].kind == OpKeepRange && p.ops[n-1].end == start {
 		p.ops[n-1].end = end
-		return
+		return true
+	}
+	if len(p.ops) >= maxSpliceOps || p.doneFrameSize+17 > maxDoneFrameBytes {
+		return false
 	}
 	p.ops = append(p.ops, spliceOp{kind: OpKeepRange, start: start, end: end})
+	p.doneFrameSize += 17
+	return true
+}
+
+func (p *Plan) addLiteral(lit []byte) bool {
+	if len(p.ops) >= maxSpliceOps || p.doneFrameSize+5+len(lit) > maxDoneFrameBytes {
+		return false
+	}
+	p.ops = append(p.ops, spliceOp{kind: OpLiteral, lit: lit})
+	p.doneFrameSize += 5 + len(lit)
+	return true
+}
+
+func (p *Plan) addJpegSeg(seg jpegSeg) bool {
+	if len(p.segs) >= maxJpegSegs || p.doneFrameSize+26 > maxDoneFrameBytes {
+		return false
+	}
+	p.segs = append(p.segs, seg)
+	p.doneFrameSize += 26
+	return true
 }
 
 func (p *Plan) needRead(offset uint64, length uint32) []byte {
