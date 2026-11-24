@@ -76,6 +76,7 @@ final class Harness {
         accountId: "11111111111111111111111111111111")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
+    var unregisteredPush = 0
     var bootstrapStatus: PBSecurityWorkflowStatus?
     var bootstrapError: (any Error)?
     var exitAdvice = PBSecurityExitAdvice()
@@ -105,6 +106,7 @@ final class Harness {
         }
         parts.frame = { _ in }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
+        parts.unregisterRemoteNotifications = { [unowned self] in self.unregisteredPush += 1 }
         parts.clearNotifications = { [unowned self] in self.cleared += 1 }
         if let erase { parts.erase = erase }
         return AppModel(settings: settings, parts: parts)
@@ -202,6 +204,8 @@ final class Harness {
         parts.defaults = h.defaults
         parts.allowPlainHttp = true
         parts.frame = { _ in }
+        var pushUnregistered = 0
+        parts.unregisterRemoteNotifications = { pushUnregistered += 1 }
         parts.clearNotifications = { [unowned h] in h.cleared += 1 }
         let model = AppModel(settings: h.settings, parts: parts)
         model.setForeground(true)
@@ -215,6 +219,7 @@ final class Harness {
         #expect(advice == .unreadable)
         await model.logout()
         #expect(model.stage == .join)
+        #expect(pushUnregistered == 1)
         #expect(!h.vault.hasPersistedState())
     }
 
@@ -441,6 +446,7 @@ final class Harness {
         #expect(h.settings.settings == LocalSettings())
         #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
         #expect(h.defaults.string(forKey: "other") == "kept")
+        #expect(h.unregisteredPush == 1)
         #expect(h.cleared == 1)
         var late = RemoteState()
         late.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 1)

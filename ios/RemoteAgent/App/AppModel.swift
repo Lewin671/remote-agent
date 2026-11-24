@@ -242,9 +242,15 @@ final class AppModel {
             try LocalAccountData.erase(
                 vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
+        /// Unregisters APNs remote notifications on logout so no stale push registration remains.
+        var unregisterRemoteNotifications: @MainActor () -> Void = {
+            UIApplication.shared.unregisterForRemoteNotifications()
+        }
         /// Notifications may show the old account's approvals in full.
         var clearNotifications: @MainActor () -> Void = {
-            UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+            let center = UNUserNotificationCenter.current()
+            center.removeAllDeliveredNotifications()
+            center.removeAllPendingNotificationRequests()
         }
     }
 
@@ -780,6 +786,7 @@ final class AppModel {
             stage = .join
             return
         }
+        parts.unregisterRemoteNotifications()
         parts.clearNotifications()
         let storage = parts.storage
         let erase = parts.erase
