@@ -217,6 +217,21 @@ func (ps *pairingService) dropLocked(p *pairing) {
 	delete(ps.byCode, p.code)
 }
 
+func (ps *pairingService) cancelForDevice(account, deviceID string) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	for _, p := range ps.byID {
+		if p.account != account || p.delivered {
+			continue
+		}
+		if p.initiator == deviceID || (len(p.devicePub) > 0 && e2e.DeviceID(p.devicePub) == deviceID) {
+			p.canceled = true
+			p.payload = nil
+			delete(ps.byCode, p.code)
+		}
+	}
+}
+
 // find returns the pairing if the caller is its initiator (by login) or
 // its joiner (by candidate token).
 func (ps *pairingService) find(ctx context.Context, header, id, candidate string) (*pairing, bool, error) {

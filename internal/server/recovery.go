@@ -517,7 +517,7 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the recovery is stale"))
 	}
 	// The old authority is gone: no pairing it created may still complete.
-	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = ? WHERE account_id = ? AND used_ms = 0 AND canceled_ms = 0`, nowMs(), row.account); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = ? WHERE account_id = ? AND approver_device_id = ? AND used_ms = 0 AND canceled_ms = 0`, nowMs(), row.account, head.Core.AuthorityID); err != nil {
 		return nil, internal(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -527,18 +527,9 @@ func (rs *recoveryService) completeRecovery(ctx context.Context, req *connect.Re
 		if _, ok := row.state.Core.Member(old.ID); !ok {
 			rs.s.revokeStreams(old.ID)
 			rs.s.hub.account(row.account).drop(old.ID)
+			rs.s.pairing.cancelForDevice(row.account, old.ID)
 		}
 	}
-
-	rs.s.pairing.mu.Lock()
-	for _, p := range rs.s.pairing.byID {
-		if p.account == row.account && !p.delivered {
-			p.canceled = true
-			p.payload = nil
-			delete(rs.s.pairing.byCode, p.code)
-		}
-	}
-	rs.s.pairing.mu.Unlock()
 
 	return connect.NewResponse(&pb.CompleteRecoveryResponse{DeviceId: row.statement.NewAuthorityID, AccountPublicKey: acct.publicKey}), nil
 }

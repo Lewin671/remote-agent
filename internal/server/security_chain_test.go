@@ -443,6 +443,104 @@ func TestRemovedHalfAddedMemberIsTombstoned(t *testing.T) {
 	}
 }
 
+func TestRemovingDevicePreservesUnrelatedPairingAdmission(t *testing.T) {
+	ts := newTestServer(t)
+	ctx := context.Background()
+	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
+		t.Fatal(err)
+	}
+	c := ts.authority(t)
+
+	// Add device A (old device to be removed).
+	oldPub, _, _ := ed25519.GenerateKey(nil)
+	_, oldXPub, _ := deviceauth.NewXKey()
+	oldMember, err := devicesec.NewMember(oldPub, oldXPub, devicesec.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret1 := make([]byte, 32)
+	secret1[0] = 0xa1
+	stateWithOld, err := deviceauth.BuildPairState(c.states[len(c.states)-1], oldMember, oldXPub, c.secret, secret1, c.phoneEd, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.putState(t, stateWithOld); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add device B (new device being paired concurrently, approved but not yet registered).
+	newPub, _, _ := ed25519.GenerateKey(nil)
+	_, newXPub, _ := deviceauth.NewXKey()
+	newMember, err := devicesec.NewMember(newPub, newXPub, devicesec.Client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret2 := make([]byte, 32)
+	secret2[0] = 0xa2
+	stateWithBoth, err := deviceauth.BuildPairState(stateWithOld, newMember, newXPub, secret1, secret2, c.phoneEd, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.putState(t, stateWithBoth); err != nil {
+		t.Fatal(err)
+	}
+
+	// Record unused pairing admissions for both oldMember and newMember.
+	oldPairingID := randomHex(16)
+	newPairingID := randomHex(16)
+	expires := time.Now().Add(time.Minute).UnixMilli()
+	if _, err := ts.srv.store.db.ExecContext(ctx, `INSERT INTO pairing_admissions (pairing_id, account_id, approver_device_id, candidate_device_id, candidate_kind, approval, signature, candidate_token_hash, expires_ms) VALUES (?, ?, ?, ?, ?, X'01', X'01', zeroblob(32), ?)`,
+		oldPairingID, ts.acct(), c.phoneID, oldMember.ID, int32(pb.DeviceKind_DEVICE_KIND_CLIENT), expires); err != nil {
+		t.Fatal(err)
+	}
+	newApproval, newSig, err := e2e.NewPairApproval(ts.acct(), newPairingID, c.phoneEd, newPub, pb.DeviceKind_DEVICE_KIND_CLIENT, expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ts.srv.store.db.ExecContext(ctx, `INSERT INTO pairing_admissions (pairing_id, account_id, approver_device_id, candidate_device_id, candidate_kind, approval, signature, candidate_token_hash, expires_ms) VALUES (?, ?, ?, ?, ?, ?, ?, zeroblob(32), ?)`,
+		newPairingID, ts.acct(), c.phoneID, newMember.ID, int32(pb.DeviceKind_DEVICE_KIND_CLIENT), newApproval, newSig, expires); err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove oldMember while newMember's pairing admission is still pending.
+	secret3 := make([]byte, 32)
+	secret3[0] = 0xa3
+	var kept []devicesec.Member
+	for _, m := range stateWithBoth.Core.Members {
+		if m.ID != oldMember.ID {
+			kept = append(kept, m)
+		}
+	}
+	nextRemoved := append(append([]string(nil), stateWithBoth.Core.Removed...), oldMember.ID)
+	removedOld, err := deviceauth.BuildMembershipState(stateWithBoth, kept, nextRemoved, secret2, secret3, c.phoneEd, uint64(time.Now().UnixMilli()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ts.putState(t, removedOld); err != nil {
+		t.Fatal(err)
+	}
+
+	var oldCanceled, newCanceled int64
+	if err := ts.srv.store.db.QueryRowContext(ctx, `SELECT canceled_ms FROM pairing_admissions WHERE pairing_id = ?`, oldPairingID).Scan(&oldCanceled); err != nil || oldCanceled == 0 {
+		t.Fatalf("removed device's admission should be canceled: %d %v", oldCanceled, err)
+	}
+	if err := ts.srv.store.db.QueryRowContext(ctx, `SELECT canceled_ms FROM pairing_admissions WHERE pairing_id = ?`, newPairingID).Scan(&newCanceled); err != nil || newCanceled != 0 {
+		t.Fatalf("unrelated pairing admission should remain active: %d %v", newCanceled, err)
+	}
+
+	// The unrelated new device can still finish RegisterDevice with its approval.
+	reg, _ := proto.Marshal(&pb.DeviceRegistration{AccountPublicKey: ts.keys.AccountPublicKey(), DevicePublicKey: newPub, Kind: pb.DeviceKind_DEVICE_KIND_CLIENT})
+	res, err := ts.auth.RegisterDevice(ctx, connect.NewRequest(&pb.RegisterDeviceRequest{
+		ProtocolVersion:   relayproto.Version,
+		Registration:      reg,
+		Approval:          newApproval,
+		ApprovalSignature: newSig,
+	}))
+	if err != nil || res.Msg.DeviceId != newMember.ID {
+		t.Fatalf("new device registration failed after removing unrelated device: res=%v err=%v", res, err)
+	}
+}
+
 func TestRecoveryTombstoneStopsCompletion(t *testing.T) {
 	ts := newTestServer(t)
 	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
