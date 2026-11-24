@@ -5885,6 +5885,16 @@
     "reason": "Internal subpage route state discriminator near error assignment; never rendered as user-facing text."
   },
   {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Recovery.kt",
+    "literal": "state",
+    "reason": "Internal SecurityPendingOpSummary.kind protocol discriminator; never rendered as user-facing text."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Recovery.kt",
+    "literal": "recovery",
+    "reason": "Internal SecurityPendingOpSummary.kind/action protocol discriminator and subpage route key; never rendered as user-facing text."
+  },
+  {
     "path": "clientcore/app/schedules.go",
     "literal": "failed",
     "reason": "Internal machine error code assigned to ScheduleSnapshot.Error near text.IsEmpty(snap.ErrorText); never rendered directly as UI text."
