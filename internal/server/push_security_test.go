@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sync"
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 )
 
 // The recovery notice is generic text and must reach only the current
@@ -105,17 +108,60 @@ func TestPushDeduplicatesWebPushEndpointWithinAccount(t *testing.T) {
 	kinds := []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}
 	endpoint := "https://push.example.com/shared-browser"
 
-	seedPushAccount(t, ts, ts.acct())
+	memberAPriv, memberAID, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	memberBPriv, memberBID, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := ts.authority(t)
 	seedPushAccount(t, ts, "other-acct")
 	otherTenant := ts.srv.store.tenant("other-acct")
 	if err := ts.srv.push.subscribe(ctx, otherTenant, "other-device", pushSubscription(t, endpoint), kinds); err != nil {
 		t.Fatal(err)
 	}
-	if err := ts.srv.push.subscribe(ctx, ts.tenant(), "old-client", pushSubscription(t, endpoint), kinds); err != nil {
+
+	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url)
+	tokA := ts.login(t, memberAPriv, memberAID)
+	tokB := ts.login(t, memberBPriv, memberBID)
+	subA := pushSubscription(t, endpoint)
+
+	// Original member registers endpoint and can update its own kinds.
+	reqA := connect.NewRequest(&pb.SetPushSubscriptionRequest{SubscriptionJson: subA, Kinds: kinds})
+	reqA.Header().Set("Authorization", "Bearer "+tokA)
+	if _, err := client.SetPushSubscription(ctx, reqA); err != nil {
+		t.Fatalf("member A subscribe: %v", err)
+	}
+	reqA2 := connect.NewRequest(&pb.SetPushSubscriptionRequest{
+		SubscriptionJson: subA,
+		Kinds:            []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED},
+	})
+	reqA2.Header().Set("Authorization", "Bearer "+tokA)
+	if _, err := client.SetPushSubscription(ctx, reqA2); err != nil {
+		t.Fatalf("member A self-update: %v", err)
+	}
+
+	// Another non-authority member must be rejected with PermissionDenied, leaving member A intact.
+	reqB := connect.NewRequest(&pb.SetPushSubscriptionRequest{SubscriptionJson: pushSubscription(t, endpoint), Kinds: kinds})
+	reqB.Header().Set("Authorization", "Bearer "+tokB)
+	if _, err := client.SetPushSubscription(ctx, reqB); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for non-authority takeover, got %v", err)
+	}
+	var ownerID string
+	var ownerMask int
+	if err := ts.srv.store.db.QueryRowContext(ctx, `SELECT device_id, kinds FROM push_subs WHERE account_id = ?`, ts.acct()).Scan(&ownerID, &ownerMask); err != nil {
 		t.Fatal(err)
 	}
-	if err := ts.srv.push.subscribe(ctx, ts.tenant(), "new-client", pushSubscription(t, endpoint), kinds); err != nil {
-		t.Fatal(err)
+	wantMask := kindMask([]pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED})
+	if ownerID != memberAID || ownerMask != wantMask {
+		t.Fatalf("member A row altered after rejected takeover: owner=%q mask=%d", ownerID, ownerMask)
+	}
+
+	// Authority may take over the same endpoint within the account, deduplicating the old row.
+	if err := ts.srv.push.subscribe(ctx, ts.tenant(), auth.phoneID, pushSubscription(t, endpoint), kinds); err != nil {
+		t.Fatalf("authority takeover: %v", err)
 	}
 
 	var ids []string
@@ -131,8 +177,8 @@ func TestPushDeduplicatesWebPushEndpointWithinAccount(t *testing.T) {
 		ids = append(ids, id)
 	}
 	rows.Close()
-	if len(ids) != 1 || ids[0] != "new-client" {
-		t.Fatalf("expected only new-client in push_subs, got %v", ids)
+	if len(ids) != 1 || ids[0] != auth.phoneID {
+		t.Fatalf("expected only authority %q in push_subs, got %v", auth.phoneID, ids)
 	}
 
 	var otherCount int
@@ -168,17 +214,48 @@ func TestPushDeduplicatesFCMTokenWithinAccount(t *testing.T) {
 	kinds := []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}
 	token := "fcm-shared-device-token"
 
-	seedPushAccount(t, ts, ts.acct())
+	memberAPriv, memberAID, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	memberBPriv, memberBID, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	auth := ts.authority(t)
 	seedPushAccount(t, ts, "other-acct")
 	otherTenant := ts.srv.store.tenant("other-acct")
 	if err := ts.srv.push.setFCM(ctx, otherTenant, "other-device", token, kinds); err != nil {
 		t.Fatal(err)
 	}
-	if err := ts.srv.push.setFCM(ctx, ts.tenant(), "old-phone", token, kinds); err != nil {
-		t.Fatal(err)
+
+	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url)
+	tokA := ts.login(t, memberAPriv, memberAID)
+	tokB := ts.login(t, memberBPriv, memberBID)
+
+	// Original member registers FCM token and updates its own row.
+	reqA := connect.NewRequest(&pb.SetPushTargetRequest{Type: pb.PushType_PUSH_TYPE_FCM, Target: token, Kinds: kinds})
+	reqA.Header().Set("Authorization", "Bearer "+tokA)
+	if _, err := client.SetPushTarget(ctx, reqA); err != nil {
+		t.Fatalf("member A setFCM: %v", err)
 	}
-	if err := ts.srv.push.setFCM(ctx, ts.tenant(), "new-phone", token, kinds); err != nil {
-		t.Fatal(err)
+	if err := ts.srv.push.setFCM(ctx, ts.tenant(), memberAID, token, []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION, pb.NotifyKind_NOTIFY_KIND_TURN_ENDED}); err != nil {
+		t.Fatalf("member A self-update setFCM: %v", err)
+	}
+
+	// Non-authority member B cannot hijack member A's FCM token.
+	reqB := connect.NewRequest(&pb.SetPushTargetRequest{Type: pb.PushType_PUSH_TYPE_FCM, Target: token, Kinds: kinds})
+	reqB.Header().Set("Authorization", "Bearer "+tokB)
+	if _, err := client.SetPushTarget(ctx, reqB); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("expected PermissionDenied for non-authority FCM takeover, got %v", err)
+	}
+	if err := ts.srv.push.setFCM(ctx, ts.tenant(), memberBID, token, kinds); !errors.Is(err, errPushTargetOwned) {
+		t.Fatalf("expected errPushTargetOwned, got %v", err)
+	}
+
+	// Authority may take over and deduplicate the FCM token.
+	if err := ts.srv.push.setFCM(ctx, ts.tenant(), auth.phoneID, token, kinds); err != nil {
+		t.Fatalf("authority setFCM takeover: %v", err)
 	}
 
 	var ids []string
@@ -194,8 +271,8 @@ func TestPushDeduplicatesFCMTokenWithinAccount(t *testing.T) {
 		ids = append(ids, id)
 	}
 	rows.Close()
-	if len(ids) != 1 || ids[0] != "new-phone" {
-		t.Fatalf("expected only new-phone in fcm_targets, got %v", ids)
+	if len(ids) != 1 || ids[0] != auth.phoneID {
+		t.Fatalf("expected only authority %q in fcm_targets, got %v", auth.phoneID, ids)
 	}
 
 	var otherCount int
