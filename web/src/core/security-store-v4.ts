@@ -153,6 +153,7 @@ function broadcastLogout(): void {
 }
 
 const activeSharedFileClearers = new Set<() => Promise<void>>();
+const activeAttachmentClearers = new Set<() => Promise<void>>();
 
 /** Registers an active CoreHost's queued shared-file ClearAll handler for logout coordination. */
 export function registerActiveSharedFileClearer(fn: () => Promise<void>): () => void {
@@ -160,13 +161,23 @@ export function registerActiveSharedFileClearer(fn: () => Promise<void>): () => 
   return () => { activeSharedFileClearers.delete(fn); };
 }
 
+/** Registers an active CoreHost's queued attachment/draft ClearAll handler for logout coordination. */
+export function registerActiveAttachmentClearer(fn: () => Promise<void>): () => void {
+  activeAttachmentClearers.add(fn);
+  return () => { activeAttachmentClearers.delete(fn); };
+}
+
 async function clearAccountCaches(): Promise<void> {
   await clearEventCache().catch(() => undefined);
-  if (activeSharedFileClearers.size > 0) {
-    await Promise.all([...activeSharedFileClearers].map((fn) => fn().catch(() => undefined)));
-    return;
-  }
-  await import("../shared-file-store").then((m) => m.sharedFileStore.clearAll()).catch(() => undefined);
+  const sharedClear =
+    activeSharedFileClearers.size > 0
+      ? Promise.all([...activeSharedFileClearers].map((fn) => fn().catch(() => undefined)))
+      : import("../shared-file-store").then((m) => m.sharedFileStore.clearAll()).catch(() => undefined);
+  const attClear =
+    activeAttachmentClearers.size > 0
+      ? Promise.all([...activeAttachmentClearers].map((fn) => fn().catch(() => undefined)))
+      : import("../attachment-store").then((m) => m.clearDefaultAttachmentOpfs()).catch(() => undefined);
+  await Promise.all([sharedClear, attClear]);
 }
 
 function isCasConflict(cur: StoredBucketRow | undefined, expectedRevision: string, createOnly: boolean, remove = false): boolean {
@@ -657,6 +668,146 @@ export async function loadLocalData(server: string, memberID: string, name: stri
   } catch {
     throw new CorruptLocalContent();
   }
+}
+
+const DRAFT_V1_PREFIX = "draft-v1:";
+
+export type DraftRecordBucketName = "draft" | "outbox";
+
+export interface SealedDraftRecordEntry {
+  bucket: DraftRecordBucketName;
+  key: string;
+  data: Uint8Array;
+  corrupt: boolean;
+}
+
+function draftMetaKey(bucket: DraftRecordBucketName, key: string): string {
+  return `${DRAFT_V1_PREFIX}${bucket}:${key}`;
+}
+
+function parseDraftMetaKey(rawKey: string): { bucket: DraftRecordBucketName; key: string } | undefined {
+  if (!rawKey.startsWith(DRAFT_V1_PREFIX)) return undefined;
+  const rest = rawKey.slice(DRAFT_V1_PREFIX.length);
+  if (rest.startsWith("draft:")) return { bucket: "draft", key: rest.slice("draft:".length) };
+  if (rest.startsWith("outbox:")) return { bucket: "outbox", key: rest.slice("outbox:".length) };
+  return undefined;
+}
+
+export async function listDraftRecords(
+  server: string,
+  memberID: string,
+  idb: IDBFactory = indexedDB,
+): Promise<SealedDraftRecordEntry[]> {
+  const owner = JSON.stringify([server, memberID]);
+  const rawEntries = await withDB(idb, (db) =>
+    runTx(db, [V4_STORE_BUCKETS, V4_STORE_META], "readonly", "list draft records failed", (tx) => {
+      const bReq = tx.objectStore(V4_STORE_BUCKETS).get(RECORD_ID) as IDBRequest<StoredBucketRow | undefined>;
+      const mStore = tx.objectStore(V4_STORE_META);
+      const range = IDBKeyRange.bound(DRAFT_V1_PREFIX, DRAFT_V1_PREFIX + "\uffff");
+      const items: Array<{ metaKey: string; value: SealedLocalValue }> = [];
+      const cur = mStore.openCursor(range);
+      cur.onsuccess = () => {
+        const e = cur.result;
+        if (!e) return;
+        if (typeof e.key === "string") {
+          items.push({ metaKey: e.key, value: e.value as SealedLocalValue });
+        }
+        e.continue();
+      };
+      return () => (bReq.result?.data.byteLength ? items : []);
+    }),
+  );
+  const out: SealedDraftRecordEntry[] = [];
+  for (const { metaKey, value } of rawEntries) {
+    const parsed = parseDraftMetaKey(metaKey);
+    if (!parsed || !parsed.key) continue;
+    const expectedBinding = JSON.stringify([owner, metaKey]);
+    if (!value || value.binding !== expectedBinding || !(value.key instanceof CryptoKey) || value.key.extractable) {
+      out.push({ bucket: parsed.bucket, key: parsed.key, data: new Uint8Array(), corrupt: true });
+      continue;
+    }
+    try {
+      const data = await openLocalValue(value);
+      out.push({ bucket: parsed.bucket, key: parsed.key, data, corrupt: false });
+    } catch {
+      out.push({ bucket: parsed.bucket, key: parsed.key, data: new Uint8Array(), corrupt: true });
+    }
+  }
+  return out;
+}
+
+export async function readDraftRecord(
+  server: string,
+  memberID: string,
+  bucket: DraftRecordBucketName,
+  key: string,
+  idb: IDBFactory = indexedDB,
+): Promise<{ found: boolean; data?: Uint8Array; corrupt?: boolean }> {
+  const metaKey = draftMetaKey(bucket, key);
+  const expectedBinding = JSON.stringify([JSON.stringify([server, memberID]), metaKey]);
+  const stored = await withDB(idb, (db) => readMetaIfHasRecord(db, metaKey, "read draft record failed"));
+  if (!stored) return { found: false };
+  if (stored.binding !== expectedBinding || !(stored.key instanceof CryptoKey) || stored.key.extractable) {
+    return { found: false, corrupt: true };
+  }
+  try {
+    return { found: true, data: await openLocalValue(stored) };
+  } catch {
+    return { found: false, corrupt: true };
+  }
+}
+
+export async function writeDraftRecord(
+  server: string,
+  memberID: string,
+  bucket: DraftRecordBucketName,
+  key: string,
+  data: Uint8Array,
+  idb: IDBFactory = indexedDB,
+): Promise<void> {
+  const metaKey = draftMetaKey(bucket, key);
+  const binding = JSON.stringify([JSON.stringify([server, memberID]), metaKey]);
+  const sealed = await sealLocalValue(binding, data);
+  await withDB(idb, (db) =>
+    runTx(db, [V4_STORE_BUCKETS, V4_STORE_META], "readwrite", "write draft record failed", (tx) => {
+      const bReq = tx.objectStore(V4_STORE_BUCKETS).get(RECORD_ID) as IDBRequest<StoredBucketRow | undefined>;
+      bReq.onsuccess = () => {
+        if (bReq.result?.data.byteLength) tx.objectStore(V4_STORE_META).put(sealed, metaKey);
+        else tx.abort();
+      };
+      return () => undefined;
+    }),
+  );
+}
+
+export async function deleteDraftRecord(
+  bucket: DraftRecordBucketName,
+  key: string,
+  idb: IDBFactory = indexedDB,
+): Promise<void> {
+  const metaKey = draftMetaKey(bucket, key);
+  await withDB(idb, (db) =>
+    runTx(db, V4_STORE_META, "readwrite", "delete draft record failed", (tx) => {
+      tx.objectStore(V4_STORE_META).delete(metaKey);
+      return () => undefined;
+    }),
+  );
+}
+
+export async function clearAllDraftRecords(idb: IDBFactory = indexedDB): Promise<void> {
+  await withDB(idb, (db) =>
+    runTx(db, V4_STORE_META, "readwrite", "clear draft records failed", (tx) => {
+      const mStore = tx.objectStore(V4_STORE_META);
+      const cur = mStore.openCursor(IDBKeyRange.bound(DRAFT_V1_PREFIX, DRAFT_V1_PREFIX + "\uffff"));
+      cur.onsuccess = () => {
+        const e = cur.result;
+        if (!e) return;
+        e.delete();
+        e.continue();
+      };
+      return () => undefined;
+    }),
+  );
 }
 
 /** Read-only Service Worker helper: reads v4 RECORD and DEVICE_X without writes or network. */

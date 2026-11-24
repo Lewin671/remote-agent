@@ -241,20 +241,31 @@ async function readBlob(file: Blob): Promise<Uint8Array> {
   return new Uint8Array(await file.arrayBuffer());
 }
 
+export interface CompressLimits {
+  maxDimensionPx: number;
+  maxCompressedBytes: number;
+}
+
 /**
  * The default way to send: decode, turn upright, fit the long edge into
- * MAX_EDGE, and encode as PNG when any pixel is transparent, JPEG
- * otherwise. JPEG steps down in quality, then both step down in size,
- * until the result fits COMPRESSED_BUDGET. Canvas output has no metadata.
+ * Core-supplied maxDimensionPx, and encode as PNG when any pixel is transparent,
+ * JPEG otherwise. JPEG steps down in quality, then both step down in size,
+ * until the result fits Core-supplied maxCompressedBytes. Canvas output has no metadata.
  */
-export async function compressImage(file: Blob, backend: ImageBackend = browserBackend): Promise<PreparedImage> {
+export async function compressImage(
+  file: Blob,
+  backend: ImageBackend = browserBackend,
+  limits: CompressLimits = { maxDimensionPx: MAX_EDGE, maxCompressedBytes: COMPRESSED_BUDGET },
+): Promise<PreparedImage> {
+  const maxEdge = limits.maxDimensionPx;
+  const maxBytes = limits.maxCompressedBytes;
   const bytes = await readBlob(file);
   const format = sniffFormat(bytes);
   checkDecodable(bytes, format);
   const { blob, orientation } = decodeSource(bytes, format);
   const img = await backend.decode(blob);
   try {
-    let scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+    let scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
     let transparent: boolean | undefined;
     for (;;) {
       const w = Math.max(1, Math.round(img.width * scale));
@@ -263,7 +274,7 @@ export async function compressImage(file: Blob, backend: ImageBackend = browserB
       // JPEG has no alpha channel; skip reading back its pixels.
       transparent ??= format !== "jpeg" && surface.hasAlpha();
       const done = (out: Uint8Array, f: PreparedImage["format"]): PreparedImage | undefined =>
-        out.length <= COMPRESSED_BUDGET ? { bytes: out, format: f, width: surface.width, height: surface.height } : undefined;
+        out.length <= maxBytes ? { bytes: out, format: f, width: surface.width, height: surface.height } : undefined;
       if (transparent) {
         const r = done(await surface.encode("image/png"), "png");
         if (r) return r;
