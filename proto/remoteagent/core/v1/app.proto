@@ -952,6 +952,7 @@ message RunMachineCommandAction {
   string machine_id = 2;
   string session_id = 3;
   remoteagent.v1.Command command = 4;
+  bool skip_connectivity_preflight = 5;
 }
 
 message CancelMachineCommandAction {

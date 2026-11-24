@@ -984,9 +984,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				break
 			}
 			reqID, _ := c.m.sync.SubmitCommand(ctx, sync.SubmitCommandParams{
-				MachineID: act.MachineId,
-				SessionID: act.SessionId,
-				Command:   act.Command,
+				MachineID:                 act.MachineId,
+				SessionID:                 act.SessionId,
+				Command:                   act.Command,
+				SkipConnectivityPreflight: act.SkipConnectivityPreflight,
 			})
 			if reqID == "" {
 				effects = append(effects, &corev1.Effect{

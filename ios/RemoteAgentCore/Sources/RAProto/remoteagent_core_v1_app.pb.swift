@@ -4760,6 +4760,8 @@ public struct PBCoreRunMachineCommandAction: Sendable {
   /// Clears the value of `command`. Subsequent reads from it will return its default value.
   public mutating func clearCommand() {self._command = nil}
 
+  public var skipConnectivityPreflight: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -14233,7 +14235,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreRunMachineCommandAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RunMachineCommandAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0\u{3}session_id\0\u{1}command\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{3}machine_id\0\u{3}session_id\0\u{1}command\0\u{3}skip_connectivity_preflight\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -14245,6 +14247,7 @@ extension PBCoreRunMachineCommandAction: SwiftProtobuf.Message, SwiftProtobuf._M
       case 2: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.sessionID) }()
       case 4: try { try decoder.decodeSingularMessageField(value: &self._command) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.skipConnectivityPreflight) }()
       default: break
       }
     }
@@ -14267,6 +14270,9 @@ extension PBCoreRunMachineCommandAction: SwiftProtobuf.Message, SwiftProtobuf._M
     try { if let v = self._command {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     } }()
+    if self.skipConnectivityPreflight != false {
+      try visitor.visitSingularBoolField(value: self.skipConnectivityPreflight, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -14275,6 +14281,7 @@ extension PBCoreRunMachineCommandAction: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.machineID != rhs.machineID {return false}
     if lhs.sessionID != rhs.sessionID {return false}
     if lhs._command != rhs._command {return false}
+    if lhs.skipConnectivityPreflight != rhs.skipConnectivityPreflight {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

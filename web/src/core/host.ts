@@ -2193,6 +2193,7 @@ export class CoreHost {
     sessionId: string,
     cmd: MessageInitShape<typeof CommandSchema>["kind"],
     signal?: AbortSignal,
+    skipConnectivityPreflight = false,
   ): Promise<void> {
     if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
     if (signal?.aborted) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
@@ -2223,6 +2224,7 @@ export class CoreHost {
           machineId,
           sessionId,
           command: create(CommandSchema, { kind: cmd }),
+          skipConnectivityPreflight,
         }),
       });
     });

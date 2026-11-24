@@ -10294,13 +10294,14 @@ func (x *RequestEntropyEffect) GetMinRandomBytes() int32 {
 }
 
 type RunMachineCommandAction struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	OpId          uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
-	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Command       *v1.Command            `protobuf:"bytes,4,opt,name=command,proto3" json:"command,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	OpId                      uint64                 `protobuf:"varint,1,opt,name=op_id,json=opId,proto3" json:"op_id,omitempty"`
+	MachineId                 string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	SessionId                 string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Command                   *v1.Command            `protobuf:"bytes,4,opt,name=command,proto3" json:"command,omitempty"`
+	SkipConnectivityPreflight bool                   `protobuf:"varint,5,opt,name=skip_connectivity_preflight,json=skipConnectivityPreflight,proto3" json:"skip_connectivity_preflight,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *RunMachineCommandAction) Reset() {
@@ -10359,6 +10360,13 @@ func (x *RunMachineCommandAction) GetCommand() *v1.Command {
 		return x.Command
 	}
 	return nil
+}
+
+func (x *RunMachineCommandAction) GetSkipConnectivityPreflight() bool {
+	if x != nil {
+		return x.SkipConnectivityPreflight
+	}
+	return false
 }
 
 type CancelMachineCommandAction struct {
@@ -12545,14 +12553,15 @@ const file_remoteagent_core_v1_app_proto_rawDesc = "" +
 	"\amin_ids\x18\x01 \x01(\x05R\x06minIds\x12\x1d\n" +
 	"\n" +
 	"min_floats\x18\x02 \x01(\x05R\tminFloats\x12(\n" +
-	"\x10min_random_bytes\x18\x03 \x01(\x05R\x0eminRandomBytes\"\x9f\x01\n" +
+	"\x10min_random_bytes\x18\x03 \x01(\x05R\x0eminRandomBytes\"\xdf\x01\n" +
 	"\x17RunMachineCommandAction\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x03 \x01(\tR\tsessionId\x121\n" +
-	"\acommand\x18\x04 \x01(\v2\x17.remoteagent.v1.CommandR\acommand\"1\n" +
+	"\acommand\x18\x04 \x01(\v2\x17.remoteagent.v1.CommandR\acommand\x12>\n" +
+	"\x1bskip_connectivity_preflight\x18\x05 \x01(\bR\x19skipConnectivityPreflight\"1\n" +
 	"\x1aCancelMachineCommandAction\x12\x13\n" +
 	"\x05op_id\x18\x01 \x01(\x04R\x04opId\"\xd4\x01\n" +
 	"\x1dRunMachineCommandResultEffect\x12\x13\n" +

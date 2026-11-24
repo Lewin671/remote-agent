@@ -1706,6 +1706,7 @@ class Remote(
                     machineId,
                     "",
                     Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build(),
+                    skipConnectivityPreflight = true,
                 )
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -1850,6 +1851,7 @@ class Remote(
                 s.machineId,
                 sid,
                 Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
+                skipConnectivityPreflight = true,
             )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())

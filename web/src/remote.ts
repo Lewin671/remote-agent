@@ -1701,7 +1701,7 @@ export class Remote implements CoreExecutor {
     ws.onEnd = () => finish(l10n.t("errors.terminal_connection_dropped"));
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     try {
-      await this.ensureHost().runMachineCommand(s.machineId, sid, { case: "openTerminal", value: { sessionId: sid, streamId } }, signal);
+      await this.ensureHost().runMachineCommand(s.machineId, sid, { case: "openTerminal", value: { sessionId: sid, streamId } }, signal, true);
     } catch (e) {
       finish(errorText(e));
       throw e;
@@ -1791,7 +1791,7 @@ export class Remote implements CoreExecutor {
     const timer = setTimeout(() => stop.abort(), timeoutMs);
     const started = performance.now();
     try {
-      await this.ensureHost().runMachineCommand(machineId, "", { case: "getSettings", value: {} }, stop.signal);
+      await this.ensureHost().runMachineCommand(machineId, "", { case: "getSettings", value: {} }, stop.signal, true);
       return Math.round(performance.now() - started);
     } catch (e) {
       throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;

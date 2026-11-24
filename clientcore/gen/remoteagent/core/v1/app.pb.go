@@ -9863,11 +9863,12 @@ func (m *RequestEntropyEffect) AppendMarshal(b []byte) []byte {
 }
 
 type RunMachineCommandAction struct {
-	_         [0]func()
-	OpId      uint64
-	MachineId string
-	SessionId string
-	Command   *v1.Command
+	_                         [0]func()
+	OpId                      uint64
+	MachineId                 string
+	SessionId                 string
+	Command                   *v1.Command
+	SkipConnectivityPreflight bool
 }
 
 func (m *RunMachineCommandAction) GetOpId() uint64 {
@@ -9894,6 +9895,12 @@ func (m *RunMachineCommandAction) GetCommand() *v1.Command {
 	}
 	return nil
 }
+func (m *RunMachineCommandAction) GetSkipConnectivityPreflight() bool {
+	if m != nil {
+		return m.SkipConnectivityPreflight
+	}
+	return false
+}
 
 var LitewireDesc_RunMachineCommandAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&RunMachineCommandAction{}) },
@@ -9902,6 +9909,7 @@ var LitewireDesc_RunMachineCommandAction = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(RunMachineCommandAction{}.MachineId), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(RunMachineCommandAction{}.SessionId), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(RunMachineCommandAction{}.Command), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_Command},
+		{Num: 5, Offset: unsafe.Offsetof(RunMachineCommandAction{}.SkipConnectivityPreflight), Kind: litewire.KindBool},
 	},
 }
 

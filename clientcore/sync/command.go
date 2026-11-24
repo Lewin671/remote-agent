@@ -58,8 +58,9 @@ type PreparedCommand struct {
 	RecoveryDeadlineMs int64
 	Command            *v1.Command
 	CommandBytes       []byte
-	RouteHint          corev1.CommandRouteHint
-	ForceRelay         bool
+	RouteHint                 corev1.CommandRouteHint
+	ForceRelay                bool
+	SkipConnectivityPreflight bool
 	Dispatch           DispatchState
 	AttemptCount       int
 	RecoveryUntilMs    int64
@@ -92,9 +93,10 @@ type SubmitCommandParams struct {
 	MachineID   string
 	SessionID   string
 	Command     *v1.Command
-	BulkFileKey string
-	BulkBytes   int64
-	BulkUpload  bool
+	BulkFileKey               string
+	BulkBytes                 int64
+	BulkUpload                bool
+	SkipConnectivityPreflight bool
 }
 
 // SubmitCommand creates (or replays if frozen on SlotKey) a PreparedCommand and dispatches an attempt.
@@ -150,9 +152,10 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 			CommandBytes:       raw,
 			RouteHint:          routeHintFor(cmd),
 			PendingAttempts:    make(map[string]bool),
-			BulkFileKey:        in.BulkFileKey,
-			BulkBytes:          in.BulkBytes,
-			BulkUpload:         in.BulkUpload,
+			BulkFileKey:               in.BulkFileKey,
+			BulkBytes:                 in.BulkBytes,
+			BulkUpload:                in.BulkUpload,
+			SkipConnectivityPreflight: in.SkipConnectivityPreflight,
 		}
 		if tracker != nil {
 			tracker.Pending = prep
@@ -283,13 +286,15 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyConnectionNoNetwork), false)
 			return false
 		}
-		if e.w.World.Connection != lists.ConnConnected {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsNotConnected), false)
-			return false
-		}
-		if m == nil || !e.machineReachable(m) {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsTheComputerIsOfflineTheCommandWasNotSent), false)
-			return false
+		if !prep.SkipConnectivityPreflight {
+			if e.w.World.Connection != lists.ConnConnected {
+				e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsNotConnected), false)
+				return false
+			}
+			if m == nil || !e.machineReachable(m) {
+				e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsTheComputerIsOfflineTheCommandWasNotSent), false)
+				return false
+			}
 		}
 	}
 	if !retryOfUnknown && isObservedAction(prep.Command) {

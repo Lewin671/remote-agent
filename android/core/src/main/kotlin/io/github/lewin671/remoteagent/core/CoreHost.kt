@@ -1987,6 +1987,7 @@ class CoreHost(
         machineId: String,
         sessionId: String,
         command: Command,
+        skipConnectivityPreflight: Boolean = false,
     ): CommandResult {
         if (closed.get()) throw CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
         val opId = nextMachineCmdOpId.getAndIncrement()
@@ -1999,7 +2000,8 @@ class CoreHost(
                         .setOpId(opId)
                         .setMachineId(machineId)
                         .setSessionId(sessionId)
-                        .setCommand(command),
+                        .setCommand(command)
+                        .setSkipConnectivityPreflight(skipConnectivityPreflight),
                 )
                 .build(),
         )

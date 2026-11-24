@@ -189,6 +189,32 @@ public  final class RunMachineCommandAction extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int SKIP_CONNECTIVITY_PREFLIGHT_FIELD_NUMBER = 5;
+  private boolean skipConnectivityPreflight_;
+  /**
+   * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+   * @return The skipConnectivityPreflight.
+   */
+  @java.lang.Override
+  public boolean getSkipConnectivityPreflight() {
+    return skipConnectivityPreflight_;
+  }
+  /**
+   * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+   * @param value The skipConnectivityPreflight to set.
+   */
+  private void setSkipConnectivityPreflight(boolean value) {
+    
+    skipConnectivityPreflight_ = value;
+  }
+  /**
+   * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+   */
+  private void clearSkipConnectivityPreflight() {
+
+    skipConnectivityPreflight_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.RunMachineCommandAction parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -459,6 +485,34 @@ public  final class RunMachineCommandAction extends
       return this;
     }
 
+    /**
+     * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+     * @return The skipConnectivityPreflight.
+     */
+    @java.lang.Override
+    public boolean getSkipConnectivityPreflight() {
+      return instance.getSkipConnectivityPreflight();
+    }
+    /**
+     * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+     * @param value The skipConnectivityPreflight to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSkipConnectivityPreflight(boolean value) {
+      copyOnWrite();
+      instance.setSkipConnectivityPreflight(value);
+      return this;
+    }
+    /**
+     * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSkipConnectivityPreflight() {
+      copyOnWrite();
+      instance.clearSkipConnectivityPreflight();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.RunMachineCommandAction)
   }
   @java.lang.Override
@@ -480,10 +534,11 @@ public  final class RunMachineCommandAction extends
             "machineId_",
             "sessionId_",
             "command_",
+            "skipConnectivityPreflight_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
-              "\u0003\u0208\u0004\u1009\u0000";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0208" +
+              "\u0003\u0208\u0004\u1009\u0000\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

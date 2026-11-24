@@ -3102,3 +3102,104 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 		t.Fatalf("expected concurrent op 5 to still succeed, got %+v", resB)
 	}
 }
+
+func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
+		MachineId: "m-off",
+		Online:    false,
+		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}, nil)
+	now := int64(1_791_078_061_000)
+
+	// Drop the stream so Connection transitions away from ConnConnected (reconnecting).
+	c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_StreamClosed{
+			StreamClosed: &corev1.StreamClosedEvent{LegId: 1},
+		},
+	})
+	vm, err := c.View(&corev1.Screen{
+		Screen: &corev1.Screen_SyncState{SyncState: &corev1.SyncStateScreenRequest{}},
+	})
+	if err != nil {
+		t.Fatalf("View(SyncState): %v", err)
+	}
+	if got := vm.GetSyncState().GetConnection(); got == corev1.ConnState_CONN_STATE_CONNECTED {
+		t.Fatalf("expected non-connected state after StreamClosed, got %v", got)
+	}
+
+	// Without skip_connectivity_preflight, preflight fails immediately with no DispatchCommandEffect.
+	blocked := c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      1,
+				MachineId: "m-off",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var blockedRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range blocked.GetEffects() {
+		if ef.GetDispatchCommand() != nil {
+			t.Fatalf("expected preflight to block dispatch, got %+v", ef)
+		}
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			blockedRes = r
+		}
+	}
+	if blockedRes == nil || blockedRes.Ok || blockedRes.GetErrorText() == nil {
+		t.Fatalf("expected immediate preflight failure with error_text, got %+v", blockedRes)
+	}
+
+	// With skip_connectivity_preflight, probe/open_terminal still attempts dispatch even while reconnecting and machine appears offline.
+	allowed := c.Dispatch(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:                      2,
+				MachineId:                 "m-off",
+				Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+				SkipConnectivityPreflight: true,
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, ef := range allowed.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc = d
+		}
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			t.Fatalf("expected skip_connectivity_preflight not to fail in preflight, got %+v", r)
+		}
+	}
+	if dc == nil {
+		t.Fatalf("expected DispatchCommandEffect when skip_connectivity_preflight=true, got %+v", allowed.GetEffects())
+	}
+	done := c.Dispatch(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.RequestId,
+				AttemptId:         dc.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	var okRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range done.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			okRes = r
+		}
+	}
+	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
+		t.Fatalf("expected op 2 to succeed after bypass dispatch, got %+v", okRes)
+	}
+}

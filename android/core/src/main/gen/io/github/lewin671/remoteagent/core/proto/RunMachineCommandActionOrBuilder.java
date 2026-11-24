@@ -50,4 +50,10 @@ public interface RunMachineCommandActionOrBuilder extends
    * @return The command.
    */
   io.github.lewin671.remoteagent.proto.Command getCommand();
+
+  /**
+   * <code>bool skip_connectivity_preflight = 5 [json_name = "skipConnectivityPreflight"];</code>
+   * @return The skipConnectivityPreflight.
+   */
+  boolean getSkipConnectivityPreflight();
 }
