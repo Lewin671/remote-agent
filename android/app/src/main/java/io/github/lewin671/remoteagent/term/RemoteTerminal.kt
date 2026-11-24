@@ -51,6 +51,7 @@ class RemoteTerminal(
         data class Closed(val reason: MessageText) : State
     }
 
+    private val main = Handler(Looper.getMainLooper())
     private val terminalId = "term-${nextId.getAndIncrement()}"
     private val _history = MutableStateFlow(TerminalHistoryState())
     val history: StateFlow<TerminalHistoryState> = _history
@@ -62,15 +63,17 @@ class RemoteTerminal(
 
     init {
         unsubHistoryReq = remote.coreHost.onTerminalHistorySendRequest(terminalId) { req ->
-            conn?.send(
-                TerminalFrame.newBuilder()
-                    .setHistoryRequest(
-                        TerminalHistoryRequest.newBuilder()
-                            .setRequestId(req.requestId)
-                            .setCursor(req.cursor),
-                    )
-                    .build(),
-            )
+            main.post {
+                conn?.send(
+                    TerminalFrame.newBuilder()
+                        .setHistoryRequest(
+                            TerminalHistoryRequest.newBuilder()
+                                .setRequestId(req.requestId)
+                                .setCursor(req.cursor),
+                        )
+                        .build(),
+                )
+            }
         }
         unsubHistoryUpd = remote.coreHost.onTerminalHistoryUpdated(terminalId) { upd ->
             _history.value = _history.value.applyUpdate(upd)
@@ -100,7 +103,6 @@ class RemoteTerminal(
         )
     }
 
-    private val main = Handler(Looper.getMainLooper())
     private val _state = MutableStateFlow<State>(State.Connecting)
     val state: StateFlow<State> = _state
 
