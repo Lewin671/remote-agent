@@ -16,6 +16,7 @@ public  final class SecurityApprovePairingAction extends
     SecurityApprovePairingActionOrBuilder {
   private SecurityApprovePairingAction() {
     pairingId_ = "";
+    removeDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
@@ -89,6 +90,101 @@ public  final class SecurityApprovePairingAction extends
   private void clearSasConfirmed() {
 
     sasConfirmed_ = false;
+  }
+
+  public static final int REMOVE_DEVICE_IDS_FIELD_NUMBER = 3;
+  private com.google.protobuf.Internal.ProtobufList<java.lang.String> removeDeviceIds_;
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @return A list containing the removeDeviceIds.
+   */
+  @java.lang.Override
+  public java.util.List<java.lang.String> getRemoveDeviceIdsList() {
+    return removeDeviceIds_;
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @return The count of removeDeviceIds.
+   */
+  @java.lang.Override
+  public int getRemoveDeviceIdsCount() {
+    return removeDeviceIds_.size();
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removeDeviceIds at the given index.
+   */
+  @java.lang.Override
+  public java.lang.String getRemoveDeviceIds(int index) {
+    return removeDeviceIds_.get(index);
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param index The index of the value to return.
+   * @return The bytes of the removeDeviceIds at the given index.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getRemoveDeviceIdsBytes(int index) {
+    return com.google.protobuf.ByteString.copyFromUtf8(
+        removeDeviceIds_.get(index));
+  }
+  private void ensureRemoveDeviceIdsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<java.lang.String> tmp =
+        removeDeviceIds_;  if (!tmp.isModifiable()) {
+      removeDeviceIds_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param index The index to set the value at.
+   * @param value The removeDeviceIds to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRemoveDeviceIds(
+      int index, java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemoveDeviceIdsIsMutable();
+    removeDeviceIds_.set(index, value);
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param value The removeDeviceIds to add.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addRemoveDeviceIds(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+    ensureRemoveDeviceIdsIsMutable();
+    removeDeviceIds_.add(value);
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param values The removeDeviceIds to add.
+   */
+  private void addAllRemoveDeviceIds(
+      java.lang.Iterable<java.lang.String> values) {
+    ensureRemoveDeviceIdsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, removeDeviceIds_);
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   */
+  private void clearRemoveDeviceIds() {
+    removeDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+  }
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param value The bytes of the removeDeviceIds to add.
+   */
+  private void addRemoveDeviceIdsBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    ensureRemoveDeviceIdsIsMutable();
+    removeDeviceIds_.add(value.toStringUtf8());
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityApprovePairingAction parseFrom(
@@ -265,6 +361,98 @@ public  final class SecurityApprovePairingAction extends
       return this;
     }
 
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @return A list containing the removeDeviceIds.
+     */
+    @java.lang.Override
+    public java.util.List<java.lang.String>
+        getRemoveDeviceIdsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getRemoveDeviceIdsList());
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @return The count of removeDeviceIds.
+     */
+    @java.lang.Override
+    public int getRemoveDeviceIdsCount() {
+      return instance.getRemoveDeviceIdsCount();
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param index The index of the element to return.
+     * @return The removeDeviceIds at the given index.
+     */
+    @java.lang.Override
+    public java.lang.String getRemoveDeviceIds(int index) {
+      return instance.getRemoveDeviceIds(index);
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param index The index of the value to return.
+     * @return The bytes of the removeDeviceIds at the given index.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getRemoveDeviceIdsBytes(int index) {
+      return instance.getRemoveDeviceIdsBytes(index);
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param index The index to set the value at.
+     * @param value The removeDeviceIds to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRemoveDeviceIds(
+        int index, java.lang.String value) {
+      copyOnWrite();
+      instance.setRemoveDeviceIds(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param value The removeDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemoveDeviceIds(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.addRemoveDeviceIds(value);
+      return this;
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param values The removeDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addAllRemoveDeviceIds(
+        java.lang.Iterable<java.lang.String> values) {
+      copyOnWrite();
+      instance.addAllRemoveDeviceIds(values);
+      return this;
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRemoveDeviceIds() {
+      copyOnWrite();
+      instance.clearRemoveDeviceIds();
+      return this;
+    }
+    /**
+     * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+     * @param value The bytes of the removeDeviceIds to add.
+     * @return This builder for chaining.
+     */
+    public Builder addRemoveDeviceIdsBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.addRemoveDeviceIdsBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityApprovePairingAction)
   }
   @java.lang.Override
@@ -283,10 +471,11 @@ public  final class SecurityApprovePairingAction extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "pairingId_",
             "sasConfirmed_",
+            "removeDeviceIds_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "";
+              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0001\u0000\u0001\u0208\u0002\u0007" +
+              "\u0003\u021a";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

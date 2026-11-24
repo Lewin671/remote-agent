@@ -271,6 +271,8 @@ internal fun JoinContent(
                     commitHint = link.commit,
                     existingRepair = existingRepair,
                     existingServer = status?.server.orEmpty(),
+                    platform = "android",
+                    description = io.github.lewin671.remoteagent.androidDeviceDescription(app),
                 )
                 if (stopped) {
                     if (info.pairingId.isNotEmpty()) {

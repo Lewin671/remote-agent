@@ -199,6 +199,11 @@ message GetPairingRequest {
   // the server then drops the payload and tells the initiator. Until then
   // the joiner can fetch the payload again, e.g. after a lost response.
   bool received = 3;
+  // Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+  // pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+  // authority can detect same-platform/same-model old entries before approval.
+  // The relay never reads these bytes.
+  Envelope joiner_meta = 4;
 }
 
 message GetPairingResponse {
@@ -214,6 +219,8 @@ message GetPairingResponse {
   // The initiator's public PairTrustDescriptor, revealed with its ephemeral
   // key. It carries account, domain, genesis hash and approver, no secret.
   bytes trust = 9;
+  // Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+  Envelope joiner_meta = 10;
 }
 
 message RevealPairingRequest {

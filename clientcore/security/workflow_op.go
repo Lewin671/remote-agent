@@ -963,6 +963,7 @@ const (
 	contStateSaveDelivered
 	contStateClearRotPost
 	contStateDone
+	contStateRemoveOld
 )
 
 type continueStateOpTask struct {
@@ -1043,7 +1044,7 @@ func (t *continueStateOpTask) checkDeliveryFallback(e *Engine, origErr *rpcError
 }
 
 func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
-	if ev != nil && ev.err != nil && t.stage != contStateApprovePair && t.stage != contStateGetPair {
+	if ev != nil && ev.err != nil && t.stage != contStateApprovePair && t.stage != contStateGetPair && t.stage != contStateRemoveOld {
 		return ev.err
 	}
 	switch t.stage {
@@ -1054,6 +1055,17 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		t.stage = contStateDone
 		e.clearOperationCAS(ev.op, parentTarget(t, 0))
 	case contStateDone:
+		if t.op != nil && t.op.Pair != nil {
+			if sess := e.ensureWF().initPairings[t.op.Pair.PairingID]; sess != nil && len(sess.removeDeviceIDs) > 0 {
+				ids := sess.removeDeviceIDs
+				sess.removeDeviceIDs = nil
+				t.stage = contStateRemoveOld
+				e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
+				return nil
+			}
+		}
+		e.okTarget(t.target, nil)
+	case contStateRemoveOld:
 		e.okTarget(t.target, nil)
 	case contStateClearRotPre:
 		t.stage = contStateDone

@@ -1184,6 +1184,8 @@
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。"</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。"</string>
     <string name="security_allow_to_join" formatted="false">"允许加入"</string>
+    <string name="security_also_remove_old_devices" formatted="false">"同时移除旧设备"</string>
+    <string name="security_also_remove_old_devices_hint" formatted="false">"检测到已有同型号设备，批准成功后将自动移除以下旧记录："</string>
     <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"放弃这次恢复，输入新恢复码"</string>
     <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"已经在登记这台手机，稍等结果"</string>
     <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"尚未确认保存；本机没有恢复码私钥，完成后立即换码"</string>

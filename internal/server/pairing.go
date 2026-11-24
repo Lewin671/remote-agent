@@ -62,6 +62,7 @@ type pairing struct {
 	joinerKind            pb.DeviceKind
 	initPub               []byte
 	payload               *pb.Envelope
+	joinerMeta            *pb.Envelope
 	canceled              bool
 	delivered             bool
 }
@@ -227,6 +228,7 @@ func (ps *pairingService) cancelForDevice(account, deviceID string) {
 		if p.initiator == deviceID || (len(p.devicePub) > 0 && e2e.DeviceID(p.devicePub) == deviceID) {
 			p.canceled = true
 			p.payload = nil
+			p.joinerMeta = nil
 			delete(ps.byCode, p.code)
 		}
 	}
@@ -279,8 +281,21 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 		}
 		p.canceled = true
 		p.payload = nil
+		p.joinerMeta = nil
+	}
+	if !initiator && req.Msg.JoinerMeta != nil && p.joinerMeta == nil && p.initPub != nil && !p.canceled && !p.delivered {
+		if proto.Size(req.Msg.JoinerMeta) > maxDeviceMetaBytes {
+			return nil, invalid("joiner metadata too large")
+		}
+		if _, err := checkEnvelope(req.Msg.JoinerMeta, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: p.id}); err != nil {
+			return nil, err
+		}
+		p.joinerMeta = proto.Clone(req.Msg.JoinerMeta).(*pb.Envelope)
 	}
 	res := &pb.GetPairingResponse{State: p.state(), Commit: p.commit, JoinerPublic: p.joinerPub, JoinerKind: p.joinerKind, InitiatorPublic: p.initPub, DevicePublicKey: p.devicePub, DeviceHpkePublicKey: p.deviceX, Trust: p.trust}
+	if initiator && p.joinerMeta != nil {
+		res.JoinerMeta = p.joinerMeta
+	}
 	switch {
 	case initiator || p.payload == nil:
 	case req.Msg.Received:
@@ -289,7 +304,7 @@ func (ps *pairingService) GetPairing(ctx context.Context, req *connect.Request[p
 			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("device registration is not complete"))
 		}
 		// The joiner has the key: drop it, and let the initiator know.
-		p.payload, p.delivered = nil, true
+		p.payload, p.joinerMeta, p.delivered = nil, nil, true
 		p.expires = time.Now().Add(pairingDeliveredTTL)
 		delete(ps.byCode, p.code)
 		res.State = p.state()
@@ -407,6 +422,7 @@ func (ps *pairingService) CancelPairing(ctx context.Context, req *connect.Reques
 	}
 	p.canceled = true
 	p.payload = nil
+	p.joinerMeta = nil
 	// Keep it briefly so the other side sees the cancellation.
 	p.expires = time.Now().Add(30 * time.Second)
 	delete(ps.byCode, p.code)

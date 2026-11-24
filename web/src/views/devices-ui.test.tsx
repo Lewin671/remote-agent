@@ -122,3 +122,79 @@ it("calls this device 当前 in its list and detail", async () => {
   expect(host.querySelector(".navbar")?.textContent).toContain(message("settings.current"));
   expect(host.querySelector(".navbar")?.textContent).not.toContain("当前客户端");
 });
+
+it("offers same-device replacement candidates checked by default and honors toggling", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { SecurityPairingInfoSchema, SecurityPairingReplacementCandidateSchema } = await import(
+    "../gen/remoteagent/core/v1/security_pb"
+  );
+  const { TextSchema } = await import("../gen/remoteagent/core/v1/text_pb");
+  const { DeviceKind } = await import("../gen/remoteagent/v1/relay_pb");
+
+  for (const keepChecked of [true, false]) {
+    const r = demo("role=authority");
+    vi.spyOn(r, "startPairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, {
+        pairingId: "pair-replace",
+        code: "12345678",
+        url: "https://app.example.com/#/pair?code=12345678",
+        expiresMs: BigInt(Date.now() + 600_000),
+      }),
+    );
+    vi.spyOn(r, "pollPairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, {
+        pairingId: "pair-replace",
+        code: "12345678",
+        url: "https://app.example.com/#/pair?code=12345678",
+        expiresMs: BigInt(Date.now() + 600_000),
+        joined: true,
+        joinerKind: DeviceKind.CLIENT,
+        sasEmoji: ["🚀", "🧭", "🔑", "🧩"],
+        joinerMetaReceived: true,
+        removeOldDefault: true,
+        replaceOldLabel: create(TextSchema, { key: "security.also_remove_old_devices" }),
+        replaceOldHint: create(TextSchema, { key: "security.also_remove_old_devices_hint" }),
+        replacementCandidates: [
+          create(SecurityPairingReplacementCandidateSchema, {
+            deviceId: "old-chrome-id",
+            shortId: "old-chr1",
+            displayName: "Chrome · macOS",
+            description: "Chrome · macOS",
+          }),
+        ],
+      }),
+    );
+    const approve = vi.spyOn(r, "approvePairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, { pairingId: "pair-replace", delivered: true }),
+    );
+    vi.spyOn(r, "finishPairingDelivery").mockResolvedValue(
+      create(SecurityPairingInfoSchema, { pairingId: "pair-replace", delivered: true }),
+    );
+
+    await mount(<PairCodePage remote={r} onBack={() => {}} />);
+    await click(message("security.generate_pairing_code"));
+    expect(host.textContent).toContain(message("security.also_remove_old_devices"));
+    expect(host.textContent).toContain("Chrome · macOS");
+    expect(host.textContent).toContain("old-chr1");
+
+    const checkboxes = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0].checked).toBe(false);
+    expect(checkboxes[1].checked).toBe(true);
+
+    await act(async () => checkboxes[0].click());
+    if (!keepChecked) {
+      await act(async () => checkboxes[1].click());
+      expect(checkboxes[1].checked).toBe(false);
+    }
+    await click(message("security.allow_to_join"));
+    expect(approve).toHaveBeenCalledWith(
+      "pair-replace",
+      true,
+      keepChecked ? ["old-chrome-id"] : [],
+    );
+
+    act(() => root.unmount());
+    host.remove();
+  }
+});

@@ -1264,6 +1264,8 @@
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"After removing this unfinished pairing, generate a new code in Add device so the new device can join again."</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable."</string>
     <string name="security_allow_to_join" formatted="false">"Allow to join"</string>
+    <string name="security_also_remove_old_devices" formatted="false">"Also remove old devices"</string>
+    <string name="security_also_remove_old_devices_hint" formatted="false">"Existing entries for this device model were found. After approval succeeds, these old entries will be removed:"</string>
     <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"Abandon this recovery and enter a new code"</string>
     <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"Already registering this phone. Wait for the result"</string>
     <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion"</string>

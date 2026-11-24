@@ -490,6 +490,13 @@ message SecurityWorkflowStatus {
   string error = 22;
 }
 
+message SecurityPairingReplacementCandidate {
+  string device_id = 1;
+  string display_name = 2;
+  string description = 3;
+  string short_id = 4;
+}
+
 message SecurityPairingInfo {
   string pairing_id = 1;
   string code = 2;
@@ -501,6 +508,12 @@ message SecurityPairingInfo {
   bool approved = 8;
   bool delivered = 9;
   bool registering = 10;
+  bool joiner_meta_received = 11;
+  repeated SecurityPairingReplacementCandidate replacement_candidates = 12;
+  bool remove_old_default = 13;
+  Text replace_old_label = 14;
+  Text replace_old_hint = 15;
+  string joiner_description = 16;
 }
 
 message SecurityRecoveryInfo {
@@ -566,6 +579,7 @@ message SecurityStartPairingAction {
 message SecurityApprovePairingAction {
   string pairing_id = 1;
   bool sas_confirmed = 2;
+  repeated string remove_device_ids = 3;
 }
 
 message SecurityStartJoinPairingAction {
@@ -575,6 +589,8 @@ message SecurityStartJoinPairingAction {
   bool existing_repair = 4;
   string existing_server = 5;
   string raw_link = 6;
+  string platform = 7;
+  string description = 8;
 }
 
 message SecurityUpdateDeviceMetaAction {

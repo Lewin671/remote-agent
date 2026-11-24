@@ -1027,6 +1027,8 @@ object UiMessages {
     fun securityAfterRemovingThisUnfinishedPairingGenerateANewCode(): UiMessage = UiMessage("security.after_removing_this_unfinished_pairing_generate_a_new_code", emptyMap())
     fun securityAfterSubmissionWait48HoursTheCurrentManagingClient(): UiMessage = UiMessage("security.after_submission_wait_48_hours_the_current_managing_client", emptyMap())
     fun securityAllowToJoin(): UiMessage = UiMessage("security.allow_to_join", emptyMap())
+    fun securityAlsoRemoveOldDevices(): UiMessage = UiMessage("security.also_remove_old_devices", emptyMap())
+    fun securityAlsoRemoveOldDevicesHint(): UiMessage = UiMessage("security.also_remove_old_devices_hint", emptyMap())
     fun securityAndroidAbandonThisRecoveryAndEnterANewCode(): UiMessage = UiMessage("security.android_abandon_this_recovery_and_enter_a_new_code", emptyMap())
     fun securityAndroidAlreadyRegisteringThisPhoneWaitForTheResult(): UiMessage = UiMessage("security.android_already_registering_this_phone_wait_for_the_result", emptyMap())
     fun securityAndroidBackupNotConfirmedThisPhoneHasNoRecoveryPrivateKey(): UiMessage = UiMessage("security.android_backup_not_confirmed_this_phone_has_no_recovery_private_key", emptyMap())

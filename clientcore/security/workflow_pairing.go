@@ -78,15 +78,117 @@ func (e *Engine) discardJoinSessionKeys(s *joinerPairingSession) {
 	e.discardCandidatePair(ed, s.xSlot)
 }
 
+func shortDeviceSuffix(id string) string {
+	r := []rune(id)
+	if len(r) <= 4 {
+		return id
+	}
+	return "…" + string(r[len(r)-4:])
+}
+
+// deviceModelFingerprint normalizes a device's platform and model from DeviceMeta
+// so that re-paired instances of the same physical device or browser match cleanly.
+func deviceModelFingerprint(meta *v1.DeviceMeta) (platform, model string) {
+	if meta == nil {
+		return "", ""
+	}
+	platform = strings.ToLower(strings.TrimSpace(meta.Platform))
+	desc := strings.TrimSpace(meta.Description)
+	if platform == "" || desc == "" {
+		return "", ""
+	}
+	switch platform {
+	case "android", "ios":
+		// Format: "Android 15 · Pixel 3" or "iOS 18.4 · iPhone 16 Pro".
+		// Strip the OS version prefix so OS updates still match the same model.
+		if idx := strings.Index(desc, "·"); idx >= 0 {
+			desc = strings.TrimSpace(desc[idx+len("·"):])
+		}
+	}
+	model = strings.ToLower(strings.TrimSpace(desc))
+	if model == "" {
+		return "", ""
+	}
+	return platform, model
+}
+
+func (e *Engine) matchReplacementCandidates(sess *initiatorPairingSession) []*corev1.SecurityPairingReplacementCandidate {
+	if sess == nil || sess.candidateKind != v1.DeviceKind_DEVICE_KIND_CLIENT || sess.replacesDeviceID != "" || sess.joinerMeta == nil || e.head.Core.Epoch == 0 {
+		return nil
+	}
+	joinPlat, joinModel := deviceModelFingerprint(sess.joinerMeta)
+	if joinPlat == "" || joinModel == "" {
+		return nil
+	}
+	wf := e.ensureWF()
+	var out []*corev1.SecurityPairingReplacementCandidate
+	for _, d := range wf.devicesSnap {
+		if d.ID == "" || d.ID == e.selfDeviceID || d.ID == e.head.Core.AuthorityID || d.ID == sess.candidateID {
+			continue
+		}
+		if d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
+			continue
+		}
+		if _, live := e.head.Core.Member(d.ID); !live {
+			continue
+		}
+		dp, dm := deviceModelFingerprint(d.Meta)
+		if dp != joinPlat || dm != joinModel {
+			continue
+		}
+		desc := ""
+		displayName := ""
+		if d.Meta != nil {
+			desc = strings.TrimSpace(d.Meta.Description)
+			displayName = strings.TrimSpace(d.Meta.Name)
+		}
+		if displayName == "" {
+			displayName = desc
+		}
+		if displayName == "" {
+			displayName = shortDeviceSuffix(d.ID)
+		}
+		out = append(out, &corev1.SecurityPairingReplacementCandidate{
+			DeviceId:    d.ID,
+			DisplayName: displayName,
+			Description: desc,
+			ShortId:     shortDeviceSuffix(d.ID),
+		})
+	}
+	for i := 1; i < len(out); i++ {
+		for j := i; j > 0 && out[j].DeviceId < out[j-1].DeviceId; j-- {
+			out[j], out[j-1] = out[j-1], out[j]
+		}
+	}
+	return out
+}
+
 func initiatorSessionToProto(s *initiatorPairingSession) *corev1.SecurityPairingInfo {
 	if s == nil {
 		return nil
 	}
-	return &corev1.SecurityPairingInfo{
-		PairingId: s.pairingID, Code: s.code, Url: s.url, ExpiresMs: s.expiresMs,
-		SasEmoji: slices.Clone(s.sasEmoji), JoinerKind: s.candidateKind,
-		Joined: s.joined, Approved: s.approved, Delivered: s.delivered,
+	info := &corev1.SecurityPairingInfo{
+		PairingId:             s.pairingID,
+		Code:                  s.code,
+		Url:                   s.url,
+		ExpiresMs:             s.expiresMs,
+		SasEmoji:              slices.Clone(s.sasEmoji),
+		JoinerKind:            s.candidateKind,
+		Joined:                s.joined,
+		Approved:              s.approved,
+		Delivered:             s.delivered,
+		JoinerMetaReceived:    s.joinerMetaReceived,
+		ReplacementCandidates: s.replacementCandidates,
 	}
+	if s.joinerMeta != nil {
+		info.JoinerDescription = strings.TrimSpace(s.joinerMeta.Description)
+	}
+	if len(s.replacementCandidates) > 0 {
+		info.RemoveOldDefault = true
+		info.ReplaceOldLabel = text.Msg(text.KeySecurityAlsoRemoveOldDevices)
+		info.ReplaceOldHint = text.Msg(text.KeySecurityAlsoRemoveOldDevicesHint)
+	}
+	return info
 }
 
 func joinerSessionToProto(s *joinerPairingSession) *corev1.SecurityPairingInfo {
@@ -239,6 +341,7 @@ const (
 	pollInitGet uint8 = iota
 	pollInitAgree
 	pollInitReveal
+	pollInitRemoveOld
 )
 
 type pollPairingInitiatorTask struct {
@@ -255,7 +358,7 @@ func (e *Engine) startPollPairingInitiator(fgGen uint64, pairingID string, targe
 
 func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 	t.acceptStart(ev)
-	if ev != nil && ev.err != nil && t.stage != pollInitGet {
+	if ev != nil && ev.err != nil && t.stage != pollInitGet && t.stage != pollInitRemoveOld {
 		return ev.err
 	}
 	wf := e.ensureWF()
@@ -299,6 +402,14 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		case v1.PairingState_PAIRING_STATE_DELIVERED:
 			e.discardInitSlot(sess)
 			sess.delivered, sess.approved, sess.joined = true, true, true
+			if len(sess.removeDeviceIDs) > 0 {
+				ids := sess.removeDeviceIDs
+				sess.removeDeviceIDs = nil
+				delete(wf.initPairings, t.pairingID)
+				t.stage = pollInitRemoveOld
+				e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
+				return nil
+			}
 			delete(wf.initPairings, t.pairingID)
 		case v1.PairingState_PAIRING_STATE_JOINED:
 			if sess.joined {
@@ -323,6 +434,14 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			t.st, t.candID, t.stage = st, candID, pollInitAgree
 			e.waitAgree(keyEphemX, sess.ephemSlot, peerX32, false, t, 0)
 			return nil
+		case v1.PairingState_PAIRING_STATE_REVEALED:
+			if !sess.joinerMetaReceived && st.JoinerMeta != nil && len(sess.pairKey) == 32 {
+				if dm := openJoinerMetaEnvelope(sess.pairKey, sess.pairingID, st.JoinerMeta); dm != nil {
+					sess.joinerMeta = dm
+					sess.joinerMetaReceived = true
+					sess.replacementCandidates = e.matchReplacementCandidates(sess)
+				}
+			}
 		case v1.PairingState_PAIRING_STATE_APPROVED:
 			sess.approved, sess.joined = true, true
 		}
@@ -347,8 +466,93 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		sess.joined = true
 		sess.candidateID, sess.candidateEd, sess.candidateX = t.candID, slices.Clone(t.st.DevicePublicKey), slices.Clone(t.st.DeviceHpkePublicKey)
 		sess.candidateKind, sess.pairKey, sess.sasEmoji = t.st.JoinerKind, slices.Clone(t.ps.Key), t.ps.Emoji()
+		if t.st.JoinerKind != v1.DeviceKind_DEVICE_KIND_CLIENT {
+			sess.joinerMetaReceived = true
+		}
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(sess)})
+	case pollInitRemoveOld:
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
 	}
+	return nil
+}
+
+const joinerMetaHeaderSeq uint64 = 1
+
+func sealJoinerMetaEnvelope(pairKey, nonce []byte, pairingID string, meta *v1.DeviceMeta) *v1.Envelope {
+	if len(pairKey) != 32 || len(nonce) != 12 || pairingID == "" || meta == nil {
+		return nil
+	}
+	plain, err := meta.Marshal()
+	if err != nil || len(plain) == 0 {
+		return nil
+	}
+	hdrBytes, err := (&v1.Header{
+		Version:     1,
+		Kind:        v1.PayloadKind_PAYLOAD_KIND_PAIRING,
+		RequestId:   pairingID,
+		Seq:         joinerMetaHeaderSeq,
+		Compression: v1.Compression_COMPRESSION_NONE,
+	}).Marshal()
+	if err != nil {
+		return nil
+	}
+	ct, err := sealPairingEnvelopeAESGCM(pairKey, nonce, hdrBytes, plain)
+	if err != nil {
+		return nil
+	}
+	return &v1.Envelope{Header: hdrBytes, Nonce: slices.Clone(nonce), Ciphertext: ct}
+}
+
+func openJoinerMetaEnvelope(pairKey []byte, pairingID string, env *v1.Envelope) *v1.DeviceMeta {
+	if len(pairKey) != 32 || pairingID == "" || env == nil {
+		return nil
+	}
+	var hdr v1.Header
+	if hdr.Unmarshal(env.Header) != nil || hdr.Kind != v1.PayloadKind_PAYLOAD_KIND_PAIRING || hdr.RequestId != pairingID || hdr.Seq != joinerMetaHeaderSeq || hdr.Compression != v1.Compression_COMPRESSION_NONE {
+		return nil
+	}
+	plain, err := openPairingEnvelopeAESGCM(pairKey, env.Nonce, env.Header, env.Ciphertext)
+	if err != nil {
+		return nil
+	}
+	var dm v1.DeviceMeta
+	if dm.Unmarshal(plain) != nil {
+		return nil
+	}
+	return &dm
+}
+
+type removeDeviceListTask struct {
+	fgGen  uint64
+	ids    []string
+	target taskTarget
+}
+
+func (e *Engine) startRemoveDeviceList(fgGen uint64, ids []string, target taskTarget) {
+	t := &removeDeviceListTask{fgGen: fgGen, ids: slices.Clone(ids), target: target}
+	t.next(e)
+}
+
+func (t *removeDeviceListTask) next(e *Engine) {
+	for len(t.ids) > 0 {
+		id := t.ids[0]
+		t.ids = t.ids[1:]
+		if id == "" || id == e.selfDeviceID || id == e.head.Core.AuthorityID {
+			continue
+		}
+		if _, live := e.head.Core.Member(id); !live {
+			continue
+		}
+		e.stepTask(&removeDeviceTask{id: id}, &secEvent{kind: evStart, fgGen: t.fgGen, target: parentTarget(t, 0)})
+		return
+	}
+	e.okTarget(t.target, nil)
+}
+
+func (t *removeDeviceListTask) step(e *Engine, _ *secEvent) error {
+	// Continue removing any remaining requested old devices even if one fails;
+	// the newly paired device has already completed enrollment.
+	t.next(e)
 	return nil
 }
 
@@ -356,18 +560,20 @@ const (
 	approvePairSync uint8 = iota
 	approvePairClaim
 	approvePairResume
+	approvePairRemoveOld
 )
 
 type approvePairingTask struct {
 	taskBase
-	pairingID    string
-	sasConfirmed bool
-	sess         *initiatorPairingSession
+	pairingID       string
+	sasConfirmed    bool
+	removeDeviceIDs []string
+	sess            *initiatorPairingSession
 }
 
 func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 	t.acceptStart(ev)
-	if ev != nil && ev.err != nil && t.stage != approvePairResume {
+	if ev != nil && ev.err != nil && t.stage != approvePairResume && t.stage != approvePairRemoveOld {
 		return ev.err
 	}
 	wf := e.ensureWF()
@@ -395,6 +601,19 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		sess := t.sess
+		var toRemove []string
+		seenRemove := make(map[string]bool, len(t.removeDeviceIDs))
+		for _, id := range t.removeDeviceIDs {
+			if id == "" || seenRemove[id] || id == e.selfDeviceID || id == e.head.Core.AuthorityID || id == sess.candidateID {
+				continue
+			}
+			if _, live := e.head.Core.Member(id); !live {
+				continue
+			}
+			seenRemove[id] = true
+			toRemove = append(toRemove, id)
+		}
+		sess.removeDeviceIDs = toRemove
 		exp := sess.expiresMs
 		if e.lastNowMs > 0 && (exp == 0 || exp > e.lastNowMs+maxPairWindowMs) {
 			exp = e.lastNowMs + maxPairWindowMs
@@ -419,22 +638,47 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		t.sess.approved = true
 		if wf.pendingOp == nil {
+			if len(t.sess.removeDeviceIDs) > 0 {
+				ids := t.sess.removeDeviceIDs
+				t.sess.removeDeviceIDs = nil
+				t.stage = approvePairRemoveOld
+				e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
+				return nil
+			}
 			t.sess.delivered = true
 			delete(wf.initPairings, t.pairingID)
 		}
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+	case approvePairRemoveOld:
+		t.sess.delivered = true
+		delete(wf.initPairings, t.pairingID)
 		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
 	}
 	return nil
 }
 
+const (
+	finishPairResume uint8 = iota
+	finishPairRemoveOld
+)
+
 type finishPairingDeliveryTask struct {
 	taskBase
 	pairingID, pid string
+	sess           *initiatorPairingSession
 }
 
 func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 	t.acceptStart(ev)
 	wf := e.ensureWF()
+	if t.stage == finishPairRemoveOld {
+		if t.sess != nil {
+			t.sess.delivered, t.sess.approved = true, true
+			delete(wf.initPairings, t.pid)
+		}
+		e.okTarget(t.target, &corev1.SecurityWorkflowResultEffect{Pairing: initiatorSessionToProto(t.sess)})
+		return nil
+	}
 	if ev.kind == evStart {
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
@@ -453,6 +697,14 @@ func (t *finishPairingDeliveryTask) step(e *Engine, ev *secEvent) error {
 	}
 	sess := wf.initPairings[t.pid]
 	if wf.pendingOp == nil {
+		if sess != nil && len(sess.removeDeviceIDs) > 0 {
+			ids := sess.removeDeviceIDs
+			sess.removeDeviceIDs = nil
+			t.sess = sess
+			t.stage = finishPairRemoveOld
+			e.startRemoveDeviceList(t.fgGen, ids, parentTarget(t, 0))
+			return nil
+		}
 		if sess != nil {
 			sess.delivered, sess.approved = true, true
 			delete(wf.initPairings, t.pid)
@@ -526,6 +778,7 @@ const (
 type startJoinPairingTask struct {
 	taskBase
 	server, code, edSlot, xSlot, ephemSlot string
+	platform, description                  string
 	commitHint, edPub, xPub, ephemPub      []byte
 	existingRepair                         bool
 	peekResp                               v1.PeekPairingResponse
@@ -612,6 +865,7 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 	}
 	e.waitEntropy(96, &startJoinPairingTask{
 		taskBase: taskBase{target: actionTarget(actionID, targetAction)}, server: server, code: code,
+		platform: strings.TrimSpace(act.Platform), description: strings.TrimSpace(act.Description),
 		commitHint: commitHint, existingRepair: act.ExistingRepair,
 	}, 0)
 }
@@ -676,6 +930,7 @@ func (t *startJoinPairingTask) step(e *Engine, ev *secEvent) error {
 		wf.joinPairings[jr.PairingId] = &joinerPairingSession{
 			pairingID: jr.PairingId, server: t.server, code: t.code, commitHint: t.commitHint,
 			commit: slices.Clone(jr.Commit), existingRepair: t.existingRepair, replace: t.existingRepair,
+			platform: t.platform, description: t.description,
 			ephemSlot: t.ephemSlot, ephemPub: slices.Clone(t.ephemPub), edSlot: t.edSlot, xSlot: t.xSlot,
 			edPublic: slices.Clone(t.edPub), xPublic: slices.Clone(t.xPub), reusesDeviceEd: t.existingRepair, candidateToken: jr.CandidateToken,
 		}
@@ -739,6 +994,8 @@ func (e *Engine) cleanupJoinerFailure(sess *joinerPairingSession) {
 const (
 	pollJoinGet uint8 = iota
 	pollJoinRevealAgree
+	pollJoinMetaEntropy
+	pollJoinSendMeta
 	pollJoinSignReg
 	pollJoinWriteIntent
 	pollJoinResumeReg
@@ -806,7 +1063,7 @@ func (t *pollJoinTask) handleApproved(e *Engine, st *v1.GetPairingResponse) erro
 		return nil
 	}
 	var hdr v1.Header
-	if hdr.Unmarshal(st.Payload.Header) != nil || hdr.Kind != v1.PayloadKind_PAYLOAD_KIND_PAIRING || hdr.RequestId != sess.pairingID {
+	if hdr.Unmarshal(st.Payload.Header) != nil || hdr.Kind != v1.PayloadKind_PAYLOAD_KIND_PAIRING || hdr.RequestId != sess.pairingID || hdr.Seq != 0 {
 		return devicesec.ErrUntrusted
 	}
 	plain, err := openPairingEnvelopeAESGCM(sess.pairKey, st.Payload.Nonce, st.Payload.Header, st.Payload.Ciphertext)
@@ -894,7 +1151,7 @@ func (t *pollJoinTask) handleApproved(e *Engine, st *v1.GetPairingResponse) erro
 }
 
 func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
-	if ev != nil && ev.err != nil && t.stage != pollJoinGet && t.stage != pollJoinResumeReg {
+	if ev != nil && ev.err != nil && t.stage != pollJoinGet && t.stage != pollJoinResumeReg && t.stage != pollJoinSendMeta {
 		return ev.err
 	}
 	wf, sess := e.ensureWF(), t.sess
@@ -938,6 +1195,27 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			sess.ephemSlot = ""
 		}
 		sess.trust, sess.approver, sess.pairKey, sess.sasEmoji = t.pin, t.approver, slices.Clone(ps.Key), ps.Emoji()
+		if sess.platform != "" && sess.description != "" {
+			t.stage = pollJoinMetaEntropy
+			e.waitEntropy(16, t, 0)
+			return nil
+		}
+		e.resolveActivePoll(t.pairingID, &corev1.SecurityWorkflowResultEffect{Pairing: joinerSessionToProto(sess)}, nil)
+	case pollJoinMetaEntropy:
+		var nonce [12]byte
+		if e.readRandom(nonce[:]) {
+			if env := sealJoinerMetaEnvelope(sess.pairKey, nonce[:], sess.pairingID, &v1.DeviceMeta{
+				Platform: sess.platform, Description: sess.description,
+			}); env != nil {
+				t.stage = pollJoinSendMeta
+				e.waitProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, sess.server, "", &v1.GetPairingRequest{
+					PairingId: sess.pairingID, CandidateToken: sess.candidateToken, JoinerMeta: env,
+				}, t)
+				return nil
+			}
+		}
+		e.resolveActivePoll(t.pairingID, &corev1.SecurityWorkflowResultEffect{Pairing: joinerSessionToProto(sess)}, nil)
+	case pollJoinSendMeta:
 		e.resolveActivePoll(t.pairingID, &corev1.SecurityWorkflowResultEffect{Pairing: joinerSessionToProto(sess)}, nil)
 	case pollJoinSignReg:
 		regReqBytes, err := (&v1.RegisterDeviceRequest{

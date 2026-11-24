@@ -53,4 +53,29 @@ public interface GetPairingRequestOrBuilder extends
    * @return The received.
    */
   boolean getReceived();
+
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   * @return Whether the joinerMeta field is set.
+   */
+  boolean hasJoinerMeta();
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   * @return The joinerMeta.
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta();
 }

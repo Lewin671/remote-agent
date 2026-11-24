@@ -91,4 +91,23 @@ public interface GetPairingResponseOrBuilder extends
    * @return The trust.
    */
   com.google.protobuf.ByteString getTrust();
+
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   * @return Whether the joinerMeta field is set.
+   */
+  boolean hasJoinerMeta();
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   * @return The joinerMeta.
+   */
+  io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta();
 }

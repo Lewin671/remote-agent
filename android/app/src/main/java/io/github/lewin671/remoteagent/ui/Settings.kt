@@ -2051,6 +2051,54 @@ fun PairScreen(replacesDeviceId: String = "") {
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
+                        if (step is PairingUiState.Compare && step.replacementCandidates.isNotEmpty()) {
+                            Column(
+                                Modifier.fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .clip(Radii.R12)
+                                    .background(p.raised)
+                                    .padding(10.dp),
+                            ) {
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .clickable { model.setRemoveOld(!step.removeOldChecked) },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    androidx.compose.material3.Checkbox(
+                                        checked = step.removeOldChecked,
+                                        onCheckedChange = model::setRemoveOld,
+                                    )
+                                    Text(
+                                        step.replaceOldLabel?.let { uiText(it) }?.ifEmpty { null }
+                                            ?: copy(UiMessages.securityAlsoRemoveOldDevices()),
+                                        style = T.s15b,
+                                        color = p.ink,
+                                    )
+                                }
+                                val hintStr = step.replaceOldHint?.let { uiText(it) }.orEmpty()
+                                if (hintStr.isNotEmpty()) {
+                                    Text(
+                                        hintStr,
+                                        style = T.s13,
+                                        color = p.ink2,
+                                        modifier = Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp),
+                                    )
+                                }
+                                step.replacementCandidates.forEach { cand ->
+                                    val title = cand.displayName.ifEmpty { cand.description.ifEmpty { cand.shortId } }
+                                    val detail = listOfNotNull(
+                                        cand.description.takeIf { it.isNotEmpty() && it != title },
+                                        cand.shortId.takeIf { it.isNotEmpty() },
+                                    ).joinToString(" · ")
+                                    Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 4.dp)) {
+                                        Text(title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        if (detail.isNotEmpty()) {
+                                            Text(detail, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Btns {
                             PillButton(
                                 copy(UiMessages.approvalAndroidDenyDecision()),

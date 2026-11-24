@@ -3,9 +3,11 @@ package io.github.lewin671.remoteagent.core
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
 import io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo
+import io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowActionEvent
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowResultEffect
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
+import io.github.lewin671.remoteagent.core.proto.Text
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
@@ -32,6 +34,7 @@ class PairingControllerTest {
         val startedCodes = mutableListOf<String>()
         val cancelledIds = mutableListOf<String>()
         val approvedIds = mutableListOf<String>()
+        val approvedRemoveIds = mutableListOf<List<String>>()
         val finishDeliveryCalls = mutableListOf<String>()
         var nextApproveOutcome: (() -> SecurityWorkflowResultEffect.Builder)? = null
         var nextPollOutcome: (() -> SecurityWorkflowResultEffect.Builder)? = null
@@ -95,6 +98,7 @@ class PairingControllerTest {
                 SecurityWorkflowActionEvent.ActionCase.APPROVE_PAIRING -> {
                     val pid = act.approvePairing.pairingId
                     approvedIds += pid
+                    approvedRemoveIds += act.approvePairing.removeDeviceIdsList.toList()
                     val outcome = nextApproveOutcome
                     if (outcome != null) {
                         nextApproveOutcome = null
@@ -269,5 +273,63 @@ class PairingControllerTest {
         assertEquals(listOf("pair-1"), driver.approvedIds)
         model.leave(); runCurrent()
         assertEquals(listOf("pair-1", "pair-2"), driver.cancelledIds)
+    }
+
+    @Test
+    fun pollsJoinerMetaAndSendsReplacementDeviceIdsBasedOnToggle() = runTest {
+        for (keepChecked in listOf(true, false)) {
+            val driver = FakeSecurityDriver()
+            val client = driver.initClient()
+            var pollCount = 0
+            driver.nextPollOutcome = {
+                pollCount++
+                val info = SecurityPairingInfo.newBuilder()
+                    .setPairingId("pair-1")
+                    .setJoined(true)
+                    .setJoinerKind(DeviceKind.DEVICE_KIND_CLIENT)
+                    .addAllSasEmoji(listOf("🐊", "🥯", "🐩", "🦌"))
+                if (pollCount >= 2) {
+                    info.setJoinerMetaReceived(true)
+                        .setRemoveOldDefault(true)
+                        .setReplaceOldLabel(Text.newBuilder().setKey("security.also_remove_old_devices"))
+                        .setReplaceOldHint(Text.newBuilder().setKey("security.also_remove_old_devices_hint"))
+                        .addReplacementCandidates(
+                            SecurityPairingReplacementCandidate.newBuilder()
+                                .setDeviceId("old-pixel-id")
+                                .setShortId("old-pix1")
+                                .setDisplayName("Pixel 3")
+                                .setDescription("Android 12 · Pixel 3"),
+                        )
+                }
+                SecurityWorkflowResultEffect.newBuilder()
+                    .setOk(true)
+                    .setStatus(
+                        SecurityWorkflowStatus.newBuilder()
+                            .setBootstrap(SecurityBootstrapKind.SECURITY_BOOTSTRAP_KIND_READY)
+                            .build(),
+                    )
+                    .setPairing(info)
+            }
+            val model = PairingController(this, backgroundScope, client, "https://app.example.com")
+            model.start(); runCurrent()
+            advanceTimeBy(1_000L); runCurrent()
+            val firstCompare = model.state.value as PairingUiState.Compare
+            assertTrue(firstCompare.replacementCandidates.isEmpty())
+            advanceTimeBy(1_000L); runCurrent()
+            val secondCompare = model.state.value as PairingUiState.Compare
+            assertEquals(listOf("old-pixel-id"), secondCompare.replacementCandidates.map { it.deviceId })
+            assertTrue(secondCompare.removeOldChecked)
+            if (!keepChecked) {
+                model.setRemoveOld(false)
+                assertFalse((model.state.value as PairingUiState.Compare).removeOldChecked)
+            }
+            model.approve(); runCurrent()
+            assertEquals(
+                listOf(if (keepChecked) listOf("old-pixel-id") else emptyList()),
+                driver.approvedRemoveIds,
+            )
+            driver.completePendingApproval(); runCurrent()
+            assertEquals(PairingUiState.Done, model.state.value)
+        }
     }
 }

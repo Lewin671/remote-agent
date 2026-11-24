@@ -1,6 +1,7 @@
 # Relay-visible wire surface fingerprint.
 # Regenerate with: go test ./internal/relayproto -update [-additive "<reason>"]
 relay_version: 17
+additive: optional encrypted joiner_meta envelope on GetPairing for same-device replacement
 
 enum remoteagent.v1.Compression.0=COMPRESSION_NONE
 enum remoteagent.v1.Compression.1=COMPRESSION_DEFLATE
@@ -134,7 +135,9 @@ field remoteagent.v1.GetImageResponse.3:int64
 field remoteagent.v1.GetPairingRequest.1:string
 field remoteagent.v1.GetPairingRequest.2:string
 field remoteagent.v1.GetPairingRequest.3:bool
+field remoteagent.v1.GetPairingRequest.4:message(remoteagent.v1.Envelope)
 field remoteagent.v1.GetPairingResponse.1:enum(remoteagent.v1.PairingState)
+field remoteagent.v1.GetPairingResponse.10:message(remoteagent.v1.Envelope)
 field remoteagent.v1.GetPairingResponse.2:bytes
 field remoteagent.v1.GetPairingResponse.3:bytes
 field remoteagent.v1.GetPairingResponse.4:enum(remoteagent.v1.DeviceKind)

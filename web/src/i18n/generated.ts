@@ -948,6 +948,8 @@ export interface MessageArgs {
   "security.after_removing_this_unfinished_pairing_generate_a_new_code": { [name: string]: never };
   "security.after_submission_wait_48_hours_the_current_managing_client": { [name: string]: never };
   "security.allow_to_join": { [name: string]: never };
+  "security.also_remove_old_devices": { [name: string]: never };
+  "security.also_remove_old_devices_hint": { [name: string]: never };
   "security.apply_again": { [name: string]: never };
   "security.approved_waiting_for_the_new_device_to_finish_binding": { [name: string]: never };
   "security.asked_the_browser_to_retain_data": { [name: string]: never };
@@ -3175,6 +3177,8 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
     "security.after_submission_wait_48_hours_the_current_managing_client": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
     "security.allow_to_join": "Allow to join",
+    "security.also_remove_old_devices": "Also remove old devices",
+    "security.also_remove_old_devices_hint": "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:",
     "security.apply_again": "Apply again",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "Approved. Waiting for the new device to finish binding…",
     "security.asked_the_browser_to_retain_data": "Asked the browser to retain data",
@@ -5441,6 +5445,8 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
     "security.after_submission_wait_48_hours_the_current_managing_client": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
     "security.allow_to_join": "允许加入",
+    "security.also_remove_old_devices": "同时移除旧设备",
+    "security.also_remove_old_devices_hint": "检测到已有同型号设备，批准成功后将自动移除以下旧记录：",
     "security.apply_again": "重新申请",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "已批准，等待新设备完成绑定…",
     "security.asked_the_browser_to_retain_data": "已请求浏览器保留数据",

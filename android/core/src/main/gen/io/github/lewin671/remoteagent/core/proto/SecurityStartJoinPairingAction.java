@@ -20,6 +20,8 @@ public  final class SecurityStartJoinPairingAction extends
     commitHint_ = com.google.protobuf.ByteString.EMPTY;
     existingServer_ = "";
     rawLink_ = "";
+    platform_ = "";
+    description_ = "";
   }
   public static final int SERVER_FIELD_NUMBER = 1;
   private java.lang.String server_;
@@ -263,6 +265,102 @@ public  final class SecurityStartJoinPairingAction extends
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
     rawLink_ = value.toStringUtf8();
+
+  }
+
+  public static final int PLATFORM_FIELD_NUMBER = 7;
+  private java.lang.String platform_;
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The platform.
+   */
+  @java.lang.Override
+  public java.lang.String getPlatform() {
+    return platform_;
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The bytes for platform.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getPlatformBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(platform_);
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @param value The platform to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setPlatform(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    platform_ = value;
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   */
+  private void clearPlatform() {
+
+    platform_ = getDefaultInstance().getPlatform();
+  }
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @param value The bytes for platform to set.
+   */
+  private void setPlatformBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    platform_ = value.toStringUtf8();
+
+  }
+
+  public static final int DESCRIPTION_FIELD_NUMBER = 8;
+  private java.lang.String description_;
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @return The description.
+   */
+  @java.lang.Override
+  public java.lang.String getDescription() {
+    return description_;
+  }
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @return The bytes for description.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDescriptionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(description_);
+  }
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @param value The description to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDescription(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    description_ = value;
+  }
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   */
+  private void clearDescription() {
+
+    description_ = getDefaultInstance().getDescription();
+  }
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @param value The bytes for description to set.
+   */
+  private void setDescriptionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    description_ = value.toStringUtf8();
 
   }
 
@@ -615,6 +713,104 @@ public  final class SecurityStartJoinPairingAction extends
       return this;
     }
 
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return The platform.
+     */
+    @java.lang.Override
+    public java.lang.String getPlatform() {
+      return instance.getPlatform();
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return The bytes for platform.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getPlatformBytes() {
+      return instance.getPlatformBytes();
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @param value The platform to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPlatform(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setPlatform(value);
+      return this;
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearPlatform() {
+      copyOnWrite();
+      instance.clearPlatform();
+      return this;
+    }
+    /**
+     * <code>string platform = 7 [json_name = "platform"];</code>
+     * @param value The bytes for platform to set.
+     * @return This builder for chaining.
+     */
+    public Builder setPlatformBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setPlatformBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>string description = 8 [json_name = "description"];</code>
+     * @return The description.
+     */
+    @java.lang.Override
+    public java.lang.String getDescription() {
+      return instance.getDescription();
+    }
+    /**
+     * <code>string description = 8 [json_name = "description"];</code>
+     * @return The bytes for description.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDescriptionBytes() {
+      return instance.getDescriptionBytes();
+    }
+    /**
+     * <code>string description = 8 [json_name = "description"];</code>
+     * @param value The description to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDescription(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDescription(value);
+      return this;
+    }
+    /**
+     * <code>string description = 8 [json_name = "description"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDescription() {
+      copyOnWrite();
+      instance.clearDescription();
+      return this;
+    }
+    /**
+     * <code>string description = 8 [json_name = "description"];</code>
+     * @param value The bytes for description to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDescriptionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDescriptionBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityStartJoinPairingAction)
   }
   @java.lang.Override
@@ -637,10 +833,12 @@ public  final class SecurityStartJoinPairingAction extends
             "existingRepair_",
             "existingServer_",
             "rawLink_",
+            "platform_",
+            "description_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\n\u0004\u0007\u0005\u0208\u0006\u0208";
+              "\u0000\b\u0000\u0000\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\u0208\u0003\n" +
+              "\u0004\u0007\u0005\u0208\u0006\u0208\u0007\u0208\b\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

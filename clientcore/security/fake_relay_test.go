@@ -33,6 +33,7 @@ type fakePairingRow struct {
 	initPub    []byte
 	trust      []byte
 	payload    *v1.Envelope
+	joinerMeta *v1.Envelope
 	approval   []byte
 	appSig     []byte
 }
@@ -678,6 +679,8 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING:
 		var pid, candTok string
 		var received bool
+		var joinerMeta v1.Envelope
+		var hasJoinerMeta bool
 		b := reqBytes
 		for len(b) > 0 {
 			num, wtyp, _ := litewire.ReadTag(&b)
@@ -689,6 +692,11 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 			case num == 3 && wtyp == litewire.VarintType:
 				v, _ := litewire.ReadVarint(&b)
 				received = litewire.DecodeBool(v)
+			case num == 4 && wtyp == litewire.BytesType:
+				raw, _ := litewire.ReadBytes(&b)
+				if joinerMeta.Unmarshal(raw) == nil {
+					hasJoinerMeta = true
+				}
 			default:
 				_ = litewire.Skip(&b, num, wtyp)
 			}
@@ -697,12 +705,18 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		if row == nil {
 			return nil, &rpcError{code: connectCodeNotFound, msg: "no pairing"}
 		}
+		initiator := false
 		if candTok != "" {
 			if candTok != row.candToken {
 				return nil, &rpcError{code: connectCodePermissionDenied, msg: "bad token"}
 			}
+			if hasJoinerMeta && row.joinerMeta == nil && len(row.initPub) > 0 {
+				jm := joinerMeta
+				row.joinerMeta = &jm
+			}
 			if received {
 				row.payload = nil
+				row.joinerMeta = nil
 				row.state = v1.PairingState_PAIRING_STATE_DELIVERED
 			}
 		} else {
@@ -710,6 +724,7 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 			if aErr != nil || devID != row.initiator {
 				return nil, &rpcError{code: connectCodePermissionDenied, msg: "unauthorized"}
 			}
+			initiator = true
 		}
 		var out []byte
 		out = litewire.AppendInt32(out, 1, int32(row.state))
@@ -723,6 +738,9 @@ func (r *fakeRelay) call(method corev1.SecurityRpcMethod, token string, reqBytes
 		out = litewire.AppendBytes(out, 7, row.candEd)
 		out = litewire.AppendBytes(out, 8, row.candX)
 		out = litewire.AppendBytes(out, 9, row.trust)
+		if initiator && row.joinerMeta != nil {
+			out = litewire.AppendMessage(out, 10, row.joinerMeta)
+		}
 		return out, nil
 
 	case corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_CANCEL_PAIRING:

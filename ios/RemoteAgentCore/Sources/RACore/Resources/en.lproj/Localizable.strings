@@ -973,6 +973,8 @@
 "security_after_removing_this_unfinished_pairing_generate_a_new_code" = "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.";
 "security_after_submission_wait_48_hours_the_current_managing_client" = "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.";
 "security_allow_to_join" = "Allow to join";
+"security_also_remove_old_devices" = "Also remove old devices";
+"security_also_remove_old_devices_hint" = "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:";
 "security_apply_again" = "Apply again";
 "security_approved_waiting_for_the_new_device_to_finish_binding" = "Approved. Waiting for the new device to finish binding…";
 "security_asked_the_browser_to_retain_data" = "Asked the browser to retain data";

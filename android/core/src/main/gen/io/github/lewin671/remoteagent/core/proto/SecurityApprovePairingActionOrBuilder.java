@@ -27,4 +27,29 @@ public interface SecurityApprovePairingActionOrBuilder extends
    * @return The sasConfirmed.
    */
   boolean getSasConfirmed();
+
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @return A list containing the removeDeviceIds.
+   */
+  java.util.List<java.lang.String>
+      getRemoveDeviceIdsList();
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @return The count of removeDeviceIds.
+   */
+  int getRemoveDeviceIdsCount();
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removeDeviceIds at the given index.
+   */
+  java.lang.String getRemoveDeviceIds(int index);
+  /**
+   * <code>repeated string remove_device_ids = 3 [json_name = "removeDeviceIds"];</code>
+   * @param index The index of the element to return.
+   * @return The removeDeviceIds at the given index.
+   */
+  com.google.protobuf.ByteString
+      getRemoveDeviceIdsBytes(int index);
 }

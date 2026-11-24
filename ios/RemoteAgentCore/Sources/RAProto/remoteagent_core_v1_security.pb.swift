@@ -1612,34 +1612,122 @@ public struct PBSecurityWorkflowStatus: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBSecurityPairingInfo: Sendable {
+public struct PBSecurityPairingReplacementCandidate: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var pairingID: String = String()
+  public var deviceID: String = String()
 
-  public var code: String = String()
+  public var displayName: String = String()
 
-  public var url: String = String()
+  public var description_p: String = String()
 
-  public var expiresMs: Int64 = 0
-
-  public var sasEmoji: [String] = []
-
-  public var joinerKind: PBDeviceKind = .unspecified
-
-  public var joined: Bool = false
-
-  public var approved: Bool = false
-
-  public var delivered: Bool = false
-
-  public var registering: Bool = false
+  public var shortID: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+}
+
+public struct PBSecurityPairingInfo: @unchecked Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var pairingID: String {
+    get {return _storage._pairingID}
+    set {_uniqueStorage()._pairingID = newValue}
+  }
+
+  public var code: String {
+    get {return _storage._code}
+    set {_uniqueStorage()._code = newValue}
+  }
+
+  public var url: String {
+    get {return _storage._url}
+    set {_uniqueStorage()._url = newValue}
+  }
+
+  public var expiresMs: Int64 {
+    get {return _storage._expiresMs}
+    set {_uniqueStorage()._expiresMs = newValue}
+  }
+
+  public var sasEmoji: [String] {
+    get {return _storage._sasEmoji}
+    set {_uniqueStorage()._sasEmoji = newValue}
+  }
+
+  public var joinerKind: PBDeviceKind {
+    get {return _storage._joinerKind}
+    set {_uniqueStorage()._joinerKind = newValue}
+  }
+
+  public var joined: Bool {
+    get {return _storage._joined}
+    set {_uniqueStorage()._joined = newValue}
+  }
+
+  public var approved: Bool {
+    get {return _storage._approved}
+    set {_uniqueStorage()._approved = newValue}
+  }
+
+  public var delivered: Bool {
+    get {return _storage._delivered}
+    set {_uniqueStorage()._delivered = newValue}
+  }
+
+  public var registering: Bool {
+    get {return _storage._registering}
+    set {_uniqueStorage()._registering = newValue}
+  }
+
+  public var joinerMetaReceived: Bool {
+    get {return _storage._joinerMetaReceived}
+    set {_uniqueStorage()._joinerMetaReceived = newValue}
+  }
+
+  public var replacementCandidates: [PBSecurityPairingReplacementCandidate] {
+    get {return _storage._replacementCandidates}
+    set {_uniqueStorage()._replacementCandidates = newValue}
+  }
+
+  public var removeOldDefault: Bool {
+    get {return _storage._removeOldDefault}
+    set {_uniqueStorage()._removeOldDefault = newValue}
+  }
+
+  public var replaceOldLabel: PBCoreText {
+    get {return _storage._replaceOldLabel ?? PBCoreText()}
+    set {_uniqueStorage()._replaceOldLabel = newValue}
+  }
+  /// Returns true if `replaceOldLabel` has been explicitly set.
+  public var hasReplaceOldLabel: Bool {return _storage._replaceOldLabel != nil}
+  /// Clears the value of `replaceOldLabel`. Subsequent reads from it will return its default value.
+  public mutating func clearReplaceOldLabel() {_uniqueStorage()._replaceOldLabel = nil}
+
+  public var replaceOldHint: PBCoreText {
+    get {return _storage._replaceOldHint ?? PBCoreText()}
+    set {_uniqueStorage()._replaceOldHint = newValue}
+  }
+  /// Returns true if `replaceOldHint` has been explicitly set.
+  public var hasReplaceOldHint: Bool {return _storage._replaceOldHint != nil}
+  /// Clears the value of `replaceOldHint`. Subsequent reads from it will return its default value.
+  public mutating func clearReplaceOldHint() {_uniqueStorage()._replaceOldHint = nil}
+
+  public var joinerDescription: String {
+    get {return _storage._joinerDescription}
+    set {_uniqueStorage()._joinerDescription = newValue}
+  }
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBSecurityRecoveryInfo: Sendable {
@@ -1821,6 +1909,8 @@ public struct PBSecurityApprovePairingAction: Sendable {
 
   public var sasConfirmed: Bool = false
 
+  public var removeDeviceIds: [String] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1842,6 +1932,10 @@ public struct PBSecurityStartJoinPairingAction: Sendable {
   public var existingServer: String = String()
 
   public var rawLink: String = String()
+
+  public var platform: String = String()
+
+  public var description_p: String = String()
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5160,9 +5254,9 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 }
 
-extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".SecurityPairingInfo"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0")
+extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecurityPairingReplacementCandidate"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0\u{1}description\0\u{3}short_id\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5170,66 +5264,211 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       // allocates stack space for every case branch when no optimizations are
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.code) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.url) }()
-      case 4: try { try decoder.decodeSingularInt64Field(value: &self.expiresMs) }()
-      case 5: try { try decoder.decodeRepeatedStringField(value: &self.sasEmoji) }()
-      case 6: try { try decoder.decodeSingularEnumField(value: &self.joinerKind) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.joined) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.approved) }()
-      case 9: try { try decoder.decodeSingularBoolField(value: &self.delivered) }()
-      case 10: try { try decoder.decodeSingularBoolField(value: &self.registering) }()
+      case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.shortID) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.pairingID.isEmpty {
-      try visitor.visitSingularStringField(value: self.pairingID, fieldNumber: 1)
+    if !self.deviceID.isEmpty {
+      try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
-    if !self.code.isEmpty {
-      try visitor.visitSingularStringField(value: self.code, fieldNumber: 2)
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
     }
-    if !self.url.isEmpty {
-      try visitor.visitSingularStringField(value: self.url, fieldNumber: 3)
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 3)
     }
-    if self.expiresMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.expiresMs, fieldNumber: 4)
+    if !self.shortID.isEmpty {
+      try visitor.visitSingularStringField(value: self.shortID, fieldNumber: 4)
     }
-    if !self.sasEmoji.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.sasEmoji, fieldNumber: 5)
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSecurityPairingReplacementCandidate, rhs: PBSecurityPairingReplacementCandidate) -> Bool {
+    if lhs.deviceID != rhs.deviceID {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs.description_p != rhs.description_p {return false}
+    if lhs.shortID != rhs.shortID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SecurityPairingInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0\u{3}joiner_meta_received\0\u{3}replacement_candidates\0\u{3}remove_old_default\0\u{3}replace_old_label\0\u{3}replace_old_hint\0\u{3}joiner_description\0")
+
+  fileprivate class _StorageClass {
+    var _pairingID: String = String()
+    var _code: String = String()
+    var _url: String = String()
+    var _expiresMs: Int64 = 0
+    var _sasEmoji: [String] = []
+    var _joinerKind: PBDeviceKind = .unspecified
+    var _joined: Bool = false
+    var _approved: Bool = false
+    var _delivered: Bool = false
+    var _registering: Bool = false
+    var _joinerMetaReceived: Bool = false
+    var _replacementCandidates: [PBSecurityPairingReplacementCandidate] = []
+    var _removeOldDefault: Bool = false
+    var _replaceOldLabel: PBCoreText? = nil
+    var _replaceOldHint: PBCoreText? = nil
+    var _joinerDescription: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _pairingID = source._pairingID
+      _code = source._code
+      _url = source._url
+      _expiresMs = source._expiresMs
+      _sasEmoji = source._sasEmoji
+      _joinerKind = source._joinerKind
+      _joined = source._joined
+      _approved = source._approved
+      _delivered = source._delivered
+      _registering = source._registering
+      _joinerMetaReceived = source._joinerMetaReceived
+      _replacementCandidates = source._replacementCandidates
+      _removeOldDefault = source._removeOldDefault
+      _replaceOldLabel = source._replaceOldLabel
+      _replaceOldHint = source._replaceOldHint
+      _joinerDescription = source._joinerDescription
     }
-    if self.joinerKind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.joinerKind, fieldNumber: 6)
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
     }
-    if self.joined != false {
-      try visitor.visitSingularBoolField(value: self.joined, fieldNumber: 7)
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._pairingID) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._code) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._url) }()
+        case 4: try { try decoder.decodeSingularInt64Field(value: &_storage._expiresMs) }()
+        case 5: try { try decoder.decodeRepeatedStringField(value: &_storage._sasEmoji) }()
+        case 6: try { try decoder.decodeSingularEnumField(value: &_storage._joinerKind) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._joined) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._approved) }()
+        case 9: try { try decoder.decodeSingularBoolField(value: &_storage._delivered) }()
+        case 10: try { try decoder.decodeSingularBoolField(value: &_storage._registering) }()
+        case 11: try { try decoder.decodeSingularBoolField(value: &_storage._joinerMetaReceived) }()
+        case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._replacementCandidates) }()
+        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._removeOldDefault) }()
+        case 14: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldLabel) }()
+        case 15: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldHint) }()
+        case 16: try { try decoder.decodeSingularStringField(value: &_storage._joinerDescription) }()
+        default: break
+        }
+      }
     }
-    if self.approved != false {
-      try visitor.visitSingularBoolField(value: self.approved, fieldNumber: 8)
-    }
-    if self.delivered != false {
-      try visitor.visitSingularBoolField(value: self.delivered, fieldNumber: 9)
-    }
-    if self.registering != false {
-      try visitor.visitSingularBoolField(value: self.registering, fieldNumber: 10)
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._pairingID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._pairingID, fieldNumber: 1)
+      }
+      if !_storage._code.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._code, fieldNumber: 2)
+      }
+      if !_storage._url.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._url, fieldNumber: 3)
+      }
+      if _storage._expiresMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._expiresMs, fieldNumber: 4)
+      }
+      if !_storage._sasEmoji.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._sasEmoji, fieldNumber: 5)
+      }
+      if _storage._joinerKind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._joinerKind, fieldNumber: 6)
+      }
+      if _storage._joined != false {
+        try visitor.visitSingularBoolField(value: _storage._joined, fieldNumber: 7)
+      }
+      if _storage._approved != false {
+        try visitor.visitSingularBoolField(value: _storage._approved, fieldNumber: 8)
+      }
+      if _storage._delivered != false {
+        try visitor.visitSingularBoolField(value: _storage._delivered, fieldNumber: 9)
+      }
+      if _storage._registering != false {
+        try visitor.visitSingularBoolField(value: _storage._registering, fieldNumber: 10)
+      }
+      if _storage._joinerMetaReceived != false {
+        try visitor.visitSingularBoolField(value: _storage._joinerMetaReceived, fieldNumber: 11)
+      }
+      if !_storage._replacementCandidates.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._replacementCandidates, fieldNumber: 12)
+      }
+      if _storage._removeOldDefault != false {
+        try visitor.visitSingularBoolField(value: _storage._removeOldDefault, fieldNumber: 13)
+      }
+      try { if let v = _storage._replaceOldLabel {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
+      } }()
+      try { if let v = _storage._replaceOldHint {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 15)
+      } }()
+      if !_storage._joinerDescription.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._joinerDescription, fieldNumber: 16)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSecurityPairingInfo, rhs: PBSecurityPairingInfo) -> Bool {
-    if lhs.pairingID != rhs.pairingID {return false}
-    if lhs.code != rhs.code {return false}
-    if lhs.url != rhs.url {return false}
-    if lhs.expiresMs != rhs.expiresMs {return false}
-    if lhs.sasEmoji != rhs.sasEmoji {return false}
-    if lhs.joinerKind != rhs.joinerKind {return false}
-    if lhs.joined != rhs.joined {return false}
-    if lhs.approved != rhs.approved {return false}
-    if lhs.delivered != rhs.delivered {return false}
-    if lhs.registering != rhs.registering {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._pairingID != rhs_storage._pairingID {return false}
+        if _storage._code != rhs_storage._code {return false}
+        if _storage._url != rhs_storage._url {return false}
+        if _storage._expiresMs != rhs_storage._expiresMs {return false}
+        if _storage._sasEmoji != rhs_storage._sasEmoji {return false}
+        if _storage._joinerKind != rhs_storage._joinerKind {return false}
+        if _storage._joined != rhs_storage._joined {return false}
+        if _storage._approved != rhs_storage._approved {return false}
+        if _storage._delivered != rhs_storage._delivered {return false}
+        if _storage._registering != rhs_storage._registering {return false}
+        if _storage._joinerMetaReceived != rhs_storage._joinerMetaReceived {return false}
+        if _storage._replacementCandidates != rhs_storage._replacementCandidates {return false}
+        if _storage._removeOldDefault != rhs_storage._removeOldDefault {return false}
+        if _storage._replaceOldLabel != rhs_storage._replaceOldLabel {return false}
+        if _storage._replaceOldHint != rhs_storage._replaceOldHint {return false}
+        if _storage._joinerDescription != rhs_storage._joinerDescription {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5656,7 +5895,7 @@ extension PBSecurityStartPairingAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBSecurityApprovePairingAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityApprovePairingAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}sas_confirmed\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}sas_confirmed\0\u{3}remove_device_ids\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5666,6 +5905,7 @@ extension PBSecurityApprovePairingAction: SwiftProtobuf.Message, SwiftProtobuf._
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.sasConfirmed) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.removeDeviceIds) }()
       default: break
       }
     }
@@ -5678,12 +5918,16 @@ extension PBSecurityApprovePairingAction: SwiftProtobuf.Message, SwiftProtobuf._
     if self.sasConfirmed != false {
       try visitor.visitSingularBoolField(value: self.sasConfirmed, fieldNumber: 2)
     }
+    if !self.removeDeviceIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.removeDeviceIds, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSecurityApprovePairingAction, rhs: PBSecurityApprovePairingAction) -> Bool {
     if lhs.pairingID != rhs.pairingID {return false}
     if lhs.sasConfirmed != rhs.sasConfirmed {return false}
+    if lhs.removeDeviceIds != rhs.removeDeviceIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5691,7 +5935,7 @@ extension PBSecurityApprovePairingAction: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBSecurityStartJoinPairingAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityStartJoinPairingAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}server\0\u{1}code\0\u{3}commit_hint\0\u{3}existing_repair\0\u{3}existing_server\0\u{3}raw_link\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}server\0\u{1}code\0\u{3}commit_hint\0\u{3}existing_repair\0\u{3}existing_server\0\u{3}raw_link\0\u{1}platform\0\u{1}description\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5705,6 +5949,8 @@ extension PBSecurityStartJoinPairingAction: SwiftProtobuf.Message, SwiftProtobuf
       case 4: try { try decoder.decodeSingularBoolField(value: &self.existingRepair) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.existingServer) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.rawLink) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.platform) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
       default: break
       }
     }
@@ -5729,6 +5975,12 @@ extension PBSecurityStartJoinPairingAction: SwiftProtobuf.Message, SwiftProtobuf
     if !self.rawLink.isEmpty {
       try visitor.visitSingularStringField(value: self.rawLink, fieldNumber: 6)
     }
+    if !self.platform.isEmpty {
+      try visitor.visitSingularStringField(value: self.platform, fieldNumber: 7)
+    }
+    if !self.description_p.isEmpty {
+      try visitor.visitSingularStringField(value: self.description_p, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5739,6 +5991,8 @@ extension PBSecurityStartJoinPairingAction: SwiftProtobuf.Message, SwiftProtobuf
     if lhs.existingRepair != rhs.existingRepair {return false}
     if lhs.existingServer != rhs.existingServer {return false}
     if lhs.rawLink != rhs.rawLink {return false}
+    if lhs.platform != rhs.platform {return false}
+    if lhs.description_p != rhs.description_p {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

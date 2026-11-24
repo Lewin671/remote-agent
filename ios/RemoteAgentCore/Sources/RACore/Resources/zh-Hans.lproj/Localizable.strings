@@ -973,6 +973,8 @@
 "security_after_removing_this_unfinished_pairing_generate_a_new_code" = "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。";
 "security_after_submission_wait_48_hours_the_current_managing_client" = "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。";
 "security_allow_to_join" = "允许加入";
+"security_also_remove_old_devices" = "同时移除旧设备";
+"security_also_remove_old_devices_hint" = "检测到已有同型号设备，批准成功后将自动移除以下旧记录：";
 "security_apply_again" = "重新申请";
 "security_approved_waiting_for_the_new_device_to_finish_binding" = "已批准，等待新设备完成绑定…";
 "security_asked_the_browser_to_retain_data" = "已请求浏览器保留数据";

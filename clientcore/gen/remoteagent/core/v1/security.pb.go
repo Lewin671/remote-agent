@@ -2943,18 +2943,74 @@ func (m *SecurityWorkflowStatus) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityWorkflowStatus)
 }
 
-type SecurityPairingInfo struct {
+type SecurityPairingReplacementCandidate struct {
 	_           [0]func()
-	PairingId   string
-	Code        string
-	Url         string
-	ExpiresMs   int64
-	SasEmoji    []string
-	JoinerKind  v1.DeviceKind
-	Joined      bool
-	Approved    bool
-	Delivered   bool
-	Registering bool
+	DeviceId    string
+	DisplayName string
+	Description string
+	ShortId     string
+}
+
+func (m *SecurityPairingReplacementCandidate) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *SecurityPairingReplacementCandidate) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *SecurityPairingReplacementCandidate) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+func (m *SecurityPairingReplacementCandidate) GetShortId() string {
+	if m != nil {
+		return m.ShortId
+	}
+	return ""
+}
+
+var LitewireDesc_SecurityPairingReplacementCandidate = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.Description), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.ShortId), Kind: litewire.KindString},
+	},
+}
+
+func (m *SecurityPairingReplacementCandidate) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SecurityPairingReplacementCandidate) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SecurityPairingReplacementCandidate)
+}
+
+type SecurityPairingInfo struct {
+	_                     [0]func()
+	PairingId             string
+	Code                  string
+	Url                   string
+	ExpiresMs             int64
+	SasEmoji              []string
+	JoinerKind            v1.DeviceKind
+	Joined                bool
+	Approved              bool
+	Delivered             bool
+	Registering           bool
+	JoinerMetaReceived    bool
+	ReplacementCandidates []*SecurityPairingReplacementCandidate
+	RemoveOldDefault      bool
+	ReplaceOldLabel       *Text
+	ReplaceOldHint        *Text
+	JoinerDescription     string
 }
 
 func (m *SecurityPairingInfo) GetPairingId() string {
@@ -3017,6 +3073,42 @@ func (m *SecurityPairingInfo) GetRegistering() bool {
 	}
 	return false
 }
+func (m *SecurityPairingInfo) GetJoinerMetaReceived() bool {
+	if m != nil {
+		return m.JoinerMetaReceived
+	}
+	return false
+}
+func (m *SecurityPairingInfo) GetReplacementCandidates() []*SecurityPairingReplacementCandidate {
+	if m != nil {
+		return m.ReplacementCandidates
+	}
+	return nil
+}
+func (m *SecurityPairingInfo) GetRemoveOldDefault() bool {
+	if m != nil {
+		return m.RemoveOldDefault
+	}
+	return false
+}
+func (m *SecurityPairingInfo) GetReplaceOldLabel() *Text {
+	if m != nil {
+		return m.ReplaceOldLabel
+	}
+	return nil
+}
+func (m *SecurityPairingInfo) GetReplaceOldHint() *Text {
+	if m != nil {
+		return m.ReplaceOldHint
+	}
+	return nil
+}
+func (m *SecurityPairingInfo) GetJoinerDescription() string {
+	if m != nil {
+		return m.JoinerDescription
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3030,6 +3122,12 @@ var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Approved), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Delivered), Kind: litewire.KindBool},
 		{Num: 10, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Registering), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerMetaReceived), Kind: litewire.KindBool},
+		{Num: 12, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplacementCandidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityPairingReplacementCandidate},
+		{Num: 13, Offset: unsafe.Offsetof(SecurityPairingInfo{}.RemoveOldDefault), Kind: litewire.KindBool},
+		{Num: 14, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerDescription), Kind: litewire.KindString},
 	},
 }
 
@@ -3430,9 +3528,10 @@ func (m *SecurityStartPairingAction) Unmarshal(b []byte) error {
 }
 
 type SecurityApprovePairingAction struct {
-	_            [0]func()
-	PairingId    string
-	SasConfirmed bool
+	_               [0]func()
+	PairingId       string
+	SasConfirmed    bool
+	RemoveDeviceIds []string
 }
 
 func (m *SecurityApprovePairingAction) GetPairingId() string {
@@ -3447,12 +3546,19 @@ func (m *SecurityApprovePairingAction) GetSasConfirmed() bool {
 	}
 	return false
 }
+func (m *SecurityApprovePairingAction) GetRemoveDeviceIds() []string {
+	if m != nil {
+		return m.RemoveDeviceIds
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityApprovePairingAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityApprovePairingAction{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityApprovePairingAction{}.PairingId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityApprovePairingAction{}.SasConfirmed), Kind: litewire.KindBool},
+		{Num: 3, Offset: unsafe.Offsetof(SecurityApprovePairingAction{}.RemoveDeviceIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 	},
 }
 
@@ -3468,6 +3574,8 @@ type SecurityStartJoinPairingAction struct {
 	ExistingRepair bool
 	ExistingServer string
 	RawLink        string
+	Platform       string
+	Description    string
 }
 
 func (m *SecurityStartJoinPairingAction) GetServer() string {
@@ -3506,6 +3614,18 @@ func (m *SecurityStartJoinPairingAction) GetRawLink() string {
 	}
 	return ""
 }
+func (m *SecurityStartJoinPairingAction) GetPlatform() string {
+	if m != nil {
+		return m.Platform
+	}
+	return ""
+}
+func (m *SecurityStartJoinPairingAction) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
 
 var LitewireDesc_SecurityStartJoinPairingAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityStartJoinPairingAction{}) },
@@ -3516,6 +3636,8 @@ var LitewireDesc_SecurityStartJoinPairingAction = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.ExistingRepair), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.ExistingServer), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.RawLink), Kind: litewire.KindString},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.Platform), Kind: litewire.KindString},
+		{Num: 8, Offset: unsafe.Offsetof(SecurityStartJoinPairingAction{}.Description), Kind: litewire.KindString},
 	},
 }
 

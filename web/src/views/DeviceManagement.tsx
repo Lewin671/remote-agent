@@ -158,7 +158,12 @@ export function PairCodePage({
   const currentId = useRef<string | undefined>(undefined);
   const alive = useRef(true);
   const handedOff = useRef(false);
+  const [removeOld, setRemoveOld] = useState(true);
+  const metaPolls = useRef(0);
   const emoji = pair?.sasEmoji.length ? pair.sasEmoji : undefined;
+  const waitingMeta = Boolean(emoji && !approved && !pair?.joinerMetaReceived);
+  const replaceLabel = renderText(pair?.replaceOldLabel) || l10n.t("security.also_remove_old_devices");
+  const replaceHint = renderText(pair?.replaceOldHint);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -167,7 +172,7 @@ export function PairCodePage({
     };
   }, [remote]);
   useEffect(() => {
-    if (!pair || done || (emoji && !approved)) return;
+    if (!pair || done || (emoji && !approved && !waitingMeta)) return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -183,24 +188,41 @@ export function PairCodePage({
               return;
             }
           } else {
+            if (waitingMeta && metaPolls.current >= 15) {
+              return;
+            }
+            if (waitingMeta) metaPolls.current += 1;
             const next = await remote.pollPairing(pair.pairingId);
             if (!stopped && next.joined && next.sasEmoji.length > 0) {
-              setPair(next);
-              return;
+              if (!emoji) {
+                metaPolls.current = 0;
+                if (next.replacementCandidates.length > 0) {
+                  setRemoveOld(next.removeOldDefault);
+                }
+                setPair(next);
+                return;
+              }
+              if (next.joinerMetaReceived) {
+                if (next.replacementCandidates.length > 0) {
+                  setRemoveOld(next.removeOldDefault);
+                }
+                setPair(next);
+                return;
+              }
             }
           }
         }
       } catch (e) {
         if (!stopped) setError(errorText(e));
       }
-      if (!stopped) timer = setTimeout(poll, 1500);
+      if (!stopped) timer = setTimeout(poll, waitingMeta ? 1000 : 1500);
     };
     void poll();
     return () => {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [pair, approved, done, emoji, remote]);
+  }, [pair, approved, done, emoji, waitingMeta, remote]);
   const pairURL = pair?.url;
   useEffect(() => {
     if (!pairURL) return;
@@ -293,6 +315,36 @@ export function PairCodePage({
                         />
                         {l10n.t("security.patterns_match_the_new_device_confirmed_first")}</label>
                     </div>
+                    {pair.replacementCandidates.length > 0 && (
+                      <div className="grp">
+                        <label className="row backup-check">
+                          <input
+                            type="checkbox"
+                            checked={removeOld}
+                            onChange={(e) => setRemoveOld(e.target.checked)}
+                          />
+                          {replaceLabel}
+                        </label>
+                        {replaceHint && (
+                          <div className="row help">{replaceHint}</div>
+                        )}
+                        {pair.replacementCandidates.map((c) => (
+                          <div key={c.deviceId} className="row">
+                            <span className="row-name">
+                              <b>{c.displayName || c.description || c.shortId}</b>
+                              <small>
+                                {[
+                                  c.description && c.description !== c.displayName ? c.description : "",
+                                  c.shortId,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </small>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <button
                       className="btn pri"
                       disabled={busy || !confirmed}
@@ -301,7 +353,10 @@ export function PairCodePage({
                           // Approval and its durable delivery belong to the account,
                           // including while approve() is still awaiting its reply.
                           handedOff.current = true;
-                          await remote.approvePairing(pair.pairingId, confirmed);
+                          const removeIds = removeOld
+                            ? pair.replacementCandidates.map((c) => c.deviceId)
+                            : [];
+                          await remote.approvePairing(pair.pairingId, confirmed, removeIds);
                           setApproved(true);
                         })
                       }

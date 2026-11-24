@@ -19,7 +19,10 @@ public  final class SecurityPairingInfo extends
     code_ = "";
     url_ = "";
     sasEmoji_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    replacementCandidates_ = emptyProtobufList();
+    joinerDescription_ = "";
   }
+  private int bitField0_;
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
   /**
@@ -429,6 +432,299 @@ public  final class SecurityPairingInfo extends
   private void clearRegistering() {
 
     registering_ = false;
+  }
+
+  public static final int JOINER_META_RECEIVED_FIELD_NUMBER = 11;
+  private boolean joinerMetaReceived_;
+  /**
+   * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+   * @return The joinerMetaReceived.
+   */
+  @java.lang.Override
+  public boolean getJoinerMetaReceived() {
+    return joinerMetaReceived_;
+  }
+  /**
+   * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+   * @param value The joinerMetaReceived to set.
+   */
+  private void setJoinerMetaReceived(boolean value) {
+    
+    joinerMetaReceived_ = value;
+  }
+  /**
+   * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+   */
+  private void clearJoinerMetaReceived() {
+
+    joinerMetaReceived_ = false;
+  }
+
+  public static final int REPLACEMENT_CANDIDATES_FIELD_NUMBER = 12;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> replacementCandidates_;
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> getReplacementCandidatesList() {
+    return replacementCandidates_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidateOrBuilder> 
+      getReplacementCandidatesOrBuilderList() {
+    return replacementCandidates_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.Override
+  public int getReplacementCandidatesCount() {
+    return replacementCandidates_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate getReplacementCandidates(int index) {
+    return replacementCandidates_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidateOrBuilder getReplacementCandidatesOrBuilder(
+      int index) {
+    return replacementCandidates_.get(index);
+  }
+  private void ensureReplacementCandidatesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> tmp = replacementCandidates_;
+    if (!tmp.isModifiable()) {
+      replacementCandidates_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReplacementCandidates(
+      int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+    value.getClass();  // minimal bytecode null check
+    ensureReplacementCandidatesIsMutable();
+    replacementCandidates_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addReplacementCandidates(io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+    value.getClass();  // minimal bytecode null check
+    ensureReplacementCandidatesIsMutable();
+    replacementCandidates_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addReplacementCandidates(
+      int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+    value.getClass();  // minimal bytecode null check
+    ensureReplacementCandidatesIsMutable();
+    replacementCandidates_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  private void addAllReplacementCandidates(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> values) {
+    ensureReplacementCandidatesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, replacementCandidates_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  private void clearReplacementCandidates() {
+    replacementCandidates_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  private void removeReplacementCandidates(int index) {
+    ensureReplacementCandidatesIsMutable();
+    replacementCandidates_.remove(index);
+  }
+
+  public static final int REMOVE_OLD_DEFAULT_FIELD_NUMBER = 13;
+  private boolean removeOldDefault_;
+  /**
+   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+   * @return The removeOldDefault.
+   */
+  @java.lang.Override
+  public boolean getRemoveOldDefault() {
+    return removeOldDefault_;
+  }
+  /**
+   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+   * @param value The removeOldDefault to set.
+   */
+  private void setRemoveOldDefault(boolean value) {
+    
+    removeOldDefault_ = value;
+  }
+  /**
+   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+   */
+  private void clearRemoveOldDefault() {
+
+    removeOldDefault_ = false;
+  }
+
+  public static final int REPLACE_OLD_LABEL_FIELD_NUMBER = 14;
+  private io.github.lewin671.remoteagent.core.proto.Text replaceOldLabel_;
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   */
+  @java.lang.Override
+  public boolean hasReplaceOldLabel() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getReplaceOldLabel() {
+    return replaceOldLabel_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : replaceOldLabel_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReplaceOldLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    replaceOldLabel_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeReplaceOldLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (replaceOldLabel_ != null &&
+        replaceOldLabel_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      replaceOldLabel_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(replaceOldLabel_).mergeFrom(value).buildPartial();
+    } else {
+      replaceOldLabel_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   */
+  private void clearReplaceOldLabel() {
+    replaceOldLabel_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int REPLACE_OLD_HINT_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.Text replaceOldHint_;
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   */
+  @java.lang.Override
+  public boolean hasReplaceOldHint() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getReplaceOldHint() {
+    return replaceOldHint_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : replaceOldHint_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setReplaceOldHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    replaceOldHint_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeReplaceOldHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (replaceOldHint_ != null &&
+        replaceOldHint_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      replaceOldHint_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(replaceOldHint_).mergeFrom(value).buildPartial();
+    } else {
+      replaceOldHint_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   */
+  private void clearReplaceOldHint() {
+    replaceOldHint_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
+  public static final int JOINER_DESCRIPTION_FIELD_NUMBER = 16;
+  private java.lang.String joinerDescription_;
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @return The joinerDescription.
+   */
+  @java.lang.Override
+  public java.lang.String getJoinerDescription() {
+    return joinerDescription_;
+  }
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @return The bytes for joinerDescription.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getJoinerDescriptionBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(joinerDescription_);
+  }
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @param value The joinerDescription to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJoinerDescription(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    joinerDescription_ = value;
+  }
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   */
+  private void clearJoinerDescription() {
+
+    joinerDescription_ = getDefaultInstance().getJoinerDescription();
+  }
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @param value The bytes for joinerDescription to set.
+   */
+  private void setJoinerDescriptionBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    joinerDescription_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo parseFrom(
@@ -953,6 +1249,307 @@ public  final class SecurityPairingInfo extends
       return this;
     }
 
+    /**
+     * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+     * @return The joinerMetaReceived.
+     */
+    @java.lang.Override
+    public boolean getJoinerMetaReceived() {
+      return instance.getJoinerMetaReceived();
+    }
+    /**
+     * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+     * @param value The joinerMetaReceived to set.
+     * @return This builder for chaining.
+     */
+    public Builder setJoinerMetaReceived(boolean value) {
+      copyOnWrite();
+      instance.setJoinerMetaReceived(value);
+      return this;
+    }
+    /**
+     * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearJoinerMetaReceived() {
+      copyOnWrite();
+      instance.clearJoinerMetaReceived();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> getReplacementCandidatesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getReplacementCandidatesList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    @java.lang.Override
+    public int getReplacementCandidatesCount() {
+      return instance.getReplacementCandidatesCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate getReplacementCandidates(int index) {
+      return instance.getReplacementCandidates(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder setReplacementCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+      copyOnWrite();
+      instance.setReplacementCandidates(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder setReplacementCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReplacementCandidates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder addReplacementCandidates(io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+      copyOnWrite();
+      instance.addReplacementCandidates(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder addReplacementCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate value) {
+      copyOnWrite();
+      instance.addReplacementCandidates(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder addReplacementCandidates(
+        io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplacementCandidates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder addReplacementCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate.Builder builderForValue) {
+      copyOnWrite();
+      instance.addReplacementCandidates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder addAllReplacementCandidates(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> values) {
+      copyOnWrite();
+      instance.addAllReplacementCandidates(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder clearReplacementCandidates() {
+      copyOnWrite();
+      instance.clearReplacementCandidates();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+     */
+    public Builder removeReplacementCandidates(int index) {
+      copyOnWrite();
+      instance.removeReplacementCandidates(index);
+      return this;
+    }
+
+    /**
+     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+     * @return The removeOldDefault.
+     */
+    @java.lang.Override
+    public boolean getRemoveOldDefault() {
+      return instance.getRemoveOldDefault();
+    }
+    /**
+     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+     * @param value The removeOldDefault to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRemoveOldDefault(boolean value) {
+      copyOnWrite();
+      instance.setRemoveOldDefault(value);
+      return this;
+    }
+    /**
+     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRemoveOldDefault() {
+      copyOnWrite();
+      instance.clearRemoveOldDefault();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    @java.lang.Override
+    public boolean hasReplaceOldLabel() {
+      return instance.hasReplaceOldLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getReplaceOldLabel() {
+      return instance.getReplaceOldLabel();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    public Builder setReplaceOldLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setReplaceOldLabel(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    public Builder setReplaceOldLabel(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReplaceOldLabel(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    public Builder mergeReplaceOldLabel(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeReplaceOldLabel(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+     */
+    public Builder clearReplaceOldLabel() {  copyOnWrite();
+      instance.clearReplaceOldLabel();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    @java.lang.Override
+    public boolean hasReplaceOldHint() {
+      return instance.hasReplaceOldHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getReplaceOldHint() {
+      return instance.getReplaceOldHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    public Builder setReplaceOldHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setReplaceOldHint(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    public Builder setReplaceOldHint(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setReplaceOldHint(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    public Builder mergeReplaceOldHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeReplaceOldHint(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+     */
+    public Builder clearReplaceOldHint() {  copyOnWrite();
+      instance.clearReplaceOldHint();
+      return this;
+    }
+
+    /**
+     * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+     * @return The joinerDescription.
+     */
+    @java.lang.Override
+    public java.lang.String getJoinerDescription() {
+      return instance.getJoinerDescription();
+    }
+    /**
+     * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+     * @return The bytes for joinerDescription.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getJoinerDescriptionBytes() {
+      return instance.getJoinerDescriptionBytes();
+    }
+    /**
+     * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+     * @param value The joinerDescription to set.
+     * @return This builder for chaining.
+     */
+    public Builder setJoinerDescription(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setJoinerDescription(value);
+      return this;
+    }
+    /**
+     * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearJoinerDescription() {
+      copyOnWrite();
+      instance.clearJoinerDescription();
+      return this;
+    }
+    /**
+     * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+     * @param value The bytes for joinerDescription to set.
+     * @return This builder for chaining.
+     */
+    public Builder setJoinerDescriptionBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setJoinerDescriptionBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityPairingInfo)
   }
   @java.lang.Override
@@ -969,6 +1566,7 @@ public  final class SecurityPairingInfo extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "pairingId_",
             "code_",
             "url_",
@@ -979,10 +1577,18 @@ public  final class SecurityPairingInfo extends
             "approved_",
             "delivered_",
             "registering_",
+            "joinerMetaReceived_",
+            "replacementCandidates_",
+            io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate.class,
+            "removeOldDefault_",
+            "replaceOldLabel_",
+            "replaceOldHint_",
+            "joinerDescription_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
-              "\u0004\u0002\u0005\u021a\u0006\f\u0007\u0007\b\u0007\t\u0007\n\u0007";
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0002\u0005\u021a\u0006\f\u0007\u0007\b\u0007\t\u0007\n\u0007" +
+              "\u000b\u0007\f\u001b\r\u0007\u000e\u1009\u0000\u000f\u1009\u0001\u0010\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

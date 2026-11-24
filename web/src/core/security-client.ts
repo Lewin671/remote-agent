@@ -235,8 +235,11 @@ export class SecurityClient {
     return (await this.run({ case: "startPairing", value: create(SecurityStartPairingActionSchema, { webOrigin, replacesDeviceId }) })).pairing!;
   }
   pollPairing = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("pollPairing", pairingId)).pairing!;
-  async approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
-    return (await this.run({ case: "approvePairing", value: create(SecurityApprovePairingActionSchema, { pairingId, sasConfirmed }) })).pairing!;
+  async approvePairing(pairingId: string, sasConfirmed: boolean, removeDeviceIds: string[] = []): Promise<SecurityPairingInfo> {
+    return (await this.run({
+      case: "approvePairing",
+      value: create(SecurityApprovePairingActionSchema, { pairingId, sasConfirmed, removeDeviceIds }),
+    })).pairing!;
   }
   finishPairingDelivery = async (pairingId: string): Promise<SecurityPairingInfo> => (await this.str("finishPairingDelivery", pairingId)).pairing!;
   async cancelPairing(pairingId: string): Promise<void> { await this.str("cancelPairing", pairingId); }
@@ -247,6 +250,8 @@ export class SecurityClient {
     existingRepair?: boolean;
     existingServer?: string;
     rawLink?: string;
+    platform?: string;
+    description?: string;
   }): Promise<SecurityPairingInfo> {
     const r = await this.run({
       case: "startJoinPairing",
@@ -257,6 +262,8 @@ export class SecurityClient {
         existingRepair: !!params.existingRepair,
         existingServer: params.existingServer ?? "",
         rawLink: params.rawLink ?? "",
+        platform: params.platform ?? "",
+        description: params.description ?? "",
       }),
     });
     return r.pairing!;

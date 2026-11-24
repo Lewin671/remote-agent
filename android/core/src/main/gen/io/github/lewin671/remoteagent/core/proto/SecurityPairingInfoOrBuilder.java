@@ -111,4 +111,64 @@ public interface SecurityPairingInfoOrBuilder extends
    * @return The registering.
    */
   boolean getRegistering();
+
+  /**
+   * <code>bool joiner_meta_received = 11 [json_name = "joinerMetaReceived"];</code>
+   * @return The joinerMetaReceived.
+   */
+  boolean getJoinerMetaReceived();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate> 
+      getReplacementCandidatesList();
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate getReplacementCandidates(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.SecurityPairingReplacementCandidate replacement_candidates = 12 [json_name = "replacementCandidates"];</code>
+   */
+  int getReplacementCandidatesCount();
+
+  /**
+   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
+   * @return The removeOldDefault.
+   */
+  boolean getRemoveOldDefault();
+
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   * @return Whether the replaceOldLabel field is set.
+   */
+  boolean hasReplaceOldLabel();
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
+   * @return The replaceOldLabel.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getReplaceOldLabel();
+
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   * @return Whether the replaceOldHint field is set.
+   */
+  boolean hasReplaceOldHint();
+  /**
+   * <code>.remoteagent.core.v1.Text replace_old_hint = 15 [json_name = "replaceOldHint"];</code>
+   * @return The replaceOldHint.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getReplaceOldHint();
+
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @return The joinerDescription.
+   */
+  java.lang.String getJoinerDescription();
+  /**
+   * <code>string joiner_description = 16 [json_name = "joinerDescription"];</code>
+   * @return The bytes for joinerDescription.
+   */
+  com.google.protobuf.ByteString
+      getJoinerDescriptionBytes();
 }

@@ -98,24 +98,28 @@ type codeDraft struct {
 }
 
 type initiatorPairingSession struct {
-	pairingID        string
-	code             string
-	url              string
-	server           string
-	expiresMs        int64
-	ephemSlot        string
-	ephemPub         []byte
-	trust            []byte
-	replacesDeviceID string
-	joined           bool
-	approved         bool
-	delivered        bool
-	candidateID      string
-	candidateEd      []byte
-	candidateX       []byte
-	candidateKind    v1.DeviceKind
-	sasEmoji         []string
-	pairKey          []byte
+	pairingID             string
+	code                  string
+	url                   string
+	server                string
+	expiresMs             int64
+	ephemSlot             string
+	ephemPub              []byte
+	trust                 []byte
+	replacesDeviceID      string
+	joined                bool
+	approved              bool
+	delivered             bool
+	candidateID           string
+	candidateEd           []byte
+	candidateX            []byte
+	candidateKind         v1.DeviceKind
+	sasEmoji              []string
+	pairKey               []byte
+	joinerMetaReceived    bool
+	joinerMeta            *v1.DeviceMeta
+	replacementCandidates []*corev1.SecurityPairingReplacementCandidate
+	removeDeviceIDs       []string
 }
 
 type joinerPairingSession struct {
@@ -126,6 +130,8 @@ type joinerPairingSession struct {
 	commit         []byte
 	existingRepair bool
 	replace        bool
+	platform       string
+	description    string
 	ephemSlot      string
 	ephemPub       []byte
 	edSlot         string
@@ -639,7 +645,11 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_PollPairing:
 		e.runOpTask(aid, true, &pollPairingInitiatorTask{pairingID: a.PollPairing.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_ApprovePairing:
-		e.runOpTask(aid, true, &approvePairingTask{pairingID: a.ApprovePairing.GetPairingId(), sasConfirmed: a.ApprovePairing.GetSasConfirmed()})
+		e.runOpTask(aid, true, &approvePairingTask{
+			pairingID:       a.ApprovePairing.GetPairingId(),
+			sasConfirmed:    a.ApprovePairing.GetSasConfirmed(),
+			removeDeviceIDs: slices.Clone(a.ApprovePairing.GetRemoveDeviceIds()),
+		})
 	case *corev1.SecurityWorkflowActionEvent_FinishPairingDelivery:
 		e.runOpTask(aid, true, &finishPairingDeliveryTask{pairingID: a.FinishPairingDelivery.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_CancelPairing:
