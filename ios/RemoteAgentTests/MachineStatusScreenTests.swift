@@ -95,5 +95,13 @@ import Testing
         #expect(zhText.contains("万") || zhText.contains("亿"))
         #expect(enText.contains("k") || enText.contains("M") || enText.contains("B"))
     }
+
+    @Test func resolvedCleanupPromptTranslatesCoreKey() {
+        let localized = L10n.machineStatusCleanupPrompt()
+        #expect(MachineStatusScreen.resolvedCleanupPrompt("") == localized)
+        #expect(MachineStatusScreen.resolvedCleanupPrompt("machine_status.cleanup_prompt") == localized)
+        #expect(!MachineStatusScreen.resolvedCleanupPrompt("machine_status.cleanup_prompt").contains("machine_status.cleanup_prompt"))
+        #expect(MachineStatusScreen.resolvedCleanupPrompt("Custom prompt") == "Custom prompt")
+    }
 }
 #endif

@@ -126,6 +126,15 @@ private struct SwapFade: ViewModifier, @preconcurrency Animatable {
 // MARK: Connected wrapper
 
 struct MachineStatusScreen: View {
+    /// `PrepareCleanupSessionEffect.prompt` carries the i18n key `machine_status.cleanup_prompt` from `clientcore`;
+    /// resolve it through `L10n` instead of pasting the raw key into the draft.
+    static func resolvedCleanupPrompt(_ raw: String) -> String {
+        if raw.isEmpty || raw == "machine_status.cleanup_prompt" {
+            return L10n.machineStatusCleanupPrompt()
+        }
+        return raw
+    }
+
     let id: String
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -217,7 +226,7 @@ struct MachineStatusScreen: View {
             guard let pending = context.core.pendingCleanup, pending.effect.machineID == id else { return }
             context.core.consumeCleanup(pending.id)
             let eff = pending.effect
-            let prompt = eff.prompt.or(L10n.machineStatusCleanupPrompt())
+            let prompt = Self.resolvedCleanupPrompt(eff.prompt)
             if eff.needsDirectoryPicker {
                 cleanup = .pickFolder
             } else {
