@@ -1030,3 +1030,69 @@ func TestSyncDirectLifecycleEventsDualSendAndFallback(t *testing.T) {
 		t.Fatalf("expected SYNC_LIFECYCLE_KIND_STOP to clear all tickets, pending=%d", coord.PendingTicketCount())
 	}
 }
+
+func TestSyncDirectCreateSessionDualSendAndBulkSingleLeg(t *testing.T) {
+	h := newDirectSyncHarness(t)
+	sid := "sess-phase2-1"
+	h.connectMainAndList(sid)
+	h.driveDirectHandshake()
+
+	// Ordinary side-effect command (CreateSession) must dual-send over DIRECT + RELAY with identical RequestID/Deadline.
+	_, ok, effs := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-create-1",
+		MachineID: h.daemon.id,
+		Command: &v1.Command{
+			Kind: &v1.Command_CreateSession{
+				CreateSession: &v1.CreateSessionRequest{Cwd: "/tmp/demo", Agent: v1.Agent_AGENT_CODEX},
+			},
+		},
+	})
+	if !ok {
+		t.Fatal("expected CreateSession to dispatch")
+	}
+	var directEff, relayEff *corev1.DispatchCommandEffect
+	for _, eff := range effs {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+				directEff = dc
+			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
+				relayEff = dc
+			}
+		}
+	}
+	if directEff == nil || relayEff == nil {
+		t.Fatalf("expected CreateSession dual-send on both DIRECT and RELAY, got direct=%v relay=%v", directEff, relayEff)
+	}
+	if directEff.RequestId != relayEff.RequestId || directEff.DeadlineMs != relayEff.DeadlineMs || !bytes.Equal(directEff.CommandBytes, relayEff.CommandBytes) {
+		t.Fatalf("dual-send legs must share exact RequestID/Deadline/CommandBytes")
+	}
+	if directEff.SealedEnvelope == nil || relayEff.SealedEnvelope == nil || !bytes.Equal(directEff.SealedEnvelope.Ciphertext, relayEff.SealedEnvelope.Ciphertext) {
+		t.Fatalf("dual-send legs must carry identical SealedEnvelope bytes")
+	}
+
+	// Bulk chunk command (GetSharedFileChunk) must stay single-leg (never dual-sent).
+	_, ok, bulkEffs := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:     "slot-bulk-1",
+		MachineID:   h.daemon.id,
+		SessionID:   sid,
+		BulkFileKey: sid + "/f-1",
+		BulkBytes:   4096,
+		Command: &v1.Command{
+			Kind: &v1.Command_GetSharedFileChunk{
+				GetSharedFileChunk: &v1.GetSharedFileChunkRequest{SessionId: sid, FileId: "f-1", Offset: 0},
+			},
+		},
+	})
+	if !ok {
+		t.Fatal("expected GetSharedFileChunk to dispatch")
+	}
+	dispatchCount := 0
+	for _, eff := range bulkEffs {
+		if eff.GetDispatchCommand() != nil {
+			dispatchCount++
+		}
+	}
+	if dispatchCount != 1 {
+		t.Fatalf("bulk chunk command must stay single-leg (not dual-sent), got %d legs", dispatchCount)
+	}
+}

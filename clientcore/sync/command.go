@@ -373,7 +373,7 @@ func (e *Engine) emitCommandAttempt(ctx *StepContext, prep *PreparedCommand, ret
 	prep.RelayLegID = ""
 	e.inFlightCmds[prep.RequestID] = prep
 
-	if !prep.ForceRelay && isInteractiveCommand(prep.Command) {
+	if !prep.ForceRelay && isDualSendCommand(prep) {
 		if dec, ok := e.transportCoord.PrepareInteractive(e.nowMs, prep.MachineID, prep.DeadlineMs); ok {
 			attemptD := e.nextID(ctx)
 			attemptR := e.nextID(ctx)

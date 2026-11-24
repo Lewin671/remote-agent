@@ -3,8 +3,11 @@ package relay
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -69,6 +72,23 @@ type pendingExecution struct {
 	retry     bool
 }
 
+type authCacheKey struct {
+	head devicesec.Hash
+	peer string
+	hash [32]byte
+}
+
+type pendingAuth struct {
+	done chan struct{}
+	auth *deviceauth.Authenticated
+	err  error
+}
+
+type cachedAuth struct {
+	auth      *deviceauth.Authenticated
+	expiresAt int64
+}
+
 type commandAdmission struct {
 	authenticate     func(devicesec.Wire) (*deviceauth.Authenticated, error)
 	reserveWaiter    func(string) (func(), bool)
@@ -86,12 +106,29 @@ type commandAdmission struct {
 	inflightWaiters  int
 	scheduler        *transport.Scheduler
 	closed           bool
+
+	authMu        sync.Mutex
+	authPending   map[authCacheKey]*pendingAuth
+	verifiedDedup linkcore.CipherDedup
+	verifiedCache map[authCacheKey]cachedAuth
+	authCoalesced atomic.Uint64
 }
 
 func (c *endpoint) admissionOwner() *commandAdmission {
 	c.admissionOnce.Do(func() {
 		ctx, cancel := context.WithCancel(c.link.Context())
-		a := &commandAdmission{endpoint: c, ctx: ctx, cancel: cancel, wake: make(chan struct{}, 2), replies: make(chan struct{}, 2), syncing: map[string]bool{}, inflight: map[string]*pendingExecution{}, scheduler: transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter)}
+		a := &commandAdmission{
+			endpoint:      c,
+			ctx:           ctx,
+			cancel:        cancel,
+			wake:          make(chan struct{}, 2),
+			replies:       make(chan struct{}, 2),
+			syncing:       map[string]bool{},
+			inflight:      map[string]*pendingExecution{},
+			authPending:   map[authCacheKey]*pendingAuth{},
+			verifiedCache: map[authCacheKey]cachedAuth{},
+			scheduler:     transport.NewSchedulerWithClock(c.link, c.r.SchedulerNow, c.r.SchedulerAfter),
+		}
 		a.frames = linkcore.FairQueue[*authFrame]{Entries: 64, Bytes: 4 << 20, PeerEntries: 8, PeerBytes: 1 << 20}
 		a.results = linkcore.FairQueue[*callResult]{Entries: 64, Bytes: 4 << 20, PeerEntries: 64, PeerBytes: 4 << 20}
 		a.authenticate = func(w devicesec.Wire) (*deviceauth.Authenticated, error) {
@@ -186,7 +223,7 @@ func (a *commandAdmission) authenticateLoop() {
 			a.respond(&callResult{route: frame.route, entry: "security_unavailable"})
 			continue
 		}
-		p, err := a.authenticate(frame.wire)
+		p, err := a.authenticateWithDedup(frame.waiting, frame.peer, frame.wire)
 		if errors.Is(err, deviceauth.ErrUnknown) && !frame.retried {
 			a.syncEpoch(frame)
 			continue
@@ -201,6 +238,98 @@ func (a *commandAdmission) authenticateLoop() {
 		// Do not retain ciphertext in an execution closure or an auxiliary map.
 		frame.wire = devicesec.Wire{}
 		a.classify(frame.waiting, frame.route, p)
+	}
+}
+
+func wireCipherHash(w devicesec.Wire) [32]byte {
+	h := sha256.New()
+	var lenBuf [8]byte
+	for _, part := range [][]byte{w.Header, w.Nonce, w.Cipher, w.Origin} {
+		binary.BigEndian.PutUint64(lenBuf[:], uint64(len(part)))
+		_, _ = h.Write(lenBuf[:])
+		_, _ = h.Write(part)
+	}
+	var sum [32]byte
+	h.Sum(sum[:0])
+	return sum
+}
+
+func (a *commandAdmission) currentHeadHash() (devicesec.Hash, bool) {
+	if a.endpoint == nil || a.endpoint.security == nil || a.endpoint.security.endpoint == nil {
+		return devicesec.Hash{}, false
+	}
+	_, head, _ := a.endpoint.security.endpoint.Snapshot()
+	hash, err := head.Hash()
+	if err != nil {
+		return devicesec.Hash{}, false
+	}
+	return hash, true
+}
+
+// authenticateWithDedup coalesces in-flight verification of identical sealed
+// command envelopes arriving over dual paths and reuses verified-only results
+// within the bounded 4096/peer, 10s TTL window (docs/transport.md §3.4).
+// Failed verifications are never cached.
+func (a *commandAdmission) authenticateWithDedup(waiting context.Context, peer string, wire devicesec.Wire) (*deviceauth.Authenticated, error) {
+	headHash, hasHead := a.currentHeadHash()
+	if !hasHead {
+		return a.authenticate(wire)
+	}
+	nowMs := time.Now().UnixMilli()
+	key := authCacheKey{head: headHash, peer: peer, hash: wireCipherHash(wire)}
+	for {
+		a.authMu.Lock()
+		if a.verifiedDedup.Seen(peer, key.hash, nowMs) {
+			if cached, ok := a.verifiedCache[key]; ok && nowMs < cached.expiresAt && uint64(nowMs) <= cached.auth.Header().Deadline {
+				a.authMu.Unlock()
+				a.authCoalesced.Add(1)
+				return cached.auth, nil
+			}
+			delete(a.verifiedCache, key)
+		}
+		if pending, ok := a.authPending[key]; ok {
+			a.authMu.Unlock()
+			select {
+			case <-pending.done:
+				if pending.err == nil && pending.auth != nil {
+					if curHead, ok := a.currentHeadHash(); ok && curHead == key.head && uint64(time.Now().UnixMilli()) <= pending.auth.Header().Deadline {
+						a.authCoalesced.Add(1)
+						return pending.auth, nil
+					}
+				}
+				// Never cache or blindly trust a failed verification for another waiter.
+				return a.authenticate(wire)
+			case <-waiting.Done():
+				return nil, waiting.Err()
+			case <-a.ctx.Done():
+				return nil, a.ctx.Err()
+			}
+		}
+		pending := &pendingAuth{done: make(chan struct{})}
+		a.authPending[key] = pending
+		a.authMu.Unlock()
+
+		p, err := a.authenticate(wire)
+
+		a.authMu.Lock()
+		pending.auth = p
+		pending.err = err
+		delete(a.authPending, key)
+		close(pending.done)
+		if err == nil && p != nil {
+			nowAfter := time.Now().UnixMilli()
+			a.verifiedDedup.RecordVerified(peer, key.hash, nowAfter)
+			if len(a.verifiedCache) >= linkcore.DedupMaxPerPeer*2 {
+				for k, v := range a.verifiedCache {
+					if nowAfter >= v.expiresAt || k.head != headHash {
+						delete(a.verifiedCache, k)
+					}
+				}
+			}
+			a.verifiedCache[key] = cachedAuth{auth: p, expiresAt: nowAfter + linkcore.DedupTTLMs}
+		}
+		a.authMu.Unlock()
+		return p, err
 	}
 }
 func (a *commandAdmission) syncEpoch(f *authFrame) {
@@ -252,20 +381,6 @@ func (a *commandAdmission) existing(waiting context.Context, route *callRoute, p
 		a.result(route, p, body, err, false)
 	}
 	return true
-}
-
-func isInteractiveCommand(cmd *pb.Command) bool {
-	switch cmd.Kind.(type) {
-	case *pb.Command_Send,
-		*pb.Command_Interrupt,
-		*pb.Command_ResolveApproval,
-		*pb.Command_AnswerQuestion,
-		*pb.Command_AnswerPlan,
-		*pb.Command_CancelInput,
-		*pb.Command_ResumeInput:
-		return true
-	}
-	return false
 }
 
 func classifyCommand(cmd *pb.Command) (transport.Class, bool) {
@@ -342,7 +457,7 @@ func (a *commandAdmission) classify(waiting context.Context, route *callRoute, p
 	class, approval := classifyCommand(cmd)
 	if route.binding != nil {
 		bulk := cmd.GetPutImageChunk() != nil || cmd.GetGetSharedFileChunk() != nil
-		allowed := route.directUse == 2 && bulk || route.directUse == 1 && (deviceauth.IsReadOnlyCommand(cmd) || isInteractiveCommand(cmd)) && !bulk
+		allowed := route.directUse == 2 && bulk || route.directUse == 1 && !bulk
 		if !allowed {
 			a.result(route, p, nil, p.Decision("path_unavailable", devicesec.ErrUntrusted), false)
 			return
@@ -694,6 +809,11 @@ func (a *commandAdmission) close() {
 		a.finishInflight(pc, nil, deviceauth.ErrOutcomeUnknown, pc.raw, false)
 	}
 	a.workers.Wait()
+	a.authMu.Lock()
+	clear(a.verifiedCache)
+	clear(a.authPending)
+	a.verifiedDedup = linkcore.CipherDedup{}
+	a.authMu.Unlock()
 }
 
 // Internal handoff only; never sent as a new wire reason or user message.

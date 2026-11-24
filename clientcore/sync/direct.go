@@ -674,21 +674,11 @@ func (e *Engine) clearDirectTimerTracking() {
 	e.directTermAt = 0
 }
 
-func isInteractiveCommand(cmd *v1.Command) bool {
-	if cmd == nil {
+func isDualSendCommand(prep *PreparedCommand) bool {
+	if prep == nil || prep.Command == nil {
 		return false
 	}
-	switch cmd.Kind.(type) {
-	case *v1.Command_Send,
-		*v1.Command_Interrupt,
-		*v1.Command_ResolveApproval,
-		*v1.Command_AnswerQuestion,
-		*v1.Command_AnswerPlan,
-		*v1.Command_CancelInput,
-		*v1.Command_ResumeInput:
-		return true
-	}
-	return false
+	return prep.RouteHint == corev1.CommandRouteHint_COMMAND_ROUTE_HINT_NORMAL
 }
 
 func (e *Engine) trackCommandTransferLifecycle(cmd *v1.Command, machineID string) {
