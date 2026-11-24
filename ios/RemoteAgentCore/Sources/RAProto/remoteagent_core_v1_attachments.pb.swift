@@ -713,6 +713,15 @@ public struct PBAttachmentDraftItemView: @unchecked Sendable {
     set {_uniqueStorage()._remoteOnly = newValue}
   }
 
+  public var badgeText: PBCoreText {
+    get {return _storage._badgeText ?? PBCoreText()}
+    set {_uniqueStorage()._badgeText = newValue}
+  }
+  /// Returns true if `badgeText` has been explicitly set.
+  public var hasBadgeText: Bool {return _storage._badgeText != nil}
+  /// Clears the value of `badgeText`. Subsequent reads from it will return its default value.
+  public mutating func clearBadgeText() {_uniqueStorage()._badgeText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1138,6 +1147,11 @@ public struct PBAttachmentConfigEvent: Sendable {
   /// True when the shell persists prepared image bytes across restarts (mobile);
   /// false when only original source blobs are persisted (web).
   public var hasPersistedPreparedImages_p: Bool = false
+
+  /// True when another tab/instance currently owns local draft/outbox storage
+  /// (e.g. Web Locks held by another tab). Core disables persistence/recovery
+  /// and surfaces a localized status banner via AttachmentDraftView.storage_error.
+  public var storageLockedByOther: Bool = false
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2615,7 +2629,7 @@ extension PBOutboxAttachmentSummary: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentDraftItemView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}item_id\0\u{1}kind\0\u{3}is_video\0\u{1}state\0\u{1}progress\0\u{3}progress_percent\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{3}size_bytes\0\u{3}size_text\0\u{3}duration_text\0\u{1}width\0\u{1}height\0\u{3}source_ref\0\u{3}prepared_ref\0\u{3}thumb_ref\0\u{3}status_text\0\u{1}problem\0\u{3}file_error_text\0\u{3}can_retry\0\u{3}can_pause\0\u{3}can_resume\0\u{3}can_remove\0\u{3}image_index\0\u{3}position_text\0\u{3}position_a11y\0\u{3}remove_a11y\0\u{3}remote_only\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}item_id\0\u{1}kind\0\u{3}is_video\0\u{1}state\0\u{1}progress\0\u{3}progress_percent\0\u{3}display_name\0\u{3}name_head\0\u{3}name_tail\0\u{3}size_bytes\0\u{3}size_text\0\u{3}duration_text\0\u{1}width\0\u{1}height\0\u{3}source_ref\0\u{3}prepared_ref\0\u{3}thumb_ref\0\u{3}status_text\0\u{1}problem\0\u{3}file_error_text\0\u{3}can_retry\0\u{3}can_pause\0\u{3}can_resume\0\u{3}can_remove\0\u{3}image_index\0\u{3}position_text\0\u{3}position_a11y\0\u{3}remove_a11y\0\u{3}remote_only\0\u{3}badge_text\0")
 
   fileprivate class _StorageClass {
     var _itemID: String = String()
@@ -2647,6 +2661,7 @@ extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _positionA11Y: PBCoreText? = nil
     var _removeA11Y: PBCoreText? = nil
     var _remoteOnly: Bool = false
+    var _badgeText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2686,6 +2701,7 @@ extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _positionA11Y = source._positionA11Y
       _removeA11Y = source._removeA11Y
       _remoteOnly = source._remoteOnly
+      _badgeText = source._badgeText
     }
   }
 
@@ -2733,6 +2749,7 @@ extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 27: try { try decoder.decodeSingularMessageField(value: &_storage._positionA11Y) }()
         case 28: try { try decoder.decodeSingularMessageField(value: &_storage._removeA11Y) }()
         case 29: try { try decoder.decodeSingularBoolField(value: &_storage._remoteOnly) }()
+        case 30: try { try decoder.decodeSingularMessageField(value: &_storage._badgeText) }()
         default: break
         }
       }
@@ -2832,6 +2849,9 @@ extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._Messa
       if _storage._remoteOnly != false {
         try visitor.visitSingularBoolField(value: _storage._remoteOnly, fieldNumber: 29)
       }
+      try { if let v = _storage._badgeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 30)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2870,6 +2890,7 @@ extension PBAttachmentDraftItemView: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._positionA11Y != rhs_storage._positionA11Y {return false}
         if _storage._removeA11Y != rhs_storage._removeA11Y {return false}
         if _storage._remoteOnly != rhs_storage._remoteOnly {return false}
+        if _storage._badgeText != rhs_storage._badgeText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3432,7 +3453,7 @@ extension PBAttachmentDraftViewModel: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBAttachmentConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentConfigEvent"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}persist_drafts\0\u{3}persist_outbox\0\u{3}scan_storage\0\u{3}max_chunk_bytes\0\u{3}has_persisted_prepared_images\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}persist_drafts\0\u{3}persist_outbox\0\u{3}scan_storage\0\u{3}max_chunk_bytes\0\u{3}has_persisted_prepared_images\0\u{3}storage_locked_by_other\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3445,6 +3466,7 @@ extension PBAttachmentConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 3: try { try decoder.decodeSingularBoolField(value: &self.scanStorage) }()
       case 4: try { try decoder.decodeSingularInt32Field(value: &self.maxChunkBytes) }()
       case 5: try { try decoder.decodeSingularBoolField(value: &self.hasPersistedPreparedImages_p) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.storageLockedByOther) }()
       default: break
       }
     }
@@ -3466,6 +3488,9 @@ extension PBAttachmentConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
     if self.hasPersistedPreparedImages_p != false {
       try visitor.visitSingularBoolField(value: self.hasPersistedPreparedImages_p, fieldNumber: 5)
     }
+    if self.storageLockedByOther != false {
+      try visitor.visitSingularBoolField(value: self.storageLockedByOther, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3475,6 +3500,7 @@ extension PBAttachmentConfigEvent: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.scanStorage != rhs.scanStorage {return false}
     if lhs.maxChunkBytes != rhs.maxChunkBytes {return false}
     if lhs.hasPersistedPreparedImages_p != rhs.hasPersistedPreparedImages_p {return false}
+    if lhs.storageLockedByOther != rhs.storageLockedByOther {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

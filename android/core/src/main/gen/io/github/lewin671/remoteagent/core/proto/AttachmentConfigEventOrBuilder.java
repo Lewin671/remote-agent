@@ -53,4 +53,16 @@ public interface AttachmentConfigEventOrBuilder extends
    * @return The hasPersistedPreparedImages.
    */
   boolean getHasPersistedPreparedImages();
+
+  /**
+   * <pre>
+   * True when another tab/instance currently owns local draft/outbox storage
+   * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+   * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+   * </pre>
+   *
+   * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+   * @return The storageLockedByOther.
+   */
+  boolean getStorageLockedByOther();
 }

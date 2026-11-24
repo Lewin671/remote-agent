@@ -869,6 +869,22 @@
     }
   },
   {
+    "key": "attachment.other_tab_owns_storage",
+    "zh-CN": "另一个标签页正在管理本地草稿和待发消息，本标签页的编辑只保存在当前页面",
+    "en": "Another tab is managing local drafts and outgoing messages. Edits here stay in memory only.",
+    "notes": "多标签页 Web Locks 未拿到附件存储所有权时，在草稿栏展示的状态提示。说明正文允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.path_spaces",
     "zh-CN": "{name} 上 remote-agent 的目录路径带空格，不能发图片",
     "en": "The remote-agent directory path on {name} contains spaces, so images cannot be sent.",

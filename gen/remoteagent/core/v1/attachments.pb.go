@@ -936,6 +936,7 @@ type AttachmentDraftItemView struct {
 	PositionA11Y    *Text                  `protobuf:"bytes,27,opt,name=position_a11y,json=positionA11y,proto3" json:"position_a11y,omitempty"`
 	RemoveA11Y      *Text                  `protobuf:"bytes,28,opt,name=remove_a11y,json=removeA11y,proto3" json:"remove_a11y,omitempty"`
 	RemoteOnly      bool                   `protobuf:"varint,29,opt,name=remote_only,json=remoteOnly,proto3" json:"remote_only,omitempty"`
+	BadgeText       *Text                  `protobuf:"bytes,30,opt,name=badge_text,json=badgeText,proto3" json:"badge_text,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1171,6 +1172,13 @@ func (x *AttachmentDraftItemView) GetRemoteOnly() bool {
 		return x.RemoteOnly
 	}
 	return false
+}
+
+func (x *AttachmentDraftItemView) GetBadgeText() *Text {
+	if x != nil {
+		return x.BadgeText
+	}
+	return nil
 }
 
 type DraftImageViewerView struct {
@@ -1755,8 +1763,12 @@ type AttachmentConfigEvent struct {
 	// True when the shell persists prepared image bytes across restarts (mobile);
 	// false when only original source blobs are persisted (web).
 	HasPersistedPreparedImages bool `protobuf:"varint,5,opt,name=has_persisted_prepared_images,json=hasPersistedPreparedImages,proto3" json:"has_persisted_prepared_images,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// True when another tab/instance currently owns local draft/outbox storage
+	// (e.g. Web Locks held by another tab). Core disables persistence/recovery
+	// and surfaces a localized status banner via AttachmentDraftView.storage_error.
+	StorageLockedByOther bool `protobuf:"varint,6,opt,name=storage_locked_by_other,json=storageLockedByOther,proto3" json:"storage_locked_by_other,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AttachmentConfigEvent) Reset() {
@@ -1820,6 +1832,13 @@ func (x *AttachmentConfigEvent) GetMaxChunkBytes() int32 {
 func (x *AttachmentConfigEvent) GetHasPersistedPreparedImages() bool {
 	if x != nil {
 		return x.HasPersistedPreparedImages
+	}
+	return false
+}
+
+func (x *AttachmentConfigEvent) GetStorageLockedByOther() bool {
+	if x != nil {
+		return x.StorageLockedByOther
 	}
 	return false
 }
@@ -4387,7 +4406,7 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\tthumb_ref\x18\t \x01(\tR\bthumbRef\x12\x1b\n" +
 	"\tremote_id\x18\n" +
 	" \x01(\tR\bremoteId\x12$\n" +
-	"\x0ehas_local_copy\x18\v \x01(\bR\fhasLocalCopy\"\xad\t\n" +
+	"\x0ehas_local_copy\x18\v \x01(\bR\fhasLocalCopy\"\xe7\t\n" +
 	"\x17AttachmentDraftItemView\x12\x17\n" +
 	"\aitem_id\x18\x01 \x01(\tR\x06itemId\x12;\n" +
 	"\x04kind\x18\x02 \x01(\x0e2'.remoteagent.core.v1.AttachmentItemKindR\x04kind\x12\x19\n" +
@@ -4426,7 +4445,9 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\vremove_a11y\x18\x1c \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"removeA11y\x12\x1f\n" +
 	"\vremote_only\x18\x1d \x01(\bR\n" +
-	"remoteOnly\"\xb3\x03\n" +
+	"remoteOnly\x128\n" +
+	"\n" +
+	"badge_text\x18\x1e \x01(\v2\x19.remoteagent.core.v1.TextR\tbadgeText\"\xb3\x03\n" +
 	"\x14DraftImageViewerView\x12\x12\n" +
 	"\x04open\x18\x01 \x01(\bR\x04open\x12#\n" +
 	"\rcurrent_index\x18\x02 \x01(\x05R\fcurrentIndex\x12\x1f\n" +
@@ -4489,13 +4510,14 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"\x1cAttachmentDraftScreenRequest\x125\n" +
 	"\x05scope\x18\x01 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\"Z\n" +
 	"\x18AttachmentDraftViewModel\x12>\n" +
-	"\x05draft\x18\x01 \x01(\v2(.remoteagent.core.v1.AttachmentDraftViewR\x05draft\"\xf3\x01\n" +
+	"\x05draft\x18\x01 \x01(\v2(.remoteagent.core.v1.AttachmentDraftViewR\x05draft\"\xaa\x02\n" +
 	"\x15AttachmentConfigEvent\x12%\n" +
 	"\x0epersist_drafts\x18\x01 \x01(\bR\rpersistDrafts\x12%\n" +
 	"\x0epersist_outbox\x18\x02 \x01(\bR\rpersistOutbox\x12!\n" +
 	"\fscan_storage\x18\x03 \x01(\bR\vscanStorage\x12&\n" +
 	"\x0fmax_chunk_bytes\x18\x04 \x01(\x05R\rmaxChunkBytes\x12A\n" +
-	"\x1dhas_persisted_prepared_images\x18\x05 \x01(\bR\x1ahasPersistedPreparedImages\"\x94\x01\n" +
+	"\x1dhas_persisted_prepared_images\x18\x05 \x01(\bR\x1ahasPersistedPreparedImages\x125\n" +
+	"\x17storage_locked_by_other\x18\x06 \x01(\bR\x14storageLockedByOther\"\x94\x01\n" +
 	"\x11DraftStorageEntry\x12?\n" +
 	"\x06bucket\x18\x01 \x01(\x0e2'.remoteagent.core.v1.DraftStorageBucketR\x06bucket\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
@@ -4831,75 +4853,76 @@ var file_remoteagent_core_v1_attachments_proto_depIdxs = []int32{
 	55, // 15: remoteagent.core.v1.AttachmentDraftItemView.position_text:type_name -> remoteagent.core.v1.Text
 	55, // 16: remoteagent.core.v1.AttachmentDraftItemView.position_a11y:type_name -> remoteagent.core.v1.Text
 	55, // 17: remoteagent.core.v1.AttachmentDraftItemView.remove_a11y:type_name -> remoteagent.core.v1.Text
-	55, // 18: remoteagent.core.v1.DraftImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
-	55, // 19: remoteagent.core.v1.DraftImageViewerView.position_a11y:type_name -> remoteagent.core.v1.Text
-	10, // 20: remoteagent.core.v1.DraftImageViewerView.current_image:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	55, // 21: remoteagent.core.v1.DraftImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
-	5,  // 22: remoteagent.core.v1.AttachmentDraftView.scope:type_name -> remoteagent.core.v1.DraftScope
-	55, // 23: remoteagent.core.v1.AttachmentDraftView.original_toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
-	55, // 24: remoteagent.core.v1.AttachmentDraftView.original_total_size_text:type_name -> remoteagent.core.v1.Text
-	55, // 25: remoteagent.core.v1.AttachmentDraftView.original_hint:type_name -> remoteagent.core.v1.Text
-	55, // 26: remoteagent.core.v1.AttachmentDraftView.file_metadata_notice:type_name -> remoteagent.core.v1.Text
-	55, // 27: remoteagent.core.v1.AttachmentDraftView.image_count_text:type_name -> remoteagent.core.v1.Text
-	55, // 28: remoteagent.core.v1.AttachmentDraftView.file_count_text:type_name -> remoteagent.core.v1.Text
-	10, // 29: remoteagent.core.v1.AttachmentDraftView.items:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	10, // 30: remoteagent.core.v1.AttachmentDraftView.images:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	10, // 31: remoteagent.core.v1.AttachmentDraftView.files:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	55, // 32: remoteagent.core.v1.AttachmentDraftView.send_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 33: remoteagent.core.v1.AttachmentDraftView.notice:type_name -> remoteagent.core.v1.Text
-	55, // 34: remoteagent.core.v1.AttachmentDraftView.failure_summary:type_name -> remoteagent.core.v1.Text
-	55, // 35: remoteagent.core.v1.AttachmentDraftView.storage_error:type_name -> remoteagent.core.v1.Text
-	55, // 36: remoteagent.core.v1.AttachmentDraftView.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 37: remoteagent.core.v1.AttachmentDraftView.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 38: remoteagent.core.v1.AttachmentDraftView.gallery_blocked_reason:type_name -> remoteagent.core.v1.Text
-	11, // 39: remoteagent.core.v1.AttachmentDraftView.image_viewer:type_name -> remoteagent.core.v1.DraftImageViewerView
-	5,  // 40: remoteagent.core.v1.AttachmentDraftScreenRequest.scope:type_name -> remoteagent.core.v1.DraftScope
-	12, // 41: remoteagent.core.v1.AttachmentDraftViewModel.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
-	4,  // 42: remoteagent.core.v1.DraftStorageEntry.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	16, // 43: remoteagent.core.v1.DraftStorageListedEvent.entries:type_name -> remoteagent.core.v1.DraftStorageEntry
-	3,  // 44: remoteagent.core.v1.DraftStorageListedEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	4,  // 45: remoteagent.core.v1.DraftStorageReadResultEvent.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	3,  // 46: remoteagent.core.v1.DraftStorageReadResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	4,  // 47: remoteagent.core.v1.DraftStorageWriteResultEvent.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	3,  // 48: remoteagent.core.v1.DraftStorageWriteResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	5,  // 49: remoteagent.core.v1.DraftOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 50: remoteagent.core.v1.DraftSetTextAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 51: remoteagent.core.v1.DraftSetTargetMachineAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 52: remoteagent.core.v1.DraftReserveSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 53: remoteagent.core.v1.DraftReleaseSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	57, // 54: remoteagent.core.v1.DraftPickedItem.candidate:type_name -> remoteagent.core.v1.AttachmentCandidateInput
-	5,  // 55: remoteagent.core.v1.DraftAddItemsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	25, // 56: remoteagent.core.v1.DraftAddItemsAction.items:type_name -> remoteagent.core.v1.DraftPickedItem
-	5,  // 57: remoteagent.core.v1.DraftRemoveItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 58: remoteagent.core.v1.DraftRetryItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 59: remoteagent.core.v1.DraftSetOriginalAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 60: remoteagent.core.v1.DraftClearAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 61: remoteagent.core.v1.DraftDismissNoticeAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 62: remoteagent.core.v1.AttachmentPauseUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 63: remoteagent.core.v1.AttachmentResumeUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 64: remoteagent.core.v1.AttachmentPrepareImageResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	53, // 65: remoteagent.core.v1.AttachmentPrepareImageResultEvent.format:type_name -> remoteagent.v1.ImageFormat
-	3,  // 66: remoteagent.core.v1.AttachmentPrepareImageResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	5,  // 67: remoteagent.core.v1.AttachmentHashFileResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	3,  // 68: remoteagent.core.v1.AttachmentHashFileResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	5,  // 69: remoteagent.core.v1.AttachmentReadChunkResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	3,  // 70: remoteagent.core.v1.AttachmentReadChunkResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	54, // 71: remoteagent.core.v1.DraftSendSessionAction.mode:type_name -> remoteagent.v1.SendMode
-	5,  // 72: remoteagent.core.v1.DraftImageViewerOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 73: remoteagent.core.v1.DraftImageViewerNavigateAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 74: remoteagent.core.v1.DraftImageViewerCloseAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	4,  // 75: remoteagent.core.v1.DraftStorageReadEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	4,  // 76: remoteagent.core.v1.DraftStorageWriteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	4,  // 77: remoteagent.core.v1.DraftStorageDeleteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	5,  // 78: remoteagent.core.v1.AttachmentPrepareImageEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 79: remoteagent.core.v1.AttachmentHashFileEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 80: remoteagent.core.v1.AttachmentReadChunkEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	1,  // 81: remoteagent.core.v1.AttachmentReadChunkEffect.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
-	82, // [82:82] is the sub-list for method output_type
-	82, // [82:82] is the sub-list for method input_type
-	82, // [82:82] is the sub-list for extension type_name
-	82, // [82:82] is the sub-list for extension extendee
-	0,  // [0:82] is the sub-list for field type_name
+	55, // 18: remoteagent.core.v1.AttachmentDraftItemView.badge_text:type_name -> remoteagent.core.v1.Text
+	55, // 19: remoteagent.core.v1.DraftImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
+	55, // 20: remoteagent.core.v1.DraftImageViewerView.position_a11y:type_name -> remoteagent.core.v1.Text
+	10, // 21: remoteagent.core.v1.DraftImageViewerView.current_image:type_name -> remoteagent.core.v1.AttachmentDraftItemView
+	55, // 22: remoteagent.core.v1.DraftImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
+	5,  // 23: remoteagent.core.v1.AttachmentDraftView.scope:type_name -> remoteagent.core.v1.DraftScope
+	55, // 24: remoteagent.core.v1.AttachmentDraftView.original_toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
+	55, // 25: remoteagent.core.v1.AttachmentDraftView.original_total_size_text:type_name -> remoteagent.core.v1.Text
+	55, // 26: remoteagent.core.v1.AttachmentDraftView.original_hint:type_name -> remoteagent.core.v1.Text
+	55, // 27: remoteagent.core.v1.AttachmentDraftView.file_metadata_notice:type_name -> remoteagent.core.v1.Text
+	55, // 28: remoteagent.core.v1.AttachmentDraftView.image_count_text:type_name -> remoteagent.core.v1.Text
+	55, // 29: remoteagent.core.v1.AttachmentDraftView.file_count_text:type_name -> remoteagent.core.v1.Text
+	10, // 30: remoteagent.core.v1.AttachmentDraftView.items:type_name -> remoteagent.core.v1.AttachmentDraftItemView
+	10, // 31: remoteagent.core.v1.AttachmentDraftView.images:type_name -> remoteagent.core.v1.AttachmentDraftItemView
+	10, // 32: remoteagent.core.v1.AttachmentDraftView.files:type_name -> remoteagent.core.v1.AttachmentDraftItemView
+	55, // 33: remoteagent.core.v1.AttachmentDraftView.send_blocked_reason:type_name -> remoteagent.core.v1.Text
+	55, // 34: remoteagent.core.v1.AttachmentDraftView.notice:type_name -> remoteagent.core.v1.Text
+	55, // 35: remoteagent.core.v1.AttachmentDraftView.failure_summary:type_name -> remoteagent.core.v1.Text
+	55, // 36: remoteagent.core.v1.AttachmentDraftView.storage_error:type_name -> remoteagent.core.v1.Text
+	55, // 37: remoteagent.core.v1.AttachmentDraftView.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	55, // 38: remoteagent.core.v1.AttachmentDraftView.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	55, // 39: remoteagent.core.v1.AttachmentDraftView.gallery_blocked_reason:type_name -> remoteagent.core.v1.Text
+	11, // 40: remoteagent.core.v1.AttachmentDraftView.image_viewer:type_name -> remoteagent.core.v1.DraftImageViewerView
+	5,  // 41: remoteagent.core.v1.AttachmentDraftScreenRequest.scope:type_name -> remoteagent.core.v1.DraftScope
+	12, // 42: remoteagent.core.v1.AttachmentDraftViewModel.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
+	4,  // 43: remoteagent.core.v1.DraftStorageEntry.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	16, // 44: remoteagent.core.v1.DraftStorageListedEvent.entries:type_name -> remoteagent.core.v1.DraftStorageEntry
+	3,  // 45: remoteagent.core.v1.DraftStorageListedEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	4,  // 46: remoteagent.core.v1.DraftStorageReadResultEvent.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	3,  // 47: remoteagent.core.v1.DraftStorageReadResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	4,  // 48: remoteagent.core.v1.DraftStorageWriteResultEvent.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	3,  // 49: remoteagent.core.v1.DraftStorageWriteResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	5,  // 50: remoteagent.core.v1.DraftOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 51: remoteagent.core.v1.DraftSetTextAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 52: remoteagent.core.v1.DraftSetTargetMachineAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 53: remoteagent.core.v1.DraftReserveSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 54: remoteagent.core.v1.DraftReleaseSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	57, // 55: remoteagent.core.v1.DraftPickedItem.candidate:type_name -> remoteagent.core.v1.AttachmentCandidateInput
+	5,  // 56: remoteagent.core.v1.DraftAddItemsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	25, // 57: remoteagent.core.v1.DraftAddItemsAction.items:type_name -> remoteagent.core.v1.DraftPickedItem
+	5,  // 58: remoteagent.core.v1.DraftRemoveItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 59: remoteagent.core.v1.DraftRetryItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 60: remoteagent.core.v1.DraftSetOriginalAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 61: remoteagent.core.v1.DraftClearAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 62: remoteagent.core.v1.DraftDismissNoticeAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 63: remoteagent.core.v1.AttachmentPauseUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 64: remoteagent.core.v1.AttachmentResumeUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 65: remoteagent.core.v1.AttachmentPrepareImageResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	53, // 66: remoteagent.core.v1.AttachmentPrepareImageResultEvent.format:type_name -> remoteagent.v1.ImageFormat
+	3,  // 67: remoteagent.core.v1.AttachmentPrepareImageResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	5,  // 68: remoteagent.core.v1.AttachmentHashFileResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	3,  // 69: remoteagent.core.v1.AttachmentHashFileResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	5,  // 70: remoteagent.core.v1.AttachmentReadChunkResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	3,  // 71: remoteagent.core.v1.AttachmentReadChunkResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	54, // 72: remoteagent.core.v1.DraftSendSessionAction.mode:type_name -> remoteagent.v1.SendMode
+	5,  // 73: remoteagent.core.v1.DraftImageViewerOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 74: remoteagent.core.v1.DraftImageViewerNavigateAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 75: remoteagent.core.v1.DraftImageViewerCloseAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	4,  // 76: remoteagent.core.v1.DraftStorageReadEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	4,  // 77: remoteagent.core.v1.DraftStorageWriteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	4,  // 78: remoteagent.core.v1.DraftStorageDeleteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	5,  // 79: remoteagent.core.v1.AttachmentPrepareImageEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 80: remoteagent.core.v1.AttachmentHashFileEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 81: remoteagent.core.v1.AttachmentReadChunkEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	1,  // 82: remoteagent.core.v1.AttachmentReadChunkEffect.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
+	83, // [83:83] is the sub-list for method output_type
+	83, // [83:83] is the sub-list for method input_type
+	83, // [83:83] is the sub-list for extension type_name
+	83, // [83:83] is the sub-list for extension extendee
+	0,  // [0:83] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_attachments_proto_init() }

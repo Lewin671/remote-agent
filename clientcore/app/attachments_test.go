@@ -3290,3 +3290,147 @@ func TestAttachments_LoweredAttachmentLimits_BlockCanSendAndSendActions(t *testi
 		t.Fatalf("expected NewSession draft blocked with attachment.max_images, got canSend=%v reason=%+v", dv.CanSend, dv.SendBlockedReason)
 	}
 }
+
+func TestAttachments_StorageLockedByOther_AndConfigUpdate_AndBadgeText(t *testing.T) {
+	// 1. StorageLockedByOther disables persistence & scan and exposes localized storage_error notice.
+	c := New()
+	defer c.Close()
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: "s-locked"}
+	cfgEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_000,
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts:             true,
+				PersistOutbox:             true,
+				ScanStorage:               true,
+				HasPersistedPreparedImages: true,
+				StorageLockedByOther:      true,
+			},
+		},
+	})
+	for _, ef := range cfgEff.GetEffects() {
+		if ef.GetDraftStorageList() != nil {
+			t.Fatalf("must NOT emit DraftStorageListEffect when StorageLockedByOther=true")
+		}
+	}
+	setEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_010,
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "in-memory only"}},
+	})
+	if len(findDraftWriteEffects(setEff)) != 0 {
+		t.Fatalf("must NOT persist draft when StorageLockedByOther=true")
+	}
+	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_AttachmentDraft{AttachmentDraft: &corev1.AttachmentDraftScreenRequest{Scope: scope}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	se := vm.GetAttachmentDraft().GetDraft().GetStorageError()
+	if se == nil || se.GetKey() != text.KeyAttachmentOtherTabOwnsStorage {
+		t.Fatalf("expected StorageError attachment.other_tab_owns_storage, got %+v", se)
+	}
+
+	// 2. Runtime AttachmentConfig update (e.g. OPFS degradation) updates HasPersistedPreparedImages without rescanning.
+	h := newAttHarness(t, true, true)
+	reCfg := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts:             true,
+				PersistOutbox:             true,
+				ScanStorage:               false,
+				HasPersistedPreparedImages: false,
+			},
+		},
+	})
+	for _, ef := range reCfg.GetEffects() {
+		if ef.GetDraftStorageList() != nil {
+			t.Fatalf("config update with ScanStorage=false must not rescan")
+		}
+	}
+	if h.core.m.attachments.hasPersistedPreparedImgs {
+		t.Fatalf("expected hasPersistedPreparedImgs updated to false")
+	}
+
+	// 3. BadgeText covers PAUSED (resumable vs offline) and FAILED (image vs retryable file).
+	sessScope := h.sessionScope()
+	openEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: sessScope}}})
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageReadResult{DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: rd.OpId, Found: false}}})
+		}
+	}
+	addImg := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: sessScope,
+				Items: []*corev1.DraftPickedItem{pickedImage("bad.jpg", 4, "src-bad", true)},
+			},
+		},
+	})
+	prepOp := findPrepareEffects(addImg)[0].OpId
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prepOp, Ok: false, ErrorKind: corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_DECODE,
+			},
+		},
+	})
+	dv := h.draftView(sessScope)
+	if dv.Images[0].BadgeText == nil || dv.Images[0].BadgeText.GetKey() != text.KeyAttachmentFailed {
+		t.Fatalf("expected failed image BadgeText attachment.failed, got %+v", dv.Images[0].BadgeText)
+	}
+
+	addFile := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: sessScope,
+				Items: []*corev1.DraftPickedItem{pickedFile("doc.txt", "text/plain", 8, "src-doc")},
+			},
+		},
+	})
+	hashOp := findHashEffects(addFile)[0].OpId
+	hEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashOp, Ok: true, SizeBytes: 8, Sha256: attTestHash(0xab),
+			},
+		},
+	})
+	fileID := h.draftView(sessScope).Files[0].ItemId
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPauseUpload{
+			AttachmentPauseUpload: &corev1.AttachmentPauseUploadAction{Scope: sessScope, ItemId: fileID},
+		},
+	})
+	dv = h.draftView(sessScope)
+	if dv.Files[0].BadgeText == nil || dv.Files[0].BadgeText.GetKey() != text.KeyScheduleResume {
+		t.Fatalf("expected resumable paused file BadgeText schedule.resume, got %+v", dv.Files[0].BadgeText)
+	}
+	bCmd := findDispatchedCmds(hEff)[0]
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentResumeUpload{
+			AttachmentResumeUpload: &corev1.AttachmentResumeUploadAction{Scope: sessScope, ItemId: fileID},
+		},
+	})
+	_ = bCmd
+	// Fail file upload via hash failure -> retryable file BadgeText is common.retry.
+	addFile2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: sessScope,
+				Items: []*corev1.DraftPickedItem{pickedFile("doc2.txt", "text/plain", 8, "src-doc2")},
+			},
+		},
+	})
+	hashOp2 := findHashEffects(addFile2)[0].OpId
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{
+				OpId: hashOp2, Ok: false, ErrorKind: corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_OTHER,
+			},
+		},
+	})
+	dv = h.draftView(sessScope)
+	if dv.Files[1].BadgeText == nil || dv.Files[1].BadgeText.GetKey() != text.KeyCommonRetry {
+		t.Fatalf("expected retryable failed file BadgeText common.retry, got %+v", dv.Files[1].BadgeText)
+	}
+}

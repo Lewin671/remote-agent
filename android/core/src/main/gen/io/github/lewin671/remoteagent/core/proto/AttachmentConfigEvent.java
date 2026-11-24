@@ -193,6 +193,50 @@ public  final class AttachmentConfigEvent extends
     hasPersistedPreparedImages_ = false;
   }
 
+  public static final int STORAGE_LOCKED_BY_OTHER_FIELD_NUMBER = 6;
+  private boolean storageLockedByOther_;
+  /**
+   * <pre>
+   * True when another tab/instance currently owns local draft/outbox storage
+   * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+   * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+   * </pre>
+   *
+   * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+   * @return The storageLockedByOther.
+   */
+  @java.lang.Override
+  public boolean getStorageLockedByOther() {
+    return storageLockedByOther_;
+  }
+  /**
+   * <pre>
+   * True when another tab/instance currently owns local draft/outbox storage
+   * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+   * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+   * </pre>
+   *
+   * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+   * @param value The storageLockedByOther to set.
+   */
+  private void setStorageLockedByOther(boolean value) {
+    
+    storageLockedByOther_ = value;
+  }
+  /**
+   * <pre>
+   * True when another tab/instance currently owns local draft/outbox storage
+   * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+   * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+   * </pre>
+   *
+   * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+   */
+  private void clearStorageLockedByOther() {
+
+    storageLockedByOther_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentConfigEvent parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -477,6 +521,52 @@ public  final class AttachmentConfigEvent extends
       return this;
     }
 
+    /**
+     * <pre>
+     * True when another tab/instance currently owns local draft/outbox storage
+     * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+     * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+     * </pre>
+     *
+     * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+     * @return The storageLockedByOther.
+     */
+    @java.lang.Override
+    public boolean getStorageLockedByOther() {
+      return instance.getStorageLockedByOther();
+    }
+    /**
+     * <pre>
+     * True when another tab/instance currently owns local draft/outbox storage
+     * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+     * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+     * </pre>
+     *
+     * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+     * @param value The storageLockedByOther to set.
+     * @return This builder for chaining.
+     */
+    public Builder setStorageLockedByOther(boolean value) {
+      copyOnWrite();
+      instance.setStorageLockedByOther(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * True when another tab/instance currently owns local draft/outbox storage
+     * (e.g. Web Locks held by another tab). Core disables persistence/recovery
+     * and surfaces a localized status banner via AttachmentDraftView.storage_error.
+     * </pre>
+     *
+     * <code>bool storage_locked_by_other = 6 [json_name = "storageLockedByOther"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearStorageLockedByOther() {
+      copyOnWrite();
+      instance.clearStorageLockedByOther();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentConfigEvent)
   }
   @java.lang.Override
@@ -498,10 +588,11 @@ public  final class AttachmentConfigEvent extends
             "scanStorage_",
             "maxChunkBytes_",
             "hasPersistedPreparedImages_",
+            "storageLockedByOther_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0007\u0004\u0004\u0005\u0007";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0007\u0004\u0004\u0005\u0007\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

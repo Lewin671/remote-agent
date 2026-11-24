@@ -54,6 +54,7 @@ object UiMessages {
     fun attachmentMaxImages(count: Int): UiMessage = UiMessage("attachment.max_images", mapOf("count" to count))
     fun attachmentMetadata(): UiMessage = UiMessage("attachment.metadata", emptyMap())
     fun attachmentNamedSizeLimit(limit: Int, name: String): UiMessage = UiMessage("attachment.named_size_limit", mapOf("limit" to limit, "name" to name))
+    fun attachmentOtherTabOwnsStorage(): UiMessage = UiMessage("attachment.other_tab_owns_storage", emptyMap())
     fun attachmentOutboxRestartedUnconfirmed(): UiMessage = UiMessage("attachment.outbox_restarted_unconfirmed", emptyMap())
     fun attachmentPathSpaces(name: String): UiMessage = UiMessage("attachment.path_spaces", mapOf("name" to name))
     fun attachmentPhotosVideos(): UiMessage = UiMessage("attachment.photos_videos", emptyMap())

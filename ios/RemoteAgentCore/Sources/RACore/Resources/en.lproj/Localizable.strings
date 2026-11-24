@@ -78,6 +78,7 @@
 "attachment_local_storage_full" = "Local storage for pending attachments is full. Send or remove older drafts.";
 "attachment_metadata" = "Files are sent unchanged, including their metadata.";
 "attachment_named_size_limit" = "“%2$@” exceeds the %1$lld MB limit per file";
+"attachment_other_tab_owns_storage" = "Another tab is managing local drafts and outgoing messages. Edits here stay in memory only.";
 "attachment_outbox_restarted_unconfirmed" = "The app restarted. Delivery of this message is unconfirmed.";
 "attachment_path_spaces" = "The remote-agent directory path on %1$@ contains spaces, so images cannot be sent.";
 "attachment_photos_videos" = "Photos and videos";

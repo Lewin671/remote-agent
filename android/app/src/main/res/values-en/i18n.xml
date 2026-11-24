@@ -63,6 +63,7 @@
     </plurals>
     <string name="attachment_metadata" formatted="false">"Files are sent unchanged, including their metadata."</string>
     <string name="attachment_named_size_limit">"“%2$s” exceeds the %1$d MB limit per file"</string>
+    <string name="attachment_other_tab_owns_storage" formatted="false">"Another tab is managing local drafts and outgoing messages. Edits here stay in memory only."</string>
     <string name="attachment_outbox_restarted_unconfirmed" formatted="false">"The app restarted. Delivery of this message is unconfirmed."</string>
     <string name="attachment_path_spaces">"The remote-agent directory path on %1$s contains spaces, so images cannot be sent."</string>
     <string name="attachment_photos_videos" formatted="false">"Photos and videos"</string>

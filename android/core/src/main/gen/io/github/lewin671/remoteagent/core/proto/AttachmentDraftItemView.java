@@ -1141,6 +1141,54 @@ public  final class AttachmentDraftItemView extends
     remoteOnly_ = false;
   }
 
+  public static final int BADGE_TEXT_FIELD_NUMBER = 30;
+  private io.github.lewin671.remoteagent.core.proto.Text badgeText_;
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasBadgeText() {
+    return ((bitField0_ & 0x00000080) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getBadgeText() {
+    return badgeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : badgeText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    badgeText_ = value;
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (badgeText_ != null &&
+        badgeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      badgeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(badgeText_).mergeFrom(value).buildPartial();
+    } else {
+      badgeText_ = value;
+    }
+    bitField0_ |= 0x00000080;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   */
+  private void clearBadgeText() {
+    badgeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000080);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentDraftItemView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2387,6 +2435,53 @@ public  final class AttachmentDraftItemView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasBadgeText() {
+      return instance.hasBadgeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getBadgeText() {
+      return instance.getBadgeText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    public Builder setBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setBadgeText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    public Builder setBadgeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setBadgeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    public Builder mergeBadgeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeBadgeText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+     */
+    public Builder clearBadgeText() {  copyOnWrite();
+      instance.clearBadgeText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentDraftItemView)
   }
   @java.lang.Override
@@ -2433,14 +2528,15 @@ public  final class AttachmentDraftItemView extends
             "positionA11Y_",
             "removeA11Y_",
             "remoteOnly_",
+            "badgeText_",
           };
           java.lang.String info =
-              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0000\u001e\u0000\u0001\u0001\u001e\u001e\u0000\u0000\u0000\u0001\u0208\u0002\f" +
               "\u0003\u0007\u0004\f\u0005\u0000\u0006\u0004\u0007\u0208\b\u0208\t\u0208\n\u0002" +
               "\u000b\u1009\u0000\f\u0208\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208" +
               "\u0012\u1009\u0001\u0013\u1009\u0002\u0014\u1009\u0003\u0015\u0007\u0016\u0007\u0017" +
               "\u0007\u0018\u0007\u0019\u0004\u001a\u1009\u0004\u001b\u1009\u0005\u001c\u1009\u0006" +
-              "\u001d\u0007";
+              "\u001d\u0007\u001e\u1009\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

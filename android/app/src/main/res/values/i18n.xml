@@ -59,6 +59,7 @@
     </plurals>
     <string name="attachment_metadata" formatted="false">"文件原样发送，包含其中的元数据。"</string>
     <string name="attachment_named_size_limit">"「%2$s」超过单个文件 %1$d MB 的上限"</string>
+    <string name="attachment_other_tab_owns_storage" formatted="false">"另一个标签页正在管理本地草稿和待发消息，本标签页的编辑只保存在当前页面"</string>
     <string name="attachment_outbox_restarted_unconfirmed" formatted="false">"应用重启过，不确定这条有没有送到"</string>
     <string name="attachment_path_spaces">"%1$s 上 remote-agent 的目录路径带空格，不能发图片"</string>
     <string name="attachment_photos_videos" formatted="false">"照片和视频"</string>

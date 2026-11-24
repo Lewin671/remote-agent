@@ -283,7 +283,33 @@ func DraftItemStatusText(
 	}
 }
 
+// DraftItemBadgeText returns the concise overlay badge label for paused or failed draft thumbnails.
+func DraftItemBadgeText(
+	kind corev1.AttachmentItemKind,
+	state corev1.AttachmentItemState,
+	canResume, canRetry bool,
+) *corev1.Text {
+	switch state {
+	case corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PAUSED:
+		if canResume {
+			return text.Msg(text.KeyScheduleResume)
+		}
+		return text.Msg(text.KeyAttachmentUploadPaused)
+	case corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED:
+		if kind != corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE && canRetry {
+			return text.Msg(text.KeyCommonRetry)
+		}
+		return text.Msg(text.KeyAttachmentFailed)
+	default:
+		return nil
+	}
+}
+
 // Shared localized status/error Text constructors used by the Core upload/draft/outbox engine.
+func OtherTabOwnsStorageText() *corev1.Text {
+	return text.Msg(text.KeyAttachmentOtherTabOwnsStorage)
+}
+
 func OutboxRestartedReason() *corev1.Text {
 	return text.Msg(text.KeyAttachmentOutboxRestartedUnconfirmed)
 }

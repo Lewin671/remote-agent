@@ -159,6 +159,7 @@ message AttachmentDraftItemView {
   Text position_a11y = 27;
   Text remove_a11y = 28;
   bool remote_only = 29;
+  Text badge_text = 30;
 }
 
 message DraftImageViewerView {
@@ -241,6 +242,10 @@ message AttachmentConfigEvent {
   // True when the shell persists prepared image bytes across restarts (mobile);
   // false when only original source blobs are persisted (web).
   bool has_persisted_prepared_images = 5;
+  // True when another tab/instance currently owns local draft/outbox storage
+  // (e.g. Web Locks held by another tab). Core disables persistence/recovery
+  // and surfaces a localized status banner via AttachmentDraftView.storage_error.
+  bool storage_locked_by_other = 6;
 }
 
 message DraftStorageEntry {

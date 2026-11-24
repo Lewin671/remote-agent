@@ -276,4 +276,15 @@ public interface AttachmentDraftItemViewOrBuilder extends
    * @return The remoteOnly.
    */
   boolean getRemoteOnly();
+
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   * @return Whether the badgeText field is set.
+   */
+  boolean hasBadgeText();
+  /**
+   * <code>.remoteagent.core.v1.Text badge_text = 30 [json_name = "badgeText"];</code>
+   * @return The badgeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getBadgeText();
 }

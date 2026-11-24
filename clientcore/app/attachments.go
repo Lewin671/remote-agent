@@ -253,6 +253,7 @@ type attManager struct {
 	persistDrafts            bool
 	persistOutbox            bool
 	hasPersistedPreparedImgs bool
+	storageLockedByOther     bool
 	maxChunkBytes            int32
 
 	nextOpID       uint64
@@ -501,17 +502,25 @@ func (c *Core) handleAttachmentConfig(ctx *sync.StepContext, ev *corev1.Attachme
 		return nil
 	}
 	mgr := c.m.ensureAttachments()
+	wasConfigured := mgr.configured
 	mgr.configured = true
-	mgr.persistDrafts = ev.PersistDrafts
-	mgr.persistOutbox = ev.PersistOutbox
-	mgr.hasPersistedPreparedImgs = ev.HasPersistedPreparedImages
+	mgr.storageLockedByOther = ev.StorageLockedByOther
+	if ev.StorageLockedByOther {
+		mgr.persistDrafts = false
+		mgr.persistOutbox = false
+		mgr.hasPersistedPreparedImgs = false
+	} else {
+		mgr.persistDrafts = ev.PersistDrafts
+		mgr.persistOutbox = ev.PersistOutbox
+		mgr.hasPersistedPreparedImgs = ev.HasPersistedPreparedImages
+	}
 	if ev.MaxChunkBytes > 0 && ev.MaxChunkBytes < attachments.DefaultUploadChunkBytes {
 		mgr.maxChunkBytes = ev.MaxChunkBytes
 	} else {
 		mgr.maxChunkBytes = attachments.DefaultUploadChunkBytes
 	}
 	var effects []*corev1.Effect
-	// Reconcile any drafts touched before AttachmentConfigEvent arrived.
+	// Reconcile any drafts touched before AttachmentConfigEvent arrived (or on runtime config update).
 	if len(mgr.drafts) > 0 {
 		keys := make([]string, 0, len(mgr.drafts))
 		for k := range mgr.drafts {
@@ -520,22 +529,27 @@ func (c *Core) handleAttachmentConfig(ctx *sync.StepContext, ev *corev1.Attachme
 		sortutil.Strings(keys)
 		for _, k := range keys {
 			d := mgr.drafts[k]
-			if d == nil || d.loadState != draftLoadUnloaded {
+			if d == nil {
 				continue
 			}
-			if !mgr.persistDrafts {
-				d.loadState = draftLoadLoaded
-				d.hasLocalTextEdit = false
-				if d.activated {
-					c.startPendingDraftUploads(ctx, d, &effects)
+			if d.loadState == draftLoadUnloaded {
+				if !mgr.persistDrafts {
+					d.loadState = draftLoadLoaded
+					d.hasLocalTextEdit = false
+					if d.activated {
+						c.startPendingDraftUploads(ctx, d, &effects)
+					}
+				} else if d.activated && !ev.ScanStorage {
+					c.startDraftLoad(d, &effects)
 				}
-			} else if d.activated && !ev.ScanStorage {
-				c.startDraftLoad(d, &effects)
 			}
 			c.markDraftDirty(ctx, d.scope)
 		}
 	}
-	if ev.ScanStorage {
+	if ev.StorageLockedByOther || wasConfigured {
+		c.markDraftDirty(ctx, nil)
+	}
+	if ev.ScanStorage && !ev.StorageLockedByOther {
 		opID := mgr.allocOpID()
 		mgr.activeListOpID = opID
 		effects = append(effects, &corev1.Effect{
@@ -1785,6 +1799,7 @@ func (c *Core) buildAttachmentDraftView(scope *corev1.DraftScope, alwaysBuild bo
 			PositionA11Y:    posA11y,
 			RemoveA11Y:      remA11y,
 			RemoteOnly:      it.remoteOnly,
+			BadgeText:       attachments.DraftItemBadgeText(it.kind, effState, canResume, canRetry),
 		}
 		allViews = append(allViews, iv)
 		if isImg {
@@ -1836,39 +1851,44 @@ func (c *Core) buildAttachmentDraftView(scope *corev1.DraftScope, alwaysBuild bo
 
 	viewer := buildDraftImageViewerView(d.viewerOpen, d.viewerIndex, imgViews)
 
+	storageErr := d.storageError
+	if storageErr == nil && c.m.attachments != nil && c.m.attachments.storageLockedByOther {
+		storageErr = attachments.OtherTabOwnsStorageText()
+	}
+
 	return &corev1.AttachmentDraftView{
-		Scope:                      cloneDraftScope(d.scope),
-		Text:                       d.text,
-		TextRevision:               d.textRev,
-		Restoring:                  restoring,
-		Sending:                    d.sending,
-		HasPendingPicks:            hasPendingPicks,
-		ReservedImages:             resImgs,
-		ReservedFiles:              resFiles,
-		Original:                   d.original,
-		CanToggleOriginal:          canToggleOrig,
+		Scope:                        cloneDraftScope(d.scope),
+		Text:                         d.text,
+		TextRevision:                 d.textRev,
+		Restoring:                    restoring,
+		Sending:                      d.sending,
+		HasPendingPicks:              hasPendingPicks,
+		ReservedImages:               resImgs,
+		ReservedFiles:                resFiles,
+		Original:                     d.original,
+		CanToggleOriginal:            canToggleOrig,
 		OriginalToggleDisabledReason: origDisabledReason,
-		TotalImageBytes:            totalImageBytes,
-		OriginalTotalSizeText:      origTotalSizeText,
-		OriginalHint:               text.Msg(text.KeyImageOriginalHint),
-		FileMetadataNotice:         text.Msg(text.KeyAttachmentMetadata),
-		ImageCount:                 curImgs,
-		FileCount:                  curFiles,
-		MaxImages:                  caps.MaxImages,
-		MaxFiles:                   caps.MaxFiles,
-		ImageCountText:             text.Plain(strconv.Itoa(int(curImgs)) + " / " + strconv.Itoa(int(caps.MaxImages))),
-		FileCountText:              text.Plain(strconv.Itoa(int(curFiles)) + " / " + strconv.Itoa(int(caps.MaxFiles))),
-		Items:                      allViews,
-		Images:                     imgViews,
-		Files:                      fileViews,
-		Busy:                       busy,
-		Ready:                      allReady,
-		CanSend:                    canSend,
-		SendBlockedReason:          sendBlocked,
-		HasUnsavedContent:          d.text != "" || len(d.items) > 0 || hasPendingPicks,
-		Notice:                     d.notice,
-		FailureSummary:             failureSummary,
-		StorageError:               d.storageError,
+		TotalImageBytes:              totalImageBytes,
+		OriginalTotalSizeText:        origTotalSizeText,
+		OriginalHint:                 text.Msg(text.KeyImageOriginalHint),
+		FileMetadataNotice:           text.Msg(text.KeyAttachmentMetadata),
+		ImageCount:                   curImgs,
+		FileCount:                    curFiles,
+		MaxImages:                    caps.MaxImages,
+		MaxFiles:                     caps.MaxFiles,
+		ImageCountText:               text.Plain(strconv.Itoa(int(curImgs)) + " / " + strconv.Itoa(int(caps.MaxImages))),
+		FileCountText:                text.Plain(strconv.Itoa(int(curFiles)) + " / " + strconv.Itoa(int(caps.MaxFiles))),
+		Items:                        allViews,
+		Images:                       imgViews,
+		Files:                        fileViews,
+		Busy:                         busy,
+		Ready:                        allReady,
+		CanSend:                      canSend,
+		SendBlockedReason:            sendBlocked,
+		HasUnsavedContent:            d.text != "" || len(d.items) > 0 || hasPendingPicks,
+		Notice:                       d.notice,
+		FailureSummary:               failureSummary,
+		StorageError:                 storageErr,
 		CanPickImages:              canPickImages,
 		CanPickFiles:               canPickFiles,
 		CanPickGallery:             canPickGallery,

@@ -78,6 +78,7 @@
 "attachment_local_storage_full" = "本机待发附件空间不足，请发送或移除旧草稿";
 "attachment_metadata" = "文件原样发送，包含其中的元数据。";
 "attachment_named_size_limit" = "「%2$@」超过单个文件 %1$lld MB 的上限";
+"attachment_other_tab_owns_storage" = "另一个标签页正在管理本地草稿和待发消息，本标签页的编辑只保存在当前页面";
 "attachment_outbox_restarted_unconfirmed" = "应用重启过，不确定这条有没有送到";
 "attachment_path_spaces" = "%1$@ 上 remote-agent 的目录路径带空格，不能发图片";
 "attachment_photos_videos" = "照片和视频";

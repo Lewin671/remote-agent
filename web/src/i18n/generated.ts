@@ -87,6 +87,7 @@ export interface MessageArgs {
   "attachment.max_images": { count: number };
   "attachment.metadata": { [name: string]: never };
   "attachment.named_size_limit": { limit: number; name: string };
+  "attachment.other_tab_owns_storage": { [name: string]: never };
   "attachment.outbox_restarted_unconfirmed": { [name: string]: never };
   "attachment.path_spaces": { name: string };
   "attachment.photos_videos": { [name: string]: never };
@@ -1863,6 +1864,7 @@ export const messages = {
     },
     "attachment.metadata": "Files are sent unchanged, including their metadata.",
     "attachment.named_size_limit": "“{name}” exceeds the {limit} MB limit per file",
+    "attachment.other_tab_owns_storage": "Another tab is managing local drafts and outgoing messages. Edits here stay in memory only.",
     "attachment.outbox_restarted_unconfirmed": "The app restarted. Delivery of this message is unconfirmed.",
     "attachment.path_spaces": "The remote-agent directory path on {name} contains spaces, so images cannot be sent.",
     "attachment.photos_videos": "Photos and videos",
@@ -4203,6 +4205,7 @@ export const messages = {
     },
     "attachment.metadata": "文件原样发送，包含其中的元数据。",
     "attachment.named_size_limit": "「{name}」超过单个文件 {limit} MB 的上限",
+    "attachment.other_tab_owns_storage": "另一个标签页正在管理本地草稿和待发消息，本标签页的编辑只保存在当前页面",
     "attachment.outbox_restarted_unconfirmed": "应用重启过，不确定这条有没有送到",
     "attachment.path_spaces": "{name} 上 remote-agent 的目录路径带空格，不能发图片",
     "attachment.photos_videos": "照片和视频",

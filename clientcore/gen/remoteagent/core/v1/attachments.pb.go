@@ -674,6 +674,7 @@ type AttachmentDraftItemView struct {
 	PositionA11Y    *Text
 	RemoveA11Y      *Text
 	RemoteOnly      bool
+	BadgeText       *Text
 }
 
 func (m *AttachmentDraftItemView) GetItemId() string {
@@ -850,6 +851,12 @@ func (m *AttachmentDraftItemView) GetRemoteOnly() bool {
 	}
 	return false
 }
+func (m *AttachmentDraftItemView) GetBadgeText() *Text {
+	if m != nil {
+		return m.BadgeText
+	}
+	return nil
+}
 
 var LitewireDesc_AttachmentDraftItemView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -882,6 +889,7 @@ var LitewireDesc_AttachmentDraftItemView = litewire.MessageDesc{
 		{Num: 27, Offset: unsafe.Offsetof(AttachmentDraftItemView{}.PositionA11Y), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 28, Offset: unsafe.Offsetof(AttachmentDraftItemView{}.RemoveA11Y), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 29, Offset: unsafe.Offsetof(AttachmentDraftItemView{}.RemoteOnly), Kind: litewire.KindBool},
+		{Num: 30, Offset: unsafe.Offsetof(AttachmentDraftItemView{}.BadgeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -1393,6 +1401,7 @@ type AttachmentConfigEvent struct {
 	ScanStorage                bool
 	MaxChunkBytes              int32
 	HasPersistedPreparedImages bool
+	StorageLockedByOther       bool
 }
 
 func (m *AttachmentConfigEvent) GetPersistDrafts() bool {
@@ -1425,6 +1434,12 @@ func (m *AttachmentConfigEvent) GetHasPersistedPreparedImages() bool {
 	}
 	return false
 }
+func (m *AttachmentConfigEvent) GetStorageLockedByOther() bool {
+	if m != nil {
+		return m.StorageLockedByOther
+	}
+	return false
+}
 
 var LitewireDesc_AttachmentConfigEvent = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&AttachmentConfigEvent{}) },
@@ -1434,6 +1449,7 @@ var LitewireDesc_AttachmentConfigEvent = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(AttachmentConfigEvent{}.ScanStorage), Kind: litewire.KindBool},
 		{Num: 4, Offset: unsafe.Offsetof(AttachmentConfigEvent{}.MaxChunkBytes), Kind: litewire.KindInt32},
 		{Num: 5, Offset: unsafe.Offsetof(AttachmentConfigEvent{}.HasPersistedPreparedImages), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(AttachmentConfigEvent{}.StorageLockedByOther), Kind: litewire.KindBool},
 	},
 }
 
