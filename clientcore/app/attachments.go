@@ -64,6 +64,7 @@ const (
 	attWriteKindDraft attWriteOpKind = iota + 1
 	attWriteKindPreSendOutbox
 	attWriteKindResendOutbox
+	attWriteKindFailedResendOutbox
 )
 
 type attWriteOpMeta struct {
@@ -1325,6 +1326,9 @@ func (c *Core) handleDraftStorageWriteResult(ctx *sync.StepContext, ev *corev1.D
 
 	case attWriteKindResendOutbox:
 		c.onResendOutboxWriteResult(ctx, meta, ev, &effects)
+
+	case attWriteKindFailedResendOutbox:
+		c.onFailedResendOutboxWriteResult(meta, ev, &effects)
 	}
 	return effects
 }

@@ -1724,3 +1724,78 @@ func TestAttachments_StaleCallbacksAndNewSessionProtection(t *testing.T) {
 		t.Fatalf("expected NewSession draft cleared after CreateSession Executed")
 	}
 }
+
+func TestAttachments_ResendFailure_RetainsOutboxForRetryAndPutBack(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.sessionScope()
+
+	// Send a message with 1 image and fail the SendRequest so we have a failed tray item backed by outbox.
+	openEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope}}})
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageReadResult{DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: rd.OpId, Found: false}}})
+		}
+	}
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("retry.jpg", 4, "src-resend-fail", true)},
+			},
+		},
+	})
+	for _, dw := range findDraftWriteEffects(addEff) {
+		h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true}}})
+	}
+	h.driveImageUploadReady(addEff, "prep-resend-fail", "thumb-resend-fail", 4, attTestHash(0xb1), "img-orig-1", h.nowMs+600_000)
+
+	sendEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSendSession{DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER}}})
+	outWrite := findDraftWriteEffects(sendEff)[0]
+	commitEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: outWrite.OpId, Ok: true}}})
+	var sendCmd attDispatchedCmd
+	for _, sc := range findDispatchedCmds(commitEff) {
+		if sc.cmd.GetSend() != nil {
+			sendCmd = sc
+		}
+	}
+	origReqID := sendCmd.cmd.GetSend().RequestId
+	h.settleCmdDaemonErr(sendCmd.dc, "failed")
+
+	// Retry #1 -> BeginImageUpload fails permanently with daemon error -> MUST NOT release local refs and MUST attach outbox to newReqID!
+	retry1Eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: origReqID}},
+	})
+	begin1 := findDispatchedCmds(retry1Eff)[0]
+	fail1Eff := h.settleCmdDaemonErr(begin1.dc, "resource_exhausted")
+	for _, rel := range findReleaseLocalEffects(fail1Eff) {
+		t.Fatalf("failed resend must NOT release local refs still owned by failed row: %+v", rel.Refs)
+	}
+	var failedNewReqID string
+	for _, it := range h.sessionView().GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.RequestId != origReqID {
+			failedNewReqID = it.RequestId
+		}
+	}
+	if failedNewReqID == "" {
+		t.Fatalf("expected failed resend row in pending tray")
+	}
+
+	// Retry #2 on the failed resend row -> MUST start BeginImageUpload in Core (NOT fall back to legacy SessionResendAttachmentsEffect)!
+	retry2Eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: failedNewReqID}},
+	})
+	for _, ef := range retry2Eff.GetEffects() {
+		if ef.GetSessionResendAttachments() != nil {
+			t.Fatalf("retry after failed resend must NOT fall back to legacy SessionResendAttachmentsEffect")
+		}
+	}
+	var sawBegin2 bool
+	for _, sc := range findDispatchedCmds(retry2Eff) {
+		if sc.cmd.GetBeginImageUpload() != nil {
+			sawBegin2 = true
+		}
+	}
+	if !sawBegin2 {
+		t.Fatalf("expected second retry to start BeginImageUpload directly in Core")
+	}
+}

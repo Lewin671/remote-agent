@@ -483,28 +483,49 @@ func (c *Core) restoreOutboxRecordFromPersisted(rec *corev1.PersistedOutboxRecor
 }
 
 // startOutboxResend handles Retry / Promote / Undo of a message with local attachments directly in Core.
-// Returns true if Core took ownership of the resend (false -> fall back to legacy SessionResendAttachmentsEffect).
+// Returns true if Core took ownership of the resend (false ONLY for legacy unmigrated shells that never
+// sent AttachmentConfigEvent; configured Core shells never fall back to SessionResendAttachmentsEffect).
 func (c *Core) startOutboxResend(
 	ctx *sync.StepContext,
 	sid, machineID, sourceReqID, newReqID, msgText string,
 	mode v1.SendMode,
 	effects *[]*corev1.Effect,
 ) bool {
-	if c.m.attachments == nil {
-		return false
+	if c.m.attachments == nil || !c.m.attachments.configured {
+		if c.m.attachments == nil || c.m.attachments.outbox[sourceReqID] == nil {
+			return false
+		}
 	}
 	mgr := c.m.attachments
 	src := mgr.outbox[sourceReqID]
+	store := c.m.ensureSessionStore()
+	ui := store.ensureUI(sid)
+
 	if src == nil || len(src.items) == 0 {
-		return false
+		// Core-configured path with no local outbox copy: fail explicitly instead of emitting legacy effect.
+		ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
+			RequestID: newReqID,
+			SlotKey:   "send:" + sid + ":" + newReqID,
+			Text:      msgText,
+			Mode:      mode,
+			State:     screens.OutgoingFailed,
+			ErrorCode: "failed_precondition",
+			ErrorText: text.Msg(text.KeyAttachmentFileMissing),
+			CreatedMs: c.m.sync.NowMs(),
+		})
+		ui.LocalContents[newReqID] = &screens.LocalSentContent{
+			RequestID: newReqID,
+			Text:      msgText,
+			Mode:      mode,
+		}
+		store.pendingDirty = true
+		return true
 	}
 	if machineID == "" {
 		machineID = src.machineID
 	}
-	caps, onlineReady := c.resolveAttachmentCaps(machineID, false)
-	if !onlineReady || machineID == "" {
-		return false
-	}
+
+	clones := make([]*attItem, 0, len(src.items))
 	hasFiles := false
 	hasLocal := false
 	for _, it := range src.items {
@@ -516,35 +537,6 @@ func (c *Core) startOutboxResend(
 		}
 		if !it.remoteOnly && it.hasLocalCopy() {
 			hasLocal = true
-		}
-	}
-	if !hasLocal {
-		return false
-	}
-	if hasFiles && !caps.SupportsFiles {
-		// Per docs/session-files.md: reject whole resend if computer lacks file_upload.
-		store := c.m.ensureSessionStore()
-		ui := store.ensureUI(sid)
-		ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
-			RequestID: newReqID,
-			SlotKey:   "send:" + sid + ":" + newReqID,
-			Text:      msgText,
-			ImageIDs:  slices.Clone(src.imageIDs),
-			FileIDs:   slices.Clone(src.fileIDs),
-			Mode:      mode,
-			State:     screens.OutgoingFailed,
-			ErrorCode: "failed_precondition",
-			ErrorText: text.Msg(text.KeyAttachmentUpdateRequired),
-			CreatedMs: c.m.sync.NowMs(),
-		})
-		store.pendingDirty = true
-		return true
-	}
-
-	clones := make([]*attItem, 0, len(src.items))
-	for _, it := range src.items {
-		if it == nil {
-			continue
 		}
 		cp := it.cloneForSnapshot()
 		cp.id = mgr.allocItemID()
@@ -561,6 +553,46 @@ func (c *Core) startOutboxResend(
 		cp.phase = attPhaseIdle
 		clones = append(clones, cp)
 	}
+	summaries := makeOutboxSummaries(clones)
+
+	recordImmediateFailure := func(errCode string, errText *corev1.Text) bool {
+		c.registerFailedOutboxRecord(sid, machineID, newReqID, msgText, mode, src.original, src.imageIDs, src.fileIDs, clones, effects)
+		ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
+			RequestID:        newReqID,
+			SlotKey:          "send:" + sid + ":" + newReqID,
+			Text:             msgText,
+			ImageIDs:         slices.Clone(src.imageIDs),
+			FileIDs:          slices.Clone(src.fileIDs),
+			Mode:             mode,
+			State:            screens.OutgoingFailed,
+			ErrorCode:        errCode,
+			ErrorText:        errText,
+			LocalAttachments: summaries,
+			CreatedMs:        c.m.sync.NowMs(),
+		})
+		ui.LocalContents[newReqID] = &screens.LocalSentContent{
+			RequestID:        newReqID,
+			Text:             msgText,
+			ImageIDs:         slices.Clone(src.imageIDs),
+			FileIDs:          slices.Clone(src.fileIDs),
+			Mode:             mode,
+			LocalAttachments: summaries,
+		}
+		store.pendingDirty = true
+		return true
+	}
+
+	if !hasLocal {
+		return recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentFileMissing))
+	}
+	caps, onlineReady := c.resolveAttachmentCaps(machineID, false)
+	if !onlineReady || machineID == "" {
+		return recordImmediateFailure("unavailable", text.Msg(text.KeyAttachmentDisconnected))
+	}
+	if hasFiles && !caps.SupportsFiles {
+		// Per docs/session-files.md: reject whole resend if computer lacks file_upload.
+		return recordImmediateFailure("failed_precondition", text.Msg(text.KeyAttachmentUpdateRequired))
+	}
 
 	job := &attResendJob{
 		sessionID:       sid,
@@ -576,8 +608,6 @@ func (c *Core) startOutboxResend(
 	mgr.resendJobs[newReqID] = job
 
 	// Show in-progress OutgoingSending row in the pending tray while re-uploading!
-	store := c.m.ensureSessionStore()
-	ui := store.ensureUI(sid)
 	ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
 		RequestID:        newReqID,
 		SlotKey:          "send:" + sid + ":" + newReqID,
@@ -586,9 +616,17 @@ func (c *Core) startOutboxResend(
 		FileIDs:          slices.Clone(src.fileIDs),
 		Mode:             mode,
 		State:            screens.OutgoingSending,
-		LocalAttachments: makeOutboxSummaries(clones),
+		LocalAttachments: summaries,
 		CreatedMs:        c.m.sync.NowMs(),
 	})
+	ui.LocalContents[newReqID] = &screens.LocalSentContent{
+		RequestID:        newReqID,
+		Text:             msgText,
+		ImageIDs:         slices.Clone(src.imageIDs),
+		FileIDs:          slices.Clone(src.fileIDs),
+		Mode:             mode,
+		LocalAttachments: summaries,
+	}
 	store.pendingDirty = true
 
 	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sid}
@@ -597,6 +635,69 @@ func (c *Core) startOutboxResend(
 	}
 	c.pumpAttachmentQueues(ctx, effects)
 	return true
+}
+
+func (c *Core) registerFailedOutboxRecord(
+	sid, machineID, reqID, msgText string,
+	mode v1.SendMode,
+	original bool,
+	imageIDs, fileIDs []string,
+	items []*attItem,
+	effects *[]*corev1.Effect,
+) {
+	mgr := c.m.ensureAttachments()
+	if _, exists := mgr.outbox[reqID]; exists {
+		return
+	}
+	snaps := make([]*attItem, 0, len(items))
+	for _, it := range items {
+		if it != nil {
+			cp := it.cloneForSnapshot()
+			cp.remoteID = ""
+			cp.uploadedMachineID = ""
+			cp.transferID = ""
+			cp.expiresMs = 0
+			snaps = append(snaps, cp)
+		}
+	}
+	outboxKey := attachments.OutboxStorageKey(sid, reqID)
+	outRec := &attOutboxRecord{
+		sessionID:  sid,
+		requestID:  reqID,
+		machineID:  machineID,
+		text:       msgText,
+		mode:       mode,
+		original:   original,
+		imageIDs:   slices.Clone(imageIDs),
+		fileIDs:    slices.Clone(fileIDs),
+		items:      snaps,
+		createdMs:  c.m.sync.NowMs(),
+		storageKey: outboxKey,
+		persisted:  false,
+	}
+	mgr.outbox[reqID] = outRec
+	mgr.outboxBySession[sid] = append(mgr.outboxBySession[sid], reqID)
+	if mgr.persistOutbox {
+		var opID uint64
+		c.emitOutboxWrite(sid, machineID, reqID, msgText, mode, original, imageIDs, fileIDs, snaps, attWriteKindFailedResendOutbox, "", &opID, effects)
+	}
+}
+
+func (c *Core) onFailedResendOutboxWriteResult(meta attWriteOpMeta, ev *corev1.DraftStorageWriteResultEvent, effects *[]*corev1.Effect) {
+	mgr := c.m.attachments
+	if mgr == nil {
+		return
+	}
+	rec := mgr.outbox[meta.requestID]
+	if rec == nil || mgr.forgottenSessions[meta.sessionID] {
+		if ev.Ok {
+			*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, meta.outboxKey))
+		}
+		return
+	}
+	if ev.Ok {
+		rec.persisted = true
+	}
 }
 
 func (c *Core) onResendItemFinished(ctx *sync.StepContext, newReqID string, effects *[]*corev1.Effect) {
@@ -658,9 +759,23 @@ func (c *Core) finalizeResendJob(ctx *sync.StepContext, job *attResendJob, image
 	// Re-check file_upload capability right before submitting SendRequest.
 	caps, _ := c.resolveAttachmentCaps(job.machineID, false)
 	if len(fileIDs) > 0 && !caps.SupportsFiles {
-		if persisted {
-			*effects = append(*effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX, job.outboxKey))
+		// Preserve outbox record under job.newRequestID so failed row can still be retried or put back!
+		outRec := &attOutboxRecord{
+			sessionID:  job.sessionID,
+			requestID:  job.newRequestID,
+			machineID:  job.machineID,
+			text:       job.text,
+			mode:       job.mode,
+			original:   job.original,
+			imageIDs:   slices.Clone(imageIDs),
+			fileIDs:    slices.Clone(fileIDs),
+			items:      job.items,
+			createdMs:  c.m.sync.NowMs(),
+			storageKey: job.outboxKey,
+			persisted:  persisted,
 		}
+		mgr.outbox[outRec.requestID] = outRec
+		mgr.outboxBySession[outRec.sessionID] = append(mgr.outboxBySession[outRec.sessionID], outRec.requestID)
 		c.markOutgoingFailed(job.sessionID, job.newRequestID, "failed_precondition", text.Msg(text.KeyAttachmentUpdateRequired))
 		return
 	}
@@ -698,11 +813,18 @@ func (c *Core) onResendItemFailed(ctx *sync.StepContext, newReqID string, proble
 	}
 	job.aborted = true
 	delete(mgr.resendJobs, newReqID)
+	var imgIDs, fileIDs []string
+	if src := mgr.outbox[job.sourceRequestID]; src != nil {
+		imgIDs = src.imageIDs
+		fileIDs = src.fileIDs
+	}
 	for _, it := range job.items {
 		if it != nil {
 			c.invalidateItem(ctx, attOwnerResend, newReqID, it, true, effects)
 		}
 	}
+	// Preserve outbox record under newReqID so the failed row retains local refs and can be retried or put back!
+	c.registerFailedOutboxRecord(job.sessionID, job.machineID, job.newRequestID, job.text, job.mode, job.original, imgIDs, fileIDs, job.items, effects)
 	errText := fileErr
 	if errText == nil && problem != nil {
 		errText = problem.Message
