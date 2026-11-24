@@ -5818,5 +5818,35 @@
     "path": "web/src/views/Attach.tsx",
     "literal": "button",
     "reason": "HTML button type attribute near identifier ending in Text; never rendered as user-facing text."
+  },
+  {
+    "path": "clientcore/security/engine.go",
+    "literal": "storage",
+    "reason": "Internal workflow error code passed to newWfError and mapped to SecurityErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "storage",
+    "reason": "Internal workflow error code passed to newWfError and mapped to SecurityErrorCode; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code compared in isConfirmedBootstrapCorruption; never rendered directly to users."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "untrusted",
+    "reason": "Internal workflow error code compared in isConfirmedBootstrapCorruption; never rendered directly to users."
+  },
+  {
+    "path": "internal/server/push.go",
+    "literal": "push target belongs to another device",
+    "reason": "Internal relay gRPC PermissionDenied sentinel error diagnostic; not rendered directly as localized UI text."
+  },
+  {
+    "path": "web/src/Rejoin.tsx",
+    "literal": "setPushSubscription",
+    "reason": "TypeScript Pick<Remote, \"setPushSubscription\"> property type key; never rendered as user-facing text."
   }
 ]

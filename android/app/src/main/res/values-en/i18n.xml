@@ -706,6 +706,7 @@
     <string name="new_session_removed_blocked" formatted="false">"This project was removed. Add it again first."</string>
     <string name="new_session_retry_save" formatted="false">"Retry saving"</string>
     <string name="new_session_save_failed" formatted="false">"Project settings were not saved. Try again."</string>
+    <string name="new_session_saved_machine_unavailable_choose" formatted="false">"The computer previously saved for this project is unavailable. Choose a computer to start on."</string>
     <string name="new_session_start" formatted="false">"Start new session"</string>
     <string name="new_session_start_failed">"Could not start: %1$s"</string>
     <string name="new_session_start_shortcut">"%1$s Start"</string>

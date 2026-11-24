@@ -18,16 +18,17 @@ type OfflineMachineOption struct {
 
 // ProjectStartResult holds the resolved launch configuration and diagnostics for a project.
 type ProjectStartResult struct {
-	Found            bool
-	Config           StartConfig
-	Settled          bool
-	WantedAgent      v1.Agent
-	DisabledAgent    v1.Agent
-	MissingAgent     v1.Agent
-	DefaultMode      DefaultMode
-	ProtocolMismatch int32
-	OfflineChoices   []OfflineMachineOption
-	ProjectMachines  []string
+	Found              bool
+	NeedsMachineChoice bool
+	Config             StartConfig
+	Settled            bool
+	WantedAgent        v1.Agent
+	DisabledAgent      v1.Agent
+	MissingAgent       v1.Agent
+	DefaultMode        DefaultMode
+	ProtocolMismatch   int32
+	OfflineChoices     []OfflineMachineOption
+	ProjectMachines    []string
 }
 
 type inheritance struct {
@@ -220,13 +221,13 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 	from := newInheritance(w, allProjects, key)
 
 	hasMachines := len(machinesByID) > 0
-	hasActiveMachine := false
+	activeMachineCount := 0
 	for _, m := range machinesByID {
 		if m != nil && !m.Archived {
-			hasActiveMachine = true
-			break
+			activeMachineCount++
 		}
 	}
+	hasActiveMachine := activeMachineCount > 0
 	isUsableMachine := func(id string) bool {
 		if id == "" {
 			return false
@@ -270,6 +271,14 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 	machineID := resolveUsable(pickMachineID)
 	if machineID == "" && saved != nil && saved.MachineId != "" {
 		machineID = resolveUsable(saved.MachineId)
+		if machineID == "" && pickMachineID == "" && activeMachineCount > 1 {
+			// In a multi-computer account, do not silently fall back to another
+			// computer when the saved machine is missing/archived with no verified
+			// replacement mapping; prompt the user to choose explicitly.
+			res.NeedsMachineChoice = true
+			res.Settled = !from.unsettled
+			return res
+		}
 	}
 	if machineID == "" {
 		if latest := from.first(func(s *Session) bool {

@@ -473,3 +473,37 @@ func TestBuildHomeEmptyLoadingKind(t *testing.T) {
 		t.Fatalf("expected HOME_EMPTY_KIND_NONE with active sessions, got %v", readyVM.GetEmpty().GetKind())
 	}
 }
+
+func TestBuildNewSessionPromptsMachineChoiceWhenSavedMissingInMultiMachineAccount(t *testing.T) {
+	st := NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	st.World.MachinesListed = true
+	st.World.Machines = []*lists.Machine{
+		{ID: "m-a", Online: true, Meta: &v1.MachineMeta{Hostname: "Box A"}},
+		{ID: "m-b", Online: true, Meta: &v1.MachineMeta{Hostname: "Box B"}},
+	}
+	st.World.Prefs = &v1.ProjectPrefs{
+		Schema: 1,
+		Settings: []*v1.ProjectSettings{
+			{Path: "/work/app", MachineId: "m-removed"},
+		},
+	}
+	vm := BuildNewSession(st, "/work/app")
+	if vm.GetCanStart() {
+		t.Fatalf("expected CanStart=false when user must choose machine, got %+v", vm)
+	}
+	if vm.GetConfig().GetMachineId() != "" {
+		t.Fatalf("expected empty MachineId without auto-fallback, got %q", vm.GetConfig().GetMachineId())
+	}
+	var sawChoiceNotice bool
+	for _, n := range vm.GetNotices() {
+		if n.GetKind() == corev1.NoticeKind_NOTICE_KIND_CONFIG_FALLBACK &&
+			n.GetAction() == corev1.NoticeActionKind_NOTICE_ACTION_KIND_CHANGE_MACHINE &&
+			n.GetText().GetKey() == "new_session.saved_machine_unavailable_choose" {
+			sawChoiceNotice = true
+		}
+	}
+	if !sawChoiceNotice {
+		t.Fatalf("expected NOTICE_KIND_CONFIG_FALLBACK with CHANGE_MACHINE action, got %+v", vm.GetNotices())
+	}
+}

@@ -601,6 +601,7 @@ object UiMessages {
     fun newSessionRemovedBlocked(): UiMessage = UiMessage("new_session.removed_blocked", emptyMap())
     fun newSessionRetrySave(): UiMessage = UiMessage("new_session.retry_save", emptyMap())
     fun newSessionSaveFailed(): UiMessage = UiMessage("new_session.save_failed", emptyMap())
+    fun newSessionSavedMachineUnavailableChoose(): UiMessage = UiMessage("new_session.saved_machine_unavailable_choose", emptyMap())
     fun newSessionStart(): UiMessage = UiMessage("new_session.start", emptyMap())
     fun newSessionStartFailed(reason: String): UiMessage = UiMessage("new_session.start_failed", mapOf("reason" to reason))
     fun newSessionStartShortcut(keys: String): UiMessage = UiMessage("new_session.start_shortcut", mapOf("keys" to keys))

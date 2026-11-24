@@ -644,6 +644,7 @@
 "new_session_removed_blocked" = "This project was removed. Add it again first.";
 "new_session_retry_save" = "Retry saving";
 "new_session_save_failed" = "Project settings were not saved. Try again.";
+"new_session_saved_machine_unavailable_choose" = "The computer previously saved for this project is unavailable. Choose a computer to start on.";
 "new_session_start" = "Start new session";
 "new_session_start_failed" = "Could not start: %1$@";
 "new_session_start_shortcut" = "%1$@ Start";

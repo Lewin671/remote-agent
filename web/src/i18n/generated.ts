@@ -578,6 +578,7 @@ export interface MessageArgs {
   "new_session.removed_blocked": { [name: string]: never };
   "new_session.retry_save": { [name: string]: never };
   "new_session.save_failed": { [name: string]: never };
+  "new_session.saved_machine_unavailable_choose": { [name: string]: never };
   "new_session.start": { [name: string]: never };
   "new_session.start_failed": { reason: string };
   "new_session.start_shortcut": { keys: string };
@@ -2543,6 +2544,7 @@ export const messages = {
     "new_session.removed_blocked": "This project was removed. Add it again first.",
     "new_session.retry_save": "Retry saving",
     "new_session.save_failed": "Project settings were not saved. Try again.",
+    "new_session.saved_machine_unavailable_choose": "The computer previously saved for this project is unavailable. Choose a computer to start on.",
     "new_session.start": "Start new session",
     "new_session.start_failed": "Could not start: {reason}",
     "new_session.start_shortcut": "{keys} Start",
@@ -4855,6 +4857,7 @@ export const messages = {
     "new_session.removed_blocked": "这个项目已从列表移除，先重新添加",
     "new_session.retry_save": "重试保存",
     "new_session.save_failed": "项目设置没有保存，请重试",
+    "new_session.saved_machine_unavailable_choose": "该项目原保存的电脑已不可用，请先选择要在哪台电脑上启动。",
     "new_session.start": "开始新会话",
     "new_session.start_failed": "启动失败：{reason}",
     "new_session.start_shortcut": "{keys} 开始",

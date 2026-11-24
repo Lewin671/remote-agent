@@ -75,7 +75,7 @@ func TestResolveProjectStartFallsBackWhenSavedMachineInvalidOrArchived(t *testin
 		}
 	})
 
-	t.Run("missing saved machine prefers reachable machine over offline", func(t *testing.T) {
+	t.Run("missing saved machine in multi-machine account prompts choice instead of auto-fallback", func(t *testing.T) {
 		w := &World{
 			MachinesListed: true,
 			Machines: []*Machine{
@@ -90,8 +90,34 @@ func TestResolveProjectStartFallsBackWhenSavedMachineInvalidOrArchived(t *testin
 			},
 		}
 		res := ResolveProjectStart(w, "/work/old-proj", "", v1.Agent_AGENT_UNSPECIFIED, nil, false)
-		if !res.Found || res.Config.MachineID != "m-b-online" {
-			t.Fatalf("expected reachable fallback m-b-online, got %+v", res)
+		if res.Found || !res.NeedsMachineChoice || res.Config.MachineID != "" {
+			t.Fatalf("expected NeedsMachineChoice without auto-fallback in multi-machine account, got %+v", res)
+		}
+		// Once the user picks a machine explicitly, ResolveProjectStart resolves cleanly.
+		picked := ResolveProjectStart(w, "/work/old-proj", "m-b-online", v1.Agent_AGENT_UNSPECIFIED, nil, false)
+		if !picked.Found || picked.NeedsMachineChoice || picked.Config.MachineID != "m-b-online" {
+			t.Fatalf("expected explicit machine pick to succeed, got %+v", picked)
+		}
+	})
+
+	t.Run("multi-machine account with verified replacement proof still remaps cleanly", func(t *testing.T) {
+		w := &World{
+			MachinesListed: true,
+			Machines: []*Machine{
+				{ID: "m-other", Online: true, Meta: &v1.MachineMeta{Hostname: "OtherBox"}},
+				{ID: "m-reborn", Online: true, Meta: &v1.MachineMeta{Hostname: "RebornBox"}},
+			},
+			Prefs: &v1.ProjectPrefs{
+				Schema: 1,
+				Settings: []*v1.ProjectSettings{
+					{Path: "/work/old-proj", MachineId: "m-old"},
+				},
+			},
+			MachineReplacements: map[string]string{"m-old": "m-reborn"},
+		}
+		res := ResolveProjectStart(w, "/work/old-proj", "", v1.Agent_AGENT_UNSPECIFIED, nil, false)
+		if !res.Found || res.NeedsMachineChoice || res.Config.MachineID != "m-reborn" {
+			t.Fatalf("expected verified replacement m-reborn, got %+v", res)
 		}
 	})
 

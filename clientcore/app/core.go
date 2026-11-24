@@ -369,7 +369,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				}
 				saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
 				op := lists.PlanStartSettings(cfg, &cfg, saved)
-				if saved != nil && saved.MachineId != "" && saved.MachineId != cfg.MachineID {
+				if c.m.state.World.MachinesListed && saved != nil && saved.MachineId != "" && saved.MachineId != cfg.MachineID {
 					savedMac := c.m.findMachine(saved.MachineId)
 					if savedMac == nil || savedMac.Archived {
 						if op == nil {

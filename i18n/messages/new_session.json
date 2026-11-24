@@ -1447,5 +1447,21 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "new_session.saved_machine_unavailable_choose",
+    "zh-CN": "该项目原保存的电脑已不可用，请先选择要在哪台电脑上启动。",
+    "en": "The computer previously saved for this project is unavailable. Choose a computer to start on.",
+    "notes": "多电脑账户中项目原保存的电脑已移除或归档且没有替换映射时，提示用户手动选择电脑启动新会话。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

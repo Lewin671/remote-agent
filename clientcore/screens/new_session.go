@@ -130,7 +130,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 
 	machine := findMachine(st, cfg.MachineID)
 	machineName := lists.MachineName(machine, cfg.MachineID)
-	if machineName == "" {
+	if machineName == "" && !res.NeedsMachineChoice {
 		machineName = lists.ProjectName(key)
 	}
 	var mMeta *v1.MachineMeta
@@ -209,6 +209,8 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	showCLI := len(installedAgents) > 1
 	var locationText *corev1.Text
 	switch {
+	case res.NeedsMachineChoice:
+		locationText = text.Msg(text.KeyNewSessionLocation, text.Str("project", projNameStr))
 	case machineSelectable && showCLI:
 		locationText = text.Msg(text.KeyNewSessionLocationMachineCli, text.Str("machine", machineName), text.Str("project", projNameStr), text.Str("cli", agentCap.Name))
 	case machineSelectable:
@@ -245,6 +247,14 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			Kind:     corev1.NoticeKind_NOTICE_KIND_ATTACHMENTS_MOVED,
 			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_INFO,
 			Text:     text.Msg(text.KeyNewSessionAttachmentsMoved, text.Str("name", machineName)),
+		})
+	}
+	if res.NeedsMachineChoice {
+		notices = append(notices, &corev1.NewSessionNoticeView{
+			Kind:     corev1.NoticeKind_NOTICE_KIND_CONFIG_FALLBACK,
+			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_WARN,
+			Text:     text.Msg(text.KeyNewSessionSavedMachineUnavailableChoose),
+			Action:   corev1.NoticeActionKind_NOTICE_ACTION_KIND_CHANGE_MACHINE,
 		})
 	}
 	if !res.Settled && !offline && !frozen {
@@ -417,6 +427,9 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 	case st.World.Connection != lists.ConnConnected:
 		canStart = false
 		disabledReason = text.Msg(text.KeyErrorsNotConnected)
+	case res.NeedsMachineChoice:
+		canStart = false
+		disabledReason = text.Msg(text.KeyNewSessionSavedMachineUnavailableChoose)
 	case !res.Found || machine == nil:
 		canStart = false
 		disabledReason = text.Msg(text.KeyProjectsNoOnline)

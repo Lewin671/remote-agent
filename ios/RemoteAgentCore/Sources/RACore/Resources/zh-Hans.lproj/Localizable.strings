@@ -644,6 +644,7 @@
 "new_session_removed_blocked" = "这个项目已从列表移除，先重新添加";
 "new_session_retry_save" = "重试保存";
 "new_session_save_failed" = "项目设置没有保存，请重试";
+"new_session_saved_machine_unavailable_choose" = "该项目原保存的电脑已不可用，请先选择要在哪台电脑上启动。";
 "new_session_start" = "开始新会话";
 "new_session_start_failed" = "启动失败：%1$@";
 "new_session_start_shortcut" = "%1$@ 开始";

@@ -9,6 +9,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
@@ -262,8 +263,14 @@ func (e *Engine) recomputeMachineReplacements() {
 	if e.secEngine == nil {
 		return
 	}
+	sids := make([]string, 0, len(e.sessions))
+	for sid := range e.sessions {
+		sids = append(sids, sid)
+	}
+	sortutil.Sort(len(sids), func(i, j int) bool { return sids[i] < sids[j] }, func(i, j int) { sids[i], sids[j] = sids[j], sids[i] })
 	next := make(map[string]string)
-	for sid, sess := range e.sessions {
+	for _, sid := range sids {
+		sess := e.sessions[sid]
 		if sess == nil || sess.MachineID == "" {
 			continue
 		}
@@ -275,7 +282,12 @@ func (e *Engine) recomputeMachineReplacements() {
 			continue
 		}
 		origins := e.secEngine.VerifiedMachineReplacementOrigins(sess.MachineID, repls)
+		originIDs := make([]string, 0, len(origins))
 		for oldID := range origins {
+			originIDs = append(originIDs, oldID)
+		}
+		sortutil.Sort(len(originIDs), func(i, j int) bool { return originIDs[i] < originIDs[j] }, func(i, j int) { originIDs[i], originIDs[j] = originIDs[j], originIDs[i] })
+		for _, oldID := range originIDs {
 			if oldID == "" || oldID == sess.MachineID {
 				continue
 			}
@@ -286,7 +298,7 @@ func (e *Engine) recomputeMachineReplacements() {
 			}
 			_, curActive := e.machines[cur]
 			_, candActive := e.machines[sess.MachineID]
-			if !curActive && candActive {
+			if (!curActive && candActive) || (curActive == candActive && sess.MachineID < cur) {
 				next[oldID] = sess.MachineID
 			}
 		}
