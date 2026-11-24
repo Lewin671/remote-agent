@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -268,6 +270,9 @@ internal fun AttachmentDraftStrip(
     remote: Remote,
     onOpenViewer: (Int) -> Unit = { remote.openDraftImageViewer(scope, it) },
     onRemoveItem: (String) -> Unit = { remote.removeDraftItem(scope, it) },
+    thumbLoader: suspend (thumbRef: String, preparedRef: String) -> ImageBitmap? = { t, p ->
+        RaApp.instanceOrNull()?.attachments?.loadThumbnail(t, p)
+    },
 ) {
     val copy = uiText()
     val p = pal
@@ -319,22 +324,25 @@ internal fun AttachmentDraftStrip(
         Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
                 for (item in thumbs) {
-                    DraftThumbCell(
-                        item = item,
-                        original = draft.original,
-                        onTap = {
-                            if (item.kind == AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE) {
-                                onOpenViewer(item.imageIndex.coerceAtLeast(0))
-                            } else {
-                                when {
-                                    item.canRetry -> remote.retryDraftItem(scope, item.itemId)
-                                    item.canResume -> remote.resumeAttachmentUpload(scope, item.itemId)
-                                    item.canPause -> remote.pauseAttachmentUpload(scope, item.itemId)
+                    key(item.itemId) {
+                        DraftThumbCell(
+                            item = item,
+                            original = draft.original,
+                            onTap = {
+                                if (item.kind == AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE) {
+                                    onOpenViewer(item.imageIndex.coerceAtLeast(0))
+                                } else {
+                                    when {
+                                        item.canRetry -> remote.retryDraftItem(scope, item.itemId)
+                                        item.canResume -> remote.resumeAttachmentUpload(scope, item.itemId)
+                                        item.canPause -> remote.pauseAttachmentUpload(scope, item.itemId)
+                                    }
                                 }
-                            }
-                        },
-                        onRemove = if (item.canRemove) ({ onRemoveItem(item.itemId) }) else null,
-                    )
+                            },
+                            onRemove = if (item.canRemove) ({ onRemoveItem(item.itemId) }) else null,
+                            thumbLoader = thumbLoader,
+                        )
+                    }
                 }
             }
             if (draft.imagesCount > 0) {
@@ -419,6 +427,7 @@ private fun DraftThumbCell(
     original: Boolean,
     onTap: () -> Unit,
     onRemove: (() -> Unit)?,
+    thumbLoader: suspend (thumbRef: String, preparedRef: String) -> ImageBitmap?,
 ) {
     val copy = uiText()
     val p = pal
@@ -442,7 +451,7 @@ private fun DraftThumbCell(
                 },
         ) {
             if (isImage) {
-                DraftImageThumb(item.thumbRef, item.preparedRef)
+                DraftImageThumb(item.thumbRef, item.preparedRef, loader = thumbLoader)
             } else {
                 VideoFrame(item)
             }
@@ -535,14 +544,21 @@ private fun DraftThumbCell(
 }
 
 @Composable
-private fun DraftImageThumb(thumbRef: String, preparedRef: String) {
-    val app = remember { RaApp.instanceOrNull() }
+internal fun DraftImageThumb(
+    thumbRef: String,
+    preparedRef: String,
+    loader: suspend (thumbRef: String, preparedRef: String) -> ImageBitmap? = { t, p ->
+        RaApp.instanceOrNull()?.attachments?.loadThumbnail(t, p)
+    },
+) {
     val bmp by produceState<ImageBitmap?>(null, thumbRef, preparedRef) {
-        if (app != null && (thumbRef.isNotEmpty() || preparedRef.isNotEmpty())) {
-            value = app.attachments.loadThumbnail(thumbRef, preparedRef)
+        value = if (thumbRef.isNotEmpty() || preparedRef.isNotEmpty()) {
+            loader(thumbRef, preparedRef)
+        } else {
+            null
         }
     }
-    bmp?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    bmp?.let { Image(it, null, Modifier.fillMaxSize().testTag("draft-thumb-bitmap"), contentScale = ContentScale.Crop) }
 }
 
 /** A video's first frame with Core's formatted duration in a corner; fallback to icon and name. */

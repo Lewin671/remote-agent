@@ -3,9 +3,13 @@ package io.github.lewin671.remoteagent.ui
 import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.lewin671.remoteagent.core.Account
@@ -222,5 +226,92 @@ class AttachmentShellTest {
             maxSourceBytes = 16L,
         )
         assertNull("Oversized stream must be rejected cleanly via BoundedInputStream", rejectedByStreamCap)
+    }
+
+    @Test fun draftStripRemovesFirstItemWithoutLeakingThumbnailToPreparingSuccessor() {
+        val scope = sessionDraftScope("s-thumb-reuse")
+        val bmp = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.RED)
+        }.asImageBitmap()
+        val readyItem = AttachmentDraftItemView.newBuilder()
+            .setItemId("img-a")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_READY)
+            .setImageIndex(0)
+            .setThumbRef("blob:thumb-a")
+            .setPreparedRef("blob:prep-a")
+            .setPositionA11Y(CoreText.newBuilder().setLiteral("Image 1"))
+            .setCanRemove(true)
+            .build()
+        val preparingItem = AttachmentDraftItemView.newBuilder()
+            .setItemId("img-b")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_PREPARING)
+            .setImageIndex(1)
+            .setPositionA11Y(CoreText.newBuilder().setLiteral("Image 2"))
+            .setCanRemove(true)
+            .build()
+
+        val draftState = mutableStateOf(
+            AttachmentDraftView.newBuilder()
+                .setScope(scope)
+                .addItems(readyItem)
+                .addItems(preparingItem)
+                .addImages(readyItem)
+                .addImages(preparingItem)
+                .build(),
+        )
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                AttachmentDraftStrip(
+                    draft = draftState.value,
+                    scope = scope,
+                    remote = remote,
+                    thumbLoader = { t, _ -> if (t == "blob:thumb-a") bmp else null },
+                )
+            }
+        }
+        ui.waitForIdle()
+        assertEquals(1, ui.onAllNodesWithTag("draft-thumb-bitmap", useUnmergedTree = true).fetchSemanticsNodes().size)
+
+        // Remove the first (ready) item so the still-preparing second item shifts to index 0.
+        val shiftedPreparing = preparingItem.toBuilder()
+            .setImageIndex(0)
+            .setPositionA11Y(CoreText.newBuilder().setLiteral("Image 1"))
+            .build()
+        draftState.value = AttachmentDraftView.newBuilder()
+            .setScope(scope)
+            .addItems(shiftedPreparing)
+            .addImages(shiftedPreparing)
+            .build()
+        ui.waitForIdle()
+        assertEquals(
+            "Removing an earlier item must not leak its decoded thumbnail into a preparing successor",
+            0,
+            ui.onAllNodesWithTag("draft-thumb-bitmap", useUnmergedTree = true).fetchSemanticsNodes().size,
+        )
+    }
+
+    @Test fun draftImageThumbClearsBitmapWhenRefsBecomeEmpty() {
+        val bmp = Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.BLUE)
+        }.asImageBitmap()
+        val refs = mutableStateOf("blob:thumb-1" to "blob:prep-1")
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                DraftImageThumb(
+                    thumbRef = refs.value.first,
+                    preparedRef = refs.value.second,
+                    loader = { t, _ -> if (t == "blob:thumb-1") bmp else null },
+                )
+            }
+        }
+        ui.waitForIdle()
+        ui.onNodeWithTag("draft-thumb-bitmap").assertExists()
+
+        // Clearing refs (e.g. toggling original mode) must clear the previous bitmap.
+        refs.value = "" to ""
+        ui.waitForIdle()
+        ui.onNodeWithTag("draft-thumb-bitmap").assertDoesNotExist()
     }
 }
