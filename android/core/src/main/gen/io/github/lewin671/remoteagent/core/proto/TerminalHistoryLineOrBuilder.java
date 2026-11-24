@@ -23,10 +23,4 @@ public interface TerminalHistoryLineOrBuilder extends
    * <code>repeated .remoteagent.core.v1.TerminalHistoryRun runs = 1 [json_name = "runs"];</code>
    */
   int getRunsCount();
-
-  /**
-   * <code>int32 cells = 2 [json_name = "cells"];</code>
-   * @return The cells.
-   */
-  int getCells();
 }

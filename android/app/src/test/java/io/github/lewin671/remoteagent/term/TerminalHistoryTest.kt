@@ -5,6 +5,7 @@ import io.github.lewin671.remoteagent.core.proto.TerminalHistoryEventKind
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
 import io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus
+import io.github.lewin671.remoteagent.core.proto.TerminalRunWidth
 import io.github.lewin671.remoteagent.core.proto.TerminalSgrColorKind
 import io.github.lewin671.remoteagent.proto.TerminalHistoryPage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -102,6 +103,7 @@ class TerminalHistoryTest {
         val coloredRun = afterFirst.items[0].second.first { it.fgKind != TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_DEFAULT }
         assertEquals(TerminalSgrColorKind.TERMINAL_SGR_COLOR_KIND_PALETTE, coloredRun.fgKind)
         assertEquals(1, coloredRun.fgValue)
+        assertEquals(TerminalRunWidth.TERMINAL_RUN_WIDTH_WIDE, coloredRun.width)
 
         host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER)
         runCurrent()

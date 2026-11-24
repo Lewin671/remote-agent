@@ -109,7 +109,7 @@ enum TerminalHistoryText {
             attributes[.foregroundColor] = fg
             if let bg { attributes[.backgroundColor] = bg }
             if run.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
-            append(run.text, attributes: attributes, font: font, cellWidth: cell.width, to: out)
+            append(run.text, width: run.width, attributes: attributes, font: font, cellWidth: cell.width, to: out)
         }
         return out
     }
@@ -165,25 +165,42 @@ enum TerminalHistoryText {
         ]
     }
 
-    /// Appends a run, padding every cluster that is more than one cell out to
-    /// the whole cells the emulator would give it. ASCII is always one, so a
-    /// run of it is appended in one go.
+    /// Appends a run using clientcore's unified cell widths so wide CJK/emoji
+    /// and multi-codepoint clusters align to the live terminal's columns without
+    /// duplicating a width table or guessing cell counts from font advance.
     private static func append(
-        _ text: String, attributes: [NSAttributedString.Key: Any], font: UIFont, cellWidth: CGFloat, to out: NSMutableAttributedString
+        _ text: String, width: PBCoreTerminalRunWidth, attributes: [NSAttributedString.Key: Any], font: UIFont, cellWidth: CGFloat, to out: NSMutableAttributedString
     ) {
-        guard cellWidth > 0, text.unicodeScalars.contains(where: { $0.value > 0x7F }) else {
+        guard cellWidth > 0 else {
             out.append(NSAttributedString(string: text, attributes: attributes))
             return
         }
-        for character in text {
-            let piece = String(character)
+        func appendCluster(_ piece: String, cells: Int) {
             let start = out.length
             out.append(NSAttributedString(string: piece, attributes: attributes))
             let advance = measure(piece, font: font)
-            let cells = Int((advance / cellWidth).rounded())
-            guard cells != 1, cells >= 0 else { continue }
             let kern = CGFloat(cells) * cellWidth - advance
             if abs(kern) > 0.05 { out.addAttribute(.kern, value: kern, range: NSRange(location: start, length: out.length - start)) }
+        }
+        switch width {
+        case .wide:
+            for scalar in text.unicodeScalars {
+                appendCluster(String(scalar), cells: 2)
+            }
+        case .clusterNarrow:
+            appendCluster(text, cells: 1)
+        case .clusterWide:
+            appendCluster(text, cells: 2)
+        case .zero:
+            appendCluster(text, cells: 0)
+        case .narrow, .UNRECOGNIZED:
+            guard text.unicodeScalars.contains(where: { $0.value > 0x7F }) else {
+                out.append(NSAttributedString(string: text, attributes: attributes))
+                return
+            }
+            for scalar in text.unicodeScalars {
+                appendCluster(String(scalar), cells: 1)
+            }
         }
     }
 

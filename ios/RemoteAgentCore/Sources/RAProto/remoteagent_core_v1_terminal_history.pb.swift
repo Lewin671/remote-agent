@@ -230,6 +230,62 @@ public enum PBCoreTerminalSgrColorKind: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBCoreTerminalRunWidth: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+
+  /// Every code point in text occupies 1 cell (default; zero wire overhead for ASCII/narrow runs).
+  case narrow // = 0
+
+  /// Every code point in text occupies 2 cells (single-codepoint CJK, fullwidth, wide emoji).
+  case wide // = 1
+
+  /// The entire run text is one grapheme cluster occupying 1 cell (e.g. base + combining mark).
+  case clusterNarrow // = 2
+
+  /// The entire run text is one grapheme cluster occupying 2 cells (e.g. VS16/ZWJ emoji, flag, keycap).
+  case clusterWide // = 3
+
+  /// The entire run text occupies 0 cells (standalone zero-width characters).
+  case zero // = 4
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .narrow
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .narrow
+    case 1: self = .wide
+    case 2: self = .clusterNarrow
+    case 3: self = .clusterWide
+    case 4: self = .zero
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .narrow: return 0
+    case .wide: return 1
+    case .clusterNarrow: return 2
+    case .clusterWide: return 3
+    case .zero: return 4
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBCoreTerminalRunWidth] = [
+    .narrow,
+    .wide,
+    .clusterNarrow,
+    .clusterWide,
+    .zero,
+  ]
+
+}
+
 public struct PBCoreTerminalHistoryEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -283,6 +339,8 @@ public struct PBCoreTerminalHistoryRun: Sendable {
 
   public var inverse: Bool = false
 
+  public var width: PBCoreTerminalRunWidth = .narrow
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -294,8 +352,6 @@ public struct PBCoreTerminalHistoryLine: Sendable {
   // methods supported on all messages.
 
   public var runs: [PBCoreTerminalHistoryRun] = []
-
-  public var cells: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -434,6 +490,10 @@ extension PBCoreTerminalSgrColorKind: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TERMINAL_SGR_COLOR_KIND_DEFAULT\0\u{1}TERMINAL_SGR_COLOR_KIND_PALETTE\0\u{1}TERMINAL_SGR_COLOR_KIND_RGB\0")
 }
 
+extension PBCoreTerminalRunWidth: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TERMINAL_RUN_WIDTH_NARROW\0\u{1}TERMINAL_RUN_WIDTH_WIDE\0\u{1}TERMINAL_RUN_WIDTH_CLUSTER_NARROW\0\u{1}TERMINAL_RUN_WIDTH_CLUSTER_WIDE\0\u{1}TERMINAL_RUN_WIDTH_ZERO\0")
+}
+
 extension PBCoreTerminalHistoryEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryEvent"
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}terminal_id\0\u{1}kind\0\u{1}page\0")
@@ -480,7 +540,7 @@ extension PBCoreTerminalHistoryEvent: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreTerminalHistoryRun: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryRun"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{3}fg_kind\0\u{3}fg_value\0\u{3}bg_kind\0\u{3}bg_value\0\u{1}bold\0\u{1}dim\0\u{1}italic\0\u{1}underline\0\u{1}inverse\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}text\0\u{3}fg_kind\0\u{3}fg_value\0\u{3}bg_kind\0\u{3}bg_value\0\u{1}bold\0\u{1}dim\0\u{1}italic\0\u{1}underline\0\u{1}inverse\0\u{1}width\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -498,6 +558,7 @@ extension PBCoreTerminalHistoryRun: SwiftProtobuf.Message, SwiftProtobuf._Messag
       case 8: try { try decoder.decodeSingularBoolField(value: &self.italic) }()
       case 9: try { try decoder.decodeSingularBoolField(value: &self.underline) }()
       case 10: try { try decoder.decodeSingularBoolField(value: &self.inverse) }()
+      case 11: try { try decoder.decodeSingularEnumField(value: &self.width) }()
       default: break
       }
     }
@@ -534,6 +595,9 @@ extension PBCoreTerminalHistoryRun: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if self.inverse != false {
       try visitor.visitSingularBoolField(value: self.inverse, fieldNumber: 10)
     }
+    if self.width != .narrow {
+      try visitor.visitSingularEnumField(value: self.width, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -548,6 +612,7 @@ extension PBCoreTerminalHistoryRun: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.italic != rhs.italic {return false}
     if lhs.underline != rhs.underline {return false}
     if lhs.inverse != rhs.inverse {return false}
+    if lhs.width != rhs.width {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -555,7 +620,7 @@ extension PBCoreTerminalHistoryRun: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBCoreTerminalHistoryLine: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryLine"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}runs\0\u{1}cells\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}runs\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -564,7 +629,6 @@ extension PBCoreTerminalHistoryLine: SwiftProtobuf.Message, SwiftProtobuf._Messa
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.runs) }()
-      case 2: try { try decoder.decodeSingularInt32Field(value: &self.cells) }()
       default: break
       }
     }
@@ -574,15 +638,11 @@ extension PBCoreTerminalHistoryLine: SwiftProtobuf.Message, SwiftProtobuf._Messa
     if !self.runs.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.runs, fieldNumber: 1)
     }
-    if self.cells != 0 {
-      try visitor.visitSingularInt32Field(value: self.cells, fieldNumber: 2)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBCoreTerminalHistoryLine, rhs: PBCoreTerminalHistoryLine) -> Bool {
     if lhs.runs != rhs.runs {return false}
-    if lhs.cells != rhs.cells {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

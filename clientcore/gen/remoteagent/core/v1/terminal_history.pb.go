@@ -52,6 +52,16 @@ const (
 	TerminalSgrColorKind_TERMINAL_SGR_COLOR_KIND_RGB     TerminalSgrColorKind = 2
 )
 
+type TerminalRunWidth int32
+
+const (
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW         TerminalRunWidth = 0
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_WIDE           TerminalRunWidth = 1
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_NARROW TerminalRunWidth = 2
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_WIDE   TerminalRunWidth = 3
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_ZERO           TerminalRunWidth = 4
+)
+
 type TerminalHistoryEvent struct {
 	_          [0]func()
 	TerminalId string
@@ -103,6 +113,7 @@ type TerminalHistoryRun struct {
 	Italic    bool
 	Underline bool
 	Inverse   bool
+	Width     TerminalRunWidth
 }
 
 func (m *TerminalHistoryRun) GetText() string {
@@ -165,6 +176,12 @@ func (m *TerminalHistoryRun) GetInverse() bool {
 	}
 	return false
 }
+func (m *TerminalHistoryRun) GetWidth() TerminalRunWidth {
+	if m != nil {
+		return m.Width
+	}
+	return 0
+}
 
 var LitewireDesc_TerminalHistoryRun = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -178,6 +195,7 @@ var LitewireDesc_TerminalHistoryRun = litewire.MessageDesc{
 		{Num: 8, Offset: unsafe.Offsetof(TerminalHistoryRun{}.Italic), Kind: litewire.KindBool},
 		{Num: 9, Offset: unsafe.Offsetof(TerminalHistoryRun{}.Underline), Kind: litewire.KindBool},
 		{Num: 10, Offset: unsafe.Offsetof(TerminalHistoryRun{}.Inverse), Kind: litewire.KindBool},
+		{Num: 11, Offset: unsafe.Offsetof(TerminalHistoryRun{}.Width), Kind: litewire.KindInt32},
 	},
 }
 
@@ -190,9 +208,8 @@ func (m *TerminalHistoryRun) AppendMarshal(b []byte) []byte {
 }
 
 type TerminalHistoryLine struct {
-	_     [0]func()
-	Runs  []*TerminalHistoryRun
-	Cells int32
+	_    [0]func()
+	Runs []*TerminalHistoryRun
 }
 
 func (m *TerminalHistoryLine) GetRuns() []*TerminalHistoryRun {
@@ -201,17 +218,10 @@ func (m *TerminalHistoryLine) GetRuns() []*TerminalHistoryRun {
 	}
 	return nil
 }
-func (m *TerminalHistoryLine) GetCells() int32 {
-	if m != nil {
-		return m.Cells
-	}
-	return 0
-}
 
 var LitewireDesc_TerminalHistoryLine = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(TerminalHistoryLine{}.Runs), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_TerminalHistoryRun},
-		{Num: 2, Offset: unsafe.Offsetof(TerminalHistoryLine{}.Cells), Kind: litewire.KindInt32},
 	},
 }
 

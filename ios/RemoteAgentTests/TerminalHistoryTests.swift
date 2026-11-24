@@ -172,7 +172,7 @@ import UIKit
     @Test func wideCharactersTakeTwoCellsUnderARulerLine() {
         let points: CGFloat = 14
         let cell = TerminalFont.cell(points: points)
-        let samples = ["|12345678|", "|中文中文|", "中文", "\u{1b}[32m中文\u{1b}[0m"]
+        let samples = ["|12345678|", "|中文中文|", "中文", "\u{1b}[32m中文\u{1b}[0m", "|✅❌⭐⚡|", "|☀\u{fe0f}👨\u{200d}👩\u{200d}👧e\u{0301}abc|"]
         let parsed = parsedPage(id: "wide-ruler", lines: samples)
         func width(_ index: Int) -> CGFloat {
             TerminalHistoryText.line(parsed.lines[index], points: points, cell: cell).size().width
@@ -183,6 +183,9 @@ import UIKit
         // A fullwidth letter is two cells too, and the colours do not change the widths.
         #expect(abs(width(2) - 4 * cell.width) < 0.5)
         #expect(abs(width(3) - width(2)) < 0.5)
+        // Wide emojis, VS16/ZWJ clusters, and combining marks all follow Core's unified widths.
+        #expect(abs(width(4) - width(0)) < 1)
+        #expect(abs(width(5) - width(0)) < 1)
     }
 
     /// Prepending a page keeps the line in sight where it was.

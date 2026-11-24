@@ -93,4 +93,15 @@ public interface TerminalHistoryRunOrBuilder extends
    * @return The inverse.
    */
   boolean getInverse();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @return The enum numeric value on the wire for width.
+   */
+  int getWidthValue();
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @return The width.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalRunWidth getWidth();
 }

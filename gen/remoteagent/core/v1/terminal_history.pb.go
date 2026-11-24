@@ -258,6 +258,66 @@ func (TerminalSgrColorKind) EnumDescriptor() ([]byte, []int) {
 	return file_remoteagent_core_v1_terminal_history_proto_rawDescGZIP(), []int{3}
 }
 
+type TerminalRunWidth int32
+
+const (
+	// Every code point in text occupies 1 cell (default; zero wire overhead for ASCII/narrow runs).
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW TerminalRunWidth = 0
+	// Every code point in text occupies 2 cells (single-codepoint CJK, fullwidth, wide emoji).
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_WIDE TerminalRunWidth = 1
+	// The entire run text is one grapheme cluster occupying 1 cell (e.g. base + combining mark).
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_NARROW TerminalRunWidth = 2
+	// The entire run text is one grapheme cluster occupying 2 cells (e.g. VS16/ZWJ emoji, flag, keycap).
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_WIDE TerminalRunWidth = 3
+	// The entire run text occupies 0 cells (standalone zero-width characters).
+	TerminalRunWidth_TERMINAL_RUN_WIDTH_ZERO TerminalRunWidth = 4
+)
+
+// Enum value maps for TerminalRunWidth.
+var (
+	TerminalRunWidth_name = map[int32]string{
+		0: "TERMINAL_RUN_WIDTH_NARROW",
+		1: "TERMINAL_RUN_WIDTH_WIDE",
+		2: "TERMINAL_RUN_WIDTH_CLUSTER_NARROW",
+		3: "TERMINAL_RUN_WIDTH_CLUSTER_WIDE",
+		4: "TERMINAL_RUN_WIDTH_ZERO",
+	}
+	TerminalRunWidth_value = map[string]int32{
+		"TERMINAL_RUN_WIDTH_NARROW":         0,
+		"TERMINAL_RUN_WIDTH_WIDE":           1,
+		"TERMINAL_RUN_WIDTH_CLUSTER_NARROW": 2,
+		"TERMINAL_RUN_WIDTH_CLUSTER_WIDE":   3,
+		"TERMINAL_RUN_WIDTH_ZERO":           4,
+	}
+)
+
+func (x TerminalRunWidth) Enum() *TerminalRunWidth {
+	p := new(TerminalRunWidth)
+	*p = x
+	return p
+}
+
+func (x TerminalRunWidth) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TerminalRunWidth) Descriptor() protoreflect.EnumDescriptor {
+	return file_remoteagent_core_v1_terminal_history_proto_enumTypes[4].Descriptor()
+}
+
+func (TerminalRunWidth) Type() protoreflect.EnumType {
+	return &file_remoteagent_core_v1_terminal_history_proto_enumTypes[4]
+}
+
+func (x TerminalRunWidth) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TerminalRunWidth.Descriptor instead.
+func (TerminalRunWidth) EnumDescriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_terminal_history_proto_rawDescGZIP(), []int{4}
+}
+
 type TerminalHistoryEvent struct {
 	state      protoimpl.MessageState   `protogen:"open.v1"`
 	TerminalId string                   `protobuf:"bytes,1,opt,name=terminal_id,json=terminalId,proto3" json:"terminal_id,omitempty"`
@@ -327,12 +387,13 @@ type TerminalHistoryRun struct {
 	FgValue uint32               `protobuf:"varint,3,opt,name=fg_value,json=fgValue,proto3" json:"fg_value,omitempty"`
 	BgKind  TerminalSgrColorKind `protobuf:"varint,4,opt,name=bg_kind,json=bgKind,proto3,enum=remoteagent.core.v1.TerminalSgrColorKind" json:"bg_kind,omitempty"`
 	// Palette index (0-255) when bg_kind == PALETTE, or packed 0xRRGGBB when bg_kind == RGB.
-	BgValue       uint32 `protobuf:"varint,5,opt,name=bg_value,json=bgValue,proto3" json:"bg_value,omitempty"`
-	Bold          bool   `protobuf:"varint,6,opt,name=bold,proto3" json:"bold,omitempty"`
-	Dim           bool   `protobuf:"varint,7,opt,name=dim,proto3" json:"dim,omitempty"`
-	Italic        bool   `protobuf:"varint,8,opt,name=italic,proto3" json:"italic,omitempty"`
-	Underline     bool   `protobuf:"varint,9,opt,name=underline,proto3" json:"underline,omitempty"`
-	Inverse       bool   `protobuf:"varint,10,opt,name=inverse,proto3" json:"inverse,omitempty"`
+	BgValue       uint32           `protobuf:"varint,5,opt,name=bg_value,json=bgValue,proto3" json:"bg_value,omitempty"`
+	Bold          bool             `protobuf:"varint,6,opt,name=bold,proto3" json:"bold,omitempty"`
+	Dim           bool             `protobuf:"varint,7,opt,name=dim,proto3" json:"dim,omitempty"`
+	Italic        bool             `protobuf:"varint,8,opt,name=italic,proto3" json:"italic,omitempty"`
+	Underline     bool             `protobuf:"varint,9,opt,name=underline,proto3" json:"underline,omitempty"`
+	Inverse       bool             `protobuf:"varint,10,opt,name=inverse,proto3" json:"inverse,omitempty"`
+	Width         TerminalRunWidth `protobuf:"varint,11,opt,name=width,proto3,enum=remoteagent.core.v1.TerminalRunWidth" json:"width,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -437,10 +498,16 @@ func (x *TerminalHistoryRun) GetInverse() bool {
 	return false
 }
 
+func (x *TerminalHistoryRun) GetWidth() TerminalRunWidth {
+	if x != nil {
+		return x.Width
+	}
+	return TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW
+}
+
 type TerminalHistoryLine struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Runs          []*TerminalHistoryRun  `protobuf:"bytes,1,rep,name=runs,proto3" json:"runs,omitempty"`
-	Cells         int32                  `protobuf:"varint,2,opt,name=cells,proto3" json:"cells,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -480,13 +547,6 @@ func (x *TerminalHistoryLine) GetRuns() []*TerminalHistoryRun {
 		return x.Runs
 	}
 	return nil
-}
-
-func (x *TerminalHistoryLine) GetCells() int32 {
-	if x != nil {
-		return x.Cells
-	}
-	return 0
 }
 
 type TerminalHistoryParsedPage struct {
@@ -747,7 +807,7 @@ const file_remoteagent_core_v1_terminal_history_proto_rawDesc = "" +
 	"\vterminal_id\x18\x01 \x01(\tR\n" +
 	"terminalId\x12A\n" +
 	"\x04kind\x18\x02 \x01(\x0e2-.remoteagent.core.v1.TerminalHistoryEventKindR\x04kind\x127\n" +
-	"\x04page\x18\x03 \x01(\v2#.remoteagent.v1.TerminalHistoryPageR\x04page\"\xdc\x02\n" +
+	"\x04page\x18\x03 \x01(\v2#.remoteagent.v1.TerminalHistoryPageR\x04page\"\x99\x03\n" +
 	"\x12TerminalHistoryRun\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12B\n" +
 	"\afg_kind\x18\x02 \x01(\x0e2).remoteagent.core.v1.TerminalSgrColorKindR\x06fgKind\x12\x19\n" +
@@ -759,10 +819,10 @@ const file_remoteagent_core_v1_terminal_history_proto_rawDesc = "" +
 	"\x06italic\x18\b \x01(\bR\x06italic\x12\x1c\n" +
 	"\tunderline\x18\t \x01(\bR\tunderline\x12\x18\n" +
 	"\ainverse\x18\n" +
-	" \x01(\bR\ainverse\"h\n" +
+	" \x01(\bR\ainverse\x12;\n" +
+	"\x05width\x18\v \x01(\x0e2%.remoteagent.core.v1.TerminalRunWidthR\x05width\"R\n" +
 	"\x13TerminalHistoryLine\x12;\n" +
-	"\x04runs\x18\x01 \x03(\v2'.remoteagent.core.v1.TerminalHistoryRunR\x04runs\x12\x14\n" +
-	"\x05cells\x18\x02 \x01(\x05R\x05cells\"\x88\x01\n" +
+	"\x04runs\x18\x01 \x03(\v2'.remoteagent.core.v1.TerminalHistoryRunR\x04runs\"\x88\x01\n" +
 	"\x19TerminalHistoryParsedPage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12>\n" +
 	"\x05lines\x18\x02 \x03(\v2(.remoteagent.core.v1.TerminalHistoryLineR\x05lines\x12\x1b\n" +
@@ -816,7 +876,13 @@ const file_remoteagent_core_v1_terminal_history_proto_rawDesc = "" +
 	"\x14TerminalSgrColorKind\x12#\n" +
 	"\x1fTERMINAL_SGR_COLOR_KIND_DEFAULT\x10\x00\x12#\n" +
 	"\x1fTERMINAL_SGR_COLOR_KIND_PALETTE\x10\x01\x12\x1f\n" +
-	"\x1bTERMINAL_SGR_COLOR_KIND_RGB\x10\x02B\xde\x01\n" +
+	"\x1bTERMINAL_SGR_COLOR_KIND_RGB\x10\x02*\xb7\x01\n" +
+	"\x10TerminalRunWidth\x12\x1d\n" +
+	"\x19TERMINAL_RUN_WIDTH_NARROW\x10\x00\x12\x1b\n" +
+	"\x17TERMINAL_RUN_WIDTH_WIDE\x10\x01\x12%\n" +
+	"!TERMINAL_RUN_WIDTH_CLUSTER_NARROW\x10\x02\x12#\n" +
+	"\x1fTERMINAL_RUN_WIDTH_CLUSTER_WIDE\x10\x03\x12\x1b\n" +
+	"\x17TERMINAL_RUN_WIDTH_ZERO\x10\x04B\xde\x01\n" +
 	"\x17com.remoteagent.core.v1B\x14TerminalHistoryProtoP\x01Z?github.com/Lewin671/remote-agent/gen/remoteagent/core/v1;corev1\xa2\x02\x03RCX\xaa\x02\x13Remoteagent.Core.V1\xca\x02\x13Remoteagent\\Core\\V1\xe2\x02\x1fRemoteagent\\Core\\V1\\GPBMetadata\xea\x02\x15Remoteagent::Core::V1b\x06proto3"
 
 var (
@@ -831,38 +897,40 @@ func file_remoteagent_core_v1_terminal_history_proto_rawDescGZIP() []byte {
 	return file_remoteagent_core_v1_terminal_history_proto_rawDescData
 }
 
-var file_remoteagent_core_v1_terminal_history_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_remoteagent_core_v1_terminal_history_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_remoteagent_core_v1_terminal_history_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_remoteagent_core_v1_terminal_history_proto_goTypes = []any{
 	(TerminalHistoryEventKind)(0),            // 0: remoteagent.core.v1.TerminalHistoryEventKind
 	(TerminalHistoryPhase)(0),                // 1: remoteagent.core.v1.TerminalHistoryPhase
 	(TerminalHistoryStatus)(0),               // 2: remoteagent.core.v1.TerminalHistoryStatus
 	(TerminalSgrColorKind)(0),                // 3: remoteagent.core.v1.TerminalSgrColorKind
-	(*TerminalHistoryEvent)(nil),             // 4: remoteagent.core.v1.TerminalHistoryEvent
-	(*TerminalHistoryRun)(nil),               // 5: remoteagent.core.v1.TerminalHistoryRun
-	(*TerminalHistoryLine)(nil),              // 6: remoteagent.core.v1.TerminalHistoryLine
-	(*TerminalHistoryParsedPage)(nil),        // 7: remoteagent.core.v1.TerminalHistoryParsedPage
-	(*TerminalHistorySendRequestEffect)(nil), // 8: remoteagent.core.v1.TerminalHistorySendRequestEffect
-	(*TerminalHistoryUpdatedEffect)(nil),     // 9: remoteagent.core.v1.TerminalHistoryUpdatedEffect
-	(*v1.TerminalHistoryPage)(nil),           // 10: remoteagent.v1.TerminalHistoryPage
-	(*Text)(nil),                             // 11: remoteagent.core.v1.Text
+	(TerminalRunWidth)(0),                    // 4: remoteagent.core.v1.TerminalRunWidth
+	(*TerminalHistoryEvent)(nil),             // 5: remoteagent.core.v1.TerminalHistoryEvent
+	(*TerminalHistoryRun)(nil),               // 6: remoteagent.core.v1.TerminalHistoryRun
+	(*TerminalHistoryLine)(nil),              // 7: remoteagent.core.v1.TerminalHistoryLine
+	(*TerminalHistoryParsedPage)(nil),        // 8: remoteagent.core.v1.TerminalHistoryParsedPage
+	(*TerminalHistorySendRequestEffect)(nil), // 9: remoteagent.core.v1.TerminalHistorySendRequestEffect
+	(*TerminalHistoryUpdatedEffect)(nil),     // 10: remoteagent.core.v1.TerminalHistoryUpdatedEffect
+	(*v1.TerminalHistoryPage)(nil),           // 11: remoteagent.v1.TerminalHistoryPage
+	(*Text)(nil),                             // 12: remoteagent.core.v1.Text
 }
 var file_remoteagent_core_v1_terminal_history_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.TerminalHistoryEvent.kind:type_name -> remoteagent.core.v1.TerminalHistoryEventKind
-	10, // 1: remoteagent.core.v1.TerminalHistoryEvent.page:type_name -> remoteagent.v1.TerminalHistoryPage
+	11, // 1: remoteagent.core.v1.TerminalHistoryEvent.page:type_name -> remoteagent.v1.TerminalHistoryPage
 	3,  // 2: remoteagent.core.v1.TerminalHistoryRun.fg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
 	3,  // 3: remoteagent.core.v1.TerminalHistoryRun.bg_kind:type_name -> remoteagent.core.v1.TerminalSgrColorKind
-	5,  // 4: remoteagent.core.v1.TerminalHistoryLine.runs:type_name -> remoteagent.core.v1.TerminalHistoryRun
-	6,  // 5: remoteagent.core.v1.TerminalHistoryParsedPage.lines:type_name -> remoteagent.core.v1.TerminalHistoryLine
-	1,  // 6: remoteagent.core.v1.TerminalHistoryUpdatedEffect.phase:type_name -> remoteagent.core.v1.TerminalHistoryPhase
-	2,  // 7: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status:type_name -> remoteagent.core.v1.TerminalHistoryStatus
-	11, // 8: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status_text:type_name -> remoteagent.core.v1.Text
-	7,  // 9: remoteagent.core.v1.TerminalHistoryUpdatedEffect.added_page:type_name -> remoteagent.core.v1.TerminalHistoryParsedPage
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	4,  // 4: remoteagent.core.v1.TerminalHistoryRun.width:type_name -> remoteagent.core.v1.TerminalRunWidth
+	6,  // 5: remoteagent.core.v1.TerminalHistoryLine.runs:type_name -> remoteagent.core.v1.TerminalHistoryRun
+	7,  // 6: remoteagent.core.v1.TerminalHistoryParsedPage.lines:type_name -> remoteagent.core.v1.TerminalHistoryLine
+	1,  // 7: remoteagent.core.v1.TerminalHistoryUpdatedEffect.phase:type_name -> remoteagent.core.v1.TerminalHistoryPhase
+	2,  // 8: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status:type_name -> remoteagent.core.v1.TerminalHistoryStatus
+	12, // 9: remoteagent.core.v1.TerminalHistoryUpdatedEffect.status_text:type_name -> remoteagent.core.v1.Text
+	8,  // 10: remoteagent.core.v1.TerminalHistoryUpdatedEffect.added_page:type_name -> remoteagent.core.v1.TerminalHistoryParsedPage
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_terminal_history_proto_init() }
@@ -876,7 +944,7 @@ func file_remoteagent_core_v1_terminal_history_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_terminal_history_proto_rawDesc), len(file_remoteagent_core_v1_terminal_history_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,

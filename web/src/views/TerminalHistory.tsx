@@ -2,6 +2,7 @@ import * as i18n from "../i18n";
 import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   TerminalHistoryPhase,
+  TerminalRunWidth,
   TerminalSgrColorKind,
   type TerminalHistoryParsedPage,
   type TerminalHistoryRun,
@@ -11,10 +12,7 @@ import { renderText } from "../core/text";
 import type { Text as CoreText } from "../gen/remoteagent/core/v1/text_pb";
 import { DEFAULT_BG, DEFAULT_FG, ansiColor } from "../ansi";
 import { ArrowDown } from "../icons";
-import { widthSegments } from "../term-width";
 import { wheelAxis } from "../wheel";
-
-export { widthSegments };
 
 /** The monospace stack the live xterm is opened with; the reader uses it
  * too, so the two show the same picture. */
@@ -75,14 +73,23 @@ function RunSpan({ run }: { run: TerminalHistoryRun }) {
   if (run.italic) style.fontStyle = "italic";
   if (run.underline) style.textDecoration = "underline";
   if (run.dim) style.opacity = 0.55;
-  return (
-    <span style={style}>
-      {widthSegments(run.text).map((s, i) => s.wide
-        // Each wide character sits centred in its two cells, as xterm draws it.
-        ? [...s.text].map((c, j) => <span key={i + "." + j} className="wide">{c}</span>)
-        : <span key={i}>{s.text}</span>)}
-    </span>
-  );
+  if (run.width === TerminalRunWidth.WIDE) {
+    // Each wide character sits centred in its two cells, as xterm draws it.
+    return (
+      <span style={style}>
+        {[...run.text].map((c, j) => <span key={j} className="wide">{c}</span>)}
+      </span>
+    );
+  }
+  if (run.width === TerminalRunWidth.CLUSTER_WIDE) {
+    // Multi-codepoint wide cluster (VS16/ZWJ emoji, flag, keycap) stays indivisible in two cells.
+    return (
+      <span style={style}>
+        <span className="wide">{run.text}</span>
+      </span>
+    );
+  }
+  return <span style={style}>{run.text}</span>;
 }
 
 /** Immutable pages keep Core's pre-parsed runs even when a line leaves the viewport. */

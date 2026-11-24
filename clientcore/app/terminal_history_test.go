@@ -102,7 +102,10 @@ func TestCoreTerminalHistoryLifecycleAndTimeout(t *testing.T) {
 		t.Fatalf("unexpected open update: %#v", upd)
 	}
 	runs := upd.AddedPage.Lines[0].Runs
-	if len(runs) != 2 || runs[0].Text != "red" || runs[0].FgValue != 1 || runs[1].Text != " 中文" {
+	if len(runs) != 3 ||
+		runs[0].Text != "red" || runs[0].FgValue != 1 || runs[0].Width != corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW ||
+		runs[1].Text != " " || runs[1].Width != corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW ||
+		runs[2].Text != "中文" || runs[2].Width != corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_WIDE {
 		t.Fatalf("unexpected parsed runs: %#v", runs)
 	}
 

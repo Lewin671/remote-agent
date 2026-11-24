@@ -7,6 +7,7 @@ import {
   CoreHost,
   TerminalHistoryEventKind,
   TerminalHistoryPhase,
+  TerminalRunWidth,
   TerminalSgrColorKind,
   type TerminalHistorySendRequestEffect,
 } from "../core/host";
@@ -20,7 +21,6 @@ import {
   applyTerminalHistoryUpdate,
   EMPTY_TERMINAL_HISTORY,
   TerminalReader,
-  widthSegments,
   type TerminalHistoryViewState,
 } from "./TerminalHistory";
 
@@ -35,21 +35,23 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-function makePage(id: string, lines: { runs: { text: string; fg?: number }[]; cells: number }[]) {
-  let maxCells = 0;
-  const protoLines = lines.map((l) => {
-    if (l.cells > maxCells) maxCells = l.cells;
-    return create(TerminalHistoryLineSchema, {
-      cells: l.cells,
+function makePage(
+  id: string,
+  lines: { runs: { text: string; fg?: number; width?: TerminalRunWidth }[] }[],
+  maxCells: number,
+) {
+  const protoLines = lines.map((l) =>
+    create(TerminalHistoryLineSchema, {
       runs: l.runs.map((r) =>
         create(TerminalHistoryRunSchema, {
           text: r.text,
           fgKind: r.fg !== undefined ? TerminalSgrColorKind.PALETTE : TerminalSgrColorKind.DEFAULT,
           fgValue: r.fg ?? 0,
+          width: r.width ?? TerminalRunWidth.NARROW,
         }),
       ),
-    });
-  });
+    }),
+  );
   return create(TerminalHistoryParsedPageSchema, { id, lines: protoLines, maxCells });
 }
 
@@ -63,10 +65,14 @@ it("bounds mounted rows, renders Core-parsed pages, and anchors prepends without
 
   const firstPage = makePage(
     "page",
-    Array.from({ length: 240 }, (_, i) => {
-      const text = `row ${i} 汉字` + (i === 0 ? "x".repeat(100) : "");
-      return { runs: [{ text, fg: 1 }], cells: i === 0 ? 110 : 10 };
-    }),
+    Array.from({ length: 240 }, (_, i) => ({
+      runs: [
+        { text: `row ${i} `, fg: 1 },
+        { text: "汉字", fg: 1, width: TerminalRunWidth.WIDE },
+        ...(i === 0 ? [{ text: "x".repeat(100), fg: 1 }] : []),
+      ],
+    })),
+    110,
   );
   let history: TerminalHistoryViewState = {
     phase: TerminalHistoryPhase.OPEN,
@@ -93,11 +99,15 @@ it("bounds mounted rows, renders Core-parsed pages, and anchors prepends without
 
   await act(async () => { box.scrollTop = 500; box.dispatchEvent(new Event("scroll")); });
   const anchor = host.querySelector(".thline")!.textContent;
-  const olderPage = makePage("earlier", [
-    { runs: [{ text: "older 1" }], cells: 7 },
-    { runs: [{ text: "older 2" }], cells: 7 },
-    { runs: [{ text: "older 3" }], cells: 7 },
-  ]);
+  const olderPage = makePage(
+    "earlier",
+    [
+      { runs: [{ text: "older 1" }] },
+      { runs: [{ text: "older 2" }] },
+      { runs: [{ text: "older 3" }] },
+    ],
+    7,
+  );
   history = { ...history, pages: [olderPage, ...history.pages] };
   await act(async () => render());
   expect(box.scrollTop).toBe(560);
@@ -115,7 +125,7 @@ it("bounds mounted rows, renders Core-parsed pages, and anchors prepends without
   expect(leave).toHaveBeenCalledTimes(1);
 });
 
-it("drives terminal history paging, SGR parsing, and 10s timeout through clientcore WASM", () => {
+it("drives terminal history paging, SGR parsing, width runs, and 10s timeout through clientcore WASM", () => {
   vi.useFakeTimers();
   const coreHost = new CoreHost();
   const tid = "term-test-1";
@@ -136,17 +146,23 @@ it("drives terminal history paging, SGR parsing, and 10s timeout through clientc
       TerminalHistoryEventKind.PAGE_RECEIVED,
       create(TerminalHistoryPageSchema, {
         requestId: sent[0].requestId,
-        lines: ["\u001b[38;2;255;123;114mdiff\u001b[0m 中文"],
+        lines: ["\u001b[38;2;255;123;114mdiff\u001b[0m 中文✅👨\u200d👩\u200d👧"],
         nextCursor: "cap:200",
       }),
     );
     expect(state.phase).toBe(TerminalHistoryPhase.OPEN);
     expect(state.canLoadEarlier).toBe(true);
-    expect(state.maxCells).toBe(9);
+    expect(state.maxCells).toBe(13);
     expect(state.pages).toHaveLength(1);
-    expect(state.pages[0].lines[0].runs).toHaveLength(2);
-    expect(state.pages[0].lines[0].runs[0].fgKind).toBe(TerminalSgrColorKind.RGB);
-    expect(state.pages[0].lines[0].runs[0].fgValue).toBe(0xff7b72);
+    const runs = state.pages[0].lines[0].runs;
+    expect(runs).toHaveLength(4);
+    expect(runs[0].fgKind).toBe(TerminalSgrColorKind.RGB);
+    expect(runs[0].fgValue).toBe(0xff7b72);
+    expect(runs[0].width).toBe(TerminalRunWidth.NARROW);
+    expect(runs[2].text).toBe("中文✅");
+    expect(runs[2].width).toBe(TerminalRunWidth.WIDE);
+    expect(runs[3].text).toBe("👨\u200d👩\u200d👧");
+    expect(runs[3].width).toBe(TerminalRunWidth.CLUSTER_WIDE);
 
     coreHost.sendTerminalHistory(tid, TerminalHistoryEventKind.LOAD_EARLIER);
     expect(sent).toHaveLength(2);
@@ -167,30 +183,44 @@ it("drives terminal history paging, SGR parsing, and 10s timeout through clientc
   }
 });
 
-describe("width segments", () => {
-  const cells = (line: string) => widthSegments(line).reduce((n, s) => n + [...s.text].length * (s.wide ? 2 : 1), 0);
-
-  it("splits narrow and wide stretches", () => {
-    expect(widthSegments("中a文b")).toEqual([
-      { text: "中", wide: true },
-      { text: "a", wide: false },
-      { text: "文", wide: true },
-      { text: "b", wide: false },
-    ]);
-  });
-
-  it("keeps a pure ASCII line as one narrow stretch", () => {
-    expect(widthSegments("plain text")).toEqual([{ text: "plain text", wide: false }]);
-  });
-
-  it("counts fullwidth forms as wide", () => {
-    expect(widthSegments("ＡＢ")).toEqual([{ text: "ＡＢ", wide: true }]);
-  });
-
-  it("lines a mixed CJK and ASCII line up under its ruler", () => {
-    const line = "ab中文cd中文ef中文";
-    const ruler = "123456789012345678";
-    expect(cells(line)).toBe(18);
-    expect(ruler).toHaveLength(cells(line));
+describe("Core-driven wide and cluster spans", () => {
+  it("renders wide runes and indivisible multi-codepoint emoji clusters as .wide spans", async () => {
+    vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(20);
+    const coreHost = new CoreHost();
+    const tid = "term-wide-render";
+    const sent: TerminalHistorySendRequestEffect[] = [];
+    let state = EMPTY_TERMINAL_HISTORY;
+    const offReq = coreHost.onTerminalHistorySendRequest(tid, (req) => sent.push(req));
+    const offUpd = coreHost.onTerminalHistoryUpdated(tid, (upd) => {
+      state = applyTerminalHistoryUpdate(state, upd);
+    });
+    try {
+      coreHost.sendTerminalHistory(tid, TerminalHistoryEventKind.OPEN);
+      coreHost.sendTerminalHistory(
+        tid,
+        TerminalHistoryEventKind.PAGE_RECEIVED,
+        create(TerminalHistoryPageSchema, {
+          requestId: sent[0].requestId,
+          lines: ["a中文✅☀\ufe0f👨\u200d👩\u200d👧e\u0301b"],
+        }),
+      );
+      expect(state.maxCells).toBe(13);
+      host = document.createElement("div");
+      document.body.append(host);
+      root = createRoot(host);
+      await act(async () =>
+        root!.render(<TerminalReader history={state} load={() => {}} online font={14} height={20} offset={0} left={0} grid={400} onLeave={() => {}} />),
+      );
+      const wideTexts = [...host.querySelectorAll(".wide")].map((el) => el.textContent);
+      expect(wideTexts).toEqual(["中", "文", "✅", "☀\ufe0f", "👨\u200d👩\u200d👧"]);
+      expect(host.querySelector(".thline")?.textContent).toBe("a中文✅☀\ufe0f👨\u200d👩\u200d👧e\u0301b");
+    } finally {
+      offReq();
+      offUpd();
+      coreHost.sendTerminalHistory(tid, TerminalHistoryEventKind.DISPOSED);
+      coreHost.dispose();
+    }
   });
 });

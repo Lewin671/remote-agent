@@ -54,6 +54,19 @@ enum TerminalSgrColorKind {
   TERMINAL_SGR_COLOR_KIND_RGB = 2;
 }
 
+enum TerminalRunWidth {
+  // Every code point in text occupies 1 cell (default; zero wire overhead for ASCII/narrow runs).
+  TERMINAL_RUN_WIDTH_NARROW = 0;
+  // Every code point in text occupies 2 cells (single-codepoint CJK, fullwidth, wide emoji).
+  TERMINAL_RUN_WIDTH_WIDE = 1;
+  // The entire run text is one grapheme cluster occupying 1 cell (e.g. base + combining mark).
+  TERMINAL_RUN_WIDTH_CLUSTER_NARROW = 2;
+  // The entire run text is one grapheme cluster occupying 2 cells (e.g. VS16/ZWJ emoji, flag, keycap).
+  TERMINAL_RUN_WIDTH_CLUSTER_WIDE = 3;
+  // The entire run text occupies 0 cells (standalone zero-width characters).
+  TERMINAL_RUN_WIDTH_ZERO = 4;
+}
+
 message TerminalHistoryRun {
   string text = 1;
   TerminalSgrColorKind fg_kind = 2;
@@ -67,11 +80,11 @@ message TerminalHistoryRun {
   bool italic = 8;
   bool underline = 9;
   bool inverse = 10;
+  TerminalRunWidth width = 11;
 }
 
 message TerminalHistoryLine {
   repeated TerminalHistoryRun runs = 1;
-  int32 cells = 2;
 }
 
 message TerminalHistoryParsedPage {

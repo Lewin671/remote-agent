@@ -355,6 +355,48 @@ public  final class TerminalHistoryRun extends
     inverse_ = false;
   }
 
+  public static final int WIDTH_FIELD_NUMBER = 11;
+  private int width_;
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @return The enum numeric value on the wire for width.
+   */
+  @java.lang.Override
+  public int getWidthValue() {
+    return width_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @return The width.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalRunWidth getWidth() {
+    io.github.lewin671.remoteagent.core.proto.TerminalRunWidth result = io.github.lewin671.remoteagent.core.proto.TerminalRunWidth.forNumber(width_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.TerminalRunWidth.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @param value The enum numeric value on the wire for width to set.
+   */
+  private void setWidthValue(int value) {
+      width_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   * @param value The width to set.
+   */
+  private void setWidth(io.github.lewin671.remoteagent.core.proto.TerminalRunWidth value) {
+    width_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+   */
+  private void clearWidth() {
+
+    width_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.TerminalHistoryRun parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -813,6 +855,52 @@ public  final class TerminalHistoryRun extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+     * @return The enum numeric value on the wire for width.
+     */
+    @java.lang.Override
+    public int getWidthValue() {
+      return instance.getWidthValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+     * @param value The width to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWidthValue(int value) {
+      copyOnWrite();
+      instance.setWidthValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+     * @return The width.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalRunWidth getWidth() {
+      return instance.getWidth();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+     * @param value The enum numeric value on the wire for width to set.
+     * @return This builder for chaining.
+     */
+    public Builder setWidth(io.github.lewin671.remoteagent.core.proto.TerminalRunWidth value) {
+      copyOnWrite();
+      instance.setWidth(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalRunWidth width = 11 [json_name = "width"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearWidth() {
+      copyOnWrite();
+      instance.clearWidth();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.TerminalHistoryRun)
   }
   @java.lang.Override
@@ -839,10 +927,12 @@ public  final class TerminalHistoryRun extends
             "italic_",
             "underline_",
             "inverse_",
+            "width_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0001\n\n\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u000b" +
-              "\u0004\f\u0005\u000b\u0006\u0007\u0007\u0007\b\u0007\t\u0007\n\u0007";
+              "\u0000\u000b\u0000\u0000\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0208\u0002\f" +
+              "\u0003\u000b\u0004\f\u0005\u000b\u0006\u0007\u0007\u0007\b\u0007\t\u0007\n\u0007" +
+              "\u000b\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -51,7 +51,6 @@ class TerminalReadingTest {
             .addAllLines(lines.map { text ->
                 TerminalHistoryLine.newBuilder()
                     .addRuns(TerminalHistoryRun.newBuilder().setText(text))
-                    .setCells(text.length)
                     .build()
             })
             .build()

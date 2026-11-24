@@ -8,6 +8,7 @@ import io.github.lewin671.remoteagent.core.proto.TerminalHistoryPhase
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryRun
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect
+import io.github.lewin671.remoteagent.core.proto.TerminalRunWidth
 import io.github.lewin671.remoteagent.core.proto.TerminalSgrColorKind
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import android.graphics.Paint
@@ -83,7 +84,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.termux.terminal.TextStyle as TermStyle
-import com.termux.terminal.WcWidth
 import com.termux.view.WheelAxis
 import io.github.lewin671.remoteagent.ui.Ic
 import io.github.lewin671.remoteagent.ui.Lucide
@@ -544,25 +544,46 @@ private class Past {
     var pixels = 0f
 }
 
-/** A line as styled runs that take the cells the live terminal gives them. */
+/** A line as styled runs using clientcore's unified cell widths (no shell width table). */
 private fun sgrText(line: List<TerminalHistoryRun>, paint: Paint, cellWidth: Float, fontPx: Int, palette: IntArray): AnnotatedString =
     buildAnnotatedString {
+        fun appendAdjusted(piece: String, targetCells: Int) {
+            // A glyph the font draws narrower or wider than its cells (a Chinese glyph or emoji
+            // from a fallback font beside a 0.6 em Latin cell) gets the difference after it, so
+            // the columns after it stay where the live terminal draws them.
+            val extra = targetCells * cellWidth - paint.measureText(piece)
+            if (fontPx > 0 && cellWidth > 0f && abs(extra) > HALF_PIXEL) {
+                withStyle(SpanStyle(letterSpacing = (extra / fontPx).em)) { append(piece) }
+            } else {
+                append(piece)
+            }
+        }
         for (run in line) withStyle(styleOf(run, palette)) {
-            var i = 0
-            while (i < run.text.length) {
-                val codePoint = run.text.codePointAt(i)
-                val chars = Character.charCount(codePoint)
-                val piece = run.text.substring(i, i + chars)
-                // A glyph the font draws narrower or wider than its cells (a Chinese glyph from
-                // a fallback font beside a 0.6 em Latin cell) gets the difference after it, so
-                // the columns after it stay where the live terminal draws them.
-                val extra = WcWidth.width(codePoint) * cellWidth - paint.measureText(piece)
-                if (fontPx > 0 && cellWidth > 0f && abs(extra) > HALF_PIXEL) {
-                    withStyle(SpanStyle(letterSpacing = (extra / fontPx).em)) { append(piece) }
-                } else {
-                    append(piece)
+            val text = run.text
+            when (run.width) {
+                TerminalRunWidth.TERMINAL_RUN_WIDTH_WIDE -> {
+                    var i = 0
+                    while (i < text.length) {
+                        val chars = Character.charCount(text.codePointAt(i))
+                        appendAdjusted(text.substring(i, i + chars), 2)
+                        i += chars
+                    }
                 }
-                i += chars
+                TerminalRunWidth.TERMINAL_RUN_WIDTH_CLUSTER_NARROW -> appendAdjusted(text, 1)
+                TerminalRunWidth.TERMINAL_RUN_WIDTH_CLUSTER_WIDE -> appendAdjusted(text, 2)
+                TerminalRunWidth.TERMINAL_RUN_WIDTH_ZERO -> appendAdjusted(text, 0)
+                else -> {
+                    if (text.all { it.code < 0x80 }) {
+                        append(text)
+                    } else {
+                        var i = 0
+                        while (i < text.length) {
+                            val chars = Character.charCount(text.codePointAt(i))
+                            appendAdjusted(text.substring(i, i + chars), 1)
+                            i += chars
+                        }
+                    }
+                }
             }
         }
     }

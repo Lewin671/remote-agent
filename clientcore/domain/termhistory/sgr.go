@@ -21,48 +21,8 @@ type sgrStyle struct {
 	inverse   bool
 }
 
-// IsWideRune reports whether r occupies two terminal cells (East Asian Wide,
-// Fullwidth, and wide Emoji ranges).
-func IsWideRune(r rune) bool {
-	return (r >= 0x1100 && r <= 0x115f) ||
-		(r >= 0x2e80 && r <= 0x303e) ||
-		(r >= 0x3041 && r <= 0x33ff) ||
-		(r >= 0x3400 && r <= 0x4dbf) ||
-		(r >= 0x4e00 && r <= 0x9fff) ||
-		(r >= 0xa000 && r <= 0xa4cf) ||
-		(r >= 0xac00 && r <= 0xd7a3) ||
-		(r >= 0xf900 && r <= 0xfaff) ||
-		(r >= 0xfe10 && r <= 0xfe19) ||
-		(r >= 0xfe30 && r <= 0xfe6f) ||
-		(r >= 0xff00 && r <= 0xff60) ||
-		(r >= 0xffe0 && r <= 0xffe6) ||
-		(r >= 0x1f300 && r <= 0x1faff) ||
-		(r >= 0x20000 && r <= 0x3fffd)
-}
-
-// LineCells returns the terminal column width of a parsed line, expanding tabs
-// to 8-column stops and counting wide runes as 2 cells.
-func LineCells(runs []*corev1.TerminalHistoryRun) int32 {
-	var cells int32
-	for _, run := range runs {
-		if run == nil {
-			continue
-		}
-		for _, r := range run.Text {
-			if r == '\t' {
-				cells += 8 - cells%8
-			} else if IsWideRune(r) {
-				cells += 2
-			} else {
-				cells++
-			}
-		}
-	}
-	return cells
-}
-
-// ParsePage parses all raw lines of one history page into styled runs and
-// computes per-line and page-wide maximum cell widths.
+// ParsePage parses all raw lines of one history page into styled, width-typed
+// runs and computes the page-wide maximum cell width.
 func ParsePage(id string, lines []string) *corev1.TerminalHistoryParsedPage {
 	parsed := make([]*corev1.TerminalHistoryLine, len(lines))
 	var maxCells int32
@@ -72,8 +32,7 @@ func ParsePage(id string, lines []string) *corev1.TerminalHistoryParsedPage {
 			maxCells = cells
 		}
 		parsed[i] = &corev1.TerminalHistoryLine{
-			Runs:  runs,
-			Cells: cells,
+			Runs: runs,
 		}
 	}
 	return &corev1.TerminalHistoryParsedPage{
@@ -83,30 +42,83 @@ func ParsePage(id string, lines []string) *corev1.TerminalHistoryParsedPage {
 	}
 }
 
-// ParseSgrLine parses one line of `tmux capture-pane -e` output into styled
-// runs, starting from the default style. Only SGR (ESC [ ... m with decimal
-// parameters) modifies style; all other escape and control sequences (except
-// horizontal tab) are dropped. Adjacent runs with identical style are merged
-// and empty runs are omitted.
+// ParseSgrLine parses one line of `tmux capture-pane -e` output into styled,
+// width-typed runs, starting from the default style. Only SGR (ESC [ ... m with
+// decimal/colon parameters) modifies style; all other escape and control
+// sequences (except horizontal tab) are dropped. Adjacent mergeable runs with
+// identical style and width kind are merged, multi-codepoint clusters stay
+// indivisible, and empty runs are omitted.
 func ParseSgrLine(line string) ([]*corev1.TerminalHistoryRun, int32) {
 	if len(line) == 0 {
 		return nil, 0
 	}
 	var runs []*corev1.TerminalHistoryRun
 	var style sgrStyle
-	var buf strings.Builder
+	var rawBuf strings.Builder
 
-	flush := func() {
-		if buf.Len() == 0 {
+	var curStyle sgrStyle
+	var curWidth corev1.TerminalRunWidth
+	var runBuf strings.Builder
+	var lineCells int32
+
+	flushRun := func() {
+		if runBuf.Len() == 0 {
 			return
 		}
-		piece := buf.String()
-		buf.Reset()
-		if n := len(runs); n > 0 && runMatchesStyle(runs[n-1], style) {
-			runs[n-1].Text += piece
+		runs = append(runs, buildRun(runBuf.String(), curStyle, curWidth))
+		runBuf.Reset()
+	}
+
+	emitPiece := func(piece string, st sgrStyle) {
+		for i := 0; i < len(piece); {
+			end, cells, multi := nextCluster(piece, i)
+			var wKind corev1.TerminalRunWidth
+			mergeable := true
+			if cells < 0 {
+				// Tab expands to the next 8-column stop and stays in NARROW runs.
+				lineCells += 8 - lineCells%8
+				wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW
+			} else {
+				lineCells += int32(cells)
+				switch {
+				case cells == 0:
+					wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_ZERO
+				case cells == 1 && !multi:
+					wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW
+				case cells == 2 && !multi:
+					wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_WIDE
+				case cells == 1 && multi:
+					wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_NARROW
+					mergeable = false
+				default:
+					wKind = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_WIDE
+					mergeable = false
+				}
+			}
+			cluster := piece[i:end]
+			if !mergeable {
+				flushRun()
+				runs = append(runs, buildRun(cluster, st, wKind))
+			} else {
+				if runBuf.Len() > 0 && (curStyle != st || curWidth != wKind) {
+					flushRun()
+				}
+				if runBuf.Len() == 0 {
+					curStyle = st
+					curWidth = wKind
+				}
+				runBuf.WriteString(cluster)
+			}
+			i = end
+		}
+	}
+
+	flushRaw := func() {
+		if rawBuf.Len() == 0 {
 			return
 		}
-		runs = append(runs, buildRun(piece, style))
+		emitPiece(rawBuf.String(), style)
+		rawBuf.Reset()
 	}
 
 	n := len(line)
@@ -144,7 +156,7 @@ func ParseSgrLine(line string) ([]*corev1.TerminalHistoryRun, int32) {
 					if isValidSgrParams(params) {
 						next := applySgr(style, params)
 						if next != style {
-							flush()
+							flushRaw()
 							style = next
 						}
 					}
@@ -175,7 +187,7 @@ func ParseSgrLine(line string) ([]*corev1.TerminalHistoryRun, int32) {
 				}
 			}
 		} else if b == '\t' {
-			buf.WriteByte('\t')
+			rawBuf.WriteByte('\t')
 			i++
 		} else if b < 0x20 || b == 0x7f {
 			i++
@@ -184,41 +196,15 @@ func ParseSgrLine(line string) ([]*corev1.TerminalHistoryRun, int32) {
 			for i < n && line[i] >= 0x20 && line[i] != 0x7f {
 				i++
 			}
-			buf.WriteString(line[start:i])
+			rawBuf.WriteString(line[start:i])
 		}
 	}
-	flush()
+	flushRaw()
+	flushRun()
 	if len(runs) == 0 {
 		return nil, 0
 	}
-	return runs, computeCells(runs)
-}
-
-func computeCells(runs []*corev1.TerminalHistoryRun) int32 {
-	var cells int32
-	for _, run := range runs {
-		s := run.Text
-		for i := 0; i < len(s); {
-			b := s[i]
-			if b < utf8.RuneSelf {
-				if b == '\t' {
-					cells += 8 - cells%8
-				} else {
-					cells++
-				}
-				i++
-				continue
-			}
-			r, size := utf8.DecodeRuneInString(s[i:])
-			if IsWideRune(r) {
-				cells += 2
-			} else {
-				cells++
-			}
-			i += size
-		}
-	}
-	return cells
+	return runs, lineCells
 }
 
 // skipControlString advances past an OSC/DCS/SOS/PM/APC string terminated by
@@ -372,19 +358,7 @@ func setStyleColor(s *sgrStyle, fg bool, kind corev1.TerminalSgrColorKind, val u
 	}
 }
 
-func runMatchesStyle(r *corev1.TerminalHistoryRun, s sgrStyle) bool {
-	return r.FgKind == s.fgKind &&
-		r.FgValue == s.fgVal &&
-		r.BgKind == s.bgKind &&
-		r.BgValue == s.bgVal &&
-		r.Bold == s.bold &&
-		r.Dim == s.dim &&
-		r.Italic == s.italic &&
-		r.Underline == s.underline &&
-		r.Inverse == s.inverse
-}
-
-func buildRun(text string, s sgrStyle) *corev1.TerminalHistoryRun {
+func buildRun(text string, s sgrStyle, width corev1.TerminalRunWidth) *corev1.TerminalHistoryRun {
 	return &corev1.TerminalHistoryRun{
 		Text:      text,
 		FgKind:    s.fgKind,
@@ -396,5 +370,6 @@ func buildRun(text string, s sgrStyle) *corev1.TerminalHistoryRun {
 		Italic:    s.italic,
 		Underline: s.underline,
 		Inverse:   s.inverse,
+		Width:     width,
 	}
 }

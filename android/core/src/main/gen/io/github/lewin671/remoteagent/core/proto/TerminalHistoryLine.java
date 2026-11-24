@@ -114,32 +114,6 @@ public  final class TerminalHistoryLine extends
     runs_.remove(index);
   }
 
-  public static final int CELLS_FIELD_NUMBER = 2;
-  private int cells_;
-  /**
-   * <code>int32 cells = 2 [json_name = "cells"];</code>
-   * @return The cells.
-   */
-  @java.lang.Override
-  public int getCells() {
-    return cells_;
-  }
-  /**
-   * <code>int32 cells = 2 [json_name = "cells"];</code>
-   * @param value The cells to set.
-   */
-  private void setCells(int value) {
-    
-    cells_ = value;
-  }
-  /**
-   * <code>int32 cells = 2 [json_name = "cells"];</code>
-   */
-  private void clearCells() {
-
-    cells_ = 0;
-  }
-
   public static io.github.lewin671.remoteagent.core.proto.TerminalHistoryLine parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -339,34 +313,6 @@ public  final class TerminalHistoryLine extends
       return this;
     }
 
-    /**
-     * <code>int32 cells = 2 [json_name = "cells"];</code>
-     * @return The cells.
-     */
-    @java.lang.Override
-    public int getCells() {
-      return instance.getCells();
-    }
-    /**
-     * <code>int32 cells = 2 [json_name = "cells"];</code>
-     * @param value The cells to set.
-     * @return This builder for chaining.
-     */
-    public Builder setCells(int value) {
-      copyOnWrite();
-      instance.setCells(value);
-      return this;
-    }
-    /**
-     * <code>int32 cells = 2 [json_name = "cells"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearCells() {
-      copyOnWrite();
-      instance.clearCells();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.TerminalHistoryLine)
   }
   @java.lang.Override
@@ -385,11 +331,9 @@ public  final class TerminalHistoryLine extends
           java.lang.Object[] objects = new java.lang.Object[] {
             "runs_",
             io.github.lewin671.remoteagent.core.proto.TerminalHistoryRun.class,
-            "cells_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0001\u0000\u0001\u001b\u0002\u0004" +
-              "";
+              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0001\u0000\u0001\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

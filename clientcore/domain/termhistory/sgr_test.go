@@ -55,6 +55,34 @@ func runToMap(r *corev1.TerminalHistoryRun) map[string]any {
 	return m
 }
 
+func mergeSameStyleMaps(runs []*corev1.TerminalHistoryRun) []map[string]any {
+	out := make([]map[string]any, 0, len(runs))
+	for _, r := range runs {
+		m := runToMap(r)
+		if n := len(out); n > 0 && sameStyleExceptText(out[n-1], m) {
+			out[n-1]["text"] = out[n-1]["text"].(string) + m["text"].(string)
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+func sameStyleExceptText(a, b map[string]any) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if k == "text" {
+			continue
+		}
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func TestSharedHistorySgrCases(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "testdata", "terminal", "history-sgr.json")
 	raw, err := os.ReadFile(path)
@@ -71,10 +99,7 @@ func TestSharedHistorySgrCases(t *testing.T) {
 	for _, tc := range sf.Cases {
 		t.Run(tc.Name, func(t *testing.T) {
 			gotRuns, _ := ParseSgrLine(tc.Line)
-			got := make([]map[string]any, len(gotRuns))
-			for i, r := range gotRuns {
-				got[i] = runToMap(r)
-			}
+			got := mergeSameStyleMaps(gotRuns)
 			want := tc.Runs
 			if want == nil {
 				want = []map[string]any{}
@@ -150,18 +175,120 @@ func TestSgrUnifiedEdgeCases(t *testing.T) {
 		}
 	})
 
-	t.Run("ParsePage computes wide cell counts and max_cells", func(t *testing.T) {
+	t.Run("ParsePage computes max_cells without per-line cells field", func(t *testing.T) {
 		page := ParsePage("p1", []string{"a", "\x1b[31m中文\x1b[0m", "ab中文cd中文ef中文"})
 		if page.Id != "p1" || len(page.Lines) != 3 {
 			t.Fatalf("unexpected page: %#v", page)
-		}
-		if page.Lines[0].Cells != 1 || page.Lines[1].Cells != 4 || page.Lines[2].Cells != 18 {
-			t.Fatalf("unexpected cells: %d, %d, %d", page.Lines[0].Cells, page.Lines[1].Cells, page.Lines[2].Cells)
 		}
 		if page.MaxCells != 18 {
 			t.Fatalf("got maxCells %d, want 18", page.MaxCells)
 		}
 	})
+}
+
+func TestWidthAndClusterRuns(t *testing.T) {
+	type wantRun struct {
+		text  string
+		width corev1.TerminalRunWidth
+	}
+	const (
+		narrow        = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_NARROW
+		wide          = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_WIDE
+		clusterNarrow = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_NARROW
+		clusterWide   = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_CLUSTER_WIDE
+		zero          = corev1.TerminalRunWidth_TERMINAL_RUN_WIDTH_ZERO
+	)
+	cases := []struct {
+		name      string
+		line      string
+		wantCells int32
+		wantRuns  []wantRun
+	}{
+		{
+			name:      "mixed ASCII and CJK splits narrow and wide runs",
+			line:      "中a文b",
+			wantCells: 6,
+			wantRuns: []wantRun{
+				{"中", wide}, {"a", narrow}, {"文", wide}, {"b", narrow},
+			},
+		},
+		{
+			name:      "common U+2600-27BF and U+2B50 emojis are 2 cells wide",
+			line:      "✅❌⭐⚡✨",
+			wantCells: 10,
+			wantRuns:  []wantRun{{"✅❌⭐⚡✨", wide}},
+		},
+		{
+			name:      "combining mark stays attached to narrow and wide bases",
+			line:      "e\u0301中\u0301x",
+			wantCells: 4,
+			wantRuns: []wantRun{
+				{"e\u0301", clusterNarrow},
+				{"中\u0301", clusterWide},
+				{"x", narrow},
+			},
+		},
+		{
+			name:      "VS16 promotes text symbol to 2-cell wide cluster",
+			line:      "☀\ufe0f⚠\ufe0f",
+			wantCells: 4,
+			wantRuns: []wantRun{
+				{"☀\ufe0f", clusterWide},
+				{"⚠\ufe0f", clusterWide},
+			},
+		},
+		{
+			name:      "ZWJ family and profession emojis are single 2-cell clusters",
+			line:      "👨\u200d👩\u200d👧 👩\u200d💻",
+			wantCells: 5,
+			wantRuns: []wantRun{
+				{"👨\u200d👩\u200d👧", clusterWide},
+				{" ", narrow},
+				{"👩\u200d💻", clusterWide},
+			},
+		},
+		{
+			name:      "skin tone modifier, flag pair, and keycap stay 2-cell clusters",
+			line:      "👍🏽🇨🇳1\ufe0f\u20e3",
+			wantCells: 6,
+			wantRuns: []wantRun{
+				{"👍🏽", clusterWide},
+				{"🇨🇳", clusterWide},
+				{"1\ufe0f\u20e3", clusterWide},
+			},
+		},
+		{
+			name:      "standalone zero-width characters take 0 cells",
+			line:      "a\u200bb",
+			wantCells: 2,
+			wantRuns: []wantRun{
+				{"a", narrow},
+				{"\u200b", zero},
+				{"b", narrow},
+			},
+		},
+		{
+			name:      "fullwidth forms are wide",
+			line:      "ＡＢ",
+			wantCells: 4,
+			wantRuns:  []wantRun{{"ＡＢ", wide}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			runs, cells := ParseSgrLine(tc.line)
+			if cells != tc.wantCells {
+				t.Fatalf("cells = %d, want %d (runs=%#v)", cells, tc.wantCells, runs)
+			}
+			got := make([]wantRun, len(runs))
+			for i, r := range runs {
+				got[i] = wantRun{text: r.Text, width: r.Width}
+			}
+			if !reflect.DeepEqual(got, tc.wantRuns) {
+				t.Fatalf("runs:\nwant %#v\ngot  %#v", tc.wantRuns, got)
+			}
+		})
+	}
 }
 
 func TestSgrColonUnderlineColorAndEscUtf8(t *testing.T) {
