@@ -253,8 +253,12 @@ type Plan struct {
 	pendingGifKeep   bool
 	pendingGifIsImg  bool
 
-	// WebP header rewrite tracking (index in ops for 12-byte RIFF header).
+	// WebP header rewrite tracking (index in ops for 12-byte RIFF header and optional 1-byte VP8X flags literal).
 	webpOutBodyLen uint64
+	webpVp8xFlagOp int // -1 when no VP8X chunk was emitted
+	webpSawIccp    bool
+	webpSawAlph    bool
+	webpSawAnim    bool
 
 	// Consecutive NeedRead stall detector.
 	hasLastRead  bool
@@ -287,6 +291,7 @@ func NewPlan(mode Mode, expectedFormat Format, totalLen int64) *Plan {
 		totalLen:       uint64(totalLen),
 		orientation:    1,
 		doneFrameSize:  16,
+		webpVp8xFlagOp: -1,
 	}
 }
 
@@ -558,29 +563,55 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 			return p.needScanJpegEntropy(end), nil
 		}
 
-		// Determine keep flag for APPn / COM (needs at most 16 bytes past start+4).
-		keep := true
+		// Privacy-first whitelist for JPEG segments (outside SOI/SOS/EOI):
+		// keep only DQT (0xDB), DHT (0xC4), DAC (0xCC), SOFn (0xC0..0xCF excl. 0xC8),
+		// DRI (0xDD), APP0 JFIF (thumbnail stripped), APP2 ICC_PROFILE\0, APP14 Adobe.
+		// All other APPn, COM (0xFE), 0xF0..0xFD, and other markers are dropped.
+		keep := false
+		var jfifClean []byte
 		if p.mode != ModeInspect {
-			if marker == 0xfe {
-				keep = false
-			} else if marker >= 0xe0 && marker <= 0xef {
-				if marker == 0xe0 || marker == 0xe2 || marker == 0xee {
-					checkEnd := start + 16
-					if checkEnd > end {
-						checkEnd = end
-					}
-					if checkEnd > bufEnd {
+			if isJpegCoreStructuralMarker(marker) {
+				keep = true
+			} else if marker == 0xe0 {
+				// JFIF header needs 18 bytes from start (2B marker + 2B len + 14B header).
+				if segLen >= 16 {
+					if start+18 > bufEnd {
 						return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
 					}
-					keep = keepJpegApp(marker, buf[relStart+4:int(checkEnd-base)])
-				} else {
-					keep = false
+					if hasASCII(buf, relStart+4, "JFIF\x00") {
+						keep = true
+						xThumb := buf[relStart+16]
+						yThumb := buf[relStart+17]
+						if p.mode == ModeStrip && (segLen > 16 || xThumb != 0 || yThumb != 0) {
+							// Strip embedded JFIF RGB thumbnail and trailing bytes while keeping version/density.
+							jfifClean = make([]byte, 18)
+							jfifClean[0] = 0xff
+							jfifClean[1] = 0xe0
+							jfifClean[2] = 0x00
+							jfifClean[3] = 0x10 // length = 16
+							copy(jfifClean[4:16], buf[relStart+4:relStart+16])
+							// jfifClean[16] = 0, jfifClean[17] = 0 (no thumbnail)
+						}
+					}
 				}
+			} else if marker == 0xe2 || marker == 0xee {
+				checkEnd := start + 16
+				if checkEnd > end {
+					checkEnd = end
+				}
+				if checkEnd > bufEnd {
+					return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
+				}
+				keep = keepJpegApp(marker, buf[relStart+4:int(checkEnd-base)])
 			}
 		}
 
 		if p.mode == ModeStrip && keep {
-			if !p.addKeep(start, end) {
+			if jfifClean != nil {
+				if !p.addLiteral(jfifClean) {
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
+				}
+			} else if !p.addKeep(start, end) {
 				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		} else if p.mode == ModeJpegSegments {
@@ -603,10 +634,14 @@ func isJpegSOF(m byte) bool {
 	return m >= 0xc0 && m <= 0xcf && m != 0xc4 && m != 0xc8 && m != 0xcc
 }
 
+// isJpegCoreStructuralMarker reports whether m is a whitelisted decoding marker:
+// SOFn / DHT (0xC4) / DAC (0xCC), DQT (0xDB), or DRI (0xDD).
+func isJpegCoreStructuralMarker(m byte) bool {
+	return (m >= 0xc0 && m <= 0xcf && m != 0xc8) || m == 0xdb || m == 0xdd
+}
+
 func keepJpegApp(marker byte, payloadPrefix []byte) bool {
 	switch marker {
-	case 0xe0:
-		return len(payloadPrefix) >= 5 && hasASCII(payloadPrefix, 0, "JFIF\x00")
 	case 0xe2:
 		return len(payloadPrefix) >= 12 && hasASCII(payloadPrefix, 0, "ICC_PROFILE\x00")
 	case 0xee:
@@ -678,7 +713,7 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 			p.haveExif = true
 		}
 
-		if p.mode == ModeStrip && !isPngDropChunk(t0, t1, t2, t3) {
+		if p.mode == ModeStrip && isPngKeepChunk(t0, t1, t2, t3) {
 			if !p.addKeep(p.pos, end) {
 				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
@@ -696,12 +731,36 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 	}
 }
 
-func isPngDropChunk(a, b, c, d byte) bool {
-	return (a == 't' && b == 'E' && c == 'X' && d == 't') ||
-		(a == 'z' && b == 'T' && c == 'X' && d == 't') ||
-		(a == 'i' && b == 'T' && c == 'X' && d == 't') ||
-		(a == 'e' && b == 'X' && c == 'I' && d == 'f') ||
-		(a == 't' && b == 'I' && c == 'M' && d == 'E')
+// isPngKeepChunk implements the privacy-first PNG chunk whitelist:
+// critical chunks + rendering/color/APNG ancillary chunks only.
+func isPngKeepChunk(a, b, c, d byte) bool {
+	switch a {
+	case 'I':
+		return (b == 'H' && c == 'D' && d == 'R') ||
+			(b == 'D' && c == 'A' && d == 'T') ||
+			(b == 'E' && c == 'N' && d == 'D')
+	case 'P':
+		return b == 'L' && c == 'T' && d == 'E'
+	case 't':
+		return b == 'R' && c == 'N' && d == 'S'
+	case 'g':
+		return b == 'A' && c == 'M' && d == 'A'
+	case 'c':
+		return b == 'H' && c == 'R' && d == 'M'
+	case 's':
+		return (b == 'R' && c == 'G' && d == 'B') ||
+			(b == 'B' && c == 'I' && d == 'T')
+	case 'i':
+		return b == 'C' && c == 'C' && d == 'P'
+	case 'p':
+		return b == 'H' && c == 'Y' && d == 's'
+	case 'a':
+		return b == 'c' && c == 'T' && d == 'L'
+	case 'f':
+		return (b == 'c' && c == 'T' && d == 'L') ||
+			(b == 'd' && c == 'A' && d == 'T')
+	}
+	return false
 }
 
 // ---------------------------------------------------------------- WebP
@@ -718,6 +777,21 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 			if p.mode == ModeStrip {
 				// Patch RIFF file size (body len including "WEBP" == total - 8).
 				putU32le(p.ops[0].lit, 4, uint32(p.webpOutBodyLen))
+				// Synchronize VP8X flags with the actually kept chunks:
+				// clear EXIF (0x08), XMP (0x04), reserved (0xC1); set/clear ICCP (0x20), ANIM (0x02), and ensure ALPH (0x10) when ALPH chunk present.
+				if p.webpVp8xFlagOp >= 0 {
+					flags := p.ops[p.webpVp8xFlagOp].lit[0] & 0x10 // preserve Alpha bit (VP8L/ANMF can carry inline alpha)
+					if p.webpSawIccp {
+						flags |= 0x20
+					}
+					if p.webpSawAlph {
+						flags |= 0x10
+					}
+					if p.webpSawAnim {
+						flags |= 0x02
+					}
+					p.ops[p.webpVp8xFlagOp].lit[0] = flags
+				}
 			}
 			return p.finish(), nil
 		}
@@ -780,7 +854,6 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 		}
 
 		isEXIF := t0 == 'E' && t1 == 'X' && t2 == 'I' && t3 == 'F'
-		isXMP := t0 == 'X' && t1 == 'M' && t2 == 'P' && t3 == ' '
 		if p.mode == ModeInspect && isEXIF && !p.haveExif && size > 0 {
 			readLen := size
 			if readLen > maxExifReadBytes {
@@ -794,20 +867,29 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 			p.haveExif = true
 		}
 
-		if p.mode == ModeStrip && !isEXIF && !isXMP {
+		if p.mode == ModeStrip && isWebpKeepChunk(t0, t1, t2, t3) {
+			if t0 == 'I' && t1 == 'C' && t2 == 'C' && t3 == 'P' {
+				p.webpSawIccp = true
+			} else if t0 == 'A' && t1 == 'L' && t2 == 'P' && t3 == 'H' {
+				p.webpSawAlph = true
+			} else if t0 == 'A' && t1 == 'N' && t2 == 'I' && t3 == 'M' {
+				p.webpSawAnim = true
+			}
 			if isVP8X {
-				if size < 10 {
-					return p.fail(ErrCodeMalformed, "WebP VP8X chunk too short"), nil
-				}
 				if p.pos+9 > bufEnd {
 					return p.needRead(p.pos, 9), nil
 				}
-				// Patch only the single VP8X flags byte (offset 8); reference header & remainder via KeepRange.
-				patchedFlags := buf[rel+8] &^ 0x0c
-				if !p.addKeep(p.pos, p.pos+8) ||
-					!p.addLiteral([]byte{patchedFlags}) ||
-					!p.addKeep(p.pos+9, dataEnd) {
+				// Emit only the single VP8X flags byte as literal (synchronized at finish); keep header & remainder by range.
+				origFlags := buf[rel+8]
+				if !p.addKeep(p.pos, p.pos+8) {
 					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
+				}
+				flagOpIdx := len(p.ops)
+				if !p.addLiteral([]byte{origFlags}) || !p.addKeep(p.pos+9, dataEnd) {
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
+				}
+				if p.webpVp8xFlagOp < 0 {
+					p.webpVp8xFlagOp = flagOpIdx
 				}
 				p.webpOutBodyLen += dataEnd - p.pos
 				if size&1 != 0 {
@@ -832,6 +914,21 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 
 		p.pos = dataEnd + (size & 1)
 	}
+}
+
+// isWebpKeepChunk implements the privacy-first WebP RIFF chunk whitelist.
+func isWebpKeepChunk(a, b, c, d byte) bool {
+	switch a {
+	case 'V':
+		return b == 'P' && c == '8' && (d == ' ' || d == 'L' || d == 'X')
+	case 'A':
+		return (b == 'L' && c == 'P' && d == 'H') ||
+			(b == 'N' && c == 'I' && d == 'M') ||
+			(b == 'N' && c == 'M' && d == 'F')
+	case 'I':
+		return b == 'C' && c == 'C' && d == 'P'
+	}
+	return false
 }
 
 // ---------------------------------------------------------------- GIF
@@ -914,7 +1011,8 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 				return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
 			}
 			label := buf[rel+1]
-			keep := label != 0xfe
+			// Whitelist GIF extensions: keep only Graphic Control Extension (0xF9) and animation loop Application Extensions.
+			keep := label == 0xf9
 			if label == 0xff {
 				// Application extension: keep only 11-byte "NETSCAPE2.0" or "ANIMEXTS1.0".
 				need = 14
