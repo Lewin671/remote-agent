@@ -86,7 +86,7 @@ fun draftScopeStorageKey(scope: DraftScope?): String {
     }
 }
 
-class AttachmentStorageFullException(message: String = "storage_full") : IOException(message)
+class AttachmentStorageFullException : IOException()
 
 /**
  * Provides the 32-byte AES-256 key used to seal persisted drafts, outbox records, and prepared
@@ -925,7 +925,7 @@ class AttachmentIoExecutor(
         val existingTotal = if (rootDir.exists()) ImageDiskPolicy.bytes(rootDir) else 0L
         val replacingLen = if (replacing.isFile) replacing.length() else 0L
         if (existingTotal - replacingLen + incomingBytes > draftLimitBytes) {
-            throw AttachmentStorageFullException("draft_quota_exceeded")
+            throw AttachmentStorageFullException()
         }
     }
 

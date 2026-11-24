@@ -16,20 +16,6 @@
     }
   },
   {
-    "key": "common.android_account_signed_out",
-    "zh-CN": "账户已退出",
-    "en": "Account signed out",
-    "notes": "Android FileScopes 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "common.android_allow_camera_access",
     "zh-CN": "允许使用相机",
     "en": "Allow camera access",
@@ -78,20 +64,6 @@
     "zh-CN": "没能清除这台手机上的账户和缓存，请重试",
     "en": "Could not clear the account and cache on this phone. Retry",
     "notes": "Android RaApp 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "common.android_could_not_save_pending_images",
-    "zh-CN": "没能保存待发图片",
-    "en": "Could not save pending images",
-    "notes": "Android PendingStore 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
