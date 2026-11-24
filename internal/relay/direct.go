@@ -71,7 +71,6 @@ type directPeer struct {
 	termBytes          int
 	lowQueue           []peerWriteItem
 	lowBytes           int
-	peerPhase2Direct   atomic.Bool
 	peerTerminalDirect atomic.Bool
 }
 type peerInput struct {
@@ -416,7 +415,6 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 							}
 						}
 						if (mask & wantTermMask) == wantTermMask {
-							p.peerPhase2Direct.Store(true)
 							p.peerTerminalDirect.Store(true)
 						}
 					}

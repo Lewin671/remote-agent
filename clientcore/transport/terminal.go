@@ -820,7 +820,7 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 		if ct == nil || ct.machineID != r.machine {
 			return 0, nil
 		}
-		if len(ct.queryID) > 0 && len(rep.QueryID) > 0 && !bytes.Equal(ct.queryID, rep.QueryID) {
+		if !ct.queryInFlight || len(ct.queryID) == 0 || !bytes.Equal(ct.queryID, rep.QueryID) {
 			return 0, nil
 		}
 		if !rep.Available {

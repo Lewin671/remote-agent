@@ -924,7 +924,7 @@ func (lt *liveTerminal) sendDirectControl(typ uint64, body []byte) {
 	if dm == nil || len(body) == 0 {
 		return
 	}
-	if dp, ok := dm.activePeerFor(lt.ownerPeer); ok && dp.session != nil {
+	if dp, ok := dm.activePeerFor(lt.ownerPeer); ok && dp.session != nil && dp.peerTerminalDirect.Load() {
 		_ = dp.session.SendControl(typ, body)
 	}
 }
