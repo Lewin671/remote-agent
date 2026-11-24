@@ -12,7 +12,7 @@ import { DemoRemote } from "../dev/demo";
 import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
 import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
 import { localeStore, t as message } from "../i18n";
-import { CommandError, type CommandKind } from "../remote";
+import { CommandError, type CommandKind } from "../dev/demo";
 import { DiskReminders } from "./DiskReminders";
 import { MachinePage } from "./Settings";
 import { MachineStatusPage } from "./MachineStatus";

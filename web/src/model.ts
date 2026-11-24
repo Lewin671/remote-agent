@@ -1,15 +1,6 @@
 import * as l10n from "./i18n";
-import { t } from "./i18n";
-import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
 export type Tone = "run" | "wait" | "idle" | "off";
-
-export function machineName(m?: { id: string; meta?: MachineMeta }): string {
-  return (
-    m?.meta?.hostname?.replace(/\.local$/, "") ||
-    (m ? m.id.slice(0, 8) : t("common.unknown_computer"))
-  );
-}
 
 export function hhmm(ms: number): string {
   const d = new Date(ms);

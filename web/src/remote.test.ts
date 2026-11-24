@@ -1,9 +1,9 @@
-import { t as message } from "./i18n";
-import { create, fromBinary, fromJson, toBinary } from "@bufbuild/protobuf";
-import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
+import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
+import { type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { LoginResponseSchema } from "./gen/remoteagent/v1/relay_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
+import { newRequestID } from "./crypto";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 const liveFixtures: SyntheticRemote[] = [];
 async function probe() {
@@ -17,170 +17,40 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-import {
-  CommandError,
-  COMMAND_TTL_MS,
-  newSlot,
-  RequestSlot,
-  uncertain,
-} from "./remote";
 
-it("reuses a request slot only when the outcome is unknown", () => {
-  // Timed out or cut off: the command may have run; a retry must reuse
-  // the slot so the daemon answers from its log.
-  expect(uncertain(new CommandError("unknown_outcome", "连接超时", false, false, "unknown"))).toBe(true);
-  expect(uncertain(new CommandError("aborted", "outcome unknown", true))).toBe(true);
-  expect(uncertain(new ConnectError("reset", Code.Internal))).toBe(true);
-  // A definite answer: the next attempt starts afresh.
-  expect(uncertain(new CommandError("unavailable", "电脑不在线"))).toBe(false);
-  expect(
-    uncertain(
-      new CommandError("failed_precondition", "cwd is not a directory"),
-    ),
-  ).toBe(false);
-  expect(uncertain(new Error("意外的回复"))).toBe(false);
-});
-
-it("gives each slot a fresh ID and a deadline a minute out", () => {
-  const a = newSlot(1000);
-  const b = newSlot(1000);
-  expect(a.requestId).not.toBe(b.requestId);
-  expect(a.requestId).toMatch(/^[0-9a-f]{32}$/);
-  expect(a.deadline).toBe(1000 + COMMAND_TTL_MS);
-});
-
-it("reports a command unknown when a retry finds the machine gone", async () => {
-  // A Remote whose server answers "no result from the machine" and then
-  // "machine offline".
+it("routes pingMachine through CoreHost runMachineCommand and cancels on timeout", async () => {
   const r = await probe();
-  const replies = [
-    new ConnectError(
-      "no reply from the machine in time",
-      Code.DeadlineExceeded,
-    ),
-    new ConnectError("machine is offline", Code.Unavailable),
-  ];
-  const forward = vi.fn(async () => {
-    throw replies.shift();
-  });
-  (r as unknown as { api: object }).api = { forward };
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  try {
-    const result = r
-      .machineCommand(r.machine, { case: "listModels", value: {} })
-      .catch((x) => x);
-    await vi.waitFor(
-      () => {
-        expect(forward).toHaveBeenCalledTimes(1);
-        expect(vi.getTimerCount()).toBeGreaterThan(0);
-      },
-      { interval: 5 },
-    );
-    expect(replies).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(1000);
-    const e = await result;
-    expect(e).toBeInstanceOf(CommandError);
-    expect((e as CommandError).code).toBe("unknown_outcome");
-    expect((e as CommandError).message).toBe(message("errors.connection_dropped_midway"));
-    expect(replies).toHaveLength(0);
-  } finally {
-    vi.useRealTimers();
-  }
-}, 10_000);
-
-it("signs every command it forwards with the device key, naming itself the sender", async () => {
-  const r = await probe();
+  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
   let sent: Envelope | undefined;
+  (r as unknown as { token: string; tokenExpires: number; openStreamLeg: unknown }).token = "tok";
+  (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
+  (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
+    cb.onReady(legId, BigInt(Date.now()));
   (r as unknown as { api: object }).api = {
+    listMachines: async () => ({ machines: [{ id: r.machine, online: true, lastSeenMs: 0n }] }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    listDevices: async () => ({ devices: [] }),
+    getAccountPrefs: async () => ({}),
     forward: async (req: { command: Envelope }) => {
       sent = req.command;
-      throw new ConnectError("machine is offline", Code.Unavailable);
+      const opened = await r.world.fixture.open(r.machine, req.command);
+      const resEnv = await r.seal(
+        { kind: PayloadKind.COMMAND_RESULT, machineId: r.machine, sessionId: "", requestId: opened.header.requestId },
+        CommandResultSchema,
+        create(CommandResultSchema, { kind: { case: "getSettings", value: {} } }),
+      );
+      return { result: resEnv };
     },
   };
-  await r
-    .machineCommand(r.machine, { case: "listModels", value: {} })
-    .catch(() => undefined);
+  r.start();
+  await vi.waitFor(() => expect(r.conn).toBe("online"));
+  const rtt = await r.pingMachine(r.machine, 5_000);
+  expect(rtt).toBeGreaterThanOrEqual(0);
   expect(sent).toBeTruthy();
   const opened = await r.world.fixture.open(r.machine, sent!);
   expect(opened.header.sender).toBe(r.account.deviceId);
   expect(sent!.signature.length).toBe(64);
-});
-
-it("sends its protocol version with a command, and sends none to a machine of another version", async () => {
-  const { create } = await import("@bufbuild/protobuf");
-  const { CommandSchema, MachineMetaSchema } = await import(
-    "./gen/remoteagent/v1/remote_pb"
-  );
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  const r = await probe();
-  const sent: Envelope[] = [];
-  (r as unknown as { api: object }).api = {
-    forward: async (req: { command: Envelope }) => {
-      sent.push(req.command);
-      throw new ConnectError("machine is offline", Code.Unavailable);
-    },
-  };
-  const machine = (id: string, protocolVersion: number) =>
-    patchSyncState(r, {
-      conn: "online",
-      listed: true,
-      machines: new Map([
-        ...r.machines,
-        [
-          id,
-          {
-            id,
-            online: true,
-            lastSeenMs: 0n,
-            metaRev: 1n,
-            meta: create(MachineMetaSchema, {
-              hostname: "MacBook.local",
-              protocolVersion,
-            }),
-          },
-        ],
-      ]),
-    });
-  const run = (id: string) =>
-    r.machineCommand(id, { case: "listModels", value: {} }).then(
-      () => undefined,
-      (e: unknown) => e,
-    );
-
-  // The same version, and a machine whose metadata has not opened yet.
-  machine(r.machine, PEER_PROTOCOL_VERSION);
-  await run(r.machine);
-  const withoutMachine = new Map(r.machines);
-  withoutMachine.delete(r.machine);
-  patchSyncState(r, { machines: withoutMachine });
-  await run(r.machine);
-  expect(sent).toHaveLength(2);
-  for (const env of sent)
-    expect(
-      fromBinary(
-        CommandSchema,
-        (await r.world.fixture.open(r.machine, env)).plaintext,
-      ).protocolVersion,
-    ).toBe(PEER_PROTOCOL_VERSION);
-
-  // An older machine, including one from before it reported a version.
-  machine("older", PEER_PROTOCOL_VERSION - 1);
-  const older = await run("older");
-  expect(older).toBeInstanceOf(CommandError);
-  expect((older as CommandError).message).toBe(
-    "MacBook 上的 remote-agent 版本较旧，请在电脑上更新后再试",
-  );
-  // Never sent, so a later attempt starts afresh.
-  expect(uncertain(older)).toBe(false);
-
-  // A newer machine: it is this page that is behind.
-  machine("newer", PEER_PROTOCOL_VERSION + 1);
-  const newer = await run("newer");
-  expect(newer).toBeInstanceOf(CommandError);
-  expect((newer as CommandError).message).toBe(
-    message("errors.this_page_is_out_of_date_refresh_or_update"),
-  );
-  expect(sent).toHaveLength(2);
 });
 
 it("preserves concurrent project edits through server CAS", async () => {
@@ -424,47 +294,6 @@ it("stops and says so once the server no longer knows this device", async () => 
   }
 });
 
-it("keeps an unauthenticated command result unknown and retries its slot", async () => {
-  const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
-  const { create } = await import("@bufbuild/protobuf");
-  const { CommandResultSchema } = await import(
-    "./gen/remoteagent/v1/remote_pb"
-  );
-  const r = await probe();
-  const ids: string[] = [];
-  (r as unknown as { api: object }).api = {
-    forward: async ({ command }: { command: Envelope }) => {
-      const requestId = fromBinary(HeaderSchema, command.header).requestId;
-      ids.push(requestId);
-      const result = await r.seal(
-        { kind: PayloadKind.COMMAND_RESULT, machineId: r.machine, requestId },
-        CommandResultSchema,
-        create(CommandResultSchema, {
-          kind: {
-            case: "createSession",
-            value: { session: { id: "started" } },
-          },
-        }),
-      );
-      result.ciphertext[0] ^= 1;
-      return { result };
-    },
-  };
-  const slot = newSlot();
-  for (let i = 0; i < 2; i++) {
-    const error = await r
-      .machineCommand(
-        r.machine,
-        { case: "createSession", value: { prompt: "task" } },
-        slot,
-      )
-      .catch((e) => e);
-    expect(uncertain(error)).toBe(true);
-    expect(slot.evidence.unresolved).toBe(true);
-  }
-  expect(ids[1]).toBe(ids[0]);
-});
-
 it("reports an unreadable prefs object and allows a fresh read retry", async () => {
   const r = await probe();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -493,33 +322,6 @@ it("reports an unreadable prefs object and allows a fresh read retry", async () 
   getCoreHost(r).fireActiveTimer(TimerKind.PREFS_RETRY);
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
 });
-
-it.each([Code.Unavailable, Code.PermissionDenied, Code.FailedPrecondition])(
-  "keeps an executed command unknown after an outer relay error %s",
-  async (code) => {
-    const r = await probe();
-    let executed = 0;
-    (r as unknown as { api: object }).api = {
-      forward: async () => {
-        executed++;
-        throw new ConnectError(
-          "synthetic relay discarded the executor result",
-          code,
-        );
-      },
-    };
-    const slot = newSlot();
-    const error = await r
-      .machineCommand(
-        r.machine,
-        { case: "createSession", value: { prompt: "synthetic intent" } },
-        slot,
-      )
-      .catch((e) => e);
-    expect(executed).toBe(1);
-    expect(uncertain(error)).toBe(true);
-  },
-);
 
 it("revokes a removed machine and retains its archive when the head moves without a push", async () => {
   const r = await probe();
@@ -599,113 +401,6 @@ it("installs the updated head and valid lease through Core sync after a head cha
   expect(synced.leaseValid).toBe(true);
 });
 
-it.each(["send", "createSession"] as const)("rejects file-bearing %s when refreshed capability is false", async (kind) => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
-  });
-  const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
-  (r as unknown as { api: object }).api = { forward };
-  const cmd = kind === "send" ? { case: "send" as const, value: { sessionId: "s", text: "text with file", fileIds: ["file"] } } : { case: "createSession" as const, value: { prompt: "text with file", fileIds: ["file"] } };
-  const error = await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(e => e);
-  expect(error).toBeInstanceOf(CommandError);
-  expect(error.code).toBe("failed_precondition");
-  expect(error.message).toContain(message("session.update_computer"));
-  expect(forward).not.toHaveBeenCalled();
-});
-
-it("checks the canonical file-bearing payload again on an authorized create retry", async () => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
-  });
-  const forward = vi.fn(async () => { throw new ConnectError("no result", Code.InvalidArgument); });
-  (r as unknown as { api: object }).api = { forward };
-  const slot = newSlot();
-  await r.machineCommand(r.machine, { case: "createSession", value: { prompt: "first", fileIds: ["file"] } }, slot).catch(() => undefined);
-  expect(forward).toHaveBeenCalledOnce();
-  r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
-  // A caller cannot strip the files from an already authorized request.
-  const error = await r.machineCommand(r.machine, { case: "createSession", value: { prompt: "changed" } }, slot).catch(e => e);
-  expect(error.message).toContain(message("session.update_computer"));
-  expect(forward).toHaveBeenCalledOnce();
-});
-
-it("rechecks file capability after asynchronous sealing before first dispatch", async () => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
-  });
-  const seal = (r as any).sealSecureMessage.bind(r);
-  vi.spyOn(r as any, "sealSecureMessage").mockImplementation(async (...args: unknown[]) => {
-    const envelope = await seal(...args);
-    r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
-    return envelope;
-  });
-  const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
-  (r as unknown as { api: object }).api = { forward };
-  const error = await r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
-  expect(error.message).toContain(message("session.update_computer"));
-  expect(forward).not.toHaveBeenCalled();
-});
-
-it("blocks an automatic file retry after metadata refresh and keeps its outcome unknown", async () => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: true } }) }]]),
-  });
-  const forward = vi.fn(async () => { r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false; throw new ConnectError("no reply", Code.DeadlineExceeded); });
-  (r as unknown as { api: object }).api = { forward };
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  try {
-    const done = r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
-    await vi.waitFor(
-      () => {
-        expect(forward).toHaveBeenCalledOnce();
-        expect(vi.getTimerCount()).toBeGreaterThan(0);
-      },
-      { interval: 5 },
-    );
-    await vi.advanceTimersByTimeAsync(1000);
-    const error = await done;
-    expect(error.code).toBe("unknown_outcome");
-    expect(error.message).toContain(message("session.update_computer"));
-    expect(forward).toHaveBeenCalledOnce();
-  } finally { vi.useRealTimers(); }
-});
-
-it.each(["send", "createSession"] as const)("allows text/image-only %s with file capability off", async (kind) => {
-  const r = await probe();
-  const { MachineMetaSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const { PEER_PROTOCOL_VERSION } = await import("./protocol");
-  patchSyncState(r, {
-    conn: "online",
-    listed: true,
-    machines: new Map([[r.machine, { id: r.machine, online: true, lastSeenMs: 0n, metaRev: 0n, meta: create(MachineMetaSchema, { protocolVersion: PEER_PROTOCOL_VERSION, capabilities: { fileUpload: false } }) }]]),
-  });
-  const forward = vi.fn(async () => { throw new ConnectError("transport reached", Code.InvalidArgument); });
-  (r as unknown as { api: object }).api = { forward };
-  const cmd = kind === "send" ? { case: "send" as const, value: { text: "text", imageIds: ["image"] } } : { case: "createSession" as const, value: { prompt: "text", imageIds: ["image"] } };
-  await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(() => undefined);
-  expect(forward).toHaveBeenCalledOnce();
-});
-
 it("does not poll pairing state after startup without a pending delivery", async () => {
   const { SecurityWorkflowStatusSchema } = await import("./gen/remoteagent/core/v1/security_pb");
   const r = await probe();
@@ -775,81 +470,6 @@ it.each(["complete", "missing", "final", "transient", "close"])(
   },
 );
 
-it("retries an unsigned in-flight abort with the same request slot", async () => {
-  const r = await probe();
-  const ids: string[] = [];
-  const forward = vi.fn(async ({ command }: { command: Envelope }) => {
-    ids.push(fromBinary(HeaderSchema, command.header).requestId);
-    throw new ConnectError("no final result", Code.Aborted);
-  });
-  (r as unknown as { api: object }).api = { forward };
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-  try {
-    const slot = newSlot();
-    const result = r.machineCommand(r.machine, { case: "listModels", value: {} }, slot).catch(e => e);
-    // Let crypto and authorization settle before advancing each retry timer.
-    for (const delay of [1000, 2000, 3000]) {
-      const target = ids.length + 1;
-      await vi.waitFor(() => expect(ids).toHaveLength(target));
-      await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
-      await vi.advanceTimersByTimeAsync(delay);
-    }
-    expect(uncertain(await result)).toBe(true);
-    expect(ids).toEqual(Array(4).fill(slot.requestId));
-  } finally { vi.useRealTimers(); }
-});
-
-it.each([999, 1000, 1001])("bounds abort retry against remaining deadline %i ms", async remaining => {
-  const r = await probe();
-  let now = Date.now();
-  vi.spyOn(Date, "now").mockImplementation(() => now);
-  const slot = new RequestSlot(newSlot().requestId, now + remaining, undefined, false);
-  const forward = vi.fn(async () => { throw new ConnectError("no signed result", Code.Aborted); });
-  (r as unknown as { api: object }).api = { forward };
-  // Advance only this request's retry delay. Advancing the synthetic clock
-  // for fixture/network timers can consume the 1 ms boundary under load.
-  const realTimeout = globalThis.setTimeout.bind(globalThis);
-  const timeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(((fn: () => void, ms: number) => {
-    if (ms !== 1000) return realTimeout(fn, ms);
-    now += ms;
-    queueMicrotask(fn);
-    return 0;
-  }) as typeof setTimeout);
-  try {
-    await expect(r.machineCommand(r.machine, { case: "listModels", value: {} }, slot)).rejects.toMatchObject({ code: "unknown_outcome" });
-    expect(forward).toHaveBeenCalledTimes(remaining > 1000 ? 2 : 1);
-    for (const [req] of forward.mock.calls as unknown as [{command: Envelope}][])
-      expect(fromBinary(HeaderSchema, req.command.header).deadlineMs).toBe(BigInt(slot.deadline));
-  } finally { timeout.mockRestore(); }
-});
-
-it.each(["canceled", "deadline_exceeded", "unknown", "generation_conflict"])("ends a verified read-only %s without retry", async code => {
-  const r = await probe();
-  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const slot = newSlot();
-  const result = await r.seal({ kind: 6, requestId: slot.requestId }, CommandResultSchema, create(CommandResultSchema, { errorCode: code, errorMessage: "read stopped" }));
-  const forward = vi.fn(async () => ({result}));
-  (r as unknown as {api: object}).api = {forward};
-  const error = await r.machineCommand(r.machine, {case: "listModels", value: {}}, slot).catch(e => e);
-  expect(error).toMatchObject({code, fromDaemon: true, readOnly: true});
-  expect(uncertain(error)).toBe(false);
-  expect(forward).toHaveBeenCalledTimes(1);
-});
-
-it.each(["canceled", "deadline_exceeded", "aborted", "not_found", "permission_denied"])("shared-file %s is an authenticated final read failure", async code => {
- const r=await probe();
- const {CommandResultSchema}=await import("./gen/remoteagent/v1/remote_pb");
- // Bind the signed reply to the actual request generated by the download API.
- const forward=vi.fn(async (req:{command:Envelope})=>{
-  const h=fromBinary(HeaderSchema,req.command.header);
-  return {result:await r.seal({kind:6,sessionId:"s",requestId:h.requestId},CommandResultSchema,create(CommandResultSchema,{errorCode:code,errorMessage:"fixture"}))};
- });
- (r as unknown as {api:object}).api={forward};
- const error=await r.command("s",{case:"getSharedFileChunk",value:{sessionId:"s",fileId:"file",offset:0n}}).catch(e=>e);
- expect(error).toMatchObject({code,fromDaemon:true,readOnly:true});
- expect(uncertain(error)).toBe(false);expect(forward).toHaveBeenCalledTimes(1);
-});
-
 it("seals terminal frames with purpose-specific domains and a default deadline", async () => {
   const r = await probe();
   const { PayloadKind } = await import("./gen/remoteagent/v1/envelope_pb");
@@ -876,7 +496,7 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
         kind: PayloadKind.TERMINAL_INPUT,
         machineId: r.machine,
         sessionId: "s",
-        requestId: newSlot().requestId,
+        requestId: newRequestID(),
         seq: seq++,
       },
       TerminalFrameSchema,
@@ -885,22 +505,6 @@ it("seals terminal frames with purpose-specific domains and a default deadline",
     const opened = await r.world.fixture.open(r.machine, env, seed);
     expect(opened.header.deadlineMs).toBeGreaterThanOrEqual(BigInt(nowBefore + 50000));
     expect(fromBinary(TerminalFrameSchema, opened.plaintext).kind.case).toBe(kind.case);
-  }
-});
-
-it("classifies readOnlyCommand consistently with shared transport fixtures", async () => {
-  const { default: fixture } = await import("../../testdata/transport/outcomes.json");
-  const { readOnlyCommand } = await import("./remote");
-  const { CommandSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  expect(fixture.protocol).toBe(15);
-  for (const v of fixture.commands) {
-    const body: Record<string, string> = v.kind === "schedule" ? { operation: ("operation" in v ? v.operation : "") ?? "" } : {};
-    const cmd = v.kind ? fromJson(CommandSchema, { [v.kind]: body }) : create(CommandSchema);
-    const readOnly = readOnlyCommand(cmd.kind);
-    expect(readOnly, `${v.kind}/${"operation" in v ? v.operation : ""}`).toBe(v.readOnly);
-    for (const code of ["canceled", "deadline_exceeded", "aborted"]) {
-      expect(uncertain(new CommandError(code, "fixture", true, readOnly, "executed"))).toBe(false);
-    }
   }
 });
 
@@ -1055,8 +659,8 @@ it("caches verified schedule list responses on executeCommandAttempt and decrypt
 
   const outcome = await r.executeCommandAttempt(
     create(DispatchCommandEffectSchema, {
-      requestId: newSlot().requestId,
-      attemptId: newSlot().requestId,
+      requestId: newRequestID(),
+      attemptId: newRequestID(),
       machineId: r.machine,
       deadlineMs: BigInt(Date.now() + 30_000),
       routeHint: CommandRouteHint.READ,

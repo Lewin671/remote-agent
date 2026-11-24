@@ -21,7 +21,7 @@ import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsA
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
-import { CommandError, type CommandKind, type RequestSlot } from "../remote";
+import { CommandError, type CommandKind, type RequestSlot } from "../dev/demo";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, dockContentMax, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { Home, Sidebar, WideHome } from "./Home";

@@ -3,7 +3,6 @@ import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 import { getCoreHost } from "./core/host";
 const fixtureRemotes: SyntheticRemote[] = [];
 import { create } from "@bufbuild/protobuf";
-import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
 
 class Socket {
   static all: Socket[] = [];
@@ -80,7 +79,8 @@ it("does not open a stale main socket when stopped during login", async () => {
 it("stops pending terminal opens and bounds queued decryption", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  r.command = vi.fn(async () => create(CommandResultSchema));
+  const { getCoreHost } = await import("./core/host");
+  vi.spyOn(getCoreHost(r), "runMachineCommand").mockResolvedValue(undefined);
   const closed = vi.fn();
   const frames = vi.fn();
   const opening = r.openTerminal("s", frames, closed);
@@ -145,8 +145,8 @@ it("serializes the main stream and drops a bounded backlog", async () => {
 it("counts terminal output until the renderer has consumed it", async () => {
   vi.stubGlobal("WebSocket", Socket);
   const r = await probe();
-  const command = vi.fn(async () => create(CommandResultSchema));
-  r.command = command;
+  const { getCoreHost } = await import("./core/host");
+  const command = vi.spyOn(getCoreHost(r), "runMachineCommand").mockResolvedValue(undefined);
   let consumed!: () => void;
   const renderer = vi.fn(
     () =>
@@ -164,7 +164,7 @@ it("counts terminal output until the renderer has consumed it", async () => {
     await import("./gen/remoteagent/v1/envelope_pb");
   const { TerminalFrameSchema } =
     await import("./gen/remoteagent/v1/remote_pb");
-  const streamId = (command.mock.calls as any)[0][1].value.streamId;
+  const streamId = (command.mock.calls as any)[0][2].value.streamId;
   const env = await r.seal(
     {
       kind: PayloadKind.TERMINAL_OUTPUT,

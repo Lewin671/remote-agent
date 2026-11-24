@@ -27,7 +27,7 @@ import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 import { Agent, ApprovalMode, EventSchema, OriginSchema, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { CommandResultSchema, DefaultModeSource } from "../gen/remoteagent/v1/remote_pb";
 import { t as message } from "../i18n";
-import { CommandError } from "../remote";
+import { CommandError } from "../dev/demo";
 import { patchSyncState } from "../test/remote-fixture";
 import { run, task, type ScheduleTaskJson } from "../test/schedule-fixture";
 import { Sidebar } from "./Home";
