@@ -13,7 +13,10 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.fail
 import org.junit.Test
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.Base64
 
 class ImageVectorsTest {
@@ -104,5 +107,102 @@ class ImageVectorsTest {
                 }
             }
         }
+    }
+
+    private fun makeTiffOrient(orient: Int, totalSize: Int): ByteArray {
+        val b = ByteArray(maxOf(32, totalSize))
+        val hdr = byteArrayOf('M'.code.toByte(), 'M'.code.toByte(), 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, orient.toByte(), 0, 0)
+        System.arraycopy(hdr, 0, b, 0, hdr.size)
+        return b
+    }
+
+    private fun makePngChunk(type: String, payload: ByteArray): ByteArray {
+        val out = ByteArray(12 + payload.size)
+        ByteBuffer.wrap(out).order(ByteOrder.BIG_ENDIAN).putInt(0, payload.size)
+        System.arraycopy(type.toByteArray(Charsets.ISO_8859_1), 0, out, 4, 4)
+        System.arraycopy(payload, 0, out, 8, payload.size)
+        return out
+    }
+
+    private fun makeRiffChunk(fourcc: String, payload: ByteArray): ByteArray {
+        val pad = payload.size and 1
+        val out = ByteArray(8 + payload.size + pad)
+        System.arraycopy(fourcc.toByteArray(Charsets.ISO_8859_1), 0, out, 0, 4)
+        ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN).putInt(4, payload.size)
+        System.arraycopy(payload, 0, out, 8, payload.size)
+        return out
+    }
+
+    @Test(timeout = 10_000)
+    fun largeFilesCoverNeedReadAndWindowContinuationBranches() {
+        // 1. JPEG: 70 KB 0xFF fill + full-length APP1 (65535) with fill + 128 KB scan + post-scan COM
+        val body = byteArrayOf(
+            0xff.toByte(), 0xc0.toByte(), 0, 11, 8, 0, 12, 0, 16, 1, 1, 0x11, 0,
+            0xff.toByte(), 0xda.toByte(), 0, 8, 1, 1, 0, 0, 63, 0,
+        )
+        val scan = ByteArray(128 * 1024) { 0x22 }
+        val postCom = ByteArray(4 + 60_000).also {
+            it[0] = 0xff.toByte(); it[1] = 0xfe.toByte()
+            it[2] = ((60_002 shr 8) and 0xff).toByte(); it[3] = (60_002 and 0xff).toByte()
+        }
+        val eoi = byteArrayOf(0xff.toByte(), 0xd9.toByte())
+        val expectedJpeg = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0xff.toByte(), 0xd8.toByte())); write(body); write(scan); write(eoi)
+        }.toByteArray()
+
+        val fillJpeg = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0xff.toByte(), 0xd8.toByte()))
+            write(ByteArray(70_000) { 0xff.toByte() })
+            write(body); write(scan); write(postCom); write(eoi)
+        }.toByteArray()
+        assertEquals(1, orientationOf(fillJpeg))
+        assertArrayEquals(expectedJpeg, stripJpeg(fillJpeg))
+
+        val app1Jpeg = ByteArrayOutputStream().apply {
+            write(byteArrayOf(0xff.toByte(), 0xd8.toByte(), 0xff.toByte(), 0xff.toByte(), 0xff.toByte(), 0xff.toByte(), 0xff.toByte()))
+            write(byteArrayOf(0xff.toByte(), 0xe1.toByte(), 0xff.toByte(), 0xff.toByte()))
+            write("Exif\u0000\u0000".toByteArray(Charsets.ISO_8859_1))
+            write(makeTiffOrient(3, 65535 - 2 - 6))
+            write(body); write(scan); write(postCom); write(eoi)
+        }.toByteArray()
+        assertEquals(3, orientationOf(app1Jpeg))
+        assertArrayEquals(expectedJpeg, stripJpeg(app1Jpeg))
+
+        // 2. PNG: >64 KB eXIf + 24 x 8 KB IDAT chunks + post-IDAT tEXt
+        val pngSig = byteArrayOf(0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)
+        val ihdr = makePngChunk("IHDR", byteArrayOf(0, 0, 0, 10, 0, 0, 0, 20, 8, 6, 0, 0, 0))
+        val idat = makePngChunk("IDAT", ByteArray(8 * 1024))
+        val iend = makePngChunk("IEND", ByteArray(0))
+        val pngOut = ByteArrayOutputStream().apply {
+            write(pngSig); write(ihdr); write(makePngChunk("eXIf", makeTiffOrient(6, 70_000)))
+            repeat(24) { write(idat) }
+            write(makePngChunk("tEXt", "Comment\u0000SECRET".toByteArray(Charsets.ISO_8859_1)))
+            write(iend)
+        }.toByteArray()
+        val pngClean = ByteArrayOutputStream().apply {
+            write(pngSig); write(ihdr); repeat(24) { write(idat) }; write(iend)
+        }.toByteArray()
+        assertEquals(6, orientationOf(pngOut))
+        assertArrayEquals(pngClean, stripPng(pngOut))
+
+        // 3. WebP: 128 KB VP8L + trailing 70 KB EXIF + XMP
+        val vp8x = ByteArray(10).also { it[0] = 0x1c; it[4] = 9; it[7] = 19 }
+        val vp8l = ByteArray(128 * 1024).also { it[0] = 0x2f }
+        val chunks = ByteArrayOutputStream().apply {
+            write(makeRiffChunk("VP8X", vp8x))
+            write(makeRiffChunk("VP8L", vp8l))
+            write(makeRiffChunk("EXIF", makeTiffOrient(8, 70_000)))
+            write(makeRiffChunk("XMP ", "<x:xmpmeta>SECRET</x:xmpmeta>".toByteArray(Charsets.ISO_8859_1)))
+        }.toByteArray()
+        val webp = ByteArray(12 + chunks.size)
+        System.arraycopy("RIFF".toByteArray(Charsets.ISO_8859_1), 0, webp, 0, 4)
+        ByteBuffer.wrap(webp).order(ByteOrder.LITTLE_ENDIAN).putInt(4, 4 + chunks.size)
+        System.arraycopy("WEBP".toByteArray(Charsets.ISO_8859_1), 0, webp, 8, 4)
+        System.arraycopy(chunks, 0, webp, 12, chunks.size)
+        assertEquals(8, orientationOf(webp))
+        val webpStripped = stripWebp(webp)
+        assertEquals(1, orientationOf(webpStripped))
+        assertEquals(0x10, webpStripped[20].toInt() and 0xff)
+        assertFalse(String(webpStripped, Charsets.ISO_8859_1).contains("SECRET"))
     }
 }
