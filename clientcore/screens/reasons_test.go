@@ -257,4 +257,25 @@ func TestSecurityReasonTextAndBuildNotifyDisplay(t *testing.T) {
 	if noEff.Display == nil || !noEff.Display.Valid || noEff.Display.Title.GetLiteral() != "T" {
 		t.Fatalf("unexpected decorated notify display: %+v", noEff.Display)
 	}
+
+	// Non-wfError failures (RPC, devicesec, plain error) carry ErrRaw with WorkflowReasonNone
+	// and must produce Plain(raw) ErrorText so shells show the message instead of enum names.
+	rawRes := &corev1.SecurityWorkflowResultEffect{
+		ActionId:            11,
+		Ok:                  false,
+		StructuredErrorCode: corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STALE,
+	}
+	DecorateSecurityEffects(
+		[]*corev1.Effect{
+			{Effect: &corev1.Effect_SecurityWorkflowResult{SecurityWorkflowResult: rawRes}},
+		},
+		map[uint64]security.WorkflowMeta{
+			11: {ActionID: 11, ErrReason: security.WorkflowReasonNone, ErrRaw: "boom raw rpc message"},
+		},
+		nil,
+		security.BootstrapErrorMeta{},
+	)
+	if rawRes.ErrorText.GetLiteral() != "boom raw rpc message" || rawRes.ErrorText.GetKey() != "" {
+		t.Fatalf("expected Plain raw fallback ErrorText, got %+v", rawRes.ErrorText)
+	}
 }

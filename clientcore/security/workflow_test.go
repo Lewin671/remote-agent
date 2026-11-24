@@ -6,6 +6,7 @@ import (
 	"crypto/ecdh"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -1954,5 +1955,25 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	}
 	if out.Title != "" || out.Text != "" || out.SessionID != "" || out.MachineID != "" {
 		t.Fatalf("invalid NotifyOutcome must not carry plaintext fields, got %+v", out)
+	}
+}
+
+func TestEmitActionResultPreservesRawErrorMeta(t *testing.T) {
+	eng := NewEngine(&entropy.Pool{}, 0)
+
+	eng.emitActionResult(1, nil, errors.New("boom raw rpc message"))
+	eng.emitActionResult(2, nil, devicesec.ErrStale)
+	eng.emitActionResult(3, nil, &rpcError{code: connectCodePermissionDenied, msg: "login failed"})
+	_ = eng.DrainEffects()
+
+	meta := eng.DrainWorkflowMeta()
+	if got := meta[1]; got.ErrReason != WorkflowReasonNone || got.ErrRaw != "boom raw rpc message" {
+		t.Fatalf("plain error meta = %+v, want ErrRaw='boom raw rpc message'", got)
+	}
+	if got := meta[2]; got.ErrReason != WorkflowReasonNone || got.ErrRaw != devicesec.ErrStale.Error() {
+		t.Fatalf("devicesec.ErrStale meta = %+v, want ErrRaw=%q", got, devicesec.ErrStale.Error())
+	}
+	if got := meta[3]; got.ErrReason != WorkflowReasonNone || got.ErrRaw != "login failed" {
+		t.Fatalf("rpcError meta = %+v, want ErrRaw='login failed'", got)
 	}
 }

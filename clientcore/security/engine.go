@@ -267,7 +267,7 @@ func (e *Engine) DrainNotifyOutcomes() map[uint64]NotifyOutcome {
 }
 
 func (e *Engine) recordWorkflowMeta(actionID uint64, meta WorkflowMeta) {
-	if actionID == 0 || (meta.ErrReason == WorkflowReasonNone && meta.ExitReason == ExitAdviceNone) {
+	if actionID == 0 || (meta.ErrReason == WorkflowReasonNone && meta.ErrRaw == "" && meta.ExitReason == ExitAdviceNone) {
 		return
 	}
 	meta.ActionID = actionID
