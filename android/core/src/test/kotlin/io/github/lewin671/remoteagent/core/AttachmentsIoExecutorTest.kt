@@ -553,4 +553,77 @@ class AttachmentsIoExecutorTest {
             exec2.close()
         }
     }
+
+    @Test
+    fun executeListDeletesResidualTmpFilesAcrossDraftsOutboxAndBlobs() = withTempDir { root ->
+        val keyProvider = InMemoryAttachmentKeyProvider()
+        val exec = AttachmentIoExecutor(rootDir = root, keyProvider = keyProvider, platformIo = FakePlatformIo())
+        try {
+            val draftTmp = File(File(root, "drafts").apply { mkdirs() }, "stale.rec.123.tmp").apply { writeBytes(ByteArray(1024)) }
+            val outboxTmp = File(File(root, "outbox").apply { mkdirs() }, "stale.rec.456.tmp").apply { writeBytes(ByteArray(1024)) }
+            val blobTmp = File(File(root, "blobs").apply { mkdirs() }, "orphan.prep.789.tmp").apply { writeBytes(ByteArray(4096)) }
+
+            val validRef = exec.writeEncryptedBlob(".prep", byteArrayOf(1, 2, 3, 4))
+            val beforeBytes = exec.usedBytes()
+            val listed = exec.executeList(DraftStorageListEffect.newBuilder().setOpId(1L).build())
+
+            assertFalse("drafts .tmp must be deleted on scan", draftTmp.exists())
+            assertFalse("outbox .tmp must be deleted on scan", outboxTmp.exists())
+            assertFalse("blobs .tmp must be deleted on scan", blobTmp.exists())
+            assertEquals(listOf(validRef), listed.localRefsList)
+            assertTrue("quota bytes must decrease after .tmp cleanup", exec.usedBytes() < beforeBytes)
+        } finally {
+            exec.close()
+        }
+    }
+
+    @Test
+    fun keyUnavailableDuringListReturnsErrorWithoutDeletingDraftsOrOutbox() = withTempDir { root ->
+        val inner = InMemoryAttachmentKeyProvider()
+        var failKey = false
+        val flakyProvider = object : AttachmentStorageKeyProvider {
+            override fun loadExistingKey(): ByteArray? {
+                if (failKey) throw AttachmentKeyUnavailableException("keystore_locked")
+                return inner.loadExistingKey()
+            }
+            override fun ensureKey(): ByteArray {
+                if (failKey) throw AttachmentKeyUnavailableException("keystore_locked")
+                return inner.ensureKey()
+            }
+            override fun clearKey() = inner.clearKey()
+        }
+        val exec = AttachmentIoExecutor(rootDir = root, keyProvider = flakyProvider, platformIo = FakePlatformIo())
+        try {
+            exec.executeWrite(
+                DraftStorageWriteEffect.newBuilder()
+                    .setOpId(1L)
+                    .setBucket(DraftStorageBucket.DRAFT_STORAGE_BUCKET_DRAFT)
+                    .setKey("session:s-keep")
+                    .setData(ByteString.copyFrom(byteArrayOf(7, 8, 9)))
+                    .build(),
+            )
+            val blobRef = exec.writeEncryptedBlob(".prep", byteArrayOf(1, 2, 3, 4))
+
+            // Simulate transient Keystore failure on list + read + write -> throws / returns non-CORRUPT error and preserves disk.
+            failKey = true
+            val listErr = runCatching { exec.executeList(DraftStorageListEffect.newBuilder().setOpId(2L).build()) }.exceptionOrNull()
+            assertTrue("expected AttachmentKeyUnavailableException", listErr is AttachmentKeyUnavailableException)
+            val blobRead = exec.readBlobRange(blobRef, 0L, 4, 4L)
+            assertFalse(blobRead.ok)
+            assertEquals(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER, blobRead.errorKind)
+            assertNull(exec.readEncryptedBlobFull(blobRef))
+
+            // Next startup after Keystore recovers -> all drafts & blobs decrypt intact!
+            failKey = false
+            val recovered = exec.executeList(DraftStorageListEffect.newBuilder().setOpId(3L).build())
+            assertEquals(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_UNSPECIFIED, recovered.errorKind)
+            assertEquals(1, recovered.entriesCount)
+            assertFalse(recovered.entriesList[0].corrupt)
+            assertEquals("session:s-keep", recovered.entriesList[0].key)
+            assertArrayEquals(byteArrayOf(7, 8, 9), recovered.entriesList[0].data.toByteArray())
+            assertArrayEquals(byteArrayOf(1, 2, 3, 4), exec.readEncryptedBlobFull(blobRef))
+        } finally {
+            exec.close()
+        }
+    }
 }

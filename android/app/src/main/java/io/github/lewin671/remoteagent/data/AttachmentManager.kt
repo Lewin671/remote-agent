@@ -14,6 +14,7 @@ import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import io.github.lewin671.remoteagent.core.AttachmentIoExecutor
+import io.github.lewin671.remoteagent.core.AttachmentKeyUnavailableException
 import io.github.lewin671.remoteagent.core.AttachmentPlatformIo
 import io.github.lewin671.remoteagent.core.AttachmentStorageFullException
 import io.github.lewin671.remoteagent.core.AttachmentStorageKeyProvider
@@ -45,12 +46,51 @@ import javax.crypto.spec.GCMParameterSpec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/** Injectable Keystore abstraction so Keystore failures can be tested deterministically. */
+internal interface AndroidKeyStoreBackend {
+    /** Returns the existing wrapping key, `null` ONLY when the alias truly does not exist, or throws on Keystore error. */
+    fun getKey(alias: String): SecretKey?
+    fun generateKey(alias: String): SecretKey
+    fun deleteKey(alias: String)
+}
+
+internal object RealAndroidKeyStoreBackend : AndroidKeyStoreBackend {
+    override fun getKey(alias: String): SecretKey? {
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        if (!ks.containsAlias(alias)) return null
+        return ks.getKey(alias, null) as? SecretKey
+            ?: throw AttachmentKeyUnavailableException("keystore_key_null")
+    }
+
+    override fun generateKey(alias: String): SecretKey =
+        KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").run {
+            init(
+                KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(256)
+                    .build(),
+            )
+            generateKey()
+        }
+
+    override fun deleteKey(alias: String) {
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        if (ks.containsAlias(alias)) ks.deleteEntry(alias)
+    }
+}
+
 /**
  * Android KeyStore-backed key provider for sealing persisted drafts, outbox records, and prepared
  * image/thumbnail blobs under `noBackupFilesDir/pending-images/`.
+ *
+ * Strictly distinguishes "no key exists yet" (`!keyFile.exists()`) from transient Keystore or
+ * decryption failures: the latter throw [AttachmentKeyUnavailableException] so existing drafts,
+ * outbox records, blobs, and `key.bin` are preserved untouched for retry on next launch.
  */
 internal class AndroidAttachmentKeyProvider(
     private val dir: File,
+    private val keystore: AndroidKeyStoreBackend = RealAndroidKeyStoreBackend,
 ) : AttachmentStorageKeyProvider {
     private val keyFile = File(dir, "key.bin")
     @Volatile private var cachedKey: ByteArray? = null
@@ -68,25 +108,28 @@ internal class AndroidAttachmentKeyProvider(
 
     @Synchronized override fun ensureKey(): ByteArray {
         cachedKey?.let { return it.copyOf() }
+        // If key.bin already exists, readStoredKey() either returns it or throws AttachmentKeyUnavailableException;
+        // never silently overwrite an existing key.bin!
         readStoredKey()?.let {
             cachedKey = it
             return it.copyOf()
         }
         dir.mkdirs()
-        val wrap = wrappingKey() ?: KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").run {
-            init(
-                KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256)
-                    .build(),
-            )
-            generateKey()
+        val wrap = try {
+            keystore.getKey(ALIAS) ?: keystore.generateKey(ALIAS)
+        } catch (e: AttachmentKeyUnavailableException) {
+            throw e
+        } catch (t: Throwable) {
+            throw AttachmentKeyUnavailableException("keystore_ensure_failed", t)
         }
         val fresh = randomBytes(32)
-        val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.ENCRYPT_MODE, wrap)
-        val sealed = c.iv + c.doFinal(fresh)
+        val sealed = try {
+            val c = Cipher.getInstance("AES/GCM/NoPadding")
+            c.init(Cipher.ENCRYPT_MODE, wrap)
+            c.iv + c.doFinal(fresh)
+        } catch (t: Throwable) {
+            throw AttachmentKeyUnavailableException("keystore_seal_failed", t)
+        }
         val tmp = File(dir, "key.${java.util.UUID.randomUUID()}.tmp")
         try {
             tmp.writeBytes(sealed)
@@ -102,26 +145,30 @@ internal class AndroidAttachmentKeyProvider(
         cachedKey?.fill(0)
         cachedKey = null
         runCatching { keyFile.delete() }
-        runCatching {
-            val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            if (ks.containsAlias(ALIAS)) ks.deleteEntry(ALIAS)
-        }
+        runCatching { keystore.deleteKey(ALIAS) }
     }
 
-    private fun wrappingKey(): SecretKey? =
-        runCatching {
-            KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.getKey(ALIAS, null) as? SecretKey
-        }.getOrNull()
-
-    private fun readStoredKey(wrap: SecretKey? = wrappingKey()): ByteArray? {
-        if (wrap == null || !keyFile.isFile) return null
-        return runCatching {
+    private fun readStoredKey(): ByteArray? {
+        if (!keyFile.exists()) return null
+        if (!keyFile.isFile) throw AttachmentKeyUnavailableException("key_file_not_regular")
+        val wrap = try {
+            keystore.getKey(ALIAS)
+        } catch (e: AttachmentKeyUnavailableException) {
+            throw e
+        } catch (t: Throwable) {
+            throw AttachmentKeyUnavailableException("keystore_read_failed", t)
+        } ?: throw AttachmentKeyUnavailableException("wrapping_key_missing")
+        return try {
             val d = keyFile.readBytes()
-            if (d.size <= 12) return null
+            if (d.size <= 12) throw AttachmentKeyUnavailableException("key_file_truncated")
             val c = Cipher.getInstance("AES/GCM/NoPadding")
             c.init(Cipher.DECRYPT_MODE, wrap, GCMParameterSpec(128, d, 0, 12))
             c.doFinal(d, 12, d.size - 12)
-        }.getOrNull()
+        } catch (e: AttachmentKeyUnavailableException) {
+            throw e
+        } catch (t: Throwable) {
+            throw AttachmentKeyUnavailableException("key_unwrap_failed", t)
+        }
     }
 
     companion object {

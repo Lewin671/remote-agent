@@ -89,15 +89,28 @@ fun draftScopeStorageKey(scope: DraftScope?): String {
 class AttachmentStorageFullException : IOException()
 
 /**
+ * Thrown when persisted attachment key material exists (or Keystore itself failed transiently)
+ * and cannot currently be read/unwrapped. Callers must preserve on-disk records/blobs and never
+ * overwrite `key.bin` so the next startup can recover cleanly.
+ */
+class AttachmentKeyUnavailableException(message: String, cause: Throwable? = null) : IOException(message, cause)
+
+/**
  * Provides the 32-byte AES-256 key used to seal persisted drafts, outbox records, and prepared
  * image/thumbnail blobs. On Android this is backed by Android KeyStore wrapping `key.bin`; in JVM
  * unit tests an in-memory key provider can be injected.
  */
 interface AttachmentStorageKeyProvider {
-    /** Returns the existing key if present and openable, or `null` when none exists / key was lost. */
+    /**
+     * Returns the existing key if present and openable, or `null` ONLY when no key exists yet.
+     * Throws [AttachmentKeyUnavailableException] when Keystore/decryption fails transiently.
+     */
     fun loadExistingKey(): ByteArray?
 
-    /** Returns an existing key or generates and persists a fresh 32-byte AES key. */
+    /**
+     * Returns an existing key or generates and persists a fresh 32-byte AES key when none exists.
+     * Throws [AttachmentKeyUnavailableException] if existing key material cannot be read (never overwrites).
+     */
     fun ensureKey(): ByteArray
 
     /** Deletes any persisted key material and zeroes in-memory copies. */
@@ -384,7 +397,7 @@ class AttachmentIoExecutor(
 
     // --- FIFO Storage Effect Execution ---
 
-    internal fun executeList(eff: DraftStorageListEffect): DraftStorageListedEvent {
+    fun executeList(eff: DraftStorageListEffect): DraftStorageListedEvent {
         val builder = DraftStorageListedEvent.newBuilder().setOpId(eff.opId)
         if (rootDir.exists()) {
             // Drop legacy pre-3C-1 directories/files outside our known v2 layout without migrating.
@@ -401,9 +414,12 @@ class AttachmentIoExecutor(
             val blobDir = blobsDir()
             if (blobDir.isDirectory) {
                 for (f in blobDir.listFiles().orEmpty()) {
-                    if (f.isFile && !f.name.endsWith(".tmp")) {
-                        builder.addLocalRefs(LOCAL_BLOB_REF_PREFIX + f.name)
+                    if (!f.isFile) continue
+                    if (f.name.endsWith(".tmp")) {
+                        runCatching { f.delete() }
+                        continue
                     }
+                    builder.addLocalRefs(LOCAL_BLOB_REF_PREFIX + f.name)
                 }
             }
             for (ext in platformIo.listExternalLocalRefs()) {
@@ -423,7 +439,11 @@ class AttachmentIoExecutor(
         val dir = bucketDir(bucket)
         if (!dir.isDirectory) return
         for (f in dir.listFiles().orEmpty()) {
-            if (!f.isFile || f.name.endsWith(".tmp")) continue
+            if (!f.isFile) continue
+            if (f.name.endsWith(".tmp")) {
+                runCatching { f.delete() }
+                continue
+            }
             if (!f.name.endsWith(RECORD_SUFFIX) || key == null) {
                 out.addEntries(
                     DraftStorageEntry.newBuilder()
@@ -500,7 +520,7 @@ class AttachmentIoExecutor(
         }
     }
 
-    internal fun executeWrite(eff: DraftStorageWriteEffect): DraftStorageWriteResultEvent {
+    fun executeWrite(eff: DraftStorageWriteEffect): DraftStorageWriteResultEvent {
         val builder = DraftStorageWriteResultEvent.newBuilder()
             .setOpId(eff.opId)
             .setBucket(eff.bucket)
@@ -735,7 +755,7 @@ class AttachmentIoExecutor(
     fun readEncryptedBlobFull(blobRef: String): ByteArray? {
         val f = blobFile(blobRef) ?: return null
         if (!f.isFile) return null
-        val key = keyProvider.loadExistingKey() ?: return null
+        val key = runCatching { keyProvider.loadExistingKey() }.getOrNull() ?: return null
         return try {
             RandomAccessFile(f, "r").use { raf ->
                 val (totalSize, chunkSize) = readBlobHeader(raf) ?: return null
@@ -762,8 +782,12 @@ class AttachmentIoExecutor(
         if (!f.isFile) {
             return ReadChunkOutcome(false, errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, errorDetail = "blob_missing")
         }
-        val key = keyProvider.loadExistingKey()
-            ?: return ReadChunkOutcome(false, errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE, errorDetail = "missing_storage_key")
+        val key = try {
+            keyProvider.loadExistingKey()
+                ?: return ReadChunkOutcome(false, errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE, errorDetail = "missing_storage_key")
+        } catch (t: Throwable) {
+            return ReadChunkOutcome(false, errorKind = classifyIoError(t), errorDetail = t.message.orEmpty())
+        }
         return try {
             RandomAccessFile(f, "r").use { raf ->
                 val (totalSize, chunkSize) = readBlobHeader(raf)
