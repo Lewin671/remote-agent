@@ -229,7 +229,21 @@ class DirectTransportUiTest {
                 io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView.newBuilder()
                     .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED)
                     .setNetworkAvailable(true)
-                    .setLivePushConnected(true),
+                    .setLivePushConnected(true)
+                    .setFooterText(
+                        CoreText.newBuilder()
+                            .setKey("common.sentence_join")
+                            .addArgs(
+                                io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                                    .setName("first")
+                                    .setTextValue(CoreText.newBuilder().setKey("connection.latency_is_one_round_trip_the_server_row_measures")),
+                            )
+                            .addArgs(
+                                io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                                    .setName("second")
+                                    .setTextValue(CoreText.newBuilder().setKey("transport.conn_footer_unsupported_app")),
+                            ),
+                    ),
             )
             .addMachines(
                 MachineListCardView.newBuilder()
@@ -290,7 +304,21 @@ class DirectTransportUiTest {
                 io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView.newBuilder()
                     .setConnState(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED)
                     .setNetworkAvailable(true)
-                    .setLivePushConnected(true),
+                    .setLivePushConnected(true)
+                    .setFooterText(
+                        CoreText.newBuilder()
+                            .setKey("common.sentence_join")
+                            .addArgs(
+                                io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                                    .setName("first")
+                                    .setTextValue(CoreText.newBuilder().setKey("connection.latency_is_one_round_trip_the_server_row_measures")),
+                            )
+                            .addArgs(
+                                io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                                    .setName("second")
+                                    .setTextValue(CoreText.newBuilder().setKey("transport.conn_footer_unsupported_app")),
+                            ),
+                    ),
             )
             .addMachines(
                 MachineListCardView.newBuilder()

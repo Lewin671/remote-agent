@@ -85,6 +85,8 @@ import io.github.lewin671.remoteagent.core.proto.CliVersionView
 import io.github.lewin671.remoteagent.core.proto.ConnProbeState
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
 import io.github.lewin671.remoteagent.core.proto.MachineAlertKind
+import io.github.lewin671.remoteagent.core.proto.MachineCardAppearance
+import io.github.lewin671.remoteagent.core.proto.MachineCardMetaIcon
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachinePollMode
 import io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel
@@ -601,7 +603,7 @@ internal fun MachinesGroup(
                     Ic(Lucide.Plus, 17.dp, p.btnFg)
                     Text(
                         copy(UiMessages.settingsAddFirstComputer()),
-                        style = if (wide) T.s15b else T.s15b,
+                        style = T.s15b,
                         color = p.btnFg,
                     )
                 }
@@ -677,11 +679,12 @@ internal fun MachinesGroup(
 }
 
 @Composable
-internal fun DisambiguatorTag(code: String, modifier: Modifier = Modifier) {
+internal fun DisambiguatorTag(code: String, a11y: String = "", modifier: Modifier = Modifier) {
     if (code.isEmpty()) return
     val p = pal
     Box(
         modifier
+            .semantics { if (a11y.isNotEmpty()) contentDescription = a11y }
             .clip(Radii.R6)
             .background(p.fill)
             .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -698,14 +701,16 @@ private fun MachineCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val copy = uiText()
     val p = pal
-    val isRemoved = !m.member
-    val isDimmed = m.dimmed || isRemoved
+    val isRemoved = m.appearance == MachineCardAppearance.MACHINE_CARD_APPEARANCE_REMOVED
+    val isDimmed = isRemoved || m.appearance == MachineCardAppearance.MACHINE_CARD_APPEARANCE_OFFLINE || m.dimmed
     val shape = if (wide) RoundedCornerShape(14.dp) else Radii.R24
     val useOutline = !wide && isDimmed
-    val statusStr = uiText(m.statusText)
-    val secondaryStr = if (m.hasSecondaryNote()) uiText(m.secondaryNote) else ""
+    val tagA11y = if (m.hasDisambiguatorA11Y()) uiText(m.disambiguatorA11Y) else ""
+    val segments = m.metaSegmentsList.mapNotNull { seg ->
+        val txt = uiText(seg.text)
+        if (txt.isEmpty()) null else seg.icon to txt
+    }
     val nameStyle = when {
         wide && isDimmed -> T.s15b
         wide -> T.s17b
@@ -714,7 +719,6 @@ private fun MachineCard(
     }
     val cardMod = modifier
         .fillMaxWidth()
-        .then(if (isRemoved) Modifier.alpha(0.82f) else Modifier)
         .clip(shape)
         .then(
             if (useOutline) Modifier.border(1.dp, p.sep, shape)
@@ -746,13 +750,13 @@ private fun MachineCard(
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 if (m.disambiguator.isNotEmpty()) {
-                    DisambiguatorTag(m.disambiguator)
+                    DisambiguatorTag(m.disambiguator, a11y = tagA11y)
                 }
             }
             Ic(Lucide.ChevronRight, 16.dp, p.ink3)
         }
 
-        if (m.statusDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED || statusStr.isNotEmpty() || m.directActive || secondaryStr.isNotEmpty()) {
+        if (m.statusDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED || segments.isNotEmpty()) {
             FlowRow(
                 Modifier.fillMaxWidth().padding(top = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -762,24 +766,21 @@ private fun MachineCard(
                 if (m.statusDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED) {
                     StatusDotView(m.statusDot, size = 8.dp)
                 }
-                if (statusStr.isNotEmpty()) {
-                    Text(statusStr, style = T.s13, color = p.ink2, maxLines = 1)
-                }
-                if (m.directActive) {
-                    Text("·", style = T.s13, color = p.ink2)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Ic(Lucide.Zap, 12.dp, p.ink2)
-                        Text(copy(UiMessages.transportDirect()), style = T.s13, color = p.ink2, maxLines = 1)
+                segments.forEachIndexed { idx, (icon, txt) ->
+                    if (idx > 0 && m.metaSeparator.isNotEmpty()) {
+                        Text(m.metaSeparator, style = T.s13, color = p.ink2)
                     }
-                }
-                if (secondaryStr.isNotEmpty()) {
-                    if (statusStr.isNotEmpty()) {
-                        Text("·", style = T.s13, color = p.ink2)
+                    if (icon == MachineCardMetaIcon.MACHINE_CARD_META_ICON_DIRECT) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Ic(Lucide.Zap, 12.dp, p.ink2)
+                            Text(txt, style = T.s13, color = p.ink2, maxLines = 1)
+                        }
+                    } else {
+                        Text(txt, style = T.s13, color = p.ink2)
                     }
-                    Text(secondaryStr, style = T.s13, color = p.ink2)
                 }
             }
         }

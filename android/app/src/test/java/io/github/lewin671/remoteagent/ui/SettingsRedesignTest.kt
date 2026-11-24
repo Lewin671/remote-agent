@@ -34,6 +34,9 @@ import io.github.lewin671.remoteagent.core.proto.IdleCloseChoiceView
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
 import io.github.lewin671.remoteagent.core.proto.MachineAlertKind
 import io.github.lewin671.remoteagent.core.proto.MachineCardAlert
+import io.github.lewin671.remoteagent.core.proto.MachineCardAppearance
+import io.github.lewin671.remoteagent.core.proto.MachineCardMetaIcon
+import io.github.lewin671.remoteagent.core.proto.MachineCardMetaSegment
 import io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachineManagementActionsView
@@ -97,6 +100,14 @@ class SettingsRedesignTest {
                     .setOnline(true)
                     .setMember(true)
                     .setDirectActive(true)
+                    .setAppearance(MachineCardAppearance.MACHINE_CARD_APPEARANCE_NORMAL)
+                    .setMetaSeparator("·")
+                    .addMetaSegments(MachineCardMetaSegment.newBuilder().setText(lit("在线")))
+                    .addMetaSegments(
+                        MachineCardMetaSegment.newBuilder()
+                            .setText(lit("直连"))
+                            .setIcon(MachineCardMetaIcon.MACHINE_CARD_META_ICON_DIRECT),
+                    )
                     .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE)
                     .setStatusText(lit("在线"))
                     .addAlerts(
@@ -221,9 +232,18 @@ class SettingsRedesignTest {
                     .setMachineId("m1")
                     .setName("MacBook")
                     .setDisambiguator("74c7")
+                    .setDisambiguatorA11Y(lit("设备编号 74c7"))
                     .setOnline(true)
                     .setMember(true)
                     .setDirectActive(true)
+                    .setAppearance(MachineCardAppearance.MACHINE_CARD_APPEARANCE_NORMAL)
+                    .setMetaSeparator("·")
+                    .addMetaSegments(MachineCardMetaSegment.newBuilder().setText(lit("在线")))
+                    .addMetaSegments(
+                        MachineCardMetaSegment.newBuilder()
+                            .setText(lit("直连"))
+                            .setIcon(MachineCardMetaIcon.MACHINE_CARD_META_ICON_DIRECT),
+                    )
                     .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE)
                     .setStatusText(lit("在线"))
                     .addQuotaItems(
@@ -241,8 +261,12 @@ class SettingsRedesignTest {
                     .setMachineId("m2")
                     .setName("MacBook")
                     .setDisambiguator("a91e")
+                    .setDisambiguatorA11Y(lit("设备编号 a91e"))
                     .setOnline(true)
                     .setMember(true)
+                    .setAppearance(MachineCardAppearance.MACHINE_CARD_APPEARANCE_NORMAL)
+                    .setMetaSeparator("·")
+                    .addMetaSegments(MachineCardMetaSegment.newBuilder().setText(lit("需更新")))
                     .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC)
                     .setStatusText(lit("需更新"))
                     .addAlerts(
@@ -259,6 +283,10 @@ class SettingsRedesignTest {
                     .setOnline(false)
                     .setMember(false)
                     .setDimmed(true)
+                    .setAppearance(MachineCardAppearance.MACHINE_CARD_APPEARANCE_REMOVED)
+                    .setMetaSeparator("·")
+                    .addMetaSegments(MachineCardMetaSegment.newBuilder().setText(lit("已移除")))
+                    .addMetaSegments(MachineCardMetaSegment.newBuilder().setText(lit("保留历史会话记录")))
                     .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED)
                     .setStatusText(lit("已移除"))
                     .setSecondaryNote(lit("保留历史会话记录")),

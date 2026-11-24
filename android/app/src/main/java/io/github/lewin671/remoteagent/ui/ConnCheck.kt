@@ -136,7 +136,7 @@ internal fun ConnCheckSheet(
         busy = false
     }
     @Composable
-    fun line(name: String, sub: String? = null, tag: String = "", value: @Composable () -> Unit) {
+    fun line(name: String, sub: String? = null, tag: String = "", tagA11y: String = "", value: @Composable () -> Unit) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +145,7 @@ internal fun ConnCheckSheet(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    if (tag.isNotEmpty()) DisambiguatorTag(tag)
+                    if (tag.isNotEmpty()) DisambiguatorTag(tag, a11y = tagA11y)
                 }
                 if (sub != null) Text(sub, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
@@ -194,7 +194,8 @@ internal fun ConnCheckSheet(
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                 val directRow: ConnCheckDirectRowView? = if (m.online && m.member && m.hasDirectRow()) m.directRow else null
-                line(m.name.ifEmpty { m.machineId }, tag = m.disambiguator) {
+                val tagA11y = if (m.hasDisambiguatorA11Y()) uiText(m.disambiguatorA11Y) else ""
+                line(m.name.ifEmpty { m.machineId }, tag = m.disambiguator, tagA11y = tagA11y) {
                     if (m.online) result(machines[m.machineId], SLOW_MACHINE_MS)
                     else dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
                 }
@@ -236,20 +237,8 @@ internal fun ConnCheckSheet(
                 },
             )
         }
-        val locale = LocalMessageLocale.current
-        val baseFoot = (if (cc.hasFooterText()) uiText(cc.footerText) else "")
+        val foot = (if (cc.hasFooterText()) uiText(cc.footerText) else "")
             .ifEmpty { copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()) }
-        val foot = buildList {
-            add(baseFoot)
-            if (list.any {
-                it.online &&
-                    it.member &&
-                    it.hasDirectRow() &&
-                    it.directRow.stage == ConnectionGroupStage.CONNECTION_GROUP_STAGE_UNSUPPORTED
-            }) {
-                add(copy(UiMessages.transportConnFooterUnsupportedApp()))
-            }
-        }.joinToString(if (locale.startsWith("zh")) "" else " ")
         Hint(foot)
         Btns(Modifier.padding(top = 12.dp)) {
             if (!isConnected) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))
