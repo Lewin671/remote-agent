@@ -15,8 +15,6 @@ fun requireMessage(value: Boolean, message: () -> MessageText) {
     if (!value) throw MessageArgumentException(message())
 }
 
-fun messageError(message: MessageText): Nothing = throw MessageException(message)
-
 class MessageArgumentException(override val display: MessageText, override val imageKind: ImageProblemKind? = null) : IllegalArgumentException("local_argument"), MessageFailure
 
 class MessageIOException(override val display: MessageText, cause: Throwable? = null) : java.io.IOException("local_io", cause), MessageFailure

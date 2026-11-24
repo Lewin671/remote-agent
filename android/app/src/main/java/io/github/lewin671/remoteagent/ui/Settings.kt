@@ -844,12 +844,7 @@ fun DeviceScreen(
         },
         onRejoin = { nav.rejoin(id) },
         onRemove = {
-            remove.run(
-                {
-                    remote.removeDevice(id)
-                    null
-                },
-            )
+            remove.run({ remote.removeDevice(id) })
         },
     )
 }
@@ -2448,7 +2443,6 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                                                 app.imageEnvelopes.clear()
                                                 app.sharedFiles.clearAll()
                                             }
-                                            null
                                         },
                                     ) {
                                         stamp++

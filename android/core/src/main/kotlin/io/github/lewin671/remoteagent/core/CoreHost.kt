@@ -8,6 +8,7 @@ import io.github.lewin671.remoteagent.corebind.Corebind
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
+import io.github.lewin671.remoteagent.proto.CommandResult
 import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.UsageRangePreset
 import io.github.lewin671.remoteagent.proto.UsageStatsResponse
@@ -154,6 +155,7 @@ class CoreHost(
     var onCacheDelete: (CacheDeleteEffect) -> Unit = {}
     var onRpc: (RpcEffect) -> Unit = {}
     var onDispatchCommand: (DispatchCommandEffect) -> Unit = {}
+    var onCancelMachineCommand: (machineId: String, sessionId: String, command: Command) -> Unit = { _, _, _ -> }
     var onSaveHomeScope: (SaveHomeScopeEffect) -> Unit = {}
     var onNavigate: (NavigateEffect) -> Unit = {}
     var onDirectPreference: (DirectPreferenceEffect) -> Unit = {}
@@ -193,7 +195,6 @@ class CoreHost(
     var onScheduleLoadSeen: (ScheduleLoadSeenEffect) -> Unit = {}
     var onScheduleSaveSeen: (ScheduleSaveSeenEffect) -> Unit = {}
     var onScheduleDismissNotifications: (ScheduleDismissNotificationsEffect) -> Unit = {}
-    var onScheduleNavigate: (ScheduleNavigateEffect) -> Unit = {}
     var onRender: (List<ScreenTarget>) -> Unit = {}
     var onUsageCacheWrite: (UsageCacheWriteEffect) -> Unit = {}
     var onHydrateUsageCache: (String) -> Unit = {}
@@ -216,18 +217,15 @@ class CoreHost(
     var onAttachmentReadChunk: (AttachmentReadChunkEffect) -> Unit = {}
     var onAttachmentReleaseLocal: (AttachmentReleaseLocalEffect) -> Unit = {}
 
-    private val nextDirectCallId = AtomicLong(1L)
+    private val nextMachineCmdOpId = AtomicLong(1L)
     private val nextSecurityOpSeq = AtomicLong(1L)
-    private val bulkRouteWaiters = ConcurrentHashMap<Long, CompletableDeferred<DirectBulkRouteEffect>>()
+    private val pendingMachineCmds = ConcurrentHashMap<Long, CompletableDeferred<CommandResult>>()
     private val pendingSecurityOps = ConcurrentHashMap<Long, CompletableDeferred<SecurityOpResultEffect>>()
     private val retryNowWaiters = ConcurrentHashMap<String, MutableList<CompletableDeferred<Boolean>>>()
     private val terminalReopenListeners = ConcurrentHashMap<String, () -> Unit>()
 
     private var homeEndedLimit: Int = CORE_ENDED_PAGE
-    private var projectKey: String = ""
-    private var projectManage: Boolean = true
     private var projectMachineId: String = ""
-    private var projectEndedLimit: Int = CORE_ENDED_PAGE
     private var newSessionProjectKey: String = ""
     private var machineStatusId: String = ""
     private var machineSettingsId: String = ""
@@ -243,7 +241,6 @@ class CoreHost(
     private var usageCustomEndMs: Long = 0L
     private var scheduleDetailMachineId: String = ""
     private var scheduleDetailTaskId: String = ""
-    private var scheduleFormKey: String = ""
     private var testOverrideViews = false
     private val testOverriddenTargets = java.util.Collections.synchronizedSet(HashSet<ScreenTarget>())
 
@@ -259,9 +256,9 @@ class CoreHost(
         {
             Screen.newBuilder().setProject(
                 ProjectScreenRequest.newBuilder()
-                    .setProjectKey(projectKey)
-                    .setManage(projectManage)
-                    .setEndedLimit(projectEndedLimit)
+                    .setProjectKey("")
+                    .setManage(true)
+                    .setEndedLimit(CORE_ENDED_PAGE)
                     .setMachineId(projectMachineId),
             ).build()
         },
@@ -372,7 +369,7 @@ class CoreHost(
 
     private val scheduleFormSlot = registerScreen(
         ScreenTarget.SCREEN_TARGET_SCHEDULE_FORM, ScheduleFormViewModel.getDefaultInstance(),
-        { Screen.newBuilder().setScheduleForm(ScheduleFormScreenRequest.newBuilder().setFormKey(scheduleFormKey)).build() },
+        { Screen.newBuilder().setScheduleForm(ScheduleFormScreenRequest.getDefaultInstance()).build() },
         { if (it.viewCase == ViewModel.ViewCase.SCHEDULE_FORM) it.scheduleForm else null },
     )
     val scheduleFormView: StateFlow<ScheduleFormViewModel> = scheduleFormSlot.flow.asStateFlow()
@@ -579,7 +576,6 @@ class CoreHost(
                     scheduleDetailTaskId = nav.taskId
                 }
                 _scheduleNavigationEvents.tryEmit(nav)
-                onScheduleNavigate(nav)
             }
             Effect.EffectCase.REQUEST_ENTROPY -> {
                 val req = effect.requestEntropy
@@ -624,9 +620,17 @@ class CoreHost(
             Effect.EffectCase.DIRECT_PC_CONFIRM -> onDirectPcConfirm(effect.directPcConfirm)
             Effect.EffectCase.DIRECT_PC_CLOSE -> onDirectPcClose(effect.directPcClose)
             Effect.EffectCase.DIRECT_DC_READ_STATS -> onDirectDcReadStats(effect.directDcReadStats)
-            Effect.EffectCase.DIRECT_BULK_ROUTE -> {
-                val res = effect.directBulkRoute
-                bulkRouteWaiters.remove(res.callId)?.complete(res)
+            Effect.EffectCase.RUN_MACHINE_COMMAND_RESULT -> {
+                val res = effect.runMachineCommandResult
+                pendingMachineCmds.remove(res.opId)?.let { waiter ->
+                    if (res.ok) {
+                        waiter.complete(res.result)
+                    } else {
+                        val code = res.errorCode.ifEmpty { "failed" }
+                        val msg = if (res.hasErrorText()) coreTextToMessageText(res.errorText) else code.messageText()
+                        waiter.completeExceptionally(CommandException(code, msg))
+                    }
+                }
             }
             Effect.EffectCase.DIRECT_RETRY_NOW_RESULT -> {
                 val res = effect.directRetryNowResult
@@ -1064,7 +1068,7 @@ class CoreHost(
                 ProjectScreenRequest.newBuilder()
                     .setProjectKey("")
                     .setManage(manage)
-                    .setEndedLimit(projectEndedLimit)
+                    .setEndedLimit(CORE_ENDED_PAGE)
                     .setMachineId(machineId),
             ).build()
         },
@@ -1203,9 +1207,6 @@ class CoreHost(
 
     fun setUiLocale(uiLocale: String) =
         send { setLocaleChanged(LocaleChangedEvent.newBuilder().setUiLocale(uiLocale)) }
-
-    fun retrySessionEvents(sessionId: String) =
-        send { setRetrySessionEvents(RetrySessionEventsAction.newBuilder().setSessionId(sessionId)) }
 
     fun retrySessionLoad(sessionId: String) =
         send { setSessionRetryLoad(SessionRetryLoadAction.newBuilder().setSessionId(sessionId)) }
@@ -1362,14 +1363,6 @@ class CoreHost(
         )
     }
 
-    fun setDraftTargetMachine(scope: DraftScope, machineId: String) = send {
-        setDraftSetTargetMachine(
-            DraftSetTargetMachineAction.newBuilder()
-                .setScope(scope)
-                .setMachineId(machineId),
-        )
-    }
-
     fun reserveDraftSlots(scope: DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) = send {
         setDraftReserveSlots(
             DraftReserveSlotsAction.newBuilder()
@@ -1421,24 +1414,12 @@ class CoreHost(
         )
     }
 
-    fun clearDraft(scope: DraftScope) = send {
-        setDraftClear(DraftClearAction.newBuilder().setScope(scope))
-    }
-
     fun forgetDraftSession(sessionId: String) = send {
         setDraftForgetSession(DraftForgetSessionAction.newBuilder().setSessionId(sessionId))
     }
 
     fun clearAllDrafts() = send {
         setDraftClearAll(DraftClearAllAction.getDefaultInstance())
-    }
-
-    suspend fun clearAllDraftsAndWait() {
-        dispatchAndWait(
-            CoreEvent.newBuilder()
-                .setDraftClearAll(DraftClearAllAction.getDefaultInstance())
-                .build(),
-        )
     }
 
     fun dismissDraftNotice(scope: DraftScope) = send {
@@ -1536,9 +1517,6 @@ class CoreHost(
     fun fetchSession(sessionId: String) =
         send { setFetchSession(FetchSessionAction.newBuilder().setSessionId(sessionId)) }
 
-    fun pinSession(sessionId: String, pinned: Boolean) =
-        send { setSessionPin(SessionPinEvent.newBuilder().setSessionId(sessionId).setPinned(pinned)) }
-
     // --- Screen actions ---
 
     fun setHomeScope(scopeKey: String) = dispatchAction {
@@ -1560,15 +1538,8 @@ class CoreHost(
         send { setHomeSelectSession(HomeSelectSessionAction.newBuilder().setSessionId(sessionId)) }
 
     fun openManageProjects(machineId: String = "") = dispatchAction {
-        projectKey = ""
-        projectManage = true
         projectMachineId = machineId
         refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_PROJECT)
-    }
-
-    fun loadMoreProjectEnded(step: Int = CORE_ENDED_PAGE) = dispatchAction {
-        projectEndedLimit += step
-        sendOnWorker { setProjectLoadMoreEnded(ProjectKeyAction.newBuilder().setProjectKey(projectKey)) }
     }
 
     fun setProjectSearch(query: String) =
@@ -2014,72 +1985,40 @@ class CoreHost(
         }
     }
 
-    suspend fun beginDirectBulkTransfer(
+    suspend fun runMachineCommand(
         machineId: String,
-        routeHint: Int = 0,
-        bulkFileKey: String = "",
-        bulkBytes: Long = 0L,
-        bulkUpload: Boolean = false,
-        deadlineMs: Long,
-        forceRelay: Boolean = false,
-        uploadTransferId: String = "",
-        uploadHasFilename: Boolean = false,
-        interactiveDual: Boolean = false,
-    ): DirectBulkRouteEffect {
-        if (closed.get()) return DirectBulkRouteEffect.getDefaultInstance()
-        val callId = nextDirectCallId.getAndIncrement()
-        val waiter = CompletableDeferred<DirectBulkRouteEffect>()
-        bulkRouteWaiters[callId] = waiter
-        val ev = CoreEvent.newBuilder()
-            .setDirectBulkTransferBegin(
-                DirectBulkTransferBeginEvent.newBuilder()
-                    .setCallId(callId)
-                    .setMachineId(machineId)
-                    .setRouteHint(routeHint)
-                    .setBulkFileKey(bulkFileKey)
-                    .setBulkBytes(bulkBytes)
-                    .setBulkUpload(bulkUpload)
-                    .setDeadlineMs(deadlineMs)
-                    .setForceRelay(forceRelay)
-                    .setUploadTransferId(uploadTransferId)
-                    .setUploadHasFilename(uploadHasFilename)
-                    .setInteractiveDual(interactiveDual),
-            )
-            .build()
-        if (mailbox.trySend { if (!closed.get()) dispatchOnWorker(ev) else waiter.complete(DirectBulkRouteEffect.getDefaultInstance()) }.isFailure) {
-            bulkRouteWaiters.remove(callId, waiter)
-            return DirectBulkRouteEffect.getDefaultInstance()
-        }
+        sessionId: String,
+        command: Command,
+    ): CommandResult {
+        if (closed.get()) throw CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
+        val opId = nextMachineCmdOpId.getAndIncrement()
+        val deferred = CompletableDeferred<CommandResult>()
+        pendingMachineCmds[opId] = deferred
+        dispatch(
+            CoreEvent.newBuilder()
+                .setRunMachineCommand(
+                    RunMachineCommandAction.newBuilder()
+                        .setOpId(opId)
+                        .setMachineId(machineId)
+                        .setSessionId(sessionId)
+                        .setCommand(command),
+                )
+                .build(),
+        )
         return try {
-            waiter.await()
+            if (closed.get() && !deferred.isCompleted) {
+                pendingMachineCmds.remove(opId, deferred)
+                throw CommandException("canceled", UiMessages.terminalAndroidClosed().messageText())
+            }
+            deferred.await()
         } catch (e: CancellationException) {
-            bulkRouteWaiters.remove(callId, waiter)
+            if (pendingMachineCmds.remove(opId, deferred)) {
+                onCancelMachineCommand(machineId, sessionId, command)
+                if (!closed.get()) {
+                    send { setCancelMachineCommand(CancelMachineCommandAction.newBuilder().setOpId(opId)) }
+                }
+            }
             throw e
-        }
-    }
-
-    fun finishDirectBulkTransfer(
-        ticketId: Long,
-        routeWasDirect: Boolean,
-        ok: Boolean,
-        elapsedMs: Double,
-        observedBytes: Long,
-        finishUploadTransferId: String = "",
-        machineId: String = "",
-    ) {
-        if (closed.get()) return
-        if (ticketId == 0L && finishUploadTransferId.isEmpty()) return
-        send {
-            setDirectBulkTransferDone(
-                DirectBulkTransferDoneEvent.newBuilder()
-                    .setTicketId(ticketId)
-                    .setRouteWasDirect(routeWasDirect)
-                    .setOk(ok)
-                    .setElapsedMs(elapsedMs)
-                    .setObservedBytes(observedBytes)
-                    .setFinishUploadTransferId(finishUploadTransferId)
-                    .setMachineId(machineId),
-            )
         }
     }
 
@@ -2245,10 +2184,6 @@ class CoreHost(
         )
     }
 
-    fun updateScheduleLocalContext(nowMs: Long = clock(), zoneId: ZoneId = zone()) = send {
-        setScheduleLocalContext(buildScheduleLocalContext(nowMs, zoneId))
-    }
-
     fun refreshSchedules(machineId: String = "") = send {
         setScheduleRefresh(ScheduleStringAction.newBuilder().setValue(machineId))
     }
@@ -2288,7 +2223,6 @@ class CoreHost(
         projectKey: String = "",
         localTimezone: String = zone().id,
     ) = dispatchAction {
-        scheduleFormKey = ""
         sendOnWorker {
             setScheduleFormOpen(
                 ScheduleFormOpenAction.newBuilder()
@@ -2351,7 +2285,6 @@ class CoreHost(
         quota?.let { quotaSlot.flow.value = it }
         devices?.let { devicesSlot.flow.value = it }
         clientDetail?.let { clientDetailSlot.flow.value = it }
-        directDiagnostics?.let { directDiagnosticsSlot.flow.value = it }
         usage?.let { overrideSlot(ScreenTarget.SCREEN_TARGET_USAGE, usageSlot, it) }
         if (scheduleStrips.isNotEmpty()) {
             synchronized(scheduleStripWatchers) {
@@ -2384,8 +2317,10 @@ class CoreHost(
                 machinePollTimers.values.forEach { it.cancel() }
                 machinePollTimers.clear()
             }
-            for ((k, w) in bulkRouteWaiters.entries.toList()) {
-                if (bulkRouteWaiters.remove(k, w)) w.complete(DirectBulkRouteEffect.getDefaultInstance())
+            for ((k, w) in pendingMachineCmds.entries.toList()) {
+                if (pendingMachineCmds.remove(k, w)) {
+                    w.completeExceptionally(CommandException("canceled", UiMessages.terminalAndroidClosed().messageText()))
+                }
             }
             for ((k, w) in pendingSecurityOps.entries.toList()) {
                 if (pendingSecurityOps.remove(k, w)) {

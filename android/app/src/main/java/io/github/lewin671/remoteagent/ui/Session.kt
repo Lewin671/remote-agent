@@ -84,10 +84,8 @@ import kotlin.math.roundToInt
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
-import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.draftScopeStorageKey
-import io.github.lewin671.remoteagent.core.listWhen
 import io.github.lewin671.remoteagent.core.proto.AttachmentDraftView
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
@@ -139,7 +137,6 @@ fun SessionScreen(sid: String) {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val p = pal
-    val state by remote.state.collectAsState()
     val syncView by remote.coreHost.syncStateView.collectAsState()
 
     var windowLimit by rememberSaveable(sid) { mutableIntStateOf(CORE_SESSION_WINDOW_LIMIT) }
@@ -275,7 +272,6 @@ fun SessionScreen(sid: String) {
                     }
                     ChatPane(
                         sid = sid,
-                        state = state,
                         vm = vm,
                         modifier = Modifier.weight(1f),
                         onTerminal = { tab = 1 },
@@ -643,7 +639,6 @@ private fun SessionTopBar(
 @Composable
 internal fun ChatPane(
     sid: String,
-    state: RemoteState,
     vm: SessionViewModel,
     modifier: Modifier,
     onTerminal: () -> Unit,
@@ -842,7 +837,6 @@ internal fun ChatPane(
             }
             BottomArea(
                 sid = sid,
-                state = state,
                 vm = vm,
                 onTerminal = onTerminal,
                 onPlan = { nav.plan(sid) },
@@ -857,7 +851,6 @@ internal fun ChatPane(
 @Composable
 private fun BottomArea(
     sid: String,
-    state: RemoteState,
     vm: SessionViewModel,
     onTerminal: () -> Unit,
     onPlan: () -> Unit,
@@ -933,7 +926,7 @@ private fun BottomArea(
     }
 
     if (!dockDenying) {
-        Composer(sid = sid, state = state, vm = vm, onSent = onSent, onFocus = {}, onTerminal = onTerminal, demoted = showDock && dockOpen)
+        Composer(sid = sid, vm = vm, onSent = onSent, onFocus = {}, onTerminal = onTerminal, demoted = showDock && dockOpen)
     }
 }
 
@@ -966,7 +959,6 @@ private fun EndCard(
 @Composable
 internal fun Composer(
     sid: String,
-    state: RemoteState,
     vm: SessionViewModel,
     onSent: () -> Unit,
     onFocus: (Boolean) -> Unit,

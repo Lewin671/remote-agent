@@ -473,7 +473,7 @@ fun ApprovalPage(sid: String, aid: String) {
                     Code(reason)
                     TextAction(
                         uiText(UiMessages.commonCopy()),
-                        { act.run({ clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", reason))); null }) },
+                        { act.run({ clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", reason))) }) },
                         alignment = Alignment.Center,
                     )
                 }

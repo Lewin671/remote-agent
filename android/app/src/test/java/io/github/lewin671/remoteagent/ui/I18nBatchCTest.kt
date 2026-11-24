@@ -378,7 +378,7 @@ class I18nBatchCTest(private val locale: String) {
         ui.onAllNodes(hasSetTextAction()).onLast().assertTextEquals("Original draft stays unchanged")
     }
     @Test fun deferredErrorsAndPluralCounts() {
-        val error = CommandException(CommandException.UNKNOWN, UiMessages.errorsConnectionDroppedMidway().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED, outcome = io.github.lewin671.remoteagent.core.Outcome.UNKNOWN)
+        val error = CommandException(CommandException.UNKNOWN, UiMessages.errorsConnectionDroppedMidway().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED)
         Assert.assertEquals(text(UiMessages.errorsConnectionDroppedMidway()), displayError(error, copy = ::text))
         for (count in listOf(0, 1, 2, 1000)) {
             Assert.assertTrue(text(UiMessages.scheduleRunsTotal(count)).contains(count.toString()))

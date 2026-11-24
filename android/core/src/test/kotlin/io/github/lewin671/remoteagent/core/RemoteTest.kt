@@ -89,9 +89,6 @@ class RemoteTest {
     private suspend fun client(
         cache: CipherCache? = null,
         frameQueue: Int = 1024,
-        historyIdleMs: Long = 60_000,
-        historyIdleCount: Int = 8,
-        linkGraceMs: Long = 10_000,
         httpClient: okhttp3.OkHttpClient = http,
     ): Remote {
         val acct = approvedClient(daemon.phone, http)
@@ -101,9 +98,6 @@ class RemoteTest {
                 httpClient,
                 cache,
                 frameQueue = frameQueue,
-                historyIdleMs = historyIdleMs,
-                historyIdleCount = historyIdleCount,
-                linkGraceMs = linkGraceMs,
             )
         closers += AutoCloseable { r.close() }
         return r
@@ -441,10 +435,8 @@ class RemoteTest {
             val command = if (code == "generation_conflict")
                 Command.newBuilder().setCompleteImageUpload(CompleteImageUploadRequest.newBuilder().setTransferId("test-transfer-id")).build()
             else Command.newBuilder().setListModels(ListModelsRequest.getDefaultInstance()).build()
-            val error = runCatching { r.machineCommand(daemon.id, command) }.exceptionOrNull() as CommandException
-            assertTrue(error.fromDaemon)
+            val error = runCatching { r.coreHost.runMachineCommand(daemon.id, "", command) }.exceptionOrNull() as CommandException
             assertEquals(code, error.code)
-            assertFalse(error.unknown)
             assertEquals(1, calls)
         }
     }
@@ -459,18 +451,20 @@ class RemoteTest {
         daemon.answer = { header, cmd ->
             headers.add(header.sessionId)
             when (cmd.kindCase) {
-                Command.KindCase.RESOLVE_APPROVAL -> CommandResult.newBuilder().setResolveApproval(ResolveApprovalResponse.getDefaultInstance()).build()
+                Command.KindCase.OPEN_TERMINAL -> CommandResult.getDefaultInstance()
                 else -> CommandResult.newBuilder().setSchedule(ScheduleResponse.getDefaultInstance()).build()
             }
         }
-        r.machineCommand(
+        r.coreHost.runMachineCommand(
             daemon.id,
-            Command.newBuilder().setResolveApproval(
-                ResolveApprovalRequest.newBuilder().setSessionId("s1").setApprovalId("a1").setAllow(true),
+            "s1",
+            Command.newBuilder().setOpenTerminal(
+                OpenTerminalRequest.newBuilder().setSessionId("s1").setStreamId("stream-1"),
             ).build(),
         )
-        r.machineCommand(
+        r.coreHost.runMachineCommand(
             daemon.id,
+            "",
             Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list").setSessionId("s1")).build(),
         )
         assertEquals(listOf("s1", ""), headers.toList())
@@ -555,7 +549,7 @@ class RemoteTest {
         }
         try {
             val command=Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()
-            r.machineCommand(daemon.id, command)
+            r.coreHost.runMachineCommand(daemon.id, "", command)
             throw AssertionError("expected a version error")
         } catch (e: CommandException) {
             // Nothing was sent.
@@ -578,7 +572,7 @@ class RemoteTest {
         runBlocking<Unit> {
             val e = refused(PEER_PROTOCOL_VERSION + 1)
             assertEquals("failed_precondition", e.code)
-            assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), errorText(e).testText())
+            assertEquals(messageTextForTest(UiMessages.errorsClientOutOfDate()), errorText(e).testText())
         }
 
     @Test
@@ -809,7 +803,7 @@ class RemoteTest {
         try {
             r.awaitState("connected") {it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true}
             daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            r.machineCommand(daemon.account.deviceId,Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())
+            r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())
             hold.set(true);val reading=async {r.cachedSchedules(daemon.account.deviceId)}
             entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
             release.complete(Unit);assertNull(reading.await());assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
@@ -827,7 +821,7 @@ class RemoteTest {
         try {
             r.awaitState("connected") {it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true}
             daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            val writing=async {r.machineCommand(daemon.account.deviceId,Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())}
+            val writing=async {runCatching { r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build()) }}
             entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
             release.complete(Unit);writing.await()
             assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
@@ -839,7 +833,7 @@ class RemoteTest {
         val originalAnswer=daemon.answer
         val json="""{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
         daemon.answer={ h,c -> if(c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h,c) }
-        r.machineCommand(daemon.account.deviceId,io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
+        r.coreHost.runMachineCommand(daemon.account.deviceId,"",io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
         val key="schedule:${daemon.account.deviceId}";val stored=memory.blob(key)!!
         assertFalse(stored.decodeToString().contains("Private scheduled content"))
         assertArrayEquals(json,r.cachedSchedules(daemon.account.deviceId))

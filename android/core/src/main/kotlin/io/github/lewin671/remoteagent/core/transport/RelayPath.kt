@@ -20,7 +20,6 @@ internal class RelayPath(
     private val api: Api,
     private val sockets: () -> WebSocket.Factory,
     private val token: suspend () -> String = { "" },
-    private val renew: suspend (String?, Boolean) -> Unit = { _, _ -> },
     private val observe: (String) -> PeerState,
 ) : Path {
     override fun status(machineId: String) = observe(machineId)
@@ -47,7 +46,6 @@ internal class RelayPath(
             }.firstOrNull { it.attemptId == attemptId && it.relayEpoch == epoch && epoch.isNotEmpty() }
             return proof?.let { PathRefusal(it.reason) }
         }
-        override suspend fun refreshAuth(prior: Boolean) { renew(usedToken, prior) }
         }
     }
     override fun openStream(address: String, listener: FrameListener): FrameStream {

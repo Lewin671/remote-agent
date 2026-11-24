@@ -160,6 +160,24 @@ class ApprovalLatencyE2ETest {
         ui.waitUntil(60_000) { remote.state.value.machines[machineId]?.pathState?.reachable == true }
 
         val metrics = JSONObject().put("rounds", rounds)
+        suspend fun io.github.lewin671.remoteagent.core.Remote.machineCommand(mid: String, cmd: Command): io.github.lewin671.remoteagent.proto.CommandResult {
+            val sid = when (cmd.kindCase) {
+                Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.sessionId
+                Command.KindCase.GET_LIVE_SNAPSHOT -> cmd.getLiveSnapshot.sessionId
+                Command.KindCase.GET_SHARED_FILE_CHUNK -> cmd.getSharedFileChunk.sessionId
+                else -> ""
+            }
+            return coreHost.runMachineCommand(mid, sid, cmd)
+        }
+        suspend fun io.github.lewin671.remoteagent.core.Remote.getSharedFileChunk(sid: String, fileId: String, offset: Long): io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse =
+            coreHost.runMachineCommand(
+                machineId,
+                sid,
+                Command.newBuilder().setGetSharedFileChunk(
+                    io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest.newBuilder()
+                        .setSessionId(sid).setFileId(fileId).setOffset(offset),
+                ).build(),
+            ).getSharedFileChunk
         runBlocking(Dispatchers.IO) {
             val created = remote.machineCommand(
                 machineId,

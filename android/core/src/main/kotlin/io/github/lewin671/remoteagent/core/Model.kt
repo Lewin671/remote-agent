@@ -56,9 +56,6 @@ fun clock(ms: Long): String {
     else "%d:%02d".format(s / 60, s % 60)
 }
 
-fun shortPath(p: String): String =
-    p.replace(Regex("^/Users/[^/]+"), "~").replace(Regex("^/home/[^/]+"), "~")
-
 // --- devices and where actions came from ---
 
 /** The account name, or a readable platform name disambiguated across all clients. */
@@ -98,20 +95,3 @@ fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView
 
 /** The last four hex digits of a device ID, as shown next to a name. */
 private fun shortId(id: String): String = id.takeLast(4)
-
-/** What the machine says it offers; null until its metadata is read. */
-fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineCapabilities? =
-    m?.pathState?.capabilities
-
-/**
- * Why no command goes to [m]: it speaks another protocol version than this app (PEER_PROTOCOL_VERSION),
- * said by which side to update; null when they match or the machine's metadata is not read yet.
- */
-fun protocolMismatch(m: MachineView?): MessageText? {
-    val theirs = m?.pathState?.protocolVersion ?: return null
-    return when {
-        theirs < PEER_PROTOCOL_VERSION -> localized { copy -> copy(UiMessages.errorsRemoteAgentOnIsOutOfDateUpdateIt(listMachineName(m).resolve(copy))) }
-        theirs > PEER_PROTOCOL_VERSION -> UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry().messageText()
-        else -> null
-    }
-}

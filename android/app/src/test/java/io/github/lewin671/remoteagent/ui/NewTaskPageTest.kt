@@ -110,8 +110,7 @@ class NewTaskPageTest {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     val vm by remote.newSessionView.collectAsState()
-                    val current by remote.state.collectAsState()
-                    NewSessionBox(vm, current, focus = false, onProject = {})
+                    NewSessionBox(vm, focus = false, onProject = {})
                 }
             }
         }

@@ -77,7 +77,7 @@ class PendingVisibilityTest {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})) {
                     val vm by remote.watchSession("s").collectAsState(initial = baseVm)
                     Box(Modifier.height(360.dp)) {
-                        ChatPane("s", state, vm, Modifier, {}, {}, {})
+                        ChatPane("s", vm, Modifier, {}, {}, {})
                     }
                 }
             }

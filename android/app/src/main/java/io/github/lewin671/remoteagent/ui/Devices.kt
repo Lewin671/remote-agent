@@ -267,12 +267,7 @@ fun ClientScreen(id: String) {
             remote.coreHost.renameClient(id, name)
         },
         onRemove = {
-            remove.run(
-                {
-                    remote.removeDevice(id)
-                    null
-                },
-            )
+            remove.run({ remote.removeDevice(id) })
         },
     )
 }

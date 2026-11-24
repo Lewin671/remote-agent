@@ -699,11 +699,6 @@ fun fixtureRemote(
     log: (String) -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
     frameQueue: Int = 1024,
-    historyIdleMs: Long = 60000,
-    historyIdleCount: Int = 8,
-    historyIdleBytes: Long = 16L * 1024 * 1024,
-    streamOpenMs: Long = 15000,
-    linkGraceMs: Long = 10000,
     securityStore: SecurityStoreV4? = null,
     onSessionRemoved: suspend (String) -> Unit = {},
 ): Remote = Remote(
@@ -713,11 +708,6 @@ fun fixtureRemote(
     log = log,
     clock = clock,
     frameQueue = frameQueue,
-    historyIdleMs = historyIdleMs,
-    historyIdleCount = historyIdleCount,
-    historyIdleBytes = historyIdleBytes,
-    streamOpenMs = streamOpenMs,
-    linkGraceMs = linkGraceMs,
     securityStore = securityStore
         ?: TestSecurity.find(account.server)?.stores?.get(account.deviceId)
         ?: MemorySecurityStoreV4(),

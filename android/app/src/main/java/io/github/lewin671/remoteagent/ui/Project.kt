@@ -49,14 +49,12 @@ fun ProjectScreen(key: String, focus: Boolean) {
     LaunchedEffect(key) { remote.coreHost.openNewSession(key) }
     val rawView by remote.newSessionView.collectAsState()
     val view = if (key.isEmpty() || rawView.projectKey == key) rawView else initialView
-    val state by remote.state.collectAsState()
     val home by remote.homeView.collectAsState()
     var picking by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(pal.paper)) {
         NewSessionBox(
             view = view,
-            state = state,
             focus = focus,
             onProject = { picking = true },
         )
@@ -71,7 +69,6 @@ fun ProjectScreen(key: String, focus: Boolean) {
 @Composable
 fun NewSessionBox(
     view: NewSessionViewModel,
-    state: RemoteState,
     focus: Boolean,
     onProject: (() -> Unit)? = null,
 ) {
@@ -353,14 +350,10 @@ fun CoreProjectSettingsSheet(
     LaunchedEffect(projectKey) { remote.coreHost.openNewSession(projectKey) }
     val rawView by remote.newSessionView.collectAsState()
     val view = if (projectKey.isEmpty() || rawView.projectKey == projectKey) rawView else initialView
-    val syncView by remote.coreHost.syncStateView.collectAsState()
     val panel = view.modelPanel
     val blockedPrefsText = when {
         view.prefsBlocked && view.prefsBlockedReason.isCoreTextNotEmpty() -> uiText(view.prefsBlockedReason)
         view.prefsBlocked -> uiText(UiMessages.projectsConnectToEdit())
-        syncView.connection != io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED ->
-            uiText(UiMessages.projectsConnectToEdit())
-        !syncView.prefsLoaded -> uiText(UiMessages.projectsLoading())
         else -> null
     }
     val manyMachines = panel.machineChoicesCount > 1
@@ -784,8 +777,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
         }
     }
     val view by remote.newSessionView.collectAsState()
-    val state by remote.state.collectAsState()
     Column(Modifier.fillMaxSize().background(pal.paper)) {
-        NewSessionBox(view = view, state = state, focus = true)
+        NewSessionBox(view = view, focus = true)
     }
 }

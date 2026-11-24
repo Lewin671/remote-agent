@@ -83,8 +83,7 @@ class I18nBatchATest(private val locale: String) {
     }
     private fun composer() = show {
         val vm by remote.newSessionView.collectAsState()
-        val st by remote.state.collectAsState()
-        NewSessionBox(vm, st, focus = false, onProject = {})
+        NewSessionBox(vm, focus = false, onProject = {})
     }
     @Test fun home() { show { HomeScreen() }; shot("home") }
     @Test fun scope() { show { HomeScreen() }; ui.onNodeWithTag("scope-title").performClick(); shot("scope") }

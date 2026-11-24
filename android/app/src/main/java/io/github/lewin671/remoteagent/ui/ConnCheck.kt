@@ -93,9 +93,7 @@ internal fun ConnCheckSheet(
             }
         }
     }
-    val list = settingsView.machinesList.sortedWith(
-        compareByDescending<MachineListCardView> { it.online }.thenBy { it.name.ifEmpty { it.machineId } },
-    )
+    val list = settingsView.machinesList
     val directReadyById = remember(settingsView.machinesList) {
         settingsView.machinesList.associate { it.machineId to it.directReady }
     }
