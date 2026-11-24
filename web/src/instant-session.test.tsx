@@ -3,7 +3,7 @@ import { t as message } from "./i18n";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { getCoreHost } from "./core/host";
+import { getCoreHost, sessionDraftScope } from "./core/host";
 import { DemoRemote } from "./dev/demo";
 import { patchSyncState } from "./test/remote-fixture";
 import Workspace from "./Workspace";
@@ -39,8 +39,7 @@ it("keeps the same input, draft and focus across Core session updates", async ()
   expect(input).not.toBeNull();
   expect(input.disabled).toBe(false);
   await act(async () => {
-    remote.drafts.set(openingId, "typed during lookup");
-    remote.touch();
+    getCoreHost(remote).draftSetText(sessionDraftScope(openingId), "typed during lookup");
   });
   input.focus();
   expect(host.querySelector<HTMLButtonElement>(".snd")!.disabled).toBe(true);

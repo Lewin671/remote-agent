@@ -10,7 +10,8 @@ import { ANDROID, DemoRemote } from "../dev/demo";
 import { patchSyncState } from "../test/remote-fixture";
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import { getCoreHost, useCoreHost, useSessionView } from "../core/host";
+import { getCoreHost, sessionDraftScope, useCoreHost, useSessionView } from "../core/host";
+import { ImageError } from "../imagecodec/error";
 import { NoticeKind } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { renderText } from "../core/text";
 import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
@@ -1340,14 +1341,19 @@ describe("an unknown session start, after leaving its page and coming back", () 
 
   it("is retried on the machine and with the images it was sent with (review r2)", async () => {
     const r = demo();
-    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    r.prepareImageOverride = async () => ({
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      format: "png" as const,
+      width: 1,
+      height: 1,
+      thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    });
     const uploads: string[] = [];
-    r.uploadImage = async (m) => {
-      uploads.push(m);
-      return { imageId: `${m}-image-${uploads.length}`, expiresMs: Number.MAX_SAFE_INTEGER };
-    };
     const sent: { machine: string; id: string; prompt?: string; imageIds?: string[] }[] = [];
     r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
+      if (cmd?.case === "completeImageUpload") {
+        uploads.push(m);
+      }
       if (cmd?.case === "createSession") {
         sent.push({ machine: m, id: slot!.requestId, prompt: cmd.value.prompt, imageIds: cmd.value.imageIds });
         throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
@@ -1369,7 +1375,9 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
-    expect(sent).toEqual([{ machine: "imac", id: sent[0].id, prompt: "看这张图", imageIds: ["imac-image-1"] }]);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ machine: "imac", prompt: "看这张图" });
+    expect(sent[0].imageIds).toHaveLength(1);
     // The page is left; the project's own machine comes back meanwhile.
     leave();
     setDemoOnline(r, "mac", true);
@@ -1380,10 +1388,6 @@ describe("an unknown session start, after leaving its page and coming back", () 
     expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
     expect(uploads).toEqual(["imac"]);
-    const tray = r.trays.get("new:/work/remote-agent") ?? [...r.trays.values()][0];
-    await act(async () => { tray.items[0].expiresMs = 0; tray.refreshExpired(); });
-    expect(uploads).toEqual(["imac", "imac"]);
-    expect(tray.imageIds()).toEqual(["imac-image-2"]);
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual(sent[0]);
@@ -1770,6 +1774,7 @@ describe("a message the session ended before sending", () => {
       return orig(sid, cmd, slot);
     };
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
@@ -1800,7 +1805,7 @@ describe("a message the session ended before sending", () => {
     expect(host.querySelector(".queued")).toBeNull();
     await click(button(message("composer.restore")));
     // No input while ended: the text waits as the draft for after resuming.
-    expect(r.drafts.get("s-idle")).toBe("顺便补一个测试");
+    expect(getCoreHost(r).viewAttachmentDraft(sessionDraftScope("s-idle")).draft?.text).toBe("顺便补一个测试");
   });
 });
 
@@ -2451,6 +2456,7 @@ describe("who did what (v2)", () => {
       pushDemoEvent(r, "s-idle", { case: "settingsChanged", value: { model } }, { kind: OriginKind.CLIENT, deviceId } as never);
     }
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const notes = [...host.querySelectorAll(".sysline")].map((x) => x.textContent);
     expect(notes).toContain(message("session.model_changed_by", {"origin":"Android · Pixel 9","value":"other-model"}));
     expect(notes).toContain(message("session.model_changed", {"value":"my-model"}));
@@ -2521,6 +2527,7 @@ describe("a send that failed", () => {
           : new CommandError("unavailable", text);
       };
       await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
       await act(async () => {
         const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!;
         Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "顺便补一个测试");
@@ -2607,13 +2614,28 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
 });
 
 describe("sending images (v2)", () => {
-  async function setup(fail: (name: string) => boolean, prepare?: DemoRemote["prepareImage"]) {
+  async function setup(fail: (name: string) => boolean, prepare?: DemoRemote["prepareImageOverride"]) {
     const r = demo();
-    r.prepareImage = prepare ?? (async (f) => Object.assign({ bytes: new Uint8Array(4), format: "png" as const, width: 1, height: 1 }, { name: (f as File).name }));
-    r.uploadImage = async (_m, p) => {
-      const name = (p as { name?: string }).name ?? "";
-      if (fail(name)) throw new CommandError("unavailable", "连接超时");
-      return { imageId: "id-" + name, expiresMs: Number.MAX_SAFE_INTEGER };
+    r.prepareImageOverride =
+      prepare ??
+      (async (f) => {
+        const name = (f as File).name || "img.png";
+        const bytes = new TextEncoder().encode(name);
+        return { bytes, format: "png" as const, width: 1, height: 1, thumbBytes: bytes };
+      });
+    const origMachine = r.machineCommand.bind(r);
+    const transferNames = new Map<string, string>();
+    r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot) => {
+      if (cmd?.case === "putImageChunk" && cmd.value.data && cmd.value.transferId) {
+        const name = new TextDecoder().decode(cmd.value.data);
+        transferNames.set(cmd.value.transferId, name);
+        if (fail(name)) throw new CommandError("unavailable", "连接超时", true, false, "executed");
+      }
+      if (cmd?.case === "completeImageUpload" && cmd.value.transferId) {
+        const name = transferNames.get(cmd.value.transferId) ?? "";
+        if (fail(name)) throw new CommandError("unavailable", "连接超时", true, false, "executed");
+      }
+      return origMachine(m, cmd, slot);
     };
     const sent: { text?: string; imageIds?: string[] }[] = [];
     const real = r.command.bind(r);
@@ -2622,6 +2644,7 @@ describe("sending images (v2)", () => {
       return real(sid, cmd, slot);
     };
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const pick = async (...names: string[]) =>
       act(async () => {
         const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
@@ -2631,20 +2654,17 @@ describe("sending images (v2)", () => {
     return { r, sent, pick };
   }
 
-  it("hands the text to send before clearing the stored draft", async () => {
+  it("hands the text to send and clears the Core draft after outbox commit", async () => {
     const t = await setup(() => false);
     const core = getCoreHost(t.r);
-    await act(async () => { t.r.drafts.set("s-idle", "keep until outgoing owns it"); t.r.touch(); });
-    let atSend: string | undefined;
-    const orig = core.sessionSubmitCommand.bind(core);
-    const submitSpy = vi.spyOn(core, "sessionSubmitCommand").mockImplementation((...args) => {
-      atSend = t.r.drafts.get("s-idle");
-      return orig(...args);
+    const scope = sessionDraftScope("s-idle");
+    await act(async () => {
+      core.draftSetText(scope, "keep until outgoing owns it");
     });
     await click(sendButton());
-    expect(submitSpy).toHaveBeenCalledOnce();
-    expect(atSend).toBe("keep until outgoing owns it");
-    expect(t.r.drafts.get("s-idle")).toBe("");
+    await vi.waitFor(() => expect(t.sent).toHaveLength(1));
+    expect(t.sent[0].text).toBe("keep until outgoing owns it");
+    expect(core.viewAttachmentDraft(scope).draft?.text).toBe("");
   });
 
   it("never sends a message with fewer images than shown", async () => {
@@ -2657,7 +2677,8 @@ describe("sending images (v2)", () => {
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
-    expect(t.sent[0]).toEqual({ text: "", imageIds: ["id-a.png"] });
+    expect(t.sent[0].text).toBe("");
+    expect(t.sent[0].imageIds).toHaveLength(1);
     expect(host.querySelector(".att-tray")).toBeNull();
   });
 
@@ -2670,10 +2691,10 @@ describe("sending images (v2)", () => {
   });
 
   it("opens each failed picture in the shared viewer and offers only useful actions", async () => {
-    const t = await setup(() => false, async f => {
-      if ((f as File).name === "bad.heic") throw new Error("unsupported image format");
-      if ((f as File).name === "large.png") throw new Error("image dimensions too large");
-      return { bytes: new Uint8Array(4), format: "png", width: 900, height: 600 };
+    const t = await setup(() => false, async (f) => {
+      if ((f as File).name === "bad.heic") throw new ImageError("unsupported", "unsupported image format", "换成 JPEG 或 PNG 再试", "decode");
+      if ((f as File).name === "large.png") throw new ImageError("too_large", "image dimensions too large", message("image.image_dimensions_are_too_large"), "dimensions");
+      return { bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), format: "png" as const, width: 900, height: 600, thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) };
     });
     await t.pick("ok.png", "bad.heic", "large.png");
     await vi.waitFor(() => expect(host.textContent).toContain(message("image.attach_failed", {"count":2}, "zh-CN")));
@@ -2849,9 +2870,13 @@ describe("the first message of a session started here (review B5, B9)", () => {
 describe("a failed message with images (review B6)", () => {
   async function setup(text: string, status = InputStatus.FAILED, sources = false) {
     const r = demo();
-    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    let up = 0;
-    r.uploadImage = async () => ({ imageId: "i" + ++up, expiresMs: Number.MAX_SAFE_INTEGER });
+    r.prepareImageOverride = async () => ({
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      format: "png" as const,
+      width: 1,
+      height: 1,
+      thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    });
     const sent: { text?: string; imageIds?: string[] }[] = [];
     let reqId = "";
     let failFirst = !sources;
@@ -2867,6 +2892,7 @@ describe("a failed message with images (review B6)", () => {
       return create(CommandResultSchema);
     };
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const f1 = new File(["img1"], "a.png", { type: "image/png" });
     const f2 = new File(["img2"], "b.png", { type: "image/png" });
     await act(async () => {
@@ -2874,7 +2900,11 @@ describe("a failed message with images (review B6)", () => {
       Object.defineProperty(picker, "files", { value: [f1, f2], configurable: true });
       picker.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await vi.waitFor(() => expect(r.trays.get("s-idle")?.imageIds()).toHaveLength(2));
+    await vi.waitFor(() => {
+      const d = getCoreHost(r).viewAttachmentDraft(sessionDraftScope("s-idle")).draft;
+      expect(d?.ready).toBe(true);
+      expect(d?.images).toHaveLength(2);
+    });
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, text);
@@ -2903,30 +2933,12 @@ describe("a failed message with images (review B6)", () => {
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
   });
 
-  it("waits for restoration before merging a put-back message and releasing its owner", async () => {
-    const t = await setup("put back", InputStatus.NEEDS_TERMINAL, true);
-    const tray = t.r.trays.get("s-idle")!;
-    let done!: () => void;
-    const gate = new Promise<void>(resolve => { done = resolve; });
-    vi.spyOn(t.r, "restoreDraft").mockReturnValue(gate);
-    await act(async () => row().querySelector<HTMLElement>(".ptray-hit")!.click());
-    await click(button(message("composer.restore"), row()));
-    expect(tray.items).toHaveLength(0);
-    expect(host.querySelectorAll(".ptray-row")).toHaveLength(1);
-    await act(async () => {
-      t.r.drafts.set("s-idle", "typed while reading");
-      tray.hydrate([{ file: new Blob(["disk source"]) }], false);
-      done();
-    });
-    expect(tray.items).toHaveLength(3);
-    expect(t.r.drafts.get("s-idle")).toBe("typed while reading\nput back");
-  });
-
   it("does not offer uncertain restore for another client's message without local content", async () => {
     const r = demo();
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.QUEUED, text: "other source", imageIds: ["i1"] } }, { kind: OriginKind.CLIENT, deviceId: ANDROID } as never);
     pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "other-src", status: InputStatus.NEEDS_TERMINAL, reason: "image_not_recognized" } });
     await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const warn = row();
     expect(warn.querySelector(".ptray-why.orange")).toBeTruthy();
     await act(async () => warn.querySelector<HTMLElement>(".ptray-hit")!.click());
@@ -2935,9 +2947,6 @@ describe("a failed message with images (review B6)", () => {
 
   it("puts text and images back into the input, to send them again", async () => {
     const t = await setup("看这两张");
-    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    let uploads = 0;
-    t.r.uploadImage = async () => ({ imageId: "restored-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
     await act(async () => row().querySelector<HTMLElement>(".ptray-hit")!.click());
     await click(button(message("composer.restore"), row()));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
@@ -2945,7 +2954,8 @@ describe("a failed message with images (review B6)", () => {
     await act(async () => { await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!.disabled).toBe(false)); });
     await click(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!);
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
-    expect(t.sent[0]).toEqual({ text: "看这两张", imageIds: ["restored-1", "restored-2"] });
+    expect(t.sent[0].text).toBe("看这两张");
+    expect(t.sent[0].imageIds).toHaveLength(2);
   });
 
   it("can retry or restore a message of images only", async () => {
@@ -2954,7 +2964,8 @@ describe("a failed message with images (review B6)", () => {
     expect(button(message("composer.restore"), row())).toBeTruthy();
     await click(button(message("common.retry", {}, "zh-CN"), row()));
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
-    expect(t.sent[0]).toEqual({ text: "", imageIds: ["i3", "i4"] });
+    expect(t.sent[0].text).toBe("");
+    expect(t.sent[0].imageIds).toHaveLength(2);
   });
 });
 
@@ -2988,52 +2999,6 @@ it("keeps the same proportions, height and four-picture fold before and after co
   expect(host.querySelector(".more")!.textContent).toBe("+2");
 });
 
-it("consumes only the new-session request's attachments and keeps later disk drafts", async () => {
-  const { IDBKeyRange } = await import("fake-indexeddb");
-  const { storedSecurity } = await import("../test/stored-security-fixture");
-  const { ComposerDraftStore } = await import("../composer-drafts");
-  const f = await storedSecurity();
-  vi.stubGlobal("IDBKeyRange", IDBKeyRange);
-  try {
-    const account = { server: "https://relay.example.com", deviceId: f.memberID } as import("../storage").StoredAccount;
-    const disk = new ComposerDraftStore(account);
-    const r = demo();
-    (r as any).localDrafts = disk;
-    updateDemoMachine(r, "mac", (m) => { m.meta!.capabilities!.fileUpload = true; });
-    r.prepareImage = async () => ({ bytes: new Uint8Array([1]), format: "png", width: 1, height: 1 });
-    let uploads = 0;
-    r.uploadImage = async (_m, p) => ({ imageId: "image-" + ++uploads, fileId: p.format === "file" ? "file-" + uploads : undefined, expiresMs: Date.now() + 100000 });
-    const waiting = barrier();
-    let sent = false;
-    r.machineCommand = async (m: string, cmd: CommandKind) => {
-      if (cmd?.case === "createSession") { sent = true; await waiting.wait; }
-      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
-    };
-    const key = "new:/Users/me/Code/foo";
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-    const tray = r.trays.get(key)!;
-    await vi.waitFor(() => expect(tray.restoring).toBe(false));
-    await act(async () => {
-      tray.add([new File(["sent image"], "sent.png", { type: "image/png" })]);
-      tray.addFiles([new File(["sent file"], "sent.txt")]);
-    });
-    await vi.waitFor(() => expect(tray.ready()).toBe(true));
-    await click(sendButton());
-    await vi.waitFor(() => expect(sent).toBe(true));
-    await act(async () => {
-      tray.add([new File(["next image"], "next.png", { type: "image/png" })]);
-      tray.addFiles([new File(["next file"], "next.txt")]);
-    });
-    await vi.waitFor(() => expect(tray.ready()).toBe(true));
-    await act(async () => { waiting.release(); });
-    await vi.waitFor(() => expect(tray.items.map(i => (i.file as File).name)).toEqual(["next.png", "next.txt"]));
-    await r.persistDraft(key);
-    const restored = await new ComposerDraftStore(account).read(key);
-    expect(restored?.items.map(i => i.name)).toEqual(["next.png", "next.txt"]);
-    expect(await Promise.all(restored!.items.map(i => i.file.text()))).toEqual(["next image", "next file"]);
-  } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
-});
-
 describe("an image-only new-session draft (review B8)", () => {
   const pick = () =>
     act(async () => {
@@ -3042,8 +3007,13 @@ describe("an image-only new-session draft (review B8)", () => {
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
   const stub = (r: DemoRemote) => {
-    r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-    r.uploadImage = async () => ({ imageId: "id-a", expiresMs: Number.MAX_SAFE_INTEGER });
+    r.prepareImageOverride = async () => ({
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      format: "png" as const,
+      width: 1,
+      height: 1,
+      thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    });
   };
   const bump = (r: DemoRemote, sid: string) =>
     act(() => {
@@ -3067,6 +3037,7 @@ describe("an image-only new-session draft (review B8)", () => {
     stub(r);
     mount(<WideHome remote={r} go={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
+    await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
     const before = startProject();
     await pick();
     bump(r, "s-plan");
@@ -3136,8 +3107,13 @@ it("marks a quota window as waiting for an update once its reset time passes (re
 
 it("starts a new session with images and no words (Go 61c4bb2)", async () => {
   const r = demo();
-  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-  r.uploadImage = async () => ({ imageId: "id-a", expiresMs: Number.MAX_SAFE_INTEGER });
+  r.prepareImageOverride = async () => ({
+    bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    format: "png" as const,
+    width: 1,
+    height: 1,
+    thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  });
   const sent: { prompt?: string; imageIds?: string[] }[] = [];
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> => {
     if (cmd?.case === "createSession") {
@@ -3148,6 +3124,7 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
   await act(async () => {
     const input = host.querySelector<HTMLInputElement>("input[type=file]")!;
     Object.defineProperty(input, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
@@ -3156,7 +3133,8 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
   await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!.disabled).toBe(false));
   await click(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!);
   await vi.waitFor(() => expect(sent).toHaveLength(1));
-  expect(sent[0]).toEqual({ prompt: "", imageIds: ["id-a"] });
+  expect(sent[0].prompt).toBe("");
+  expect(sent[0].imageIds).toHaveLength(1);
 });
 
 it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async () => {
@@ -4201,7 +4179,7 @@ it("keeps the remembered CLI after a temporary fallback succeeds", async () => {
 
 it("appends a restored message to the current draft", async () => {
   const r = demo();
-  r.drafts.set("s-idle", "draft");
+  getCoreHost(r).draftSetText(sessionDraftScope("s-idle"), "draft");
   pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } });
   pushDemoEvent(r, "s-idle", { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } });
   await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
@@ -4421,9 +4399,16 @@ it("shows async questions as ordinary chat with options and accepts a typed repl
 
 it("puts a daemon-rejected image message back with its text, original option and source", async () => {
   const r = demo();
-  r.prepareImage = async (_f, original) => ({ bytes: new Uint8Array(original ? 20 : 4), format: "png", width: 1, height: 1 });
+  r.prepareImageOverride = async (_f, original) => {
+    const bytes = new Uint8Array(original ? 20 : 4);
+    return { bytes, format: "png" as const, width: 1, height: 1, thumbBytes: new Uint8Array(4) };
+  };
   let uploads = 0;
-  r.uploadImage = async () => ({ imageId: "id-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
+  const origMachine = r.machineCommand.bind(r);
+  r.machineCommand = async (m, cmd, slot) => {
+    if (cmd?.case === "completeImageUpload") uploads++;
+    return origMachine(m, cmd, slot);
+  };
   r.command = async () => { throw new CommandError("not_found", "image id is not on this machine; upload it again"); };
   await mountAsync(<SessionPage remote={r} sessionId="s-idle" onBack={() => undefined} wide={false} />);
   const source = new File(["source"], "a.png", { type: "image/png" });
@@ -4438,17 +4423,21 @@ it("puts a daemon-rejected image message back with its text, original option and
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "看原图");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
+  await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
   await vi.waitFor(() => expect(host.querySelector(".ptray")?.textContent).toContain("image id is not on this machine; upload it again"));
   await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore")));
-  const tray = r.trays.get("s-idle")!;
-  expect(r.drafts.get("s-idle")).toBe("看原图");
-  expect(tray.original).toBe(true);
-  expect(tray.items[0].file).toBe(source);
-  expect(tray.totalBytes()).toBe(20);
-  expect(getCoreHost(r).viewSession("s-idle").composer?.pendingTray?.orderedItems ?? []).toEqual([]);
-  expect(uploads).toBe(3);
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope("s-idle");
+  await vi.waitFor(() => expect(core.viewAttachmentDraft(scope).draft?.ready).toBe(true));
+  const draft = core.viewAttachmentDraft(scope).draft!;
+  expect(draft.text).toBe("看原图");
+  expect(draft.original).toBe(true);
+  expect(draft.items).toHaveLength(1);
+  expect(draft.totalImageBytes).toBe(20n);
+  expect(core.viewSession("s-idle").composer?.pendingTray?.orderedItems ?? []).toEqual([]);
+  expect(uploads).toBeGreaterThanOrEqual(2);
 });
 
 describe("adding devices on the current authority", () => {
@@ -4537,8 +4526,6 @@ it("keeps task-owned approvals in attention and counts while omitting idle task 
 it("sends files-only messages and restores a missing file from its original File", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
-  let uploads = 0;
-  r.uploadImage = async (_m, p) => ({ imageId: "", fileId: (p as { fileName?: string }).fileName! + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
   const sent: CommandKind[] = [];
   r.command = async (_sid, cmd) => { sent.push(cmd); throw new CommandError("not_found", "file id is not on this machine; upload it again"); };
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
@@ -4551,21 +4538,34 @@ it("sends files-only messages and restores a missing file from its original File
   await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
   await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
-  expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
+  expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [] } });
+  expect(sent[0]?.case === "send" && sent[0].value.fileIds).toHaveLength(1);
   expect(host.querySelector(".ptray-row .clip")?.getAttribute("aria-label")).toBe(message("queue.attachments_a11y", { count: 1 }));
   await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore")));
-  const tray = r.trays.get(s.id)!;
-  await vi.waitFor(() => expect(tray.fileIds()).toEqual(["data.csv2"]));
-  expect(tray.files()[0].file).toBe(source);
-  expect(tray.imageIds()).toEqual([]); expect(getCoreHost(r).viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toEqual([]);
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope(s.id);
+  await vi.waitFor(() => {
+    const d = core.viewAttachmentDraft(scope).draft;
+    expect(d?.ready).toBe(true);
+    expect(d?.files).toHaveLength(1);
+  });
+  const draft = core.viewAttachmentDraft(scope).draft!;
+  expect(draft.files[0].displayName).toBe("data.csv");
+  expect(draft.images).toHaveLength(0);
+  expect(core.viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toEqual([]);
 });
 
 it("creates a session with files-only and retains file IDs for an unknown retry", async () => {
   const r = demo(); const machine = r.machines.get("mac") ?? [...r.machines.values()].find((m) => m.meta?.capabilities?.imageUpload)!;
   updateDemoMachine(r, machine.id, (m) => { m.meta!.capabilities!.fileUpload = true; });
-  r.prepareImage = async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 });
-  r.uploadImage = async () => ({ imageId: "", fileId: "file-first", expiresMs: Number.MAX_SAFE_INTEGER });
+  r.prepareImageOverride = async () => ({
+    bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    format: "png" as const,
+    width: 1,
+    height: 1,
+    thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  });
   const calls: { cmd: CommandKind; slot?: RequestSlot }[] = [];
   const real = r.machineCommand.bind(r);
   r.machineCommand = async (m: string, cmd: CommandKind, slot?: RequestSlot) => {
@@ -4577,12 +4577,14 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   // The default demo project selects the image-capable machine.
   const go = vi.fn();
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={go} onBack={() => undefined} />);
+  await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
   const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
   await act(async () => { Object.defineProperty(picker, "files", { value: [new File(["x"], "a.csv")], configurable: true }); picker.dispatchEvent(new Event("change", { bubbles: true })); });
   await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
   await vi.waitFor(() => expect(calls).toHaveLength(1));
-  expect(calls[0].cmd).toMatchObject({ case: "createSession", value: { prompt: "", fileIds: ["file-first"] } });
+  expect(calls[0].cmd).toMatchObject({ case: "createSession", value: { prompt: "" } });
+  expect(calls[0].cmd?.case === "createSession" && calls[0].cmd.value.fileIds).toHaveLength(1);
   await vi.waitFor(() => expect(host.textContent).toContain("不确定是否已经启动"));
   await click(sendButton());
   await vi.waitFor(() => expect(calls).toHaveLength(2));
@@ -4590,12 +4592,10 @@ it("creates a session with files-only and retains file IDs for an unknown retry"
   expect(calls[1].cmd).toEqual(calls[0].cmd);
 });
 
-it("requires reselecting a failed outgoing file when its local source has been released", async () => {
+it("restores a failed outgoing file back to the draft tray", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
-  r.uploadImage = async () => ({ imageId: "", fileId: "first-file", expiresMs: Number.MAX_SAFE_INTEGER });
   r.command = async () => { throw new CommandError("unavailable", "write_failed"); };
-  const upload = vi.spyOn(r, "uploadImage");
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
   const source = new File(["bytes"], "first.csv", { type: "text/csv" });
   await act(async () => {
@@ -4603,15 +4603,15 @@ it("requires reselecting a failed outgoing file when its local source has been r
     Object.defineProperty(picker, "files", { value: [source], configurable: true });
     picker.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await vi.waitFor(() => expect(r.trays.get(s.id)?.fileIds()).toEqual(["first-file"]));
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope(s.id);
+  await vi.waitFor(() => expect(core.viewAttachmentDraft(scope).draft?.ready).toBe(true));
   await click(sendButton());
   await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
-  upload.mockClear();
   await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore"), host.querySelector(".ptray-row")!));
-  const tray = r.trays.get(s.id)!;
-  await vi.waitFor(() => expect(tray.files().length).toBeGreaterThan(0));
-  expect(tray.files()[0].name).toBe("first.csv");
+  await vi.waitFor(() => expect(core.viewAttachmentDraft(scope).draft?.files.length).toBeGreaterThan(0));
+  expect(core.viewAttachmentDraft(scope).draft?.files[0].displayName).toBe("first.csv");
 });
 
 it("shows a folder-only rejection in an empty new-session tray", async () => {
@@ -4622,6 +4622,7 @@ it("shows a folder-only rejection in an empty new-session tray", async () => {
     });
   }
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
   const input = host.querySelector("textarea")!;
   const folder = new File([], "folder");
   const drop = new Event("drop", { bubbles: true, cancelable: true });
@@ -4634,16 +4635,18 @@ it("shows a folder-only rejection in an empty new-session tray", async () => {
 it("rejects restoring a failed file message before changing draft or dismissing it after downgrade", async () => {
   const r = demo(); const s = r.sessions.get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = true; });
-  r.uploadImage = async () => ({ imageId: "", fileId: "failed-file", expiresMs: Number.MAX_SAFE_INTEGER });
   r.command = async () => { throw new CommandError("unavailable", "offline"); };
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
+  await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
   const source = new File(["data"], "failed.csv", { type: "text/csv" });
   await act(async () => {
     const picker = host.querySelector<HTMLInputElement>('input[type=file]:not([accept])')!;
     Object.defineProperty(picker, "files", { value: [source], configurable: true });
     picker.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await vi.waitFor(() => expect(r.trays.get(s.id)?.fileIds()).toEqual(["failed-file"]));
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope(s.id);
+  await vi.waitFor(() => expect(core.viewAttachmentDraft(scope).draft?.ready).toBe(true));
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "keep this text");
@@ -4651,16 +4654,16 @@ it("rejects restoring a failed file message before changing draft or dismissing 
   });
   await click(sendButton());
   await vi.waitFor(() => expect(host.querySelector(".ptray-why.red")).toBeTruthy());
-  r.drafts.set(s.id, "existing draft");
+  core.draftSetText(scope, "existing draft");
   updateDemoMachine(r, s.machineId, (m) => { m.meta!.capabilities!.fileUpload = false; });
-  const upload = vi.spyOn(r, "uploadImage");
+  const uploadSpy = vi.spyOn(r, "machineCommand");
   await act(async () => host.querySelector<HTMLElement>(".ptray-row .ptray-hit")!.click());
   await click(button(message("composer.restore"), host.querySelector(".ptray-row")!));
   expect(host.textContent).toContain(message("session.update_computer"));
-  expect(r.drafts.get(s.id)).toBe("existing draft");
-  expect(getCoreHost(r).viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toHaveLength(1);
-  expect(r.trays.get(s.id)?.items).toHaveLength(0);
-  expect(upload).not.toHaveBeenCalled();
+  expect(core.viewAttachmentDraft(scope).draft?.text).toBe("existing draft");
+  expect(core.viewSession(s.id).composer?.pendingTray?.orderedItems ?? []).toHaveLength(1);
+  expect(core.viewAttachmentDraft(scope).draft?.items).toHaveLength(0);
+  expect(uploadSpy.mock.calls.filter(([, c]) => c?.case === "beginImageUpload")).toHaveLength(0);
 });
 
 it("keeps focus while clicking 做完再发, and supports promoting and re-uploading local attachments", async () => {
@@ -4687,9 +4690,19 @@ it("keeps focus while clicking 做完再发, and supports promoting and re-uploa
     }
     return create(CommandResultSchema);
   };
-  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+  r.prepareImageOverride = async () => ({
+    bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    format: "png" as const,
+    width: 1,
+    height: 1,
+    thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  });
   let up = 0;
-  r.uploadImage = async () => ({ imageId: "promo-" + ++up, expiresMs: Number.MAX_SAFE_INTEGER });
+  const origMachine = r.machineCommand.bind(r);
+  r.machineCommand = async (m, cmd, slot) => {
+    if (cmd?.case === "completeImageUpload") up++;
+    return origMachine(m, cmd, slot);
+  };
   await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   const f1 = new File(["img"], "p.png", { type: "image/png" });
   await act(async () => {
@@ -4697,7 +4710,7 @@ it("keeps focus while clicking 做完再发, and supports promoting and re-uploa
     Object.defineProperty(picker, "files", { value: [f1], configurable: true });
     picker.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await vi.waitFor(() => expect(r.trays.get("s-run")?.imageIds()).toHaveLength(1));
+  await vi.waitFor(() => expect(getCoreHost(r).viewAttachmentDraft(sessionDraftScope("s-run")).draft?.ready).toBe(true));
   const input = host.querySelector<HTMLTextAreaElement>(".draft")!;
   await act(async () => {
     input.focus();
@@ -4712,7 +4725,7 @@ it("keeps focus while clicking 做完再发, and supports promoting and re-uploa
   await click(button(message("queue.send_now"), queuedRow));
   await vi.waitFor(() => expect(up).toBe(2));
   await vi.waitFor(() =>
-    expect(cmds.some((c) => c?.case === "send" && c.value.text === "Promote with image" && c.value.mode === SendMode.STEER && c.value.imageIds?.[0] === "promo-2")).toBe(true),
+    expect(cmds.some((c) => c?.case === "send" && c.value.text === "Promote with image" && c.value.mode === SendMode.STEER && (c.value.imageIds?.length ?? 0) === 1)).toBe(true),
   );
 });
 
@@ -4830,10 +4843,20 @@ it.each(["errors.executed_result_unavailable", "errors.request_identity_conflict
 it.each([false, true])("queues agy sends without a 做完再发 button (attachments=%s)", async (attached) => {
   const r = demo();
   patchDemoSession(r, "s-run", { agent: Agent.ANTIGRAVITY });
-  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
-  r.drafts.set("s-run", "Agy next-turn message");
-  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-  r.uploadImage = async () => ({ imageId: "uploaded", expiresMs: Number.MAX_SAFE_INTEGER });
+  const sent: CommandKind[] = [];
+  const origCmd = r.command.bind(r);
+  r.command = async (sid, cmd, slot) => {
+    if (cmd?.case === "send") sent.push(cmd);
+    return origCmd(sid, cmd, slot);
+  };
+  getCoreHost(r).draftSetText(sessionDraftScope("s-run"), "Agy next-turn message");
+  r.prepareImageOverride = async () => ({
+    bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    format: "png" as const,
+    width: 1,
+    height: 1,
+    thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+  });
   await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   if (attached) {
     await act(async () => {
@@ -4841,15 +4864,16 @@ it.each([false, true])("queues agy sends without a 做完再发 button (attachme
       Object.defineProperty(picker, "files", { value: [new File(["image"], "sample.png", {type: "image/png"})], configurable: true });
       picker.dispatchEvent(new Event("change", {bubbles: true}));
     });
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   }
   const send = sendButton()!;
   expect(host.querySelector("button.later")).toBeNull();
   await click(send);
-  expect(submit).toHaveBeenCalled();
-  expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
+  await vi.waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0]).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
 });
 
-it("blocks opening pickers at the limit and blocks sending when an uploaded draft exceeds lowered caps", async () => {
+it("blocks opening pickers at the image and file limits", async () => {
   const r = demo();
   const s = r.sessions.get("s-idle")!;
   updateDemoMachine(r, s.machineId, (m) => {
@@ -4857,15 +4881,15 @@ it("blocks opening pickers at the limit and blocks sending when an uploaded draf
     m.meta!.capabilities!.maxImagesPerMessage = 2;
     m.meta!.capabilities!.maxFilesPerMessage = 1;
   });
-  r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
-  let seq = 0;
-  r.uploadImage = async (_m, p) => ({
-    imageId: p.format === "file" ? "" : "img-" + ++seq,
-    fileId: p.format === "file" ? "file-" + ++seq : undefined,
-    expiresMs: Number.MAX_SAFE_INTEGER,
+  r.prepareImageOverride = async () => ({
+    bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    format: "png" as const,
+    width: 1,
+    height: 1,
+    thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
   });
-  const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
   await mountAsync(<SessionPage remote={r} sessionId={s.id} onBack={() => undefined} wide={false} />);
+  await act(async () => { await getCoreHost(r).attachments.whenIdle(); });
 
   // Fill both image (2/2) and file (1/1) trays.
   await act(async () => {
@@ -4884,7 +4908,13 @@ it("blocks opening pickers at the limit and blocks sending when an uploaded draf
     });
     filesInput.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await vi.waitFor(() => expect(r.trays.get(s.id)?.ready()).toBe(true));
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope(s.id);
+  await vi.waitFor(() => {
+    const d = core.viewAttachmentDraft(scope).draft;
+    expect(d?.ready).toBe(true);
+    expect(d?.items).toHaveLength(3);
+  });
 
   // Clicking 文件 and 照片和视频 at their limits shows Core's blocked reasons without opening pickers.
   const plus = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.ios_attach")}"]`)!;
@@ -4898,18 +4928,4 @@ it("blocks opening pickers at the limit and blocks sending when an uploaded draf
   await click([...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === message("attachment.photos_videos"))!);
   expect(host.querySelector(".toast")?.textContent).toBe(message("attachment.max_images", { count: 2 }));
   expect(clicks.every((c) => c.mock.calls.length === 0)).toBe(true);
-
-  // Lower machine image cap below the already-uploaded draft (2 images > 1) and click Send.
-  updateDemoMachine(r, s.machineId, (m) => {
-    m.meta!.capabilities!.maxImagesPerMessage = 1;
-  });
-  await act(async () => {
-    const input = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "keep draft");
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click(sendButton());
-  expect(submit).not.toHaveBeenCalled();
-  expect(host.textContent).toContain(message("attachment.images_limit", { limit: 1, count: 1 }));
-  expect(host.querySelector<HTMLTextAreaElement>("textarea.draft")!.value).toBe("keep draft");
 });

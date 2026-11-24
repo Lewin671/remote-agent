@@ -350,4 +350,129 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
     await store2.clearAll();
     expect((await store2.list()).entries).toHaveLength(0);
   });
+
+  it("real-Core smoke: prepares, chunk-uploads, sends via Outbox, restores Draft & Outbox across reload, and GCs orphan blobs", async () => {
+    const { DemoRemote } = await import("./dev/demo");
+    const { getCoreHost, sessionDraftScope } = await import("./core/host");
+    const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
+
+    const sharedStore = new MemoryAttachmentStore();
+    const orphanRef = sharedStore.stageBlob(new Blob(["orphan-bytes"]));
+    await sharedStore.write(DraftStorageBucket.DRAFT, "session:orphan-seed", new Uint8Array([1]));
+    await sharedStore.delete(DraftStorageBucket.DRAFT, "session:orphan-seed");
+
+    const r1 = DemoRemote.create(new URLSearchParams(), async () => undefined, sharedStore);
+    r1.prepareImageOverride = async () => ({
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]),
+      format: "png",
+      width: 16,
+      height: 12,
+      thumbBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    });
+    const uploadedCmds: string[] = [];
+    const origMachine = r1.machineCommand.bind(r1);
+    r1.machineCommand = async (m, cmd, slot) => {
+      if (cmd?.case) uploadedCmds.push(cmd.case);
+      return origMachine(m, cmd, slot);
+    };
+    let sendResolve!: () => void;
+    const sendBlocked = new Promise<void>((res) => {
+      sendResolve = res;
+    });
+    let sentImageIds: string[] = [];
+    let sentFileIds: string[] = [];
+    r1.command = async (_sid, cmd) => {
+      if (cmd?.case === "send") {
+        sentImageIds = [...(cmd.value.imageIds ?? [])];
+        sentFileIds = [...(cmd.value.fileIds ?? [])];
+        await sendBlocked;
+      }
+      return create(CommandResultSchema);
+    };
+
+    try {
+      const host1 = getCoreHost(r1);
+      await host1.warmLocalCache("");
+      r1.start();
+      // Enable file uploads on mac
+      const dm = (r1 as unknown as { demoMachines: Map<string, { meta?: { capabilities?: { fileUpload: boolean } } }> }).demoMachines.get("mac")!;
+      dm.meta!.capabilities!.fileUpload = true;
+      r1.machines.get("mac")!.meta!.capabilities!.fileUpload = true;
+      (r1 as unknown as { syncDemoToCore(): void }).syncDemoToCore();
+
+      // Draft 1: session s-idle with image + file, then send (leaves Outbox in flight)
+      const s1 = sessionDraftScope("s-idle");
+      host1.draftOpen(s1, "mac");
+      await host1.attachments.whenIdle();
+      host1.draftSetText(s1, "send with image and file");
+      const imgFile = new File(["img-src"], "pic.png", { type: "image/png" });
+      const txtFile = new File(["hello-file"], "notes.txt", { type: "text/plain" });
+      host1.stageAndAddDraftItems(
+        s1,
+        [
+          { file: imgFile, name: imgFile.name, mimeType: imgFile.type, sizeBytes: imgFile.size },
+          { file: txtFile, name: txtFile.name, mimeType: txtFile.type, sizeBytes: txtFile.size },
+        ],
+        false,
+      );
+      await vi.waitFor(() => {
+        const d = host1.viewAttachmentDraft(s1).draft;
+        expect(d?.ready).toBe(true);
+        expect(d?.items).toHaveLength(2);
+      });
+      expect(uploadedCmds).toContain("beginImageUpload");
+      expect(uploadedCmds).toContain("putImageChunk");
+      expect(uploadedCmds).toContain("completeImageUpload");
+
+      host1.draftSendSession("s-idle", 1);
+      await vi.waitFor(() => expect(sentImageIds).toHaveLength(1));
+      expect(sentFileIds).toHaveLength(1);
+
+      // Draft 2: session s-run unsent draft persisted across reload
+      const s2 = sessionDraftScope("s-run");
+      host1.draftOpen(s2, "mac");
+      await host1.attachments.whenIdle();
+      host1.draftSetText(s2, "persisted draft text");
+      const img2 = new File(["img-2"], "keep.png", { type: "image/png" });
+      host1.stageAndAddDraftItems(
+        s2,
+        [{ file: img2, name: img2.name, mimeType: img2.type, sizeBytes: img2.size }],
+        false,
+      );
+      await vi.waitFor(() => {
+        const d = host1.viewAttachmentDraft(s2).draft;
+        expect(d?.ready).toBe(true);
+        expect(d?.items).toHaveLength(1);
+      });
+      await host1.attachments.whenIdle();
+
+      // Reload into a brand-new CoreHost sharing the same AttachmentStore
+      const r2 = DemoRemote.create(new URLSearchParams(), async () => undefined, sharedStore);
+      r2.prepareImageOverride = r1.prepareImageOverride;
+      try {
+        const host2 = getCoreHost(r2);
+        await host2.warmLocalCache("");
+        r2.start();
+        await host2.attachments.whenIdle();
+
+        // Orphan blob from before reload should have been GC'd by Core's startup scan
+        expect(await sharedStore.getLocalBlob(orphanRef)).toBeUndefined();
+
+        // Persisted draft for s-run is restored with text + 1 image (not duplicated!)
+        host2.draftOpen(s2, "mac");
+        const restoredDraft = host2.viewAttachmentDraft(s2).draft!;
+        expect(restoredDraft.text).toBe("persisted draft text");
+        expect(restoredDraft.items).toHaveLength(1);
+
+        // Pending Outbox for s-idle is restored into pending tray
+        const restoredTray = host2.viewSession("s-idle").composer?.pendingTray?.orderedItems ?? [];
+        expect(restoredTray.some((it) => it.text === "send with image and file" && it.attachmentCount === 2)).toBe(true);
+      } finally {
+        r2.dispose();
+      }
+    } finally {
+      sendResolve();
+      r1.dispose();
+    }
+  });
 });

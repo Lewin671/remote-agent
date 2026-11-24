@@ -7,6 +7,7 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { patchSyncState } from "../test/remote-fixture";
+import { getCoreHost, newSessionDraftScope } from "../core/host";
 import { DemoRemote } from "../dev/demo";
 import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
 import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
@@ -345,8 +346,10 @@ describe("a disk that is nearly full", () => {
     await click(button("让 Agent 帮我清理"));
     expect(go).toHaveBeenCalledWith("p/" + encodeURIComponent("/Users/me/Code/foo"));
     const cleanupPrompt = message("machine_status.cleanup_prompt");
-    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(cleanupPrompt);
-    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe("这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。");
+    const core = getCoreHost(r);
+    const scope = newSessionDraftScope("/Users/me/Code/foo");
+    expect(core.viewAttachmentDraft(scope).draft?.text).toBe(cleanupPrompt);
+    expect(core.viewAttachmentDraft(scope).draft?.text).toBe("这台电脑磁盘空间不够了。帮我看看是什么占的，按占用从大到小列出来，说明哪些可以安全清理。先不要删除任何东西，等我确认。");
     expect(r.draftMachines.get("/Users/me/Code/foo")).toBe("mac");
     expect(sent.mock.calls.filter((call) => (call[1] as CommandKind | undefined)?.case === "createSession")).toHaveLength(0);
     // The new-session page shows it in the box, ready to be edited, not sent.
@@ -359,14 +362,16 @@ describe("a disk that is nearly full", () => {
   it("adds the prompt after a draft already there, once: a draft that has it is left as it is", async () => {
     const r = demo("ms-full&ms=tight");
     const go = vi.fn();
-    r.drafts.set("new:/Users/me/Code/foo", "先看看 node_modules");
+    const core = getCoreHost(r);
+    const scope = newSessionDraftScope("/Users/me/Code/foo");
+    core.draftSetText(scope, "先看看 node_modules");
     mount(<MachineStatusPage remote={r} id="mac" go={go} onBack={none} />);
     await ready();
     await click(button("让 Agent 帮我清理"));
     const once = "先看看 node_modules\n\n" + message("machine_status.cleanup_prompt");
-    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
+    expect(core.viewAttachmentDraft(scope).draft?.text).toBe(once);
     await click(button("让 Agent 帮我清理"));
-    expect(r.drafts.get("new:/Users/me/Code/foo")).toBe(once);
+    expect(core.viewAttachmentDraft(scope).draft?.text).toBe(once);
   });
 
   it("asks for a folder on this computer when none has been used", async () => {

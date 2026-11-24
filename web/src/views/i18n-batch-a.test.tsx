@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { localeStore, t, useLocale } from "../i18n";
-import { getCoreHost } from "../core/host";
+import { getCoreHost, newSessionDraftScope } from "../core/host";
 import { renderText } from "../core/text";
 import { DemoRemote } from "../dev/demo";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
@@ -56,7 +56,7 @@ it.each(["zh-CN", "en"] as const)("starts the chosen model with the original dra
   const starts = send.mock.calls.filter(([, command]) => command?.case === "createSession");
   expect(starts).toHaveLength(1);
   expect(starts[0][1]).toMatchObject({ case: "createSession", value: { cwd: "/example/project", prompt, model: "gpt-6-sol", mode: ApprovalMode.UNSPECIFIED } });
-  expect(remote.drafts.has("new:/example/project")).toBe(false);
+  expect(getCoreHost(remote).viewAttachmentDraft(newSessionDraftScope("/example/project")).draft?.text ?? "").toBe("");
 });
 
 it("keeps the draft, input node and status meaning when the test locale changes", async () => {
