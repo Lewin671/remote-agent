@@ -252,6 +252,11 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 		}
 		ct.relayOpen = false
 		ct.stream.CloseLeg("relay", ct.relayGen)
+		// C: If the stream already entered user confirmation (e.g. pure-relay fail-stop
+		// delivered via TerminalFrame_Closed before relay EOF), keep the confirmation gate active.
+		if ct.needsConfirm {
+			return c.take()
+		}
 		if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok && ct.directAttached {
 			c.triggerRelayRecovery(now, r, ct)
 			return c.take()
@@ -420,8 +425,13 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 	case linkcore.TermOutputReady:
 		var payloads [][]byte
 		needAck := false
+		relayFailStop := false
 		for cur := ready; cur != nil; {
-			payloads = append(payloads, cur.PlainBytes)
+			if isRelayFailStopFrame(cur.PlainBytes) {
+				relayFailStop = true
+			} else {
+				payloads = append(payloads, cur.PlainBytes)
+			}
 			next, emitAck, cerr := ct.stream.ConfirmRendered(uint64(now), cur.Seq)
 			if cerr != nil {
 				break
@@ -434,6 +444,18 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 		if len(payloads) > 0 {
 			c.emit(CoordTerminalDeliver{StreamID: ct.streamID, Payloads: payloads})
 		}
+		if relayFailStop {
+			ct.needsConfirm = true
+			ct.disconnectedAll = false
+			ct.stream.NeedsUserConfirm = true
+			ct.stream.Paused = true
+			c.emit(CoordTerminalState{
+				StreamID:          ct.streamID,
+				State:             TermStateFailStop,
+				Reason:            "input_fail_stop",
+				NeedsConfirmation: true,
+			})
+		}
 		if needAck {
 			c.sendClientOutputAck(now, ct)
 		}
@@ -442,6 +464,20 @@ func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq
 	}
 	_ = fromDirect
 	_ = pcID
+}
+
+// isRelayFailStopFrame checks whether a plaintext TerminalFrame carries a
+// daemon pure-relay fail-stop Closed message (proto field 3 prefixed with TermRelayFailStopTag).
+func isRelayFailStopFrame(plain []byte) bool {
+	if len(plain) == 0 {
+		return false
+	}
+	fields, err := peerwire.Parse(plain, 1)
+	if err != nil {
+		return false
+	}
+	f, ok := fields[3]
+	return ok && bytes.HasPrefix(f.B, []byte(linkcore.TermRelayFailStopTag))
 }
 
 func (c *Coordinator) bufferEarlyOutput(now int64, streamID string, seq uint64, frameHash, payload []byte, fromDirect bool, pcID uint64) {

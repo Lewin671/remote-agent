@@ -822,7 +822,13 @@ func (lt *liveTerminal) executeContiguousInput(tf *linkcore.TermFrame) *linkcore
 	lt.mu.Unlock()
 
 	if failStop != nil {
-		lt.sendControlStreamFailed(*failStop, fs)
+		if !lt.sendControlStreamFailed(*failStop, fs) {
+			// C: Pure-relay (or non-direct) stream has no direct control channel for
+			// StreamFailed -> notify via TerminalFrame_Closed and cancel stream so
+			// typing never silently freezes.
+			lt.abortRelayFailStop(*failStop)
+			return nil
+		}
 	}
 	if emitACK {
 		lt.sendControlAck(wm)
@@ -943,30 +949,49 @@ func (lt *liveTerminal) acceptAndApplyFrame(wire devicesec.Wire, tf *linkcore.Te
 	return outcome, definitelyInjected, possiblyInjected, failureReason
 }
 
-func (lt *liveTerminal) sendDirectControl(typ uint64, body []byte) {
+func (lt *liveTerminal) sendDirectControl(typ uint64, body []byte) bool {
 	dm := lt.ep.direct.Load()
 	if dm == nil || len(body) == 0 {
-		return
+		return false
 	}
 	if dp, ok := dm.activePeerFor(lt.ownerPeer); ok && dp.session != nil && dp.peerTerminalDirect.Load() {
-		_ = dp.session.SendControl(typ, body)
+		return dp.session.SendControl(typ, body)
 	}
+	return false
 }
 
 func (lt *liveTerminal) sendControlAck(wm linkcore.TermWatermark) {
-	lt.sendDirectControl(linkcore.ControlAck, linkcore.EncodeTermAck(linkcore.TermAckMsg{
+	_ = lt.sendDirectControl(linkcore.ControlAck, linkcore.EncodeTermAck(linkcore.TermAckMsg{
 		Stream:    lt.streamID,
 		Direction: linkcore.TermDirToDaemon,
 		State:     wm,
 	}))
 }
 
-func (lt *liveTerminal) sendControlStreamFailed(detail linkcore.TermFrameStatus, state linkcore.TermFlowState) {
-	lt.sendDirectControl(linkcore.ControlStreamFailed, linkcore.EncodeStreamFailed(linkcore.StreamFailedMsg{
+func (lt *liveTerminal) sendControlStreamFailed(detail linkcore.TermFrameStatus, state linkcore.TermFlowState) bool {
+	return lt.sendDirectControl(linkcore.ControlStreamFailed, linkcore.EncodeStreamFailed(linkcore.StreamFailedMsg{
 		Stream:       lt.streamID,
 		InputFailure: detail,
 		State:        state,
 	}))
+}
+
+// abortRelayFailStop notifies a pure-relay (or non-direct) client via TerminalFrame_Closed
+// and cancels the stream when input fail-stop occurs without a direct control channel (C).
+func (lt *liveTerminal) abortRelayFailStop(detail linkcore.TermFrameStatus) {
+	slog.Warn("relay: terminal input fail-stop without direct control; closing stream",
+		"stream", lt.streamID[:min(8, len(lt.streamID))],
+		"seq", detail.Seq, "outcome", detail.Outcome)
+	lt.mu.Lock()
+	lt.explicitClosed = true
+	rp := lt.relayPath
+	lt.mu.Unlock()
+	msg := linkcore.TermRelayFailStopTag + " " + i18n.TerminalConfirmRebuildInputBody("en")
+	_ = lt.sendOutput(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Closed{Closed: msg}})
+	if rp != nil {
+		rp.Finish()
+	}
+	lt.cancel()
 }
 
 // replayIncomplete checks whether ReplayOutput failed or truncated before targetSeq (N8).

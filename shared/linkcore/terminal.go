@@ -29,6 +29,9 @@ const (
 	TermRetiredRetainMs     uint64 = 30_000 // 30 s retired query window
 	TermMaxClientStreams           = 8
 	TermBarrierTimeoutMs    uint64 = 5_000 // 5 s barrier wait
+	// TermRelayFailStopTag prefixes TerminalFrame.closed when daemon must abort a
+	// pure-relay stream after input fail-stop without a direct control channel (C).
+	TermRelayFailStopTag = "[input_fail_stop]"
 )
 
 var (
