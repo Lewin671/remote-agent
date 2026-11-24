@@ -8,11 +8,6 @@ final class RelayPath: Path {
     private let sleep: Sleeper
     private let prepareToken: @Sendable (Bool) async throws -> Void
     private let readToken: @Sendable () async throws -> String
-    private struct Observation: Sendable {
-        var peers: [String: PeerState] = [:]
-        var fallback = PeerState()
-    }
-    private let observation = Feed(Observation())
 
     init(api: Api, sleep: @escaping Sleeper,
          prepare: @escaping @Sendable (Bool) async throws -> Void = { _ in },
@@ -20,21 +15,6 @@ final class RelayPath: Path {
         self.api = api
         self.sleep = sleep
         prepareToken = prepare; readToken = token
-    }
-    func observe(_ peers: [String: PeerState], fallback: PeerState) { observation.set(Observation(peers: peers, fallback: fallback)) }
-    func status(_ machineId: String) -> PeerState {
-        let state = observation.value
-        return state.peers[machineId] ?? state.fallback
-    }
-    static func discovery(_ machine: MachineView?, ready: Bool = true, authorized: Bool = true, unlinked: Bool = false) -> PeerState {
-        var status = PeerState()
-        status.reachable = machine?.online == true
-        status.ready = ready
-        status.authorized = authorized
-        status.unlinked = unlinked
-        status.protocolVersion = machine?.meta?.protocolVersion
-        status.capabilities = machine?.meta.flatMap { $0.hasCapabilities ? $0.capabilities : nil }
-        return status
     }
     func attempt(handoff: @escaping @Sendable () throws -> Void) -> any PathAttempt {
         attempt(attemptId: newRequestId(), handoff: handoff)

@@ -730,19 +730,3 @@ extension Feed {
         throw TestFailure("cancelled waiting for \(what)")
     }
 }
-
-extension Remote {
-    func awaitState(
-        _ what: String, _ ok: @escaping @Sendable (RemoteState) -> Bool
-    ) async throws -> RemoteState {
-        do {
-            return try await state.await(what, ok)
-        } catch {
-            // Lengths and IDs only: a state holds titles.
-            let st = current
-            throw TestFailure(
-                "cancelled waiting for \(what): \(st.sessions.count) sessions, \(st.conn), link \(st.link), removed \(st.removed), error \(st.error)"
-            )
-        }
-    }
-}

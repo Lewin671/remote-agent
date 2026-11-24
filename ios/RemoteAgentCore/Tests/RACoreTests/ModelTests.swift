@@ -4,8 +4,15 @@ import Testing
 
 @testable import RACore
 
-/// Tests for the remaining shell helpers in `Model.swift`, `Projects.swift`, and `JvmText.swift`.
+/// Tests for the remaining shell helpers in `Model.swift`, `Agents.swift`, and `JvmText.swift`.
 @Suite(.timeLimit(.minutes(2))) struct ModelTests {
+    private static func epochMs(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int, zone: TimeZone) -> Int64 {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = zone
+        let date = cal.date(from: DateComponents(year: y, month: mo, day: d, hour: h, minute: mi))!
+        return Int64(date.timeIntervalSince1970 * 1000)
+    }
+
     @Test func titleInputEnforcesSingleLineAndCodePointLimit() {
         // 60 code points, not UTF-16 units: an emoji counts once and is never cut in half.
         #expect(titleInput(String(repeating: "字", count: 61)) == String(repeating: "字", count: 60))
@@ -24,29 +31,16 @@ import Testing
         #expect(titleInput("a\n\r\n\rb\nc") == "a b c")
     }
 
-    @Test func saysWhichSideToUpdateWhenProtocolVersionsDiffer() {
-        func m(_ v: UInt32) -> MachineView {
-            MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local"; $0.protocolVersion = v })
-        }
-        #expect(protocolMismatch(m(peerProtocolVersion)) == nil)
-        #expect(protocolMismatch(m(peerProtocolVersion - 1)) == "mac 上的 remote-agent 版本较旧，请在电脑上更新后再试")
-        #expect(protocolMismatch(m(peerProtocolVersion + 1)) == L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd())
-        // Not read yet: the daemon answers for itself.
-        #expect(protocolMismatch(MachineView(id: "m", online: true, lastSeenMs: 0)) == nil)
-        #expect(protocolMismatch(nil) == nil)
-    }
-
     @Test func namesAgentsAndTimes() {
         #expect(agentName(.unspecified) == "Codex")
         #expect(agentName(.claude) == "Claude Code")
-        let zone = Mk.shanghai
-        let now = Mk.at(2026, 9, 29, 14, 0)
+        let zone = TimeZone(identifier: "Asia/Shanghai")!
+        let now = Self.epochMs(2026, 9, 29, 14, 0, zone: zone)
         #expect(whenText(now - 10_000, now: now, zone: zone) == L10n.timeJustNow())
         #expect(whenText(now - 180_000, now: now, zone: zone) == L10n.timeMinutesAgo(count: 3))
         #expect(whenText(now - (4 * 3600 + 55 * 60) * 1000, now: now, zone: zone) == "9:05")
         #expect(whenText(now - 24 * 3600_000, now: now, zone: zone) == L10n.timeYesterday())
         #expect(whenText(now - 48 * 3600_000, now: now, zone: zone) == L10n.timeMonthDay(day: 27, month: 9))
-        #expect(projectName("/Users/me/Code/foo/") == "foo")
         #expect(plain("修 `bug`") == "修 bug")
     }
 
@@ -94,9 +88,6 @@ import Testing
     }
 
     @Test func idsAndNamesAreCutByUtf16Units() {
-        #expect(machineName(MachineView(id: "0123456789abcdef", online: true, lastSeenMs: 0)) == "01234567")
-        #expect(machineName(nil, id: "") == L10n.commonUnknownComputer())
-        #expect(machineName(MachineView(id: "x", online: true, lastSeenMs: 0, meta: .with { $0.hostname = "mac.local" })) == "mac")
         // An emoji is two units; a cut through one loses the half Swift cannot hold.
         #expect("ab😀cd".jvmTake(3) == "ab")
         #expect("ab😀cd".jvmTake(4) == "ab😀")

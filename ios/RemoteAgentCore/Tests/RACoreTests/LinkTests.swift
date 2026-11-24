@@ -4,21 +4,6 @@ import Testing
 import os
 @testable import RACore
 
-private func linkedState(_ id: String) -> RemoteState {
-    var peer = PeerState()
-    peer.reachable = true; peer.ready = true; peer.authorized = true
-    peer.relayRequired = false
-    peer.protocolVersion = peerProtocolVersion
-    peer.capabilities = .with { $0.fileUpload = true; $0.scheduledTasks = true }
-    var state = RemoteState()
-    state.conn = .offline
-    state.link = .noServer
-    state.machines[id] = MachineView(id: id, online: false, lastSeenMs: 0,
-        meta: .with { $0.protocolVersion = peerProtocolVersion - 1 }, linkState: peer)
-    state.currentMachines = [id]
-    return state
-}
-
 private final class GuardedSecurityStore: SecurityStoreV4, Sendable {
     let base: MemorySecurityStoreV4
     let blocked = OSAllocatedUnfairLock(initialState: false)
@@ -56,27 +41,6 @@ private final class GuardedSecurityStore: SecurityStoreV4, Sendable {
 
 extension ServerTests {
     @Suite(.timeLimit(.minutes(2))) struct LinkTests {
-        @Test func linkProjectionControlsCommandsAndProjectGates() async throws {
-            try await World.run(setUp: { w in
-                await w.daemon.setAnswer { _, _ in .with { $0.createSession.session.id = "created" } }
-                try await w.daemon.connect()
-            }) { w in
-                let remote = try await w.client()
-                let state = linkedState(w.daemon.id)
-                await remote.showForTest(state: state)
-                #expect(state.peer(w.daemon.id).available)
-                #expect(capabilities(state.machines[w.daemon.id])?.fileUpload == true)
-                #expect(protocolMismatch(state.machines[w.daemon.id]) == nil)
-                #expect(state.peer(w.daemon.id).canProbe(false))
-                let command = PBCommand.with { $0.createSession.cwd = "/work/example"; $0.createSession.fileIds = ["original-file"] }
-                let prepared = try remote.prepare(machineId: w.daemon.id, sessionId: "", command)
-                _ = try await remote.forward(prepared)
-                let received = try await w.daemon.commands.take()
-                #expect(received.0.requestID == prepared.requestId)
-                #expect(received.1.createSession.fileIds == ["original-file"])
-            }
-        }
-
         @Test func reachabilityCannotAuthorizeOrClearPriorEvidence() async throws {
             try await World.run(setUp: { _ in }) { w in
                 let account = try await w.join()
@@ -91,7 +55,6 @@ extension ServerTests {
                 defer { remote.close() }
                 _ = try await remote.currentToken()
                 try await remote.ensureSecurityBootstrapped()
-                await remote.showForTest(state: linkedState(w.daemon.id))
                 let prepared = try remote.prepare(machineId: w.daemon.id, sessionId: "", PBCommand.with { $0.getSettings = PBGetSettingsRequest() })
                 store.blocked.withLock { $0 = true }
                 do { _ = try await remote.forward(prepared); Issue.record("authorization bypassed") }

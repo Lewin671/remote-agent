@@ -310,8 +310,6 @@ extension Remote {
             if mp.version > peerProtocolVersion {
                 throw CommandError("failed_precondition", L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd(), outcome: prior ? .unknown : .notSent)
             }
-        } else if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
-            throw CommandError("failed_precondition", refusal, outcome: prior ? .unknown : .notSent)
         }
         let bulkHint = directBulkHint(p.command)
         var forceRelay = false

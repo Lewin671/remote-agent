@@ -2,8 +2,7 @@
 // Sync state (connection machine, directory/paging, event buffers/LRU, live polling,
 // prefs CAS, command retries/outcome classification) lives in Go `clientcore/sync`.
 // `Remote` only provides token login, WebSocket stream frames, RPC execution,
-// DirectExecutor bypass, CipherCache I/O, and cryptographic opening/sealing, plus
-// transitional Step 4 `Feed` mirror pushed from Core's `SyncStateView`.
+// DirectExecutor bypass, CipherCache I/O, and cryptographic opening/sealing.
 import Connect
 import Foundation
 import RAProto
@@ -11,6 +10,7 @@ import SwiftProtobuf
 import os
 
 public let commandTTLMs: Int64 = 60_000
+public let projectPrefsID = "project-prefs"
 
 private let streamFrameBytes = 2 << 20
 
@@ -226,9 +226,6 @@ public final actor Remote {
     var securityBootstrapped = false
     var securityBootstrapTask: Task<Void, Error>?
 
-    // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
-    public nonisolated let state: Feed<RemoteState>
-
     // Hooks installed by CoreHost so Core receives executor events and drives direct transport.
     var hostHooks: CoreHooks?
     public struct CoreHooks: Sendable {
@@ -300,7 +297,6 @@ public final actor Remote {
         self.frameQueueBytes = frameQueueBytes
         let builtApi = try Api(server: account.server, http: http)
         api = builtApi
-        state = Feed(RemoteState())
         let holder = WeakRemote()
         let closedFlag = self.closedLock
         let gate = DirectEventQueueGate()
@@ -369,8 +365,6 @@ public final actor Remote {
         holder.remote = self
     }
 
-    public nonisolated var current: RemoteState { state.value }
-
     // MARK: - Wiring with CoreHost
 
     public func installCoreHooks(_ hooks: CoreHooks) {
@@ -414,7 +408,7 @@ public final actor Remote {
     }
 
     func machineIdForSession(_ sid: String) -> String {
-        sessionMachines[sid] ?? state.value.sessions[sid]?.machineId ?? ""
+        sessionMachines[sid] ?? ""
     }
 
     func machineIdForSessionIfKnown(_ sid: String) -> String? {
@@ -792,24 +786,12 @@ public final actor Remote {
             if let v = await currentCoreSyncStateView() {
                 return v.connection == .connected
             }
-            return state.value.conn == .online
         }
         return false
     }
 
     public func refreshDevices() async {
         await hostHooks?.onRefreshDevices()
-    }
-
-    // MARK: - Demo / Layout Fixtures
-
-    public func showForTest(state shown: RemoteState) {
-        state.set(shown)
-        var nextMachines = sessionMachines
-        for (sid, s) in shown.sessions {
-            nextMachines[sid] = s.machineId
-        }
-        if nextMachines != sessionMachines { sessionMachines = nextMachines }
     }
 
     func report(_ e: Error) {

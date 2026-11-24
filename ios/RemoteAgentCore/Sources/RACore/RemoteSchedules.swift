@@ -42,10 +42,6 @@ extension Remote {
             if v.removed || !v.isMember { return false }
             return v.trustedMachineIds.contains(id)
         }
-        if state.value.removed { return false }
-        if state.value.loaded {
-            return state.value.currentMachines.contains(id)
-        }
         return true
     }
 

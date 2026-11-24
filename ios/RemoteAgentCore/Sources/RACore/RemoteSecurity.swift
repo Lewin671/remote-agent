@@ -118,21 +118,23 @@ extension Remote {
         guard let cache else { return }
         let st = status ?? securityClient.currentStatus
         var candidates = Set<String>()
-        for m in state.value.machines.keys { candidates.insert(m) }
-        for d in state.value.devices.values where d.kind == .machine { candidates.insert(d.id) }
         for m in await cache.machines() { candidates.insert(m.id) }
         let view = await currentCoreSyncStateView()
-        if let view, view.securityLoaded {
-            for mid in view.archiveMachineIds { candidates.insert(mid) }
-            if view.removed || !view.isMember {
-                for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
+        if let view {
+            for m in view.machines { candidates.insert(m.machineID) }
+            for d in view.devices where d.kind == .machine { candidates.insert(d.deviceID) }
+            if view.securityLoaded {
+                for mid in view.archiveMachineIds { candidates.insert(mid) }
+                if view.removed || !view.isMember {
+                    for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
+                    return
+                }
+                let trusted = Set(view.trustedMachineIds)
+                for mid in candidates where !trusted.contains(mid) {
+                    await cache.removeBlob(name: "schedules/" + mid)
+                }
                 return
             }
-            let trusted = Set(view.trustedMachineIds)
-            for mid in candidates where !trusted.contains(mid) {
-                await cache.removeBlob(name: "schedules/" + mid)
-            }
-            return
         }
         if let st, st.removed || !st.isMember {
             for mid in candidates { await cache.removeBlob(name: "schedules/" + mid) }
@@ -401,11 +403,12 @@ extension Remote {
         } catch let e as CommandError {
             throw e
         } catch SecurityFailure.lease {
-            let devices = state.value.devices
-            let authId = state.value.authorityDeviceId
+            let view = await currentCoreSyncStateView()
+            let authId = view?.authorityDeviceID ?? ""
+            let managerName = (view?.hasManagerName == true ? renderCoreText(view!.managerName) : "").ifEmpty(L10n.securityClient())
             let renewal = authId == account.deviceId
                 ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
-                : L10n.securityIosOpenToRenew(value: String(describing: clientName(devices[authId], id: authId, among: devices)))
+                : L10n.securityIosOpenToRenew(value: managerName)
             throw CommandError(
                 "failed_precondition", L10nMessage.errorsIosExpiredControlRenewal(renewal: renewal))
         } catch {
