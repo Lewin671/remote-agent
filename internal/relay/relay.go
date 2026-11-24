@@ -66,6 +66,7 @@ type Relay struct {
 	termClock      func() time.Time
 	termZeroLegTTL time.Duration
 	termHubRef     atomic.Pointer[terminalHub]
+	directRef      atomic.Pointer[directManager]
 	// SchedulerNow and SchedulerAfter override the command scheduler clock and
 	// timers when non-nil; tests use them to avoid wall-clock races.
 	SchedulerNow   func() time.Time

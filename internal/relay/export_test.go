@@ -111,3 +111,73 @@ func TerminalRelayAttachGenForTest(r *Relay, streamID string) uint64 {
 	defer lt.mu.Unlock()
 	return lt.relayAttachGen
 }
+func TerminalHasDirectLegForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return false
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.stream.HasLeg("direct")
+}
+func TerminalHasRelayLegForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return false
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.relayPath != nil
+}
+func TerminalOutSeqForTest(r *Relay, streamID string) uint64 {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return 0
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.outSeq
+}
+func TerminalDirectLegIDForTest(r *Relay, streamID string) string {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return ""
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return ""
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.stream.LegID("direct")
+}
+func TerminalHasPendingDirectForTest(r *Relay, streamID string) bool {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	_, ok := h.pendingDirect[streamID]
+	return ok
+}
+func PeerTerminalDirectForTest(r *Relay, peerID string) bool {
+	dm := r.directRef.Load()
+	if dm == nil {
+		return false
+	}
+	dp, ok := dm.activePeerFor(peerID)
+	return ok && dp.peerTerminalDirect.Load()
+}

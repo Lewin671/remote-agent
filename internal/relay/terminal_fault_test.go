@@ -2,8 +2,13 @@ package relay_test
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -238,7 +243,7 @@ func TestPhase3TerminalDirectOnlyOutputReplayedOnDirectDrop(t *testing.T) {
 		t.Fatalf("expected seq=1 snapshot, got %d", seq)
 	}
 
-	// Attach direct leg ("d:...") and wait for daemon ack.
+	// Attach direct leg ("d:...") and wait deterministically until daemon attaches it.
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         streamID,
 		Session:        h.session,
@@ -248,7 +253,9 @@ func TestPhase3TerminalDirectOnlyOutputReplayedOnDirectDrop(t *testing.T) {
 	})) {
 		t.Fatal("AttachPath direct failed")
 	}
-	// Send one input over direct to ensure daemon processed AttachPath before emitting >4KiB output.
+	h.waitCond("direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 	if err := h.readPath.Write(h.ctx, h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("sync")}})); err != nil {
 		t.Fatal(err)
 	}
@@ -303,6 +310,9 @@ func TestPhase3TerminalExpiredInputEntersConfirmationGateN6(t *testing.T) {
 	})) {
 		t.Fatal("direct AttachPath failed")
 	}
+	h.waitCond("n6 direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// 1) Expired Resize at seq=1 (non-input) -> NonInputFailed, does NOT block seq=2 Input.
 	expResizeBody, _ := proto.Marshal(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 80, Rows: 24}}})
@@ -392,6 +402,9 @@ func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 	})) {
 		t.Fatal("direct AttachPath failed")
 	}
+	h.waitCond("m8 direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// Send valid seq=1 Resize and seq=2 Input to advance baseline.
 	if err := h.readPath.Write(h.ctx, h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Resize{Resize: &pb.TerminalResize{Cols: 80, Rows: 24}}})); err != nil {
@@ -494,7 +507,9 @@ func TestReview2Repro_HB_EarlyDirectAttachBufferedAndUnknownNonDirectRejected(t 
 	})) {
 		t.Fatal("failed to queue early direct AttachPath")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("pendingDirect stored", func() bool {
+		return relay.TerminalHasPendingDirectForTest(h.running, streamID)
+	})
 
 	termWS := h.openTerminal(streamID)
 	defer termWS.CloseNow()
@@ -582,7 +597,9 @@ func TestReview2Repro_N3_DirectReattachSameGenAfterClose(t *testing.T) {
 	})) {
 		t.Fatal("AttachPath #1 failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("direct leg #1 attached", func() bool {
+		return relay.TerminalDirectLegIDForTest(h.running, streamID) == "d:reattachleg001"
+	})
 
 	// Close direct leg #1 (Reason=0, path loss).
 	if !h.link.SendControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
@@ -593,7 +610,9 @@ func TestReview2Repro_N3_DirectReattachSameGenAfterClose(t *testing.T) {
 	})) {
 		t.Fatal("ClosePath #1 failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("direct leg #1 closed", func() bool {
+		return !relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// Re-attach direct leg #2 STILL with PathGeneration=1 (exact review2 N3 repro).
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
@@ -605,7 +624,9 @@ func TestReview2Repro_N3_DirectReattachSameGenAfterClose(t *testing.T) {
 	})) {
 		t.Fatal("AttachPath #2 (gen=1) failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("direct leg #2 attached", func() bool {
+		return relay.TerminalDirectLegIDForTest(h.running, streamID) == "d:reattachleg002"
+	})
 
 	want := bytes.Repeat([]byte("N316K"), (16<<10)/5+1)[:16<<10]
 	h.backend.term.outCh <- want
@@ -656,7 +677,9 @@ func TestReview2Repro_N4_DirectCloseBeforeRelayKeepsZeroLegWindow(t *testing.T) 
 	})) {
 		t.Fatal("AttachPath failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("n4 direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// Step 1: Close direct leg FIRST (Reason=0, network drop).
 	if !h.link.SendControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
@@ -667,14 +690,19 @@ func TestReview2Repro_N4_DirectCloseBeforeRelayKeepsZeroLegWindow(t *testing.T) 
 	})) {
 		t.Fatal("ClosePath failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("n4 direct leg closed", func() bool {
+		return !relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// Step 2: Close relay WS SECOND -> zero legs active, MUST stay alive in TTL window!
 	termWS.CloseNow()
+	h.waitCond("relay leg cleared while stream stays alive", func() bool {
+		return !relay.TerminalHasRelayLegForTest(h.running, streamID)
+	})
 	select {
 	case <-h.backend.term.Done():
 		t.Fatal("N4 regression: daemon canceled tmux immediately when direct closed before relay")
-	case <-time.After(300 * time.Millisecond):
+	default:
 	}
 
 	// Query Control 3 InputStatus -> daemon must report Available=true!
@@ -720,12 +748,19 @@ func TestReview2_N8_ReplayOverflowExplicitlyFailsWithHint(t *testing.T) {
 	})) {
 		t.Fatal("AttachPath failed")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("n8 direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
-	// Emit >2 MiB of output (exceeding TermOutputReplayMaxBytes = 2 MiB) without ACKing output.
+	// Emit >2 MiB of incompressible random output (exceeding TermOutputReplayMaxBytes = 2 MiB) without ACKing output.
 	const chunkSize = 32 << 10
-	const totalChunks = 76 // 2.43 MiB > 2 MiB replay buffer cap
-	chunk := bytes.Repeat([]byte("R"), chunkSize)
+	const totalChunks = 76 // ~2.43 MiB incompressible ciphertext > 2 MiB replay buffer cap
+	chunks := make([][]byte, totalChunks)
+	for i := range chunks {
+		b := make([]byte, chunkSize)
+		_, _ = rand.Read(b)
+		chunks[i] = b
+	}
 	reached := make(chan struct{})
 	go func() {
 		var totalBytes int
@@ -740,7 +775,7 @@ func TestReview2_N8_ReplayOverflowExplicitlyFailsWithHint(t *testing.T) {
 		close(reached)
 	}()
 	go func() {
-		for i := 0; i < totalChunks; i++ {
+		for _, chunk := range chunks {
 			select {
 			case h.backend.term.outCh <- chunk:
 			case <-h.ctx.Done():
@@ -814,5 +849,398 @@ func TestReview2_N9_LegacyPeerDoesNotReceivePhase3Control(t *testing.T) {
 		case <-deadline:
 			return
 		}
+	}
+}
+
+// TestReview3Repro_A_ZeroLegOutputSurvivesAndRetiredInputStatusUnavailable reproduces review3 A:
+//  1. In a Phase 3 stream's zero-leg window (direct closed, relay closed), terminal output MUST NOT
+//     close the stream; output is buffered for replay on reconnect and InputStatus returns Available=true.
+//  2. Once the stream is retired/stopped, InputStatus MUST return Available=false so the client
+//     enters confirmation/rebuild instead of Live with silently dropped inputs.
+func TestReview3Repro_A_ZeroLegOutputSurvivesAndRetiredInputStatusUnavailable(t *testing.T) {
+	var nowNano atomic.Int64
+	nowNano.Store(time.Now().UnixNano())
+	clock := func() time.Time { return time.Unix(0, nowNano.Load()) }
+	h := startPhase3PionHarnessWithOpt(t, func(r *relay.Relay) {
+		relay.SetTerminalClockForTest(r, 30*time.Second, clock)
+	})
+	h.advertisePhase3ClientCapabilities()
+	streamID := "a3112233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Attach direct leg -> stream becomes phase3Eligible.
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:rev3a000000001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath failed")
+	}
+	h.waitCond("rev3a direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
+
+	// Drop direct leg first, then close relay WS -> zero-leg window!
+	if !h.link.SendControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+		Stream:         streamID,
+		LegID:          "d:rev3a000000001",
+		PathGeneration: 1,
+		Reason:         0,
+	})) {
+		t.Fatal("ClosePath failed")
+	}
+	h.waitCond("rev3a direct leg closed", func() bool {
+		return !relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
+	termWS.CloseNow()
+	h.waitCond("relay leg cleared", func() bool {
+		return !relay.TerminalHasRelayLegForTest(h.running, streamID)
+	})
+
+	// Emit terminal output WHILE BOTH LEGS ARE DOWN -> stream MUST stay alive!
+	beforeSeq := relay.TerminalOutSeqForTest(h.running, streamID)
+	h.backend.term.outCh <- []byte("output-during-zero-leg\n")
+	h.waitCond("zero-leg output recorded", func() bool {
+		return relay.TerminalOutSeqForTest(h.running, streamID) > beforeSeq
+	})
+	select {
+	case <-h.backend.term.Done():
+		t.Fatal("A regression: zero-leg terminal output closed the stream")
+	default:
+	}
+
+	// InputStatus while live in zero-leg window returns Available=true.
+	if !h.link.SendControl(linkcore.ControlInputStatus, linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
+		Stream:  streamID,
+		QueryID: bytes.Repeat([]byte{0xa1}, 16),
+		FromSeq: 1,
+		Limit:   16,
+	})) {
+		t.Fatal("InputStatus failed")
+	}
+	repLive, err := linkcore.DecodeInputStatusReply(h.waitControl(linkcore.ControlInputStatusReply).Payload)
+	if err != nil || !repLive.Available {
+		t.Fatalf("expected Available=true while live in zero-leg window, got %+v err=%v", repLive, err)
+	}
+
+	// Reattach replacement relay WS via AttachPath -> zero-leg output is replayed and input reaches tmux!
+	recRaw := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xfe, 0x01}
+	recWS := h.dialTermWS(hex.EncodeToString(recRaw))
+	defer recWS.CloseNow()
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          string(recRaw),
+		PathGeneration: 2,
+		State:          linkcore.TermFlowState{ToClient: linkcore.TermWatermark{Processed: beforeSeq}},
+	})) {
+		t.Fatal("relay AttachPath failed")
+	}
+	h.waitCond("replacement relay leg attached", func() bool {
+		return relay.TerminalRelayAttachGenForTest(h.running, streamID) == 2
+	})
+	for {
+		_, raw, err := recWS.Read(h.ctx)
+		if err != nil {
+			t.Fatalf("failed reading replayed zero-leg output: %v", err)
+		}
+		_, tf := h.openTermOutput(raw, streamID)
+		if bytes.Contains(tf.GetOutput(), []byte("output-during-zero-leg")) {
+			break
+		}
+	}
+	in1 := h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("after-zero-leg\n")}})
+	if err := recWS.Write(h.ctx, websocket.MessageBinary, in1); err != nil {
+		t.Fatal(err)
+	}
+	h.waitInputs([]byte("after-zero-leg\n"))
+
+	// Part 2: Close relay leg and expire zero-leg TTL -> stream retires; InputStatus MUST return Available=false!
+	recWS.CloseNow()
+	h.waitCond("replacement relay leg cleared", func() bool {
+		return !relay.TerminalHasRelayLegForTest(h.running, streamID)
+	})
+	nowNano.Add(int64(35 * time.Second))
+	select {
+	case <-h.backend.term.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("expected stream to retire after zero-leg TTL elapsed")
+	}
+	h.waitCond("retired stream removed from active registry", func() bool {
+		return relay.TerminalRegistryActiveForTest(h.running) == 0
+	})
+	if !h.link.SendControl(linkcore.ControlInputStatus, linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
+		Stream:  streamID,
+		QueryID: bytes.Repeat([]byte{0xa2}, 16),
+		FromSeq: 1,
+		Limit:   16,
+	})) {
+		t.Fatal("retired InputStatus failed")
+	}
+	repRetired, err := linkcore.DecodeInputStatusReply(h.waitControl(linkcore.ControlInputStatusReply).Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repRetired.Available {
+		t.Fatalf("A regression: retired stream InputStatus MUST return Available=false, got %+v", repRetired)
+	}
+}
+
+// TestReview3Repro_B_LegacyClientUnaffectedOnDirectSessionEnd reproduces review3 B:
+// Legacy clients (that never negotiated Phase 3 capabilities) must NEVER receive duplicate
+// replayed frames or overflow closes when their peer's direct session ends, regardless of
+// frame count (3 or 200) or stream age (45s > 30s replay window).
+func TestReview3Repro_B_LegacyClientUnaffectedOnDirectSessionEnd(t *testing.T) {
+	t.Run("three_frames_no_duplicates", func(t *testing.T) {
+		h := startPhase3PionHarness(t)
+		// Legacy client: DO NOT advertise Phase 3 capabilities.
+		streamID := "b3012233445566778899aabbccddeeff"
+		termWS := h.openTerminal(streamID)
+		defer termWS.CloseNow()
+		seq, _ := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+		if seq != 1 {
+			t.Fatalf("expected snapshot seq=1, got %d", seq)
+		}
+		lastSeq := seq
+		for i := 1; i <= 3; i++ {
+			msg := fmt.Sprintf("legacy-line-%d\n", i)
+			h.backend.term.outCh <- []byte(msg)
+			s, tf := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+			if s <= lastSeq || !bytes.Contains(tf.GetOutput(), []byte(msg)) {
+				t.Fatalf("unexpected frame seq=%d last=%d", s, lastSeq)
+			}
+			lastSeq = s
+		}
+		// End the direct session cleanly (triggers onDirectPeerPathClosed on daemon).
+		h.link.Close()
+		h.link.Wait()
+
+		// Emit a new line -> next frame on relay WS MUST be lastSeq+1 with ZERO duplicate frames!
+		h.backend.term.outCh <- []byte("after-direct-end\n")
+		nextSeq, nextTF := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+		if nextSeq <= lastSeq {
+			t.Fatalf("B regression: legacy client received duplicate seq=%d (last=%d)", nextSeq, lastSeq)
+		}
+		if nextTF.GetClosed() != "" || !bytes.Contains(nextTF.GetOutput(), []byte("after-direct-end")) {
+			t.Fatalf("B regression: expected live output after direct end, got %+v", nextTF)
+		}
+	})
+
+	t.Run("200_frames_no_overflow_close", func(t *testing.T) {
+		h := startPhase3PionHarness(t)
+		streamID := "b3022233445566778899aabbccddeeff"
+		termWS := h.openTerminal(streamID)
+		defer termWS.CloseNow()
+		lastSeq, _ := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+		for i := 0; i < 200; i++ {
+			h.backend.term.outCh <- []byte(fmt.Sprintf("l-%03d\n", i))
+			s, tf := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+			if s <= lastSeq || tf.GetClosed() != "" {
+				t.Fatalf("unexpected seq=%d closed=%q", s, tf.GetClosed())
+			}
+			lastSeq = s
+		}
+		h.link.Close()
+		h.link.Wait()
+
+		h.backend.term.outCh <- []byte("alive-after-200\n")
+		nextSeq, nextTF := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+		if nextSeq <= lastSeq || nextTF.GetClosed() != "" || !bytes.Contains(nextTF.GetOutput(), []byte("alive-after-200")) {
+			t.Fatalf("B regression: legacy 200-frame stream affected on direct end: seq=%d tf=%+v", nextSeq, nextTF)
+		}
+	})
+
+	t.Run("45s_stream_age_no_close", func(t *testing.T) {
+		var nowNano atomic.Int64
+		nowNano.Store(time.Now().UnixNano())
+		clock := func() time.Time { return time.Unix(0, nowNano.Load()) }
+		h := startPhase3PionHarnessWithOpt(t, func(r *relay.Relay) {
+			relay.SetTerminalClockForTest(r, 30*time.Second, clock)
+		})
+		streamID := "b3032233445566778899aabbccddeeff"
+		termWS := h.openTerminal(streamID)
+		defer termWS.CloseNow()
+		lastSeq, _ := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+
+		// Advance terminal clock 45s (beyond 30s replay window) and close direct session.
+		nowNano.Add(int64(45 * time.Second))
+		h.link.Close()
+		h.link.Wait()
+
+		h.backend.term.outCh <- []byte("alive-after-45s\n")
+		nextSeq, nextTF := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+		if nextSeq <= lastSeq || nextTF.GetClosed() != "" || !bytes.Contains(nextTF.GetOutput(), []byte("alive-after-45s")) {
+			t.Fatalf("B regression: 45s-old legacy stream closed on direct end: seq=%d tf=%+v", nextSeq, nextTF)
+		}
+	})
+}
+
+func mustReadWS(t *testing.T, ctx context.Context, ws *websocket.Conn) []byte {
+	t.Helper()
+	_, raw, err := ws.Read(ctx)
+	if err != nil {
+		t.Fatalf("ws.Read failed: %v", err)
+	}
+	return raw
+}
+
+// TestReview3Repro_C_PureRelayFailStopNotifiesClientAndCloses reproduces review3 C:
+// On a pure-relay stream (no Phase 3 direct control channel), an expired Input triggers
+// fail-stop and daemon MUST send TerminalFrame_Closed (prefixed with TermRelayFailStopTag)
+// over relay WS and cancel the stream instead of silently freezing subsequent typing.
+func TestReview3Repro_C_PureRelayFailStopNotifiesClientAndCloses(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	// Legacy / pure-relay client: DO NOT advertise Phase 3 capabilities or attach direct leg.
+	streamID := "c3012233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Send an expired Input at seq=1 over relay WS.
+	inPlain, _ := proto.Marshal(&pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("expired-pure-relay\n")}})
+	hdr := devicesec.Header{
+		Kind:     uint32(pb.PayloadKind_PAYLOAD_KIND_TERMINAL_INPUT),
+		Purpose:  devicesec.TerminalInput,
+		Machine:  h.e.acct.DeviceID,
+		Session:  h.session,
+		Request:  streamID,
+		Seq:      1,
+		Deadline: uint64(time.Now().Add(-time.Minute).UnixMilli()),
+	}
+	sealed, err := h.ep.Prepare(hdr, h.sessKey, inPlain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env, err := deviceauth.Envelope(sealed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := proto.Marshal(env)
+	if err := termWS.Write(h.ctx, websocket.MessageBinary, raw); err != nil {
+		t.Fatal(err)
+	}
+
+	// Client MUST receive TerminalFrame_Closed with TermRelayFailStopTag and stream must close!
+	_, closedTF := h.openTermOutput(mustReadWS(t, h.ctx, termWS), streamID)
+	if !strings.HasPrefix(closedTF.GetClosed(), linkcore.TermRelayFailStopTag) {
+		t.Fatalf("C regression: expected TerminalFrame_Closed prefixed with %q, got %+v", linkcore.TermRelayFailStopTag, closedTF)
+	}
+	select {
+	case <-h.backend.term.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("C regression: expected daemon to cancel stream after pure-relay fail-stop")
+	}
+	if len(h.backend.term.allInputs()) != 0 {
+		t.Fatalf("expired input must not inject into tmux, got %q", h.backend.term.allInputs())
+	}
+}
+
+// TestReview3Repro_D_PaginatedReplayAbove128FramesSucceeds reproduces review3 D:
+// When a Phase 3 stream has 200 output frames (within the 512-frame / 2 MiB replay window),
+// paginated ControlReplay(FromSeq=2, MaxFrames=128) MUST return page 1 cleanly without
+// falsely aborting as overflow, and page 2 (FromSeq=130) delivers the remaining frames.
+func TestReview3Repro_D_PaginatedReplayAbove128FramesSucceeds(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "d3012233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:rev3d000000001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath failed")
+	}
+	h.waitCond("rev3d direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
+
+	// Produce 200 distinct frames on direct leg (wait per frame so daemon doesn't coalesce).
+	for i := 0; i < 200; i++ {
+		h.backend.term.outCh <- []byte(fmt.Sprintf("pg-%03d\n", i))
+		raw, err := h.readPath.Read(h.ctx)
+		if err != nil {
+			t.Fatalf("direct read failed at %d: %v", i, err)
+		}
+		h.openTermOutput(raw, streamID)
+	}
+	targetSeq := relay.TerminalOutSeqForTest(h.running, streamID)
+	if targetSeq < 201 {
+		t.Fatalf("expected outSeq >= 201, got %d", targetSeq)
+	}
+
+	// Page 1: Replay(FromSeq=2, MaxFrames=128) -> MUST NOT trigger overflow close!
+	if !h.link.SendControl(linkcore.ControlReplay, linkcore.EncodeReplay(linkcore.ReplayMsg{
+		Stream:     streamID,
+		Direction:  linkcore.TermDirToClient,
+		FromSeq:    2,
+		ThroughSeq: 0,
+		MaxBytes:   1 << 20,
+		MaxFrames:  128,
+	})) {
+		t.Fatal("ControlReplay page 1 failed")
+	}
+	var page1Max uint64
+	for i := 0; i < 128; i++ {
+		raw, err := h.readPath.Read(h.ctx)
+		if err != nil {
+			t.Fatalf("failed reading page 1 replay frame %d: %v", i, err)
+		}
+		s, tf := h.openTermOutput(raw, streamID)
+		if tf.GetClosed() != "" {
+			t.Fatalf("D regression: paginated Replay page 1 aborted stream: %q", tf.GetClosed())
+		}
+		page1Max = s
+	}
+	if page1Max != 129 {
+		t.Fatalf("expected page 1 to reach seq=129, got %d", page1Max)
+	}
+
+	// Page 2: Replay(FromSeq=130, MaxFrames=128) -> delivers remaining [130..targetSeq]!
+	if !h.link.SendControl(linkcore.ControlReplay, linkcore.EncodeReplay(linkcore.ReplayMsg{
+		Stream:     streamID,
+		Direction:  linkcore.TermDirToClient,
+		FromSeq:    130,
+		ThroughSeq: 0,
+		MaxBytes:   1 << 20,
+		MaxFrames:  128,
+	})) {
+		t.Fatal("ControlReplay page 2 failed")
+	}
+	remaining := int(targetSeq - 129)
+	var page2Max uint64
+	for i := 0; i < remaining; i++ {
+		raw, err := h.readPath.Read(h.ctx)
+		if err != nil {
+			t.Fatalf("failed reading page 2 replay frame %d: %v", i, err)
+		}
+		s, tf := h.openTermOutput(raw, streamID)
+		if tf.GetClosed() != "" {
+			t.Fatalf("D regression: paginated Replay page 2 aborted stream: %q", tf.GetClosed())
+		}
+		page2Max = s
+	}
+	if page2Max != targetSeq {
+		t.Fatalf("expected page 2 to reach seq=%d, got %d", targetSeq, page2Max)
+	}
+	select {
+	case <-h.backend.term.Done():
+		t.Fatal("D regression: stream closed after normal paginated replay")
+	default:
 	}
 }

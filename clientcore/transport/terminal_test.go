@@ -754,3 +754,97 @@ func TestReview2_N3_N5_N7_N8_N9_ClientCore(t *testing.T) {
 		t.Fatalf("N8: expected TermStateClosed(replay_overflow) and stream deletion, got %+v", closeEffs)
 	}
 }
+
+// TestReview3_C_PureRelayFailStopClosedEntersConfirmationGate verifies C on ClientCore:
+// A pure-relay stream receiving daemon's fail-stop TerminalFrame_Closed enters Core's
+// confirmation gate (TermStateFailStop + NeedsConfirmation=true) and keeps that gate open
+// when relay WS EOF follows immediately.
+func TestReview3_C_PureRelayFailStopClosedEntersConfirmationGate(t *testing.T) {
+	coord := NewCoordinator(CoordConfig{Supported: false, ProtocolVersion: 17})
+	now := int64(2_000_000)
+	streamID := "c3client0123456789abcdef01234567"
+	_ = coord.TerminalDirectOpen(now, streamID, "machine-pure", "sess-pure", []byte("relay00000000031"))
+
+	closedPayload := peerwire.PB(peerwire.B(3, []byte(linkcore.TermRelayFailStopTag+" input could not be confirmed")))
+	h := sha256.Sum256(closedPayload)
+	effs := coord.TerminalDirectOutput(now+10, streamID, 1, h[:], closedPayload, false, 0)
+	var sawConfirm bool
+	for _, e := range effs {
+		if _, ok := e.(CoordTerminalDeliver); ok {
+			t.Fatalf("fail-stop Closed frame should trigger confirmation state instead of plain close deliver: %+v", e)
+		}
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateFailStop && st.NeedsConfirmation {
+			sawConfirm = true
+		}
+	}
+	if !sawConfirm {
+		t.Fatalf("C: expected TermStateFailStop + NeedsConfirmation=true on pure-relay fail-stop Closed frame, got %+v", effs)
+	}
+
+	// Relay WS EOF immediately following daemon rp.Finish() must NOT overwrite confirmation gate with plain Closed!
+	eofEffs := coord.TerminalDirectLeg(now+15, streamID, []byte("relay00000000031"), false, false, 0)
+	for _, e := range eofEffs {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateClosed {
+			t.Fatalf("C: relay EOF must not clobber active confirmation gate with TermStateClosed: %+v", st)
+		}
+	}
+
+	// User confirms rebuild -> emits TermStateClosed("rebuild_confirmed").
+	rebuildEffs := coord.TerminalDirectConfirmRebuild(now+20, streamID)
+	var sawRebuild bool
+	for _, e := range rebuildEffs {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateClosed && st.Reason == "rebuild_confirmed" {
+			sawRebuild = true
+		}
+	}
+	if !sawRebuild {
+		t.Fatalf("expected ConfirmRebuild after pure-relay fail-stop to emit rebuild_confirmed, got %+v", rebuildEffs)
+	}
+}
+
+// TestReview3_NK_AttachPathUnsupportedEntersConfirmationGate verifies N-K:
+// When daemon replies ControlUnsupported (10) to AttachPath for a stream, ClientCore
+// clears directAttached and transitions that stream to confirmation state.
+func TestReview3_NK_AttachPathUnsupportedEntersConfirmationGate(t *testing.T) {
+	coord, _, daemon, now, _, rid, _ := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	capBody := peerwire.PB(
+		peerwire.B(1, bytes.Repeat([]byte{0x55}, 16)),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4),
+		peerwire.U(2, 5), peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2),
+		peerwire.U(4, uint64(now+55_000)),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+	_, _ = coord.decodeControl(now, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 10, Issued: uint64(now), Deadline: uint64(now + 55_000)},
+			Type:    1,
+			Payload: capBody,
+			Hash:    bytes.Repeat([]byte{0xaa}, 32),
+		},
+	})
+	streamID := "nk0123456789abcdef0123456789abcd"
+	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-nk", []byte("relay00000000041"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relay00000000041"), false, true, 0)
+	ct := coord.termStreams[streamID]
+	if ct == nil || !ct.directAttached {
+		t.Fatalf("expected directAttached=true before Unsupported")
+	}
+
+	coord.applySessionEffects(now+10, r, []linkcore.Effect{
+		linkcore.PeerUnsupported{Class: 2, Type: linkcore.ControlAttachPath, Use: 0, Stream: streamID},
+	})
+	effs := coord.take()
+	var sawConfirm bool
+	for _, e := range effs {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateInstanceChange && st.NeedsConfirmation {
+			sawConfirm = true
+		}
+	}
+	if !sawConfirm || ct.directAttached {
+		t.Fatalf("N-K: expected directAttached=false and TermStateInstanceChange+NeedsConfirmation, attached=%v effs=%+v", ct.directAttached, effs)
+	}
+}

@@ -176,6 +176,7 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	m.workers.Go(m.capabilityLoop)
 	if d != nil && d.endpoint != nil {
 		d.endpoint.direct.Store(m)
+		d.endpoint.r.directRef.Store(m)
 	}
 	return m, nil
 }

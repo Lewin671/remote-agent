@@ -462,3 +462,21 @@ func TestTerminalTwoFakePathsFaultInjection(t *testing.T) {
 		}
 	})
 }
+
+func TestReview3_HA_ReconcileGapDetectionRequiresConfirm(t *testing.T) {
+	s := NewTerminalStream("stream-ha-gap", "sess-1", "peer-1", "inst-1", 1000)
+	// Simulate seq=2 never cached while seq=3 is cached and daemon Processed=1 -> uncached gap at seq=2!
+	h3 := sha256.Sum256([]byte("echo hi\n"))
+	if err := s.CacheInput(1010, TermFrame{Seq: 3, PayloadHash: h3, RawBytes: 16, IsInput: true, RawEnvelope: []byte("env3")}); err != nil {
+		t.Fatal(err)
+	}
+	toResend, needBarrier, needConfirm := s.ReconcileStatus(1020, TermStatusSnapshot{
+		Available: true,
+		State: TermFlowState{
+			ToDaemon: TermWatermark{Processed: 1, InputSuccess: 1},
+		},
+	})
+	if !needConfirm || needBarrier || len(toResend) != 0 {
+		t.Fatalf("H-A gap detection: expected needConfirm=true and empty resend, got resend=%v barrier=%v confirm=%v", toResend, needBarrier, needConfirm)
+	}
+}

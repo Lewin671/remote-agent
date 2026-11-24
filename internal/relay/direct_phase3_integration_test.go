@@ -104,22 +104,28 @@ func (b *phase3TermBackend) OpenTerminal(string) (relay.Terminal, error) {
 }
 
 type phase3PionHarness struct {
-	t        *testing.T
-	e        *env
-	backend  *phase3TermBackend
-	ctx      context.Context
-	cancel   context.CancelFunc
-	link     *direct.Session
-	readPath *direct.Path
-	ep       *deviceauth.Endpoint
-	session  string
-	sessKey  []byte
-	controls chan peerwire.Opened
-	streamWS *websocket.Conn
-	workers  sync.WaitGroup
+	t         *testing.T
+	e         *env
+	running   *relay.Relay
+	directNow func() time.Time
+	backend   *phase3TermBackend
+	ctx       context.Context
+	cancel    context.CancelFunc
+	link      *direct.Session
+	readPath  *direct.Path
+	ep        *deviceauth.Endpoint
+	session   string
+	sessKey   []byte
+	controls  chan peerwire.Opened
+	streamWS  *websocket.Conn
+	workers   sync.WaitGroup
 }
 
 func startPhase3PionHarness(t *testing.T) *phase3PionHarness {
+	return startPhase3PionHarnessWithOpt(t, nil)
+}
+
+func startPhase3PionHarnessWithOpt(t *testing.T, opt func(*relay.Relay)) *phase3PionHarness {
 	t.Helper()
 	e := setup(t)
 	const session = "pion-phase3-session-01"
@@ -131,6 +137,9 @@ func startPhase3PionHarness(t *testing.T) *phase3PionHarness {
 	running := e.startRelayBackend(backend, func(r *relay.Relay) {
 		relay.SetDirectLoopbackForTest(r)
 		relay.SetDirectClockForTest(r, directNow)
+		if opt != nil {
+			opt(r)
+		}
 	})
 	e.online(t, true)
 	e.session(t, session, 0)
@@ -226,15 +235,17 @@ func startPhase3PionHarness(t *testing.T) *phase3PionHarness {
 	}
 
 	h := &phase3PionHarness{
-		t:        t,
-		e:        e,
-		backend:  backend,
-		ctx:      ctx,
-		cancel:   cancel,
-		link:     link,
-		session:  session,
-		controls: controls,
-		streamWS: ws,
+		t:         t,
+		e:         e,
+		running:   running,
+		directNow: directNow,
+		backend:   backend,
+		ctx:       ctx,
+		cancel:    cancel,
+		link:      link,
+		session:   session,
+		controls:  controls,
+		streamWS:  ws,
 	}
 	h.workers.Go(func() {
 		for {
@@ -456,14 +467,26 @@ func (h *phase3PionHarness) waitControl(typ uint64) peerwire.Opened {
 
 func (h *phase3PionHarness) waitInputs(want []byte) {
 	h.t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if bytes.Equal(h.backend.term.allInputs(), want) {
+	h.waitCond("tmux inputs match", func() bool {
+		return bytes.Equal(h.backend.term.allInputs(), want)
+	})
+}
+
+func (h *phase3PionHarness) waitCond(desc string, fn func() bool) {
+	h.t.Helper()
+	deadline := time.After(5 * time.Second)
+	tick := time.NewTicker(2 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if fn() {
 			return
 		}
-		time.Sleep(10 * time.Millisecond)
+		select {
+		case <-tick.C:
+		case <-deadline:
+			h.t.Fatalf("timed out waiting for condition: %s", desc)
+		}
 	}
-	h.t.Fatalf("tmux inputs mismatch: got %q want %q", h.backend.term.allInputs(), want)
 }
 
 func (h *phase3PionHarness) advertisePhase3ClientCapabilities() {
@@ -477,14 +500,16 @@ func (h *phase3PionHarness) advertisePhase3ClientCapabilities() {
 		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15),
 		peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5),
 		peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9),
-		peerwire.U(4, uint64(time.Now().Add(55*time.Second).UnixMilli())),
+		peerwire.U(4, uint64(h.directNow().Add(55*time.Second).UnixMilli())),
 		peerwire.U(5, 1),
 		peerwire.U(6, 1<<20),
 	)
 	if !h.link.SendControl(1, body) {
 		h.t.Fatal("failed to queue client Phase 3 Capabilities")
 	}
-	time.Sleep(80 * time.Millisecond)
+	h.waitCond("daemon recorded peerTerminalDirect", func() bool {
+		return relay.PeerTerminalDirectForTest(h.running, h.e.authority.Member.ID)
+	})
 }
 
 func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
@@ -515,6 +540,9 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	})) {
 		t.Fatal("failed to queue AttachPath")
 	}
+	h.waitCond("hot-standby direct leg attached", func() bool {
+		return relay.TerminalHasDirectLegForTest(h.running, streamID)
+	})
 
 	// 1) Dual-send identical sealed Input seq=1 over BOTH Relay WS and Pion Direct use=1 simultaneously.
 	in1 := h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("echo hi\n")}})
@@ -564,7 +592,9 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	// 4) Drop Relay WS while Pion direct leg is alive -> logical stream stays alive;
 	// recover relay via AttachPath (PathGeneration=0) + new /v1/term WS with leg_id as StreamId.
 	termWS.CloseNow()
-	time.Sleep(50 * time.Millisecond)
+	h.waitCond("relay leg detached", func() bool {
+		return !relay.TerminalHasRelayLegForTest(h.running, streamID)
+	})
 
 	// Send input seq=4 purely over Pion direct while relay WS is down!
 	in4 := h.sealTermFrame(streamID, 4, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("-DIRECT")}})
@@ -587,7 +617,9 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	})) {
 		t.Fatal("failed to queue relay AttachPath")
 	}
-	time.Sleep(100 * time.Millisecond)
+	h.waitCond("replacement relay leg attached", func() bool {
+		return relay.TerminalHasRelayLegForTest(h.running, streamID)
+	})
 
 	// Drop Pion direct leg -> send input seq=5 over the newly attached relay leg!
 	h.readPath.Close()
