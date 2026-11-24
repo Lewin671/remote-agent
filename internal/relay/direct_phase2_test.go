@@ -143,7 +143,7 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 	const totalIterations = 10_000
 	backend := &phase2FaultBackend{
 		counts:   map[string]int{},
-		sessions: []string{"s-phase2"},
+		sessions: []string{"s-phase2", "s-phase2-0", "s-phase2-1", "s-phase2-2"},
 	}
 	ep := testEndpoint(t, New(backend))
 	client := endpointClient(t, ep)
@@ -267,16 +267,16 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 					key = "create:" + tag
 				case 1:
 					tag := fmt.Sprintf("s%d-%d", workerID, i)
-					sess = "s-phase2"
+					sess = fmt.Sprintf("s-phase2-%d", workerID)
 					cmd = &pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sess, Text: tag}}}
 					key = "send:" + tag
 				case 2:
-					sess = "s-phase2"
+					sess = fmt.Sprintf("s-phase2-%d", workerID)
 					cmd = &pb.Command{Kind: &pb.Command_Interrupt{Interrupt: &pb.InterruptRequest{SessionId: sess}}}
-					key = "interrupt:s-phase2"
+					key = "interrupt:" + sess
 				case 3:
 					tag := fmt.Sprintf("a%d-%d", workerID, i)
-					sess = "s-phase2"
+					sess = fmt.Sprintf("s-phase2-%d", workerID)
 					cmd = &pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: sess, ApprovalId: tag, Allow: true}}}
 					key = "approval:" + tag
 				}
@@ -398,8 +398,9 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 	if got := backend.counts["send:conflicting-payload"] + backend.counts["create:conflicting-payload"]; got != 0 {
 		t.Fatalf("conflicting payload executed %d times (expected 0)", got)
 	}
-	if got := backend.counts["interrupt:s-phase2"]; got != totalIterations/4 {
-		t.Fatalf("interrupt executed %d times, expected %d", got, totalIterations/4)
+	interruptTotal := backend.counts["interrupt:s-phase2-0"] + backend.counts["interrupt:s-phase2-1"] + backend.counts["interrupt:s-phase2-2"]
+	if interruptTotal != totalIterations/4 {
+		t.Fatalf("interrupt executed %d times, expected %d", interruptTotal, totalIterations/4)
 	}
 	coalesced := adm.authCoalesced.Load()
 	if coalesced == 0 {
