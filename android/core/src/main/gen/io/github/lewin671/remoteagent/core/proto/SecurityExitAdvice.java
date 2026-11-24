@@ -17,6 +17,7 @@ public  final class SecurityExitAdvice extends
   private SecurityExitAdvice() {
     message_ = "";
   }
+  private int bitField0_;
   public static final int AUTHORITY_FIELD_NUMBER = 1;
   private boolean authority_;
   /**
@@ -115,6 +116,54 @@ public  final class SecurityExitAdvice extends
     checkByteStringIsUtf8(value);
     message_ = value.toStringUtf8();
 
+  }
+
+  public static final int MESSAGE_TEXT_FIELD_NUMBER = 4;
+  private io.github.lewin671.remoteagent.core.proto.Text messageText_;
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMessageText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMessageText() {
+    return messageText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : messageText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    messageText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (messageText_ != null &&
+        messageText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      messageText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(messageText_).mergeFrom(value).buildPartial();
+    } else {
+      messageText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   */
+  private void clearMessageText() {
+    messageText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice parseFrom(
@@ -319,6 +368,53 @@ public  final class SecurityExitAdvice extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMessageText() {
+      return instance.hasMessageText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMessageText() {
+      return instance.getMessageText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    public Builder setMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMessageText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    public Builder setMessageText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMessageText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    public Builder mergeMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMessageText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    public Builder clearMessageText() {  copyOnWrite();
+      instance.clearMessageText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityExitAdvice)
   }
   @java.lang.Override
@@ -335,13 +431,15 @@ public  final class SecurityExitAdvice extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "authority_",
             "unresolved_",
             "message_",
+            "messageText_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0208";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0003\u0208\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

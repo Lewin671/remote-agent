@@ -5,9 +5,9 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 const (
@@ -118,10 +118,10 @@ func (e *Engine) SubmitCommand(ctx *StepContext, in SubmitCommandParams) (reques
 				MachineID: in.MachineID,
 				SessionID: in.SessionID,
 				Category:  outcome.Unknown,
-				Expired:   true,
-				Frozen:    true,
-				ErrorCode: errCodeUnknown,
-				ErrorText: text.Msg(text.KeyErrorsThePreviousOperationSOutcomeIsStillUnknownReload),
+				Expired:     true,
+				Frozen:      true,
+				ErrorCode:   errCodeUnknown,
+				ErrorReason: world.Reason{Kind: world.ReasonPreviousOutcomeUnknown},
 			})
 			return "", false
 		}
@@ -227,67 +227,67 @@ func (e *Engine) preflightAndEmit(ctx *StepContext, prep *PreparedCommand, retry
 	prior := retryOfUnknown || prep.Dispatch.Unresolved()
 	if e.nowMs > 0 && prep.RecoveryDeadlineMs > 0 && e.nowMs >= prep.RecoveryDeadlineMs {
 		if prior {
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult), true)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonRelayNoVerifiableResult}, true)
 		} else {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeExpired, text.Msg(text.KeyErrorsConnectionTimedOut), true)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeExpired, world.Reason{Kind: world.ReasonConnectionTimedOut}, true)
 		}
 		return false
 	}
 	if !prior && e.nowMs > 0 && prep.DeadlineMs > 0 && e.nowMs >= prep.DeadlineMs {
-		e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeExpired, text.Msg(text.KeyErrorsConnectionTimedOut), false)
+		e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeExpired, world.Reason{Kind: world.ReasonConnectionTimedOut}, false)
 		return false
 	}
 	if e.serverAhead || e.security.ClockSkewed {
 		if prior {
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote), false)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonClockBehind}, false)
 		} else {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, world.Reason{Kind: world.ReasonClockBehind}, false)
 		}
 		return false
 	}
 	if e.security.Loaded && (!e.security.IsMember || (e.security.LeaseEndMs > 0 && e.nowMs >= e.security.LeaseEndMs)) {
 		if prior {
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand), false)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonReplyUnverified}, false)
 		} else {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, world.Reason{Kind: world.ReasonRemoteControlExpired}, false)
 		}
 		return false
 	}
 
 	m := e.machines[prep.MachineID]
-	if errText := checkFileCapability(prep.Command, m, prior); errText != nil {
+	if errReason := checkFileCapability(prep.Command, m, prior); !errReason.IsZero() {
 		if prior {
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errText, false)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errReason, false)
 		} else {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errText, false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errReason, false)
 		}
 		return false
 	}
-	if errText := checkProtocolMismatch(m, prior); errText != nil {
+	if errReason := checkProtocolMismatch(m, prior); !errReason.IsZero() {
 		if prior {
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errText, false)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errReason, false)
 		} else {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errText, false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errReason, false)
 		}
 		return false
 	}
 	if !prior {
 		if !e.networkAvailable {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyConnectionNoNetwork), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, world.Reason{Kind: world.ReasonNoNetwork}, false)
 			return false
 		}
 		if e.w.World.Connection != lists.ConnConnected {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsNotConnected), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, world.Reason{Kind: world.ReasonNotConnected}, false)
 			return false
 		}
 		if m == nil || !e.machineReachable(m) {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, text.Msg(text.KeyErrorsTheComputerIsOfflineTheCommandWasNotSent), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeUnavailable, world.Reason{Kind: world.ReasonComputerOffline}, false)
 			return false
 		}
 	}
 	if !retryOfUnknown && isObservedAction(prep.Command) {
-		if errText := e.checkObservedAction(prep); errText != nil {
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errText, false)
+		if errReason := e.checkObservedAction(prep); !errReason.IsZero() {
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeFailedPrecond, errReason, false)
 			return false
 		}
 	}
@@ -585,7 +585,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 			return
 		}
 		prep.Dispatch.PriorUnknown = true
-		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand), false)
+		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonReplyUnverified}, false)
 
 	case corev1.OutcomeSource_OUTCOME_SOURCE_SERVER:
 		if ev.NotForwarded && ev.AttemptBound {
@@ -609,7 +609,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				return
 			}
 			prep.Dispatch.PriorUnknown = true
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand), false)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonReplyUnverified}, false)
 			return
 		}
 		prep.Dispatch.PriorUnknown = true
@@ -628,14 +628,14 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 				return
 			}
 			prep.Dispatch.PriorUnknown = true
-			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult), true)
+			e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonRelayNoVerifiableResult}, true)
 			return
 		}
 		if (ev.TransportCode == errCodeNetwork || ev.TransportCode == errCodeUnresolvedHost) && !priorBefore && ev.NotForwarded {
 			if prep.Dispatch.Possible > 0 {
 				prep.Dispatch.Possible--
 			}
-			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeNetwork, text.Msg(text.KeyConnectionNoNetwork), false)
+			e.settleCommand(ctx, prep, outcome.NotSent, nil, errCodeNetwork, world.Reason{Kind: world.ReasonNoNetwork}, false)
 			return
 		}
 		prep.Dispatch.PriorUnknown = true
@@ -645,7 +645,7 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 		cat := classifyDaemonOutcome(ev, priorBefore)
 		if cat == outcome.Unknown {
 			prep.Dispatch.PriorUnknown = true
-			e.settleCommand(ctx, prep, outcome.Unknown, ev.Result, errCodeUnknown, text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand), false)
+			e.settleCommand(ctx, prep, outcome.Unknown, ev.Result, errCodeUnknown, world.Reason{Kind: world.ReasonReplyUnverified}, false)
 			return
 		}
 		res := ev.Result
@@ -656,30 +656,30 @@ func (e *Engine) finishCommandOutcome(ctx *StepContext, ev *corev1.CommandOutcom
 					e.dispatchLivePoll(ctx, prep.SessionID)
 				}
 			}
-			var errText *corev1.Text
+			var errReason world.Reason
 			if cat == outcome.Executed {
-				errText = text.Msg(text.KeyErrorsExecutedResultUnavailable)
+				errReason = world.Reason{Kind: world.ReasonExecutedResultUnavailable}
 			} else {
-				errText = text.Msg(text.KeyErrorsRequestIdentityConflict)
+				errReason = world.Reason{Kind: world.ReasonRequestIdentityConflict}
 			}
-			e.settleCommand(ctx, prep, cat, res, res.GetErrorCode(), errText, false)
+			e.settleCommand(ctx, prep, cat, res, res.GetErrorCode(), errReason, false)
 			return
 		}
 		if res != nil && (res.ErrorCode != "" || cat != outcome.Executed) {
-			errText := text.Plain(res.ErrorMessage)
+			errReason := world.PlainReason(res.ErrorMessage)
 			if res.ErrorMessage == "" {
-				errText = text.Plain(res.ErrorCode)
+				errReason = world.PlainReason(res.ErrorCode)
 			}
-			e.settleCommand(ctx, prep, cat, res, res.ErrorCode, errText, false)
+			e.settleCommand(ctx, prep, cat, res, res.ErrorCode, errReason, false)
 			return
 		}
-		e.settleCommand(ctx, prep, outcome.Executed, res, "", nil, false)
+		e.settleCommand(ctx, prep, outcome.Executed, res, "", world.Reason{}, false)
 	}
 }
 
 func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *PreparedCommand, ev *corev1.CommandOutcomeEvent) {
 	if !e.running {
-		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult), false)
+		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonRelayNoVerifiableResult}, false)
 		return
 	}
 	if ev.TransportCode == errCodeUnavailable && prep.Dispatch.Unresolved() {
@@ -708,13 +708,13 @@ func (e *Engine) handleRetryableTransportOutcome(ctx *StepContext, prep *Prepare
 		e.scheduleTimer(ctx, corev1.TimerKind_TIMER_KIND_COMMAND_RETRY, prep.RequestID, wait)
 		return
 	}
-	var errText *corev1.Text
+	var errReason world.Reason
 	if ev.TransportCode == errCodeUnavailable {
-		errText = text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand)
+		errReason = world.Reason{Kind: world.ReasonReplyUnverified}
 	} else {
-		errText = classifyTransportError(ev)
+		errReason = classifyTransportError(ev)
 	}
-	e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errText, false)
+	e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, errReason, false)
 }
 
 func (e *Engine) onCommandRetryTimer(ctx *StepContext, key string) {
@@ -728,7 +728,7 @@ func (e *Engine) onCommandRetryTimer(ctx *StepContext, key string) {
 		return
 	}
 	if e.nowMs >= prep.RecoveryDeadlineMs {
-		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult), true)
+		e.settleCommand(ctx, prep, outcome.Unknown, nil, errCodeUnknown, world.Reason{Kind: world.ReasonRelayNoVerifiableResult}, true)
 		return
 	}
 	e.preflightAndEmit(ctx, prep, true)
@@ -740,7 +740,7 @@ func (e *Engine) settleCommand(
 	cat outcome.Category,
 	res *v1.CommandResult,
 	errCode string,
-	errText *corev1.Text,
+	errReason world.Reason,
 	expired bool,
 ) {
 	delete(e.inFlightCmds, prep.RequestID)
@@ -770,7 +770,7 @@ func (e *Engine) settleCommand(
 			tr.Frozen = true
 			if expired {
 				tr.Expired = true
-				errText = text.Msg(text.KeyErrorsThePreviousOperationSOutcomeIsStillUnknownReload)
+				errReason = world.Reason{Kind: world.ReasonPreviousOutcomeUnknown}
 			}
 			frozen = tr.Frozen
 			trackerExpired = tr.Expired
@@ -780,17 +780,17 @@ func (e *Engine) settleCommand(
 	}
 
 	ctx.Settled = append(ctx.Settled, SettledCommand{
-		RequestID:  prep.RequestID,
-		SlotKey:    prep.SlotKey,
-		MachineID:  prep.MachineID,
-		SessionID:  prep.SessionID,
-		Category:   cat,
-		Result:     res,
-		ErrorCode:  errCode,
-		ErrorText:  errText,
-		FromDaemon: res != nil && cat != outcome.Unknown,
-		Expired:    trackerExpired || expired,
-		Frozen:     frozen,
+		RequestID:   prep.RequestID,
+		SlotKey:     prep.SlotKey,
+		MachineID:   prep.MachineID,
+		SessionID:   prep.SessionID,
+		Category:    cat,
+		Result:      res,
+		ErrorCode:   errCode,
+		ErrorReason: errReason,
+		FromDaemon:  res != nil && cat != outcome.Unknown,
+		Expired:     trackerExpired || expired,
+		Frozen:      frozen,
 	})
 	ctx.Dirty.Add(true, true, true)
 }
@@ -890,60 +890,60 @@ func isObservedAction(cmd *v1.Command) bool {
 	return false
 }
 
-func (e *Engine) checkObservedAction(prep *PreparedCommand) *corev1.Text {
+func (e *Engine) checkObservedAction(prep *PreparedCommand) world.Reason {
 	s := e.sessions[prep.SessionID]
 	if s == nil || s.Checkpoint == nil {
-		return text.Msg(text.KeyErrorsThisRequestHasNotBeenVerifiedByTheComputer)
+		return world.Reason{Kind: world.ReasonRequestNotVerified}
 	}
 	actions := s.Checkpoint.Actions
 	switch k := prep.Command.Kind.(type) {
 	case *v1.Command_ResolveApproval:
 		if k.ResolveApproval == nil {
-			return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonRequestChanged}
 		}
 		for _, a := range actions {
 			if a != nil && a.GetApprovalRequested() != nil && a.GetApprovalRequested().ApprovalId == k.ResolveApproval.ApprovalId {
 				if k.ResolveApproval.ObservedEventSeq != 0 && a.Seq != k.ResolveApproval.ObservedEventSeq {
-					return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+					return world.Reason{Kind: world.ReasonRequestChanged}
 				}
-				return nil
+				return world.Reason{}
 			}
 		}
-		return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+		return world.Reason{Kind: world.ReasonRequestChanged}
 	case *v1.Command_AnswerQuestion:
 		if k.AnswerQuestion == nil {
-			return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonRequestChanged}
 		}
 		for _, a := range actions {
 			if a != nil && a.GetQuestionAsked() != nil && a.GetQuestionAsked().QuestionId == k.AnswerQuestion.QuestionId {
 				if k.AnswerQuestion.ObservedEventSeq != 0 && a.Seq != k.AnswerQuestion.ObservedEventSeq {
-					return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+					return world.Reason{Kind: world.ReasonRequestChanged}
 				}
-				return nil
+				return world.Reason{}
 			}
 		}
-		return text.Msg(text.KeyErrorsTheRequestOnTheComputerChangedReviewItAgain)
+		return world.Reason{Kind: world.ReasonRequestChanged}
 	case *v1.Command_AnswerPlan:
 		if k.AnswerPlan == nil || s.Checkpoint.PlanEventSeq == 0 || len(s.Checkpoint.PlanScreenHash) != 32 {
-			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonPlanDisplayChanged}
 		}
 		if s.Checkpoint.Session != nil && !s.Checkpoint.Session.PlanOpen {
-			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonPlanDisplayChanged}
 		}
 		if k.AnswerPlan.ObservedEventSeq != 0 && s.Checkpoint.PlanEventSeq != k.AnswerPlan.ObservedEventSeq {
-			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonPlanDisplayChanged}
 		}
 		if len(k.AnswerPlan.ObservedScreenHash) != 0 && !bytes.Equal(s.Checkpoint.PlanScreenHash, k.AnswerPlan.ObservedScreenHash) {
-			return text.Msg(text.KeyErrorsThePlanDisplayChangedReviewItAgain)
+			return world.Reason{Kind: world.ReasonPlanDisplayChanged}
 		}
-		return nil
+		return world.Reason{}
 	}
-	return nil
+	return world.Reason{}
 }
 
-func checkFileCapability(cmd *v1.Command, m *MachineEntry, prior bool) *corev1.Text {
+func checkFileCapability(cmd *v1.Command, m *MachineEntry, prior bool) world.Reason {
 	if cmd == nil {
-		return nil
+		return world.Reason{}
 	}
 	var hasFiles bool
 	switch k := cmd.Kind.(type) {
@@ -953,67 +953,64 @@ func checkFileCapability(cmd *v1.Command, m *MachineEntry, prior bool) *corev1.T
 		hasFiles = k.CreateSession != nil && len(k.CreateSession.FileIds) > 0
 	}
 	if !hasFiles {
-		return nil
+		return world.Reason{}
 	}
 	if m != nil && m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.FileUpload {
-		return nil
+		return world.Reason{}
 	}
 	if prior {
-		return text.Msg(text.KeyErrorsThePreviousOperationSOutcomeIsStillUnknownReload)
+		return world.Reason{Kind: world.ReasonPreviousOutcomeUnknown}
 	}
-	return text.Msg(text.KeyAttachmentUpdateRequired)
+	return world.Reason{Kind: world.ReasonAttachmentUpdateRequired}
 }
 
-func checkProtocolMismatch(m *MachineEntry, prior bool) *corev1.Text {
+func checkProtocolMismatch(m *MachineEntry, prior bool) world.Reason {
 	if m == nil {
-		return nil
+		return world.Reason{}
 	}
 	lm := &lists.Machine{ID: m.ID, Meta: m.Meta}
 	dir := lists.ProtocolMismatchDirection(lm, PeerVersion)
 	if dir == 0 {
-		return nil
-	}
-	var base *corev1.Text
-	if dir < 0 {
-		base = text.Msg(text.KeyErrorsRemoteAgentOnIsOutOfDateUpdateIt, text.Str("value", lists.MachineName(lm, m.ID)))
-	} else {
-		base = text.Msg(text.KeyErrorsClientOutOfDate)
+		return world.Reason{}
 	}
 	if prior {
-		return text.Msg(text.KeyErrorsThePreviousOperationSOutcomeIsStillUnknownReload)
+		return world.Reason{Kind: world.ReasonPreviousOutcomeUnknown}
 	}
-	return base
+	if dir < 0 {
+		return world.Reason{Kind: world.ReasonDaemonOutOfDate, Param: lists.MachineName(lm, m.ID)}
+	}
+	return world.Reason{Kind: world.ReasonClientOutOfDate}
 }
 
-func classifyServerRefusal(ev *corev1.CommandOutcomeEvent) *corev1.Text {
+func classifyServerRefusal(ev *corev1.CommandOutcomeEvent) world.Reason {
 	if ev.OuterReason == "machine_offline" {
-		return text.Msg(text.KeyErrorsTheComputerIsOfflineTheCommandWasNotSent)
+		return world.Reason{Kind: world.ReasonComputerOffline}
 	}
 	if ev.TransportDetail != "" {
-		return text.Plain(ev.TransportDetail)
+		return world.PlainReason(ev.TransportDetail)
 	}
 	if ev.TransportCode != "" {
-		return text.Plain(ev.TransportCode)
+		return world.PlainReason(ev.TransportCode)
 	}
-	return text.Msg(text.KeyErrorsDisconnectedFromServer)
+	return world.Reason{Kind: world.ReasonDisconnectedFromServer}
 }
 
-func classifyTransportError(ev *corev1.CommandOutcomeEvent) *corev1.Text {
+func classifyTransportError(ev *corev1.CommandOutcomeEvent) world.Reason {
 	switch ev.TransportCode {
 	case errCodeUnresolvedHost:
-		return text.Msg(text.KeyConnectionNoServer)
+		return world.Reason{Kind: world.ReasonNoServer}
 	case errCodeNetwork:
-		return text.Msg(text.KeyConnectionNoNetwork)
+		return world.Reason{Kind: world.ReasonNoNetwork}
 	case errCodeUnauthenticated, "permission_denied":
-		return text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+		return world.Reason{Kind: world.ReasonDeviceUnrecognized}
 	case errCodeUnavailable:
 		if ev.TransportDetail != "" {
-			return text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.TransportDetail))
+			return world.Reason{Kind: world.ReasonServerReturned, Param: ev.TransportDetail}
 		}
-		return text.Msg(text.KeyErrorsDisconnectedFromServer)
+		return world.Reason{Kind: world.ReasonDisconnectedFromServer}
 	}
 	if ev.TransportDetail != "" {
-		return text.Plain(ev.TransportDetail)
+		return world.PlainReason(ev.TransportDetail)
 	}
-	return text.Msg(text.KeyErrorsTheRelayDidNotProvideAVerifiableExecutionResult)
+	return world.Reason{Kind: world.ReasonRelayNoVerifiableResult}
 }

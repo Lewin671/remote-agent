@@ -4,6 +4,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 )
@@ -145,8 +146,23 @@ func (s syncDevicesByID) Len() int           { return len(s) }
 func (s syncDevicesByID) Less(i, j int) bool { return s[i].DeviceId < s[j].DeviceId }
 func (s syncDevicesByID) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
+// ConnectionStep returns the current structured connection establishment step.
+func (e *Engine) ConnectionStep() world.ConnectStep { return e.connStep }
+
+// DevicesError returns the structured devices list error reason, if any.
+func (e *Engine) DevicesError() world.Reason { return e.devicesError }
+
+// SessionErrorReasons returns the structured error and fetch-error reasons for sessionID.
+func (e *Engine) SessionErrorReasons(sessionID string) (errReason, fetchErrReason world.Reason) {
+	if b := e.buffers[sessionID]; b != nil {
+		return b.errorReason, b.fetchErrorReason
+	}
+	return world.Reason{}, world.Reason{}
+}
+
 // BuildSyncStateView constructs the transitional SyncStateView snapshot for unmigrated Step 3-4 screens
-// from the engine's world.
+// from the engine's world. Text fields (ConnectionReason, ConnectionStep, ManagerName, SessionListError,
+// DevicesErrorText) are left nil here and populated by screens.ApplySyncStateTexts.
 func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 	w := &e.w
 	machines := make([]*corev1.SyncMachineView, 0, len(w.World.Machines))
@@ -202,15 +218,12 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 
 	return &corev1.SyncStateView{
 		Connection:             protoConnState(w.World.Connection),
-		ConnectionReason:       w.ConnectionReasonText,
-		ConnectionStep:         e.connStepText,
 		DisconnectedAtMs:       w.DisconnectedAtMs,
 		LivePushConnected:      w.LivePushConnected,
 		Unlinked:               e.unlinkedFlag,
 		IsManager:              w.World.IsManager,
 		SelfDeviceId:           e.security.SelfDeviceID,
 		AuthorityDeviceId:      e.security.AuthorityDeviceID,
-		ManagerName:            w.ManagerNameText,
 		AccountControlLost:     w.World.AccountControlLost,
 		AccountClockSkewed:     w.World.AccountClockSkewed,
 		Removed:                e.removed,
@@ -230,7 +243,6 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		NextCursor:             nextCursor,
 		LoadingMoreSessions:    w.World.LoadingMoreSessions,
 		SessionListFailed:      w.World.SessionListFailed,
-		SessionListError:       w.SessionListErrorText,
 		PrefsLoaded:            w.World.PrefsLoaded,
 		PrefsLoadFailed:        w.World.PrefsLoadFailed,
 		PrefsBroken:            e.prefs.Broken,
@@ -248,7 +260,6 @@ func (e *Engine) BuildSyncStateView() *corev1.SyncStateView {
 		ConnectFailures:        int32(e.recovery.Failures()),
 		RecoveryStatusStale:    e.security.RecoveryStatusStale,
 		DevicesLoadFailed:      e.devicesLoadFailed,
-		DevicesErrorText:       e.devicesErrorText,
 		HasHandoffOffer:        e.security.HasHandoffOffer,
 	}
 }
@@ -297,8 +308,6 @@ func (e *Engine) BuildSessionDataView(sessionID string) *corev1.SessionDataView 
 		out.TailRequested = buf.tailRequested
 		out.Retired = out.Retired || buf.retired
 		out.RetryingCorruptCache = buf.retryingCorruptCache
-		out.Error = buf.errorText
-		out.FetchError = buf.fetchErrorText
 		out.PrefixLen = uint64(len(buf.prefix))
 		out.PendingCount = int32(len(buf.pending))
 

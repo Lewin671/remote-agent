@@ -8,7 +8,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -49,7 +48,7 @@ type DeviceOfferInfo struct {
 }
 
 type wfError struct {
-	msg       string
+	reason    WorkflowReason
 	code      string
 	retryable bool
 	uncertain bool
@@ -60,21 +59,20 @@ func (e *wfError) Error() string {
 	if e == nil {
 		return ""
 	}
-	return e.msg
+	if e.code != "" {
+		return "security: " + e.code
+	}
+	return "security error"
 }
 
 //go:noinline
-func newWfError(code, msg string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: true}
+func newWfError(code string, reason WorkflowReason) *wfError {
+	return &wfError{code: code, reason: reason, retryable: true}
 }
 
 //go:noinline
-func fatalWfError(code, msg, action string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: false, action: action}
-}
-
-func uncertainWfError(code, msg string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: true, uncertain: true, action: "retry"}
+func fatalWfError(code string, reason WorkflowReason, action string) *wfError {
+	return &wfError{code: code, reason: reason, retryable: false, action: action}
 }
 
 type rpcError struct {
@@ -415,7 +413,7 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 func (e *Engine) checkFG(capturedGen uint64) error {
 	wf := e.ensureWF()
 	if !wf.foreground || wf.fgGen != capturedGen {
-		return fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, "")
+		return fatalWfError("foreground", WorkflowReasonPagePaused, "")
 	}
 	return nil
 }
@@ -441,11 +439,23 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 		res = &corev1.SecurityWorkflowResultEffect{}
 	}
 	res.ActionId, res.Status, res.Ok = actionID, e.BuildWorkflowStatus(), err == nil
+	var meta WorkflowMeta
+	if res.ExitAdvice != nil {
+		switch {
+		case res.ExitAdvice.Unresolved:
+			meta.ExitReason = ExitAdviceUnresolvedOp
+		case res.ExitAdvice.Authority:
+			meta.ExitReason = ExitAdviceOnlyManagingClient
+		default:
+			meta.ExitReason = ExitAdviceDefault
+		}
+	}
 	if err != nil {
 		res.Error = err.Error()
 		if we := asWfError(err); we != nil {
 			res.Retryable, res.Uncertain, res.ErrorAction = we.retryable, we.uncertain, we.action
 			res.StructuredErrorCode = StructuredErrorCodeFromString(we.code)
+			meta.ErrReason = we.reason
 		} else {
 			res.StructuredErrorCode = StructuredErrorCode(err)
 			if re := asRpcError(err); re != nil {
@@ -469,6 +479,7 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 			}
 		}
 	}
+	e.recordWorkflowMeta(actionID, meta)
 	e.out = append(e.out, &corev1.Effect{Effect: &corev1.Effect_SecurityWorkflowResult{SecurityWorkflowResult: res}})
 }
 

@@ -153,6 +153,10 @@ fun translateSecurityErrorMessage(
     res: SecurityWorkflowResultEffect,
     resolver: MessageResolver,
 ): String {
+    if (res.hasErrorText()) {
+        val rendered = coreTextToMessageText(res.errorText).resolve(resolver)
+        if (rendered.isNotEmpty()) return rendered
+    }
     val raw = res.error.ifEmpty {
         if (res.structuredErrorCode != SecurityErrorCode.SECURITY_ERROR_CODE_UNSPECIFIED) {
             securityErrorCodeKey(res.structuredErrorCode)
@@ -161,6 +165,17 @@ fun translateSecurityErrorMessage(
         }
     }
     return translateSecurityKey(raw, resolver)
+}
+
+fun renderExitAdviceMessage(
+    advice: SecurityExitAdvice,
+    resolver: MessageResolver,
+): String {
+    if (advice.hasMessageText()) {
+        val rendered = coreTextToMessageText(advice.messageText).resolve(resolver)
+        if (rendered.isNotEmpty()) return rendered
+    }
+    return translateSecurityKey(advice.message, resolver)
 }
 
 data class PreparedCreationResult(

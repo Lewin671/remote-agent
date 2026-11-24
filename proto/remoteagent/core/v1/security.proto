@@ -519,6 +519,7 @@ message SecurityExitAdvice {
   bool authority = 1;
   bool unresolved = 2;
   string message = 3;
+  Text message_text = 4;
 }
 
 message SecurityAccountAdopted {
@@ -653,6 +654,7 @@ message SecurityWorkflowResultEffect {
   SecurityAccountAdopted account_adopted = 17;
   bool flag = 18;
   SecurityErrorCode structured_error_code = 19;
+  Text error_text = 20;
 }
 
 message SecurityStatusChangedEffect {

@@ -752,6 +752,54 @@ public  final class SecurityWorkflowResultEffect extends
     structuredErrorCode_ = 0;
   }
 
+  public static final int ERROR_TEXT_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text errorText_;
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasErrorText() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+    return errorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : errorText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    errorText_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (errorText_ != null &&
+        errorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      errorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(errorText_).mergeFrom(value).buildPartial();
+    } else {
+      errorText_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   */
+  private void clearErrorText() {
+    errorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SecurityWorkflowResultEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1603,6 +1651,53 @@ public  final class SecurityWorkflowResultEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasErrorText() {
+      return instance.hasErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+      return instance.getErrorText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    public Builder setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    public Builder setErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setErrorText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    public Builder mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeErrorText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+     */
+    public Builder clearErrorText() {  copyOnWrite();
+      instance.clearErrorText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityWorkflowResultEffect)
   }
   @java.lang.Override
@@ -1639,12 +1734,13 @@ public  final class SecurityWorkflowResultEffect extends
             "accountAdopted_",
             "flag_",
             "structuredErrorCode_",
+            "errorText_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0001\u0001\u0013\u0012\u0000\u0001\u0000\u0001\u0003\u0002\u0007" +
+              "\u0000\u0013\u0000\u0001\u0001\u0014\u0013\u0000\u0001\u0000\u0001\u0003\u0002\u0007" +
               "\u0003\u0208\u0005\u0007\u0006\u0007\u0007\u0208\b\u1009\u0000\t\u0208\n\u0007\u000b" +
               "\u0007\f\u0007\r\u1009\u0001\u000e\u1009\u0002\u000f\u001b\u0010\u1009\u0003\u0011" +
-              "\u1009\u0004\u0012\u0007\u0013\f";
+              "\u1009\u0004\u0012\u0007\u0013\f\u0014\u1009\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

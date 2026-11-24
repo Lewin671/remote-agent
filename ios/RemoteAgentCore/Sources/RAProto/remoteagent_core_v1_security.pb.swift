@@ -1685,9 +1685,20 @@ public struct PBSecurityExitAdvice: Sendable {
 
   public var message: String = String()
 
+  public var messageText: PBCoreText {
+    get {return _messageText ?? PBCoreText()}
+    set {_messageText = newValue}
+  }
+  /// Returns true if `messageText` has been explicitly set.
+  public var hasMessageText: Bool {return self._messageText != nil}
+  /// Clears the value of `messageText`. Subsequent reads from it will return its default value.
+  public mutating func clearMessageText() {self._messageText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _messageText: PBCoreText? = nil
 }
 
 public struct PBSecurityAccountAdopted: Sendable {
@@ -2369,6 +2380,15 @@ public struct PBSecurityWorkflowResultEffect: @unchecked Sendable {
     get {return _storage._structuredErrorCode}
     set {_uniqueStorage()._structuredErrorCode = newValue}
   }
+
+  public var errorText: PBCoreText {
+    get {return _storage._errorText ?? PBCoreText()}
+    set {_uniqueStorage()._errorText = newValue}
+  }
+  /// Returns true if `errorText` has been explicitly set.
+  public var hasErrorText: Bool {return _storage._errorText != nil}
+  /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
+  public mutating func clearErrorText() {_uniqueStorage()._errorText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -5317,7 +5337,7 @@ extension PBSecurityHandoffCandidate: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityExitAdvice"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}authority\0\u{1}unresolved\0\u{1}message\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}authority\0\u{1}unresolved\0\u{1}message\0\u{3}message_text\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5328,12 +5348,17 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       case 1: try { try decoder.decodeSingularBoolField(value: &self.authority) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.unresolved) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._messageText) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.authority != false {
       try visitor.visitSingularBoolField(value: self.authority, fieldNumber: 1)
     }
@@ -5343,6 +5368,9 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if !self.message.isEmpty {
       try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
     }
+    try { if let v = self._messageText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5350,6 +5378,7 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if lhs.authority != rhs.authority {return false}
     if lhs.unresolved != rhs.unresolved {return false}
     if lhs.message != rhs.message {return false}
+    if lhs._messageText != rhs._messageText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -6531,7 +6560,7 @@ extension PBSecurityWorkflowActionEvent: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityWorkflowResultEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{1}error\0\u{2}\u{2}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0\u{3}structured_error_code\0\u{b}error_code\0\u{c}\u{4}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{1}error\0\u{2}\u{2}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0\u{3}structured_error_code\0\u{3}error_text\0\u{b}error_code\0\u{c}\u{4}\u{1}")
 
   fileprivate class _StorageClass {
     var _actionID: UInt64 = 0
@@ -6552,6 +6581,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
     var _accountAdopted: PBSecurityAccountAdopted? = nil
     var _flag: Bool = false
     var _structuredErrorCode: PBSecurityErrorCode = .unspecified
+    var _errorText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -6580,6 +6610,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
       _accountAdopted = source._accountAdopted
       _flag = source._flag
       _structuredErrorCode = source._structuredErrorCode
+      _errorText = source._errorText
     }
   }
 
@@ -6616,6 +6647,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         case 17: try { try decoder.decodeSingularMessageField(value: &_storage._accountAdopted) }()
         case 18: try { try decoder.decodeSingularBoolField(value: &_storage._flag) }()
         case 19: try { try decoder.decodeSingularEnumField(value: &_storage._structuredErrorCode) }()
+        case 20: try { try decoder.decodeSingularMessageField(value: &_storage._errorText) }()
         default: break
         }
       }
@@ -6682,6 +6714,9 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
       if _storage._structuredErrorCode != .unspecified {
         try visitor.visitSingularEnumField(value: _storage._structuredErrorCode, fieldNumber: 19)
       }
+      try { if let v = _storage._errorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 20)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -6709,6 +6744,7 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         if _storage._accountAdopted != rhs_storage._accountAdopted {return false}
         if _storage._flag != rhs_storage._flag {return false}
         if _storage._structuredErrorCode != rhs_storage._structuredErrorCode {return false}
+        if _storage._errorText != rhs_storage._errorText {return false}
         return true
       }
       if !storagesAreEqual {return false}

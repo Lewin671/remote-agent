@@ -15,21 +15,21 @@ type State struct {
 	World lists.World
 	Cal   lists.Calendar
 
-	DisplayGrace         bool
-	ReachabilityUnknown  bool
-	Removed              bool
-	ConnectionReasonText *corev1.Text
-	SessionListErrorText *corev1.Text
-	ManagerNameText      *corev1.Text
-	DisconnectedAtMs     int64
-	LivePushConnected    bool
+	DisplayGrace        bool
+	ReachabilityUnknown bool
+	Removed             bool
+	ConnectionReason    Reason
+	SessionListError    Reason
+	AuthorityDeviceID   string
+	DisconnectedAtMs    int64
+	LivePushConnected   bool
 
-	ProjectChangedElsewhere  bool
-	PrefsGlobalErrorText     *corev1.Text
-	PrefsPendingPath         map[string]bool
-	PrefsSaveErrorTextByPath map[string]*corev1.Text
-	PrefsSavingSettings      map[string]bool
-	PrefsSettingsErrorText   map[string]*corev1.Text
+	ProjectChangedElsewhere bool
+	PrefsGlobalError        Reason
+	PrefsPendingPath        map[string]bool
+	PrefsSaveErrorByPath    map[string]Reason
+	PrefsSavingSettings     map[string]bool
+	PrefsSettingsError      map[string]Reason
 }
 
 // New returns an empty, connecting world with initialized lookup maps.
@@ -42,11 +42,11 @@ func New() *State {
 // Init resets w to an empty, connecting world with initialized lookup maps.
 func (w *State) Init() {
 	*w = State{
-		World:                    lists.World{Connection: lists.ConnConnecting},
-		PrefsPendingPath:         make(map[string]bool),
-		PrefsSaveErrorTextByPath: make(map[string]*corev1.Text),
-		PrefsSavingSettings:      make(map[string]bool),
-		PrefsSettingsErrorText:   make(map[string]*corev1.Text),
+		World:                lists.World{Connection: lists.ConnConnecting},
+		PrefsPendingPath:     make(map[string]bool),
+		PrefsSaveErrorByPath: make(map[string]Reason),
+		PrefsSavingSettings:  make(map[string]bool),
+		PrefsSettingsError:   make(map[string]Reason),
 	}
 }
 
@@ -64,7 +64,7 @@ type SessionSnapshot struct {
 	ReachabilityUnknown  bool
 	LookingUp            bool
 	LookupFailed         bool
-	LookupErrorText      *corev1.Text
+	LookupError          Reason
 	ProtocolVersion      uint32
 	Session              *lists.Session
 	Machine              *lists.Machine
@@ -80,8 +80,8 @@ type SessionSnapshot struct {
 	TailRequested        bool
 	Retired              bool
 	RetryingCorruptCache bool
-	Error                *corev1.Text
-	FetchError           *corev1.Text
+	Error                Reason
+	FetchError           Reason
 	PrefixLen            uint64
 	PendingCount         int32
 	UnavailableCount     uint32

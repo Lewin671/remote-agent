@@ -3126,10 +3126,11 @@ func (m *SecurityHandoffCandidate) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityExitAdvice struct {
-	_          [0]func()
-	Authority  bool
-	Unresolved bool
-	Message    string
+	_           [0]func()
+	Authority   bool
+	Unresolved  bool
+	Message     string
+	MessageText *Text
 }
 
 func (m *SecurityExitAdvice) GetAuthority() bool {
@@ -3150,12 +3151,19 @@ func (m *SecurityExitAdvice) GetMessage() string {
 	}
 	return ""
 }
+func (m *SecurityExitAdvice) GetMessageText() *Text {
+	if m != nil {
+		return m.MessageText
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityExitAdvice = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Authority), Kind: litewire.KindBool},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Unresolved), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Message), Kind: litewire.KindString},
+		{Num: 4, Offset: unsafe.Offsetof(SecurityExitAdvice{}.MessageText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -4537,6 +4545,7 @@ type SecurityWorkflowResultEffect struct {
 	AccountAdopted        *SecurityAccountAdopted
 	Flag                  bool
 	StructuredErrorCode   SecurityErrorCode
+	ErrorText             *Text
 }
 
 func (m *SecurityWorkflowResultEffect) GetActionId() uint64 {
@@ -4647,6 +4656,12 @@ func (m *SecurityWorkflowResultEffect) GetStructuredErrorCode() SecurityErrorCod
 	}
 	return 0
 }
+func (m *SecurityWorkflowResultEffect) GetErrorText() *Text {
+	if m != nil {
+		return m.ErrorText
+	}
+	return nil
+}
 
 var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4668,6 +4683,7 @@ var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 		{Num: 17, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.AccountAdopted), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityAccountAdopted},
 		{Num: 18, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Flag), Kind: litewire.KindBool},
 		{Num: 19, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.StructuredErrorCode), Kind: litewire.KindInt32},
+		{Num: 20, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

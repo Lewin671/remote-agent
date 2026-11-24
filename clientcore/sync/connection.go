@@ -2,8 +2,8 @@ package sync
 
 import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
@@ -47,7 +47,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		if !e.w.LivePushConnected {
 			e.w.World.Connection = lists.ConnConnecting
 			e.connStartedAtMs = e.nowMs
-			e.connStepText = text.Msg(text.KeyErrorsReadingLocalState)
+			e.connStep = world.ConnectStepReadingLocalState
 		}
 		e.displayGraceUntilMs = 0
 		if e.everReady && !e.removed && e.foreground && e.w.World.Connection != lists.ConnConnected {
@@ -106,7 +106,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.sessionByIDFailed)
 		clear(e.sessionByIDErrors)
 		e.devicesLoadFailed = false
-		e.devicesErrorText = nil
+		e.devicesError = world.Reason{}
 		clear(e.lateDirectTickets)
 		clear(e.lateDirectDeadline)
 		for _, prep := range e.inFlightCmds {
@@ -179,7 +179,7 @@ func (e *Engine) handleLifecycle(ctx *StepContext, act *corev1.SyncLifecycleActi
 		clear(e.sessionByIDFailed)
 		clear(e.sessionByIDErrors)
 		e.devicesLoadFailed = false
-		e.devicesErrorText = nil
+		e.devicesError = world.Reason{}
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_STREAM_OPEN, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LIVENESS, "")
@@ -260,7 +260,7 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
 			e.w.DisconnectedAtMs = e.nowMs
 		}
-		e.w.ConnectionReasonText = text.Msg(text.KeyConnectionNoNetwork)
+		e.w.ConnectionReason = world.Reason{Kind: world.ReasonNoNetwork}
 		if wasConnected && e.everReady && !e.removed && e.running && e.foreground {
 			e.startDisplayGrace(ctx)
 		}
@@ -283,7 +283,7 @@ func (e *Engine) handleNetworkChanged(ctx *StepContext, ev *corev1.NetworkChange
 		} else {
 			e.w.World.Connection = lists.ConnConnecting
 		}
-		e.w.ConnectionReasonText = nil
+		e.w.ConnectionReason = world.Reason{}
 	}
 	if !e.w.World.MachinesListed && !e.coldStartGraceExpired && e.running && !e.removed && e.foreground && e.coldStartGraceUntilMs == 0 {
 		e.startColdStartGrace(ctx)
@@ -323,7 +323,7 @@ func (e *Engine) beginConnect(ctx *StepContext) {
 			e.w.World.Connection = lists.ConnConnecting
 		}
 		e.connStartedAtMs = e.nowMs
-		e.connStepText = text.Msg(text.KeyErrorsSigningIn)
+		e.connStep = world.ConnectStepSigningIn
 	}
 	timeout := StreamOpenTimeoutMs
 	if e.everReady || e.networkGen > 0 {
@@ -387,8 +387,8 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
 			e.w.DisconnectedAtMs = e.nowMs
 		}
-		e.connStepText = nil
-		e.w.ConnectionReasonText = text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+		e.connStep = world.ConnectStepNone
+		e.w.ConnectionReason = world.Reason{Kind: world.ReasonDeviceUnrecognized}
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, "")
 		e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_RECONNECT, "")
 		e.updateLivePollers(ctx)
@@ -410,7 +410,7 @@ func (e *Engine) handleTokenResult(ctx *StepContext, ev *corev1.TokenResultEvent
 		}
 	}
 	e.forceLogin = false
-	e.connStepText = text.Msg(text.KeyErrorsEstablishingPushConnection)
+	e.connStep = world.ConnectStepEstablishingPush
 	legID := e.allocLegID()
 	e.legID = legID
 	ctx.emit(&corev1.Effect{
@@ -447,8 +447,8 @@ func (e *Engine) handleStreamReady(ctx *StepContext, ev *corev1.StreamReadyEvent
 	e.serverAhead = ev.ServerTimeMs > 0 && e.nowMs > 0 && (e.nowMs-ev.ServerTimeMs > MaxClockSkewMs)
 	e.w.World.Connection = lists.ConnConnected
 	e.w.DisconnectedAtMs = 0
-	e.connStepText = nil
-	e.w.ConnectionReasonText = nil
+	e.connStep = world.ConnectStepNone
+	e.w.ConnectionReason = world.Reason{}
 
 	e.startRefresh(ctx)
 	if !e.prefs.Loaded {
@@ -514,8 +514,8 @@ func (e *Engine) onLegDropped(ctx *StepContext, legID uint64, policyViolation, u
 
 func (e *Engine) onConnectFailure(ctx *StepContext, unresolvedHost bool, errCode, errMsg string) {
 	wasConnected := e.w.World.Connection == lists.ConnConnected
-	e.connStepText = nil
-	e.w.ConnectionReasonText = classifyConnectError(unresolvedHost, errCode, errMsg)
+	e.connStep = world.ConnectStepNone
+	e.w.ConnectionReason = classifyConnectError(unresolvedHost, errCode, errMsg)
 	if !e.networkAvailable {
 		e.w.World.Connection = lists.ConnNoNetwork
 		if e.w.DisconnectedAtMs == 0 && e.nowMs > 0 {
@@ -606,20 +606,20 @@ func (e *Engine) clearColdStartGrace(ctx *StepContext) {
 	e.cancelTimer(ctx, corev1.TimerKind_TIMER_KIND_LINK_GRACE, coldStartGraceTimerKey)
 }
 
-func classifyConnectError(unresolvedHost bool, errCode, errMsg string) *corev1.Text {
+func classifyConnectError(unresolvedHost bool, errCode, errMsg string) world.Reason {
 	if unresolvedHost {
-		return text.Msg(text.KeyConnectionNoServer)
+		return world.Reason{Kind: world.ReasonNoServer}
 	}
 	switch errCode {
 	case "unauthenticated", "permission_denied":
-		return text.Msg(text.KeyErrorsTheServerDoesNotRecognizeThisDeviceItMay)
+		return world.Reason{Kind: world.ReasonDeviceUnrecognized}
 	case "deadline_exceeded", "timeout":
-		return text.Msg(text.KeyErrorsConnectionTimedOutReconnecting)
+		return world.Reason{Kind: world.ReasonConnectionTimedOutReconnecting}
 	}
 	if errMsg != "" {
-		return text.Msg(text.KeyErrorsServerReturned, text.Str("value", errMsg))
+		return world.Reason{Kind: world.ReasonServerReturned, Param: errMsg}
 	}
-	return text.Msg(text.KeyErrorsDisconnectedFromServer)
+	return world.Reason{Kind: world.ReasonDisconnectedFromServer}
 }
 
 func (e *Engine) checkLeaseClock(ctx *StepContext) {

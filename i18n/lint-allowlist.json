@@ -5818,5 +5818,35 @@
     "path": "web/src/views/Attach.tsx",
     "literal": "button",
     "reason": "HTML button type attribute near identifier ending in Text; never rendered as user-facing text."
+  },
+  {
+    "path": "clientcore/app/schedules.go",
+    "literal": "failed",
+    "reason": "Internal machine error code assigned to ScheduleSnapshot.Error near text.IsEmpty(snap.ErrorText); never rendered directly as UI text."
+  },
+  {
+    "path": "clientcore/app/session.go",
+    "literal": "failed_precondition",
+    "reason": "Internal ConnectRPC error code near screens.ReasonText(...); never rendered directly as UI text."
+  },
+  {
+    "path": "clientcore/security/recovery_code.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code passed to newWfError; display copy is translated from WorkflowReason in clientcore/screens."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "security: ",
+    "reason": "Internal Go error.Error() diagnostic prefix for wfError; UI messages are rendered from WorkflowReason via clientcore/screens."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "offer",
+    "reason": "Internal persisted security operation kind discriminator in switch case; flagged only because newWfError(...) precedes it within the scanner window."
+  },
+  {
+    "path": "web/src/core/security-client.ts",
+    "literal": "security error",
+    "reason": "Pre-existing defensive fallback when both core errorText and error are absent; newly matched only because renderText(...) precedes it within the scanner window."
   }
 ]

@@ -7,7 +7,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -211,11 +210,11 @@ func (t *prepareEmergencyRecoveryTask) step(e *Engine, ev *secEvent) error {
 				return err
 			}
 			if wf.pendingOp != nil || wf.regIntent != nil || wf.bootstrapInvalid {
-				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 			}
 			oldSeed, genPrefix, ok := DecodeRecoveryCode(t.code)
 			if !ok {
-				return newWfError("invalid", errInvalidRecoveryCode.Error())
+				return errInvalidRecoveryCode
 			}
 			oldRecPub, err := devicesec.Ed25519PublicFromSeed(oldSeed[:])
 			if err != nil {
@@ -348,7 +347,7 @@ func (e *Engine) startSignRecoveryDraft(op *PersistedOperation, oldSeed [32]byte
 	}
 	parent := states[len(states)-1]
 	if !bytes.Equal(parent.Core.RecoveryEd[:], oldRecPub) {
-		e.failTarget(target, newWfError("invalid", errInvalidRecoveryCode.Error()))
+		e.failTarget(target, errInvalidRecoveryCode)
 		return
 	}
 	newMember, err := devicesec.NewMember(draft.CandidateEdPub, draft.CandidateXPub, devicesec.Client)
@@ -483,7 +482,7 @@ func (t *continueRecoverySigningTask) step(e *Engine, ev *secEvent) error {
 		oldSeed, genPrefix, ok := DecodeRecoveryCode(t.oldCode)
 		if !ok || !bytes.Equal(op.Recovery.Genesis[:10], genPrefix[:]) {
 			zeroBytes(oldSeed[:])
-			return newWfError("invalid", errInvalidRecoveryCode.Error())
+			return errInvalidRecoveryCode
 		}
 		t.stage = contRecSigned
 		e.startSignRecoveryDraft(op, oldSeed, t.fgGen, parentTarget(t, 0))
@@ -706,7 +705,7 @@ func (t *completeRecoveryTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrStale
 		}
 		if !op.CodeSaved {
-			return newWfError("invalid", text.KeySecurityConfirmRecoveryCodeSavedFirst)
+			return newWfError("invalid", WorkflowReasonConfirmRecoveryCodeSavedFirst)
 		}
 		draft := op.Recovery
 		targetState, err := devicesec.ParseState(draft.TargetState)

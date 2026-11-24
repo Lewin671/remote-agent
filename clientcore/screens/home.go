@@ -38,13 +38,14 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 		}
 	}
 
+	sessionListErr := ReasonText(st.SessionListError)
 	vm := &corev1.HomeViewModel{
 		ScopeSelectable:   len(projRes.Listed) > 1,
 		ScopeKey:          scope.Key,
 		ScopeTitle:        scopeTitle,
 		ScopeShortPath:    scope.ShortPath,
 		Connection:        buildConnectionStatus(st),
-		Headline:          buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, st.SessionListErrorText),
+		Headline:          buildHomeHeadlineView(homeData.Headline, st.World.LiveLoaded, sessionListErr),
 		Empty:             buildHomeEmptyView(homeData.Empty, st),
 		CanFilter:         homeData.ShowFilter,
 		FilterQuery:       st.HomeFilterQuery,
@@ -105,7 +106,7 @@ func BuildHome(st *State, endedLimit int) *corev1.HomeViewModel {
 				curGroup.Items = append(curGroup.Items, buildEndedRow(row.Item, homeData.Meta, st.Cal, st.HomeSelectedSessionID == row.Item.ID))
 			}
 		case lists.HomeRowTail:
-			vm.EndedTail = buildTailRow(row.Tail, st.SessionListErrorText)
+			vm.EndedTail = buildTailRow(row.Tail, sessionListErr)
 		}
 	}
 
@@ -284,9 +285,10 @@ func buildHomeEmptyView(e *lists.HomeEmptyInfo, st *State) *corev1.HomeEmptyView
 		v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_LOADING
 		v.Message = text.Msg(text.KeyCommonLoading)
 	case lists.HomeEmptyNoMachines:
-		if !st.World.IsManager && hasReason(st.ManagerNameText, st.World.ManagerName) {
+		mgrName := ManagerNameText(st.State)
+		if !st.World.IsManager && hasReason(mgrName, st.World.ManagerName) {
 			v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NO_MACHINES_MEMBER
-			v.Message = text.Msg(text.KeyHomeAddViaManager, reasonArg("name", st.ManagerNameText, st.World.ManagerName))
+			v.Message = text.Msg(text.KeyHomeAddViaManager, reasonArg("name", mgrName, st.World.ManagerName))
 		} else {
 			v.Kind = corev1.HomeEmptyKind_HOME_EMPTY_KIND_NO_MACHINES
 			v.Command = "remote-agent account join"

@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
@@ -1094,10 +1095,11 @@ func (c *Core) handleUploadStepFailure(
 	}
 
 	// 3. Permanent failure.
+	errTxt := screens.ReasonText(sc.ErrorReason)
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE {
 		rawDiag := ""
-		if sc.ErrorText != nil {
-			rawDiag = sc.ErrorText.GetLiteral()
+		if errTxt != nil {
+			rawDiag = errTxt.GetLiteral()
 		}
 		prob := attachments.ClassifyImageProblem(&corev1.ImageProblemInput{
 			ErrorCode:     sc.ErrorCode,
@@ -1105,7 +1107,7 @@ func (c *Core) handleUploadStepFailure(
 		})
 		c.failItem(ctx, meta.ownerKind, meta.ownerKey, it, prob, nil, effects)
 	} else {
-		errText := attachments.ClassifyDaemonFileUploadError(sc.FromDaemon, sc.ErrorCode, sc.ErrorText)
+		errText := attachments.ClassifyDaemonFileUploadError(sc.FromDaemon, sc.ErrorCode, errTxt)
 		c.failItem(ctx, meta.ownerKind, meta.ownerKey, it, nil, errText, effects)
 	}
 	c.markDraftDirty(ctx, scope)

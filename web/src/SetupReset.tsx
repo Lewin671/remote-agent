@@ -1,7 +1,7 @@
 import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
-import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { createStandaloneSecurityClient, renderExitAdviceMessage } from "./core/security-client";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
 export function SetupReset({ onDone }: { onDone: () => void }) {
@@ -19,7 +19,7 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
             try {
               await standalone.client.bootstrap();
               const a = await standalone.client.checkExitAdvice();
-              setAdvice(translateSecurityKey(a.message));
+              setAdvice(renderExitAdviceMessage(a));
               setAsking(true);
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e));

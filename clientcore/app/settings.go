@@ -7,6 +7,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -55,7 +56,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 
 	switch s := screen.Screen.(type) {
 	case *corev1.Screen_Settings:
-		sv := c.m.sync.BuildSyncStateView()
+		sv := c.buildSyncStateView()
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Settings{
 				Settings: screens.BuildSettings(st, sv, extra),
@@ -82,7 +83,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		if s.MachineSettings != nil {
 			id = s.MachineSettings.MachineId
 		}
-		sv := c.m.sync.BuildSyncStateView()
+		sv := c.buildSyncStateView()
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_MachineSettings{
 				MachineSettings: screens.BuildMachineSettings(st, sv, extra, id),
@@ -96,7 +97,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 			id = s.Quota.MachineId
 			filter = s.Quota.FilterAgent
 		}
-		sv := c.m.sync.BuildSyncStateView()
+		sv := c.buildSyncStateView()
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Quota{
 				Quota: screens.BuildQuota(st, sv, id, filter),
@@ -104,7 +105,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		}, true, nil
 
 	case *corev1.Screen_Devices:
-		sv := c.m.sync.BuildSyncStateView()
+		sv := c.buildSyncStateView()
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_Devices{
 				Devices: screens.BuildDevices(st, sv, extra),
@@ -116,7 +117,7 @@ func (c *Core) viewSettings(screen *corev1.Screen) (*corev1.ViewModel, bool, err
 		if s.ClientDetail != nil {
 			id = s.ClientDetail.DeviceId
 		}
-		sv := c.m.sync.BuildSyncStateView()
+		sv := c.buildSyncStateView()
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_ClientDetail{
 				ClientDetail: screens.BuildClientDetail(st, sv, extra, id),
@@ -311,8 +312,8 @@ func (c *Core) onOtherSettingsCmdSettled(sc sync.SettledCommand, meta cmdMeta) [
 			out = append(out, res.Effects...)
 		default:
 			me.SaveUnknown = false
-			if sc.ErrorText != nil {
-				me.SaveError = text.Msg(text.KeySettingsSaveError, text.ArgText("reason", sc.ErrorText))
+			if errTxt := screens.ReasonText(sc.ErrorReason); errTxt != nil {
+				me.SaveError = text.Msg(text.KeySettingsSaveError, text.ArgText("reason", errTxt))
 			} else if sc.ErrorCode != "" {
 				me.SaveError = text.Msg(text.KeySettingsSaveError, text.Str("reason", sc.ErrorCode))
 			} else {
@@ -1034,7 +1035,7 @@ func (c *Core) onToggleMachineAgentSettled(sc sync.SettledCommand, meta cmdMeta,
 		sc.ErrorCode == "settings_revision_conflict" ||
 		sc.Category == outcome.Conflict ||
 		sc.Category == outcome.Unknown ||
-		(sc.ErrorText != nil && strings.Contains(sc.ErrorText.GetLiteral(), "cannot_disable_last_agent"))
+		(sc.ErrorReason.Kind == world.ReasonPlain && strings.Contains(sc.ErrorReason.Param, "cannot_disable_last_agent"))
 	if isConflict {
 		me.ToggleBanner = text.Msg(text.KeySettingsCliSwitchesConflict)
 		prevStep, ctx := c.m.sync.BeginStep()

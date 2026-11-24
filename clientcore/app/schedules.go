@@ -547,7 +547,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 				snap.HasFetchedOnce = true
 				snap.FetchedRevision = meta.revision
 				snap.Error = sc.ErrorCode
-				snap.ErrorText = sc.ErrorText
+				snap.ErrorText = screens.ReasonText(sc.ErrorReason)
 				if snap.Error == "" && text.IsEmpty(snap.ErrorText) {
 					snap.Error = "failed"
 				}
@@ -602,7 +602,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 			} else if sc.Category == outcome.Unknown {
 				mut.Frozen = sc.Frozen || !sc.Expired
 				mut.Expired = sc.Expired
-				mut.ErrorText = sc.ErrorText
+				mut.ErrorText = screens.ReasonText(sc.ErrorReason)
 				if sc.Expired {
 					delete(c.m.frozenSchedOps, slotKey)
 					if form != nil {
@@ -613,7 +613,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 				delete(c.m.frozenSchedOps, slotKey)
 				mut.Frozen = false
 				mut.Expired = false
-				mut.ErrorText = sc.ErrorText
+				mut.ErrorText = screens.ReasonText(sc.ErrorReason)
 				if text.IsEmpty(mut.ErrorText) && sc.ErrorCode != "" {
 					mut.ErrorText = text.Plain(sc.ErrorCode)
 				}
@@ -693,7 +693,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 			} else if sc.Category == outcome.Unknown {
 				mut.Frozen = sc.Frozen || !sc.Expired
 				mut.Expired = sc.Expired
-				mut.ErrorText = sc.ErrorText
+				mut.ErrorText = screens.ReasonText(sc.ErrorReason)
 				if sc.Expired {
 					delete(c.m.frozenSchedOps, slotKey)
 				}
@@ -701,7 +701,7 @@ func (c *Core) processSchedulesSyncStep(res sync.StepResult, effects *[]*corev1.
 				delete(c.m.frozenSchedOps, slotKey)
 				mut.Frozen = false
 				mut.Expired = false
-				mut.ErrorText = sc.ErrorText
+				mut.ErrorText = screens.ReasonText(sc.ErrorReason)
 				if text.IsEmpty(mut.ErrorText) && sc.ErrorCode != "" {
 					mut.ErrorText = text.Plain(sc.ErrorCode)
 				}

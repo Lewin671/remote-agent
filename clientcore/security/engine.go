@@ -204,7 +204,9 @@ type Engine struct {
 	wf           *workflowState
 	relayVersion uint32
 
-	out []*corev1.Effect
+	out            []*corev1.Effect
+	workflowMeta   map[uint64]WorkflowMeta
+	notifyOutcomes map[uint64]NotifyOutcome
 }
 
 // NewEngine constructs a security Engine sharing the host's OS entropy pool and
@@ -242,6 +244,45 @@ func (e *Engine) DrainEffects() []*corev1.Effect {
 	out := e.out
 	e.out = nil
 	return out
+}
+
+// DrainWorkflowMeta returns and clears structured workflow reason metadata recorded during the step.
+func (e *Engine) DrainWorkflowMeta() map[uint64]WorkflowMeta {
+	if len(e.workflowMeta) == 0 {
+		return nil
+	}
+	out := e.workflowMeta
+	e.workflowMeta = nil
+	return out
+}
+
+// DrainNotifyOutcomes returns and clears structured notification outcomes recorded during the step.
+func (e *Engine) DrainNotifyOutcomes() map[uint64]NotifyOutcome {
+	if len(e.notifyOutcomes) == 0 {
+		return nil
+	}
+	out := e.notifyOutcomes
+	e.notifyOutcomes = nil
+	return out
+}
+
+func (e *Engine) recordWorkflowMeta(actionID uint64, meta WorkflowMeta) {
+	if actionID == 0 || (meta.ErrReason == WorkflowReasonNone && meta.ExitReason == ExitAdviceNone) {
+		return
+	}
+	meta.ActionID = actionID
+	if e.workflowMeta == nil {
+		e.workflowMeta = make(map[uint64]WorkflowMeta)
+	}
+	e.workflowMeta[actionID] = meta
+}
+
+func (e *Engine) recordNotifyOutcome(opID uint64, outcome NotifyOutcome) {
+	outcome.OpID = opID
+	if e.notifyOutcomes == nil {
+		e.notifyOutcomes = make(map[uint64]NotifyOutcome)
+	}
+	e.notifyOutcomes[opID] = outcome
 }
 
 func (e *Engine) allocOp() uint64 {

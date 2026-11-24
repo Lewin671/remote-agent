@@ -6,9 +6,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
-	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 )
 
@@ -111,16 +109,6 @@ func (e *Engine) managerDevicePlainName() string {
 	return ""
 }
 
-func (e *Engine) managerNameText() *corev1.Text {
-	if name := e.managerDevicePlainName(); name != "" {
-		return text.Plain(name)
-	}
-	if e.security.AuthorityDeviceID != "" {
-		return text.Msg(text.KeySettingsUnnamed)
-	}
-	return nil
-}
-
 // BeginStep enters a StepContext without closure allocation; pair with EndStep.
 func (e *Engine) BeginStep() (prev, ctx *StepContext) {
 	ctx = newStepContext()
@@ -195,8 +183,8 @@ func (e *Engine) refreshWorld() {
 	w.DisplayGrace = e.displayGraceActive()
 	w.ReachabilityUnknown = e.coldStartGraceActive()
 	w.Removed = e.removed
-	w.ManagerNameText = e.managerNameText()
-	w.World.SessionListFailed = w.SessionListErrorText != nil
+	w.AuthorityDeviceID = e.security.AuthorityDeviceID
+	w.World.SessionListFailed = !w.SessionListError.IsZero()
 	w.World.Prefs = e.prefs.Prefs
 	w.World.PrefsLoaded = e.prefs.Loaded
 	w.World.PrefsLoadFailed = e.prefs.LoadFailed

@@ -174,13 +174,14 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 		LivePushConnected: st.LivePushConnected,
 		DisconnectedAtMs:  st.DisconnectedAtMs,
 	}
+	connReasonTxt := ReasonText(st.ConnectionReason)
 	switch st.World.Connection {
 	case lists.ConnConnected:
 		view.State = corev1.ConnState_CONN_STATE_CONNECTED
 		view.BadgeText = text.Msg(text.KeyConnectionConnected)
 		if !st.LivePushConnected {
-			if !text.IsEmpty(st.ConnectionReasonText) {
-				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, text.ArgText("value", st.ConnectionReasonText))
+			if !text.IsEmpty(connReasonTxt) {
+				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnectedSessionChangesMayBe, text.ArgText("value", connReasonTxt))
 			} else {
 				view.DetailText = text.Msg(text.KeyConnectionLivePushIsNotConnected)
 			}
@@ -192,8 +193,8 @@ func buildConnectionStatus(st *State) *corev1.ConnectionStatusView {
 	case lists.ConnOffline:
 		view.State = corev1.ConnState_CONN_STATE_OFFLINE
 		view.BadgeText = text.Msg(text.KeyConnectionUnreachable)
-		if !text.IsEmpty(st.ConnectionReasonText) {
-			view.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", st.ConnectionReasonText))
+		if !text.IsEmpty(connReasonTxt) {
+			view.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", connReasonTxt))
 		} else {
 			view.DetailText = text.Msg(text.KeyConnectionNoResponse)
 		}
@@ -375,7 +376,7 @@ func buildProjectRow(p *lists.ProjectSummary, st *State) *corev1.ProjectRowView 
 	}
 	sub := projectSubtitleText(p, st.Cal, true)
 	var saveErr *corev1.Text
-	if errTxt := st.PrefsSaveErrorTextByPath[p.Key]; !text.IsEmpty(errTxt) {
+	if errTxt := ReasonText(st.PrefsSaveErrorByPath[p.Key]); !text.IsEmpty(errTxt) {
 		saveErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", errTxt))
 	}
 	return &corev1.ProjectRowView{

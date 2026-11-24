@@ -7,7 +7,6 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -240,7 +239,7 @@ func (t *prepareCreationTask) step(e *Engine, ev *secEvent) error {
 		}
 		if op := wf.pendingOp; op != nil {
 			if op.Kind != "create" || op.Server != server {
-				return newWfError("conflict", text.KeySecurityFinishTheOriginalSecurityOperationFirst)
+				return newWfError("conflict", WorkflowReasonFinishOriginalOpFirst)
 			}
 			persisted := t.storagePersisted
 			if op.Create != nil {
@@ -408,14 +407,14 @@ func (t *continueCreationTask) step(e *Engine, ev *secEvent) error {
 	case contCreatePowChal:
 		var sc v1.GetSignupChallengeResponse
 		if sc.Unmarshal(ev.bytes) != nil || len(sc.Challenge) == 0 || sc.DifficultyBits > 24 || (e.lastNowMs > 0 && sc.ExpiresMs <= e.lastNowMs) {
-			return newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkIsInvalidOrExpired)
+			return newWfError("failed_precondition", WorkflowReasonRegPowInvalidOrExpired)
 		}
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
 		}
 		nonce, ok := solveSignupPoW(sc.Challenge, sc.DifficultyBits)
 		if !ok {
-			return newWfError("failed_precondition", text.KeySecurityRegistrationProofOfWorkExpiredRetryTheOriginalDraft)
+			return newWfError("failed_precondition", WorkflowReasonRegPowExpiredRetryDraft)
 		}
 		t.startRegisterAttempt(e, wf.pendingOp, &v1.SignupProof{Challenge: sc.Challenge, Nonce: nonce}, true)
 	case contCreatePostRegLogin:
@@ -603,7 +602,7 @@ type removeDeviceTask struct {
 
 func (t *removeDeviceTask) proceedAfterPre(e *Engine) error {
 	if e.ensureWF().pendingOp != nil {
-		return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+		return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 	}
 	t.stage = removeDevSync
 	e.syncStates(false, "", parentTarget(t, 0))
@@ -660,7 +659,7 @@ func (t *removeDeviceTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		if t.id == e.selfDeviceID {
-			return newWfError("invalid", text.KeySecurityTheManagingClientCannotBeRemovedDirectlyTransferManagement)
+			return newWfError("invalid", WorkflowReasonManagerCannotBeRemovedDirectly)
 		}
 		if _, ok := e.head.Core.Member(t.id); !ok {
 			e.okTarget(t.target, nil)
@@ -723,7 +722,7 @@ func (t *deleteMachineRecordsTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		if wf.pendingOp != nil {
-			return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+			return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 		}
 		hh := e.headHash
 		t.stage = delMachClaim
@@ -764,7 +763,7 @@ func (t *deleteAccountTask) step(e *Engine, ev *secEvent) error {
 		}
 		if ev.kind == evStart {
 			if wf.pendingOp != nil {
-				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 			}
 			e.syncStates(false, "", parentTarget(t, 0))
 			return nil
@@ -830,7 +829,7 @@ func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
 					return err
 				}
 				if wf.pendingOp != nil {
-					return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+					return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 				}
 				t.stage = prepCodeSync
 				e.syncStates(false, "", parentTarget(t, 0))
@@ -850,7 +849,7 @@ func (t *prepareCodeTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrUntrusted
 			}
 			if wf.pendingOp != nil {
-				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 			}
 		} else if !e.isMember || e.isAuthority() {
 			return devicesec.ErrUntrusted
@@ -1085,10 +1084,10 @@ func (t *handoffAuthorityTask) proceed(e *Engine, list []*corev1.SecurityHandoff
 		}
 	}
 	if offer == nil || len(offer.RecoveryEd) != 32 {
-		return newWfError("invalid", text.KeySecurityGenerateAndSaveARecoveryCodeOnTheSuccessor)
+		return newWfError("invalid", WorkflowReasonGenerateRecoveryCodeOnSuccessor)
 	}
 	if e.ensureWF().pendingOp != nil {
-		return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+		return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 	}
 	hh := e.headHash
 	t.stage = handoffClaim
@@ -1182,7 +1181,7 @@ func (e *Engine) updateDeviceMetaOp(actionID uint64, act *corev1.SecurityUpdateD
 		targetID = e.selfDeviceID
 	}
 	if targetID == "" || targetID != e.selfDeviceID {
-		e.emitActionResult(actionID, nil, newWfError("invalid", text.KeyErrorsNamesCanOnlyBeChangedOnThatDevice))
+		e.emitActionResult(actionID, nil, newWfError("invalid", WorkflowReasonNamesOnlyChangedOnThatDevice))
 		return
 	}
 	server := e.effectiveServer()
@@ -1316,7 +1315,7 @@ func (t *completeAccountPublicProfileTask) step(e *Engine, ev *secEvent) error {
 			}
 			seed, genPrefix, ok := DecodeRecoveryCode(t.code)
 			if !ok {
-				return newWfError("invalid", errInvalidRecoveryCode.Error())
+				return errInvalidRecoveryCode
 			}
 			recPub, err := devicesec.Ed25519PublicFromSeed(seed[:])
 			if err != nil {
@@ -1388,14 +1387,8 @@ func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
 func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	wf := e.ensureWF()
 	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.isAuthority()
-	msg := text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair
-	if unresolved {
-		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe
-	} else if auth {
-		msg = text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement
-	}
 	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
-		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved, Message: msg},
+		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved},
 	}, nil)
 }
 

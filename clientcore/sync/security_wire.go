@@ -9,10 +9,10 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
@@ -141,7 +141,24 @@ func (e *Engine) emitRawEffects(ctx *StepContext, effs []*corev1.Effect) {
 }
 
 func (e *Engine) emitSecurityEffects(ctx *StepContext, effs []*corev1.Effect) {
-	if ctx == nil || len(effs) == 0 {
+	if ctx == nil {
+		return
+	}
+	if e.secEngine != nil {
+		if wm := e.secEngine.DrainWorkflowMeta(); len(wm) > 0 {
+			if ctx.SecurityWorkflowMeta == nil {
+				ctx.SecurityWorkflowMeta = make(map[uint64]security.WorkflowMeta, len(wm))
+			}
+			maps.Copy(ctx.SecurityWorkflowMeta, wm)
+		}
+		if nm := e.secEngine.DrainNotifyOutcomes(); len(nm) > 0 {
+			if ctx.SecurityNotifyOutcomes == nil {
+				ctx.SecurityNotifyOutcomes = make(map[uint64]security.NotifyOutcome, len(nm))
+			}
+			maps.Copy(ctx.SecurityNotifyOutcomes, nm)
+		}
+	}
+	if len(effs) == 0 {
 		return
 	}
 	for _, eff := range effs {
@@ -388,7 +405,7 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 		e.w.World.MachinesListed = true
 		e.w.World.SessionsListed = true
 		e.w.World.LiveLoaded = true
-		e.w.SessionListErrorText = nil
+		e.w.SessionListError = world.Reason{}
 		e.w.World.SessionListError = ""
 
 		for _, m := range ev.Machines {
@@ -898,7 +915,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if !e.running || e.listingGen != m.listingGen || e.pageListingGen != e.listingGen {
 			return
 		}
-		e.w.SessionListErrorText = nil
+		e.w.SessionListError = world.Reason{}
 		e.w.World.SessionListError = ""
 		for _, s := range outS {
 			if s.SessionID != "" {
@@ -925,7 +942,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if len(outS) == 0 || outS[0].OpenFailed {
 			if m.sid != "" {
 				e.sessionByIDFailed[m.sid] = true
-				e.sessionByIDErrors[m.sid] = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
+				e.sessionByIDErrors[m.sid] = world.Reason{Kind: world.ReasonInvalidCiphertext}
 			}
 			stepCtx.Dirty.Add(false, true, false)
 			stepCtx.Dirty.MarkSessionData()
@@ -941,7 +958,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 			return
 		}
 		e.devicesLoadFailed = false
-		e.devicesErrorText = nil
+		e.devicesError = world.Reason{}
 		e.reconcileDecodedDevices(e.buildAuthoritativeDevices(outD), m.mp, m.sp, true)
 		stepCtx.Dirty.MarkAll()
 	case dirKindStreamMachine:
@@ -1011,7 +1028,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		}
 		if dp != nil && dp.Broken {
 			e.applyAccountPrefsDecoded(dp, true)
-			e.finishPrefsOp(stepCtx, text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed))
+			e.finishPrefsOp(stepCtx, world.Reason{Kind: world.ReasonInvalidCiphertext})
 			return
 		}
 		var baseRev uint64
@@ -1030,7 +1047,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 			if dp != nil {
 				e.writePrefsCache(stepCtx, dp.Wire)
 			}
-			e.finishPrefsOp(stepCtx, nil)
+			e.finishPrefsOp(stepCtx, world.Reason{})
 			return
 		}
 		nextPrefs := lists.ApplyPrefsOp(basePrefs, curHead.Op, curHead.OpID, e.nowMs)
@@ -1040,7 +1057,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 			e.applyAccountPrefsDecoded(outP[0], true)
 			e.writePrefsCache(stepCtx, outP[0].Wire)
 		}
-		e.finishPrefsOp(stepCtx, nil)
+		e.finishPrefsOp(stepCtx, world.Reason{})
 	}
 }
 
@@ -1087,7 +1104,7 @@ func (e *Engine) applyListsDecoded(
 	e.w.World.LiveLoaded = true
 	e.coldStartGraceExpired = true
 	e.clearColdStartGrace(ctx)
-	e.w.SessionListErrorText = nil
+	e.w.SessionListError = world.Reason{}
 	e.w.World.SessionListError = ""
 
 	mids := make(map[string]bool, len(machines))
@@ -1357,20 +1374,20 @@ func (e *Engine) finishSealCmd(stepCtx *StepContext, op *pendingSecOp, sr securi
 		if prior {
 			errCode = errCodeUnknown
 		}
-		var errText *corev1.Text
+		var errReason world.Reason
 		switch {
 		case errors.Is(sr.Err, security.ErrClockSkewed), errors.Is(sr.Err, devicesec.ErrClock):
-			errText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+			errReason = world.Reason{Kind: world.ReasonClockBehind}
 		case errors.Is(sr.Err, security.ErrLeaseExpired), errors.Is(sr.Err, devicesec.ErrStale), errors.Is(sr.Err, security.ErrNotMember):
 			if prior {
-				errText = text.Msg(text.KeyErrorsTheComputerSReplyCouldNotBeVerifiedCommand)
+				errReason = world.Reason{Kind: world.ReasonReplyUnverified}
 			} else {
-				errText = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+				errReason = world.Reason{Kind: world.ReasonRemoteControlExpired}
 			}
 		default:
-			errText = text.Plain(sr.Err.Error())
+			errReason = world.PlainReason(sr.Err.Error())
 		}
-		e.settleCommand(stepCtx, prep, cat, nil, errCode, errText, false)
+		e.settleCommand(stepCtx, prep, cat, nil, errCode, errReason, false)
 		return
 	}
 	prep.SealedEnvelope = sr.Envelope
@@ -1439,7 +1456,7 @@ func (e *Engine) sealAndEmitPrefsPut(ctx *StepContext, head *prefsQueueItem, bas
 	}
 	raw, err := nextPrefs.Marshal()
 	if err != nil {
-		e.finishPrefsOp(ctx, text.Plain(err.Error()))
+		e.finishPrefsOp(ctx, world.PlainReason(err.Error()))
 		return
 	}
 	tag := e.allocSecOp(&pendingSecOp{
@@ -1459,7 +1476,7 @@ func (e *Engine) finishSealPrefs(stepCtx *StepContext, op *pendingSecOp, sr secu
 		if errors.Is(sr.Err, security.ErrNeedEntropy) {
 			e.maybeRequestEntropy(stepCtx)
 		}
-		e.finishPrefsOp(stepCtx, text.Plain(sr.Err.Error()))
+		e.finishPrefsOp(stepCtx, world.PlainReason(sr.Err.Error()))
 		return
 	}
 	curHead := &e.prefsQueue[0]

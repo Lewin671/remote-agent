@@ -33,4 +33,15 @@ public interface SecurityExitAdviceOrBuilder extends
    */
   com.google.protobuf.ByteString
       getMessageBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   * @return Whether the messageText field is set.
+   */
+  boolean hasMessageText();
+  /**
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   * @return The messageText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMessageText();
 }

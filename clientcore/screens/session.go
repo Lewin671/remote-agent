@@ -319,12 +319,13 @@ func buildSessionHeader(
 
 	if !in.Found {
 		out.LookupFailed = in.LookupFailed && !in.LookingUp
+		lookupErrTxt := ReasonText(in.LookupError)
 		if out.LookupFailed {
-			out.LookupErrorText = in.LookupErrorText
+			out.LookupErrorText = lookupErrTxt
 		}
-		if out.LookupFailed && in.LookupErrorText != nil {
+		if out.LookupFailed && lookupErrTxt != nil {
 			out.Missing = false
-			out.StatusText = in.LookupErrorText
+			out.StatusText = lookupErrTxt
 		} else {
 			out.Missing = (in.SessionsListed && !in.LookingUp) || out.LookupFailed
 			if out.Missing {

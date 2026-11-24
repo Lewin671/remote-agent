@@ -38,6 +38,7 @@ import type { WasmAppCore } from "./projection";
 import { getCore } from "./runtime";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./security-executor";
 import { SecurityStoreV4, securityStoreV4 } from "./security-store-v4";
+import { renderText } from "./text";
 
 export const BROWSER_AUTHORITY_NOTICE = () =>
   l10n.t("security.this_browser_will_be_the_only_managing_client_clearing");
@@ -98,8 +99,24 @@ export function translateSecurityKey(raw: string): string {
   return raw;
 }
 
-export function translateSecurityErrorMessage(res: Pick<SecurityWorkflowResultEffect, "error" | "errorAction">): string {
+export function translateSecurityErrorMessage(
+  res: Pick<SecurityWorkflowResultEffect, "error" | "errorAction" | "errorText">,
+): string {
+  if (res.errorText) {
+    const rendered = renderText(res.errorText);
+    if (rendered) return rendered;
+  }
   return translateSecurityKey(res.error || "security error");
+}
+
+export function renderExitAdviceMessage(
+  a: Pick<SecurityExitAdvice, "message" | "messageText">,
+): string {
+  if (a.messageText) {
+    const rendered = renderText(a.messageText);
+    if (rendered) return rendered;
+  }
+  return translateSecurityKey(a.message);
 }
 
 export interface SecurityWorkflowDispatcher {

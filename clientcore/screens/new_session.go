@@ -355,7 +355,7 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 			TargetMachineId: cfg.MachineID,
 		})
 	}
-	if draft != nil && st.PrefsSettingsErrorText[key] != nil {
+	if draft != nil && !st.PrefsSettingsError[key].IsZero() {
 		notices = append(notices, &corev1.NewSessionNoticeView{
 			Kind:     corev1.NoticeKind_NOTICE_KIND_CONFIG_SAVE_ERROR,
 			Severity: corev1.NoticeSeverity_NOTICE_SEVERITY_WARN,

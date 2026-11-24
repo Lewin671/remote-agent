@@ -6,7 +6,6 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -54,7 +53,7 @@ func (e *Engine) discardInitSlot(sess *initiatorPairingSession) {
 
 func (e *Engine) resetWorkflowPairingSessions() {
 	wf := e.ensureWF()
-	e.clearActivePollWithError(fatalWfError("canceled", text.KeySecurityPairingCanceled, ""))
+	e.clearActivePollWithError(fatalWfError("canceled", WorkflowReasonPairingCanceled, ""))
 	for id, s := range wf.initPairings {
 		e.discardInitSlot(s)
 		delete(wf.initPairings, id)
@@ -139,7 +138,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		if ev.kind == evStart {
 			if wf.pendingOp != nil {
-				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 			}
 			e.syncStates(false, "", parentTarget(t, 0))
 			return nil
@@ -155,7 +154,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			acctPub = prof.AccountPublicKey[:]
 		}
 		if len(acctPub) != 32 {
-			return newWfError("invalid", text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA)
+			return newWfError("invalid", WorkflowReasonAccountPubKeyMissing)
 		}
 		trust, err := devicesec.PairTrustDescriptor(e.pin, e.selfDeviceID)
 		if err != nil {
@@ -194,7 +193,7 @@ func (t *startPairingTask) step(e *Engine, ev *secEvent) error {
 			}
 		}
 		if !hasArchive {
-			return newWfError("not_found", text.KeySecurityTheComputerSArchiveWasDeletedJoinAsA)
+			return newWfError("not_found", WorkflowReasonComputerArchiveDeleted)
 		}
 		t.beginCreate(e)
 	case startPairEntropy:
@@ -267,7 +266,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			}
 			sess := wf.initPairings[t.pairingID]
 			if sess == nil {
-				return newWfError("not_found", text.KeySecurityPairingExpiredOrWasCanceled)
+				return newWfError("not_found", WorkflowReasonPairingExpiredOrCanceled)
 			}
 			if !e.isAuthority() {
 				return devicesec.ErrUntrusted
@@ -281,7 +280,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 			if ev.rpcErr.code == connectCodeNotFound {
 				e.discardInitSlot(sess)
 				delete(wf.initPairings, t.pairingID)
-				return fatalWfError("canceled", text.KeySecurityPairingExpiredOrWasCanceled, "")
+				return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
 			}
 			return ev.err
 		} else if ev.err != nil {
@@ -295,7 +294,7 @@ func (t *pollPairingInitiatorTask) step(e *Engine, ev *secEvent) error {
 		case v1.PairingState_PAIRING_STATE_CANCELED:
 			e.discardInitSlot(sess)
 			delete(wf.initPairings, t.pairingID)
-			return fatalWfError("canceled", text.KeySecurityPairingExpiredOrWasCanceled, "")
+			return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
 		case v1.PairingState_PAIRING_STATE_DELIVERED:
 			e.discardInitSlot(sess)
 			sess.delivered, sess.approved, sess.joined = true, true, true
@@ -378,14 +377,14 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 		}
 		if ev.kind == evStart {
 			if !t.sasConfirmed {
-				return newWfError("invalid", text.KeySecurityConfirmThePatternsOnTheNewDeviceBeforeApproving)
+				return newWfError("invalid", WorkflowReasonConfirmPatternsBeforeApproving)
 			}
 			sess := wf.initPairings[t.pairingID]
 			if sess == nil || !sess.joined || len(sess.pairKey) != 32 || len(sess.candidateEd) != 32 || len(sess.candidateX) != 32 {
 				return devicesec.ErrStale
 			}
 			if wf.pendingOp != nil {
-				return newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst)
+				return newWfError("pending", WorkflowReasonFinishCurrentOpFirst)
 			}
 			t.sess = sess
 			e.syncStates(false, "", parentTarget(t, 0))
@@ -569,7 +568,7 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 	if strings.TrimSpace(act.RawLink) != "" {
 		lc, ls, lh, ok := ParsePairLink(act.RawLink)
 		if !ok {
-			e.emitActionResult(actionID, nil, newWfError("invalid", text.KeySecurityInvalidPairingKey))
+			e.emitActionResult(actionID, nil, newWfError("invalid", WorkflowReasonInvalidPairingKey))
 			return
 		}
 		code, rawServer = lc, ls
@@ -587,7 +586,7 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 		return
 	}
 	if wf.bootstrapInvalid || wf.pendingOp != nil || wf.regIntent != nil {
-		e.emitActionResult(actionID, nil, newWfError("pending", text.KeySecurityFinishTheCurrentSecurityOperationFirst))
+		e.emitActionResult(actionID, nil, newWfError("pending", WorkflowReasonFinishCurrentOpFirst))
 		return
 	}
 	if len(commitHint) != 0 && len(commitHint) != 32 {
@@ -603,7 +602,7 @@ func (e *Engine) startJoinPairingAction(actionID uint64, act *corev1.SecuritySta
 		e.emitActionResult(actionID, nil, devicesec.ErrStale)
 		return
 	}
-	e.clearActivePollWithError(fatalWfError("canceled", text.KeySecurityPairingCanceled, ""))
+	e.clearActivePollWithError(fatalWfError("canceled", WorkflowReasonPairingCanceled, ""))
 	for id, old := range wf.joinPairings {
 		if old != nil {
 			e.discardJoinSessionKeys(old)
@@ -693,7 +692,7 @@ func (e *Engine) confirmJoinSasAction(actionID uint64, pairingID string) {
 		return
 	}
 	sess.sasConfirmed = true
-	e.clearActivePollWithError(fatalWfError("canceled", text.KeySecurityPairingCanceled, ""))
+	e.clearActivePollWithError(fatalWfError("canceled", WorkflowReasonPairingCanceled, ""))
 	wf.activePoll = &activePoll{kind: pollJoinApproved, pairingID: pairingID, actionID: actionID}
 	e.pollJoinState(pairingID, v1.PairingState_PAIRING_STATE_APPROVED)
 }
@@ -706,7 +705,7 @@ func (e *Engine) cancelJoinPairingAction(actionID uint64, pairingID string) {
 		pairingID = wf.activePoll.pairingID
 	}
 	if wf.activePoll != nil && (pairingID == "" || wf.activePoll.pairingID == pairingID) {
-		e.clearActivePollWithError(fatalWfError("canceled", text.KeySecurityPairingCanceled, ""))
+		e.clearActivePollWithError(fatalWfError("canceled", WorkflowReasonPairingCanceled, ""))
 	}
 	sess := wf.joinPairings[pairingID]
 	delete(wf.joinPairings, pairingID)
@@ -905,7 +904,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 		}
 		if ev.rpcErr != nil {
 			if ev.rpcErr.code == connectCodeNotFound || ev.rpcErr.code == connectCodePermissionDenied {
-				return fatalWfError("canceled", text.KeySecurityPairingExpiredOrWasCanceled, "")
+				return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
 			}
 			e.scheduleSecurityPollTimer()
 			return nil
@@ -917,7 +916,7 @@ func (t *pollJoinTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrInvalid
 		}
 		if st.State == v1.PairingState_PAIRING_STATE_CANCELED {
-			return fatalWfError("canceled", text.KeySecurityPairingExpiredOrWasCanceled, "")
+			return fatalWfError("canceled", WorkflowReasonPairingExpiredOrCanceled, "")
 		}
 		if st.State < t.want {
 			e.scheduleSecurityPollTimer()
