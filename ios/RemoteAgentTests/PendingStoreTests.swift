@@ -276,6 +276,40 @@ import Testing
         }
     }
 
+    @Test func streamingBlobWriteReleasesGlobalLockAndAbortsOnConcurrentClearAll() throws {
+        defer { cleanUp() }
+        let s = store()
+        let srcFile = FileManager.default.temporaryDirectory.appending(path: "ra-stream-\(UUID().uuidString).bin")
+        try Data(repeating: 0x5A, count: 64 * 1024).write(to: srcFile)
+        defer { try? FileManager.default.removeItem(at: srcFile) }
+
+        // 1. While streaming write is outside the global lock, a concurrent draft write + list succeeds immediately
+        //    and list() does not delete the active in-flight .tmp file.
+        var concurrentWriteOK = false
+        var concurrentListOK = false
+        s.onBlobStreamingWriteForTesting = {
+            let res = s.write(opID: 10, bucket: .draft, key: "draft:session:concurrent", data: Data("live".utf8))
+            concurrentWriteOK = res.ok
+            let listed = s.list(opID: 11)
+            concurrentListOK = listed.errorKind == .unspecified && listed.entries.count == 1
+        }
+        let ref = try s.storeBlob(from: srcFile, prefix: "vid")
+        s.onBlobStreamingWriteForTesting = nil
+        #expect(concurrentWriteOK && concurrentListOK)
+        #expect(try s.readBlob(ref).count == 64 * 1024)
+
+        // 2. If clearAll() runs while a streaming write is in flight, commit re-checks epoch, removes .tmp, and writes nothing.
+        let scope = s.scoped()
+        s.onBlobStreamingWriteForTesting = {
+            try? s.clearAll()
+        }
+        #expect(throws: AttachmentFileIOError(.other)) {
+            _ = try scope.storeBlob(from: srcFile, prefix: "vid")
+        }
+        s.onBlobStreamingWriteForTesting = nil
+        #expect(filesOnDisk().isEmpty)
+    }
+
     @Test func staleScopeCannotTouchNextAccountAfterClearAll() throws {
         defer { cleanUp() }
         let s = store()

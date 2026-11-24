@@ -34,6 +34,11 @@ final class PendingStore: @unchecked Sendable {
     /// Counts the accounts this store has served: `clearAll` ends one. A
     /// `PendingScope` made before it writes and reads nothing after.
     private var epoch = 0
+    /// Temp filenames currently being written lock-free so `list()` never deletes an active write.
+    private var inFlightTmpNames = Set<String>()
+    #if DEBUG
+    var onBlobStreamingWriteForTesting: (@Sendable () -> Void)?
+    #endif
 
     // In-memory backing used when `ephemeral == true` (demo mode & unit tests).
     private var memDrafts: [String: Data] = [:]
@@ -131,9 +136,9 @@ final class PendingStore: @unchecked Sendable {
             }
 
             // Clean residual temp files left behind by interrupted atomic/blob writes.
-            Self.cleanResidualTempFiles(in: draftsDir)
-            Self.cleanResidualTempFiles(in: outboxDir)
-            Self.cleanResidualTempFiles(in: blobsDir)
+            Self.cleanResidualTempFiles(in: draftsDir, skipping: inFlightTmpNames)
+            Self.cleanResidualTempFiles(in: outboxDir, skipping: inFlightTmpNames)
+            Self.cleanResidualTempFiles(in: blobsDir, skipping: inFlightTmpNames)
 
             var entries: [PBDraftStorageEntry] = []
             var localRefs: [String] = []
@@ -357,169 +362,233 @@ final class PendingStore: @unchecked Sendable {
         }
     }
 
-    // MARK: - Local Attachment Handles (`blob:`, `bmk:`, `vid:`)
+    // MARK: - Local Attachment Handles (`blob:`, `bmk:`)
 
     /// Stores raw or prepared image/thumbnail bytes as a chunked AES-256-GCM blob and returns `"blob:<id>"`.
-    func storeBlob(_ data: Data, prefix: String = "b") throws -> String {
-        try lock.withLock {
-            let id = "\(prefix)-\(newRequestId())"
-            let ref = "blob:\(id)"
-            if ephemeral {
+    /// Releases `lock` during disk encryption/fsync so FIFO draft/outbox operations never block.
+    func storeBlob(_ data: Data, prefix: String = "b", expectedEpoch: Int? = nil) throws -> String {
+        let id = "\(prefix)-\(newRequestId())"
+        let ref = "blob:\(id)"
+        if ephemeral {
+            return try lock.withLock {
+                if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.other) }
                 guard used + Int64(data.count) <= limit else {
                     throw AttachmentFileIOError(.storageFull)
                 }
                 memBlobs[ref] = data
                 return ref
             }
-            let key = try self.key()
-            let totalPlain = Int64(data.count)
-            let chunkSize = Self.blobChunkSize
-            let chunkCount = totalPlain == 0 ? 0 : Int((totalPlain + Int64(chunkSize) - 1) / Int64(chunkSize))
-            let estimatedBytes = Int64(Self.blobHeaderSize) + totalPlain + Int64(chunkCount) * Int64(Self.gcmOverhead)
+        }
+        let totalPlain = Int64(data.count)
+        let chunkSize = Self.blobChunkSize
+        let chunkCount = totalPlain == 0 ? 0 : Int((totalPlain + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let estimatedBytes = Int64(Self.blobHeaderSize) + totalPlain + Int64(chunkCount) * Int64(Self.gcmOverhead)
+        let target = blobsDir.appending(path: "\(id).blob")
+        let tmpName = ".\(id).blob.tmp"
+        let tmp = blobsDir.appending(path: tmpName)
+
+        let (key, startEpoch): (SymmetricKey, Int) = try lock.withLock {
+            if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.other) }
+            let k = try self.key()
             guard ImageDiskPolicy.bytes(directory) + estimatedBytes <= limit else {
                 throw AttachmentFileIOError(.storageFull)
             }
             try ensureDir(blobsDir)
-            let target = blobsDir.appending(path: "\(id).blob")
-            let tmp = blobsDir.appending(path: ".\(id).blob.tmp")
-            FileManager.default.createFile(
-                atPath: tmp.path,
-                contents: nil,
-                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
-            )
-            do {
-                let handle = try FileHandle(forWritingTo: tmp)
-                defer { try? handle.close() }
-                var header = Data()
-                header.reserveCapacity(Self.blobHeaderSize)
-                header.append(Self.blobMagic)
-                var sizeBE = UInt64(totalPlain).bigEndian
-                withUnsafeBytes(of: &sizeBE) { header.append(contentsOf: $0) }
-                var chunkBE = UInt32(chunkSize).bigEndian
-                withUnsafeBytes(of: &chunkBE) { header.append(contentsOf: $0) }
-                try handle.write(contentsOf: header)
+            inFlightTmpNames.insert(tmpName)
+            return (k, epoch)
+        }
 
-                var offset = 0
-                var chunkIdx = 0
-                while offset < data.count {
-                    let end = min(offset + chunkSize, data.count)
-                    try autoreleasepool {
-                        let slice = data[offset..<end]
-                        guard let combined = try AES.GCM.seal(
-                            slice,
-                            using: key,
-                            authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
-                        ).combined else {
-                            throw AttachmentFileIOError(.other)
-                        }
-                        try handle.write(contentsOf: combined)
-                    }
-                    offset = end
-                    chunkIdx += 1
-                }
-                try handle.synchronize()
-                try FileManager.default.moveItem(at: tmp, to: target)
-                return ref
-            } catch {
+        var committed = false
+        defer {
+            if !committed {
                 try? FileManager.default.removeItem(at: tmp)
-                throw error
+                lock.withLock { _ = inFlightTmpNames.remove(tmpName) }
             }
         }
+
+        FileManager.default.createFile(
+            atPath: tmp.path,
+            contents: nil,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        )
+        do {
+            let handle = try FileHandle(forWritingTo: tmp)
+            defer { try? handle.close() }
+            var header = Data()
+            header.reserveCapacity(Self.blobHeaderSize)
+            header.append(Self.blobMagic)
+            var sizeBE = UInt64(totalPlain).bigEndian
+            withUnsafeBytes(of: &sizeBE) { header.append(contentsOf: $0) }
+            var chunkBE = UInt32(chunkSize).bigEndian
+            withUnsafeBytes(of: &chunkBE) { header.append(contentsOf: $0) }
+            try handle.write(contentsOf: header)
+
+            var offset = 0
+            var chunkIdx = 0
+            while offset < data.count {
+                let end = min(offset + chunkSize, data.count)
+                try autoreleasepool {
+                    let slice = data[offset..<end]
+                    guard let combined = try AES.GCM.seal(
+                        slice,
+                        using: key,
+                        authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
+                    ).combined else {
+                        throw AttachmentFileIOError(.other)
+                    }
+                    try handle.write(contentsOf: combined)
+                }
+                offset = end
+                chunkIdx += 1
+            }
+            try handle.synchronize()
+        }
+
+        try lock.withLock {
+            defer { inFlightTmpNames.remove(tmpName) }
+            guard epoch == startEpoch else {
+                try? FileManager.default.removeItem(at: tmp)
+                throw AttachmentFileIOError(.other)
+            }
+            guard ImageDiskPolicy.bytes(directory) <= limit else {
+                try? FileManager.default.removeItem(at: tmp)
+                throw AttachmentFileIOError(.storageFull)
+            }
+            try FileManager.default.moveItem(at: tmp, to: target)
+            committed = true
+        }
+        return ref
     }
 
     /// Streams a file (e.g. a picked photo-library video) into a chunked AES-256-GCM blob without loading it into RAM.
-    func storeBlob(from sourceURL: URL, prefix: String = "vid") throws -> String {
-        try lock.withLock {
-            let id = "\(prefix)-\(newRequestId())"
-            let ref = "blob:\(id)"
-            let srcHandle = try FileHandle(forReadingFrom: sourceURL)
-            defer { try? srcHandle.close() }
-            let totalPlain = Int64(try srcHandle.seekToEnd())
-            try srcHandle.seek(toOffset: 0)
+    /// Releases `lock` during streaming encryption/fsync and re-checks epoch + quota atomically before renaming.
+    func storeBlob(from sourceURL: URL, prefix: String = "vid", expectedEpoch: Int? = nil) throws -> String {
+        let id = "\(prefix)-\(newRequestId())"
+        let ref = "blob:\(id)"
+        let srcHandle = try FileHandle(forReadingFrom: sourceURL)
+        defer { try? srcHandle.close() }
+        let totalPlain = Int64(try srcHandle.seekToEnd())
+        try srcHandle.seek(toOffset: 0)
 
-            if ephemeral {
+        if ephemeral {
+            let data = try srcHandle.readToEnd() ?? Data()
+            guard Int64(data.count) == totalPlain else {
+                throw AttachmentFileIOError(.sourceChanged)
+            }
+            return try lock.withLock {
+                if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.other) }
                 guard used + totalPlain <= limit else {
                     throw AttachmentFileIOError(.storageFull)
-                }
-                let data = try srcHandle.readToEnd() ?? Data()
-                guard Int64(data.count) == totalPlain else {
-                    throw AttachmentFileIOError(.sourceChanged)
                 }
                 memBlobs[ref] = data
                 return ref
             }
+        }
 
-            let key = try self.key()
-            let chunkSize = Self.blobChunkSize
-            let chunkCount = totalPlain == 0 ? 0 : Int((totalPlain + Int64(chunkSize) - 1) / Int64(chunkSize))
-            let estimatedBytes = Int64(Self.blobHeaderSize) + totalPlain + Int64(chunkCount) * Int64(Self.gcmOverhead)
+        let chunkSize = Self.blobChunkSize
+        let chunkCount = totalPlain == 0 ? 0 : Int((totalPlain + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let estimatedBytes = Int64(Self.blobHeaderSize) + totalPlain + Int64(chunkCount) * Int64(Self.gcmOverhead)
+        let target = blobsDir.appending(path: "\(id).blob")
+        let tmpName = ".\(id).blob.tmp"
+        let tmp = blobsDir.appending(path: tmpName)
+
+        let (key, startEpoch): (SymmetricKey, Int) = try lock.withLock {
+            if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.other) }
+            let k = try self.key()
             guard ImageDiskPolicy.bytes(directory) + estimatedBytes <= limit else {
                 throw AttachmentFileIOError(.storageFull)
             }
             try ensureDir(blobsDir)
-            let target = blobsDir.appending(path: "\(id).blob")
-            let tmp = blobsDir.appending(path: ".\(id).blob.tmp")
-            FileManager.default.createFile(
-                atPath: tmp.path,
-                contents: nil,
-                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
-            )
-            do {
-                let dstHandle = try FileHandle(forWritingTo: tmp)
-                defer { try? dstHandle.close() }
-                var header = Data()
-                header.reserveCapacity(Self.blobHeaderSize)
-                header.append(Self.blobMagic)
-                var sizeBE = UInt64(totalPlain).bigEndian
-                withUnsafeBytes(of: &sizeBE) { header.append(contentsOf: $0) }
-                var chunkBE = UInt32(chunkSize).bigEndian
-                withUnsafeBytes(of: &chunkBE) { header.append(contentsOf: $0) }
-                try dstHandle.write(contentsOf: header)
+            inFlightTmpNames.insert(tmpName)
+            return (k, epoch)
+        }
 
-                var writtenPlain: Int64 = 0
-                var chunkIdx = 0
-                while writtenPlain < totalPlain {
-                    let remaining = totalPlain - writtenPlain
-                    let toRead = Int(min(Int64(chunkSize), remaining))
-                    try autoreleasepool {
-                        guard let plain = try srcHandle.read(upToCount: toRead), !plain.isEmpty else {
-                            throw AttachmentFileIOError(.sourceChanged)
-                        }
-                        guard let combined = try AES.GCM.seal(
-                            plain,
-                            using: key,
-                            authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
-                        ).combined else {
-                            throw AttachmentFileIOError(.other)
-                        }
-                        try dstHandle.write(contentsOf: combined)
-                        writtenPlain += Int64(plain.count)
-                    }
-                    chunkIdx += 1
-                }
-                if let extra = try srcHandle.read(upToCount: 1), !extra.isEmpty {
-                    throw AttachmentFileIOError(.sourceChanged)
-                }
-                try dstHandle.synchronize()
-                try FileManager.default.moveItem(at: tmp, to: target)
-                return ref
-            } catch {
+        var committed = false
+        defer {
+            if !committed {
                 try? FileManager.default.removeItem(at: tmp)
-                throw error
+                lock.withLock { _ = inFlightTmpNames.remove(tmpName) }
             }
         }
+
+        FileManager.default.createFile(
+            atPath: tmp.path,
+            contents: nil,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+        )
+        do {
+            let dstHandle = try FileHandle(forWritingTo: tmp)
+            defer { try? dstHandle.close() }
+            var header = Data()
+            header.reserveCapacity(Self.blobHeaderSize)
+            header.append(Self.blobMagic)
+            var sizeBE = UInt64(totalPlain).bigEndian
+            withUnsafeBytes(of: &sizeBE) { header.append(contentsOf: $0) }
+            var chunkBE = UInt32(chunkSize).bigEndian
+            withUnsafeBytes(of: &chunkBE) { header.append(contentsOf: $0) }
+            try dstHandle.write(contentsOf: header)
+
+            var writtenPlain: Int64 = 0
+            var chunkIdx = 0
+            while writtenPlain < totalPlain {
+                let remaining = totalPlain - writtenPlain
+                let toRead = Int(min(Int64(chunkSize), remaining))
+                try autoreleasepool {
+                    guard let plain = try srcHandle.read(upToCount: toRead), !plain.isEmpty else {
+                        throw AttachmentFileIOError(.sourceChanged)
+                    }
+                    guard let combined = try AES.GCM.seal(
+                        plain,
+                        using: key,
+                        authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
+                    ).combined else {
+                        throw AttachmentFileIOError(.other)
+                    }
+                    try dstHandle.write(contentsOf: combined)
+                    writtenPlain += Int64(plain.count)
+                }
+                chunkIdx += 1
+            }
+            if let extra = try srcHandle.read(upToCount: 1), !extra.isEmpty {
+                throw AttachmentFileIOError(.sourceChanged)
+            }
+            #if DEBUG
+            onBlobStreamingWriteForTesting?()
+            #endif
+            try dstHandle.synchronize()
+        }
+
+        try lock.withLock {
+            defer { inFlightTmpNames.remove(tmpName) }
+            guard epoch == startEpoch else {
+                try? FileManager.default.removeItem(at: tmp)
+                throw AttachmentFileIOError(.other)
+            }
+            guard ImageDiskPolicy.bytes(directory) <= limit else {
+                try? FileManager.default.removeItem(at: tmp)
+                throw AttachmentFileIOError(.storageFull)
+            }
+            try FileManager.default.moveItem(at: tmp, to: target)
+            committed = true
+        }
+        return ref
     }
 
     /// Reads and decrypts a full `"blob:<id>"` (for `AttachmentPrepareImageEffect`, thumbnails, and viewer).
-    func readBlob(_ ref: String) throws -> Data {
-        try lock.withLock {
-            guard let id = Self.refID(ref, prefix: "blob:") else {
-                throw AttachmentFileIOError(.sourceMissing)
-            }
-            if ephemeral {
+    /// Releases `lock` during streaming decryption.
+    func readBlob(_ ref: String, expectedEpoch: Int? = nil) throws -> Data {
+        guard let id = Self.refID(ref, prefix: "blob:") else {
+            throw AttachmentFileIOError(.sourceMissing)
+        }
+        if ephemeral {
+            return try lock.withLock {
+                if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
                 guard let data = memBlobs[ref] else { throw AttachmentFileIOError(.sourceMissing) }
                 return data
             }
+        }
+        let (handle, key, startEpoch): (FileHandle, SymmetricKey, Int) = try lock.withLock {
+            if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
             let file = blobsDir.appending(path: "\(id).blob")
             guard FileManager.default.fileExists(atPath: file.path) else {
                 throw AttachmentFileIOError(.sourceMissing)
@@ -527,49 +596,58 @@ final class PendingStore: @unchecked Sendable {
             guard let key = try storedKey() else {
                 throw AttachmentFileIOError(.other)
             }
-            let handle = try FileHandle(forReadingFrom: file)
-            defer { try? handle.close() }
-            let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
-            if plainSize == 0 { return Data() }
-            var out = Data()
-            out.reserveCapacity(Int(plainSize))
-            let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
-            for idx in 0..<totalChunks {
-                let plainLen = idx == totalChunks - 1
-                    ? Int(plainSize - Int64(idx) * Int64(chunkSize))
-                    : chunkSize
-                let sealedLen = plainLen + Self.gcmOverhead
-                let chunk = try autoreleasepool {
-                    guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
-                        throw AttachmentFileIOError(.corruptStore)
-                    }
-                    return try AES.GCM.open(
-                        AES.GCM.SealedBox(combined: sealed),
-                        using: key,
-                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
-                    )
-                }
-                out.append(chunk)
-            }
-            return out
+            return (try FileHandle(forReadingFrom: file), key, epoch)
         }
+        defer { try? handle.close() }
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        if plainSize == 0 {
+            try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
+            return Data()
+        }
+        var out = Data()
+        out.reserveCapacity(Int(plainSize))
+        let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        for idx in 0..<totalChunks {
+            let plainLen = idx == totalChunks - 1
+                ? Int(plainSize - Int64(idx) * Int64(chunkSize))
+                : chunkSize
+            let sealedLen = plainLen + Self.gcmOverhead
+            let chunk = try autoreleasepool {
+                guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
+                    throw AttachmentFileIOError(.corruptStore)
+                }
+                return try AES.GCM.open(
+                    AES.GCM.SealedBox(combined: sealed),
+                    using: key,
+                    authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
+                )
+            }
+            out.append(chunk)
+        }
+        try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
+        return out
     }
 
     /// Streams an exact `[offset, offset + length)` slice from `"blob:<id>"` without decoding the whole file.
-    func readBlobChunk(_ ref: String, offset: Int64, length: Int, expectedSizeBytes: Int64) throws -> Data {
-        try lock.withLock {
-            guard let id = Self.refID(ref, prefix: "blob:") else {
-                throw AttachmentFileIOError(.sourceMissing)
-            }
-            guard offset >= 0, length >= 0, expectedSizeBytes >= 0, offset + Int64(length) <= expectedSizeBytes else {
-                throw AttachmentFileIOError(.sourceChanged)
-            }
-            if ephemeral {
+    /// Releases `lock` during chunk I/O and decryption.
+    func readBlobChunk(_ ref: String, offset: Int64, length: Int, expectedSizeBytes: Int64, expectedEpoch: Int? = nil) throws -> Data {
+        guard let id = Self.refID(ref, prefix: "blob:") else {
+            throw AttachmentFileIOError(.sourceMissing)
+        }
+        guard offset >= 0, length >= 0, expectedSizeBytes >= 0, offset + Int64(length) <= expectedSizeBytes else {
+            throw AttachmentFileIOError(.sourceChanged)
+        }
+        if ephemeral {
+            return try lock.withLock {
+                if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
                 guard let data = memBlobs[ref] else { throw AttachmentFileIOError(.sourceMissing) }
                 guard Int64(data.count) == expectedSizeBytes else { throw AttachmentFileIOError(.sourceChanged) }
                 if length == 0 { return Data() }
                 return Data(data[Int(offset)..<Int(offset + Int64(length))])
             }
+        }
+        let (handle, key, startEpoch): (FileHandle, SymmetricKey, Int) = try lock.withLock {
+            if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
             let file = blobsDir.appending(path: "\(id).blob")
             guard FileManager.default.fileExists(atPath: file.path) else {
                 throw AttachmentFileIOError(.sourceMissing)
@@ -577,57 +655,66 @@ final class PendingStore: @unchecked Sendable {
             guard let key = try storedKey() else {
                 throw AttachmentFileIOError(.other)
             }
-            let handle = try FileHandle(forReadingFrom: file)
-            defer { try? handle.close() }
-            let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
-            guard plainSize == expectedSizeBytes else {
-                throw AttachmentFileIOError(.sourceChanged)
-            }
-            if length == 0 { return Data() }
-
-            let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
-            let firstChunk = Int(offset / Int64(chunkSize))
-            let lastChunk = Int((offset + Int64(length) - 1) / Int64(chunkSize))
-            let sealedStride = Int64(chunkSize) + Int64(Self.gcmOverhead)
-
-            var out = Data()
-            out.reserveCapacity(length)
-            for idx in firstChunk...lastChunk {
-                let chunkStart = Int64(idx) * Int64(chunkSize)
-                let plainLen = idx == totalChunks - 1 ? Int(plainSize - chunkStart) : chunkSize
-                let sealedLen = plainLen + Self.gcmOverhead
-                let fileOffset = UInt64(Int64(Self.blobHeaderSize) + Int64(idx) * sealedStride)
-                let slice = try autoreleasepool {
-                    try handle.seek(toOffset: fileOffset)
-                    guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
-                        throw AttachmentFileIOError(.corruptStore)
-                    }
-                    let plain = try AES.GCM.open(
-                        AES.GCM.SealedBox(combined: sealed),
-                        using: key,
-                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
-                    )
-                    let lo = max(0, Int(offset - chunkStart))
-                    let hi = min(plainLen, Int(offset + Int64(length) - chunkStart))
-                    return plain[lo..<hi]
-                }
-                out.append(slice)
-            }
-            return out
+            return (try FileHandle(forReadingFrom: file), key, epoch)
         }
+        defer { try? handle.close() }
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        guard plainSize == expectedSizeBytes else {
+            throw AttachmentFileIOError(.sourceChanged)
+        }
+        if length == 0 {
+            try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
+            return Data()
+        }
+
+        let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let firstChunk = Int(offset / Int64(chunkSize))
+        let lastChunk = Int((offset + Int64(length) - 1) / Int64(chunkSize))
+        let sealedStride = Int64(chunkSize) + Int64(Self.gcmOverhead)
+
+        var out = Data()
+        out.reserveCapacity(length)
+        for idx in firstChunk...lastChunk {
+            let chunkStart = Int64(idx) * Int64(chunkSize)
+            let plainLen = idx == totalChunks - 1 ? Int(plainSize - chunkStart) : chunkSize
+            let sealedLen = plainLen + Self.gcmOverhead
+            let fileOffset = UInt64(Int64(Self.blobHeaderSize) + Int64(idx) * sealedStride)
+            let slice = try autoreleasepool {
+                try handle.seek(toOffset: fileOffset)
+                guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
+                    throw AttachmentFileIOError(.corruptStore)
+                }
+                let plain = try AES.GCM.open(
+                    AES.GCM.SealedBox(combined: sealed),
+                    using: key,
+                    authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
+                )
+                let lo = max(0, Int(offset - chunkStart))
+                let hi = min(plainLen, Int(offset + Int64(length) - chunkStart))
+                return plain[lo..<hi]
+            }
+            out.append(slice)
+        }
+        try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
+        return out
     }
 
     /// Streams `"blob:<id>"` to compute exact byte size and SHA-256 without loading the entire blob into memory.
-    func hashBlob(_ ref: String, maxBytes: Int64) throws -> (sizeBytes: Int64, sha256: Data) {
-        try lock.withLock {
-            guard let id = Self.refID(ref, prefix: "blob:") else {
-                throw AttachmentFileIOError(.sourceMissing)
-            }
-            if ephemeral {
+    /// Releases `lock` during streaming decryption and hashing.
+    func hashBlob(_ ref: String, maxBytes: Int64, expectedEpoch: Int? = nil) throws -> (sizeBytes: Int64, sha256: Data) {
+        guard let id = Self.refID(ref, prefix: "blob:") else {
+            throw AttachmentFileIOError(.sourceMissing)
+        }
+        if ephemeral {
+            return try lock.withLock {
+                if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
                 guard let data = memBlobs[ref] else { throw AttachmentFileIOError(.sourceMissing) }
                 if maxBytes > 0 && Int64(data.count) > maxBytes { throw AttachmentFileIOError(.fileTooLarge) }
                 return (Int64(data.count), Data(SHA256.hash(data: data)))
             }
+        }
+        let (handle, key, startEpoch): (FileHandle, SymmetricKey, Int) = try lock.withLock {
+            if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
             let file = blobsDir.appending(path: "\(id).blob")
             guard FileManager.default.fileExists(atPath: file.path) else {
                 throw AttachmentFileIOError(.sourceMissing)
@@ -635,31 +722,32 @@ final class PendingStore: @unchecked Sendable {
             guard let key = try storedKey() else {
                 throw AttachmentFileIOError(.other)
             }
-            let handle = try FileHandle(forReadingFrom: file)
-            defer { try? handle.close() }
-            let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
-            if maxBytes > 0 && plainSize > maxBytes { throw AttachmentFileIOError(.fileTooLarge) }
-            var hasher = SHA256()
-            let totalChunks = plainSize == 0 ? 0 : Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
-            for idx in 0..<totalChunks {
-                let plainLen = idx == totalChunks - 1
-                    ? Int(plainSize - Int64(idx) * Int64(chunkSize))
-                    : chunkSize
-                let sealedLen = plainLen + Self.gcmOverhead
-                try autoreleasepool {
-                    guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
-                        throw AttachmentFileIOError(.corruptStore)
-                    }
-                    let plain = try AES.GCM.open(
-                        AES.GCM.SealedBox(combined: sealed),
-                        using: key,
-                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
-                    )
-                    hasher.update(data: plain)
-                }
-            }
-            return (plainSize, Data(hasher.finalize()))
+            return (try FileHandle(forReadingFrom: file), key, epoch)
         }
+        defer { try? handle.close() }
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        if maxBytes > 0 && plainSize > maxBytes { throw AttachmentFileIOError(.fileTooLarge) }
+        var hasher = SHA256()
+        let totalChunks = plainSize == 0 ? 0 : Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        for idx in 0..<totalChunks {
+            let plainLen = idx == totalChunks - 1
+                ? Int(plainSize - Int64(idx) * Int64(chunkSize))
+                : chunkSize
+            let sealedLen = plainLen + Self.gcmOverhead
+            try autoreleasepool {
+                guard let sealed = try handle.read(upToCount: sealedLen), sealed.count == sealedLen else {
+                    throw AttachmentFileIOError(.corruptStore)
+                }
+                let plain = try AES.GCM.open(
+                    AES.GCM.SealedBox(combined: sealed),
+                    using: key,
+                    authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
+                )
+                hasher.update(data: plain)
+            }
+        }
+        try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
+        return (plainSize, Data(hasher.finalize()))
     }
 
     /// Stores a security-scoped bookmark sealed on disk and returns `"bmk:<id>"`.
@@ -769,7 +857,7 @@ final class PendingStore: @unchecked Sendable {
             || !Self.visibleFiles(in: blobsDir).isEmpty
     }
 
-    private static func cleanResidualTempFiles(in dir: URL) {
+    private static func cleanResidualTempFiles(in dir: URL, skipping: Set<String> = []) {
         let fm = FileManager.default
         guard let list = try? fm.contentsOfDirectory(
             at: dir,
@@ -777,6 +865,7 @@ final class PendingStore: @unchecked Sendable {
         ) else { return }
         for item in list {
             let name = item.lastPathComponent
+            if skipping.contains(name) { continue }
             if name.hasSuffix(".tmp") || name.hasPrefix(".dat.nosync") {
                 try? fm.removeItem(at: item)
             }
@@ -948,38 +1037,23 @@ struct PendingScope: Sendable {
     }
 
     func storeBlob(_ data: Data, prefix: String = "b") throws -> String {
-        guard let ref = try store.current(epoch, { try store.storeBlob(data, prefix: prefix) }) else {
-            throw AttachmentFileIOError(.other)
-        }
-        return ref
+        try store.storeBlob(data, prefix: prefix, expectedEpoch: epoch)
     }
 
     func storeBlob(from sourceURL: URL, prefix: String = "vid") throws -> String {
-        guard let ref = try store.current(epoch, { try store.storeBlob(from: sourceURL, prefix: prefix) }) else {
-            throw AttachmentFileIOError(.other)
-        }
-        return ref
+        try store.storeBlob(from: sourceURL, prefix: prefix, expectedEpoch: epoch)
     }
 
     func readBlob(_ ref: String) throws -> Data {
-        guard let data = try store.current(epoch, { try store.readBlob(ref) }) else {
-            throw AttachmentFileIOError(.sourceMissing)
-        }
-        return data
+        try store.readBlob(ref, expectedEpoch: epoch)
     }
 
     func readBlobChunk(_ ref: String, offset: Int64, length: Int, expectedSizeBytes: Int64) throws -> Data {
-        guard let data = try store.current(epoch, { try store.readBlobChunk(ref, offset: offset, length: length, expectedSizeBytes: expectedSizeBytes) }) else {
-            throw AttachmentFileIOError(.sourceMissing)
-        }
-        return data
+        try store.readBlobChunk(ref, offset: offset, length: length, expectedSizeBytes: expectedSizeBytes, expectedEpoch: epoch)
     }
 
     func hashBlob(_ ref: String, maxBytes: Int64) throws -> (sizeBytes: Int64, sha256: Data) {
-        guard let res = try store.current(epoch, { try store.hashBlob(ref, maxBytes: maxBytes) }) else {
-            throw AttachmentFileIOError(.sourceMissing)
-        }
-        return res
+        try store.hashBlob(ref, maxBytes: maxBytes, expectedEpoch: epoch)
     }
 
     func storeBookmark(_ bookmark: Data) throws -> String {
