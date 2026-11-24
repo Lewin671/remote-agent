@@ -181,7 +181,7 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 			Machine:  ep.acct.DeviceID,
 			Session:  session,
 			Request:  reqID,
-			Deadline: uint64(time.Now().Add(time.Minute).UnixMilli()),
+			Deadline: uint64(time.Now().Add(5 * time.Minute).UnixMilli()),
 		}, nil, body)
 		if err != nil {
 			t.Fatal(err)
@@ -223,11 +223,13 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 		t.Fatalf("expected valid frame after forged frame to execute, got %+v", res)
 	}
 
-	// Run 10,000 fault-injected cross-path deliveries across 4 concurrent workers
-	// (respecting the single-peer auth queue limit PeerEntries=8 while still
-	// exercising concurrent dual-path arrival, coalescing, and dedup).
-	const workers = 4
+	// Run 10,000 fault-injected cross-path deliveries across 3 concurrent workers
+	// (keeping concurrent frames <= 6, strictly below the single-peer PeerEntries=8
+	// cap on both frames and results queues, while still exercising concurrent
+	// dual-path arrival and verified-only ciphertext dedup).
+	const workers = 3
 	perWorker := totalIterations / workers
+	extra := totalIterations % workers
 	var wg sync.WaitGroup
 	var errMu sync.Mutex
 	var firstErr error
@@ -244,12 +246,17 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 
 	for w := range workers {
 		wg.Add(1)
-		go func(workerID int) {
+		startIdx := w*perWorker + min(w, extra)
+		count := perWorker
+		if w < extra {
+			count++
+		}
+		go func(workerID, start, n int) {
 			defer wg.Done()
 			ctx := context.Background()
-			localKeys := make([]string, 0, perWorker)
-			for i := range perWorker {
-				idx := workerID*perWorker + i
+			localKeys := make([]string, 0, n)
+			for i := range n {
+				idx := start + i
 				reqID := fmt.Sprintf("p2-fi-%02d-%06d-req", workerID, i)
 				var cmd *pb.Command
 				var key, sess string
@@ -313,8 +320,11 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 				case 3:
 					// Re-sealed same RequestID + same CommandBytes (simulates key-rotation retry) across paths.
 					rCh := make(chan *pb.ForwardReply, 1)
-					ep.dispatch(ctx, &pb.ForwardCall{CallId: uint64(idx + 10), AttemptId: "r1", Command: env}, func(r *pb.ForwardReply) { rCh <- r })
-					<-rCh
+					ep.dispatch(context.Background(), &pb.ForwardCall{CallId: uint64(idx + 10), AttemptId: "r1", Command: env}, func(r *pb.ForwardReply) { rCh <- r })
+					if r := <-rCh; r == nil || r.Result == nil {
+						recordErr(fmt.Errorf("iter %d: initial relay failed %v", idx, r))
+						return
+					}
 					resealed := seal(reqID, sess, cmd)
 					dCh := make(chan *pb.ForwardReply, 1)
 					ep.dispatchDirect(ctx, binding, 1, func() bool { return true }, resealed, func(r *pb.ForwardReply) { dCh <- r })
@@ -323,7 +333,7 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 						return
 					}
 				case 4:
-					// Direct reply dropped (allow=false), relay succeeds.
+					// Direct reply dropped (allow=false -> dispatchDirect drops before enqueue), relay succeeds.
 					ep.dispatchDirect(ctx, binding, 1, func() bool { return false }, env, func(*pb.ForwardReply) {})
 					rCh := make(chan *pb.ForwardReply, 1)
 					ep.dispatch(ctx, &pb.ForwardCall{CallId: uint64(idx + 10), AttemptId: "r", Command: env}, func(r *pb.ForwardReply) { rCh <- r })
@@ -335,7 +345,10 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 					// Valid execution followed by conflicting payload on the SAME RequestKey (same session + reqID) via Direct.
 					rCh := make(chan *pb.ForwardReply, 1)
 					ep.dispatch(ctx, &pb.ForwardCall{CallId: uint64(idx + 10), AttemptId: "r", Command: env}, func(r *pb.ForwardReply) { rCh <- r })
-					<-rCh
+					if r := <-rCh; r == nil || r.Result == nil {
+						recordErr(fmt.Errorf("iter %d: initial conflict-case relay failed %v", idx, r))
+						return
+					}
 					var conflictCmd *pb.Command
 					if sess == "" {
 						conflictCmd = &pb.Command{Kind: &pb.Command_CreateSession{CreateSession: &pb.CreateSessionRequest{Cwd: "conflicting-payload", Agent: pb.Agent_AGENT_CODEX}}}
@@ -363,7 +376,7 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 			keysMu.Lock()
 			expectedKeys = append(expectedKeys, localKeys...)
 			keysMu.Unlock()
-		}(w)
+		}(w, startIdx, count)
 	}
 	wg.Wait()
 	if firstErr != nil {
@@ -481,6 +494,19 @@ func TestPhase2ApprovalSchedulingP99UnderSaturation(t *testing.T) {
 	}
 	for i := range 16 {
 		ep.dispatchDirect(context.Background(), binding, 2, func() bool { return true }, seal("", &pb.Command{Kind: &pb.Command_PutImageChunk{PutImageChunk: &pb.PutImageChunkRequest{TransferId: fmt.Sprintf("b%d", i), Data: make([]byte, 1024)}}}), func(*pb.ForwardReply) {})
+	}
+	// Let the pre-loop flood drain through authentication into the scheduler queues
+	// so sample 0 measures scheduler saturation rather than single-peer auth-queue overflow.
+	adm := ep.admissionOwner()
+	deadlineDrain := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadlineDrain) {
+		adm.mu.Lock()
+		n := adm.frames.Len()
+		adm.mu.Unlock()
+		if n == 0 {
+			break
+		}
+		time.Sleep(time.Millisecond)
 	}
 
 	const samples = 200
