@@ -22,7 +22,9 @@ object ScreenGoldenLoader {
         val out = LinkedHashMap<String, ViewModel>()
         for (step in parsed.stepsList) {
             for (view in step.viewsList) {
-                out[view.name] = view.viewModel
+                check(out.put(view.name, view.viewModel) == null) {
+                    "Duplicate golden view '${view.name}' in $scenario.golden.pb"
+                }
             }
         }
         return out

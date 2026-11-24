@@ -19,8 +19,10 @@ enum ScreenGoldens {
         else { return [] }
 
         var out: [PBCoreViewModel] = []
+        var seen = Set<String>()
         for step in golden.steps {
             for view in step.views where view.hasViewModel {
+                precondition(seen.insert(view.name).inserted, "Duplicate golden view '\(view.name)' in \(name).golden.pb")
                 out.append(view.viewModel)
             }
         }

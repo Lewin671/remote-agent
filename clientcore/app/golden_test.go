@@ -118,6 +118,7 @@ func TestScreenGoldens(t *testing.T) {
 			actualPB := &stdcorev1.ScreenGoldenFile{
 				Steps: make([]*stdcorev1.ScreenGoldenStep, 0, len(in.Steps)),
 			}
+			seenViews := make(map[string]int)
 
 			for i, step := range in.Steps {
 				ev := stdJSONToLite[stdcorev1.Event, *stdcorev1.Event, corev1.Event, *corev1.Event](t, step.Event)
@@ -133,6 +134,13 @@ func TestScreenGoldens(t *testing.T) {
 					sort.Slice(probes, func(a, b int) bool { return probes[a].Name < probes[b].Name })
 					stepPB.Views = make([]*stdcorev1.ScreenGoldenView, 0, len(probes))
 					for _, probe := range probes {
+						if probe.Name == "" {
+							t.Fatalf("step %d has empty view probe name", i)
+						}
+						if prevStep, dup := seenViews[probe.Name]; dup {
+							t.Fatalf("duplicate view name %q (first at step %d, repeated at step %d)", probe.Name, prevStep, i)
+						}
+						seenViews[probe.Name] = i
 						sc := stdJSONToLite[stdcorev1.Screen, *stdcorev1.Screen, corev1.Screen, *corev1.Screen](t, probe.Screen)
 						vm, err := c.View(sc)
 						if err != nil {

@@ -45,7 +45,17 @@ const GOLDENS_DIR = resolve(__dirname, "../../../testdata/screens");
 
 function loadGolden(name: string): GoldenDoc {
   const bytes = readFileSync(resolve(GOLDENS_DIR, `${name}.golden.pb`));
-  return fromBinary(ScreenGoldenFileSchema, new Uint8Array(bytes));
+  const doc = fromBinary(ScreenGoldenFileSchema, new Uint8Array(bytes));
+  const seen = new Set<string>();
+  for (const step of doc.steps) {
+    for (const v of step.views) {
+      if (seen.has(v.name)) {
+        throw new Error(`Duplicate golden view '${v.name}' in ${name}.golden.pb`);
+      }
+      seen.add(v.name);
+    }
+  }
+  return doc;
 }
 
 const homeTimelineGolden = loadGolden("home_timeline");
@@ -68,13 +78,17 @@ const machineStatusLifecycleGolden = loadGolden("machine_status_lifecycle");
 const machineQuotaGolden = loadGolden("machine_quota");
 
 function goldenView(doc: GoldenDoc, viewName: string): ViewModel {
+  let matched: ViewModel | undefined;
   for (const step of doc.steps) {
-    const found = step.views.find((v) => v.name === viewName);
-    if (found?.viewModel) {
-      return found.viewModel;
+    for (const v of step.views) {
+      if (v.name === viewName && v.viewModel) {
+        if (matched) throw new Error(`Duplicate golden view: ${viewName}`);
+        matched = v.viewModel;
+      }
     }
   }
-  throw new Error(`Missing golden view: ${viewName}`);
+  if (!matched) throw new Error(`Missing golden view: ${viewName}`);
+  return matched;
 }
 
 let root: Root | undefined;
