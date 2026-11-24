@@ -1960,7 +1960,6 @@ export class DemoRemote extends Remote {
     };
     r.seed();
     r.seedMachineStatus();
-    seedDirect(r, q);
     r.seedAuthority();
     if (q.has("tables"))
       r.evs.set("s-run", [
@@ -2065,6 +2064,7 @@ export class DemoRemote extends Remote {
     if (q.has("one-machine")) for (const id of [...r.demoMachines.keys()]) if (id !== "mac") r.demoMachines.delete(id);
     if (q.has("dup")) r.seedDuplicateMachine();
     if (q.has("planb")) r.seedPlanBShowcase(q.get("planb") || "main");
+    seedDirect(r, q, [...r.demoMachines.keys()]);
     void r.loadDevices();
     r.syncDemoToCore();
     return r;

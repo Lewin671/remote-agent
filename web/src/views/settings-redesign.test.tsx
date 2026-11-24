@@ -208,6 +208,12 @@ describe("Settings home redesign (4 groups + separated danger card)", () => {
     expect(host.querySelector(".mc-grid.multi")).toBeTruthy();
     const cards = [...host.querySelectorAll<HTMLButtonElement>(".mc-grid button.mc")];
     expect(cards.length).toBe(3);
+    // Valid HTML5: no <div> nested inside <button>
+    for (const c of cards) {
+      expect(c.querySelector("div")).toBeNull();
+      const nameEl = c.querySelector(".mc-name")!;
+      expect(nameEl.getAttribute("title")).toBe(nameEl.textContent);
+    }
     // Online direct machine
     const wsCard = cards.find((c) => c.querySelector(".mc-name")?.textContent === "Workstation-M1")!;
     expect(wsCard.querySelector(".mc-direct")?.textContent).toContain(message("transport.direct"));

@@ -9,14 +9,12 @@ import { ConnProbeState, useCoreHost, useSettingsView } from "../core/host";
 import { renderText } from "../core/text";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
-  ConnectionGroupStage,
   type ConnCheckSummaryView,
   type MachineListCardView,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { errorText, type Remote } from "../remote";
 import { Banner, StateMark, Sheet, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
-import { connFooter } from "./direct-status";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
 
@@ -190,7 +188,11 @@ export function ConnCheckScreenView({
               <div className="mi">
                 <span className="mt">
                   {m.name}
-                  {m.disambiguator && <span className="mc-tag mc-tag-inline">{m.disambiguator}</span>}
+                  {m.disambiguator && (
+                    <span className="mc-tag mc-tag-inline" aria-label={renderText(m.disambiguatorA11y) || undefined}>
+                      {m.disambiguator}
+                    </span>
+                  )}
                 </span>
                 {m.online ? <Result p={machines.get(m.machineId)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
               </div>
@@ -203,7 +205,7 @@ export function ConnCheckScreenView({
           );
         })}
       </div>
-      <p className="gf">{connFooter(renderText(cc?.footerText), machineCards.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
+      <p className="gf">{renderText(cc?.footerText) || l10n.t("connection.latency_is_one_round_trip_the_server_row_measures")}</p>
       <div className="btns conn-again">
         {down && <button className="btn pri" onClick={onReconnect}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>

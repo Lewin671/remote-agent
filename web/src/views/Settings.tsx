@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import * as l10n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
@@ -14,6 +14,8 @@ import {
 } from "../gen/remoteagent/core/v1/machine_view_pb";
 import {
   MachineAlertKind,
+  MachineCardAppearance,
+  MachineCardMetaIcon,
   type ClientDetailViewModel,
   type ClientRowView,
   type DevicesViewModel,
@@ -123,69 +125,103 @@ function serverConnDotFor(vm: SettingsViewModel): MachineStatusDot {
   return MachineStatusDot.UNSPECIFIED;
 }
 
+function machineMetaSegments(m: MachineListCardView) {
+  const out: { icon: MachineCardMetaIcon; txt: string }[] = [];
+  for (const seg of m.metaSegments) {
+    const txt = renderText(seg.text);
+    if (txt) out.push({ icon: seg.icon, txt });
+  }
+  return out;
+}
+
 function MachineCard({ m, go }: { m: MachineListCardView; go: Go }) {
   const host = routeForMachineSettings(m.machineId);
-  const cardClass = !m.member ? "mc is-rem" : m.dimmed ? "mc is-off" : "mc";
-  const status = renderText(m.statusText);
-  const secondary = renderText(m.secondaryNote);
+  const cardClass =
+    m.appearance === MachineCardAppearance.REMOVED
+      ? "mc is-rem"
+      : m.appearance === MachineCardAppearance.OFFLINE || m.dimmed
+        ? "mc is-off"
+        : "mc";
+  const cls = {
+    hd: "mc-hd",
+    wrap: "mc-title-wrap",
+    name: "mc-name",
+    tag: "mc-tag",
+    chev: "chev",
+    meta: "mc-meta",
+    off: "off" as const,
+    direct: "mc-direct",
+    alert: "mc-alert",
+    quotas: "mc-quotas",
+    qt: "mc-qt",
+    l: "l",
+    cli: "cli",
+  };
+  const disambigA11y = renderText(m.disambiguatorA11y) || undefined;
+  const segments = machineMetaSegments(m);
+  const hasMeta = m.statusDot !== MachineStatusDot.UNSPECIFIED || segments.length !== 0;
   return (
     <button type="button" className={cardClass} onClick={() => go(host)}>
-      <div className="mc-hd">
-        <span className="mc-title-wrap">
-          <span className="mc-name">{m.name}</span>
-          {m.disambiguator && <span className="mc-tag">{m.disambiguator}</span>}
+      <span className={cls.hd}>
+        <span className={cls.wrap}>
+          <span className={cls.name} title={m.name}>{m.name}</span>
+          {m.disambiguator && (
+            <span className={cls.tag} aria-label={disambigA11y}>{m.disambiguator}</span>
+          )}
         </span>
-        <ChevronRight className="chev" />
-      </div>
-      <div className="mc-meta">
-        {m.statusDot !== MachineStatusDot.UNSPECIFIED && (
-          <StatusDotMark dot={m.statusDot} fallback="off" />
-        )}
-        {status && <span>{status}</span>}
-        {m.directActive && (
-          <>
-            <span aria-hidden="true">·</span>
-            <span className="mc-direct">
-              <Zap />
-              <span>{l10n.t("transport.direct")}</span>
-            </span>
-          </>
-        )}
-        {secondary && (
-          <>
-            {status && <span aria-hidden="true">·</span>}
-            <span>{secondary}</span>
-          </>
-        )}
-      </div>
+        <ChevronRight className={cls.chev} />
+      </span>
+      {hasMeta && (
+        <span className={cls.meta}>
+          {m.statusDot !== MachineStatusDot.UNSPECIFIED && (
+            <StatusDotMark dot={m.statusDot} fallback={cls.off} />
+          )}
+          {segments.map((seg, idx) => {
+            const showSep = idx !== 0 && Boolean(m.metaSeparator);
+            return (
+              <Fragment key={idx}>
+                {showSep && <span aria-hidden={true}>{m.metaSeparator}</span>}
+                {seg.icon === MachineCardMetaIcon.DIRECT ? (
+                  <span className={cls.direct}>
+                    <Zap />
+                    <span>{seg.txt}</span>
+                  </span>
+                ) : (
+                  <span>{seg.txt}</span>
+                )}
+              </Fragment>
+            );
+          })}
+        </span>
+      )}
       {m.alerts.map((alert, idx) => (
-        <div key={idx} className="mc-alert">
+        <span key={idx} className={cls.alert}>
           {alert.kind === MachineAlertKind.DISK_LOW && <DiskIcon />}
           <span>{renderText(alert.text)}</span>
-        </div>
+        </span>
       ))}
       {m.quotaItems.length > 0 && (
-        <div className="mc-quotas">
+        <span className={cls.quotas}>
           {m.quotaItems.map((q) => {
             const pct = Math.max(0, Math.min(100, q.remainingPercent));
             const valCls = q.warn ? "val warn" : "val";
             const barCls = q.warn ? "mc-bar warn" : "mc-bar";
             return (
-              <div key={q.agent} className="mc-qt">
-                <div className="l">
-                  <span className="cli">
+              <span key={q.agent} className={cls.qt}>
+                <span className={cls.l}>
+                  <span className={cls.cli}>
                     <AgentMark agent={q.agent} named />
                     <span>{q.agentName}</span>
                   </span>
                   <span className={valCls}>{renderText(q.valueText)}</span>
-                </div>
-                <div className={barCls}>
+                </span>
+                <span className={barCls}>
                   <i style={{ width: `${pct}%` }} />
-                </div>
-              </div>
+                </span>
+              </span>
             );
           })}
-        </div>
+        </span>
       )}
     </button>
   );

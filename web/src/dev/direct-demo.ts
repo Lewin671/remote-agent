@@ -5,20 +5,22 @@ import { create } from "@bufbuild/protobuf";
 import { getCoreHost, type CoreHost } from "../core/host";
 import { EventSchema as CoreEventSchema } from "../gen/remoteagent/core/v1/app_pb";
 import { MachineStatusDot } from "../gen/remoteagent/core/v1/machine_view_pb";
+import { DemoDirectReportSchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { SessionDirectChipViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import {
-  ConnCheckDirectRowViewSchema,
   ConnectionGroupStage,
   ConnectionGroupTone,
   ConnectionGroupViewSchema,
   DiagCheckMark,
   DirectDiagnosticsViewModelSchema,
+  DirectPathChoice,
+  DirectRouteReason,
+  DirectRouteReportSchema,
+  DirectRouteState,
   PlainDiagCheckViewSchema,
-  type ConnCheckDirectRowView,
   type ConnectionGroupView,
   type DirectDiagnosticsViewModel,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
-import { DirectPreferencesLoadedEventSchema } from "../gen/remoteagent/core/v1/transport_pb";
 import { TextArgSchema, TextSchema, type Text } from "../gen/remoteagent/core/v1/text_pb";
 import type { Remote } from "../remote";
 
@@ -290,22 +292,85 @@ function buildConnectionGroup(spec: DemoDirectSpec): ConnectionGroupView {
   }
 }
 
-function buildConnCheckRow(cg: ConnectionGroupView): ConnCheckDirectRowView {
-  if (cg.stage === ConnectionGroupStage.UNSUPPORTED) {
-    return create(ConnCheckDirectRowViewSchema, {
-      visible: false,
-      stage: cg.stage,
-      tone: cg.tone,
-    });
+function buildDemoDirectReport(machineId: string, spec: DemoDirectSpec) {
+  const { preset, rttMs } = spec;
+  const rtt = rttMs ?? 0;
+  let enabled = true;
+  let capable = true;
+  let state = DirectRouteState.NONE;
+  let reason = DirectRouteReason.UNSPECIFIED;
+  let readRoute = DirectPathChoice.RELAY;
+  let fileRoute = DirectPathChoice.RELAY;
+  let readSlow = false;
+  switch (preset) {
+    case "unsupported":
+      enabled = false;
+      capable = false;
+      state = DirectRouteState.UNSUPPORTED;
+      break;
+    case "off":
+      enabled = false;
+      state = DirectRouteState.NONE;
+      reason = DirectRouteReason.DISABLED;
+      break;
+    case "trying":
+    case "measuring":
+      state = DirectRouteState.CONNECTING;
+      break;
+    case "none":
+      state = DirectRouteState.NONE;
+      reason = DirectRouteReason.STARTING;
+      break;
+    case "direct":
+      state = DirectRouteState.CONNECTED;
+      readRoute = DirectPathChoice.DIRECT;
+      fileRoute = DirectPathChoice.DIRECT;
+      break;
+    case "file":
+      state = DirectRouteState.CONNECTED;
+      readRoute = DirectPathChoice.RELAY;
+      fileRoute = DirectPathChoice.DIRECT;
+      break;
+    case "read":
+    case "file-fallback":
+      state = DirectRouteState.CONNECTED;
+      readRoute = DirectPathChoice.DIRECT;
+      fileRoute = DirectPathChoice.RELAY;
+      break;
+    case "relay":
+    case "relay-faster":
+      state = DirectRouteState.CONNECTED;
+      readRoute = DirectPathChoice.RELAY;
+      fileRoute = DirectPathChoice.RELAY;
+      readSlow = true;
+      break;
+    case "peer_unsupported":
+      reason = DirectRouteReason.PEER_UNSUPPORTED;
+      break;
+    case "no_response":
+      reason = DirectRouteReason.NO_RESPONSE;
+      break;
+    case "no_traversal":
+      reason = DirectRouteReason.NO_TRAVERSAL;
+      break;
+    default:
+      reason = DirectRouteReason.FAILED;
+      break;
   }
-  return create(ConnCheckDirectRowViewSchema, {
-    visible: true,
-    stage: cg.stage,
-    tone: cg.tone,
-    labelText: tk("transport.direct"),
-    statusText: cg.stage === ConnectionGroupStage.OFFLINE ? tk("transport.row_unavailable") : cg.statusText,
-    detailText: cg.detailText,
-    metricText: cg.metricText,
+  return create(DemoDirectReportSchema, {
+    machineId,
+    enabled,
+    report: create(DirectRouteReportSchema, {
+      enabled,
+      capable,
+      state,
+      reason,
+      readRoute,
+      fileRoute,
+      readSlow,
+      hasActiveRttMs: rtt > 0,
+      activeRttMs: rtt,
+    }),
   });
 }
 
@@ -411,25 +476,30 @@ function resolveMachinePreset(base: DemoPreset, raw: string, machineId: string, 
   return base;
 }
 
-const demoOverrides = new WeakMap<CoreHost, Map<string, DemoDirectSpec>>();
+interface DemoDirectState {
+  map: Map<string, DemoDirectSpec>;
+  sync: () => void;
+}
+
+const demoOverrides = new WeakMap<CoreHost, DemoDirectState>();
 
 export function setDemoDirect(remote: Remote, machineId: string, spec: DemoPreset | DemoDirectSpec) {
   const host = getCoreHost(remote);
   if (!demoOverrides.has(host)) {
     installDemoDirectHost(remote, host, "");
   }
-  const map = demoOverrides.get(host)!;
-  map.set(machineId, typeof spec === "string" ? { preset: spec } : spec);
-  host.dispatch(create(CoreEventSchema, { event: { case: "directPreferencesLoaded", value: create(DirectPreferencesLoadedEventSchema, { entries: [] }) } }));
+  const st = demoOverrides.get(host)!;
+  st.map.set(machineId, typeof spec === "string" ? { preset: spec } : spec);
+  st.sync();
 }
 
 export function clearDemoDirect(remote: Remote, machineId?: string) {
   const host = getCoreHost(remote);
-  const map = demoOverrides.get(host);
-  if (!map) return;
-  if (machineId) map.delete(machineId);
-  else map.clear();
-  host.dispatch(create(CoreEventSchema, { event: { case: "directPreferencesLoaded", value: create(DirectPreferencesLoadedEventSchema, { entries: [] }) } }));
+  const st = demoOverrides.get(host);
+  if (!st) return;
+  if (machineId) st.map.delete(machineId);
+  else st.map.clear();
+  st.sync();
 }
 
 function installDemoDirectHost(
@@ -437,10 +507,30 @@ function installDemoDirectHost(
   host: CoreHost,
   speedsParam: string,
   fallback?: (machineId: string) => DemoDirectSpec | undefined,
+  initialMachineIds: readonly string[] = [],
 ) {
   const map = new Map<string, DemoDirectSpec>();
-  demoOverrides.set(host, map);
   const specFor = (id: string) => map.get(id) ?? fallback?.(id);
+  const sync = () => {
+    const ids = new Set<string>([...initialMachineIds, ...remote.machines.keys(), ...map.keys()]);
+    const directReports = [];
+    for (const id of ids) {
+      const s = specFor(id);
+      if (s) directReports.push(buildDemoDirectReport(id, s));
+    }
+    host.dispatch(
+      create(CoreEventSchema, {
+        event: {
+          case: "seedDemoWorld",
+          value: create(SeedDemoWorldEventSchema, {
+            clearDirectReports: true,
+            directReports,
+          }),
+        },
+      }),
+    );
+  };
+  demoOverrides.set(host, { map, sync });
 
   const origViewMachineSettings = host.viewMachineSettings.bind(host);
   host.viewMachineSettings = (machineId: string) => {
@@ -456,41 +546,6 @@ function installDemoDirectHost(
     const s = specFor(machineId);
     if (!s) return vm;
     return buildDiagnostics(machineId, s);
-  };
-
-  const origViewSettings = host.viewSettings.bind(host);
-  host.viewSettings = () => {
-    const vm = origViewSettings();
-    let onlineCount = 0;
-    let directReadCount = 0;
-    for (const m of vm.machines) {
-      const s = specFor(m.machineId);
-      if (s) {
-        m.directRow = buildConnCheckRow(buildConnectionGroup({ speeds: speedsParam, ...s }));
-        m.directActive =
-          m.online &&
-          m.member &&
-          m.protocolMismatch === 0 &&
-          m.directRow.stage === ConnectionGroupStage.DIRECT;
-      }
-      if (m.online && m.member) {
-        onlineCount++;
-        const readDirect = s
-          ? s.preset === "direct" || s.preset === "read" || s.preset === "file-fallback"
-          : m.directReady;
-        if (readDirect) directReadCount++;
-      }
-    }
-    if (vm.connCheck) {
-      if (onlineCount > 0 && directReadCount === onlineCount) {
-        vm.connCheck.footerText = tk("connection.latency_footer_direct");
-      } else if (directReadCount > 0) {
-        vm.connCheck.footerText = tk("connection.latency_footer_mixed");
-      } else {
-        vm.connCheck.footerText = tk("connection.latency_is_one_round_trip_the_server_row_measures");
-      }
-    }
-    return vm;
   };
 
   const origViewSession = host.viewSession.bind(host);
@@ -515,12 +570,15 @@ function installDemoDirectHost(
       } else {
         map.delete(machineId);
       }
+      sync();
     }
     origUpdatePref(machineId, enabled);
   };
+
+  sync();
 }
 
-export function seedDirect(remote: Remote, opts: URLSearchParams) {
+export function seedDirect(remote: Remote, opts: URLSearchParams, initialMachineIds: readonly string[] = []) {
   const directParam = opts.get("direct") ?? "";
   const diagParam = opts.get("diag") ?? "";
   const speedsParam = opts.get("speeds") ?? "";
@@ -534,5 +592,5 @@ export function seedDirect(remote: Remote, opts: URLSearchParams) {
     diag: id === "mac" ? diagParam : "",
     rttMs: directParam === "direct" ? 4 : undefined,
   });
-  installDemoDirectHost(remote, host, speedsParam, fallback);
+  installDemoDirectHost(remote, host, speedsParam, fallback, initialMachineIds);
 }
