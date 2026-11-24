@@ -2,6 +2,7 @@ import Foundation
 import RACore
 import RAProto
 import Testing
+import UIKit
 @testable import RemoteAgent
 
 @MainActor @Suite struct AuthorityAccessTests {
@@ -43,6 +44,50 @@ import Testing
         var withoutDelivery = pair
         withoutDelivery.hasDelivery_p = false
         #expect(!AuthorityPairingModel.ownsDelivery(withoutDelivery, pairingID: "pair-one"))
+    }
+
+    @Test func deviceDescriptionIncludesHardwareModelWithIdiomFallback() {
+        #expect(AppModel.deviceDescription(systemVersion: "18.4", hardwareModel: "iPhone16,1", idiom: .phone) == "iOS 18.4 · iPhone16,1")
+        #expect(AppModel.deviceDescription(systemVersion: "18.4", hardwareModel: "iPad14,3", idiom: .pad) == "iOS 18.4 · iPad14,3")
+        #expect(AppModel.deviceDescription(systemVersion: "18.4", hardwareModel: "  ", idiom: .phone) == "iOS 18.4 · iPhone")
+        #expect(AppModel.deviceDescription(systemVersion: "18.4", hardwareModel: "", idiom: .pad) == "iOS 18.4 · iPad")
+    }
+
+    @Test func pairingModelTracksReplacementCandidatesAndHonorsUserToggle() {
+        let model = AuthorityPairingModel()
+        var joined = PBSecurityPairingInfo()
+        joined.pairingID = "pair-meta"
+        joined.joined = true
+        joined.sasEmoji = ["🐊", "🥯", "🐩", "🦌"]
+        joined.joinerMetaReceived = false
+        model.applyPolled(joined)
+        #expect(model.needsMetaPoll)
+        #expect(model.selectedRemoveDeviceIDs.isEmpty)
+
+        var withMeta = joined
+        withMeta.joinerMetaReceived = true
+        withMeta.removeOldDefault = true
+        withMeta.replacementCandidates = [
+            .with {
+                $0.deviceID = "old-iphone-id"
+                $0.displayName = "iPhone"
+                $0.description_p = "iOS 18.3 · iPhone16,1"
+                $0.shortID = "…16a1"
+            }
+        ]
+        model.applyPolled(withMeta)
+        #expect(!model.needsMetaPoll)
+        #expect(model.removeOld)
+        #expect(model.selectedRemoveDeviceIDs == ["old-iphone-id"])
+
+        model.setRemoveOld(false)
+        #expect(!model.removeOld)
+        #expect(model.selectedRemoveDeviceIDs.isEmpty)
+
+        // Subsequent poll results must not overwrite the user's explicit toggle choice.
+        model.applyPolled(withMeta)
+        #expect(!model.removeOld)
+        #expect(model.selectedRemoveDeviceIDs.isEmpty)
     }
 
 }

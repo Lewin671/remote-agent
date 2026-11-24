@@ -236,9 +236,7 @@ final class AppModel {
         /// The pause between two copies of the engine's state to the main actor: a frame.
         var frame: Sleeper = realSleep
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
-        var deviceDescription: @MainActor () -> String = {
-            "iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")"
-        }
+        var deviceDescription: @MainActor () -> String = AppModel.defaultDeviceDescription
         /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
         var erase: @Sendable (AccountStorage) throws -> Void = { storage in
             try LocalAccountData.erase(
@@ -279,11 +277,56 @@ final class AppModel {
         try StandaloneSecurityHost(store: parts.storage.vault, http: Self.http, allowPlainHttp: parts.allowPlainHttp)
     }
 
+    nonisolated static func hardwareModelIdentifier() -> String {
+        var sysinfo = utsname()
+        uname(&sysinfo)
+        let raw = withUnsafePointer(to: &sysinfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) {
+                String(cString: $0)
+            }
+        }.trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw == "arm64" || raw == "x86_64" || raw == "i386" {
+            let sim = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"]?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return sim
+        }
+        return raw
+    }
+
+    nonisolated static func deviceDescription(
+        systemVersion: String,
+        hardwareModel: String,
+        idiom: UIUserInterfaceIdiom
+    ) -> String {
+        let family = idiom == .pad ? "iPad" : "iPhone"
+        let trimmed = hardwareModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = trimmed.isEmpty ? family : trimmed
+        return "iOS " + systemVersion + " · " + model
+    }
+
+    static func defaultDeviceDescription() -> String {
+        deviceDescription(
+            systemVersion: UIDevice.current.systemVersion,
+            hardwareModel: hardwareModelIdentifier(),
+            idiom: UIDevice.current.userInterfaceIdiom
+        )
+    }
+
     var joiningCalls: JoinCalls {
-        .live(http: Self.http, existing: nil, vault: parts.storage.vault, allowPlainHttp: parts.allowPlainHttp)
+        .live(
+            http: Self.http,
+            existing: nil,
+            vault: parts.storage.vault,
+            allowPlainHttp: parts.allowPlainHttp,
+            deviceDescription: parts.deviceDescription
+        )
     }
     func rePairingCalls(context: AccountContext) -> JoinCalls {
-        .live(client: context.remote.securityClient, existing: context.account)
+        .live(
+            client: context.remote.securityClient,
+            existing: context.account,
+            deviceDescription: parts.deviceDescription
+        )
     }
 
     /// Sample data is shown and nothing is stored or sent (`-demo`, debug builds).

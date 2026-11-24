@@ -391,8 +391,14 @@ public final class SecurityClient: @unchecked Sendable {
         try await str(pairingId) { $0.pollPairing = $1 }.pairing
     }
 
-    public func approvePairing(pairingId: String, sasConfirmed: Bool) async throws -> PBSecurityPairingInfo {
-        try await run { $0.approvePairing = .with { $0.pairingID = pairingId; $0.sasConfirmed = sasConfirmed } }.pairing
+    public func approvePairing(pairingId: String, sasConfirmed: Bool, removeDeviceIds: [String] = []) async throws -> PBSecurityPairingInfo {
+        try await run {
+            $0.approvePairing = .with {
+                $0.pairingID = pairingId
+                $0.sasConfirmed = sasConfirmed
+                $0.removeDeviceIds = removeDeviceIds
+            }
+        }.pairing
     }
 
     public func finishPairingDelivery(pairingId: String) async throws -> PBSecurityPairingInfo {
@@ -407,13 +413,16 @@ public final class SecurityClient: @unchecked Sendable {
         commitHint: Data? = nil,
         existingRepair: Bool = false,
         existingServer: String = "",
-        rawLink: String = ""
+        rawLink: String = "",
+        platform: String = "",
+        description: String = ""
     ) async throws -> PBSecurityPairingInfo {
         try await run {
             $0.startJoinPairing = .with {
                 $0.server = server; $0.code = code
                 if let commitHint, !commitHint.isEmpty { $0.commitHint = commitHint }
                 $0.existingRepair = existingRepair; $0.existingServer = existingServer; $0.rawLink = rawLink
+                $0.platform = platform; $0.description_p = description
             }
         }.pairing
     }
