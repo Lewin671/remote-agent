@@ -1155,17 +1155,31 @@ func TestAttachments_OriginalToggle_3AGaps_AndDraftImageViewer(t *testing.T) {
 		},
 	})
 	dv = h.draftView(scope)
-	if dv.CanSend || dv.Ready || dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
-		t.Fatalf("old compressed bytes must not remain sendable after original prepare failed: canSend=%v state=%v", dv.CanSend, dv.Images[0].State)
+	if dv.CanSend || dv.Ready || dv.Images[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED || dv.Images[0].CanRetry {
+		t.Fatalf("old compressed bytes must not remain sendable after original prepare failed: canSend=%v state=%v canRetry=%v", dv.CanSend, dv.Images[0].State, dv.Images[0].CanRetry)
 	}
 
-	// Retry original prepare with 2 MiB size -> check 3A gap #1 original_total_size_text!
-	effRetry := h.dispatch(&corev1.Event{
-		Event: &corev1.Event_DraftRetryItem{
-			DraftRetryItem: &corev1.DraftRetryItemAction{Scope: scope, ItemId: dv.Images[0].ItemId},
+	// Turn original off (recovery path for ORIGINAL_TOO_LARGE), then back on with 2 MiB size -> check 3A gap #1 original_total_size_text!
+	effComp2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetOriginal{
+			DraftSetOriginal: &corev1.DraftSetOriginalAction{Scope: scope, Original: false},
 		},
 	})
-	prepRetry := findPrepareEffects(effRetry)[0]
+	prepComp2 := findPrepareEffects(effComp2)[0]
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentPrepareImageResult{
+			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+				OpId: prepComp2.OpId, Ok: true, PreparedRef: "prep-comp-2", ThumbRef: "thumb-1",
+				Format: v1.ImageFormat_IMAGE_FORMAT_JPEG, SizeBytes: 4, Width: 100, Height: 100, Sha256: attTestHash(0x57),
+			},
+		},
+	})
+	effOrig2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetOriginal{
+			DraftSetOriginal: &corev1.DraftSetOriginalAction{Scope: scope, Original: true},
+		},
+	})
+	prepRetry := findPrepareEffects(effOrig2)[0]
 	h.dispatch(&corev1.Event{
 		Event: &corev1.Event_AttachmentPrepareImageResult{
 			AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
@@ -3028,5 +3042,93 @@ func TestAttachments_NewSessionTextOnlySubmit_ClearsSubmittedRevisionAndPreserve
 	}
 	if got := viewNS().GetPrompt(); got != "typed while starting" {
 		t.Fatalf("expected NewSessionViewModel.Prompt preserved for newer revision, got %q", got)
+	}
+}
+
+func TestAttachments_NonRetryablePrepareFailure_DisablesCanRetryAndIgnoresRetryAction(t *testing.T) {
+	cases := []struct {
+		name      string
+		errKind   corev1.AttachmentIOErrorKind
+		wantKind  corev1.ImageProblemKind
+		wantRetry bool
+	}{
+		{
+			name:      "decode",
+			errKind:   corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_DECODE,
+			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DECODE,
+			wantRetry: false,
+		},
+		{
+			name:      "dimensions",
+			errKind:   corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_DIMENSIONS,
+			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_DIMENSIONS,
+			wantRetry: false,
+		},
+		{
+			name:      "original_too_large",
+			errKind:   corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE,
+			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE,
+			wantRetry: false,
+		},
+		{
+			name:      "storage_full",
+			errKind:   corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_STORAGE_FULL,
+			wantKind:  corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_STORAGE_FULL,
+			wantRetry: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newAttHarness(t, false, false)
+			scope := h.sessionScope()
+
+			addEff := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftAddItems{
+					DraftAddItems: &corev1.DraftAddItemsAction{
+						Scope: scope,
+						Items: []*corev1.DraftPickedItem{pickedImage(tc.name+".jpg", 1024, "src-"+tc.name, true)},
+					},
+				},
+			})
+			prepOp := findPrepareEffects(addEff)[0].OpId
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_AttachmentPrepareImageResult{
+					AttachmentPrepareImageResult: &corev1.AttachmentPrepareImageResultEvent{
+						OpId:      prepOp,
+						Ok:        false,
+						ErrorKind: tc.errKind,
+					},
+				},
+			})
+
+			dv := h.draftView(scope)
+			if len(dv.Images) != 1 {
+				t.Fatalf("expected 1 image, got %d", len(dv.Images))
+			}
+			img := dv.Images[0]
+			if img.State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+				t.Fatalf("expected FAILED state, got %v", img.State)
+			}
+			if img.Problem == nil || img.Problem.Kind != tc.wantKind {
+				t.Fatalf("expected problem kind %v, got %+v", tc.wantKind, img.Problem)
+			}
+			if img.CanRetry != tc.wantRetry {
+				t.Fatalf("expected CanRetry=%v for %s, got %v", tc.wantRetry, tc.name, img.CanRetry)
+			}
+
+			retryEff := h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftRetryItem{
+					DraftRetryItem: &corev1.DraftRetryItemAction{Scope: scope, ItemId: img.ItemId},
+				},
+			})
+			prepAfter := findPrepareEffects(retryEff)
+			if tc.wantRetry && len(prepAfter) != 1 {
+				t.Fatalf("expected retry to re-prepare for retryable error %s, got %d effects", tc.name, len(prepAfter))
+			}
+			if !tc.wantRetry && len(prepAfter) != 0 {
+				t.Fatalf("expected retry ignored for non-retryable error %s, got %+v", tc.name, prepAfter)
+			}
+		})
 	}
 }

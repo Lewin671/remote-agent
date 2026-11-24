@@ -1182,6 +1182,9 @@ func (c *Core) handleDraftRetryItem(ctx *sync.StepContext, act *corev1.DraftRetr
 		c.markDraftDirty(ctx, d.scope)
 		return nil
 	}
+	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE && it.problem != nil && !it.problem.Retryable {
+		return nil
+	}
 	d.activated = true
 	c.invalidateItem(ctx, attOwnerDraft, d.key, it, true, &effects)
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_FILE {
@@ -1747,7 +1750,7 @@ func (c *Core) buildAttachmentDraftView(scope *corev1.DraftScope, alwaysBuild bo
 
 		canRetry := effState == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED &&
 			!it.remoteOnly && it.hasLocalCopy() &&
-			(!isImg || it.problem == nil || it.problem.Retryable || !it.hasPrepared)
+			(!isImg || it.problem == nil || it.problem.Retryable)
 		canPause := effState == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_UPLOADING ||
 			effState == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT
 		canResume := effState == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PAUSED && onlineReady
