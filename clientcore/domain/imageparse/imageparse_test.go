@@ -684,3 +684,53 @@ func TestInspectAndStripAcceptanceIdentical(t *testing.T) {
 		}
 	}
 }
+
+func TestFtypSniffWindowAndBoxSizeConsistency(t *testing.T) {
+	// 1. boxSize < 16 (0, 1, 12) must clamp end=16 and never scan trailing bytes for compatible brands.
+	for _, boxSize := range []uint32{0, 1, 12} {
+		b := make([]byte, 512)
+		b[0] = byte(boxSize >> 24)
+		b[1] = byte(boxSize >> 16)
+		b[2] = byte(boxSize >> 8)
+		b[3] = byte(boxSize)
+		copy(b[4:8], "ftyp")
+		copy(b[8:12], "isom")
+		copy(b[20:24], "heic")
+		if got := SniffFormat(b); got != FormatUnknown {
+			t.Errorf("boxSize=%d: SniffFormat = %d, want Unknown", boxSize, got)
+		}
+		done, code, detail := runPlanWithWindow(t, b, ModeInspect, FormatUnknown, 64*1024)
+		if code != 0 || Format(done[1]) != FormatUnknown {
+			t.Errorf("boxSize=%d: Plan Inspect = (code=%d fmt=%d %s), want Unknown", boxSize, code, done[1], detail)
+		}
+	}
+
+	// 2. Compatible brand beyond SniffHeaderBytes (256 B) must yield identical Unknown in both SniffFormat and Plan.
+	bigFtyp := make([]byte, 512)
+	bigFtyp[2] = 0x01
+	bigFtyp[3] = 0x90 // boxSize = 400
+	copy(bigFtyp[4:8], "ftyp")
+	copy(bigFtyp[8:12], "isom")
+	copy(bigFtyp[300:304], "heic")
+	if got := SniffFormat(bigFtyp); got != FormatUnknown {
+		t.Errorf("brand past 256B: SniffFormat = %d, want Unknown", got)
+	}
+	done, code, detail := runPlanWithWindow(t, bigFtyp, ModeInspect, FormatUnknown, 64*1024)
+	if code != 0 || Format(done[1]) != FormatUnknown {
+		t.Errorf("brand past 256B: Plan Inspect = (code=%d fmt=%d %s), want Unknown", code, done[1], detail)
+	}
+
+	// 3. Compatible brand inside 64..256 B (e.g. offset 120) must be recognized identically in both SniffFormat and Plan.
+	midFtyp := make([]byte, 200)
+	midFtyp[3] = 200
+	copy(midFtyp[4:8], "ftyp")
+	copy(midFtyp[8:12], "isom")
+	copy(midFtyp[120:124], "avif")
+	if got := SniffFormat(midFtyp); got != FormatAVIF {
+		t.Errorf("brand at 120B: SniffFormat = %d, want AVIF", got)
+	}
+	done2, code2, detail2 := runPlanWithWindow(t, midFtyp, ModeInspect, FormatUnknown, 32)
+	if code2 != 0 || Format(done2[1]) != FormatAVIF {
+		t.Errorf("brand at 120B: Plan Inspect = (code=%d fmt=%d %s), want AVIF", code2, done2[1], detail2)
+	}
+}

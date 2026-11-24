@@ -57,6 +57,8 @@ const (
 )
 
 const (
+	// SniffHeaderBytes is the fixed header prefix window used by both SniffFormat and Plan.
+	SniffHeaderBytes  = 256
 	defaultReadWindow = 64 * 1024
 	maxExifReadBytes  = 256 * 1024
 	maxStalledReads   = 3
@@ -85,8 +87,11 @@ func MaxPlanSteps(totalLen int64) int64 {
 
 var pngSignature = [8]byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
 
-// SniffFormat identifies the image format solely from header bytes (first <= 256 B).
+// SniffFormat identifies the image format solely from the first SniffHeaderBytes (256 B).
 func SniffFormat(b []byte) Format {
+	if len(b) > SniffHeaderBytes {
+		b = b[:SniffHeaderBytes]
+	}
 	if len(b) >= 3 && b[0] == 0xff && b[1] == 0xd8 && b[2] == 0xff {
 		return FormatJPEG
 	}
@@ -108,9 +113,12 @@ func SniffFormat(b []byte) Format {
 	}
 	if len(b) >= 16 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p' {
 		boxSize := uint64(u32be(b, 0))
-		end := uint64(len(b))
-		if boxSize >= 16 && boxSize < end {
-			end = boxSize
+		end := boxSize
+		if end < 16 {
+			end = 16
+		}
+		if end > uint64(len(b)) {
+			end = uint64(len(b))
 		}
 		// Check AVIF brands first because AVIF files also list the generic HEIF brand "mif1".
 		if ftypHasBrand(b, end, isAvifBrand) {
@@ -323,12 +331,15 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 	if uint32(len(buf)) < needSniff {
 		return p.needRead(0, minU32(p.totalLen, defaultReadWindow)), nil
 	}
-	// For ISO BMFF ftyp boxes larger than 64 bytes, fetch up to 256 bytes if needed.
+	// For ISO BMFF ftyp boxes larger than 64 bytes, fetch up to SniffHeaderBytes (256 B).
 	if len(buf) >= 16 && buf[4] == 'f' && buf[5] == 't' && buf[6] == 'y' && buf[7] == 'p' {
 		boxSize := uint64(u32be(buf, 0))
 		want := boxSize
-		if want > 256 {
-			want = 256
+		if want < 16 {
+			want = 16
+		}
+		if want > SniffHeaderBytes {
+			want = SniffHeaderBytes
 		}
 		if want > p.totalLen {
 			want = p.totalLen
