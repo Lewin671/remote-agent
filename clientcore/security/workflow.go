@@ -647,7 +647,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_AdoptCreationWithoutCode:
 		e.runOpTask(aid, true, &adoptCreationWithoutCodeTask{})
 	case *corev1.SecurityWorkflowActionEvent_RemoveDevice:
-		e.runOpTask(aid, true, &removeDeviceTask{id: a.RemoveDevice.GetDeviceId(), abandonPairDelivery: a.RemoveDevice.GetAbandonPairDelivery()})
+		e.runOpTask(aid, true, &removeDeviceTask{id: a.RemoveDevice.GetDeviceId()})
 	case *corev1.SecurityWorkflowActionEvent_DeleteMachineRecords:
 		e.runOpTask(aid, true, &deleteMachineRecordsTask{machineID: a.DeleteMachineRecords.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_DeleteAccount:

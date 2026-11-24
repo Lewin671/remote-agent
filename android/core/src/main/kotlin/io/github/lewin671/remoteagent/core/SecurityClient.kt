@@ -296,10 +296,10 @@ class SecurityClient(
     suspend fun adoptCreationWithoutCode(): SecurityWorkflowResultEffect =
         empty { setAdoptCreationWithoutCode(it) }
 
-    suspend fun removeDevice(deviceId: String, abandonPairDelivery: Boolean = false) {
+    suspend fun removeDevice(deviceId: String) {
         run {
             setRemoveDevice(
-                SecurityRemoveDeviceAction.newBuilder().setDeviceId(deviceId).setAbandonPairDelivery(abandonPairDelivery).build(),
+                SecurityRemoveDeviceAction.newBuilder().setDeviceId(deviceId).build(),
             )
         }
     }

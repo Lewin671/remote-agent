@@ -21,10 +21,4 @@ public interface SecurityRemoveDeviceActionOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDeviceIdBytes();
-
-  /**
-   * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-   * @return The abandonPairDelivery.
-   */
-  boolean getAbandonPairDelivery();
 }

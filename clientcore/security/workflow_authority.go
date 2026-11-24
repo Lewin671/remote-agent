@@ -597,8 +597,7 @@ const (
 
 type removeDeviceTask struct {
 	taskBase
-	id                  string
-	abandonPairDelivery bool
+	id string
 }
 
 func (t *removeDeviceTask) proceedAfterPre(e *Engine) error {

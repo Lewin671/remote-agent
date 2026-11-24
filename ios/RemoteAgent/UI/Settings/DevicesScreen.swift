@@ -52,7 +52,7 @@ struct DevicesScreen: View {
             guard let target = removing else { return }
             removing = nil
             removeAction.run {
-                try await context.remote.removeDevice(target.deviceID, abandonPairDelivery: target.pairingIncomplete)
+                try await context.remote.removeDevice(target.deviceID)
                 await context.remote.refreshDevices()
             }
         }

@@ -52,7 +52,7 @@ struct DeviceManagementActions: View {
                     : L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
                 confirm: L10n.commonRemove(), danger: true) {
                     done = ""
-                    action.run { try await context.remote.removeDevice(id, abandonPairDelivery: incomplete) } onDone: { done = L10n.securityIosDeviceRemoved() }
+                    action.run { try await context.remote.removeDevice(id) } onDone: { done = L10n.securityIosDeviceRemoved() }
                 }
             .confirm(isPresented: $deleting, title: L10n.securityIosDeleteThisComputerSRecords(),
                 text: L10n.securityThisPermanentlyDeletesSessionsEventsAndImagesOnThe(),

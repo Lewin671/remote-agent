@@ -4778,11 +4778,10 @@ func (x *SecurityPrepareCreationAction) GetStoragePersisted() bool {
 }
 
 type SecurityRemoveDeviceAction struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	DeviceId            string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	AbandonPairDelivery bool                   `protobuf:"varint,2,opt,name=abandon_pair_delivery,json=abandonPairDelivery,proto3" json:"abandon_pair_delivery,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SecurityRemoveDeviceAction) Reset() {
@@ -4820,13 +4819,6 @@ func (x *SecurityRemoveDeviceAction) GetDeviceId() string {
 		return x.DeviceId
 	}
 	return ""
-}
-
-func (x *SecurityRemoveDeviceAction) GetAbandonPairDelivery() bool {
-	if x != nil {
-		return x.AbandonPairDelivery
-	}
-	return false
 }
 
 type SecurityServerCodeAction struct {
@@ -6877,10 +6869,9 @@ const file_remoteagent_core_v1_security_proto_rawDesc = "" +
 	"auth_token\x18\x02 \x01(\tR\tauthToken\"d\n" +
 	"\x1dSecurityPrepareCreationAction\x12\x16\n" +
 	"\x06server\x18\x01 \x01(\tR\x06server\x12+\n" +
-	"\x11storage_persisted\x18\x02 \x01(\bR\x10storagePersisted\"m\n" +
+	"\x11storage_persisted\x18\x02 \x01(\bR\x10storagePersisted\"V\n" +
 	"\x1aSecurityRemoveDeviceAction\x12\x1b\n" +
-	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x122\n" +
-	"\x15abandon_pair_delivery\x18\x02 \x01(\bR\x13abandonPairDelivery\"F\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceIdJ\x04\b\x02\x10\x03R\x15abandon_pair_delivery\"F\n" +
 	"\x18SecurityServerCodeAction\x12\x16\n" +
 	"\x06server\x18\x01 \x01(\tR\x06server\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\"i\n" +

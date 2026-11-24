@@ -351,8 +351,8 @@ public final class SecurityClient: @unchecked Sendable {
         try await empty { $0.adoptCreationWithoutCode = $1 }
     }
 
-    public func removeDevice(_ deviceId: String, abandonPairDelivery: Bool = false) async throws {
-        _ = try await run { $0.removeDevice = .with { $0.deviceID = deviceId; $0.abandonPairDelivery = abandonPairDelivery } }
+    public func removeDevice(_ deviceId: String) async throws {
+        _ = try await run { $0.removeDevice = .with { $0.deviceID = deviceId } }
     }
 
     public func deleteMachineRecords(_ machineId: String) async throws { _ = try await str(machineId) { $0.deleteMachineRecords = $1 } }

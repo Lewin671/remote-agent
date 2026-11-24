@@ -1898,8 +1898,6 @@ public struct PBSecurityRemoveDeviceAction: Sendable {
 
   public var deviceID: String = String()
 
-  public var abandonPairDelivery: Bool = false
-
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -5856,7 +5854,7 @@ extension PBSecurityPrepareCreationAction: SwiftProtobuf.Message, SwiftProtobuf.
 
 extension PBSecurityRemoveDeviceAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityRemoveDeviceAction"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}abandon_pair_delivery\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{b}abandon_pair_delivery\0\u{c}\u{2}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5865,7 +5863,6 @@ extension PBSecurityRemoveDeviceAction: SwiftProtobuf.Message, SwiftProtobuf._Me
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
-      case 2: try { try decoder.decodeSingularBoolField(value: &self.abandonPairDelivery) }()
       default: break
       }
     }
@@ -5875,15 +5872,11 @@ extension PBSecurityRemoveDeviceAction: SwiftProtobuf.Message, SwiftProtobuf._Me
     if !self.deviceID.isEmpty {
       try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
-    if self.abandonPairDelivery != false {
-      try visitor.visitSingularBoolField(value: self.abandonPairDelivery, fieldNumber: 2)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSecurityRemoveDeviceAction, rhs: PBSecurityRemoveDeviceAction) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
-    if lhs.abandonPairDelivery != rhs.abandonPairDelivery {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

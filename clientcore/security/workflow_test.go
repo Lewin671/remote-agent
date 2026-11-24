@@ -1155,7 +1155,7 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		t.Fatalf("expected UNSPECIFIED ExpectedKind to fail closed without title/body, got %+v", res)
 	}
 
-	// Remove machine (abandoning pending pair delivery even when caller omits AbandonPairDelivery) & verify stale Path A and removed-sender Path B reject!
+	// Remove machine (abandoning pending pair delivery automatically) & verify stale Path A and removed-sender Path B reject!
 	remMach := h.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_RemoveDevice{
 			RemoveDevice: &corev1.SecurityRemoveDeviceAction{DeviceId: machMem.ID},

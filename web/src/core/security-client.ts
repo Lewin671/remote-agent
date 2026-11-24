@@ -217,8 +217,8 @@ export class SecurityClient {
   async confirmCreationCodeSaved(): Promise<void> { await this.empty("confirmCreationCodeSaved"); }
   continueCreation = (setupToken = ""): Promise<SecurityWorkflowResultEffect> => this.str("continueCreation", setupToken);
   adoptCreationWithoutCode = (): Promise<SecurityWorkflowResultEffect> => this.empty("adoptCreationWithoutCode");
-  async removeDevice(deviceId: string, abandonPairDelivery = false): Promise<void> {
-    await this.run({ case: "removeDevice", value: create(SecurityRemoveDeviceActionSchema, { deviceId, abandonPairDelivery }) });
+  async removeDevice(deviceId: string): Promise<void> {
+    await this.run({ case: "removeDevice", value: create(SecurityRemoveDeviceActionSchema, { deviceId }) });
   }
   async deleteMachineRecords(machineId: string): Promise<void> { await this.str("deleteMachineRecords", machineId); }
   async deleteAccount(): Promise<void> { await this.empty("deleteAccount"); }

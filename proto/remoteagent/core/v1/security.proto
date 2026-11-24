@@ -570,7 +570,8 @@ message SecurityPrepareCreationAction {
 
 message SecurityRemoveDeviceAction {
   string device_id = 1;
-  bool abandon_pair_delivery = 2;
+  reserved 2;
+  reserved "abandon_pair_delivery";
 }
 
 message SecurityServerCodeAction {

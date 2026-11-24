@@ -3475,9 +3475,8 @@ func (m *SecurityPrepareCreationAction) Unmarshal(b []byte) error {
 }
 
 type SecurityRemoveDeviceAction struct {
-	_                   [0]func()
-	DeviceId            string
-	AbandonPairDelivery bool
+	_        [0]func()
+	DeviceId string
 }
 
 func (m *SecurityRemoveDeviceAction) GetDeviceId() string {
@@ -3486,18 +3485,11 @@ func (m *SecurityRemoveDeviceAction) GetDeviceId() string {
 	}
 	return ""
 }
-func (m *SecurityRemoveDeviceAction) GetAbandonPairDelivery() bool {
-	if m != nil {
-		return m.AbandonPairDelivery
-	}
-	return false
-}
 
 var LitewireDesc_SecurityRemoveDeviceAction = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&SecurityRemoveDeviceAction{}) },
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityRemoveDeviceAction{}.DeviceId), Kind: litewire.KindString},
-		{Num: 2, Offset: unsafe.Offsetof(SecurityRemoveDeviceAction{}.AbandonPairDelivery), Kind: litewire.KindBool},
 	},
 }
 

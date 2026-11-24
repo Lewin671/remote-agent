@@ -152,7 +152,7 @@ struct AccountSecurityScreen: View {
                     if pending.kind == "handoffOffer" {
                         try await context.remote.discardPendingOp(abandonHandoff: true)
                     } else if !pending.deliveryCandidateID.isEmpty {
-                        try await context.remote.removeDevice(pending.deliveryCandidateID, abandonPairDelivery: true)
+                        try await context.remote.removeDevice(pending.deliveryCandidateID)
                         if !pending.deliveryPairingID.isEmpty {
                             context.memory.value { AuthorityPairingSessions() }.discard(pairingID: pending.deliveryPairingID)
                         }
