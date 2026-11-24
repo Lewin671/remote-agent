@@ -898,7 +898,11 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if idx := op.pIdx[i]; idx >= 0 {
 			r := results[idx]
 			if r.Err != nil {
-				dp.Broken = true
+				if errors.Is(r.Err, security.ErrRecoveryHistoryUnavailable) {
+					dp.Prefs = &v1.ProjectPrefs{Schema: 1}
+				} else {
+					dp.Broken = true
+				}
 			} else if pp, ok := r.Body.(*v1.ProjectPrefs); ok && r.Header.Seq == p.Revision {
 				dp.Prefs = pp
 			} else {

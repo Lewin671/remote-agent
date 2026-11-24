@@ -1492,3 +1492,166 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 		t.Fatalf("expected retrying snapshot to clear previous failure, got %+v", snapRetrying)
 	}
 }
+
+func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
+	const nowMs int64 = 1_700_000_000_000
+	dom := devicesec.Digest("sync-recovery-prefs", []byte{1})
+	oldPhone := newSyncTestActor(t, 31)
+	newPhone := newSyncTestActor(t, 32)
+	recKey := newSyncTestActor(t, 33)
+	newRecKey := newSyncTestActor(t, 34)
+	account := oldPhone.id
+
+	sec0 := bytes.Repeat([]byte{0x11}, 32)
+	u0, err := devicesec.NewGenesis(account, dom, oldPhone.member(devicesec.Client), [32]byte(recKey.edP), sec0, uint64(nowMs-2000), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb0, _ := u0.SigningBytes()
+	u0.Signature = ed25519.Sign(oldPhone.ed, sb0)
+	s0Raw, _ := u0.MarshalBinary()
+	s0, _ := devicesec.ParseState(s0Raw)
+	genHash, _ := s0.Hash()
+
+	sec1 := bytes.Repeat([]byte{0x22}, 32)
+	u1, err := devicesec.NewRecovery(s0, newPhone.member(devicesec.Client), []devicesec.Member{newPhone.member(devicesec.Client)}, sec1, [32]byte(newRecKey.edP), uint64(nowMs-1000), syncTestHPKE{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb1, _ := u1.SigningBytes()
+	u1.Signature = ed25519.Sign(newPhone.ed, sb1)
+	s1Raw, _ := u1.MarshalBinary()
+	s1, _ := devicesec.ParseState(s1Raw)
+	stmt, err := devicesec.NewRecoveryStatement(s0, s1, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stmtBytes, _ := stmt.SigningBytes()
+	stmt.Signature = ed25519.Sign(recKey.ed, stmtBytes)
+	stmtRaw, _ := stmt.MarshalBinary()
+
+	leaseU, _ := devicesec.NewLease(s1, uint64(nowMs-500))
+	leaseSB, _ := leaseU.SigningBytes()
+	leaseU.Signature = ed25519.Sign(newPhone.ed, leaseSB)
+	leaseRaw, _ := leaseU.MarshalBinary()
+
+	e := NewEngine()
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_EntropyProvided{EntropyProvided: &corev1.EntropyProvided{
+			RandomBytes: bytes.Repeat([]byte{0x9c}, 256),
+		}},
+	})
+	e.HandleEvent(&corev1.Event{
+		NowMs: nowMs,
+		Event: &corev1.Event_SecurityConfig{
+			SecurityConfig: &corev1.SecurityConfigEvent{
+				Account:      account,
+				DeviceId:     newPhone.id,
+				InlineCrypto: false,
+			},
+		},
+	})
+	initRes := applyTestSecurityRecord(e, nowMs, security.RecordUpdate{
+		NetworkGeneration: 1,
+		Account:           account,
+		Domain:            dom[:],
+		Genesis:           genHash[:],
+		States:            [][]byte{s0Raw, s1Raw},
+		RecoveryProofs:    [][]byte{nil, stmtRaw},
+		Lease:             leaseRaw,
+	})
+	pumpSecurityEffects(t, e, newPhone, nowMs, initRes)
+	e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}}})
+	_, tokRes := e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: e.activeTokenOpID, Token: "tok"}}})
+	var legID uint64
+	for _, ef := range tokRes.Effects {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	e.HandleEvent(&corev1.Event{NowMs: nowMs, Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID}}})
+
+	// Pre-recovery ProjectPrefs sealed under epoch 1 (oldPhone's secret).
+	oldPrefsRaw, err := (&v1.ProjectPrefs{Schema: 1, Pinned: []*v1.ProjectPref{{Path: "/old"}}}).Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	preRecEnv := sealWireObj(t, oldPhone, dom, s0, sec0, nil, oldPrefsRaw, devicesec.Prefs, "", "", ProjectPrefsObjectID, 3)
+
+	// 1. Loading pre-recovery ProjectPrefs must NOT mark prefs Broken.
+	loadStep := e.Run(func(ctx *StepContext) {
+		e.openWireDirectoryBatchTag(ctx, nil, nil, nil, []*v1.AccountPrefsObject{
+			{ObjectId: ProjectPrefsObjectID, Revision: 3, Envelope: preRecEnv},
+		}, dirBatchMeta{kind: dirKindPrefsLoad})
+	})
+	pumpSecurityEffects(t, e, newPhone, nowMs+10, loadStep)
+	if !e.prefs.Loaded || e.prefs.Broken || e.prefs.Revision != 3 || e.prefs.Prefs == nil {
+		t.Fatalf("expected recovery-unavailable prefs to load cleanly as rebuildable empty prefs, got %+v", e.prefs)
+	}
+
+	// 2. Saving a new pref via CAS must succeed by rebuilding from empty at ExpectedRevision=3.
+	casStep := e.Run(func(ctx *StepContext) {
+		e.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: lists.PrefsOpPin, Path: "/proj/rebuilt"}, false, "/proj/rebuilt")
+	})
+	var getOp uint64
+	for _, ef := range casStep.Effects {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
+			getOp = rpc.OpId
+		}
+	}
+	if getOp == 0 {
+		t.Fatal("expected GetAccountPrefs RPC for prefs CAS")
+	}
+	_, getRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 20,
+		Event: &corev1.Event_AccountPrefsFetched{
+			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+				OpId:      getOp,
+				WirePrefs: &v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 3, Envelope: preRecEnv},
+			},
+		},
+	})
+	casEffs, _ := pumpSecurityEffects(t, e, newPhone, nowMs+20, getRes)
+	var putRpc *corev1.PutAccountPrefsRpc
+	for _, ef := range casEffs {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
+			putRpc = rpc.GetPutAccountPrefs()
+		}
+	}
+	if putRpc == nil || putRpc.ExpectedRevision != 3 || putRpc.SealedEnvelope == nil {
+		t.Fatalf("expected rebuilt PutAccountPrefsRpc at ExpectedRevision=3, got %+v", putRpc)
+	}
+
+	// 3. A genuinely corrupted ciphertext in the current epoch must still be rejected as Broken.
+	badEnv := sealWireObj(t, newPhone, dom, s1, sec1, nil, oldPrefsRaw, devicesec.Prefs, "", "", ProjectPrefsObjectID, 4)
+	badEnv.Ciphertext[0] ^= 0xff
+	e.prefsQueue = nil
+	badStep := e.Run(func(ctx *StepContext) {
+		e.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: lists.PrefsOpPin, Path: "/proj/bad"}, false, "/proj/bad")
+	})
+	var badGetOp uint64
+	for _, ef := range badStep.Effects {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetGetAccountPrefs() != nil {
+			badGetOp = rpc.OpId
+		}
+	}
+	_, badGetRes := e.HandleEvent(&corev1.Event{
+		NowMs: nowMs + 30,
+		Event: &corev1.Event_AccountPrefsFetched{
+			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+				OpId:      badGetOp,
+				WirePrefs: &v1.AccountPrefsObject{ObjectId: ProjectPrefsObjectID, Revision: 4, Envelope: badEnv},
+			},
+		},
+	})
+	badEffs, _ := pumpSecurityEffects(t, e, newPhone, nowMs+30, badGetRes)
+	for _, ef := range badEffs {
+		if rpc := ef.GetRpc(); rpc != nil && rpc.GetPutAccountPrefs() != nil {
+			t.Fatal("tampered ProjectPrefs must not be overwritten by CAS")
+		}
+	}
+	if e.w.PrefsGlobalErrorText == nil || e.w.PrefsGlobalErrorText.GetKey() != text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed {
+		t.Fatalf("expected verification error on tampered prefs, got %+v", e.w.PrefsGlobalErrorText)
+	}
+}
