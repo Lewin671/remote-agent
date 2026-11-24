@@ -468,7 +468,7 @@ func e2eSay(_ dir: String, _ started: Date, _ s: String) {
 }
 
 func e2eCall(_ remote: Remote, _ machine: String, _ session: String, _ cmd: PBCommand) async throws -> PBCommandResult {
-    try await remote.forward(try remote.prepare(machineId: machine, sessionId: session, cmd))
+    try await remote.runMachineCommand(machineId: machine, sessionId: session, cmd, skipConnectivityPreflight: true)
 }
 
 func e2eChunk(_ offset: Int64) -> PBCommand {

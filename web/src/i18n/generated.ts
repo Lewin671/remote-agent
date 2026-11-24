@@ -231,7 +231,6 @@ export interface MessageArgs {
   "errors.cannot_connect_to_terminal": { [name: string]: never };
   "errors.client_out_of_date": { [name: string]: never };
   "errors.command_failed": { [name: string]: never };
-  "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
   "errors.core_load_failed": { reason: string };
@@ -2039,7 +2038,6 @@ export const messages = {
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
     "errors.client_out_of_date": "This client version is out of date. Update and retry.",
     "errors.command_failed": "Command failed",
-    "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
     "errors.core_load_failed": "Failed to load core module: {reason}",
@@ -4382,7 +4380,6 @@ export const messages = {
     "errors.cannot_connect_to_terminal": "连不上终端",
     "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
     "errors.command_failed": "指令执行失败",
-    "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
     "errors.core_load_failed": "核心模块加载失败：{reason}",

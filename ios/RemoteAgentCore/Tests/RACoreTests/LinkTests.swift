@@ -55,17 +55,20 @@ extension ServerTests {
                 defer { remote.close() }
                 _ = try await remote.currentToken()
                 try await remote.ensureSecurityBootstrapped()
-                let prepared = try remote.prepare(machineId: w.daemon.id, sessionId: "", PBCommand.with { $0.getSettings = PBGetSettingsRequest() })
-                store.blocked.withLock { $0 = true }
-                do { _ = try await remote.forward(prepared); Issue.record("authorization bypassed") }
-                catch {
-                    #expect(forwards.value == 0)
-                    #expect((error as? CommandError)?.code == "authorization_unavailable")
-                    #expect((error as? CommandError)?.outcome == .notSent)
+                let cmdBytes = try PBCommand.with { $0.getSettings = PBGetSettingsRequest() }.serializedData()
+                let eff = PBCoreDispatchCommandEffect.with {
+                    $0.requestID = newRequestId()
+                    $0.attemptID = newRequestId()
+                    $0.machineID = w.daemon.id
+                    $0.deadlineMs = Int64(Date().timeIntervalSince1970 * 1000) + 60_000
+                    $0.commandBytes = cmdBytes
+                    $0.routeLeg = .relay
                 }
-                do { _ = try await remote.forward(prepared, retryOfUnknown: true); Issue.record("authorization bypassed on retry") }
-                catch { #expect(uncertain(error)) }
+                store.blocked.withLock { $0 = true }
+                let outcome = await remote.dispatchCommandAttempt(eff)
                 #expect(forwards.value == 0)
+                #expect(outcome.notForwarded)
+                #expect(outcome.transportCode == "authorization_unavailable")
             }
         }
     }

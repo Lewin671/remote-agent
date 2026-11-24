@@ -23,18 +23,38 @@ struct ConnectionBannerPresentation: Equatable {
             switch banner.kind {
             case .noNetwork:
                 return ConnectionBannerPresentation(
-                    text: banner.text.rendered(), symbol: "wifi.slash", spinning: false, tone: .plain, showDetails: false)
+                    text: banner.text.rendered(),
+                    symbol: "wifi.slash",
+                    spinning: false,
+                    tone: .plain,
+                    showDetails: false
+                )
             case .waiting:
                 return ConnectionBannerPresentation(
-                    text: banner.text.rendered(), symbol: nil, spinning: true, tone: .plain, showDetails: false)
+                    text: banner.text.rendered(),
+                    symbol: nil,
+                    spinning: true,
+                    tone: .plain,
+                    showDetails: false
+                )
             case .noServer:
                 if banner.errorTone {
                     let detail = banner.hasDetailText ? banner.detailText.rendered() : ""
                     return ConnectionBannerPresentation(
-                        text: detail.or(banner.text.rendered()), symbol: "xmark", spinning: false, tone: .error, showDetails: true)
+                        text: detail.or(banner.text.rendered()),
+                        symbol: "xmark",
+                        spinning: false,
+                        tone: .error,
+                        showDetails: true
+                    )
                 }
                 return ConnectionBannerPresentation(
-                    text: banner.text.rendered(), symbol: "icloud.slash", spinning: false, tone: .plain, showDetails: true)
+                    text: banner.text.rendered(),
+                    symbol: "icloud.slash",
+                    spinning: false,
+                    tone: .plain,
+                    showDetails: true
+                )
             case .none, .unspecified, .UNRECOGNIZED:
                 break
             }

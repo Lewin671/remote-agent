@@ -243,7 +243,6 @@
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
     <string name="errors_client_out_of_date" formatted="false">"This client version is out of date. Update and retry."</string>
     <string name="errors_command_failed" formatted="false">"Command failed"</string>
-    <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
     <string name="errors_connection_timed_out" formatted="false">"Connection timed out"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"Connection timed out. Reconnecting."</string>
     <string name="errors_disconnected_from_server" formatted="false">"Disconnected from server"</string>

@@ -199,7 +199,6 @@
 "errors_cannot_connect_to_terminal" = "Cannot connect to terminal";
 "errors_client_out_of_date" = "This client version is out of date. Update and retry.";
 "errors_command_failed" = "Command failed";
-"errors_connection_dropped_midway" = "Connection dropped midway";
 "errors_connection_timed_out" = "Connection timed out";
 "errors_connection_timed_out_reconnecting" = "Connection timed out. Reconnecting.";
 "errors_disconnected_from_server" = "Disconnected from server";
@@ -230,8 +229,6 @@
 "errors_ios_terminal_input_waiting_to_send_stopped" = "Terminal input waiting to send. Stopped.";
 "errors_ios_the_original_request_and_keys_are_retained_retry_if" = "%1$@. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.";
 "errors_ios_the_request_may_have_arrived_but_login_then_failed" = "The request may have arrived, but login then failed (%1$@)";
-"errors_ios_this_app_version_is_out_of_date_update_and" = "This app version is out of date. Update and retry.";
-"errors_ios_this_command_expired_and_was_not_sent" = "This command expired and was not sent";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.";
 "errors_ios_unknown_session" = "Unknown session";
 "errors_ios_unsure_whether_the_computer_executed_this" = "Unsure whether the computer executed this: %1$@";

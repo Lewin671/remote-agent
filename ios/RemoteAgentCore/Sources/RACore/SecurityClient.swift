@@ -581,10 +581,10 @@ final class CoreSecurityDriver: @unchecked Sendable {
     ) async throws -> PBCommandResult {
         try await awaitWaiter(
             isClosed: { self.isClosed() },
-            closedError: { CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()) },
+            closedError: { CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) },
             register: { waiter in
                 try lock.withLock {
-                    guard !closed else { throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()) }
+                    guard !closed else { throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()) }
                     try Task.checkCancellation()
                     let id = nextOpID
                     nextOpID &+= 1
@@ -766,7 +766,7 @@ final class CoreSecurityDriver: @unchecked Sendable {
         for t in pendingTimers { t.cancel() }
         for t in pendingDispatches { t.cancel() }
         for waiter in pendingOps { waiter.resolve(.failure(SecurityFailure.storage)) }
-        for waiter in pendingCmds { waiter.resolve(.failure(CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()))) }
+        for waiter in pendingCmds { waiter.resolve(.failure(CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))) }
         queue.sync {
             core.close()
         }

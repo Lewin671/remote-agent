@@ -9,11 +9,6 @@ final class WeakRemote: @unchecked Sendable {
     var remote: Remote? { get { lock.withLock { stored } } set { lock.withLock { stored = newValue } } }
 }
 
-struct DirectBulkHint: Sendable {
-    var routeHintValue: UInt32 = 0
-    var bulkFileKey: String = ""
-}
-
 /// Extracts raw bytes for a top-level length-delimited `PBServerFrame` field (`11` = delivery, `12` = result)
 /// without re-serializing, so Core's strict peerwire parser sees the exact incoming wire bytes.
 func peerFrameBody(_ raw: Data, targetField: UInt64) -> Data? {
@@ -125,19 +120,5 @@ extension Remote {
             $0.wireEnvelopes = [envelope]
         }
         await emitCoreEvent(event)
-    }
-
-    func directBulkHint(_ cmd: PBCommand) -> DirectBulkHint {
-        var hint = DirectBulkHint()
-        switch cmd.kind {
-        case .getSharedFileChunk(let c)?:
-            hint.routeHintValue = UInt32(PBCoreCommandRouteHint.bulk.rawValue)
-            hint.bulkFileKey = "\(c.sessionID)/\(c.fileID)"
-        default:
-            if cmd.isReadOnlyCommand {
-                hint.routeHintValue = UInt32(PBCoreCommandRouteHint.read.rawValue)
-            }
-        }
-        return hint
     }
 }

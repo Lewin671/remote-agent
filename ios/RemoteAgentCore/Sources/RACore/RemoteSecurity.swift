@@ -372,13 +372,10 @@ extension Remote {
         }
     }
 
-    func authorizationStateHash() async throws -> Data {
-        try await ensureSecurityBootstrapped()
-        let st = securityClient.currentStatus
-        var seed = Data((st?.accountID ?? account.accountId).utf8)
-        var epoch = st?.headEpoch ?? 0
-        withUnsafeBytes(of: &epoch) { seed.append(contentsOf: $0) }
-        return sha256(seed)
+    struct AuthorizedCommand: Sendable {
+        let envelope: PBEnvelope
+        let keyHash: Data
+        let payloadHash: Data
     }
 
     func authorizeCommandBytes(
@@ -387,7 +384,7 @@ extension Remote {
         requestId: String,
         deadlineMs: Int64,
         commandBytes: Data
-    ) async throws -> PreparedCommand.AuthorizedCommand {
+    ) async throws -> AuthorizedCommand {
         do {
             try await ensureSecurityBootstrapped()
             guard !(securityClient.currentStatus?.clockSkewed ?? clockSkewed) else {
@@ -401,7 +398,7 @@ extension Remote {
                 deadlineMs: deadlineMs,
                 plaintext: commandBytes
             )
-            return PreparedCommand.AuthorizedCommand(
+            return AuthorizedCommand(
                 envelope: sealed.envelope,
                 keyHash: sealed.requestKeyHash,
                 payloadHash: sealed.payloadHash
@@ -410,28 +407,22 @@ extension Remote {
             throw e
         } catch SecurityFailure.lease {
             let view = await currentCoreSyncStateView()
-            let authId = view?.authorityDeviceID ?? ""
-            let managerName = (view?.hasManagerName == true ? renderCoreText(view!.managerName) : "").ifEmpty(L10n.securityClient())
-            let renewal = authId == account.deviceId
-                ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
-                : L10n.securityIosOpenToRenew(value: managerName)
+            let renewal: String
+            if let view, view.hasLeaseRenewalAdvice {
+                renewal = renderCoreText(view.leaseRenewalAdvice)
+            } else {
+                let authId = view?.authorityDeviceID ?? ""
+                let managerName = (view?.hasManagerName == true ? renderCoreText(view!.managerName) : "").ifEmpty(L10n.securityClient())
+                renewal = authId == account.deviceId
+                    ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
+                    : L10n.securityIosOpenToRenew(value: managerName)
+            }
             throw CommandError(
                 "failed_precondition", L10nMessage.errorsIosExpiredControlRenewal(renewal: renewal))
         } catch {
             if error is CancellationError { throw error }
             throw CommandError("authorization_unavailable", L10nMessage.securityIosSecurityStateIsUnverifiedTheOperationWasNotSent())
         }
-    }
-
-    /// Transitional Step 4 helper used by `PreparedCommand` until Schedules migrate to Core.
-    func authorizePrepared(_ p: PreparedCommand) async throws -> PreparedCommand.AuthorizedCommand {
-        try await authorizeCommandBytes(
-            machineId: p.machineId,
-            sessionId: p.sessionId,
-            requestId: p.requestId,
-            deadlineMs: p.deadlineMs,
-            commandBytes: try p.commandBytes()
-        )
     }
 
     private static let purposeByKind: [PBPayloadKind: SecurityPurpose] = [

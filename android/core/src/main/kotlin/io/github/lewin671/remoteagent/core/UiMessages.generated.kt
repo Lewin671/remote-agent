@@ -219,7 +219,6 @@ object UiMessages {
     fun errorsCannotConnectToTerminal(): UiMessage = UiMessage("errors.cannot_connect_to_terminal", emptyMap())
     fun errorsClientOutOfDate(): UiMessage = UiMessage("errors.client_out_of_date", emptyMap())
     fun errorsCommandFailed(): UiMessage = UiMessage("errors.command_failed", emptyMap())
-    fun errorsConnectionDroppedMidway(): UiMessage = UiMessage("errors.connection_dropped_midway", emptyMap())
     fun errorsConnectionTimedOut(): UiMessage = UiMessage("errors.connection_timed_out", emptyMap())
     fun errorsConnectionTimedOutReconnecting(): UiMessage = UiMessage("errors.connection_timed_out_reconnecting", emptyMap())
     fun errorsDisconnectedFromServer(): UiMessage = UiMessage("errors.disconnected_from_server", emptyMap())

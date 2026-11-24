@@ -423,8 +423,6 @@ actor CoreHost: SyncEngine {
     private var machineStatusWatches: [UUID: MachineStatusWatchEntry] = [:]
     private var activeDirectDiagnosticsID = ""
     private var hooksInstalled = false
-    private var nextDirectCallID: UInt64 = 1
-    private var bulkRouteWaiters: [UInt64: CheckedContinuation<PBCoreDirectBulkRouteEffect, Never>] = [:]
     private var nextSecurityOpID: UInt64 = 1
     private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var nextMachineCmdOpID: UInt64 = 1
@@ -571,15 +569,9 @@ actor CoreHost: SyncEngine {
             onCoreEvent: { [weak self] ev in
                 await self?.dispatch(ev)
             },
-            onBeginDirectBulkTransfer: { [weak self] ev in
-                await self?.beginDirectBulkTransfer(ev) ?? PBCoreDirectBulkRouteEffect()
-            },
-            onFinishDirectBulkTransfer: { [weak self] ev in
-                await self?.finishDirectBulkTransfer(ev)
-            },
             onRunMachineCommand: { [weak self] machineID, sessionID, command, skipPreflight in
                 guard let self else {
-                    throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled())
+                    throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
                 }
                 return try await self.runMachineCommand(
                     machineID: machineID,
@@ -876,11 +868,6 @@ actor CoreHost: SyncEngine {
         attachmentHandlers = nil
         visibleSessions.removeAll()
         currentVisibleSessionID = ""
-        let pendingBulk = bulkRouteWaiters
-        bulkRouteWaiters.removeAll()
-        for continuation in pendingBulk.values {
-            continuation.resume(returning: PBCoreDirectBulkRouteEffect())
-        }
         let pendingOps = securityOpWaiters
         securityOpWaiters.removeAll()
         for (opID, continuation) in pendingOps {
@@ -893,7 +880,7 @@ actor CoreHost: SyncEngine {
         let pendingCmds = machineCmdWaiters
         machineCmdWaiters.removeAll()
         for continuation in pendingCmds.values {
-            continuation.resume(throwing: CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()))
+            continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
         }
         let pendingRetry = retryNowWaiters
         retryNowWaiters.removeAll()
@@ -965,36 +952,6 @@ actor CoreHost: SyncEngine {
         guard let list = retryNowWaiters.removeValue(forKey: machineID) else { return }
         for continuation in list {
             continuation.resume(returning: started)
-        }
-    }
-
-    func beginDirectBulkTransfer(_ ev: PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect {
-        guard !closed, !demoMode else { return PBCoreDirectBulkRouteEffect() }
-        let callID = nextDirectCallID
-        nextDirectCallID &+= 1
-        var req = ev
-        req.callID = callID
-        let capturedReq = req
-        return await withCheckedContinuation { continuation in
-            bulkRouteWaiters[callID] = continuation
-            Task { await self.sendBeginDirectBulkTransfer(callID: callID, event: capturedReq) }
-        }
-    }
-
-    private func sendBeginDirectBulkTransfer(callID: UInt64, event: PBCoreDirectBulkTransferBeginEvent) async {
-        guard !closed, !demoMode else {
-            bulkRouteWaiters.removeValue(forKey: callID)?.resume(returning: PBCoreDirectBulkRouteEffect())
-            return
-        }
-        await dispatch {
-            $0.directBulkTransferBegin = event
-        }
-    }
-
-    func finishDirectBulkTransfer(_ ev: PBCoreDirectBulkTransferDoneEvent) async {
-        guard !closed, !demoMode else { return }
-        await dispatch {
-            $0.directBulkTransferDone = ev
         }
     }
 
@@ -2687,8 +2644,8 @@ actor CoreHost: SyncEngine {
             case .securityOpResult(let eff):
                 securityOpWaiters.removeValue(forKey: eff.opID)?.resume(returning: eff)
 
-            case .directBulkRoute(let eff):
-                bulkRouteWaiters.removeValue(forKey: eff.callID)?.resume(returning: eff)
+            case .directBulkRoute:
+                break
 
             case .terminalReopen(let eff):
                 if let entry = terminalReopenListeners[eff.terminalID] {
@@ -3234,7 +3191,7 @@ actor CoreHost: SyncEngine {
         skipConnectivityPreflight: Bool = false
     ) async throws -> PBCommandResult {
         guard !closed else {
-            throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled())
+            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
         }
         try Task.checkCancellation()
         let opID = nextMachineCmdOpID
@@ -3242,7 +3199,7 @@ actor CoreHost: SyncEngine {
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 if closed {
-                    continuation.resume(throwing: CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled()))
+                    continuation.resume(throwing: CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled()))
                     return
                 }
                 if Task.isCancelled {

@@ -9,91 +9,9 @@ import RAProto
 import SwiftProtobuf
 import os
 
-public let commandTTLMs: Int64 = 60_000
 public let projectPrefsID = "project-prefs"
 
 private let streamFrameBytes = 2 << 20
-
-/// An immutable local intent for Step 3-4 transitional commands until those screens migrate to Core.
-public final class PreparedCommand: @unchecked Sendable {
-    public let machineId: String
-    public let sessionId: String
-    public let requestId: String
-    public let deadlineMs: Int64
-    let command: PBCommand
-    private let payload: Result<Data, Error>
-    public func commandBytes() throws -> Data { try payload.get() }
-
-    private let mayHaveRunFlag: OSAllocatedUnfairLock<Bool>
-    public var mayHaveRun: Bool { mayHaveRunFlag.withLock { $0 } }
-    func markMayHaveRun() { mayHaveRunFlag.withLock { $0 = true } }
-
-    struct AuthorizedCommand: Sendable {
-        let envelope: PBEnvelope
-        let keyHash: Data
-        let payloadHash: Data
-    }
-
-    private let sealLock = NSLock()
-    private var sealResult: SharedResult<AuthorizedCommand>?
-    private var sealID: UUID?
-    private var sealState: Data?
-    private var everAuthorized = false
-
-    private func clearAuthorization(_ id: UUID) {
-        sealLock.lock()
-        defer { sealLock.unlock() }
-        if sealID == id {
-            sealResult = nil
-            sealID = nil
-            sealState = nil
-        }
-    }
-
-    private func authorized(_ id: UUID) {
-        sealLock.lock()
-        defer { sealLock.unlock() }
-        if sealID == id { everAuthorized = true }
-    }
-
-    func authorizationResult(
-        stateHash: Data, _ make: @escaping @Sendable (Bool) -> Task<AuthorizedCommand, Error>
-    ) -> SharedResult<AuthorizedCommand> {
-        sealLock.lock()
-        defer { sealLock.unlock() }
-        if let sealResult, sealState == stateHash { return sealResult }
-        let id = UUID()
-        sealID = id
-        sealState = stateHash
-        let verifyObservation = !everAuthorized
-        let result = SharedResult<AuthorizedCommand>()
-        Task {
-            do {
-                let authorized = try await make(verifyObservation).value
-                self.authorized(id)
-                result.resolve(.success(authorized))
-            } catch {
-                self.clearAuthorization(id)
-                result.resolve(.failure(error))
-            }
-        }
-        sealResult = result
-        return result
-    }
-
-    public init(
-        machineId: String, sessionId: String, requestId: String, deadlineMs: Int64,
-        command: PBCommand
-    ) {
-        self.machineId = machineId
-        self.sessionId = sessionId
-        self.requestId = requestId
-        self.deadlineMs = deadlineMs
-        self.command = command
-        self.mayHaveRunFlag = OSAllocatedUnfairLock(initialState: false)
-        self.payload = Result { try command.serializedData() }
-    }
-}
 
 public struct SavedLogin: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var token: String
@@ -217,7 +135,6 @@ public final actor Remote {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
     }
-    var machineProtocols: [String: (version: UInt32, name: String)] = [:]
     var clockSkewed = false
     var foregroundActive = true
     var networkGeneration: UInt64 = 0
@@ -234,8 +151,6 @@ public final actor Remote {
         public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
         public var onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)?
         public var onCoreEvent: @Sendable (PBCoreEvent) async -> Void
-        public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
-        public var onFinishDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void
         public var onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)?
         public init(
             onRefresh: @escaping @Sendable () async -> Void,
@@ -243,8 +158,6 @@ public final actor Remote {
             onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
             onSecurityOp: (@Sendable (PBSecurityOpRequestEvent) async -> PBSecurityOpResultEffect)? = nil,
             onCoreEvent: @escaping @Sendable (PBCoreEvent) async -> Void = { _ in },
-            onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
-            onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in },
             onRunMachineCommand: (@Sendable (String, String, PBCommand, Bool) async throws -> PBCommandResult)? = nil
         ) {
             self.onRefresh = onRefresh
@@ -252,8 +165,6 @@ public final actor Remote {
             self.onQuerySyncState = onQuerySyncState
             self.onSecurityOp = onSecurityOp
             self.onCoreEvent = onCoreEvent
-            self.onBeginDirectBulkTransfer = onBeginDirectBulkTransfer
-            self.onFinishDirectBulkTransfer = onFinishDirectBulkTransfer
             self.onRunMachineCommand = onRunMachineCommand
         }
     }
@@ -376,16 +287,6 @@ public final actor Remote {
 
     public func applyCoreSyncState(_ v: PBCoreSyncStateView) {
         self.clockSkewed = v.accountClockSkewed
-        var nextProtocols: [String: (version: UInt32, name: String)] = [:]
-        nextProtocols.reserveCapacity(v.machines.count)
-        for m in v.machines {
-            let ver = m.protocolVersion > 0 ? m.protocolVersion : (m.hasMeta ? m.meta.protocolVersion : 0)
-            if ver > 0 {
-                let name = m.displayName.isEmpty ? m.machineID.jvmTake(8) : m.displayName
-                nextProtocols[m.machineID] = (ver, name)
-            }
-        }
-        machineProtocols = nextProtocols
         // Keep sessionMachines in sync so directGate / terminal know owner machine IDs.
         if v.sessions.contains(where: { sessionMachines[$0.sessionID] != $0.machineID }) {
             var nextMachines = sessionMachines

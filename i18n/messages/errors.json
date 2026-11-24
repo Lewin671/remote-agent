@@ -257,22 +257,6 @@
     "zh-CN": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。"
   },
   {
-    "en": "Connection dropped midway",
-    "key": "errors.connection_dropped_midway",
-    "notes": "composer-drafts 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "连接中途断了"
-  },
-  {
     "en": "The server must use HTTPS",
     "key": "errors.the_server_must_use_https",
     "notes": "crypto 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
@@ -1353,34 +1337,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "请求可能已经送到，之后登录失败（{value}）"
-  },
-  {
-    "en": "This app version is out of date. Update and retry.",
-    "key": "errors.ios_this_app_version_is_out_of_date_update_and",
-    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这个 App 版本较旧，请更新后再试"
-  },
-  {
-    "en": "This command expired and was not sent",
-    "key": "errors.ios_this_command_expired_and_was_not_sent",
-    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这条指令已过期，没有发出"
   },
   {
     "en": "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.",

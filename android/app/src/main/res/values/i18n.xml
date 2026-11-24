@@ -234,7 +234,6 @@
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
     <string name="errors_command_failed" formatted="false">"指令执行失败"</string>
-    <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
     <string name="errors_disconnected_from_server" formatted="false">"与 server 的连接断开"</string>

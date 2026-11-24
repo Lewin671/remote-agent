@@ -344,6 +344,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public static let expired = "expired"
     public static let diskFull = "disk_full"
     public static let internalFailure = "internal"
+    public static let canceled = "canceled"
 }
 
 public func uncertain(_ error: Error) -> Bool { (error as? CommandError)?.unknown ?? false }

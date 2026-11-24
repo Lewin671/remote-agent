@@ -239,22 +239,7 @@ extension Remote {
         }
     }
 
-    // MARK: - Transitional Step 4 Command & Helper APIs (delete after Step 4 migration)
-
-    public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
-        let requestId = newRequestId()
-        let deadline = clock() + commandTTLMs
-        var versioned = cmd
-        versioned.protocolVersion = peerProtocolVersion
-        return PreparedCommand(
-            machineId: machineId, sessionId: sessionId, requestId: requestId, deadlineMs: deadline,
-            command: versioned)
-    }
-
-    @discardableResult
-    public func machineCommand(_ machineId: String, _ cmd: PBCommand) async throws -> PBCommandResult {
-        try await forward(try prepare(machineId: machineId, sessionId: "", cmd))
-    }
+    // MARK: - Core One-Shot Machine Commands & Probes
 
     @discardableResult
     public func runMachineCommand(
@@ -267,7 +252,7 @@ extension Remote {
             return try await onRun(machineId, sessionId, cmd, skipConnectivityPreflight)
         }
         guard let driver = ensureFallbackSecurityDriver() else {
-            throw CommandError("canceled", L10nMessage.errorsTerminalConnectionCanceled())
+            throw CommandError(CommandError.canceled, L10nMessage.errorsTerminalConnectionCanceled())
         }
         return try await driver.runMachineCommand(
             machineID: machineId,
@@ -309,182 +294,6 @@ extension Remote {
             throw UserError(L10nMessage.connectionNoResponse())
         }
         return (ContinuousClock.now - started).milliseconds
-    }
-
-    @discardableResult
-    public func forward(_ p: PreparedCommand, retryOfUnknown: Bool = false) async throws -> PBCommandResult {
-        let (sum, overflow) = p.deadlineMs.addingReportingOverflow(resultRetentionMs)
-        let recoveryDeadline = overflow ? Int64.max : sum
-        let prior = retryOfUnknown || p.mayHaveRun
-        if !prior && clock() >= p.deadlineMs {
-            throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
-        }
-        guard clock() < recoveryDeadline else {
-            throw prior
-                ? CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
-                : CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
-        }
-        if let mp = machineProtocols[p.machineId] {
-            if mp.version < peerProtocolVersion {
-                throw CommandError("failed_precondition", L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: mp.name), outcome: prior ? .unknown : .notSent)
-            }
-            if mp.version > peerProtocolVersion {
-                throw CommandError("failed_precondition", L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd(), outcome: prior ? .unknown : .notSent)
-            }
-        }
-        let bulkHint = directBulkHint(p.command)
-        var forceRelay = false
-        var attemptCount = 0
-
-        while true {
-            guard clock() < recoveryDeadline else {
-                throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
-            }
-            let attemptId = newRequestId()
-            let dec: PBCoreDirectBulkRouteEffect
-            if bulkHint.routeHintValue != 0, let hooks = hostHooks {
-                let beginEv = PBCoreDirectBulkTransferBeginEvent.with {
-                    $0.machineID = p.machineId
-                    $0.routeHint = bulkHint.routeHintValue
-                    $0.bulkFileKey = bulkHint.bulkFileKey
-                    $0.deadlineMs = p.deadlineMs
-                    $0.forceRelay = forceRelay
-                }
-                dec = await hooks.onBeginDirectBulkTransfer(beginEv)
-            } else {
-                dec = PBCoreDirectBulkRouteEffect()
-            }
-            let useDirect = dec.useDirect && !forceRelay && dec.pcID > 0
-            let started = ContinuousClock.now
-            let handoff: @Sendable () throws -> Void = { p.markMayHaveRun() }
-            let relayAttempt = useDirect ? nil : deviceLink.delivery(attemptId: attemptId, handoff: handoff)
-            let initialBytes: Int64 = 0
-            @Sendable func reportRoute(_ ok: Bool, _ obsBytes: Int64) async {
-                guard dec.ticketID != 0 else { return }
-                let done = PBCoreDirectBulkTransferDoneEvent.with {
-                    $0.ticketID = dec.ticketID
-                    $0.routeWasDirect = useDirect
-                    $0.ok = ok
-                    $0.elapsedMs = Double(max((ContinuousClock.now - started).milliseconds, 1))
-                    $0.observedBytes = obsBytes
-                    $0.machineID = p.machineId
-                }
-                await hostHooks?.onFinishDirectBulkTransfer(done)
-            }
-            var routeReported = false
-            do {
-                if let relayAttempt {
-                    try await relayAttempt.prepare(prior: p.mayHaveRun)
-                }
-                let stateHash = try await authorizationStateHash()
-                let auth = p.authorizationResult(stateHash: stateHash) { _ in
-                    Task {
-                        try await self.authorizePrepared(p)
-                    }
-                }
-                let authorized = try await auth.value
-                try Task.checkCancellation()
-                let envelope = authorized.envelope
-                let res: PBForwardResponse
-                if useDirect {
-                    let directEnv = try await directExecutor.sendRpc(
-                        pcId: dec.pcID,
-                        requestId: p.requestId,
-                        sealedBytes: try envelope.serializedData(),
-                        timeoutMs: dec.timeoutMs,
-                        handoff: handoff
-                    )
-                    res = PBForwardResponse.with {
-                        $0.result = directEnv
-                        $0.attemptID = attemptId
-                    }
-                } else {
-                    res = try await relayAttempt!.send(machineId: p.machineIDOr(p.machineId), command: envelope)
-                }
-                let msg: PBCommandResult
-                do {
-                    (_, msg) = try await openSecureMessage(
-                        envelope: res.result,
-                        want: Place(.commandResult, machineId: p.machineId, sessionId: p.sessionId, requestId: p.requestId),
-                        as: PBCommandResult.self)
-                } catch {
-                    routeReported = true
-                    await reportRoute(false, initialBytes)
-                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), outcome: .unknown)
-                }
-                let bound = res.attemptID == attemptId
-                    && msg.requestKeyHash == authorized.keyHash
-                    && msg.payloadHash == authorized.payloadHash
-                    && (useDirect || (res.outcome == msg.outcome && res.reason == msg.reason))
-                    && (msg.outcome == "conflict" || msg.conflictKind.isEmpty)
-                let category = Outcome(rawValue: msg.outcome) ?? .unknown
-                guard bound && category != .unknown else {
-                    routeReported = true
-                    await reportRoute(false, initialBytes)
-                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(), fromDaemon: true, outcome: .unknown)
-                }
-                if (category == .executed && !msg.resultAvailable) || (category == .conflict && msg.conflictKind == "identity") {
-                    routeReported = true
-                    await reportRoute(false, initialBytes)
-                    _ = await refresh()
-                    throw CommandError(
-                        msg.errorCode,
-                        category == .executed ? L10nMessage.errorsExecutedResultUnavailable() : L10nMessage.errorsRequestIdentityConflict(),
-                        fromDaemon: true, outcome: category, conflictKind: msg.conflictKind, resultAvailable: msg.resultAvailable)
-                }
-                if !msg.errorCode.isEmpty || category != .executed {
-                    routeReported = true
-                    await reportRoute(category == .executed, initialBytes)
-                    throw CommandError(
-                        msg.errorCode.ifEmpty(msg.outcome),
-                        msg.errorMessage.ifEmpty(msg.errorCode),
-                        fromDaemon: true, outcome: category, conflictKind: msg.conflictKind)
-                }
-                var finalBytes = initialBytes
-                if case .getSharedFileChunk(let chunk)? = msg.kind {
-                    finalBytes = Int64(chunk.data.count)
-                }
-                routeReported = true
-                await reportRoute(true, finalBytes)
-                return msg
-            } catch let e as CommandError {
-                if !routeReported { await reportRoute(false, initialBytes) }
-                if prior && !e.unknown && !(e.fromDaemon && e.outcome != .notSent) {
-                    throw CommandError(e.code, e.message, fromDaemon: e.fromDaemon, readOnly: e.readOnly, outcomeDetail: e.outcomeDetail, outcome: .unknown, conflictKind: e.conflictKind, resultAvailable: e.resultAvailable)
-                }
-                throw e
-            } catch is PathChanged {
-                if !routeReported { await reportRoute(false, initialBytes) }
-                if useDirect { forceRelay = true; continue }
-                throw CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
-            } catch let ce as ConnectError {
-                if !routeReported { await reportRoute(false, initialBytes) }
-                if let relayAttempt, let refusal = relayAttempt.refusal(ce) {
-                    if ce.code == .unauthenticated {
-                        rejectCredential(token)
-                        attemptCount += 1
-                        if attemptCount < 3 { continue }
-                    }
-                    throw CommandError(ce.code.name, refusal.reason.ifEmpty(errorText(ce)), outcome: p.mayHaveRun ? .unknown : .notSent)
-                }
-                if ce.code == .unauthenticated, attemptCount < 2 {
-                    attemptCount += 1
-                    rejectCredential(token)
-                    continue
-                }
-                if (ce.code == .unavailable || ce.code == .deadlineExceeded), attemptCount < 3, clock() + 500 < recoveryDeadline {
-                    attemptCount += 1
-                    try? await sleep(500)
-                    continue
-                }
-                if p.mayHaveRun { throw CommandError.unknownBecause(errorText(ce)) }
-                throw CommandError(ce.code.name, errorText(ce))
-            } catch {
-                if !routeReported { await reportRoute(false, initialBytes) }
-                if p.mayHaveRun { throw CommandError.unknownBecause(errorText(error)) }
-                throw error
-            }
-        }
     }
 
     func relogin(_ mayHaveRun: Bool) async throws -> String {
@@ -548,26 +357,8 @@ extension Remote {
     }
 }
 
-private extension PreparedCommand {
-    func machineIDOr(_ fallback: String) -> String { machineId.isEmpty ? fallback : machineId }
-}
-
 extension Duration {
     var milliseconds: Int64 {
         components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000
-    }
-}
-
-// Keep in step with deviceauth.IsReadOnlyCommand; unknown kinds mutate.
-extension PBCommand {
-    var isReadOnlyCommand: Bool {
-        switch kind {
-        case .getMachineStatus, .getUsageStats, .getSettings, .listModels, .listDirectories, .getLiveSnapshot, .getImageUploadStatus, .getSharedFileChunk:
-            true
-        case .schedule(let request):
-            ["list", "get"].contains(request.operation)
-        default:
-            false
-        }
     }
 }
