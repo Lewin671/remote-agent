@@ -151,15 +151,24 @@ it("offers same-device replacement candidates checked by default and honors togg
         joinerKind: DeviceKind.CLIENT,
         sasEmoji: ["🚀", "🧭", "🔑", "🧩"],
         joinerMetaReceived: true,
-        removeOldDefault: true,
         replaceOldLabel: create(TextSchema, { key: "security.also_remove_old_devices" }),
         replaceOldHint: create(TextSchema, { key: "security.also_remove_old_devices_hint" }),
         replacementCandidates: [
           create(SecurityPairingReplacementCandidateSchema, {
-            deviceId: "old-chrome-id",
-            shortId: "old-chr1",
-            displayName: "Chrome · macOS",
-            description: "Chrome · macOS",
+            deviceId: "old-pixel-stale",
+            shortId: "old-pix1",
+            displayName: "Pixel 3",
+            description: "Android 14 · Pixel 3",
+            lastActiveText: create(TextSchema, { key: "time.yesterday" }),
+            defaultSelected: true,
+          }),
+          create(SecurityPairingReplacementCandidateSchema, {
+            deviceId: "old-pixel-active",
+            shortId: "old-pix2",
+            displayName: "Active Pixel",
+            description: "Android 15 · Pixel 3",
+            lastActiveText: create(TextSchema, { key: "time.just_now" }),
+            defaultSelected: false,
           }),
         ],
       }),
@@ -174,13 +183,17 @@ it("offers same-device replacement candidates checked by default and honors togg
     await mount(<PairCodePage remote={r} onBack={() => {}} />);
     await click(message("security.generate_pairing_code"));
     expect(host.textContent).toContain(message("security.also_remove_old_devices"));
-    expect(host.textContent).toContain("Chrome · macOS");
-    expect(host.textContent).toContain("old-chr1");
+    expect(host.textContent).toContain("Android 14 · Pixel 3");
+    expect(host.textContent).toContain("old-pix1");
+    expect(host.textContent).toContain(message("time.yesterday"));
+    expect(host.textContent).toContain("old-pix2");
+    expect(host.textContent).toContain(message("time.just_now"));
 
     const checkboxes = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
-    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes).toHaveLength(3);
     expect(checkboxes[0].checked).toBe(false);
     expect(checkboxes[1].checked).toBe(true);
+    expect(checkboxes[2].checked).toBe(false);
 
     await act(async () => checkboxes[0].click());
     if (!keepChecked) {
@@ -191,7 +204,7 @@ it("offers same-device replacement candidates checked by default and honors togg
     expect(approve).toHaveBeenCalledWith(
       "pair-replace",
       true,
-      keepChecked ? ["old-chrome-id"] : [],
+      keepChecked ? ["old-pixel-stale"] : [],
     );
 
     act(() => root.unmount());

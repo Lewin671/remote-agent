@@ -20,6 +20,7 @@ public  final class SecurityPairingReplacementCandidate extends
     description_ = "";
     shortId_ = "";
   }
+  private int bitField0_;
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
   /**
@@ -210,6 +211,106 @@ public  final class SecurityPairingReplacementCandidate extends
     checkByteStringIsUtf8(value);
     shortId_ = value.toStringUtf8();
 
+  }
+
+  public static final int LAST_SEEN_MS_FIELD_NUMBER = 5;
+  private long lastSeenMs_;
+  /**
+   * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+   * @return The lastSeenMs.
+   */
+  @java.lang.Override
+  public long getLastSeenMs() {
+    return lastSeenMs_;
+  }
+  /**
+   * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+   * @param value The lastSeenMs to set.
+   */
+  private void setLastSeenMs(long value) {
+    
+    lastSeenMs_ = value;
+  }
+  /**
+   * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+   */
+  private void clearLastSeenMs() {
+
+    lastSeenMs_ = 0L;
+  }
+
+  public static final int LAST_ACTIVE_TEXT_FIELD_NUMBER = 6;
+  private io.github.lewin671.remoteagent.core.proto.Text lastActiveText_;
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasLastActiveText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getLastActiveText() {
+    return lastActiveText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : lastActiveText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLastActiveText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    lastActiveText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeLastActiveText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (lastActiveText_ != null &&
+        lastActiveText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      lastActiveText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(lastActiveText_).mergeFrom(value).buildPartial();
+    } else {
+      lastActiveText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   */
+  private void clearLastActiveText() {
+    lastActiveText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int DEFAULT_SELECTED_FIELD_NUMBER = 7;
+  private boolean defaultSelected_;
+  /**
+   * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+   * @return The defaultSelected.
+   */
+  @java.lang.Override
+  public boolean getDefaultSelected() {
+    return defaultSelected_;
+  }
+  /**
+   * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+   * @param value The defaultSelected to set.
+   */
+  private void setDefaultSelected(boolean value) {
+    
+    defaultSelected_ = value;
+  }
+  /**
+   * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+   */
+  private void clearDefaultSelected() {
+
+    defaultSelected_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate parseFrom(
@@ -505,6 +606,109 @@ public  final class SecurityPairingReplacementCandidate extends
       return this;
     }
 
+    /**
+     * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+     * @return The lastSeenMs.
+     */
+    @java.lang.Override
+    public long getLastSeenMs() {
+      return instance.getLastSeenMs();
+    }
+    /**
+     * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+     * @param value The lastSeenMs to set.
+     * @return This builder for chaining.
+     */
+    public Builder setLastSeenMs(long value) {
+      copyOnWrite();
+      instance.setLastSeenMs(value);
+      return this;
+    }
+    /**
+     * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearLastSeenMs() {
+      copyOnWrite();
+      instance.clearLastSeenMs();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasLastActiveText() {
+      return instance.hasLastActiveText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getLastActiveText() {
+      return instance.getLastActiveText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    public Builder setLastActiveText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setLastActiveText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    public Builder setLastActiveText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLastActiveText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    public Builder mergeLastActiveText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeLastActiveText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+     */
+    public Builder clearLastActiveText() {  copyOnWrite();
+      instance.clearLastActiveText();
+      return this;
+    }
+
+    /**
+     * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+     * @return The defaultSelected.
+     */
+    @java.lang.Override
+    public boolean getDefaultSelected() {
+      return instance.getDefaultSelected();
+    }
+    /**
+     * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+     * @param value The defaultSelected to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDefaultSelected(boolean value) {
+      copyOnWrite();
+      instance.setDefaultSelected(value);
+      return this;
+    }
+    /**
+     * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDefaultSelected() {
+      copyOnWrite();
+      instance.clearDefaultSelected();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityPairingReplacementCandidate)
   }
   @java.lang.Override
@@ -521,14 +725,18 @@ public  final class SecurityPairingReplacementCandidate extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "deviceId_",
             "displayName_",
             "description_",
             "shortId_",
+            "lastSeenMs_",
+            "lastActiveText_",
+            "defaultSelected_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u0208";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u0208\u0005\u0002\u0006\u1009\u0000\u0007\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -11,11 +11,11 @@ final class AuthorityPairingModel {
     var initiation: PBSecurityPairingInfo?
     var approved = false
     var delivered = false
-    var removeOld = true
+    var selectedRemoveIDs: Set<String> = []
     var error = ""
     var busy = false
 
-    @ObservationIgnored private var removeOldTouched = false
+    @ObservationIgnored private var removeSelectionTouched = false
     @ObservationIgnored private var metaPolls = 0
 
     var needsMetaPoll: Bool {
@@ -24,21 +24,29 @@ final class AuthorityPairingModel {
     }
 
     var selectedRemoveDeviceIDs: [String] {
-        guard removeOld, let initiation else { return [] }
-        return initiation.replacementCandidates.map(\.deviceID)
+        guard let initiation else { return [] }
+        return initiation.replacementCandidates
+            .map(\.deviceID)
+            .filter { selectedRemoveIDs.contains($0) }
     }
 
-    func setRemoveOld(_ checked: Bool) {
-        removeOldTouched = true
-        removeOld = checked
+    func setRemoveCandidate(_ deviceID: String, selected: Bool) {
+        removeSelectionTouched = true
+        if selected {
+            selectedRemoveIDs.insert(deviceID)
+        } else {
+            selectedRemoveIDs.remove(deviceID)
+        }
     }
 
     func applyPolled(_ next: PBSecurityPairingInfo) {
         let newlyJoined = initiation?.joined != true && next.joined
         if newlyJoined { metaPolls = 0 }
         initiation = next
-        if !next.replacementCandidates.isEmpty && !removeOldTouched {
-            removeOld = next.removeOldDefault
+        if !next.replacementCandidates.isEmpty && !removeSelectionTouched {
+            selectedRemoveIDs = Set(
+                next.replacementCandidates.filter(\.defaultSelected).map(\.deviceID)
+            )
         }
     }
 
@@ -46,8 +54,8 @@ final class AuthorityPairingModel {
         initiation = nil
         approved = false
         delivered = false
-        removeOld = true
-        removeOldTouched = false
+        selectedRemoveIDs = []
+        removeSelectionTouched = false
         metaPolls = 0
     }
 
@@ -70,7 +78,7 @@ final class AuthorityPairingModel {
                 replacesDeviceId: replacing
             )
             approved = false; delivered = false
-            removeOld = true; removeOldTouched = false; metaPolls = 0
+            selectedRemoveIDs = []; removeSelectionTouched = false; metaPolls = 0
         } catch { self.error = errorText(error) }
     }
 
@@ -178,40 +186,47 @@ struct AddDeviceScreen: View {
                     GroupNote(L10n.securityCompareThe4PatternsOnTheNewDeviceConfirm())
                     if !flow.approved {
                         if !initiation.replacementCandidates.isEmpty {
-                            let toggleLabel = initiation.hasReplaceOldLabel
+                            let headerLabel = initiation.hasReplaceOldLabel
                                 ? initiation.replaceOldLabel.rendered().or(L10n.securityAlsoRemoveOldDevices())
                                 : L10n.securityAlsoRemoveOldDevices()
                             let hintText = initiation.hasReplaceOldHint ? initiation.replaceOldHint.rendered() : ""
                             GroupCard {
-                                Toggle(
-                                    toggleLabel,
-                                    isOn: Binding(get: { flow.removeOld }, set: { flow.setRemoveOld($0) })
-                                )
-                                .font(.body.weight(.medium))
-                                .ink(DS.ink)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
+                                Text(headerLabel)
+                                    .font(.body.weight(.medium))
+                                    .ink(DS.ink)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 14)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, hintText.isEmpty ? 6 : 4)
                                 if !hintText.isEmpty {
                                     Text(hintText)
                                         .font(.subheadline)
                                         .ink(DS.ink2)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.horizontal, 14)
-                                        .padding(.bottom, 10)
+                                        .padding(.bottom, 8)
                                 }
                                 ForEach(initiation.replacementCandidates, id: \.deviceID) { cand in
                                     let name = cand.displayName.or(cand.description_p).or(cand.shortID)
+                                    let lastActive = cand.hasLastActiveText ? cand.lastActiveText.rendered() : ""
                                     let detail = [
                                         cand.description_p != name ? cand.description_p : "",
                                         cand.shortID,
+                                        lastActive,
                                     ].filter { !$0.isEmpty }.joined(separator: " · ")
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(name).font(.subheadline.weight(.semibold)).ink(DS.ink).lineLimit(1)
-                                        if !detail.isEmpty {
-                                            Text(detail).font(.footnote).ink(DS.ink2).lineLimit(1)
+                                    Toggle(
+                                        isOn: Binding(
+                                            get: { flow.selectedRemoveIDs.contains(cand.deviceID) },
+                                            set: { flow.setRemoveCandidate(cand.deviceID, selected: $0) }
+                                        )
+                                    ) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(name).font(.subheadline.weight(.semibold)).ink(DS.ink).lineLimit(1)
+                                            if !detail.isEmpty {
+                                                Text(detail).font(.footnote).ink(DS.ink2).lineLimit(2)
+                                            }
                                         }
                                     }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)
                                 }

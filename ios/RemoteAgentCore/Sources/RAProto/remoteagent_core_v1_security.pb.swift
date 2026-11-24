@@ -1625,9 +1625,24 @@ public struct PBSecurityPairingReplacementCandidate: Sendable {
 
   public var shortID: String = String()
 
+  public var lastSeenMs: Int64 = 0
+
+  public var lastActiveText: PBCoreText {
+    get {return _lastActiveText ?? PBCoreText()}
+    set {_lastActiveText = newValue}
+  }
+  /// Returns true if `lastActiveText` has been explicitly set.
+  public var hasLastActiveText: Bool {return self._lastActiveText != nil}
+  /// Clears the value of `lastActiveText`. Subsequent reads from it will return its default value.
+  public mutating func clearLastActiveText() {self._lastActiveText = nil}
+
+  public var defaultSelected: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _lastActiveText: PBCoreText? = nil
 }
 
 public struct PBSecurityPairingInfo: @unchecked Sendable {
@@ -1693,11 +1708,6 @@ public struct PBSecurityPairingInfo: @unchecked Sendable {
   public var replacementCandidates: [PBSecurityPairingReplacementCandidate] {
     get {return _storage._replacementCandidates}
     set {_uniqueStorage()._replacementCandidates = newValue}
-  }
-
-  public var removeOldDefault: Bool {
-    get {return _storage._removeOldDefault}
-    set {_uniqueStorage()._removeOldDefault = newValue}
   }
 
   public var replaceOldLabel: PBCoreText {
@@ -5256,7 +5266,7 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityPairingReplacementCandidate"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0\u{1}description\0\u{3}short_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0\u{1}description\0\u{3}short_id\0\u{3}last_seen_ms\0\u{3}last_active_text\0\u{3}default_selected\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5268,12 +5278,19 @@ extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftPro
       case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.description_p) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.shortID) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.lastSeenMs) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._lastActiveText) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.defaultSelected) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.deviceID.isEmpty {
       try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
@@ -5286,6 +5303,15 @@ extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftPro
     if !self.shortID.isEmpty {
       try visitor.visitSingularStringField(value: self.shortID, fieldNumber: 4)
     }
+    if self.lastSeenMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.lastSeenMs, fieldNumber: 5)
+    }
+    try { if let v = self._lastActiveText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
+    if self.defaultSelected != false {
+      try visitor.visitSingularBoolField(value: self.defaultSelected, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5294,6 +5320,9 @@ extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftPro
     if lhs.displayName != rhs.displayName {return false}
     if lhs.description_p != rhs.description_p {return false}
     if lhs.shortID != rhs.shortID {return false}
+    if lhs.lastSeenMs != rhs.lastSeenMs {return false}
+    if lhs._lastActiveText != rhs._lastActiveText {return false}
+    if lhs.defaultSelected != rhs.defaultSelected {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -5301,7 +5330,7 @@ extension PBSecurityPairingReplacementCandidate: SwiftProtobuf.Message, SwiftPro
 
 extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityPairingInfo"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0\u{3}joiner_meta_received\0\u{3}replacement_candidates\0\u{3}remove_old_default\0\u{3}replace_old_label\0\u{3}replace_old_hint\0\u{3}joiner_description\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{1}code\0\u{1}url\0\u{3}expires_ms\0\u{3}sas_emoji\0\u{3}joiner_kind\0\u{1}joined\0\u{1}approved\0\u{1}delivered\0\u{1}registering\0\u{3}joiner_meta_received\0\u{3}replacement_candidates\0\u{4}\u{2}replace_old_label\0\u{3}replace_old_hint\0\u{3}joiner_description\0\u{b}remove_old_default\0\u{c}\u{d}\u{1}")
 
   fileprivate class _StorageClass {
     var _pairingID: String = String()
@@ -5316,7 +5345,6 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _registering: Bool = false
     var _joinerMetaReceived: Bool = false
     var _replacementCandidates: [PBSecurityPairingReplacementCandidate] = []
-    var _removeOldDefault: Bool = false
     var _replaceOldLabel: PBCoreText? = nil
     var _replaceOldHint: PBCoreText? = nil
     var _joinerDescription: String = String()
@@ -5342,7 +5370,6 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _registering = source._registering
       _joinerMetaReceived = source._joinerMetaReceived
       _replacementCandidates = source._replacementCandidates
-      _removeOldDefault = source._removeOldDefault
       _replaceOldLabel = source._replaceOldLabel
       _replaceOldHint = source._replaceOldHint
       _joinerDescription = source._joinerDescription
@@ -5376,7 +5403,6 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 10: try { try decoder.decodeSingularBoolField(value: &_storage._registering) }()
         case 11: try { try decoder.decodeSingularBoolField(value: &_storage._joinerMetaReceived) }()
         case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._replacementCandidates) }()
-        case 13: try { try decoder.decodeSingularBoolField(value: &_storage._removeOldDefault) }()
         case 14: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldLabel) }()
         case 15: try { try decoder.decodeSingularMessageField(value: &_storage._replaceOldHint) }()
         case 16: try { try decoder.decodeSingularStringField(value: &_storage._joinerDescription) }()
@@ -5428,9 +5454,6 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if !_storage._replacementCandidates.isEmpty {
         try visitor.visitRepeatedMessageField(value: _storage._replacementCandidates, fieldNumber: 12)
       }
-      if _storage._removeOldDefault != false {
-        try visitor.visitSingularBoolField(value: _storage._removeOldDefault, fieldNumber: 13)
-      }
       try { if let v = _storage._replaceOldLabel {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 14)
       } }()
@@ -5461,7 +5484,6 @@ extension PBSecurityPairingInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._registering != rhs_storage._registering {return false}
         if _storage._joinerMetaReceived != rhs_storage._joinerMetaReceived {return false}
         if _storage._replacementCandidates != rhs_storage._replacementCandidates {return false}
-        if _storage._removeOldDefault != rhs_storage._removeOldDefault {return false}
         if _storage._replaceOldLabel != rhs_storage._replaceOldLabel {return false}
         if _storage._replaceOldHint != rhs_storage._replaceOldHint {return false}
         if _storage._joinerDescription != rhs_storage._joinerDescription {return false}

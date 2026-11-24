@@ -133,12 +133,6 @@ public interface SecurityPairingInfoOrBuilder extends
   int getReplacementCandidatesCount();
 
   /**
-   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-   * @return The removeOldDefault.
-   */
-  boolean getRemoveOldDefault();
-
-  /**
    * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
    * @return Whether the replaceOldLabel field is set.
    */

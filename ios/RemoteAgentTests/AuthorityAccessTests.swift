@@ -73,28 +73,35 @@ import UIKit
 
         var withMeta = joined
         withMeta.joinerMetaReceived = true
-        withMeta.removeOldDefault = true
         withMeta.replacementCandidates = [
             .with {
-                $0.deviceID = "old-iphone-id"
+                $0.deviceID = "old-iphone-stale"
                 $0.displayName = "iPhone"
                 $0.description_p = "iOS 18.3 · iPhone16,1"
                 $0.shortID = "…16a1"
-            }
+                $0.defaultSelected = true
+                $0.lastActiveText = .with { $0.key = "time.yesterday" }
+            },
+            .with {
+                $0.deviceID = "old-iphone-active"
+                $0.displayName = "Active iPhone"
+                $0.description_p = "iOS 18.4 · iPhone16,1"
+                $0.shortID = "…16b2"
+                $0.defaultSelected = false
+                $0.lastActiveText = .with { $0.key = "time.just_now" }
+            },
         ]
         model.applyPolled(withMeta)
         #expect(!model.needsMetaPoll)
-        #expect(model.removeOld)
-        #expect(model.selectedRemoveDeviceIDs == ["old-iphone-id"])
+        #expect(model.selectedRemoveDeviceIDs == ["old-iphone-stale"])
 
-        model.setRemoveOld(false)
-        #expect(!model.removeOld)
-        #expect(model.selectedRemoveDeviceIDs.isEmpty)
+        model.setRemoveCandidate("old-iphone-stale", selected: false)
+        model.setRemoveCandidate("old-iphone-active", selected: true)
+        #expect(model.selectedRemoveDeviceIDs == ["old-iphone-active"])
 
         // Subsequent poll results must not overwrite the user's explicit toggle choice.
         model.applyPolled(withMeta)
-        #expect(!model.removeOld)
-        #expect(model.selectedRemoveDeviceIDs.isEmpty)
+        #expect(model.selectedRemoveDeviceIDs == ["old-iphone-active"])
     }
 
 }

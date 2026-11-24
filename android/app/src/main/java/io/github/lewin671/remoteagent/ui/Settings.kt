@@ -2059,41 +2059,46 @@ fun PairScreen(replacesDeviceId: String = "") {
                                     .background(p.raised)
                                     .padding(10.dp),
                             ) {
-                                Row(
-                                    Modifier.fillMaxWidth()
-                                        .clickable { model.setRemoveOld(!step.removeOldChecked) },
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    androidx.compose.material3.Checkbox(
-                                        checked = step.removeOldChecked,
-                                        onCheckedChange = model::setRemoveOld,
-                                    )
-                                    Text(
-                                        step.replaceOldLabel?.let { uiText(it) }?.ifEmpty { null }
-                                            ?: copy(UiMessages.securityAlsoRemoveOldDevices()),
-                                        style = T.s15b,
-                                        color = p.ink,
-                                    )
-                                }
+                                Text(
+                                    step.replaceOldLabel?.let { uiText(it) }?.ifEmpty { null }
+                                        ?: copy(UiMessages.securityAlsoRemoveOldDevices()),
+                                    style = T.s15b,
+                                    color = p.ink,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
                                 val hintStr = step.replaceOldHint?.let { uiText(it) }.orEmpty()
                                 if (hintStr.isNotEmpty()) {
                                     Text(
                                         hintStr,
                                         style = T.s13,
                                         color = p.ink2,
-                                        modifier = Modifier.padding(start = 12.dp, end = 8.dp, bottom = 6.dp),
+                                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
                                     )
                                 }
                                 step.replacementCandidates.forEach { cand ->
+                                    val checked = cand.deviceId in step.selectedRemoveIds
                                     val title = cand.displayName.ifEmpty { cand.description.ifEmpty { cand.shortId } }
+                                    val lastActive = if (cand.hasLastActiveText()) uiText(cand.lastActiveText) else ""
                                     val detail = listOfNotNull(
                                         cand.description.takeIf { it.isNotEmpty() && it != title },
                                         cand.shortId.takeIf { it.isNotEmpty() },
+                                        lastActive.takeIf { it.isNotEmpty() },
                                     ).joinToString(" · ")
-                                    Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, top = 4.dp)) {
-                                        Text(title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        if (detail.isNotEmpty()) {
-                                            Text(detail, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Row(
+                                        Modifier.fillMaxWidth()
+                                            .clickable { model.toggleRemoveCandidate(cand.deviceId, !checked) }
+                                            .padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        androidx.compose.material3.Checkbox(
+                                            checked = checked,
+                                            onCheckedChange = { model.toggleRemoveCandidate(cand.deviceId, it) },
+                                        )
+                                        Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                                            Text(title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            if (detail.isNotEmpty()) {
+                                                Text(detail, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
                                         }
                                     }
                                 }

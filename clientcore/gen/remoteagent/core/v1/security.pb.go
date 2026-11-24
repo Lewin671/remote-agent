@@ -2944,11 +2944,14 @@ func (m *SecurityWorkflowStatus) AppendMarshal(b []byte) []byte {
 }
 
 type SecurityPairingReplacementCandidate struct {
-	_           [0]func()
-	DeviceId    string
-	DisplayName string
-	Description string
-	ShortId     string
+	_               [0]func()
+	DeviceId        string
+	DisplayName     string
+	Description     string
+	ShortId         string
+	LastSeenMs      int64
+	LastActiveText  *Text
+	DefaultSelected bool
 }
 
 func (m *SecurityPairingReplacementCandidate) GetDeviceId() string {
@@ -2975,6 +2978,24 @@ func (m *SecurityPairingReplacementCandidate) GetShortId() string {
 	}
 	return ""
 }
+func (m *SecurityPairingReplacementCandidate) GetLastSeenMs() int64 {
+	if m != nil {
+		return m.LastSeenMs
+	}
+	return 0
+}
+func (m *SecurityPairingReplacementCandidate) GetLastActiveText() *Text {
+	if m != nil {
+		return m.LastActiveText
+	}
+	return nil
+}
+func (m *SecurityPairingReplacementCandidate) GetDefaultSelected() bool {
+	if m != nil {
+		return m.DefaultSelected
+	}
+	return false
+}
 
 var LitewireDesc_SecurityPairingReplacementCandidate = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2982,6 +3003,9 @@ var LitewireDesc_SecurityPairingReplacementCandidate = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.DisplayName), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.Description), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.ShortId), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.LastSeenMs), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.LastActiveText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 7, Offset: unsafe.Offsetof(SecurityPairingReplacementCandidate{}.DefaultSelected), Kind: litewire.KindBool},
 	},
 }
 
@@ -3007,7 +3031,6 @@ type SecurityPairingInfo struct {
 	Registering           bool
 	JoinerMetaReceived    bool
 	ReplacementCandidates []*SecurityPairingReplacementCandidate
-	RemoveOldDefault      bool
 	ReplaceOldLabel       *Text
 	ReplaceOldHint        *Text
 	JoinerDescription     string
@@ -3085,12 +3108,6 @@ func (m *SecurityPairingInfo) GetReplacementCandidates() []*SecurityPairingRepla
 	}
 	return nil
 }
-func (m *SecurityPairingInfo) GetRemoveOldDefault() bool {
-	if m != nil {
-		return m.RemoveOldDefault
-	}
-	return false
-}
 func (m *SecurityPairingInfo) GetReplaceOldLabel() *Text {
 	if m != nil {
 		return m.ReplaceOldLabel
@@ -3124,7 +3141,6 @@ var LitewireDesc_SecurityPairingInfo = litewire.MessageDesc{
 		{Num: 10, Offset: unsafe.Offsetof(SecurityPairingInfo{}.Registering), Kind: litewire.KindBool},
 		{Num: 11, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerMetaReceived), Kind: litewire.KindBool},
 		{Num: 12, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplacementCandidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SecurityPairingReplacementCandidate},
-		{Num: 13, Offset: unsafe.Offsetof(SecurityPairingInfo{}.RemoveOldDefault), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldLabel), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 15, Offset: unsafe.Offsetof(SecurityPairingInfo{}.ReplaceOldHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 16, Offset: unsafe.Offsetof(SecurityPairingInfo{}.JoinerDescription), Kind: litewire.KindString},

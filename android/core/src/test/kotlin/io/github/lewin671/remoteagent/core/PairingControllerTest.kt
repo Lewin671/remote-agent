@@ -290,15 +290,25 @@ class PairingControllerTest {
                     .addAllSasEmoji(listOf("🐊", "🥯", "🐩", "🦌"))
                 if (pollCount >= 2) {
                     info.setJoinerMetaReceived(true)
-                        .setRemoveOldDefault(true)
                         .setReplaceOldLabel(Text.newBuilder().setKey("security.also_remove_old_devices"))
                         .setReplaceOldHint(Text.newBuilder().setKey("security.also_remove_old_devices_hint"))
                         .addReplacementCandidates(
                             SecurityPairingReplacementCandidate.newBuilder()
-                                .setDeviceId("old-pixel-id")
+                                .setDeviceId("old-pixel-stale")
                                 .setShortId("old-pix1")
                                 .setDisplayName("Pixel 3")
-                                .setDescription("Android 12 · Pixel 3"),
+                                .setDescription("Android 12 · Pixel 3")
+                                .setLastActiveText(Text.newBuilder().setKey("time.yesterday"))
+                                .setDefaultSelected(true),
+                        )
+                        .addReplacementCandidates(
+                            SecurityPairingReplacementCandidate.newBuilder()
+                                .setDeviceId("old-pixel-active")
+                                .setShortId("old-pix2")
+                                .setDisplayName("Active Pixel")
+                                .setDescription("Android 15 · Pixel 3")
+                                .setLastActiveText(Text.newBuilder().setKey("time.just_now"))
+                                .setDefaultSelected(false),
                         )
                 }
                 SecurityWorkflowResultEffect.newBuilder()
@@ -317,15 +327,15 @@ class PairingControllerTest {
             assertTrue(firstCompare.replacementCandidates.isEmpty())
             advanceTimeBy(1_000L); runCurrent()
             val secondCompare = model.state.value as PairingUiState.Compare
-            assertEquals(listOf("old-pixel-id"), secondCompare.replacementCandidates.map { it.deviceId })
-            assertTrue(secondCompare.removeOldChecked)
+            assertEquals(listOf("old-pixel-stale", "old-pixel-active"), secondCompare.replacementCandidates.map { it.deviceId })
+            assertEquals(setOf("old-pixel-stale"), secondCompare.selectedRemoveIds)
             if (!keepChecked) {
-                model.setRemoveOld(false)
-                assertFalse((model.state.value as PairingUiState.Compare).removeOldChecked)
+                model.toggleRemoveCandidate("old-pixel-stale", false)
+                assertTrue((model.state.value as PairingUiState.Compare).selectedRemoveIds.isEmpty())
             }
             model.approve(); runCurrent()
             assertEquals(
-                listOf(if (keepChecked) listOf("old-pixel-id") else emptyList()),
+                listOf(if (keepChecked) listOf("old-pixel-stale") else emptyList()),
                 driver.approvedRemoveIds,
             )
             driver.completePendingApproval(); runCurrent()

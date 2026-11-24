@@ -158,7 +158,8 @@ export function PairCodePage({
   const currentId = useRef<string | undefined>(undefined);
   const alive = useRef(true);
   const handedOff = useRef(false);
-  const [removeOld, setRemoveOld] = useState(true);
+  const [selectedRemoveIds, setSelectedRemoveIds] = useState([] as string[]);
+  const removeSelectionTouched = useRef(false);
   const metaPolls = useRef(0);
   const emoji = pair?.sasEmoji.length ? pair.sasEmoji : undefined;
   const waitingMeta = Boolean(emoji && !approved && !pair?.joinerMetaReceived);
@@ -196,15 +197,19 @@ export function PairCodePage({
             if (!stopped && next.joined && next.sasEmoji.length > 0) {
               if (!emoji) {
                 metaPolls.current = 0;
-                if (next.replacementCandidates.length > 0) {
-                  setRemoveOld(next.removeOldDefault);
+                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
+                  setSelectedRemoveIds(
+                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
+                  );
                 }
                 setPair(next);
                 return;
               }
               if (next.joinerMetaReceived) {
-                if (next.replacementCandidates.length > 0) {
-                  setRemoveOld(next.removeOldDefault);
+                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
+                  setSelectedRemoveIds(
+                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
+                  );
                 }
                 setPair(next);
                 return;
@@ -279,6 +284,8 @@ export function PairCodePage({
                   );
                   currentId.current = p.pairingId;
                   handedOff.current = false;
+                  removeSelectionTouched.current = false;
+                  setSelectedRemoveIds([]);
                   if (!alive.current) {
                     await remote.cancelPairing(p.pairingId);
                     return;
@@ -317,32 +324,45 @@ export function PairCodePage({
                     </div>
                     {pair.replacementCandidates.length > 0 && (
                       <div className="grp">
-                        <label className="row backup-check">
-                          <input
-                            type="checkbox"
-                            checked={removeOld}
-                            onChange={(e) => setRemoveOld(e.target.checked)}
-                          />
-                          {replaceLabel}
-                        </label>
+                        <div className="row">
+                          <b>{replaceLabel}</b>
+                        </div>
                         {replaceHint && (
                           <div className="row help">{replaceHint}</div>
                         )}
-                        {pair.replacementCandidates.map((c) => (
-                          <div key={c.deviceId} className="row">
-                            <span className="row-name">
-                              <b>{c.displayName || c.description || c.shortId}</b>
-                              <small>
-                                {[
-                                  c.description && c.description !== c.displayName ? c.description : "",
-                                  c.shortId,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </small>
-                            </span>
-                          </div>
-                        ))}
+                        {pair.replacementCandidates.map((c) => {
+                          const title = c.displayName || c.description || c.shortId;
+                          const lastActive = renderText(c.lastActiveText);
+                          const detail = [
+                            c.description && c.description !== title ? c.description : "",
+                            c.shortId,
+                            lastActive,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ");
+                          const checked = selectedRemoveIds.includes(c.deviceId);
+                          return (
+                            <label key={c.deviceId} className="row backup-check">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  removeSelectionTouched.current = true;
+                                  const on = e.target.checked;
+                                  setSelectedRemoveIds((prev) =>
+                                    on
+                                      ? prev.includes(c.deviceId) ? prev : [...prev, c.deviceId]
+                                      : prev.filter((id) => id !== c.deviceId),
+                                  );
+                                }}
+                              />
+                              <span className="row-name">
+                                <b>{title}</b>
+                                {detail && <small>{detail}</small>}
+                              </span>
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
                     <button
@@ -353,9 +373,9 @@ export function PairCodePage({
                           // Approval and its durable delivery belong to the account,
                           // including while approve() is still awaiting its reply.
                           handedOff.current = true;
-                          const removeIds = removeOld
-                            ? pair.replacementCandidates.map((c) => c.deviceId)
-                            : [];
+                          const removeIds = pair.replacementCandidates
+                            .filter((c) => selectedRemoveIds.includes(c.deviceId))
+                            .map((c) => c.deviceId);
                           await remote.approvePairing(pair.pairingId, confirmed, removeIds);
                           setApproved(true);
                         })

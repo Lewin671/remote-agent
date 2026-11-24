@@ -57,4 +57,27 @@ public interface SecurityPairingReplacementCandidateOrBuilder extends
    */
   com.google.protobuf.ByteString
       getShortIdBytes();
+
+  /**
+   * <code>int64 last_seen_ms = 5 [json_name = "lastSeenMs"];</code>
+   * @return The lastSeenMs.
+   */
+  long getLastSeenMs();
+
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   * @return Whether the lastActiveText field is set.
+   */
+  boolean hasLastActiveText();
+  /**
+   * <code>.remoteagent.core.v1.Text last_active_text = 6 [json_name = "lastActiveText"];</code>
+   * @return The lastActiveText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getLastActiveText();
+
+  /**
+   * <code>bool default_selected = 7 [json_name = "defaultSelected"];</code>
+   * @return The defaultSelected.
+   */
+  boolean getDefaultSelected();
 }

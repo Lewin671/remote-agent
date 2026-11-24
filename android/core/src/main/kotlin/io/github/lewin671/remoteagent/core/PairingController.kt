@@ -19,7 +19,7 @@ sealed interface PairingUiState {
         val emoji: List<String>,
         val kind: DeviceKind,
         val replacementCandidates: List<SecurityPairingReplacementCandidate> = emptyList(),
-        val removeOldChecked: Boolean = true,
+        val selectedRemoveIds: Set<String> = emptySet(),
         val replaceOldLabel: Text? = null,
         val replaceOldHint: Text? = null,
     ) : PairingUiState
@@ -45,7 +45,7 @@ class PairingController(
     private var generation = 0
     private var pairingId: String? = null
     private var consent: Triple<List<String>, DeviceKind, List<String>>? = null
-    private var removeOldTouched = false
+    private var removeSelectionTouched = false
 
     fun enter() {
         if (pairingId == null && mutable.value == PairingUiState.Starting) start()
@@ -55,7 +55,7 @@ class PairingController(
         val run = ++generation
         val cancellingId = if (consent == null) pairingId else null
         if (cancellingId != null) pairingId = null
-        removeOldTouched = false
+        removeSelectionTouched = false
         mutable.value = PairingUiState.Starting
         scope.launch {
             try {
@@ -77,7 +77,7 @@ class PairingController(
                 }
                 if (run == generation && cur.joined) {
                     val kind = cur.joinerKind
-                    mutable.value = compareState(cur, currentChecked = null)
+                    mutable.value = compareState(cur, currentSelected = null)
                     var metaPolls = 0
                     while (isActive && run == generation && consent == null && !cur.joinerMetaReceived && metaPolls < 15) {
                         delay(1_000L)
@@ -86,7 +86,7 @@ class PairingController(
                         val next = runCatching { client.pollPairing(info.pairingId) }.getOrNull() ?: break
                         cur = next
                         val prev = mutable.value as? PairingUiState.Compare ?: break
-                        mutable.value = compareState(cur, currentChecked = if (removeOldTouched) prev.removeOldChecked else null)
+                        mutable.value = compareState(cur, currentSelected = if (removeSelectionTouched) prev.selectedRemoveIds else null)
                     }
                 }
             } catch (e: CancellationException) {
@@ -108,28 +108,33 @@ class PairingController(
         }
     }
 
-    private fun compareState(cur: SecurityPairingInfo, currentChecked: Boolean?): PairingUiState.Compare {
+    private fun compareState(cur: SecurityPairingInfo, currentSelected: Set<String>?): PairingUiState.Compare {
         val candidates = cur.replacementCandidatesList.toList()
-        val checked = currentChecked ?: if (candidates.isNotEmpty()) cur.removeOldDefault else true
+        val allowedIds = candidates.map { it.deviceId }.toSet()
+        val selected = currentSelected?.intersect(allowedIds)
+            ?: candidates.filter { it.defaultSelected }.map { it.deviceId }.toSet()
         return PairingUiState.Compare(
             emoji = cur.sasEmojiList.toList(),
             kind = cur.joinerKind,
             replacementCandidates = candidates,
-            removeOldChecked = checked,
+            selectedRemoveIds = selected,
             replaceOldLabel = if (cur.hasReplaceOldLabel()) cur.replaceOldLabel else null,
             replaceOldHint = if (cur.hasReplaceOldHint()) cur.replaceOldHint else null,
         )
     }
 
-    fun setRemoveOld(checked: Boolean) {
+    fun toggleRemoveCandidate(deviceId: String, checked: Boolean) {
         val cur = mutable.value as? PairingUiState.Compare ?: return
-        removeOldTouched = true
-        mutable.value = cur.copy(removeOldChecked = checked)
+        removeSelectionTouched = true
+        val next = if (checked) cur.selectedRemoveIds + deviceId else cur.selectedRemoveIds - deviceId
+        mutable.value = cur.copy(selectedRemoveIds = next)
     }
 
     fun approve() {
         val comparing = mutable.value as? PairingUiState.Compare ?: return
-        val removeIds = if (comparing.removeOldChecked) comparing.replacementCandidates.map { it.deviceId } else emptyList()
+        val removeIds = comparing.replacementCandidates
+            .filter { it.deviceId in comparing.selectedRemoveIds }
+            .map { it.deviceId }
         consent = Triple(comparing.emoji, comparing.kind, removeIds)
         sendApproval()
     }

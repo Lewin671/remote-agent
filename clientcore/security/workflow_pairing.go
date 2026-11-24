@@ -86,39 +86,103 @@ func shortDeviceSuffix(id string) string {
 	return "…" + string(r[len(r)-4:])
 }
 
+func clampRunes(s string, max int) string {
+	n := 0
+	for i := range s {
+		if n == max {
+			return s[:i]
+		}
+		n++
+	}
+	return s
+}
+
+func isGenericModelName(model string) bool {
+	switch model {
+	case "", "iphone", "ipad", "ipod", "ios", "android", "phone", "tablet", "mobile", "unknown":
+		return true
+	default:
+		return false
+	}
+}
+
 // deviceModelFingerprint normalizes a device's platform and model from DeviceMeta
 // so that re-paired instances of the same physical device or browser match cleanly.
-func deviceModelFingerprint(meta *v1.DeviceMeta) (platform, model string) {
+// specificModel is true only when platform is android/ios and an explicit hardware
+// model appears after the "·" separator (excluding generic device-family fallbacks).
+func deviceModelFingerprint(meta *v1.DeviceMeta) (platform, model string, specificModel bool) {
 	if meta == nil {
-		return "", ""
+		return "", "", false
 	}
 	platform = strings.ToLower(strings.TrimSpace(meta.Platform))
 	desc := strings.TrimSpace(meta.Description)
 	if platform == "" || desc == "" {
-		return "", ""
+		return "", "", false
 	}
 	switch platform {
 	case "android", "ios":
-		// Format: "Android 15 · Pixel 3" or "iOS 18.4 · iPhone 16 Pro".
+		// Format: "Android 15 · Pixel 3" or "iOS 18.4 · iPhone16,1".
 		// Strip the OS version prefix so OS updates still match the same model.
 		if idx := strings.Index(desc, "·"); idx >= 0 {
-			desc = strings.TrimSpace(desc[idx+len("·"):])
+			after := strings.ToLower(strings.TrimSpace(desc[idx+len("·"):]))
+			if after != "" {
+				return platform, after, !isGenericModelName(after)
+			}
 		}
+		return platform, strings.ToLower(desc), false
+	default:
+		// Web ("Chrome on macOS") and other coarse descriptors match candidates
+		// for manual review, but never qualify for automatic default selection.
+		return platform, strings.ToLower(desc), false
 	}
-	model = strings.ToLower(strings.TrimSpace(desc))
-	if model == "" {
-		return "", ""
+}
+
+func formatCandidateLastActive(lastSeenMs, nowMs int64) *corev1.Text {
+	if lastSeenMs <= 0 {
+		return text.Msg(text.KeySettingsNoRecord)
 	}
-	return platform, model
+	if nowMs <= 0 {
+		return text.Time(lastSeenMs, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE)
+	}
+	diff := nowMs - lastSeenMs
+	if diff < 60_000 {
+		return text.Msg(text.KeyTimeJustNow)
+	}
+	mins := diff / 60_000
+	if mins < 60 {
+		return text.Msg(text.KeyTimeMinutesAgo, text.Int("count", mins))
+	}
+	hours := mins / 60
+	if hours < 24 {
+		return text.Msg(text.KeyTimeHoursAgo, text.Int("count", hours))
+	}
+	if hours < 48 {
+		return text.Msg(text.KeyTimeYesterday)
+	}
+	return text.Time(lastSeenMs, corev1.TimestampStyle_TIMESTAMP_STYLE_DATE)
+}
+
+func shouldDefaultSelectReplacement(specificModel bool, lastSeenMs, nowMs int64) bool {
+	if !specificModel || nowMs <= 0 {
+		return false
+	}
+	if lastSeenMs > 0 && nowMs-lastSeenMs < dayMs {
+		return false
+	}
+	return true
 }
 
 func (e *Engine) matchReplacementCandidates(sess *initiatorPairingSession) []*corev1.SecurityPairingReplacementCandidate {
 	if sess == nil || sess.candidateKind != v1.DeviceKind_DEVICE_KIND_CLIENT || sess.replacesDeviceID != "" || sess.joinerMeta == nil || e.head.Core.Epoch == 0 {
 		return nil
 	}
-	joinPlat, joinModel := deviceModelFingerprint(sess.joinerMeta)
+	joinPlat, joinModel, joinSpecific := deviceModelFingerprint(sess.joinerMeta)
 	if joinPlat == "" || joinModel == "" {
 		return nil
+	}
+	nowMs := e.lastNowMs
+	if eff := int64(e.effectiveNow(e.lastNowMs)); eff > nowMs {
+		nowMs = eff
 	}
 	wf := e.ensureWF()
 	var out []*corev1.SecurityPairingReplacementCandidate
@@ -132,15 +196,15 @@ func (e *Engine) matchReplacementCandidates(sess *initiatorPairingSession) []*co
 		if _, live := e.head.Core.Member(d.ID); !live {
 			continue
 		}
-		dp, dm := deviceModelFingerprint(d.Meta)
+		dp, dm, devSpecific := deviceModelFingerprint(d.Meta)
 		if dp != joinPlat || dm != joinModel {
 			continue
 		}
 		desc := ""
 		displayName := ""
 		if d.Meta != nil {
-			desc = strings.TrimSpace(d.Meta.Description)
-			displayName = strings.TrimSpace(d.Meta.Name)
+			desc = clampRunes(strings.TrimSpace(d.Meta.Description), 120)
+			displayName = clampRunes(strings.TrimSpace(d.Meta.Name), 120)
 		}
 		if displayName == "" {
 			displayName = desc
@@ -149,10 +213,13 @@ func (e *Engine) matchReplacementCandidates(sess *initiatorPairingSession) []*co
 			displayName = shortDeviceSuffix(d.ID)
 		}
 		out = append(out, &corev1.SecurityPairingReplacementCandidate{
-			DeviceId:    d.ID,
-			DisplayName: displayName,
-			Description: desc,
-			ShortId:     shortDeviceSuffix(d.ID),
+			DeviceId:        d.ID,
+			DisplayName:     displayName,
+			Description:     desc,
+			ShortId:         shortDeviceSuffix(d.ID),
+			LastSeenMs:      d.LastSeenMs,
+			LastActiveText:  formatCandidateLastActive(d.LastSeenMs, nowMs),
+			DefaultSelected: shouldDefaultSelectReplacement(joinSpecific && devSpecific, d.LastSeenMs, nowMs),
 		})
 	}
 	for i := 1; i < len(out); i++ {
@@ -181,10 +248,9 @@ func initiatorSessionToProto(s *initiatorPairingSession) *corev1.SecurityPairing
 		ReplacementCandidates: s.replacementCandidates,
 	}
 	if s.joinerMeta != nil {
-		info.JoinerDescription = strings.TrimSpace(s.joinerMeta.Description)
+		info.JoinerDescription = clampRunes(strings.TrimSpace(s.joinerMeta.Description), 120)
 	}
 	if len(s.replacementCandidates) > 0 {
-		info.RemoveOldDefault = true
 		info.ReplaceOldLabel = text.Msg(text.KeySecurityAlsoRemoveOldDevices)
 		info.ReplaceOldHint = text.Msg(text.KeySecurityAlsoRemoveOldDevicesHint)
 	}

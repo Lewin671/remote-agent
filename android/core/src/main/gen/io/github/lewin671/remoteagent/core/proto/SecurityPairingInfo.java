@@ -557,32 +557,6 @@ public  final class SecurityPairingInfo extends
     replacementCandidates_.remove(index);
   }
 
-  public static final int REMOVE_OLD_DEFAULT_FIELD_NUMBER = 13;
-  private boolean removeOldDefault_;
-  /**
-   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-   * @return The removeOldDefault.
-   */
-  @java.lang.Override
-  public boolean getRemoveOldDefault() {
-    return removeOldDefault_;
-  }
-  /**
-   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-   * @param value The removeOldDefault to set.
-   */
-  private void setRemoveOldDefault(boolean value) {
-    
-    removeOldDefault_ = value;
-  }
-  /**
-   * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-   */
-  private void clearRemoveOldDefault() {
-
-    removeOldDefault_ = false;
-  }
-
   public static final int REPLACE_OLD_LABEL_FIELD_NUMBER = 14;
   private io.github.lewin671.remoteagent.core.proto.Text replaceOldLabel_;
   /**
@@ -1380,34 +1354,6 @@ public  final class SecurityPairingInfo extends
     }
 
     /**
-     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-     * @return The removeOldDefault.
-     */
-    @java.lang.Override
-    public boolean getRemoveOldDefault() {
-      return instance.getRemoveOldDefault();
-    }
-    /**
-     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-     * @param value The removeOldDefault to set.
-     * @return This builder for chaining.
-     */
-    public Builder setRemoveOldDefault(boolean value) {
-      copyOnWrite();
-      instance.setRemoveOldDefault(value);
-      return this;
-    }
-    /**
-     * <code>bool remove_old_default = 13 [json_name = "removeOldDefault"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearRemoveOldDefault() {
-      copyOnWrite();
-      instance.clearRemoveOldDefault();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text replace_old_label = 14 [json_name = "replaceOldLabel"];</code>
      */
     @java.lang.Override
@@ -1580,15 +1526,14 @@ public  final class SecurityPairingInfo extends
             "joinerMetaReceived_",
             "replacementCandidates_",
             io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate.class,
-            "removeOldDefault_",
             "replaceOldLabel_",
             "replaceOldHint_",
             "joinerDescription_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u000f\u0000\u0001\u0001\u0010\u000f\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u0208\u0004\u0002\u0005\u021a\u0006\f\u0007\u0007\b\u0007\t\u0007\n\u0007" +
-              "\u000b\u0007\f\u001b\r\u0007\u000e\u1009\u0000\u000f\u1009\u0001\u0010\u0208";
+              "\u000b\u0007\f\u001b\u000e\u1009\u0000\u000f\u1009\u0001\u0010\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

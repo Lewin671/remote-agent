@@ -190,6 +190,7 @@ func (e *Engine) securityDeviceOffers() []security.DeviceOfferInfo {
 			RecoveryEd: recEd,
 			Meta:       d.Meta,
 			MetaRev:    d.MetaRev,
+			LastSeenMs: d.LastSeenMs,
 		})
 	}
 	return out

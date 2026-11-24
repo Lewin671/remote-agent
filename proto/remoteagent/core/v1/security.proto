@@ -495,9 +495,14 @@ message SecurityPairingReplacementCandidate {
   string display_name = 2;
   string description = 3;
   string short_id = 4;
+  int64 last_seen_ms = 5;
+  Text last_active_text = 6;
+  bool default_selected = 7;
 }
 
 message SecurityPairingInfo {
+  reserved 13;
+  reserved "remove_old_default";
   string pairing_id = 1;
   string code = 2;
   string url = 3;
@@ -510,7 +515,6 @@ message SecurityPairingInfo {
   bool registering = 10;
   bool joiner_meta_received = 11;
   repeated SecurityPairingReplacementCandidate replacement_candidates = 12;
-  bool remove_old_default = 13;
   Text replace_old_label = 14;
   Text replace_old_hint = 15;
   string joiner_description = 16;

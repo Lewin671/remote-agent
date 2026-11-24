@@ -46,6 +46,7 @@ type DeviceOfferInfo struct {
 	RecoveryEd []byte
 	Meta       *v1.DeviceMeta
 	MetaRev    uint64
+	LastSeenMs int64
 }
 
 type wfError struct {

@@ -2157,16 +2157,96 @@ func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
 	}
 }
 
+func TestReplacementCandidateMatchingAndDefaultSelection(t *testing.T) {
+	now := int64(1_700_100_000_000)
+	fpCases := []struct {
+		name         string
+		meta         *v1.DeviceMeta
+		wantPlat     string
+		wantModel    string
+		wantSpecific bool
+	}{
+		{"android_specific_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 9"}, "android", "pixel 9", true},
+		{"android_os_upgrade_same_model", &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 9"}, "android", "pixel 9", true},
+		{"android_missing_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15"}, "android", "android 15", false},
+		{"android_generic_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Android"}, "android", "android", false},
+		{"ios_specific_iphone_model", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone16,1"}, "ios", "iphone16,1", true},
+		{"ios_specific_ipad_model", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPad14,3"}, "ios", "ipad14,3", true},
+		{"ios_generic_iphone_fallback", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone"}, "ios", "iphone", false},
+		{"ios_generic_ipad_fallback", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPad"}, "ios", "ipad", false},
+		{"web_coarse_descriptor", &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}, "web", "chrome on macos", false},
+		{"empty_meta", nil, "", "", false},
+	}
+	for _, tc := range fpCases {
+		t.Run("fingerprint/"+tc.name, func(t *testing.T) {
+			p, m, spec := deviceModelFingerprint(tc.meta)
+			if p != tc.wantPlat || m != tc.wantModel || spec != tc.wantSpecific {
+				t.Fatalf("got (%q, %q, %v), want (%q, %q, %v)", p, m, spec, tc.wantPlat, tc.wantModel, tc.wantSpecific)
+			}
+		})
+	}
+
+	selCases := []struct {
+		name        string
+		specific    bool
+		lastSeenMs  int64
+		nowMs       int64
+		wantDefault bool
+	}{
+		{"specific_inactive_48h", true, now - 48*3600_000, now, true},
+		{"specific_inactive_exactly_24h", true, now - dayMs, now, true},
+		{"specific_never_seen", true, 0, now, true},
+		{"specific_active_23h59m", true, now - dayMs + 60_000, now, false},
+		{"specific_active_just_now", true, now - 5_000, now, false},
+		{"specific_active_future_skew", true, now + 60_000, now, false},
+		{"non_specific_inactive_7d", false, now - 7*dayMs, now, false},
+		{"non_specific_never_seen", false, 0, now, false},
+		{"specific_unknown_now", true, now - 48*3600_000, 0, false},
+	}
+	for _, tc := range selCases {
+		t.Run("default_selected/"+tc.name, func(t *testing.T) {
+			if got := shouldDefaultSelectReplacement(tc.specific, tc.lastSeenMs, tc.nowMs); got != tc.wantDefault {
+				t.Fatalf("got %v, want %v", got, tc.wantDefault)
+			}
+		})
+	}
+
+	timeCases := []struct {
+		name       string
+		lastSeenMs int64
+		wantKey    string
+		wantStyle  corev1.TimestampStyle
+	}{
+		{"no_record", 0, text.KeySettingsNoRecord, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"just_now", now - 30_000, text.KeyTimeJustNow, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"minutes_ago", now - 5*60_000, text.KeyTimeMinutesAgo, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"hours_ago", now - 3*3600_000, text.KeyTimeHoursAgo, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"yesterday", now - 30*3600_000, text.KeyTimeYesterday, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"older_date", now - 5*dayMs, "", corev1.TimestampStyle_TIMESTAMP_STYLE_DATE},
+	}
+	for _, tc := range timeCases {
+		t.Run("last_active/"+tc.name, func(t *testing.T) {
+			got := formatCandidateLastActive(tc.lastSeenMs, now)
+			if tc.wantKey != "" && got.GetKey() != tc.wantKey {
+				t.Fatalf("got key %q, want %q", got.GetKey(), tc.wantKey)
+			}
+			if tc.wantStyle != corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED && got.GetTimestamp().GetStyle() != tc.wantStyle {
+				t.Fatalf("got timestamp style %v, want %v", got.GetTimestamp().GetStyle(), tc.wantStyle)
+			}
+		})
+	}
+}
+
 func TestWorkflowPairingReplacementCandidatesAndPostApprovalRemoval(t *testing.T) {
 	// Verify fingerprint normalization across OS upgrades and platforms.
-	if p1, m1 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 3"}); p1 != "android" || m1 != "pixel 3" {
-		t.Fatalf("unexpected android fingerprint: %q %q", p1, m1)
+	if p1, m1, s1 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 3"}); p1 != "android" || m1 != "pixel 3" || !s1 {
+		t.Fatalf("unexpected android fingerprint: %q %q %v", p1, m1, s1)
 	}
-	if p2, m2 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 3"}); p2 != "android" || m2 != "pixel 3" {
-		t.Fatalf("unexpected android upgrade fingerprint: %q %q", p2, m2)
+	if p2, m2, s2 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 3"}); p2 != "android" || m2 != "pixel 3" || !s2 {
+		t.Fatalf("unexpected android upgrade fingerprint: %q %q %v", p2, m2, s2)
 	}
-	if p3, m3 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}); p3 != "web" || m3 != "chrome on macos" {
-		t.Fatalf("unexpected web fingerprint: %q %q", p3, m3)
+	if p3, m3, s3 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}); p3 != "web" || m3 != "chrome on macos" || s3 {
+		t.Fatalf("unexpected web fingerprint: %q %q %v", p3, m3, s3)
 	}
 
 	relay := newFakeRelay(1_700_000_000_000)
@@ -2272,11 +2352,17 @@ func TestWorkflowPairingReplacementCandidatesAndPostApprovalRemoval(t *testing.T
 	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
 	}, dir...)
-	if !pollMeta.Ok || !pollMeta.Pairing.JoinerMetaReceived || !pollMeta.Pairing.RemoveOldDefault {
-		t.Fatalf("expected joiner_meta received with remove_old_default=true, got %+v", pollMeta.Pairing)
+	if !pollMeta.Ok || !pollMeta.Pairing.JoinerMetaReceived {
+		t.Fatalf("expected joiner_meta received, got %+v", pollMeta.Pairing)
 	}
 	if len(pollMeta.Pairing.ReplacementCandidates) != 1 || pollMeta.Pairing.ReplacementCandidates[0].DeviceId != oldWebID || pollMeta.Pairing.ReplacementCandidates[0].DisplayName != "Work Chrome" {
 		t.Fatalf("expected only oldWebID candidate, got %+v", pollMeta.Pairing.ReplacementCandidates)
+	}
+	if pollMeta.Pairing.ReplacementCandidates[0].DefaultSelected {
+		t.Fatalf("expected coarse web candidate DefaultSelected=false, got %+v", pollMeta.Pairing.ReplacementCandidates[0])
+	}
+	if pollMeta.Pairing.ReplacementCandidates[0].GetLastActiveText() == nil {
+		t.Fatalf("expected core-formatted LastActiveText on candidate, got %+v", pollMeta.Pairing.ReplacementCandidates[0])
 	}
 	if pollMeta.Pairing.GetReplaceOldLabel().GetKey() != text.KeySecurityAlsoRemoveOldDevices ||
 		pollMeta.Pairing.GetReplaceOldHint().GetKey() != text.KeySecurityAlsoRemoveOldDevicesHint {
