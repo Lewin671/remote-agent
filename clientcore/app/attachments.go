@@ -1084,7 +1084,13 @@ func (c *Core) handleDraftRetryItem(ctx *sync.StepContext, act *corev1.DraftRetr
 		c.markDraftDirty(ctx, d.scope)
 		return nil
 	}
+	d.activated = true
 	c.invalidateItem(ctx, attOwnerDraft, d.key, it, true, &effects)
+	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_FILE {
+		// Recompute file hash & size on manual retry in case the underlying file changed on disk.
+		it.sha256 = nil
+		it.sizeBytes = 0
+	}
 	it.restartedOnce = false
 	it.retriedReconnect = false
 	c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, c.resolveDraftMachineID(d), d.original, it, &effects)

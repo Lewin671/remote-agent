@@ -2239,3 +2239,44 @@ func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *tes
 		t.Fatalf("expected offline-parked draft item to start BeginImageUpload when machine comes online")
 	}
 }
+
+func TestAttachments_FileRetryRecomputesHash(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedFile("report.pdf", "application/pdf", 8, "src-pdf")},
+			},
+		},
+	})
+	hash1 := findHashEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{OpId: hash1.OpId, Ok: true, SizeBytes: 8, Sha256: attTestHash(0xb8)},
+		},
+	})
+	begin1 := findDispatchedCmds(eff)[0]
+	// Fail upload permanently on daemon.
+	h.settleCmdDaemonErr(begin1.dc, "resource_exhausted")
+	dv := h.draftView(scope)
+	if dv.Files[0].State != corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+		t.Fatalf("expected FAILED file, got %v", dv.Files[0].State)
+	}
+
+	// Retry file -> MUST emit AttachmentHashFileEffect to recompute sha256 & sizeBytes!
+	retryEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftRetryItem{
+			DraftRetryItem: &corev1.DraftRetryItemAction{Scope: scope, ItemId: dv.Files[0].ItemId},
+		},
+	})
+	hashes := findHashEffects(retryEff)
+	if len(hashes) != 1 || hashes[0].SourceRef != "src-pdf" {
+		t.Fatalf("expected file retry to re-run AttachmentHashFileEffect, got %+v", hashes)
+	}
+	if len(findDispatchedCmds(retryEff)) != 0 {
+		t.Fatalf("expected no BeginImageUpload before fresh hash completes")
+	}
+}
