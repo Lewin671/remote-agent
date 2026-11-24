@@ -483,7 +483,7 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 	if err := lt.ep.security.confirmStream(lt.ctx); err != nil {
 		return err
 	}
-	nowTime := time.Now()
+	nowTime := lt.hub.now()
 	nowMs := uint64(nowTime.UnixMilli())
 
 	lt.mu.Lock()
@@ -529,7 +529,7 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 
 	sentDirect := false
 	if dp != nil {
-		sentDirect = dp.enqueueTerm(raw, nowTime.Add(10*time.Second))
+		sentDirect = dp.enqueueTerm(raw, time.Now().Add(10*time.Second))
 	}
 	if sentDirect && !mirror {
 		return nil
@@ -545,9 +545,25 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 			// Direct leg delivered; relay leg failed — let readRelayLeg/AttachPath handle relay recovery.
 			return nil
 		}
+		// A: Phase 3 streams in the zero-leg window keep output buffered in RecordOutputReplay
+		// for reconnect replay instead of closing the stream on transient relay write failure.
+		lt.mu.Lock()
+		keepInZeroLeg := lt.phase3Eligible && !lt.explicitClosed
+		lt.mu.Unlock()
+		if keepInZeroLeg {
+			return nil
+		}
 		return werr
 	}
 	if sentDirect {
+		return nil
+	}
+	// A: Phase 3 streams in the zero-leg window (neither leg currently attached) keep output
+	// buffered in RecordOutputReplay for reconnect replay; zeroLegTTL ticker reclaims idle streams.
+	lt.mu.Lock()
+	keepInZeroLeg := lt.phase3Eligible && !lt.explicitClosed
+	lt.mu.Unlock()
+	if keepInZeroLeg {
 		return nil
 	}
 	return errors.New("terminal output path unavailable")
@@ -1215,7 +1231,9 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return 0, nil
 		}
 		lt, ts := hub.getQueryable(msg.Stream, now)
-		if ts == nil || ts.PeerID != peerID {
+		// A: retired/stopped streams are no longer attachable or accepting inputs;
+		// report Available=false so the client enters confirmation/rebuild instead of Live.
+		if lt == nil || lt.closed.Load() || ts == nil || ts.PeerID != peerID || ts.Stopped {
 			return linkcore.ControlInputStatusReply, linkcore.EncodeInputStatusReply(linkcore.InputStatusReplyMsg{
 				Stream:    msg.Stream,
 				QueryID:   msg.QueryID,
@@ -1238,14 +1256,9 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			snap = cached
 		} else {
 			var ready bool
-			if lt != nil {
-				lt.mu.Lock()
-				snap, ready = ts.QueryStatus(now, hex.EncodeToString(msg.QueryID), o.Context.Deadline)
-				lt.mu.Unlock()
-			} else {
-				snap = ts.FreezeSnapshot(now, ts.Stopped)
-				ready = true
-			}
+			lt.mu.Lock()
+			snap, ready = ts.QueryStatus(now, hex.EncodeToString(msg.QueryID), o.Context.Deadline)
+			lt.mu.Unlock()
 			if !ready {
 				return receipt()
 			}
