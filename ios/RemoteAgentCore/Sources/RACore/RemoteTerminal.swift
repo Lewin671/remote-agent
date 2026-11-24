@@ -176,6 +176,7 @@ extension Remote {
         let initialSocket = deviceLink.relay.openStream("/v1/term", hello: try hello.serializedData())
         let socketBox = OSAllocatedUnfairLock<any TerminalSocket>(initialState: initialSocket)
         let activeLegBox = OSAllocatedUnfairLock<Data>(initialState: Data(streamId.utf8))
+        let lastRelayError = OSAllocatedUnfairLock<(any Error)?>(initialState: nil)
         let terminals = activeTerminals
 
         let stream = deviceLink.openStream(stop: { [weak self] cancelPath in
@@ -256,6 +257,10 @@ extension Remote {
                 }
                 let isCurrent = socketBox.withLock { $0 as AnyObject === sock as AnyObject }
                 if !isCurrent || closed.withLock({ $0 }) { return }
+                let end = await sock.ended()
+                if let err = end.error {
+                    lastRelayError.withLock { $0 = err }
+                }
                 if let self {
                     var ev = PBCoreEvent()
                     ev.terminalDirectLeg = .with {
@@ -319,9 +324,14 @@ extension Remote {
             onState: { st, reason, needsConfirm in
                 // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
                 if !closed.withLock({ $0 }) && (st == 5 || needsConfirm) {
-                    let msg = reason == "conflict"
-                        ? L10n.errorsTerminalFramesAreOutOfOrder()
-                        : L10n.errorsTerminalConnectionDropped()
+                    let msg: String
+                    if reason == "conflict" {
+                        msg = L10n.errorsTerminalFramesAreOutOfOrder()
+                    } else if let err = lastRelayError.withLock({ let e = $0; $0 = nil; return e }) {
+                        msg = L10n.errorsIosTerminalConnectionDropped(value: String(describing: errorText(err)))
+                    } else {
+                        msg = L10n.errorsTerminalConnectionDropped()
+                    }
                     finish(msg)
                     socketBox.withLock { $0 }.cancel()
                 }
