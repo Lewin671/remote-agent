@@ -2447,10 +2447,13 @@ class Remote(
                     if (closed.get()) nextWs.cancel()
                 }
             },
-            onState = { st, _, needsConfirm ->
-                if (!closed.get() && (st == 5 || needsConfirm || st == 2)) {
+            onState = { st, reason, needsConfirm ->
+                // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
+                if (!closed.get() && (st == 5 || needsConfirm)) {
                     val err = lastRelayError.getAndSet(null)
-                    if (err != null) {
+                    if (reason == "conflict") {
+                        finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
+                    } else if (err != null) {
                         finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, state.value).resolve(copy))) })
                     } else {
                         finish(UiMessages.errorsTerminalConnectionDropped().messageText())
@@ -2551,13 +2554,7 @@ class Remote(
             socket.set(ws)
             if (closed.get()) ws.cancel()
             withTimeout(20_000) { opened.await() }
-            sendMachineCommand(
-                s.machineId,
-                Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
-                sessionId = sid,
-            )
-            kotlinx.coroutines.currentCoroutineContext().ensureActive()
-            if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
+            // M6: register in Core before sending OpenTerminal RPC so early frames are never lost.
             coreHost.dispatch(
                 CoreEvent.newBuilder()
                     .setTerminalDirectOpen(
@@ -2569,6 +2566,13 @@ class Remote(
                     )
                     .build(),
             )
+            sendMachineCommand(
+                s.machineId,
+                Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
+                sessionId = sid,
+            )
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
             var seq = 0L
             terminalScope.launch {
                 try {

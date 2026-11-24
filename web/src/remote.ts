@@ -2002,8 +2002,6 @@ export class Remote implements CoreExecutor {
     let deliverQueue = Promise.resolve();
     let pendingBytes = 0;
     let pendingFrames = 0;
-    const seenFallbackHashes = new Map<bigint, Uint8Array>();
-    let fallbackLast = 0n;
 
     const hashBytes = async (data: Uint8Array): Promise<Uint8Array<ArrayBuffer>> => {
       const digest = await crypto.subtle.digest("SHA-256", data as Uint8Array<ArrayBuffer>);
@@ -2045,21 +2043,6 @@ export class Remote implements CoreExecutor {
               },
             }));
           } else {
-            // Standalone Remote fallback (without CoreHost): duplicate with matching hash is ignored without closing.
-            const prev = seenFallbackHashes.get(header.seq);
-            if (prev) {
-              if (prev.length !== frameHash.length || prev.some((v, i) => v !== frameHash[i])) {
-                throw new Error(l10n.t("errors.terminal_frames_are_out_of_order"));
-              }
-              return;
-            }
-            if (header.seq <= fallbackLast) return;
-            fallbackLast = header.seq;
-            seenFallbackHashes.set(header.seq, frameHash);
-            if (seenFallbackHashes.size > 512) {
-              const firstKey = seenFallbackHashes.keys().next().value;
-              if (firstKey !== undefined) seenFallbackHashes.delete(firstKey);
-            }
             await onFrame(msg);
           }
         } catch (e) {
@@ -2147,10 +2130,15 @@ export class Remote implements CoreExecutor {
         };
         nextWs.onError = () => nextWs.close();
       },
-      onState: (state, _reason, needsConfirmation) => {
+      onState: (state, reason, needsConfirmation) => {
         if (closed) return;
-        if (state === 5 || (state === 2 && !activeWs.ready) || needsConfirmation) {
-          finish(l10n.t("errors.terminal_connection_dropped"));
+        // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
+        if (state === 5 || needsConfirmation) {
+          finish(
+            reason === "conflict"
+              ? l10n.t("errors.terminal_frames_are_out_of_order")
+              : l10n.t("errors.terminal_connection_dropped"),
+          );
           activeWs.close();
         }
       },
@@ -2161,13 +2149,7 @@ export class Remote implements CoreExecutor {
 
     bindRelaySocket(activeWs, activeLegId);
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    try {
-      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
-    } catch (e) {
-      finish(errorText(e));
-      throw e;
-    }
-    if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
+    // M6: register in Core before sending openTerminal RPC so early frames are never lost.
     this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
       event: {
         case: "terminalDirectOpen",
@@ -2179,6 +2161,13 @@ export class Remote implements CoreExecutor {
         }),
       },
     }));
+    try {
+      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
+    } catch (e) {
+      finish(errorText(e));
+      throw e;
+    }
+    if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     let seq = 0n;
     let sending = Promise.resolve();
     return {

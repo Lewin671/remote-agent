@@ -176,18 +176,15 @@ extension Remote {
         let initialSocket = deviceLink.relay.openStream("/v1/term", hello: try hello.serializedData())
         let socketBox = OSAllocatedUnfairLock<any TerminalSocket>(initialState: initialSocket)
         let activeLegBox = OSAllocatedUnfairLock<Data>(initialState: Data(streamId.utf8))
-        let hasCore = hostHooks != nil
         let terminals = activeTerminals
 
         let stream = deviceLink.openStream(stop: { [weak self] cancelPath in
             closed.withLock { $0 = true }
             terminals.unregister(streamId)
-            if hasCore {
-                Task { [weak self] in
-                    var ev = PBCoreEvent()
-                    ev.terminalDirectClose = .with { $0.streamID = streamId }
-                    await self?.emitCoreEvent(ev)
-                }
+            Task { [weak self] in
+                var ev = PBCoreEvent()
+                ev.terminalDirectClose = .with { $0.streamID = streamId }
+                await self?.emitCoreEvent(ev)
             }
             if cancelPath { socketBox.withLock { $0 }.cancel() }
         }, onClose: listener.onClose)
@@ -204,8 +201,6 @@ extension Remote {
             stream.end()
             throw UserError(L10nMessage.errorsCannotConnectToTerminal())
         }
-
-        let fallbackState = OSAllocatedUnfairLock(initialState: (last: UInt64(0), hashes: [UInt64: Data]()))
 
         let handleInbound: @Sendable (PBEnvelope, Bool, UInt64) async -> Void = { [weak self] env, fromDirect, pcId in
             guard let self, !closed.withLock({ $0 }) else { return }
@@ -224,37 +219,16 @@ extension Remote {
                       res.requestID == streamId
                 else { throw SecurityFailure.untrusted }
                 let frameHash = Data(SHA256.hash(data: res.plaintext))
-                if hasCore {
-                    var ev = PBCoreEvent()
-                    ev.terminalDirectOutput = .with {
-                        $0.streamID = streamId
-                        $0.seq = res.seq
-                        $0.frameHash = frameHash
-                        $0.payload = res.plaintext
-                        $0.fromDirect = fromDirect
-                        $0.pcID = pcId
-                    }
-                    await self.emitCoreEvent(ev)
-                } else {
-                    // Standalone Remote fallback (without CoreHost): duplicate with matching hash is ignored without closing.
-                    let deliver: Bool = try fallbackState.withLock { st in
-                        if let prev = st.hashes[res.seq] {
-                            if prev != frameHash { throw OpenError(L10nMessage.errorsTerminalFramesAreOutOfOrder()) }
-                            return false
-                        }
-                        if res.seq <= st.last { return false }
-                        st.last = res.seq
-                        st.hashes[res.seq] = frameHash
-                        if st.hashes.count > 512, let minKey = st.hashes.keys.min() {
-                            st.hashes.removeValue(forKey: minKey)
-                        }
-                        return true
-                    }
-                    if deliver {
-                        let frame = try PBTerminalFrame(serializedBytes: res.plaintext)
-                        listener.onFrame(frame)
-                    }
+                var ev = PBCoreEvent()
+                ev.terminalDirectOutput = .with {
+                    $0.streamID = streamId
+                    $0.seq = res.seq
+                    $0.frameHash = frameHash
+                    $0.payload = res.plaintext
+                    $0.fromDirect = fromDirect
+                    $0.pcID = pcId
                 }
+                await self.emitCoreEvent(ev)
             } catch {
                 if !fromDirect {
                     finish(errorText(error))
@@ -282,7 +256,7 @@ extension Remote {
                 }
                 let isCurrent = socketBox.withLock { $0 as AnyObject === sock as AnyObject }
                 if !isCurrent || closed.withLock({ $0 }) { return }
-                if hasCore, let self {
+                if let self {
                     var ev = PBCoreEvent()
                     ev.terminalDirectLeg = .with {
                         $0.streamID = streamId
@@ -291,9 +265,6 @@ extension Remote {
                         $0.open = false
                     }
                     await self.emitCoreEvent(ev)
-                } else {
-                    let end = await sock.ended()
-                    finish(end.error.map { L10n.errorsIosTerminalConnectionDropped(value: String(describing: errorText($0))) } ?? L10n.errorsTerminalConnectionDropped())
                 }
             }
         }
@@ -345,9 +316,13 @@ extension Remote {
                     await self.emitCoreEvent(ev)
                 }
             },
-            onState: { st, _, needsConfirm in
-                if !closed.withLock({ $0 }) && (st == 5 || needsConfirm || st == 2) {
-                    finish(L10n.errorsTerminalConnectionDropped())
+            onState: { st, reason, needsConfirm in
+                // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
+                if !closed.withLock({ $0 }) && (st == 5 || needsConfirm) {
+                    let msg = reason == "conflict"
+                        ? L10n.errorsTerminalFramesAreOutOfOrder()
+                        : L10n.errorsTerminalConnectionDropped()
+                    finish(msg)
                     socketBox.withLock { $0 }.cancel()
                 }
             },
@@ -361,6 +336,16 @@ extension Remote {
 
         startReadLoop(initialSocket, activeLegBox.withLock { $0 })
 
+        // M6: register in Core before sending openTerminal RPC so early frames are never lost.
+        var openEv = PBCoreEvent()
+        openEv.terminalDirectOpen = .with {
+            $0.streamID = streamId
+            $0.machineID = machineId
+            $0.sessionID = sid
+            $0.relayLegID = activeLegBox.withLock { $0 }
+        }
+        await emitCoreEvent(openEv)
+
         do {
             var cmd = PBCommand()
             cmd.openTerminal.sessionID = sid
@@ -369,17 +354,6 @@ extension Remote {
         } catch {
             stream.end()
             throw error
-        }
-
-        if hasCore {
-            var openEv = PBCoreEvent()
-            openEv.terminalDirectOpen = .with {
-                $0.streamID = streamId
-                $0.machineID = machineId
-                $0.sessionID = sid
-                $0.relayLegID = activeLegBox.withLock { $0 }
-            }
-            await emitCoreEvent(openEv)
         }
 
         let sealFn: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool) = { [weak self] frame, seq, deadline in
@@ -415,23 +389,18 @@ extension Remote {
             return (try sealed.envelope.serializedData(), hash, isInput)
         }
 
-        let dispatchInputFn: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)?
-        if hasCore {
-            dispatchInputFn = { [weak self] seq, isInput, encoded, frameHash in
-                guard let self else { return false }
-                var ev = PBCoreEvent()
-                ev.terminalDirectInput = .with {
-                    $0.streamID = streamId
-                    $0.seq = seq
-                    $0.isInput = isInput
-                    $0.sealedEnvelope = encoded
-                    $0.frameHash = frameHash
-                }
-                await self.emitCoreEvent(ev)
-                return true
+        let dispatchInputFn: @Sendable (UInt64, Bool, Data, Data) async -> Bool = { [weak self] seq, isInput, encoded, frameHash in
+            guard let self else { return false }
+            var ev = PBCoreEvent()
+            ev.terminalDirectInput = .with {
+                $0.streamID = streamId
+                $0.seq = seq
+                $0.isInput = isInput
+                $0.sealedEnvelope = encoded
+                $0.frameHash = frameHash
             }
-        } else {
-            dispatchInputFn = nil
+            await self.emitCoreEvent(ev)
+            return true
         }
 
         return TermConn(

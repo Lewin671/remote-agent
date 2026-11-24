@@ -49,7 +49,7 @@ extension Remote {
         ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
-    private func ensureFallbackSecurityDriver() -> CoreSecurityDriver? {
+    func ensureFallbackSecurityDriver() -> CoreSecurityDriver? {
         guard !closed else { return nil }
         if let fallbackSecurityDriver { return fallbackSecurityDriver }
         let driver = try? CoreSecurityDriver(
@@ -62,6 +62,16 @@ extension Remote {
             },
             onTokenUpdated: { [weak self] eff in
                 Task { await self?.applySecurityTokenUpdated(eff) }
+            },
+            onTerminalEffect: { [weak self] eff in
+                guard let self else { return }
+                switch eff.effect {
+                case .terminalDirectSend(let e)?: self.handleTerminalDirectSend(e)
+                case .terminalDirectDeliver(let e)?: self.handleTerminalDirectDeliver(e)
+                case .terminalDirectAttachRelay(let e)?: self.handleTerminalDirectAttachRelay(e)
+                case .terminalDirectState(let e)?: self.handleTerminalDirectState(e)
+                default: break
+                }
             }
         )
         fallbackSecurityDriver = driver

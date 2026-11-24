@@ -441,7 +441,11 @@ public final actor Remote {
 
     func emitCoreEvent(_ ev: PBCoreEvent) async {
         guard !closed else { return }
-        await hostHooks?.onCoreEvent(ev)
+        if let onCore = hostHooks?.onCoreEvent {
+            await onCore(ev)
+            return
+        }
+        ensureFallbackSecurityDriver()?.enqueueEvent(ev)
     }
 
     public func setNetworkGeneration(_ gen: UInt64) {
