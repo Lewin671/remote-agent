@@ -589,7 +589,7 @@ final class ImageCenter {
 
     /// Loads one image `NSItemProvider` via `loadFileRepresentation` + `readPicked` so oversized clipboard
     /// images are refused by size before reading bytes into memory.
-    nonisolated static func loadBoundedImageData(from provider: NSItemProvider) async throws -> Data {
+    static func loadBoundedImageData(from provider: NSItemProvider) async throws -> Data {
         try await withCheckedThrowingContinuation { done in
             _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, error in
                 guard let url else {

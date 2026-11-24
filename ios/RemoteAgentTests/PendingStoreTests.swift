@@ -283,19 +283,30 @@ import Testing
         try Data(repeating: 0x5A, count: 64 * 1024).write(to: srcFile)
         defer { try? FileManager.default.removeItem(at: srcFile) }
 
-        // 1. While streaming write is outside the global lock, a concurrent draft write + list succeeds immediately
-        //    and list() does not delete the active in-flight .tmp file.
-        var concurrentWriteOK = false
-        var concurrentListOK = false
+        // 1. While streaming write is outside the global lock, a concurrent draft write + list on another thread
+        //    succeeds immediately (proving NSRecursiveLock is released) and list() does not delete the active .tmp file.
+        final class Probe: @unchecked Sendable {
+            private let lock = NSLock()
+            var writeOK = false
+            var listOK = false
+            func record(write: Bool, list: Bool) {
+                lock.withLock {
+                    writeOK = write
+                    listOK = list
+                }
+            }
+        }
+        let probe = Probe()
         s.onBlobStreamingWriteForTesting = {
-            let res = s.write(opID: 10, bucket: .draft, key: "draft:session:concurrent", data: Data("live".utf8))
-            concurrentWriteOK = res.ok
-            let listed = s.list(opID: 11)
-            concurrentListOK = listed.errorKind == .unspecified && listed.entries.count == 1
+            DispatchQueue.global().sync {
+                let res = s.write(opID: 10, bucket: .draft, key: "draft:session:concurrent", data: Data("live".utf8))
+                let listed = s.list(opID: 11)
+                probe.record(write: res.ok, list: listed.errorKind == .unspecified && listed.entries.count == 1)
+            }
         }
         let ref = try s.storeBlob(from: srcFile, prefix: "vid")
         s.onBlobStreamingWriteForTesting = nil
-        #expect(concurrentWriteOK && concurrentListOK)
+        #expect(probe.writeOK && probe.listOK)
         #expect(try s.readBlob(ref).count == 64 * 1024)
 
         // 2. If clearAll() runs while a streaming write is in flight, commit re-checks epoch, removes .tmp, and writes nothing.
