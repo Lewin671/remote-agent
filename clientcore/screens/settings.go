@@ -249,6 +249,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		card := &corev1.MachineListCardView{
 			MachineId:         m.ID,
 			Name:              lists.MachineName(m, m.ID),
+			ShortId:           machine.ShortMachineID(m.ID),
 			Online:            online,
 			Member:            !unlinked,
 			ProtocolMismatch:  mismatch,
@@ -270,7 +271,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 	return out
 }
 
-func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete bool) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
+func buildClientRows(st *State, syncView *corev1.SyncStateView) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
 	selfID := syncView.GetSelfDeviceId()
 	authID := syncView.GetAuthorityDeviceId()
 	sorted := machine.SortClients(syncView.GetDevices(), selfID)
@@ -282,7 +283,8 @@ func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete boo
 		}
 		isSelf := d.DeviceId == selfID
 		isAuth := d.DeviceId == authID
-		incomplete := !d.Trusted && !isSelf && !isAuth
+		member := d.Trusted || isSelf || isAuth
+		incomplete := ((member && !d.Registered) || (syncView.GetSecurityLoaded() && !d.Trusted)) && !isSelf && !isAuth
 
 		var role *corev1.Text
 		switch {
@@ -311,14 +313,14 @@ func buildClientRows(st *State, syncView *corev1.SyncStateView, onlyComplete boo
 			ShortId:           machine.ShortID(d.DeviceId),
 			IsSelf:            isSelf,
 			IsAuthority:       isAuth,
-			Member:            d.Trusted || isSelf || isAuth,
+			Member:            member,
 			PairingIncomplete: incomplete,
 			RoleLabel:         role,
 			LastUsedText:      lastUsed,
 			AddedText:         formatCalendarDay(d.CreatedMs, st.Cal),
 			Kind:              d.Kind,
 		}
-		if incomplete && onlyComplete {
+		if incomplete {
 			unfinished = append(unfinished, row)
 		} else if d.Kind != v1.DeviceKind_DEVICE_KIND_MACHINE {
 			rows = append(rows, row)
@@ -523,7 +525,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	authName := machine.AuthorityName(syncView, st.World.Machines)
 	online := st.World.Connection == lists.ConnConnected
 
-	allClients, unfinished := buildClientRows(st, syncView, true)
+	allClients, unfinished := buildClientRows(st, syncView)
 	recent := allClients
 	hasMore := false
 	if len(allClients) > 4 {
@@ -1214,7 +1216,7 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
 	online := st.World.Connection == lists.ConnConnected
 	authName := machine.AuthorityName(syncView, st.World.Machines)
-	clients, unfinished := buildClientRows(st, syncView, true)
+	clients, unfinished := buildClientRows(st, syncView)
 
 	vm := &corev1.DevicesViewModel{
 		IsManager:          isMgr,

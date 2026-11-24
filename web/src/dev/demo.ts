@@ -2375,7 +2375,7 @@ export class DemoRemote extends Remote {
       sasEmoji: compare ? ["🌲", "🍋", "🚲", "🐳"] : [],
     });
   }
-  override async approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
+  override async approvePairing(pairingId: string, sasConfirmed: boolean, _removeDeviceIds: string[] = []): Promise<SecurityPairingInfo> {
     if (!sasConfirmed) throw new Error("请先确认图案");
     await this.demoWork();
     const info = this.demoPairings.get(pairingId);

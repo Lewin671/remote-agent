@@ -38,6 +38,7 @@ import UIKit
         #expect(clientVMs.count == 2)
 
         for vm in settingsVMs {
+            #expect(vm.machines.allSatisfy { !$0.shortID.isEmpty })
             render(SettingsPage {
                 GroupCard(separatorLeading: 46) {
                     ForEach(vm.machines, id: \.machineID) { m in
@@ -47,6 +48,13 @@ import UIKit
                 HomeDiskReminders(reminders: vm.diskReminders)
             })
         }
+        // Archived machine card with empty subtitleParts still renders shortID cleanly.
+        var archived = PBMachineListCardView()
+        archived.machineID = "11223344556677889900aabbccddeeff"
+        archived.name = "Old Studio"
+        archived.shortID = "…ccddeeff"
+        archived.member = false
+        render(SettingsPage { GroupCard(separatorLeading: 46) { MachineCard(machine: archived) } })
         for d in devicesVMs {
             render(SettingsPage {
                 GroupCard {

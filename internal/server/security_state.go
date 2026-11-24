@@ -262,6 +262,7 @@ func (c *clientService) PutSecurityState(ctx context.Context, req *connect.Reque
 	for _, id := range removed {
 		c.s.revokeStreams(id)
 		t.hub.drop(id)
+		c.s.pairing.cancelForDevice(t.acct, id)
 		t.hub.broadcast(&pb.ServerFrame{Kind: &pb.ServerFrame_DeviceRemoved{DeviceRemoved: &pb.DeviceRemoved{DeviceId: id}}})
 		slog.Info("device removed by a security state", "device", id)
 	}

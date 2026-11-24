@@ -250,7 +250,8 @@
                   "name": "Phone",
                   "platform": "iOS"
                 },
-                "trusted": true
+                "trusted": true,
+                "registered": true
               }
             ],
             "trustedMachineIds": [
@@ -633,7 +634,8 @@
                   "name": "Phone",
                   "platform": "iOS"
                 },
-                "trusted": true
+                "trusted": true,
+                "registered": true
               }
             ],
             "trustedMachineIds": [

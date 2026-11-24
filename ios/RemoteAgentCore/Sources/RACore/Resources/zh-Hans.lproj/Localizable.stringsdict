@@ -1192,6 +1192,20 @@
 			<string>查看全部 %1$lld 次</string>
 		</dict>
 	</dict>
+	<key>security_old_devices_removal_incomplete</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>新设备已加入，但有 %1$lld 台旧设备未能自动移除，请稍后重试或在设备列表中手动移除。</string>
+		</dict>
+	</dict>
 	<key>session_history_unavailable</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

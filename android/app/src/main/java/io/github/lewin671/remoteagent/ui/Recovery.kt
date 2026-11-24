@@ -94,6 +94,17 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         else -> AccountSecurityContent(
             state = state,
             pending = pendingOp != null,
+            pendingRemoveNotice = secStatus?.takeIf { it.hasPendingRemoveNotice() }?.pendingRemoveNotice?.let { uiText(it) } ?: "",
+            onRetryPendingRemove = {
+                scope.launch {
+                    try {
+                        remote.resumeSecurityOperation()
+                        read()
+                    } catch (e: Exception) {
+                        error = displayError(e, state)
+                    }
+                }
+            },
             onPending = { page = "pending" },
             onRecovery = { page = "recovery" },
             onHandoff = { page = "handoff" },
@@ -107,6 +118,8 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
 internal fun AccountSecurityContent(
     state: io.github.lewin671.remoteagent.core.RemoteState,
     pending: Boolean = false,
+    pendingRemoveNotice: String = "",
+    onRetryPendingRemove: () -> Unit = {},
     onPending: () -> Unit = {},
     onRecovery: () -> Unit = {},
     onHandoff: () -> Unit = {},
@@ -122,6 +135,13 @@ internal fun AccountSecurityContent(
                 copy(UiMessages.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode((io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t, copy = copy)).toString())),
                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
                 action = if (state.isAuthority) copy(UiMessages.securityReject()) else null, onAction = onRecovery,
+            )
+            if (pendingRemoveNotice.isNotEmpty()) Notice(
+                pendingRemoveNotice,
+                Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                NoticeTone.WARN,
+                action = copy(UiMessages.commonRetry()),
+                onAction = onRetryPendingRemove,
             )
             if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
             if (pending) Group(rows = listOf({ GRow(copy(UiMessages.securityUnfinishedSecurityOperation()), chevron = true, onClick = onPending) }))

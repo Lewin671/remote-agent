@@ -597,8 +597,7 @@ const (
 
 type removeDeviceTask struct {
 	taskBase
-	id                  string
-	abandonPairDelivery bool
+	id string
 }
 
 func (t *removeDeviceTask) proceedAfterPre(e *Engine) error {
@@ -622,7 +621,7 @@ func (t *removeDeviceTask) step(e *Engine, ev *secEvent) error {
 			if err := e.checkFG(t.fgGen); err != nil {
 				return err
 			}
-			if pending := wf.pendingOp; pending != nil && t.abandonPairDelivery && pending.Pair != nil && pending.Pair.CandidateID == t.id {
+			if pending := wf.pendingOp; pending != nil && pending.Pair != nil && pending.Pair.CandidateID == t.id {
 				t.stage = removeDevSyncOp
 				e.syncStates(false, "", parentTarget(t, 0))
 				return nil
@@ -1385,14 +1384,29 @@ func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+func (e *Engine) recordIndicatesAuthority() bool {
+	if e.isAuthority() {
+		return true
+	}
+	wf := e.ensureWF()
+	if wf.record == nil || !wf.record.Member || len(wf.record.States) == 0 {
+		return false
+	}
+	head, err := devicesec.ParseState(wf.record.States[len(wf.record.States)-1])
+	if err != nil {
+		return false
+	}
+	return head.Core.AuthorityID == wf.record.MemberID
+}
+
 func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	wf := e.ensureWF()
-	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.isAuthority()
+	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.recordIndicatesAuthority()
 	msg := text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair
 	if unresolved {
 		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe
 	} else if auth {
-		msg = text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement
+		msg = text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement
 	}
 	e.emitActionResult(actionID, &corev1.SecurityWorkflowResultEffect{
 		ExitAdvice: &corev1.SecurityExitAdvice{Authority: auth, Unresolved: unresolved, Message: msg},
@@ -1418,6 +1432,7 @@ func (t *clearLocalSecurityTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
 	e.resetChainState()
 	e.loaded, e.isMember, e.removed, e.cleared, e.securityLocked = false, false, false, true, false
+	wf.bootstrapInvalid, wf.bootstrapError = false, ""
 	wf.record, wf.recordRev, wf.pendingOp, wf.pendingOpRev, wf.regIntent, wf.regIntentRev, wf.codeDraft = nil, "", nil, "", nil, "", nil
 	wf.cachedToken, wf.tokenExpiresMs = "", 0
 	wf.deviceEdPresent, wf.deviceEdPub, wf.deviceXPresent, wf.deviceXPub = false, nil, false, nil

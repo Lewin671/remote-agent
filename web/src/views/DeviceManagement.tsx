@@ -158,7 +158,13 @@ export function PairCodePage({
   const currentId = useRef<string | undefined>(undefined);
   const alive = useRef(true);
   const handedOff = useRef(false);
+  const [selectedRemoveIds, setSelectedRemoveIds] = useState([] as string[]);
+  const removeSelectionTouched = useRef(false);
+  const metaPolls = useRef(0);
   const emoji = pair?.sasEmoji.length ? pair.sasEmoji : undefined;
+  const waitingMeta = Boolean(emoji && !approved && !pair?.joinerMetaReceived);
+  const replaceLabel = renderText(pair?.replaceOldLabel) || l10n.t("security.also_remove_old_devices");
+  const replaceHint = renderText(pair?.replaceOldHint);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -167,7 +173,7 @@ export function PairCodePage({
     };
   }, [remote]);
   useEffect(() => {
-    if (!pair || done || (emoji && !approved)) return;
+    if (!pair || done || (emoji && !approved && !waitingMeta)) return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -179,28 +185,52 @@ export function PairCodePage({
             const st = await remote.getSecurityStatus();
             if (next.delivered || !st.pendingOp) {
               await remote.loadDevices();
-              if (!stopped) setDone(true);
+              if (!stopped) {
+                setPair(next);
+                setDone(true);
+              }
               return;
             }
           } else {
+            if (waitingMeta && metaPolls.current >= 15) {
+              return;
+            }
+            if (waitingMeta) metaPolls.current += 1;
             const next = await remote.pollPairing(pair.pairingId);
             if (!stopped && next.joined && next.sasEmoji.length > 0) {
-              setPair(next);
-              return;
+              if (!emoji) {
+                metaPolls.current = 0;
+                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
+                  setSelectedRemoveIds(
+                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
+                  );
+                }
+                setPair(next);
+                return;
+              }
+              if (next.joinerMetaReceived) {
+                if (next.replacementCandidates.length > 0 && !removeSelectionTouched.current) {
+                  setSelectedRemoveIds(
+                    next.replacementCandidates.filter((c) => c.defaultSelected).map((c) => c.deviceId),
+                  );
+                }
+                setPair(next);
+                return;
+              }
             }
           }
         }
       } catch (e) {
         if (!stopped) setError(errorText(e));
       }
-      if (!stopped) timer = setTimeout(poll, 1500);
+      if (!stopped) timer = setTimeout(poll, waitingMeta ? 1000 : 1500);
     };
     void poll();
     return () => {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [pair, approved, done, emoji, remote]);
+  }, [pair, approved, done, emoji, waitingMeta, remote]);
   const pairURL = pair?.url;
   useEffect(() => {
     if (!pairURL) return;
@@ -239,7 +269,12 @@ export function PairCodePage({
       <div className="body security-body">
         <p className="txt">{l10n.t("security.computer_run_remote_agent_account_join_and_enter_the")}</p>
         {done ? (
-          <Banner kind="">{l10n.t("security.device_joined")}</Banner>
+          <>
+            <Banner kind="">{l10n.t("security.device_joined")}</Banner>
+            {renderText(pair?.removeOldNotice) && (
+              <Banner kind="warn">{renderText(pair?.removeOldNotice)}</Banner>
+            )}
+          </>
         ) : !pair ? (
           <>
             {replaces && (
@@ -257,6 +292,8 @@ export function PairCodePage({
                   );
                   currentId.current = p.pairingId;
                   handedOff.current = false;
+                  removeSelectionTouched.current = false;
+                  setSelectedRemoveIds([]);
                   if (!alive.current) {
                     await remote.cancelPairing(p.pairingId);
                     return;
@@ -293,6 +330,49 @@ export function PairCodePage({
                         />
                         {l10n.t("security.patterns_match_the_new_device_confirmed_first")}</label>
                     </div>
+                    {pair.replacementCandidates.length > 0 && (
+                      <div className="grp">
+                        <div className="row">
+                          <b>{replaceLabel}</b>
+                        </div>
+                        {replaceHint && (
+                          <div className="row help">{replaceHint}</div>
+                        )}
+                        {pair.replacementCandidates.map((c) => {
+                          const title = c.displayName || c.description || c.shortId;
+                          const lastActive = renderText(c.lastActiveText);
+                          const detail = [
+                            c.description && c.description !== title ? c.description : "",
+                            c.shortId,
+                            lastActive,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ");
+                          const checked = selectedRemoveIds.includes(c.deviceId);
+                          return (
+                            <label key={c.deviceId} className="row backup-check">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  removeSelectionTouched.current = true;
+                                  const on = e.target.checked;
+                                  setSelectedRemoveIds((prev) =>
+                                    on
+                                      ? prev.includes(c.deviceId) ? prev : [...prev, c.deviceId]
+                                      : prev.filter((id) => id !== c.deviceId),
+                                  );
+                                }}
+                              />
+                              <span className="row-name">
+                                <b>{title}</b>
+                                {detail && <small>{detail}</small>}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                     <button
                       className="btn pri"
                       disabled={busy || !confirmed}
@@ -301,8 +381,16 @@ export function PairCodePage({
                           // Approval and its durable delivery belong to the account,
                           // including while approve() is still awaiting its reply.
                           handedOff.current = true;
-                          await remote.approvePairing(pair.pairingId, confirmed);
+                          const removeIds = pair.replacementCandidates
+                            .filter((c) => selectedRemoveIds.includes(c.deviceId))
+                            .map((c) => c.deviceId);
+                          const res = await remote.approvePairing(pair.pairingId, confirmed, removeIds);
+                          setPair(res);
                           setApproved(true);
+                          if (res.delivered) {
+                            await remote.loadDevices();
+                            setDone(true);
+                          }
                         })
                       }
                     >

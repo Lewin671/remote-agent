@@ -706,6 +706,7 @@
     <string name="new_session_removed_blocked" formatted="false">"This project was removed. Add it again first."</string>
     <string name="new_session_retry_save" formatted="false">"Retry saving"</string>
     <string name="new_session_save_failed" formatted="false">"Project settings were not saved. Try again."</string>
+    <string name="new_session_saved_machine_unavailable_choose" formatted="false">"The computer previously saved for this project is unavailable. Choose a computer to start on."</string>
     <string name="new_session_start" formatted="false">"Start new session"</string>
     <string name="new_session_start_failed">"Could not start: %1$s"</string>
     <string name="new_session_start_shortcut">"%1$s Start"</string>
@@ -1264,6 +1265,8 @@
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"After removing this unfinished pairing, generate a new code in Add device so the new device can join again."</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable."</string>
     <string name="security_allow_to_join" formatted="false">"Allow to join"</string>
+    <string name="security_also_remove_old_devices" formatted="false">"Also remove old devices"</string>
+    <string name="security_also_remove_old_devices_hint" formatted="false">"Existing entries for this device model were found. After approval succeeds, these old entries will be removed:"</string>
     <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"Abandon this recovery and enter a new code"</string>
     <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"Already registering this phone. Wait for the result"</string>
     <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion"</string>
@@ -1407,6 +1410,10 @@
     <string name="security_new_recovery_code" formatted="false">"New recovery code"</string>
     <string name="security_new_recovery_code_shown_only_once" formatted="false">"New recovery code · Shown only once"</string>
     <string name="security_nothing_is_published_before_you_save_it_an_unpublished" formatted="false">"Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time."</string>
+    <plurals name="security_old_devices_removal_incomplete">
+        <item quantity="one">"The new device joined, but %1$d old device could not be removed automatically. Retry later or remove it manually in Devices."</item>
+        <item quantity="other">"The new device joined, but %1$d old devices could not be removed automatically. Retry later or remove them manually in Devices."</item>
+    </plurals>
     <string name="security_on_the_managing_client_open_settings_add_device_and" formatted="false">"On the managing client, open Settings › Add device and enter its 8-digit pairing code here."</string>
     <string name="security_once_the_successor_device_joins_and_confirms_saving_its" formatted="false">"Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device."</string>
     <string name="security_one_time_security_setup" formatted="false">"One-time security setup"</string>
@@ -1491,12 +1498,12 @@
     <string name="security_the_server_does_not_recognize_this_device" formatted="false">"The server does not recognize this device"</string>
     <string name="security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" formatted="false">"The unpublished pairing draft expired. You can explicitly abandon it and start over."</string>
     <string name="security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" formatted="false">"The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over."</string>
-    <string name="security_this_browser_is_the_only_managing_client_transfer_management" formatted="false">"This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost."</string>
     <string name="security_this_browser_will_be_the_only_managing_client_clearing" formatted="false">"This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended."</string>
     <string name="security_this_deletes_the_account_keys_and_cache_on_this" formatted="false">"This deletes the account keys and cache on this device. Sessions on your computers are unaffected."</string>
     <string name="security_this_device" formatted="false">"This device"</string>
     <string name="security_this_device_becomes_the_managing_client" formatted="false">"This device becomes the managing client"</string>
     <string name="security_this_device_has_an_unfinished_join_request_deleting_it" formatted="false">"This device has an unfinished join request. Deleting it prevents you from continuing that request."</string>
+    <string name="security_this_device_is_the_only_managing_client_transfer_management" formatted="false">"This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost."</string>
     <string name="security_this_device_manages_the_account" formatted="false">"This device manages the account"</string>
     <string name="security_this_device_s_clock_is_behind_the_managing_client" formatted="false">"This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining."</string>
     <string name="security_this_page_and_the_server_or_pairing_device_use" formatted="false">"This page and the server or pairing device use different versions. Refresh to update and retry."</string>

@@ -102,6 +102,7 @@ type Machine struct {
 	Reachable           *bool
 	ReachabilityUnknown bool
 	Unlinked            *bool
+	Archived            bool
 	LastSeenMs          int64
 	ProtocolVersion     uint32
 	DaemonOutOfDate     bool
@@ -204,6 +205,7 @@ type World struct {
 	ManagerName         string
 	AccountControlLost  bool
 	AccountClockSkewed  bool
+	MachineReplacements map[string]string
 }
 
 // ProjectAgg is the aggregated cross-machine summary of a project directory.

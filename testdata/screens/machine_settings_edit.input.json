@@ -346,6 +346,8 @@
         "nowMs": "1791078060140",
         "securityStorageResult": {
           "opId": "1",
+          "hasDeviceEd": true,
+          "hasDeviceX": true,
           "entries": [
             {
               "bucket": "SECURITY_STORE_BUCKET_RECORD",

@@ -235,8 +235,8 @@ extension Remote {
         try await withSecurityAndRefresh { try await $0.updateDeviceMeta(platform: platform, description: description, describeSelfOnly: true) }
     }
 
-    public func removeDevice(_ id: String, abandonPairDelivery: Bool = false) async throws {
-        try await withSecurityAndRefresh { try await $0.removeDevice(id, abandonPairDelivery: abandonPairDelivery) }
+    public func removeDevice(_ id: String) async throws {
+        try await withSecurityAndRefresh { try await $0.removeDevice(id) }
     }
 
     public func deleteMachineRecords(_ id: String) async throws {

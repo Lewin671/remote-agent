@@ -64,6 +64,7 @@ final class Harness {
         accountId: "11111111111111111111111111111111")
     private(set) var engines: [FakeEngine] = []
     var cleared = 0
+    var unregisteredPush = 0
     var bootstrapStatus: PBSecurityWorkflowStatus?
     var bootstrapError: (any Error)?
     var exitAdvice = PBSecurityExitAdvice()
@@ -92,6 +93,7 @@ final class Harness {
             return EngineParts(engine: engine, remote: engine.remote)
         }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
+        parts.unregisterRemoteNotifications = { [unowned self] in self.unregisteredPush += 1 }
         parts.clearNotifications = { [unowned self] in self.cleared += 1 }
         if let erase { parts.erase = erase }
         return AppModel(settings: settings, parts: parts)
@@ -169,6 +171,42 @@ final class Harness {
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
         #expect(h.model.stage == .join)
+    }
+
+    @Test func corruptRecordSurfacesUnreadableExitAdviceAndAllowsSetupReset() async throws {
+        defer { h.cleanUp() }
+        // Seed a corrupt record blob (no device keys) using real Go bootstrap & real checkExitAdvice.
+        _ = h.vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data([1, 2, 3, 4])
+        })
+        var parts = AppModel.Parts()
+        parts.storage = AccountStorage(
+            vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
+        parts.network = FakeNetwork()
+        parts.defaults = h.defaults
+        parts.allowPlainHttp = true
+        var pushUnregistered = 0
+        parts.unregisterRemoteNotifications = { pushUnregistered += 1 }
+        parts.clearNotifications = { [unowned h] in h.cleared += 1 }
+        let model = AppModel(settings: h.settings, parts: parts)
+        model.setForeground(true)
+        await model.waitForLoadForTest()
+        guard case .failed = model.stage else {
+            Issue.record("expected failed stage on corrupt record, got \(model.stage)")
+            return
+        }
+        // SetupReset confirmation queries rejoinAdvice(); must report .unreadable rather than deadlocking.
+        let advice = await model.rejoinAdvice()
+        #expect(advice == .unreadable)
+        await model.logout()
+        #expect(model.stage == .join)
+        #expect(pushUnregistered == 1)
+        #expect(!h.vault.hasPersistedState())
     }
 
     @Test func withoutAnAccountTheJoinFlowIsShown() async {
@@ -356,6 +394,7 @@ final class Harness {
         #expect(h.settings.settings == LocalSettings())
         #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
         #expect(h.defaults.string(forKey: "other") == "kept")
+        #expect(h.unregisteredPush == 1)
         #expect(h.cleared == 1)
         try await h.model.joined(h.account)
         let next = try #require(h.model.context)

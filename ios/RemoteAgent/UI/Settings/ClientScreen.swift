@@ -23,6 +23,7 @@ struct ClientScreen: View {
     var body: some View {
         let vm = context.core.clientDetail
         let online = context.core.settings.online
+        let incomplete = context.core.devices.unfinishedPairings.contains(where: { $0.deviceID == id })
         SettingsPage(refresh: refresh(online)) {
             if !vm.found && online && !context.core.devices.clients.isEmpty {
                 // The list is read and it is not in it.
@@ -33,7 +34,7 @@ struct ClientScreen: View {
         }
         .navBar(
             vm.displayName,
-            subtitle: !vm.found ? nil : (vm.isSelf ? L10n.settingsIosCurrentClient() : L10n.settingsPairedClient())
+            subtitle: !vm.found ? nil : (vm.isSelf ? L10n.settingsIosCurrentClient() : (incomplete ? L10n.settingsUnfinishedPairing() : L10n.settingsPairedClient()))
         )
         .task(id: id) {
             await context.coreHost.openClientDetail(deviceID: id)

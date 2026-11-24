@@ -132,3 +132,91 @@ SELECT 'capacity-' || i, ?, 'synthetic-approver', 'synthetic-candidate', 2, X'01
 		})
 	}
 }
+
+func TestPairingJoinerMetaForwardingValidationAndCleanup(t *testing.T) {
+	ts := newTestServer(t)
+	ctx := context.Background()
+	if _, _, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup"); err != nil {
+		t.Fatal(err)
+	}
+	pc := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, ts.authority(t).phoneEd, ts.authority(t).phoneID)))
+	anon := remoteagentv1connect.NewPairingServiceClient(http.DefaultClient, ts.url)
+	key, _ := e2e.NewPairKey()
+	created, err := pc.CreatePairing(ctx, connect.NewRequest(&pb.CreatePairingRequest{Commit: devicesec.PairDomainCommit(key.Public(), ts.pairTrust(t, ts.authority(t).phoneID))}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.Msg.PairingId
+	joined, err := anon.JoinPairing(ctx, connect.NewRequest(&pb.JoinPairingRequest{
+		ProtocolVersion:     relayproto.Version,
+		Code:                created.Msg.Code,
+		JoinerPublic:        key.Public(),
+		DeviceHpkePublicKey: key.Public(),
+		DevicePublicKey:     key.Public(),
+		JoinerKind:          pb.DeviceKind_DEVICE_KIND_CLIENT,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Before reveal, joiner_meta is ignored.
+	metaKey := e2e.NewKey()
+	validMeta, err := e2e.Seal(metaKey, &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id, Seq: 1}, []byte("opaque-meta"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: joined.Msg.CandidateToken, JoinerMeta: validMeta})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pc.RevealPairing(ctx, connect.NewRequest(&pb.RevealPairingRequest{Trust: ts.pairTrust(t, ts.authority(t).phoneID), PairingId: id, InitiatorPublic: key.Public()})); err != nil {
+		t.Fatal(err)
+	}
+	initRes, err := pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initRes.Msg.JoinerMeta != nil {
+		t.Fatalf("expected nil joiner_meta before post-reveal upload, got %v", initRes.Msg.JoinerMeta)
+	}
+	// Oversized metadata is rejected.
+	oversized, err := e2e.Seal(metaKey, &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: id, Seq: 1}, make([]byte, maxDeviceMetaBytes+1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: joined.Msg.CandidateToken, JoinerMeta: oversized})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected invalid argument for oversized joiner_meta, got %v", err)
+	}
+	// Wrong envelope request_id is rejected.
+	wrongReq, err := e2e.Seal(metaKey, &pb.Header{Version: 1, Kind: pb.PayloadKind_PAYLOAD_KIND_PAIRING, RequestId: "wrong-pairing-id", Seq: 1}, []byte("bad"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: joined.Msg.CandidateToken, JoinerMeta: wrongReq})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("expected invalid argument for wrong envelope request_id, got %v", err)
+	}
+	// Valid encrypted metadata after reveal is stored and visible ONLY to initiator.
+	joinerRes, err := anon.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id, CandidateToken: joined.Msg.CandidateToken, JoinerMeta: validMeta}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joinerRes.Msg.JoinerMeta != nil {
+		t.Fatalf("joiner should not receive joiner_meta back")
+	}
+	initRes, err = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initRes.Msg.JoinerMeta == nil || len(initRes.Msg.JoinerMeta.Ciphertext) != len(validMeta.Ciphertext) {
+		t.Fatalf("initiator did not receive forwarded joiner_meta: %v", initRes.Msg.JoinerMeta)
+	}
+	// Cancel clears joiner_meta.
+	if _, err := pc.CancelPairing(ctx, connect.NewRequest(&pb.CancelPairingRequest{PairingId: id})); err != nil {
+		t.Fatal(err)
+	}
+	initRes, err = pc.GetPairing(ctx, connect.NewRequest(&pb.GetPairingRequest{PairingId: id}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initRes.Msg.JoinerMeta != nil {
+		t.Fatalf("expected joiner_meta cleared on cancel, got %v", initRes.Msg.JoinerMeta)
+	}
+}

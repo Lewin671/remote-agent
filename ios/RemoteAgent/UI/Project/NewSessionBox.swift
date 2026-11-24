@@ -455,6 +455,13 @@ struct NewSessionContent: View {
                             onMachineSettings(machineID)
                         }
                     }
+                } else if n.action == .changeMachine {
+                    Banner(
+                        message,
+                        tone: n.severity == .error ? .error : n.severity == .warn ? .warn : .plain,
+                        action: L10n.newSessionChangeMachine(),
+                        onAction: onMachine
+                    )
                 } else {
                     Banner(message, tone: n.severity == .error ? .error : n.severity == .warn ? .warn : .plain)
                 }

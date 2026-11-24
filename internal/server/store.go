@@ -1090,7 +1090,7 @@ func removeDeviceTx(ctx context.Context, tx *sql.Tx, acct, id string) (bool, err
 	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING`, id, acct, nowMs()); err != nil {
 		return false, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = 1 WHERE account_id = ? AND used_ms = 0`, acct); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE pairing_admissions SET canceled_ms = ? WHERE account_id = ? AND used_ms = 0 AND canceled_ms = 0 AND (candidate_device_id = ? OR approver_device_id = ?)`, nowMs(), acct, id, id); err != nil {
 		return false, err
 	}
 	var kind int32

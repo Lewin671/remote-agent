@@ -2211,8 +2211,8 @@ export class Remote implements CoreExecutor {
     return this.ensureHost().securityClient.pollPairing(pairingId);
   }
 
-  approvePairing(pairingId: string, sasConfirmed: boolean): Promise<SecurityPairingInfo> {
-    return this.ensureHost().securityClient.approvePairing(pairingId, sasConfirmed);
+  approvePairing(pairingId: string, sasConfirmed: boolean, removeDeviceIds: string[] = []): Promise<SecurityPairingInfo> {
+    return this.ensureHost().securityClient.approvePairing(pairingId, sasConfirmed, removeDeviceIds);
   }
 
   finishPairingDelivery(pairingId: string): Promise<SecurityPairingInfo> {

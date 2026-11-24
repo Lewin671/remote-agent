@@ -778,6 +778,7 @@ type GetPairingRequest struct {
 	PairingId      string
 	CandidateToken string
 	Received       bool
+	JoinerMeta     *Envelope
 }
 
 func (m *GetPairingRequest) GetPairingId() string {
@@ -798,12 +799,19 @@ func (m *GetPairingRequest) GetReceived() bool {
 	}
 	return false
 }
+func (m *GetPairingRequest) GetJoinerMeta() *Envelope {
+	if m != nil {
+		return m.JoinerMeta
+	}
+	return nil
+}
 
 var LitewireDesc_GetPairingRequest = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(GetPairingRequest{}.PairingId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(GetPairingRequest{}.CandidateToken), Kind: litewire.KindString},
 		{Num: 3, Offset: unsafe.Offsetof(GetPairingRequest{}.Received), Kind: litewire.KindBool},
+		{Num: 4, Offset: unsafe.Offsetof(GetPairingRequest{}.JoinerMeta), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
 	},
 }
 
@@ -826,6 +834,7 @@ type GetPairingResponse struct {
 	DevicePublicKey     []byte
 	DeviceHpkePublicKey []byte
 	Trust               []byte
+	JoinerMeta          *Envelope
 }
 
 func (m *GetPairingResponse) GetState() PairingState {
@@ -882,6 +891,12 @@ func (m *GetPairingResponse) GetTrust() []byte {
 	}
 	return nil
 }
+func (m *GetPairingResponse) GetJoinerMeta() *Envelope {
+	if m != nil {
+		return m.JoinerMeta
+	}
+	return nil
+}
 
 var LitewireDesc_GetPairingResponse = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&GetPairingResponse{}) },
@@ -895,6 +910,7 @@ var LitewireDesc_GetPairingResponse = litewire.MessageDesc{
 		{Num: 7, Offset: unsafe.Offsetof(GetPairingResponse{}.DevicePublicKey), Kind: litewire.KindBytes},
 		{Num: 8, Offset: unsafe.Offsetof(GetPairingResponse{}.DeviceHpkePublicKey), Kind: litewire.KindBytes},
 		{Num: 9, Offset: unsafe.Offsetof(GetPairingResponse{}.Trust), Kind: litewire.KindBytes},
+		{Num: 10, Offset: unsafe.Offsetof(GetPairingResponse{}.JoinerMeta), Kind: litewire.KindMessage, Sub: &LitewireDesc_Envelope},
 	},
 }
 

@@ -181,6 +181,7 @@ func (e *Engine) refreshWorld() {
 		m.unlinked = unlinked && !e.directReady[m.ID]
 		m.Reachable = &m.reachable
 		m.Unlinked = &m.unlinked
+		m.Archived = e.security.Loaded && !e.security.TrustedMachines[m.ID] && e.security.ArchiveMachines[m.ID]
 		m.ReachabilityUnknown = !reachable && e.machineReachabilityUnknown(m)
 		var pv uint32
 		if m.Meta != nil {
@@ -205,6 +206,7 @@ func (e *Engine) refreshWorld() {
 	w.World.ManagerName = e.managerDevicePlainName()
 	w.World.AccountControlLost = e.accountControlLost()
 	w.World.AccountClockSkewed = e.accountClockSkewed()
+	w.World.MachineReplacements = e.machineReplacements
 }
 
 // storeMachine records m as the entry for its ID, replacing any previous one.

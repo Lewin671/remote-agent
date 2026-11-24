@@ -69,4 +69,28 @@ public interface SecurityStartJoinPairingActionOrBuilder extends
    */
   com.google.protobuf.ByteString
       getRawLinkBytes();
+
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The platform.
+   */
+  java.lang.String getPlatform();
+  /**
+   * <code>string platform = 7 [json_name = "platform"];</code>
+   * @return The bytes for platform.
+   */
+  com.google.protobuf.ByteString
+      getPlatformBytes();
+
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @return The description.
+   */
+  java.lang.String getDescription();
+  /**
+   * <code>string description = 8 [json_name = "description"];</code>
+   * @return The bytes for description.
+   */
+  com.google.protobuf.ByteString
+      getDescriptionBytes();
 }

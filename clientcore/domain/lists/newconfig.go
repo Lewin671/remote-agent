@@ -18,16 +18,17 @@ type OfflineMachineOption struct {
 
 // ProjectStartResult holds the resolved launch configuration and diagnostics for a project.
 type ProjectStartResult struct {
-	Found            bool
-	Config           StartConfig
-	Settled          bool
-	WantedAgent      v1.Agent
-	DisabledAgent    v1.Agent
-	MissingAgent     v1.Agent
-	DefaultMode      DefaultMode
-	ProtocolMismatch int32
-	OfflineChoices   []OfflineMachineOption
-	ProjectMachines  []string
+	Found              bool
+	NeedsMachineChoice bool
+	Config             StartConfig
+	Settled            bool
+	WantedAgent        v1.Agent
+	DisabledAgent      v1.Agent
+	MissingAgent       v1.Agent
+	DefaultMode        DefaultMode
+	ProtocolMismatch   int32
+	OfflineChoices     []OfflineMachineOption
+	ProjectMachines    []string
 }
 
 type inheritance struct {
@@ -165,6 +166,25 @@ func settingsFromConfig(c StartConfig) *v1.AgentSettings {
 	}
 }
 
+// ResolveMachineReplacement follows verified machine replacement proofs
+// (with cycle protection) to return the latest replacement machine ID.
+func ResolveMachineReplacement(w *World, id string) string {
+	if id == "" || w == nil || len(w.MachineReplacements) == 0 {
+		return id
+	}
+	seen := make(map[string]bool, 4)
+	cur := id
+	for {
+		seen[cur] = true
+		next := w.MachineReplacements[cur]
+		if next == "" || seen[next] {
+			break
+		}
+		cur = next
+	}
+	return cur
+}
+
 // ResolveProjectStart resolves the initial StartConfig, settled flag, offline machine choices,
 // default approval mode, and missing-agent warning for a project.
 func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent, overrideSaved *v1.ProjectSettings, useOverrideSaved bool) ProjectStartResult {
@@ -200,17 +220,86 @@ func ResolveProjectStart(w *World, key, pickMachineID string, pickAgent v1.Agent
 
 	from := newInheritance(w, allProjects, key)
 
-	machineID := pickMachineID
+	hasMachines := len(machinesByID) > 0
+	activeMachineCount := 0
+	for _, m := range machinesByID {
+		if m != nil && !m.Archived {
+			activeMachineCount++
+		}
+	}
+	hasActiveMachine := activeMachineCount > 0
+	isUsableMachine := func(id string) bool {
+		if id == "" {
+			return false
+		}
+		if !hasMachines {
+			return true
+		}
+		m, ok := machinesByID[id]
+		if !ok {
+			return false
+		}
+		if hasActiveMachine && m.Archived {
+			return false
+		}
+		return true
+	}
+	resolveUsable := func(id string) string {
+		if id == "" {
+			return ""
+		}
+		remapped := ResolveMachineReplacement(w, id)
+		if isUsableMachine(remapped) {
+			return remapped
+		}
+		return ""
+	}
+	pickFallbackMachine := func(ids []string) string {
+		for _, id := range ids {
+			if m := machinesByID[id]; isUsableMachine(id) && MachineReachable(m) {
+				return id
+			}
+		}
+		for _, id := range ids {
+			if isUsableMachine(id) {
+				return id
+			}
+		}
+		return ""
+	}
+
+	machineID := resolveUsable(pickMachineID)
 	if machineID == "" && saved != nil && saved.MachineId != "" {
-		machineID = saved.MachineId
+		machineID = resolveUsable(saved.MachineId)
+		if machineID == "" && pickMachineID == "" && activeMachineCount > 1 {
+			// In a multi-computer account, do not silently fall back to another
+			// computer when the saved machine is missing/archived with no verified
+			// replacement mapping; prompt the user to choose explicitly.
+			res.NeedsMachineChoice = true
+			res.Settled = !from.unsettled
+			return res
+		}
 	}
 	if machineID == "" {
-		if latest := from.first(nil); latest != nil {
-			machineID = latest.MachineID
+		if latest := from.first(func(s *Session) bool {
+			return resolveUsable(s.MachineID) != ""
+		}); latest != nil {
+			machineID = resolveUsable(latest.MachineID)
 		}
 	}
 	if machineID == "" && pr != nil && len(pr.machineIDs) > 0 {
-		machineID = pr.machineIDs[0]
+		machineID = pickFallbackMachine(pr.machineIDs)
+	}
+	if machineID == "" && len(projectMachines) > 0 {
+		machineID = pickFallbackMachine(projectMachines)
+	}
+	if machineID == "" && hasMachines {
+		allIDs := make([]string, 0, len(machinesByID))
+		for mid := range machinesByID {
+			allIDs = append(allIDs, mid)
+		}
+		sortutil.Sort(len(allIDs), func(i, j int) bool { return compareUTF16(allIDs[i], allIDs[j]) < 0 }, func(i, j int) { allIDs[i], allIDs[j] = allIDs[j], allIDs[i] })
+		machineID = pickFallbackMachine(allIDs)
 	}
 	if machineID == "" {
 		return res

@@ -556,49 +556,98 @@ public struct PBGetPairingRequest: Sendable {
   /// the joiner can fetch the payload again, e.g. after a lost response.
   public var received: Bool = false
 
+  /// Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+  /// pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+  /// authority can detect same-platform/same-model old entries before approval.
+  /// The relay never reads these bytes.
+  public var joinerMeta: PBEnvelope {
+    get {return _joinerMeta ?? PBEnvelope()}
+    set {_joinerMeta = newValue}
+  }
+  /// Returns true if `joinerMeta` has been explicitly set.
+  public var hasJoinerMeta: Bool {return self._joinerMeta != nil}
+  /// Clears the value of `joinerMeta`. Subsequent reads from it will return its default value.
+  public mutating func clearJoinerMeta() {self._joinerMeta = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _joinerMeta: PBEnvelope? = nil
 }
 
-public struct PBGetPairingResponse: Sendable {
+public struct PBGetPairingResponse: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var state: PBPairingState = .unspecified
+  public var state: PBPairingState {
+    get {return _storage._state}
+    set {_uniqueStorage()._state = newValue}
+  }
 
-  public var commit: Data = Data()
+  public var commit: Data {
+    get {return _storage._commit}
+    set {_uniqueStorage()._commit = newValue}
+  }
 
-  public var joinerPublic: Data = Data()
+  public var joinerPublic: Data {
+    get {return _storage._joinerPublic}
+    set {_uniqueStorage()._joinerPublic = newValue}
+  }
 
-  public var joinerKind: PBDeviceKind = .unspecified
+  public var joinerKind: PBDeviceKind {
+    get {return _storage._joinerKind}
+    set {_uniqueStorage()._joinerKind = newValue}
+  }
 
-  public var initiatorPublic: Data = Data()
+  public var initiatorPublic: Data {
+    get {return _storage._initiatorPublic}
+    set {_uniqueStorage()._initiatorPublic = newValue}
+  }
 
   /// PAIRING envelope, for the joiner once approved.
   public var payload: PBEnvelope {
-    get {return _payload ?? PBEnvelope()}
-    set {_payload = newValue}
+    get {return _storage._payload ?? PBEnvelope()}
+    set {_uniqueStorage()._payload = newValue}
   }
   /// Returns true if `payload` has been explicitly set.
-  public var hasPayload: Bool {return self._payload != nil}
+  public var hasPayload: Bool {return _storage._payload != nil}
   /// Clears the value of `payload`. Subsequent reads from it will return its default value.
-  public mutating func clearPayload() {self._payload = nil}
+  public mutating func clearPayload() {_uniqueStorage()._payload = nil}
 
-  public var devicePublicKey: Data = Data()
+  public var devicePublicKey: Data {
+    get {return _storage._devicePublicKey}
+    set {_uniqueStorage()._devicePublicKey = newValue}
+  }
 
-  public var deviceHpkePublicKey: Data = Data()
+  public var deviceHpkePublicKey: Data {
+    get {return _storage._deviceHpkePublicKey}
+    set {_uniqueStorage()._deviceHpkePublicKey = newValue}
+  }
 
   /// The initiator's public PairTrustDescriptor, revealed with its ephemeral
   /// key. It carries account, domain, genesis hash and approver, no secret.
-  public var trust: Data = Data()
+  public var trust: Data {
+    get {return _storage._trust}
+    set {_uniqueStorage()._trust = newValue}
+  }
+
+  /// Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+  public var joinerMeta: PBEnvelope {
+    get {return _storage._joinerMeta ?? PBEnvelope()}
+    set {_uniqueStorage()._joinerMeta = newValue}
+  }
+  /// Returns true if `joinerMeta` has been explicitly set.
+  public var hasJoinerMeta: Bool {return _storage._joinerMeta != nil}
+  /// Clears the value of `joinerMeta`. Subsequent reads from it will return its default value.
+  public mutating func clearJoinerMeta() {_uniqueStorage()._joinerMeta = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _payload: PBEnvelope? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBRevealPairingRequest: Sendable {
@@ -3065,7 +3114,7 @@ extension PBJoinPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".GetPairingRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}candidate_token\0\u{1}received\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairing_id\0\u{3}candidate_token\0\u{1}received\0\u{3}joiner_meta\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3076,52 +3125,7 @@ extension PBGetPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImpl
       case 1: try { try decoder.decodeSingularStringField(value: &self.pairingID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.candidateToken) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.received) }()
-      default: break
-      }
-    }
-  }
-
-  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.pairingID.isEmpty {
-      try visitor.visitSingularStringField(value: self.pairingID, fieldNumber: 1)
-    }
-    if !self.candidateToken.isEmpty {
-      try visitor.visitSingularStringField(value: self.candidateToken, fieldNumber: 2)
-    }
-    if self.received != false {
-      try visitor.visitSingularBoolField(value: self.received, fieldNumber: 3)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  public static func ==(lhs: PBGetPairingRequest, rhs: PBGetPairingRequest) -> Bool {
-    if lhs.pairingID != rhs.pairingID {return false}
-    if lhs.candidateToken != rhs.candidateToken {return false}
-    if lhs.received != rhs.received {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  public static let protoMessageName: String = _protobuf_package + ".GetPairingResponse"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}commit\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}initiator_public\0\u{1}payload\0\u{3}device_public_key\0\u{3}device_hpke_public_key\0\u{1}trust\0")
-
-  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularEnumField(value: &self.state) }()
-      case 2: try { try decoder.decodeSingularBytesField(value: &self.commit) }()
-      case 3: try { try decoder.decodeSingularBytesField(value: &self.joinerPublic) }()
-      case 4: try { try decoder.decodeSingularEnumField(value: &self.joinerKind) }()
-      case 5: try { try decoder.decodeSingularBytesField(value: &self.initiatorPublic) }()
-      case 6: try { try decoder.decodeSingularMessageField(value: &self._payload) }()
-      case 7: try { try decoder.decodeSingularBytesField(value: &self.devicePublicKey) }()
-      case 8: try { try decoder.decodeSingularBytesField(value: &self.deviceHpkePublicKey) }()
-      case 9: try { try decoder.decodeSingularBytesField(value: &self.trust) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._joinerMeta) }()
       default: break
       }
     }
@@ -3132,46 +3136,159 @@ extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
     // https://github.com/apple/swift-protobuf/issues/1182
-    if self.state != .unspecified {
-      try visitor.visitSingularEnumField(value: self.state, fieldNumber: 1)
+    if !self.pairingID.isEmpty {
+      try visitor.visitSingularStringField(value: self.pairingID, fieldNumber: 1)
     }
-    if !self.commit.isEmpty {
-      try visitor.visitSingularBytesField(value: self.commit, fieldNumber: 2)
+    if !self.candidateToken.isEmpty {
+      try visitor.visitSingularStringField(value: self.candidateToken, fieldNumber: 2)
     }
-    if !self.joinerPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.joinerPublic, fieldNumber: 3)
+    if self.received != false {
+      try visitor.visitSingularBoolField(value: self.received, fieldNumber: 3)
     }
-    if self.joinerKind != .unspecified {
-      try visitor.visitSingularEnumField(value: self.joinerKind, fieldNumber: 4)
-    }
-    if !self.initiatorPublic.isEmpty {
-      try visitor.visitSingularBytesField(value: self.initiatorPublic, fieldNumber: 5)
-    }
-    try { if let v = self._payload {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    try { if let v = self._joinerMeta {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     } }()
-    if !self.devicePublicKey.isEmpty {
-      try visitor.visitSingularBytesField(value: self.devicePublicKey, fieldNumber: 7)
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBGetPairingRequest, rhs: PBGetPairingRequest) -> Bool {
+    if lhs.pairingID != rhs.pairingID {return false}
+    if lhs.candidateToken != rhs.candidateToken {return false}
+    if lhs.received != rhs.received {return false}
+    if lhs._joinerMeta != rhs._joinerMeta {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBGetPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".GetPairingResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{1}commit\0\u{3}joiner_public\0\u{3}joiner_kind\0\u{3}initiator_public\0\u{1}payload\0\u{3}device_public_key\0\u{3}device_hpke_public_key\0\u{1}trust\0\u{3}joiner_meta\0")
+
+  fileprivate class _StorageClass {
+    var _state: PBPairingState = .unspecified
+    var _commit: Data = Data()
+    var _joinerPublic: Data = Data()
+    var _joinerKind: PBDeviceKind = .unspecified
+    var _initiatorPublic: Data = Data()
+    var _payload: PBEnvelope? = nil
+    var _devicePublicKey: Data = Data()
+    var _deviceHpkePublicKey: Data = Data()
+    var _trust: Data = Data()
+    var _joinerMeta: PBEnvelope? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _state = source._state
+      _commit = source._commit
+      _joinerPublic = source._joinerPublic
+      _joinerKind = source._joinerKind
+      _initiatorPublic = source._initiatorPublic
+      _payload = source._payload
+      _devicePublicKey = source._devicePublicKey
+      _deviceHpkePublicKey = source._deviceHpkePublicKey
+      _trust = source._trust
+      _joinerMeta = source._joinerMeta
     }
-    if !self.deviceHpkePublicKey.isEmpty {
-      try visitor.visitSingularBytesField(value: self.deviceHpkePublicKey, fieldNumber: 8)
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
     }
-    if !self.trust.isEmpty {
-      try visitor.visitSingularBytesField(value: self.trust, fieldNumber: 9)
+    return _storage
+  }
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularEnumField(value: &_storage._state) }()
+        case 2: try { try decoder.decodeSingularBytesField(value: &_storage._commit) }()
+        case 3: try { try decoder.decodeSingularBytesField(value: &_storage._joinerPublic) }()
+        case 4: try { try decoder.decodeSingularEnumField(value: &_storage._joinerKind) }()
+        case 5: try { try decoder.decodeSingularBytesField(value: &_storage._initiatorPublic) }()
+        case 6: try { try decoder.decodeSingularMessageField(value: &_storage._payload) }()
+        case 7: try { try decoder.decodeSingularBytesField(value: &_storage._devicePublicKey) }()
+        case 8: try { try decoder.decodeSingularBytesField(value: &_storage._deviceHpkePublicKey) }()
+        case 9: try { try decoder.decodeSingularBytesField(value: &_storage._trust) }()
+        case 10: try { try decoder.decodeSingularMessageField(value: &_storage._joinerMeta) }()
+        default: break
+        }
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if _storage._state != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._state, fieldNumber: 1)
+      }
+      if !_storage._commit.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._commit, fieldNumber: 2)
+      }
+      if !_storage._joinerPublic.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._joinerPublic, fieldNumber: 3)
+      }
+      if _storage._joinerKind != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._joinerKind, fieldNumber: 4)
+      }
+      if !_storage._initiatorPublic.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._initiatorPublic, fieldNumber: 5)
+      }
+      try { if let v = _storage._payload {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+      } }()
+      if !_storage._devicePublicKey.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._devicePublicKey, fieldNumber: 7)
+      }
+      if !_storage._deviceHpkePublicKey.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._deviceHpkePublicKey, fieldNumber: 8)
+      }
+      if !_storage._trust.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._trust, fieldNumber: 9)
+      }
+      try { if let v = _storage._joinerMeta {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 10)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBGetPairingResponse, rhs: PBGetPairingResponse) -> Bool {
-    if lhs.state != rhs.state {return false}
-    if lhs.commit != rhs.commit {return false}
-    if lhs.joinerPublic != rhs.joinerPublic {return false}
-    if lhs.joinerKind != rhs.joinerKind {return false}
-    if lhs.initiatorPublic != rhs.initiatorPublic {return false}
-    if lhs._payload != rhs._payload {return false}
-    if lhs.devicePublicKey != rhs.devicePublicKey {return false}
-    if lhs.deviceHpkePublicKey != rhs.deviceHpkePublicKey {return false}
-    if lhs.trust != rhs.trust {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._state != rhs_storage._state {return false}
+        if _storage._commit != rhs_storage._commit {return false}
+        if _storage._joinerPublic != rhs_storage._joinerPublic {return false}
+        if _storage._joinerKind != rhs_storage._joinerKind {return false}
+        if _storage._initiatorPublic != rhs_storage._initiatorPublic {return false}
+        if _storage._payload != rhs_storage._payload {return false}
+        if _storage._devicePublicKey != rhs_storage._devicePublicKey {return false}
+        if _storage._deviceHpkePublicKey != rhs_storage._deviceHpkePublicKey {return false}
+        if _storage._trust != rhs_storage._trust {return false}
+        if _storage._joinerMeta != rhs_storage._joinerMeta {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

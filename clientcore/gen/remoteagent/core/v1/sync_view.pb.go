@@ -541,6 +541,7 @@ type SyncDeviceView struct {
 	MetaRev    uint64
 	MetaBroken bool
 	Trusted    bool
+	Registered bool
 }
 
 func (m *SyncDeviceView) GetDeviceId() string {
@@ -591,6 +592,12 @@ func (m *SyncDeviceView) GetTrusted() bool {
 	}
 	return false
 }
+func (m *SyncDeviceView) GetRegistered() bool {
+	if m != nil {
+		return m.Registered
+	}
+	return false
+}
 
 var LitewireDesc_SyncDeviceView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -602,6 +609,7 @@ var LitewireDesc_SyncDeviceView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SyncDeviceView{}.MetaRev), Kind: litewire.KindUint64},
 		{Num: 7, Offset: unsafe.Offsetof(SyncDeviceView{}.MetaBroken), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(SyncDeviceView{}.Trusted), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SyncDeviceView{}.Registered), Kind: litewire.KindBool},
 	},
 }
 

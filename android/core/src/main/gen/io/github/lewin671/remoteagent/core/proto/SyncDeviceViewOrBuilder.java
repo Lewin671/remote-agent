@@ -73,4 +73,10 @@ public interface SyncDeviceViewOrBuilder extends
    * @return The trusted.
    */
   boolean getTrusted();
+
+  /**
+   * <code>bool registered = 9 [json_name = "registered"];</code>
+   * @return The registered.
+   */
+  boolean getRegistered();
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
@@ -50,6 +51,7 @@ type decodedDevice struct {
 	Meta       *v1.DeviceMeta
 	MetaRev    uint64
 	MetaBroken bool
+	Registered bool
 }
 
 type decodedPrefs struct {
@@ -188,6 +190,7 @@ func (e *Engine) securityDeviceOffers() []security.DeviceOfferInfo {
 			RecoveryEd: recEd,
 			Meta:       d.Meta,
 			MetaRev:    d.MetaRev,
+			LastSeenMs: d.LastSeenMs,
 		})
 	}
 	return out
@@ -252,8 +255,56 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 			e.emitCoordEffects(ctx, c.OnSecurityRejected(e.nowMs))
 		}
 	}
+	e.recomputeMachineReplacements()
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
+}
+
+func (e *Engine) recomputeMachineReplacements() {
+	if e.secEngine == nil {
+		return
+	}
+	sids := make([]string, 0, len(e.sessions))
+	for sid := range e.sessions {
+		sids = append(sids, sid)
+	}
+	sortutil.Sort(len(sids), func(i, j int) bool { return sids[i] < sids[j] }, func(i, j int) { sids[i], sids[j] = sids[j], sids[i] })
+	next := make(map[string]string)
+	for _, sid := range sids {
+		sess := e.sessions[sid]
+		if sess == nil || sess.MachineID == "" {
+			continue
+		}
+		repls := e.sessionReplacements[sid]
+		if len(repls) == 0 && sess.Info != nil {
+			repls = sess.Info.MachineReplacements
+		}
+		if len(repls) == 0 {
+			continue
+		}
+		origins := e.secEngine.VerifiedMachineReplacementOrigins(sess.MachineID, repls)
+		originIDs := make([]string, 0, len(origins))
+		for oldID := range origins {
+			originIDs = append(originIDs, oldID)
+		}
+		sortutil.Sort(len(originIDs), func(i, j int) bool { return originIDs[i] < originIDs[j] }, func(i, j int) { originIDs[i], originIDs[j] = originIDs[j], originIDs[i] })
+		for _, oldID := range originIDs {
+			if oldID == "" || oldID == sess.MachineID {
+				continue
+			}
+			cur, exists := next[oldID]
+			if !exists {
+				next[oldID] = sess.MachineID
+				continue
+			}
+			_, curActive := e.machines[cur]
+			_, candActive := e.machines[sess.MachineID]
+			if (!curActive && candActive) || (curActive == candActive && sess.MachineID < cur) {
+				next[oldID] = sess.MachineID
+			}
+		}
+	}
+	e.machineReplacements = next
 }
 
 func (e *Engine) handleSecurityConfig(ctx *StepContext, ev *corev1.SecurityConfigEvent) {
@@ -427,6 +478,7 @@ func (e *Engine) handleSeedDemoWorld(ctx *StepContext, ev *corev1.SeedDemoWorldE
 				CreatedMs:  d.CreatedMs,
 				LastSeenMs: d.LastSeenMs,
 				Meta:       d.Meta,
+				Registered: true,
 			})
 		}
 		if ev.Prefs != nil {
@@ -817,6 +869,16 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 						e.sessionReplacements = make(map[string][]*v1.MachineReplacementProof)
 					}
 					e.sessionReplacements[rs.SessionId] = append([]*v1.MachineReplacementProof(nil), meta.MachineReplacements...)
+					if e.secEngine != nil && rs.MachineId != "" {
+						for oldID := range e.secEngine.VerifiedMachineReplacementOrigins(rs.MachineId, meta.MachineReplacements) {
+							if oldID != "" && oldID != rs.MachineId {
+								if e.machineReplacements == nil {
+									e.machineReplacements = make(map[string]string)
+								}
+								e.machineReplacements[oldID] = rs.MachineId
+							}
+						}
+					}
 				}
 				ds.Checkpoint, ds.CheckpointInvalid = validateSessionCheckpoint(rs.SessionId, meta)
 			}
@@ -828,7 +890,7 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if d == nil || d.Id == "" {
 			continue
 		}
-		dd := decodedDevice{DeviceID: d.Id, Kind: d.Kind, CreatedMs: d.CreatedMs, LastSeenMs: d.LastSeenMs}
+		dd := decodedDevice{DeviceID: d.Id, Kind: d.Kind, CreatedMs: d.CreatedMs, LastSeenMs: d.LastSeenMs, Registered: true}
 		if idx := op.dIdx[i]; idx >= 0 {
 			r := results[idx]
 			if r.Err != nil {
@@ -851,7 +913,11 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 		if idx := op.pIdx[i]; idx >= 0 {
 			r := results[idx]
 			if r.Err != nil {
-				dp.Broken = true
+				if errors.Is(r.Err, security.ErrRecoveryHistoryUnavailable) {
+					dp.Prefs = &v1.ProjectPrefs{Schema: 1}
+				} else {
+					dp.Broken = true
+				}
 			} else if pp, ok := r.Body.(*v1.ProjectPrefs); ok && r.Header.Seq == p.Revision {
 				dp.Prefs = pp
 			} else {

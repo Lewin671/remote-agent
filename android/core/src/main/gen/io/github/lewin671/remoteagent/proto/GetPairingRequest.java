@@ -18,6 +18,7 @@ public  final class GetPairingRequest extends
     pairingId_ = "";
     candidateToken_ = "";
   }
+  private int bitField0_;
   public static final int PAIRING_ID_FIELD_NUMBER = 1;
   private java.lang.String pairingId_;
   /**
@@ -176,6 +177,89 @@ public  final class GetPairingRequest extends
   private void clearReceived() {
 
     received_ = false;
+  }
+
+  public static final int JOINER_META_FIELD_NUMBER = 4;
+  private io.github.lewin671.remoteagent.proto.Envelope joinerMeta_;
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.Override
+  public boolean hasJoinerMeta() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta() {
+    return joinerMeta_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : joinerMeta_;
+  }
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    joinerMeta_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (joinerMeta_ != null &&
+        joinerMeta_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      joinerMeta_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(joinerMeta_).mergeFrom(value).buildPartial();
+    } else {
+      joinerMeta_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <pre>
+   * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+   * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+   * authority can detect same-platform/same-model old entries before approval.
+   * The relay never reads these bytes.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+   */
+  private void clearJoinerMeta() {
+    joinerMeta_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.proto.GetPairingRequest parseFrom(
@@ -439,6 +523,95 @@ public  final class GetPairingRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    @java.lang.Override
+    public boolean hasJoinerMeta() {
+      return instance.hasJoinerMeta();
+    }
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta() {
+      return instance.getJoinerMeta();
+    }
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    public Builder setJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setJoinerMeta(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    public Builder setJoinerMeta(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setJoinerMeta(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    public Builder mergeJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeJoinerMeta(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Optional PAIRING envelope encrypted by the joiner under the SAS-bound
+     * pairing key after PAIRING_STATE_REVEALED, carrying sealed DeviceMeta so the
+     * authority can detect same-platform/same-model old entries before approval.
+     * The relay never reads these bytes.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 4 [json_name = "joinerMeta"];</code>
+     */
+    public Builder clearJoinerMeta() {  copyOnWrite();
+      instance.clearJoinerMeta();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPairingRequest)
   }
   @java.lang.Override
@@ -455,13 +628,15 @@ public  final class GetPairingRequest extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "pairingId_",
             "candidateToken_",
             "received_",
+            "joinerMeta_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007";
+              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

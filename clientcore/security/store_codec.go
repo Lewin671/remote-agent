@@ -246,6 +246,7 @@ type PersistedRecord struct {
 	ContentKeys            []ContentKeyEntry
 	NeedsRecoveryRotation  bool
 	RecoveryObjectsPending bool
+	PendingRemoveDeviceIDs []string
 }
 
 // Clone returns a deep copy of r.
@@ -255,6 +256,7 @@ func (r *PersistedRecord) Clone() *PersistedRecord {
 	}
 	cp := *r
 	cp.AccountPublicKey, cp.Lease, cp.ContentKeys = slices.Clone(r.AccountPublicKey), slices.Clone(r.Lease), slices.Clone(r.ContentKeys)
+	cp.PendingRemoveDeviceIDs = slices.Clone(r.PendingRemoveDeviceIDs)
 	cp.States = make([][]byte, len(r.States))
 	for i, s := range r.States {
 		cp.States[i] = slices.Clone(s)
@@ -291,6 +293,12 @@ func (r *PersistedRecord) Encode() ([]byte, error) {
 	}
 	w.bool(r.NeedsRecoveryRotation)
 	w.bool(r.RecoveryObjectsPending)
+	if len(r.PendingRemoveDeviceIDs) > 0 {
+		w.U32(uint32(len(r.PendingRemoveDeviceIDs)))
+		for _, id := range r.PendingRemoveDeviceIDs {
+			w.Str(id)
+		}
+	}
 	return w.B, nil
 }
 
@@ -319,6 +327,20 @@ func DecodePersistedRecord(raw []byte) (*PersistedRecord, error) {
 		}
 	}
 	r.NeedsRecoveryRotation, r.RecoveryObjectsPending = br.bool(), br.bool()
+	if len(br.b) > 0 {
+		rc := br.u32()
+		if br.err != nil || rc == 0 || rc > maxStoreListCount {
+			return nil, errStoreCorrupt
+		}
+		r.PendingRemoveDeviceIDs = make([]string, rc)
+		for i := range rc {
+			id := br.str()
+			if br.err != nil || !devicesec.IsDeviceID(id) {
+				return nil, errStoreCorrupt
+			}
+			r.PendingRemoveDeviceIDs[i] = id
+		}
+	}
 	if err := br.done(); err != nil {
 		return nil, err
 	}
@@ -349,6 +371,7 @@ type PersistedOpPair struct {
 	CandidateEd, CandidateX, PairKey         []byte
 	CandidateKind                            uint32
 	ExpiresMs                                int64
+	RemoveDeviceIDs                          []string
 }
 
 // PersistedCreateDraft captures durable local account creation draft material.
@@ -429,6 +452,10 @@ func (op *PersistedOperation) Encode() ([]byte, error) {
 		w.LP(p.PairKey)
 		w.U64(uint64(p.ExpiresMs))
 		w.Str(p.ReplacesDeviceID)
+		w.U32(uint32(len(p.RemoveDeviceIDs)))
+		for _, id := range p.RemoveDeviceIDs {
+			w.Str(id)
+		}
 	}
 	w.bool(op.Create != nil)
 	if c := op.Create; c != nil {
@@ -483,10 +510,21 @@ func DecodePersistedOperation(raw []byte) (*PersistedOperation, error) {
 	op.Action, op.TargetDeviceID, op.RecoveryEd = br.str(), br.str(), br.lp(64)
 	op.OfferRejected, op.StoragePersisted = br.bool(), br.bool()
 	if br.bool() {
-		op.Pair = &PersistedOpPair{
+		p := &PersistedOpPair{
 			PairingID: br.str(), CandidateID: br.str(), CandidateEd: br.lp(64), CandidateX: br.lp(64),
 			CandidateKind: br.u32(), PairKey: br.lp(64), ExpiresMs: br.i64(), ReplacesDeviceID: br.str(),
 		}
+		rc := br.u32()
+		if br.err != nil || rc > maxStoreListCount {
+			return nil, errStoreCorrupt
+		}
+		if rc > 0 {
+			p.RemoveDeviceIDs = make([]string, rc)
+			for i := range rc {
+				p.RemoveDeviceIDs[i] = br.str()
+			}
+		}
+		op.Pair = p
 	}
 	if br.bool() {
 		c := &PersistedCreateDraft{AccountPublicKey: br.lp(64), EdSlot: br.str(), XSlot: br.str(), StoragePersisted: br.bool()}

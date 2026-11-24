@@ -44,8 +44,10 @@ struct JoinCalls: Sendable {
         client: SecurityClient? = nil,
         existing: Account? = nil,
         vault: Vault = Vault(),
-        allowPlainHttp: Bool = false
+        allowPlainHttp: Bool = false,
+        deviceDescription: @MainActor () -> String = AppModel.defaultDeviceDescription
     ) -> JoinCalls {
+        let joinerDescription = deviceDescription()
         @Sendable func withClient<T: Sendable>(
             _ body: @Sendable (SecurityClient) async throws -> T
         ) async throws -> T {
@@ -72,7 +74,9 @@ struct JoinCalls: Sendable {
                         code: link.code,
                         commitHint: link.commit,
                         existingRepair: existing != nil,
-                        existingServer: existing?.server ?? ""
+                        existingServer: existing?.server ?? "",
+                        platform: "ios",
+                        description: joinerDescription
                     )
                     if stopped() {
                         try? await secClient.cancelJoinPairing(pairingId: info.pairingID)

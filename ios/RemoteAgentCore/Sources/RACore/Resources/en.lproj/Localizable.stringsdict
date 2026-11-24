@@ -1362,6 +1362,22 @@
 			<string>View all %1$lld runs</string>
 		</dict>
 	</dict>
+	<key>security_old_devices_removal_incomplete</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>The new device joined, but %1$lld old device could not be removed automatically. Retry later or remove it manually in Devices.</string>
+			<key>other</key>
+			<string>The new device joined, but %1$lld old devices could not be removed automatically. Retry later or remove them manually in Devices.</string>
+		</dict>
+	</dict>
 	<key>session_history_unavailable</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

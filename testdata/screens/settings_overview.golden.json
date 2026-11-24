@@ -299,7 +299,8 @@
                   "key": "time.yesterday"
                 },
                 "lastSeenMs": "1791000000000",
-                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
+                "shortId": "m2"
               },
               {
                 "machineId": "m1",
@@ -332,7 +333,8 @@
                     },
                     "warn": true
                   }
-                ]
+                ],
+                "shortId": "m1"
               }
             ],
             "clients": [
@@ -609,7 +611,8 @@
                   "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
-                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
+                "shortId": "m2"
               },
               {
                 "machineId": "m1",
@@ -806,7 +809,8 @@
                     },
                     "warn": true
                   }
-                ]
+                ],
+                "shortId": "m1"
               }
             ],
             "addDeviceHint": {
@@ -1160,7 +1164,8 @@
                   "stage": "CONNECTION_GROUP_STAGE_UNSUPPORTED",
                   "tone": "CONNECTION_GROUP_TONE_MUTED"
                 },
-                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC"
+                "statusDot": "MACHINE_STATUS_DOT_GRAY_STATIC",
+                "shortId": "m2"
               },
               {
                 "machineId": "m1",
@@ -1357,7 +1362,8 @@
                     },
                     "warn": true
                   }
-                ]
+                ],
+                "shortId": "m1"
               }
             ],
             "addDeviceHint": {

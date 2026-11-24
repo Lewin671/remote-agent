@@ -126,6 +126,9 @@ class RaApp : Application() {
     private val _accountError = MutableStateFlow("")
     /** Why the stored account could not be read, e.g. the phone was locked. */
     val accountError: StateFlow<String> = _accountError.asStateFlow()
+    private val _accountErrorAllowsReset = MutableStateFlow(true)
+    /** False when the failure is a transient Keystore/storage lock rather than confirmed corruption. */
+    val accountErrorAllowsReset: StateFlow<Boolean> = _accountErrorAllowsReset.asStateFlow()
     /** The session page currently visible; cleared when its activity stops or leaves it. */
     @Volatile internal var visibleSession: String? = null
         set(value) {
@@ -344,6 +347,7 @@ class RaApp : Application() {
                 result
                     .onSuccess { (st, denied) ->
                         _accountError.value = ""
+                        _accountErrorAllowsReset.value = true
                         _bootstrapStatus.value = st
                         _retainedDenied.value = denied
                         if (st.server.isNotEmpty()) lastServer = st.server
@@ -361,6 +365,10 @@ class RaApp : Application() {
                     .onFailure { e ->
                         vault.clearMemoryCache()
                         Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
+                        val transientKeyAccess =
+                            (e as? io.github.lewin671.remoteagent.core.SecurityWorkflowError)?.code ==
+                                io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_STORAGE
+                        _accountErrorAllowsReset.value = !transientKeyAccess
                         _accountError.value =
                             io.github.lewin671.remoteagent.ui.displayError(e) +
                                 sessionText(UiMessages.commonAndroidTheOriginalRequestAndKeysAreSavedForRetryIf())
@@ -496,7 +504,7 @@ class RaApp : Application() {
             monotonic = android.os.SystemClock::elapsedRealtime,
         )
         try {
-            host.client.bootstrap()
+            runCatching { host.client.bootstrap() }
             host.client.checkExitAdvice()
         } finally {
             host.close()
@@ -519,6 +527,7 @@ class RaApp : Application() {
                 erasePending = true
                 _loaded.value = false
                 _accountError.value = ""
+                val leavingStatus = _bootstrapStatus.value
                 clearJoinState(pairing)
                 val leaving = _remote.value
                 leaving?.let { lastServer = it.account.server }
@@ -534,7 +543,16 @@ class RaApp : Application() {
                 io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
                 getSystemService(NotificationManager::class.java).cancelAll()
-                leaving?.let { Push.unregister(it) }
+                if (leaving != null) {
+                    Push.unregister(leaving)
+                } else {
+                    val srv = leavingStatus?.server.orEmpty().ifEmpty { lastServer }
+                    val devId = leavingStatus?.deviceId.orEmpty()
+                    if (srv.isNotEmpty() && devId.isNotEmpty()) {
+                        val tok = withContext(Dispatchers.IO) { runCatching { vault.loadLoginToken(srv, devId)?.token }.getOrNull() }
+                        if (!tok.isNullOrEmpty()) Push.unregisterStandalone(http, srv, tok)
+                    }
+                }
                 leaving?.clearAllDrafts()
                 leaving?.clearAllSharedFiles()
                 leaving?.close()

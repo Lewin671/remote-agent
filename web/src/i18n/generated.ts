@@ -576,6 +576,7 @@ export interface MessageArgs {
   "new_session.removed_blocked": { [name: string]: never };
   "new_session.retry_save": { [name: string]: never };
   "new_session.save_failed": { [name: string]: never };
+  "new_session.saved_machine_unavailable_choose": { [name: string]: never };
   "new_session.start": { [name: string]: never };
   "new_session.start_failed": { reason: string };
   "new_session.start_shortcut": { keys: string };
@@ -946,6 +947,8 @@ export interface MessageArgs {
   "security.after_removing_this_unfinished_pairing_generate_a_new_code": { [name: string]: never };
   "security.after_submission_wait_48_hours_the_current_managing_client": { [name: string]: never };
   "security.allow_to_join": { [name: string]: never };
+  "security.also_remove_old_devices": { [name: string]: never };
+  "security.also_remove_old_devices_hint": { [name: string]: never };
   "security.apply_again": { [name: string]: never };
   "security.approved_waiting_for_the_new_device_to_finish_binding": { [name: string]: never };
   "security.asked_the_browser_to_retain_data": { [name: string]: never };
@@ -1011,6 +1014,7 @@ export interface MessageArgs {
   "security.new_recovery_code": { [name: string]: never };
   "security.new_recovery_code_shown_only_once": { [name: string]: never };
   "security.nothing_is_published_before_you_save_it_an_unpublished": { [name: string]: never };
+  "security.old_devices_removal_incomplete": { count: number };
   "security.on_the_managing_client_open_settings_add_device_and": { [name: string]: never };
   "security.once_the_successor_device_joins_and_confirms_saving_its": { [name: string]: never };
   "security.one_time_security_setup": { [name: string]: never };
@@ -1095,12 +1099,12 @@ export interface MessageArgs {
   "security.the_server_does_not_recognize_this_device": { [name: string]: never };
   "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": { [name: string]: never };
   "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": { [name: string]: never };
-  "security.this_browser_is_the_only_managing_client_transfer_management": { [name: string]: never };
   "security.this_browser_will_be_the_only_managing_client_clearing": { [name: string]: never };
   "security.this_deletes_the_account_keys_and_cache_on_this": { [name: string]: never };
   "security.this_device": { [name: string]: never };
   "security.this_device_becomes_the_managing_client": { [name: string]: never };
   "security.this_device_has_an_unfinished_join_request_deleting_it": { [name: string]: never };
+  "security.this_device_is_the_only_managing_client_transfer_management": { [name: string]: never };
   "security.this_device_manages_the_account": { [name: string]: never };
   "security.this_device_s_clock_is_behind_the_managing_client": { [name: string]: never };
   "security.this_page_and_the_server_or_pairing_device_use": { [name: string]: never };
@@ -2537,6 +2541,7 @@ export const messages = {
     "new_session.removed_blocked": "This project was removed. Add it again first.",
     "new_session.retry_save": "Retry saving",
     "new_session.save_failed": "Project settings were not saved. Try again.",
+    "new_session.saved_machine_unavailable_choose": "The computer previously saved for this project is unavailable. Choose a computer to start on.",
     "new_session.start": "Start new session",
     "new_session.start_failed": "Could not start: {reason}",
     "new_session.start_shortcut": "{keys} Start",
@@ -3171,6 +3176,8 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
     "security.after_submission_wait_48_hours_the_current_managing_client": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
     "security.allow_to_join": "Allow to join",
+    "security.also_remove_old_devices": "Also remove old devices",
+    "security.also_remove_old_devices_hint": "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:",
     "security.apply_again": "Apply again",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "Approved. Waiting for the new device to finish binding…",
     "security.asked_the_browser_to_retain_data": "Asked the browser to retain data",
@@ -3236,6 +3243,13 @@ export const messages = {
     "security.new_recovery_code": "New recovery code",
     "security.new_recovery_code_shown_only_once": "New recovery code · Shown only once",
     "security.nothing_is_published_before_you_save_it_an_unpublished": "Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time.",
+    "security.old_devices_removal_incomplete": {
+      "forms": {
+        "one": "The new device joined, but {count} old device could not be removed automatically. Retry later or remove it manually in Devices.",
+        "other": "The new device joined, but {count} old devices could not be removed automatically. Retry later or remove them manually in Devices."
+      },
+      "plural": "count"
+    },
     "security.on_the_managing_client_open_settings_add_device_and": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device.",
     "security.one_time_security_setup": "One-time security setup",
@@ -3320,12 +3334,12 @@ export const messages = {
     "security.the_server_does_not_recognize_this_device": "The server does not recognize this device",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
-    "security.this_browser_is_the_only_managing_client_transfer_management": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
     "security.this_browser_will_be_the_only_managing_client_clearing": "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.",
     "security.this_deletes_the_account_keys_and_cache_on_this": "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.",
     "security.this_device": "This device",
     "security.this_device_becomes_the_managing_client": "This device becomes the managing client",
     "security.this_device_has_an_unfinished_join_request_deleting_it": "This device has an unfinished join request. Deleting it prevents you from continuing that request.",
+    "security.this_device_is_the_only_managing_client_transfer_management": "This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
     "security.this_device_manages_the_account": "This device manages the account",
     "security.this_device_s_clock_is_behind_the_managing_client": "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.",
     "security.this_page_and_the_server_or_pairing_device_use": "This page and the server or pairing device use different versions. Refresh to update and retry.",
@@ -4845,6 +4859,7 @@ export const messages = {
     "new_session.removed_blocked": "这个项目已从列表移除，先重新添加",
     "new_session.retry_save": "重试保存",
     "new_session.save_failed": "项目设置没有保存，请重试",
+    "new_session.saved_machine_unavailable_choose": "该项目原保存的电脑已不可用，请先选择要在哪台电脑上启动。",
     "new_session.start": "开始新会话",
     "new_session.start_failed": "启动失败：{reason}",
     "new_session.start_shortcut": "{keys} 开始",
@@ -5435,6 +5450,8 @@ export const messages = {
     "security.after_removing_this_unfinished_pairing_generate_a_new_code": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
     "security.after_submission_wait_48_hours_the_current_managing_client": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
     "security.allow_to_join": "允许加入",
+    "security.also_remove_old_devices": "同时移除旧设备",
+    "security.also_remove_old_devices_hint": "检测到已有同型号设备，批准成功后将自动移除以下旧记录：",
     "security.apply_again": "重新申请",
     "security.approved_waiting_for_the_new_device_to_finish_binding": "已批准，等待新设备完成绑定…",
     "security.asked_the_browser_to_retain_data": "已请求浏览器保留数据",
@@ -5500,6 +5517,12 @@ export const messages = {
     "security.new_recovery_code": "新的恢复码",
     "security.new_recovery_code_shown_only_once": "新的恢复码 · 只显示这一次",
     "security.nothing_is_published_before_you_save_it_an_unpublished": "保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。",
+    "security.old_devices_removal_incomplete": {
+      "forms": {
+        "other": "新设备已加入，但有 {count} 台旧设备未能自动移除，请稍后重试或在设备列表中手动移除。"
+      },
+      "plural": "count"
+    },
     "security.on_the_managing_client_open_settings_add_device_and": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
     "security.once_the_successor_device_joins_and_confirms_saving_its": "在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。",
     "security.one_time_security_setup": "一次性安全设置",
@@ -5584,12 +5607,12 @@ export const messages = {
     "security.the_server_does_not_recognize_this_device": "服务器不认识这台设备",
     "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
     "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
-    "security.this_browser_is_the_only_managing_client_transfer_management": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
     "security.this_browser_will_be_the_only_managing_client_clearing": "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。",
     "security.this_deletes_the_account_keys_and_cache_on_this": "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。",
     "security.this_device": "本机",
     "security.this_device_becomes_the_managing_client": "这台设备成为管理端",
     "security.this_device_has_an_unfinished_join_request_deleting_it": "这台设备还有未完成的加入请求，删除后将无法继续原请求。",
+    "security.this_device_is_the_only_managing_client_transfer_management": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
     "security.this_device_manages_the_account": "本机是管理端",
     "security.this_device_s_clock_is_behind_the_managing_client": "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
     "security.this_page_and_the_server_or_pairing_device_use": "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",

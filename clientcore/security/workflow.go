@@ -46,6 +46,7 @@ type DeviceOfferInfo struct {
 	RecoveryEd []byte
 	Meta       *v1.DeviceMeta
 	MetaRev    uint64
+	LastSeenMs int64
 }
 
 type wfError struct {
@@ -98,24 +99,28 @@ type codeDraft struct {
 }
 
 type initiatorPairingSession struct {
-	pairingID        string
-	code             string
-	url              string
-	server           string
-	expiresMs        int64
-	ephemSlot        string
-	ephemPub         []byte
-	trust            []byte
-	replacesDeviceID string
-	joined           bool
-	approved         bool
-	delivered        bool
-	candidateID      string
-	candidateEd      []byte
-	candidateX       []byte
-	candidateKind    v1.DeviceKind
-	sasEmoji         []string
-	pairKey          []byte
+	pairingID             string
+	code                  string
+	url                   string
+	server                string
+	expiresMs             int64
+	ephemSlot             string
+	ephemPub              []byte
+	trust                 []byte
+	replacesDeviceID      string
+	joined                bool
+	approved              bool
+	delivered             bool
+	candidateID           string
+	candidateEd           []byte
+	candidateX            []byte
+	candidateKind         v1.DeviceKind
+	sasEmoji              []string
+	pairKey               []byte
+	joinerMetaReceived    bool
+	joinerMeta            *v1.DeviceMeta
+	replacementCandidates []*corev1.SecurityPairingReplacementCandidate
+	removeDeviceIDs       []string
 }
 
 type joinerPairingSession struct {
@@ -126,6 +131,8 @@ type joinerPairingSession struct {
 	commit         []byte
 	existingRepair bool
 	replace        bool
+	platform       string
+	description    string
 	ephemSlot      string
 	ephemPub       []byte
 	edSlot         string
@@ -200,10 +207,11 @@ type workflowState struct {
 	deviceXPresent  bool
 	deviceXPub      []byte
 
-	codeDraft  *codeDraft
-	opBusy     bool
-	pumpingOps bool
-	opQueue    []queuedOp
+	codeDraft          *codeDraft
+	opBusy             bool
+	pumpingOps         bool
+	removingOldDevices bool
+	opQueue            []queuedOp
 
 	lastLeaseRenewAttemptMs int64
 	recoveryStatusStale     bool
@@ -379,7 +387,7 @@ func (e *Engine) HandleStorageResult(nowMs int64, ev *corev1.SecurityStorageResu
 	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
 		var err error
 		if ev.Error != "" {
-			err = errors.New(ev.Error)
+			err = newWfError("storage", ev.Error)
 		} else if ev.Conflict {
 			err = devicesec.ErrStale
 		}
@@ -544,7 +552,31 @@ func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 		}
 		st.PendingOp = sum
 	}
+	if pendingRem := e.pendingRemoveDeviceIDs(); len(pendingRem) > 0 {
+		st.PendingRemoveDeviceIds = pendingRem
+		st.PendingRemoveNotice = text.Msg(text.KeySecurityOldDevicesRemovalIncomplete, text.Int("count", int64(len(pendingRem))))
+	}
 	return st
+}
+
+func (e *Engine) pendingRemoveDeviceIDs() []string {
+	wf := e.ensureWF()
+	if !e.isAuthority() || wf.record == nil || len(wf.record.PendingRemoveDeviceIDs) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(wf.record.PendingRemoveDeviceIDs))
+	seen := make(map[string]bool, len(wf.record.PendingRemoveDeviceIDs))
+	for _, id := range wf.record.PendingRemoveDeviceIDs {
+		if id == "" || seen[id] || id == e.selfDeviceID || id == e.head.Core.AuthorityID {
+			continue
+		}
+		if m, live := e.head.Core.Member(id); !live || m.Kind != devicesec.Client {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 func (e *Engine) isAuthority() bool {
@@ -603,7 +635,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_RenewLease:
 		e.runOpTask(aid, true, &renewLeaseTask{force: a.RenewLease.GetFlag()})
 	case *corev1.SecurityWorkflowActionEvent_ResumePendingOp:
-		e.runOpTask(aid, true, &resumePendingTask{})
+		e.runOpTask(aid, true, &resumePendingTask{includePendingRemovals: true})
 	case *corev1.SecurityWorkflowActionEvent_DiscardPendingOp:
 		e.runOpTask(aid, true, &discardPendingTask{acknowledgePublished: a.DiscardPendingOp.GetFlag()})
 	case *corev1.SecurityWorkflowActionEvent_PrepareCreation:
@@ -615,7 +647,7 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_AdoptCreationWithoutCode:
 		e.runOpTask(aid, true, &adoptCreationWithoutCodeTask{})
 	case *corev1.SecurityWorkflowActionEvent_RemoveDevice:
-		e.runOpTask(aid, true, &removeDeviceTask{id: a.RemoveDevice.GetDeviceId(), abandonPairDelivery: a.RemoveDevice.GetAbandonPairDelivery()})
+		e.runOpTask(aid, true, &removeDeviceTask{id: a.RemoveDevice.GetDeviceId()})
 	case *corev1.SecurityWorkflowActionEvent_DeleteMachineRecords:
 		e.runOpTask(aid, true, &deleteMachineRecordsTask{machineID: a.DeleteMachineRecords.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_DeleteAccount:
@@ -639,7 +671,11 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 	case *corev1.SecurityWorkflowActionEvent_PollPairing:
 		e.runOpTask(aid, true, &pollPairingInitiatorTask{pairingID: a.PollPairing.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_ApprovePairing:
-		e.runOpTask(aid, true, &approvePairingTask{pairingID: a.ApprovePairing.GetPairingId(), sasConfirmed: a.ApprovePairing.GetSasConfirmed()})
+		e.runOpTask(aid, true, &approvePairingTask{
+			pairingID:       a.ApprovePairing.GetPairingId(),
+			sasConfirmed:    a.ApprovePairing.GetSasConfirmed(),
+			removeDeviceIDs: slices.Clone(a.ApprovePairing.GetRemoveDeviceIds()),
+		})
 	case *corev1.SecurityWorkflowActionEvent_FinishPairingDelivery:
 		e.runOpTask(aid, true, &finishPairingDeliveryTask{pairingID: a.FinishPairingDelivery.GetValue()})
 	case *corev1.SecurityWorkflowActionEvent_CancelPairing:
@@ -682,9 +718,29 @@ func (e *Engine) HandleWorkflowAction(nowMs int64, ev *corev1.SecurityWorkflowAc
 
 type bootstrapTask struct{ actionID uint64 }
 
+func isConfirmedBootstrapCorruption(err error) bool {
+	if err == nil {
+		return false
+	}
+	if we := asWfError(err); we != nil {
+		return we.code == "invalid" || we.code == "untrusted"
+	}
+	return errors.Is(err, errStoreCorrupt) ||
+		errors.Is(err, devicesec.ErrInvalid) ||
+		errors.Is(err, devicesec.ErrUntrusted)
+}
+
 func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 	if err != nil {
-		wf.bootstrapInvalid, wf.bootstrapError = true, err.Error()
+		if isConfirmedBootstrapCorruption(err) {
+			wf.bootstrapInvalid = true
+		} else {
+			// Transient storage/keystore/keychain unavailability must not be
+			// conflated with confirmed record corruption or trigger reset.
+			wf.bootstrapped = false
+			wf.bootstrapInvalid = false
+		}
+		wf.bootstrapError = err.Error()
 	}
 	e.emitActionResult(t.actionID, nil, err)
 	e.emitStatusChanged()
@@ -694,7 +750,7 @@ func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
 	if ev.kind == evChildDone {
-		return t.finish(e, wf, nil)
+		return t.finish(e, wf, ev.err)
 	}
 	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapError = true, false, ""
 	if ev.storage != nil && ev.storage.legacyCleared {
@@ -749,6 +805,9 @@ func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	if wf.record != nil {
 		if wf.record.Server != "" {
 			wf.server = wf.record.Server
+		}
+		if !wf.deviceEdPresent || !wf.deviceXPresent {
+			return t.finish(e, wf, devicesec.ErrInvalid)
 		}
 		e.applyPersistedRecordToEngine(wf.record, parentTarget(t, 0))
 		return nil

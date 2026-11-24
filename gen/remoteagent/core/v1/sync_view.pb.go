@@ -652,6 +652,7 @@ type SyncDeviceView struct {
 	MetaRev       uint64                 `protobuf:"varint,6,opt,name=meta_rev,json=metaRev,proto3" json:"meta_rev,omitempty"`
 	MetaBroken    bool                   `protobuf:"varint,7,opt,name=meta_broken,json=metaBroken,proto3" json:"meta_broken,omitempty"`
 	Trusted       bool                   `protobuf:"varint,8,opt,name=trusted,proto3" json:"trusted,omitempty"`
+	Registered    bool                   `protobuf:"varint,9,opt,name=registered,proto3" json:"registered,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -738,6 +739,13 @@ func (x *SyncDeviceView) GetMetaBroken() bool {
 func (x *SyncDeviceView) GetTrusted() bool {
 	if x != nil {
 		return x.Trusted
+	}
+	return false
+}
+
+func (x *SyncDeviceView) GetRegistered() bool {
+	if x != nil {
+		return x.Registered
 	}
 	return false
 }
@@ -1478,7 +1486,7 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"openFailed\x12#\n" +
 	"\rschedule_name\x18\x0e \x01(\tR\fscheduleName\x12'\n" +
 	"\x0fschedule_unread\x18\x0f \x01(\bR\x0escheduleUnread\x12@\n" +
-	"\apending\x18\x10 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\"\xa4\x02\n" +
+	"\apending\x18\x10 \x01(\v2&.remoteagent.core.v1.SyncPendingActionR\apending\"\xc4\x02\n" +
 	"\x0eSyncDeviceView\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12.\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1a.remoteagent.v1.DeviceKindR\x04kind\x12\x1d\n" +
@@ -1490,7 +1498,10 @@ const file_remoteagent_core_v1_sync_view_proto_rawDesc = "" +
 	"\bmeta_rev\x18\x06 \x01(\x04R\ametaRev\x12\x1f\n" +
 	"\vmeta_broken\x18\a \x01(\bR\n" +
 	"metaBroken\x12\x18\n" +
-	"\atrusted\x18\b \x01(\bR\atrusted\"\xbb\x12\n" +
+	"\atrusted\x18\b \x01(\bR\atrusted\x12\x1e\n" +
+	"\n" +
+	"registered\x18\t \x01(\bR\n" +
+	"registered\"\xbb\x12\n" +
 	"\rSyncStateView\x12>\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\n" +

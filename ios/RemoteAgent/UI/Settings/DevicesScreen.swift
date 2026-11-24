@@ -43,14 +43,16 @@ struct DevicesScreen: View {
         .confirm(
             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
             title: L10n.securityRemoveDeviceDeviceManagement(),
-            text: L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
+            text: removing?.pairingIncomplete == true
+                ? L10n.securityAfterRemovingThisUnfinishedPairingGenerateANewCode()
+                : L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
             confirm: L10n.commonRemove(),
             danger: true
         ) {
-            guard let id = removing?.deviceID else { return }
+            guard let target = removing else { return }
             removing = nil
             removeAction.run {
-                try await context.remote.removeDevice(id)
+                try await context.remote.removeDevice(target.deviceID)
                 await context.remote.refreshDevices()
             }
         }
@@ -69,7 +71,20 @@ struct DevicesScreen: View {
         if !removeAction.error.isEmpty { GroupBanner(removeAction.error, tone: .error) }
 
         let selfClients = vm.clients.filter(\.isSelf)
-        let pairedClients = vm.clients.filter { !$0.isSelf } + vm.unfinishedPairings
+        let pairedClients = vm.clients.filter { !$0.isSelf }
+
+        if !vm.unfinishedPairings.isEmpty {
+            GroupLabel(L10n.settingsUnfinishedPairing())
+            GroupCard(separatorLeading: 46) {
+                ForEach(vm.unfinishedPairings, id: \.deviceID) { c in
+                    ClientRow(
+                        client: c,
+                        onRemove: vm.isManager ? { removing = c } : nil
+                    )
+                }
+            }
+            GroupNote(L10n.securityAfterRemovingThisUnfinishedPairingGenerateANewCode())
+        }
 
         if !selfClients.isEmpty {
             GroupCard(separatorLeading: 46) {

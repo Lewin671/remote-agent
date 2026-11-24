@@ -122,3 +122,92 @@ it("calls this device 当前 in its list and detail", async () => {
   expect(host.querySelector(".navbar")?.textContent).toContain(message("settings.current"));
   expect(host.querySelector(".navbar")?.textContent).not.toContain("当前客户端");
 });
+
+it("offers same-device replacement candidates checked by default and honors toggling", async () => {
+  const { create } = await import("@bufbuild/protobuf");
+  const { SecurityPairingInfoSchema, SecurityPairingReplacementCandidateSchema } = await import(
+    "../gen/remoteagent/core/v1/security_pb"
+  );
+  const { TextSchema } = await import("../gen/remoteagent/core/v1/text_pb");
+  const { DeviceKind } = await import("../gen/remoteagent/v1/relay_pb");
+
+  for (const keepChecked of [true, false]) {
+    const r = demo("role=authority");
+    vi.spyOn(r, "startPairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, {
+        pairingId: "pair-replace",
+        code: "12345678",
+        url: "https://app.example.com/#/pair?code=12345678",
+        expiresMs: BigInt(Date.now() + 600_000),
+      }),
+    );
+    vi.spyOn(r, "pollPairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, {
+        pairingId: "pair-replace",
+        code: "12345678",
+        url: "https://app.example.com/#/pair?code=12345678",
+        expiresMs: BigInt(Date.now() + 600_000),
+        joined: true,
+        joinerKind: DeviceKind.CLIENT,
+        sasEmoji: ["🚀", "🧭", "🔑", "🧩"],
+        joinerMetaReceived: true,
+        replaceOldLabel: create(TextSchema, { key: "security.also_remove_old_devices" }),
+        replaceOldHint: create(TextSchema, { key: "security.also_remove_old_devices_hint" }),
+        replacementCandidates: [
+          create(SecurityPairingReplacementCandidateSchema, {
+            deviceId: "old-pixel-stale",
+            shortId: "old-pix1",
+            displayName: "Pixel 3",
+            description: "Android 14 · Pixel 3",
+            lastActiveText: create(TextSchema, { key: "time.yesterday" }),
+            defaultSelected: true,
+          }),
+          create(SecurityPairingReplacementCandidateSchema, {
+            deviceId: "old-pixel-active",
+            shortId: "old-pix2",
+            displayName: "Active Pixel",
+            description: "Android 15 · Pixel 3",
+            lastActiveText: create(TextSchema, { key: "time.just_now" }),
+            defaultSelected: false,
+          }),
+        ],
+      }),
+    );
+    const approve = vi.spyOn(r, "approvePairing").mockResolvedValue(
+      create(SecurityPairingInfoSchema, { pairingId: "pair-replace", delivered: true }),
+    );
+    vi.spyOn(r, "finishPairingDelivery").mockResolvedValue(
+      create(SecurityPairingInfoSchema, { pairingId: "pair-replace", delivered: true }),
+    );
+
+    await mount(<PairCodePage remote={r} onBack={() => {}} />);
+    await click(message("security.generate_pairing_code"));
+    expect(host.textContent).toContain(message("security.also_remove_old_devices"));
+    expect(host.textContent).toContain("Android 14 · Pixel 3");
+    expect(host.textContent).toContain("old-pix1");
+    expect(host.textContent).toContain(message("time.yesterday"));
+    expect(host.textContent).toContain("old-pix2");
+    expect(host.textContent).toContain(message("time.just_now"));
+
+    const checkboxes = [...host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(checkboxes).toHaveLength(3);
+    expect(checkboxes[0].checked).toBe(false);
+    expect(checkboxes[1].checked).toBe(true);
+    expect(checkboxes[2].checked).toBe(false);
+
+    await act(async () => checkboxes[0].click());
+    if (!keepChecked) {
+      await act(async () => checkboxes[1].click());
+      expect(checkboxes[1].checked).toBe(false);
+    }
+    await click(message("security.allow_to_join"));
+    expect(approve).toHaveBeenCalledWith(
+      "pair-replace",
+      true,
+      keepChecked ? ["old-pixel-stale"] : [],
+    );
+
+    act(() => root.unmount());
+    host.remove();
+  }
+});

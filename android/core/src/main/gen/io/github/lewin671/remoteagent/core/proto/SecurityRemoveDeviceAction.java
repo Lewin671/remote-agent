@@ -65,32 +65,6 @@ public  final class SecurityRemoveDeviceAction extends
 
   }
 
-  public static final int ABANDON_PAIR_DELIVERY_FIELD_NUMBER = 2;
-  private boolean abandonPairDelivery_;
-  /**
-   * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-   * @return The abandonPairDelivery.
-   */
-  @java.lang.Override
-  public boolean getAbandonPairDelivery() {
-    return abandonPairDelivery_;
-  }
-  /**
-   * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-   * @param value The abandonPairDelivery to set.
-   */
-  private void setAbandonPairDelivery(boolean value) {
-    
-    abandonPairDelivery_ = value;
-  }
-  /**
-   * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-   */
-  private void clearAbandonPairDelivery() {
-
-    abandonPairDelivery_ = false;
-  }
-
   public static io.github.lewin671.remoteagent.core.proto.SecurityRemoveDeviceAction parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -237,34 +211,6 @@ public  final class SecurityRemoveDeviceAction extends
       return this;
     }
 
-    /**
-     * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-     * @return The abandonPairDelivery.
-     */
-    @java.lang.Override
-    public boolean getAbandonPairDelivery() {
-      return instance.getAbandonPairDelivery();
-    }
-    /**
-     * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-     * @param value The abandonPairDelivery to set.
-     * @return This builder for chaining.
-     */
-    public Builder setAbandonPairDelivery(boolean value) {
-      copyOnWrite();
-      instance.setAbandonPairDelivery(value);
-      return this;
-    }
-    /**
-     * <code>bool abandon_pair_delivery = 2 [json_name = "abandonPairDelivery"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearAbandonPairDelivery() {
-      copyOnWrite();
-      instance.clearAbandonPairDelivery();
-      return this;
-    }
-
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecurityRemoveDeviceAction)
   }
   @java.lang.Override
@@ -282,11 +228,9 @@ public  final class SecurityRemoveDeviceAction extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "deviceId_",
-            "abandonPairDelivery_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0007" +
-              "";
+              "\u0000\u0001\u0000\u0000\u0001\u0001\u0001\u0000\u0000\u0000\u0001\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

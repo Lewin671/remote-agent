@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
 import { SecurityBootstrapKind } from "./gen/remoteagent/core/v1/security_pb";
-import { errorText } from "./remote";
+import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
+import { errorText, type Remote } from "./remote";
 
 /** Rejoin keeps only the server; account keys and cached ciphertext are erased. */
-export function RejoinButton({ server, children, onDone }: {
-  server: string; children: string; onDone?: () => void;
+export function RejoinButton({ server, remote, children, onDone }: {
+  server: string; remote?: Pick<Remote, "setPushSubscription">; children: string; onDone?: () => void;
 }) {
   const [advice, setAdvice] = useState<string>();
   const [error, setError] = useState("");
@@ -15,7 +16,12 @@ export function RejoinButton({ server, children, onDone }: {
   const leave = async (confirmed = false) => {
     if (busy) return;
     setBusy(true);
-    const standalone = createStandaloneSecurityClient();
+    let authToken = "";
+    const standalone = createStandaloneSecurityClient({
+      onToken: (eff) => {
+        if (!eff.cleared && eff.token) authToken = eff.token;
+      },
+    });
     try {
       const st = await standalone.client.bootstrap();
       const status = await standalone.client.checkExitAdvice();
@@ -26,6 +32,15 @@ export function RejoinButton({ server, children, onDone }: {
           + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;
       if (warning && (!confirmed || warning !== advice)) { setAdvice(warning); return; }
       localStorage.setItem("ra-server", server);
+      const pushTarget = remote ?? createStandalonePushUnsubscriber({
+        server: st.server || server,
+        getToken: () => authToken,
+        ensureToken: async () => {
+          await standalone.client.syncNow(false, "");
+          return authToken;
+        },
+      });
+      await unregisterPushOnExit(pushTarget);
       await standalone.client.clearSecurity();
       location.hash = "/pair?";
       if (onDone) onDone(); else location.reload();

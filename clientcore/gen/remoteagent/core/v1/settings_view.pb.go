@@ -176,6 +176,7 @@ type MachineListCardView struct {
 	SubtitleParts     []*SubtitleSegment
 	InDeviceDirectory bool
 	DirectReady       bool
+	ShortId           string
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -262,6 +263,12 @@ func (m *MachineListCardView) GetDirectReady() bool {
 	}
 	return false
 }
+func (m *MachineListCardView) GetShortId() string {
+	if m != nil {
+		return m.ShortId
+	}
+	return ""
+}
 
 var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -279,6 +286,7 @@ var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(MachineListCardView{}.SubtitleParts), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SubtitleSegment},
 		{Num: 13, Offset: unsafe.Offsetof(MachineListCardView{}.InDeviceDirectory), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(MachineListCardView{}.DirectReady), Kind: litewire.KindBool},
+		{Num: 15, Offset: unsafe.Offsetof(MachineListCardView{}.ShortId), Kind: litewire.KindString},
 	},
 }
 

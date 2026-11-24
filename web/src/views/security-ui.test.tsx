@@ -14,6 +14,7 @@ import {
 } from "./Security";
 import { Home } from "./Home";
 import * as securityClient from "../core/security-client";
+import type { Remote } from "../remote";
 import {
   SecurityBootstrapKind,
   SecurityExitAdviceSchema,
@@ -239,20 +240,46 @@ it("requires the candidate to confirm SAS before authority approval and waits fo
   await click(message("security.allow_to_join"));
   expect(host.textContent).toContain(message("security.device_joined"));
 });
-it("gives authority-specific exit advice before erasing keys", async () => {
-  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
-    client: {
-      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, isAuthority: true })),
-      checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
-        authority: true,
-        unresolved: false,
-        message: "security.this_browser_is_the_only_managing_client_transfer_management",
+it("gives authority-specific exit advice and unregisters push before erasing keys", async () => {
+  const clearSecurity = vi.fn(async () => {});
+  const setPushSubscription = vi.fn(async () => {});
+  const unsubscribe = vi.fn(async () => true);
+  const origSW = Object.getOwnPropertyDescriptor(navigator, "serviceWorker");
+  Object.defineProperty(navigator, "serviceWorker", {
+    configurable: true,
+    value: {
+      getRegistration: vi.fn(async () => ({
+        pushManager: {
+          getSubscription: vi.fn(async () => ({ unsubscribe })),
+        },
       })),
-    } as unknown as securityClient.SecurityClient,
-    dispose: vi.fn(),
+    },
   });
-  await mount(<LeaveAlert onCancel={() => {}} />);
-  expect(host.textContent).toContain("建议先交接");
+  try {
+    vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
+      client: {
+        bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, { bootstrap: SecurityBootstrapKind.READY, isAuthority: true })),
+        checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
+          authority: true,
+          unresolved: false,
+          message: "security.this_device_is_the_only_managing_client_transfer_management",
+        })),
+        clearSecurity,
+      } as unknown as securityClient.SecurityClient,
+      dispose: vi.fn(),
+    });
+    const fakeRemote = { setPushSubscription } as unknown as Remote;
+    await mount(<LeaveAlert remote={fakeRemote} onCancel={() => {}} />);
+    expect(host.textContent).toContain("本机是唯一管理端");
+    expect(host.textContent).not.toContain("此浏览器");
+    await click(message("security.exit"));
+    expect(setPushSubscription).toHaveBeenCalledWith("", []);
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(clearSecurity).toHaveBeenCalledTimes(1);
+  } finally {
+    if (origSW) Object.defineProperty(navigator, "serviceWorker", origSW);
+    else delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+  }
 });
 it("renews while an unconfirmed code remains in memory", async () => {
   const r = demo("role=authority");

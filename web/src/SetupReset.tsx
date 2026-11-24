@@ -2,6 +2,7 @@ import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
 export function SetupReset({ onDone }: { onDone: () => void }) {
@@ -17,15 +18,30 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
           void (async () => {
             const standalone = createStandaloneSecurityClient();
             try {
-              await standalone.client.bootstrap();
-              const a = await standalone.client.checkExitAdvice();
-              setAdvice(translateSecurityKey(a.message));
-              setAsking(true);
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
+              let bootErr: unknown;
+              try {
+                await standalone.client.bootstrap();
+              } catch (e) {
+                bootErr = e;
+              }
+              let nextAdvice = "";
+              try {
+                const a = await standalone.client.checkExitAdvice();
+                if (a.authority || a.unresolved || !bootErr) {
+                  nextAdvice = translateSecurityKey(a.message);
+                }
+              } catch {
+                // Fall back to the generic reset warning when exit advice cannot be read.
+              }
+              setAdvice(
+                nextAdvice ||
+                  l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will"),
+              );
             } finally {
               standalone.dispose();
             }
+            setError("");
+            setAsking(true);
           })();
         }}
       >
@@ -42,9 +58,31 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
           danger
           onCancel={() => setAsking(false)}
           onOk={async () => {
-            const standalone = createStandaloneSecurityClient();
+            let authToken = "";
+            const standalone = createStandaloneSecurityClient({
+              onToken: (eff) => {
+                if (!eff.cleared && eff.token) authToken = eff.token;
+              },
+            });
             try {
-              await standalone.client.bootstrap();
+              let server = "";
+              try {
+                const st = await standalone.client.bootstrap();
+                server = st?.server ?? "";
+              } catch {
+                // Local security storage may be corrupt or missing private keys; allow clearing anyway.
+              }
+              const pushTarget = server
+                ? createStandalonePushUnsubscriber({
+                    server,
+                    getToken: () => authToken,
+                    ensureToken: async () => {
+                      await standalone.client.syncNow(false, "");
+                      return authToken;
+                    },
+                  })
+                : undefined;
+              await unregisterPushOnExit(pushTarget);
               await standalone.client.clearSecurity();
               setAsking(false);
               location.hash = "";

@@ -15,6 +15,9 @@ const maxSyncPages = 512
 type recordFlagPatch struct {
 	needsRotation          *bool
 	recoveryObjectsPending *bool
+	addPendingRemove       []string
+	setPendingRemove       bool
+	pendingRemove          []string
 }
 
 func clearRecoveryObjectsPatch() *recordFlagPatch {
@@ -25,6 +28,14 @@ func clearRecoveryObjectsPatch() *recordFlagPatch {
 func clearNeedsRotationPatch() *recordFlagPatch {
 	f := false
 	return &recordFlagPatch{needsRotation: &f}
+}
+
+func addPendingRemovePatch(ids []string) *recordFlagPatch {
+	return &recordFlagPatch{addPendingRemove: slices.Clone(ids)}
+}
+
+func setPendingRemovePatch(ids []string) *recordFlagPatch {
+	return &recordFlagPatch{setPendingRemove: true, pendingRemove: slices.Clone(ids)}
 }
 
 type installRecordTask struct {
@@ -157,6 +168,35 @@ func (t *installRecordTask) step(e *Engine, ev *secEvent) error {
 			}
 			if t.extraFlags.recoveryObjectsPending != nil {
 				next.RecoveryObjectsPending = *t.extraFlags.recoveryObjectsPending
+			}
+			if t.extraFlags.setPendingRemove {
+				next.PendingRemoveDeviceIDs = slices.Clone(t.extraFlags.pendingRemove)
+			}
+			if len(t.extraFlags.addPendingRemove) > 0 {
+				next.PendingRemoveDeviceIDs = append(next.PendingRemoveDeviceIDs, t.extraFlags.addPendingRemove...)
+			}
+		}
+		if len(next.PendingRemoveDeviceIDs) > 0 {
+			if !next.Member || newHead.Core.AuthorityID != next.MemberID {
+				next.PendingRemoveDeviceIDs = nil
+			} else {
+				seen := make(map[string]bool, len(next.PendingRemoveDeviceIDs))
+				pruned := next.PendingRemoveDeviceIDs[:0]
+				for _, id := range next.PendingRemoveDeviceIDs {
+					if id == "" || seen[id] || id == next.MemberID || id == newHead.Core.AuthorityID {
+						continue
+					}
+					if m, live := newHead.Core.Member(id); !live || m.Kind != devicesec.Client {
+						continue
+					}
+					seen[id] = true
+					pruned = append(pruned, id)
+				}
+				if len(pruned) == 0 {
+					next.PendingRemoveDeviceIDs = nil
+				} else {
+					next.PendingRemoveDeviceIDs = pruned
+				}
 			}
 		}
 		encoded, err := next.Encode()

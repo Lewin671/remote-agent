@@ -2098,10 +2098,42 @@
     }
   },
   {
-    "key": "security.this_browser_is_the_only_managing_client_transfer_management",
-    "zh-CN": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "en": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
-    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "key": "security.also_remove_old_devices",
+    "zh-CN": "同时移除旧设备",
+    "en": "Also remove old devices",
+    "notes": "管理端批准配对时检测到已有同平台同型号旧成员的复选框标签。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.also_remove_old_devices_hint",
+    "zh-CN": "检测到已有同型号设备，批准成功后将自动移除以下旧记录：",
+    "en": "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:",
+    "notes": "管理端批准配对时「同时移除旧设备」选项下方的说明文案，紧接将被移除的条目清单。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device_is_the_only_managing_client_transfer_management",
+    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "en": "This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
+    "notes": "退出账户时的风险提示（通用跨端文案，适用于手机、平板与浏览器）。无变量。",
     "params": {},
     "platforms": [
       "web",
@@ -5486,20 +5518,6 @@
     }
   },
   {
-    "key": "security.ios_this_device_is_the_sole_managing_client_transfer_management",
-    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "en": "This device is the sole managing client. Transfer management first if possible. Exiting deletes management keys; without a recovery code backup, management will be lost.",
-    "notes": "iOS AuthorityAccess.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_this_device_s_account_keys_and_cache_will_be",
     "zh-CN": "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
     "en": "This device’s account keys and cache will be deleted before joining with a pairing code.",
@@ -5901,6 +5919,38 @@
     "en": "Confirm the new recovery code is saved offline first",
     "notes": "恢复流程中未勾选确认已保存新恢复码时的错误提示。无变量。",
     "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.old_devices_removal_incomplete",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "新设备已加入，但有 {count} 台旧设备未能自动移除，请稍后重试或在设备列表中手动移除。"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "The new device joined, but {count} old device could not be removed automatically. Retry later or remove it manually in Devices.",
+        "other": "The new device joined, but {count} old devices could not be removed automatically. Retry later or remove them manually in Devices."
+      }
+    },
+    "notes": "配对交付完成后自动移除勾选的旧设备存在失败或重启后仍有待移除旧设备时的核心警告提示。count 为尚未移除的旧设备数量（正整数）。允许多行。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 1
+      }
+    },
     "platforms": [
       "web",
       "android",

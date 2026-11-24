@@ -1,6 +1,8 @@
 package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.core.proto.SecurityPairingInfo
+import io.github.lewin671.remoteagent.core.proto.SecurityPairingReplacementCandidate
+import io.github.lewin671.remoteagent.core.proto.Text
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -13,9 +15,16 @@ import kotlinx.coroutines.launch
 sealed interface PairingUiState {
     data object Starting : PairingUiState
     data class Waiting(val code: String, val url: String, val expiresMs: Long) : PairingUiState
-    data class Compare(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
+    data class Compare(
+        val emoji: List<String>,
+        val kind: DeviceKind,
+        val replacementCandidates: List<SecurityPairingReplacementCandidate> = emptyList(),
+        val selectedRemoveIds: Set<String> = emptySet(),
+        val replaceOldLabel: Text? = null,
+        val replaceOldHint: Text? = null,
+    ) : PairingUiState
     data class Sending(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
-    data object Done : PairingUiState
+    data class Done(val warning: Text? = null) : PairingUiState
     data class Failed(val message: MessageText, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
 }
 
@@ -35,7 +44,8 @@ class PairingController(
     val state = mutable.asStateFlow()
     private var generation = 0
     private var pairingId: String? = null
-    private var consent: Pair<List<String>, DeviceKind>? = null
+    private var consent: Triple<List<String>, DeviceKind, List<String>>? = null
+    private var removeSelectionTouched = false
 
     fun enter() {
         if (pairingId == null && mutable.value == PairingUiState.Starting) start()
@@ -45,6 +55,7 @@ class PairingController(
         val run = ++generation
         val cancellingId = if (consent == null) pairingId else null
         if (cancellingId != null) pairingId = null
+        removeSelectionTouched = false
         mutable.value = PairingUiState.Starting
         scope.launch {
             try {
@@ -66,10 +77,20 @@ class PairingController(
                 }
                 if (run == generation && cur.joined) {
                     val kind = cur.joinerKind
-                    mutable.value = PairingUiState.Compare(cur.sasEmojiList.toList(), kind)
+                    mutable.value = compareState(cur, currentSelected = null)
+                    var metaPolls = 0
+                    while (isActive && run == generation && consent == null && !cur.joinerMetaReceived && metaPolls < 15) {
+                        delay(1_000L)
+                        if (run != generation || consent != null) return@launch
+                        metaPolls++
+                        val next = runCatching { client.pollPairing(info.pairingId) }.getOrNull() ?: break
+                        cur = next
+                        val prev = mutable.value as? PairingUiState.Compare ?: break
+                        mutable.value = compareState(cur, currentSelected = if (removeSelectionTouched) prev.selectedRemoveIds else null)
+                    }
                 }
             } catch (e: CancellationException) {
-                if (run == generation) {
+                if (run == generation && consent == null) {
                     mutable.value = PairingUiState.Failed(
                         UiMessages.securityAndroidPausedRetryAfterReturningToTheForeground().messageText(),
                         uncertain = false,
@@ -78,7 +99,7 @@ class PairingController(
                 }
                 throw e
             } catch (e: Exception) {
-                if (run == generation) {
+                if (run == generation && consent == null) {
                     val retryable = (e as? SecurityWorkflowError)?.retryable == true
                     val uncertain = (e as? SecurityWorkflowError)?.uncertain == true
                     mutable.value = PairingUiState.Failed(errorText(e), uncertain, retryable)
@@ -87,9 +108,34 @@ class PairingController(
         }
     }
 
+    private fun compareState(cur: SecurityPairingInfo, currentSelected: Set<String>?): PairingUiState.Compare {
+        val candidates = cur.replacementCandidatesList.toList()
+        val allowedIds = candidates.map { it.deviceId }.toSet()
+        val selected = currentSelected?.intersect(allowedIds)
+            ?: candidates.filter { it.defaultSelected }.map { it.deviceId }.toSet()
+        return PairingUiState.Compare(
+            emoji = cur.sasEmojiList.toList(),
+            kind = cur.joinerKind,
+            replacementCandidates = candidates,
+            selectedRemoveIds = selected,
+            replaceOldLabel = if (cur.hasReplaceOldLabel()) cur.replaceOldLabel else null,
+            replaceOldHint = if (cur.hasReplaceOldHint()) cur.replaceOldHint else null,
+        )
+    }
+
+    fun toggleRemoveCandidate(deviceId: String, checked: Boolean) {
+        val cur = mutable.value as? PairingUiState.Compare ?: return
+        removeSelectionTouched = true
+        val next = if (checked) cur.selectedRemoveIds + deviceId else cur.selectedRemoveIds - deviceId
+        mutable.value = cur.copy(selectedRemoveIds = next)
+    }
+
     fun approve() {
         val comparing = mutable.value as? PairingUiState.Compare ?: return
-        consent = comparing.emoji to comparing.kind
+        val removeIds = comparing.replacementCandidates
+            .filter { it.deviceId in comparing.selectedRemoveIds }
+            .map { it.deviceId }
+        consent = Triple(comparing.emoji, comparing.kind, removeIds)
         sendApproval()
     }
 
@@ -103,12 +149,12 @@ class PairingController(
 
     private fun sendApproval() {
         val id = pairingId ?: return
-        val (emoji, kind) = consent ?: return
+        val (emoji, kind, removeIds) = consent ?: return
         val run = generation
         mutable.value = PairingUiState.Sending(emoji, kind)
         operationScope.launch {
             try {
-                var res = client.approvePairing(id, sasConfirmed = true)
+                var res = client.approvePairing(id, sasConfirmed = true, removeDeviceIds = removeIds)
                 while (!res.delivered) {
                     delay(1_200L)
                     res = client.finishPairingDelivery(id)
@@ -116,7 +162,9 @@ class PairingController(
                 if (run == generation) {
                     pairingId = null
                     consent = null
-                    mutable.value = PairingUiState.Done
+                    mutable.value = PairingUiState.Done(
+                        warning = if (res.hasRemoveOldNotice()) res.removeOldNotice else null,
+                    )
                 }
                 runCatching { onCompleted() }
             } catch (e: CancellationException) {

@@ -647,10 +647,15 @@ private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
         }
         Column(Modifier.weight(1f)) {
             Text(m.name, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (m.subtitlePartsList.isNotEmpty()) {
+            if (m.shortId.isNotEmpty() || m.subtitlePartsList.isNotEmpty()) {
                 val sub = buildAnnotatedString {
-                    m.subtitlePartsList.forEachIndexed { idx, seg ->
-                        if (idx > 0) {
+                    var hasPrev = false
+                    if (m.shortId.isNotEmpty()) {
+                        withStyle(SpanStyle(color = p.ink2)) { append(m.shortId) }
+                        hasPrev = true
+                    }
+                    m.subtitlePartsList.forEach { seg ->
+                        if (hasPrev) {
                             withStyle(SpanStyle(color = p.ink2)) { append(" · ") }
                         }
                         if (seg.warn) {
@@ -660,6 +665,7 @@ private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
                         } else {
                             withStyle(SpanStyle(color = p.ink2)) { append(uiText(seg.text)) }
                         }
+                        hasPrev = true
                     }
                 }
                 Text(
@@ -2045,6 +2051,59 @@ fun PairScreen(replacesDeviceId: String = "") {
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
+                        if (step is PairingUiState.Compare && step.replacementCandidates.isNotEmpty()) {
+                            Column(
+                                Modifier.fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                                    .clip(Radii.R12)
+                                    .background(p.raised)
+                                    .padding(10.dp),
+                            ) {
+                                Text(
+                                    step.replaceOldLabel?.let { uiText(it) }?.ifEmpty { null }
+                                        ?: copy(UiMessages.securityAlsoRemoveOldDevices()),
+                                    style = T.s15b,
+                                    color = p.ink,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                                val hintStr = step.replaceOldHint?.let { uiText(it) }.orEmpty()
+                                if (hintStr.isNotEmpty()) {
+                                    Text(
+                                        hintStr,
+                                        style = T.s13,
+                                        color = p.ink2,
+                                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 6.dp),
+                                    )
+                                }
+                                step.replacementCandidates.forEach { cand ->
+                                    val checked = cand.deviceId in step.selectedRemoveIds
+                                    val title = cand.displayName.ifEmpty { cand.description.ifEmpty { cand.shortId } }
+                                    val lastActive = if (cand.hasLastActiveText()) uiText(cand.lastActiveText) else ""
+                                    val detail = listOfNotNull(
+                                        cand.description.takeIf { it.isNotEmpty() && it != title },
+                                        cand.shortId.takeIf { it.isNotEmpty() },
+                                        lastActive.takeIf { it.isNotEmpty() },
+                                    ).joinToString(" · ")
+                                    Row(
+                                        Modifier.fillMaxWidth()
+                                            .clickable { model.toggleRemoveCandidate(cand.deviceId, !checked) }
+                                            .padding(vertical = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        androidx.compose.material3.Checkbox(
+                                            checked = checked,
+                                            onCheckedChange = { model.toggleRemoveCandidate(cand.deviceId, it) },
+                                        )
+                                        Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                                            Text(title, style = T.s13b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            if (detail.isNotEmpty()) {
+                                                Text(detail, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         Btns {
                             PillButton(
                                 copy(UiMessages.approvalAndroidDenyDecision()),
@@ -2066,7 +2125,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         }
                     }
                 }
-                PairingUiState.Done ->
+                is PairingUiState.Done -> {
                     Notice(
                         copy(UiMessages.settingsAndroidNewDeviceJoined()),
                         Modifier.padding(top = 14.dp),
@@ -2074,6 +2133,15 @@ fun PairScreen(replacesDeviceId: String = "") {
                         onAction = nav.back,
                         icon = Lucide.Check,
                     )
+                    val warnText = step.warning?.let { uiText(it) }.orEmpty()
+                    if (warnText.isNotEmpty()) {
+                        Notice(
+                            warnText,
+                            Modifier.padding(top = 10.dp),
+                            tone = NoticeTone.WARN,
+                        )
+                    }
+                }
                 is PairingUiState.Failed ->
                     Notice(
                         uiText(step.message),

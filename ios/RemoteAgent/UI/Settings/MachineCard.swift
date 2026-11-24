@@ -47,7 +47,8 @@ struct MachineCard: View {
     }
 
     @ViewBuilder private var subtitleView: some View {
-        let parts = machine.subtitleParts.compactMap { seg -> (text: String, warn: Bool)? in
+        let shortSeg: [(text: String, warn: Bool)] = machine.shortID.isEmpty ? [] : [(machine.shortID, false)]
+        let parts = shortSeg + machine.subtitleParts.compactMap { seg -> (text: String, warn: Bool)? in
             let rendered = seg.text.rendered()
             return rendered.isEmpty ? nil : (rendered, seg.warn)
         }

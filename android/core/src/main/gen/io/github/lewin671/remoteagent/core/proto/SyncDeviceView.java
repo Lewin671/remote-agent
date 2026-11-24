@@ -291,6 +291,32 @@ public  final class SyncDeviceView extends
     trusted_ = false;
   }
 
+  public static final int REGISTERED_FIELD_NUMBER = 9;
+  private boolean registered_;
+  /**
+   * <code>bool registered = 9 [json_name = "registered"];</code>
+   * @return The registered.
+   */
+  @java.lang.Override
+  public boolean getRegistered() {
+    return registered_;
+  }
+  /**
+   * <code>bool registered = 9 [json_name = "registered"];</code>
+   * @param value The registered to set.
+   */
+  private void setRegistered(boolean value) {
+    
+    registered_ = value;
+  }
+  /**
+   * <code>bool registered = 9 [json_name = "registered"];</code>
+   */
+  private void clearRegistered() {
+
+    registered_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncDeviceView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -675,6 +701,34 @@ public  final class SyncDeviceView extends
       return this;
     }
 
+    /**
+     * <code>bool registered = 9 [json_name = "registered"];</code>
+     * @return The registered.
+     */
+    @java.lang.Override
+    public boolean getRegistered() {
+      return instance.getRegistered();
+    }
+    /**
+     * <code>bool registered = 9 [json_name = "registered"];</code>
+     * @param value The registered to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRegistered(boolean value) {
+      copyOnWrite();
+      instance.setRegistered(value);
+      return this;
+    }
+    /**
+     * <code>bool registered = 9 [json_name = "registered"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRegistered() {
+      copyOnWrite();
+      instance.clearRegistered();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncDeviceView)
   }
   @java.lang.Override
@@ -700,10 +754,11 @@ public  final class SyncDeviceView extends
             "metaRev_",
             "metaBroken_",
             "trusted_",
+            "registered_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0002" +
-              "\u0004\u0002\u0005\u1009\u0000\u0006\u0003\u0007\u0007\b\u0007";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\u0208\u0002\f\u0003\u0002" +
+              "\u0004\u0002\u0005\u1009\u0000\u0006\u0003\u0007\u0007\b\u0007\t\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

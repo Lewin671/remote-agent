@@ -136,4 +136,16 @@ public interface MachineListCardViewOrBuilder extends
    * @return The directReady.
    */
   boolean getDirectReady();
+
+  /**
+   * <code>string short_id = 15 [json_name = "shortId"];</code>
+   * @return The shortId.
+   */
+  java.lang.String getShortId();
+  /**
+   * <code>string short_id = 15 [json_name = "shortId"];</code>
+   * @return The bytes for shortId.
+   */
+  com.google.protobuf.ByteString
+      getShortIdBytes();
 }

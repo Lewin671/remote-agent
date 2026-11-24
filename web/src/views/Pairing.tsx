@@ -11,6 +11,7 @@ import {
   type StandaloneSecurityHandle,
 } from "../core/security-client";
 import { errorText } from "../remote";
+import { describeBrowser } from "../devices";
 import { Banner } from "../ui";
 import { LoaderCircle } from "../icons";
 
@@ -207,6 +208,8 @@ export function Setup({
         existingRepair: isExistingRepair,
         existingServer: repairServer,
         rawLink: fromLink && link === fromLink ? location.hash : "",
+        platform: "web",
+        description: describeBrowser(navigator.userAgent),
       });
       mine.pairingId = info.pairingId;
       if (!current()) {

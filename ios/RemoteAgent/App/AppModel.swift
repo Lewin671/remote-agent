@@ -6,6 +6,7 @@ import Observation
 import RACore
 import RAProto
 import RAWebRTC
+import Security
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -217,27 +218,40 @@ final class AppModel {
         var checkExitAdvice: @Sendable (_ vault: Vault) async throws -> PBSecurityExitAdvice = { vault in
             let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: false)
             defer { host.close() }
-            let st = try await host.client.bootstrap()
-            if st.bootstrap == .invalid {
-                throw VaultError.unreadable
+            var bootErr: Error?
+            do {
+                let st = try await host.client.bootstrap()
+                if st.bootstrap == .invalid {
+                    bootErr = VaultError.unreadable
+                }
+            } catch {
+                bootErr = error
             }
-            return try await host.client.checkExitAdvice()
+            if let adv = try? await host.client.checkExitAdvice(),
+               adv.authority || adv.unresolved || bootErr == nil {
+                return adv
+            }
+            throw bootErr ?? VaultError.unreadable
         }
         var wipeLegacyCaches: @Sendable (AccountStorage) -> Void = { storage in
             try? CipherStore.eraseAll(root: storage.cacheRoot)
         }
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
-        var deviceDescription: @MainActor @Sendable () -> String = {
-            "iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")"
-        }
+        var deviceDescription: @MainActor @Sendable () -> String = AppModel.defaultDeviceDescription
         /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
         var erase: @Sendable (AccountStorage) throws -> Void = { storage in
             try LocalAccountData.erase(
                 vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
+        /// Unregisters APNs remote notifications on logout so no stale push registration remains.
+        var unregisterRemoteNotifications: @MainActor () -> Void = {
+            UIApplication.shared.unregisterForRemoteNotifications()
+        }
         /// Notifications may show the old account's approvals in full.
         var clearNotifications: @MainActor () -> Void = {
-            UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+            let center = UNUserNotificationCenter.current()
+            center.removeAllDeliveredNotifications()
+            center.removeAllPendingNotificationRequests()
         }
     }
 
@@ -247,6 +261,8 @@ final class AppModel {
     // MARK: What screens read
 
     private(set) var stage = Stage.loading
+    /// False when startup failed due to transient Keychain/storage unavailability rather than confirmed corruption.
+    private(set) var bootstrapCanReset = true
     /// The account in use and its engine; nil until one is, and after logout.
     private(set) var context: AccountContext?
     /// The app is in front. Screens that tick or hold a terminal follow it:
@@ -268,11 +284,56 @@ final class AppModel {
         try StandaloneSecurityHost(store: parts.storage.vault, http: Self.http, allowPlainHttp: parts.allowPlainHttp)
     }
 
+    nonisolated static func hardwareModelIdentifier() -> String {
+        var sysinfo = utsname()
+        uname(&sysinfo)
+        let raw = withUnsafePointer(to: &sysinfo.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) {
+                String(cString: $0)
+            }
+        }.trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw == "arm64" || raw == "x86_64" || raw == "i386" {
+            let sim = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"]?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return sim
+        }
+        return raw
+    }
+
+    nonisolated static func deviceDescription(
+        systemVersion: String,
+        hardwareModel: String,
+        idiom: UIUserInterfaceIdiom
+    ) -> String {
+        let family = idiom == .pad ? "iPad" : "iPhone"
+        let trimmed = hardwareModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = trimmed.isEmpty ? family : trimmed
+        return "iOS " + systemVersion + " · " + model
+    }
+
+    static func defaultDeviceDescription() -> String {
+        deviceDescription(
+            systemVersion: UIDevice.current.systemVersion,
+            hardwareModel: hardwareModelIdentifier(),
+            idiom: UIDevice.current.userInterfaceIdiom
+        )
+    }
+
     var joiningCalls: JoinCalls {
-        .live(http: Self.http, existing: nil, vault: parts.storage.vault, allowPlainHttp: parts.allowPlainHttp)
+        .live(
+            http: Self.http,
+            existing: nil,
+            vault: parts.storage.vault,
+            allowPlainHttp: parts.allowPlainHttp,
+            deviceDescription: parts.deviceDescription
+        )
     }
     func rePairingCalls(context: AccountContext) -> JoinCalls {
-        .live(client: context.remote.securityClient, existing: context.account)
+        .live(
+            client: context.remote.securityClient,
+            existing: context.account,
+            deviceDescription: parts.deviceDescription
+        )
     }
 
     /// Sample data is shown and nothing is stored or sent (`-demo`, debug builds).
@@ -447,8 +508,13 @@ final class AppModel {
                 log.error(
                     "stored account does not open: \(String(describing: type(of: error)), privacy: .public)"
                 )
+                let transientKeyAccess =
+                    (error as? SecurityWorkflowError)?.code == .storage
+                    || (error as? VaultError)?.status == errSecInteractionNotAllowed
+                bootstrapCanReset = !transientKeyAccess
                 stage = .failed(error.localizedDescription)
             case .success(let status):
+                bootstrapCanReset = true
                 securityStatus = status
                 legacyRepairNotice = status.legacyRepairNotice || legacyWipedNow
                 switch status.bootstrap {
@@ -580,13 +646,18 @@ final class AppModel {
 
     /// The confirmation captures security facts, independently of its displayed language.
     enum RejoinAdvice: Equatable {
-        case sensitive(authority: Bool, unresolved: Bool)
+        case sensitive(authority: Bool, unresolved: Bool, message: String = "")
         case unreadable
         var text: String {
             switch self {
-            case .sensitive(let authority, let unresolved):
-                AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
-            case .unreadable: L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
+            case .sensitive(let authority, let unresolved, let message):
+                let coreText = translateSecurityKey(message)
+                let lead = coreText.isEmpty
+                    ? AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved)
+                    : coreText
+                return lead + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            case .unreadable:
+                return L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
             }
         }
     }
@@ -601,7 +672,7 @@ final class AppModel {
                 adv = try await parts.checkExitAdvice(parts.storage.vault)
             }
             if adv.authority || adv.unresolved {
-                return .sensitive(authority: adv.authority, unresolved: adv.unresolved)
+                return .sensitive(authority: adv.authority, unresolved: adv.unresolved, message: adv.message)
             }
             return nil
         } catch {
@@ -658,6 +729,7 @@ final class AppModel {
             stage = .join
             return
         }
+        parts.unregisterRemoteNotifications()
         parts.clearNotifications()
         let storage = parts.storage
         let erase = parts.erase

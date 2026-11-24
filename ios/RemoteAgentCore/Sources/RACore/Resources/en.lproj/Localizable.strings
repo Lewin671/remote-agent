@@ -595,6 +595,7 @@
 "new_session_removed_blocked" = "This project was removed. Add it again first.";
 "new_session_retry_save" = "Retry saving";
 "new_session_save_failed" = "Project settings were not saved. Try again.";
+"new_session_saved_machine_unavailable_choose" = "The computer previously saved for this project is unavailable. Choose a computer to start on.";
 "new_session_start" = "Start new session";
 "new_session_start_failed" = "Could not start: %1$@";
 "new_session_start_shortcut" = "%1$@ Start";
@@ -924,6 +925,8 @@
 "security_after_removing_this_unfinished_pairing_generate_a_new_code" = "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.";
 "security_after_submission_wait_48_hours_the_current_managing_client" = "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.";
 "security_allow_to_join" = "Allow to join";
+"security_also_remove_old_devices" = "Also remove old devices";
+"security_also_remove_old_devices_hint" = "Existing entries for this device model were found. After approval succeeds, these old entries will be removed:";
 "security_apply_again" = "Apply again";
 "security_approved_waiting_for_the_new_device_to_finish_binding" = "Approved. Waiting for the new device to finish binding…";
 "security_asked_the_browser_to_retain_data" = "Asked the browser to retain data";
@@ -1075,7 +1078,6 @@
 "security_ios_this_deletes_the_entire_account_on_the_current_relay" = "This deletes the entire account on the current relay, device registrations, encrypted session records, images, file chunks, and account settings, and disconnects all paired devices. This is permanent account deletion; a recovery code cannot restore it.";
 "security_ios_this_device_has_no_available_camera_go_back_to" = "This device has no available camera. Go back to enter the pairing code manually.";
 "security_ios_this_device_is_over_5_minutes_behind_the_security" = "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.";
-"security_ios_this_device_is_the_sole_managing_client_transfer_management" = "This device is the sole managing client. Transfer management first if possible. Exiting deletes management keys; without a recovery code backup, management will be lost.";
 "security_ios_this_device_s_account_keys_and_cache_will_be" = "This device’s account keys and cache will be deleted before joining with a pairing code.";
 "security_ios_this_device_was_removed_the_successor_is_now_the" = "This device was removed. The successor is now the sole managing client. Pair again to rejoin.";
 "security_ios_this_ipad" = "this iPad";
@@ -1187,12 +1189,12 @@
 "security_the_server_does_not_recognize_this_device" = "The server does not recognize this device";
 "security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" = "The unpublished pairing draft expired. You can explicitly abandon it and start over.";
 "security_the_unpublished_pairing_draft_was_canceled_or_its_candidate" = "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.";
-"security_this_browser_is_the_only_managing_client_transfer_management" = "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.";
 "security_this_browser_will_be_the_only_managing_client_clearing" = "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.";
 "security_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.";
 "security_this_device" = "This device";
 "security_this_device_becomes_the_managing_client" = "This device becomes the managing client";
 "security_this_device_has_an_unfinished_join_request_deleting_it" = "This device has an unfinished join request. Deleting it prevents you from continuing that request.";
+"security_this_device_is_the_only_managing_client_transfer_management" = "This device is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.";
 "security_this_device_manages_the_account" = "This device manages the account";
 "security_this_device_s_clock_is_behind_the_managing_client" = "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.";
 "security_this_page_and_the_server_or_pairing_device_use" = "This page and the server or pairing device use different versions. Refresh to update and retry.";

@@ -78,12 +78,25 @@ struct AccountSecurityScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(AccountContext.self) private var context
     @State private var pending: PBSecurityPendingOpSummary?
+    @State private var pendingRemoveNotice: PBCoreText?
     @State private var action = ActionRunner()
     @State private var readError = ""
     @State private var showPending = false
     @State private var abandon = false
     var body: some View {
         SettingsPage {
+            if !showPending, let notice = pendingRemoveNotice {
+                let text = notice.rendered()
+                if !text.isEmpty {
+                    GroupBanner(text, tone: .warn, action: L10n.commonRetry()) {
+                        action.run {
+                            try await context.remote.resumeSecurityOperation()
+                            await context.remote.refreshDevices()
+                            await read()
+                        }
+                    }
+                }
+            }
             if !showPending { AccountSecurityDetails(pending: pending != nil) { showPending = true } }
             if showPending, let pending {
                 GroupNote(L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe())
@@ -127,7 +140,7 @@ struct AccountSecurityScreen: View {
                     if pending.kind == "handoffOffer" {
                         try await context.remote.discardPendingOp(abandonHandoff: true)
                     } else if !pending.deliveryCandidateID.isEmpty {
-                        try await context.remote.removeDevice(pending.deliveryCandidateID, abandonPairDelivery: true)
+                        try await context.remote.removeDevice(pending.deliveryCandidateID)
                         if !pending.deliveryPairingID.isEmpty {
                             context.memory.value { AuthorityPairingSessions() }.discard(pairingID: pending.deliveryPairingID)
                         }
@@ -143,6 +156,7 @@ struct AccountSecurityScreen: View {
         do {
             let st = try await context.remote.getSecurityStatus()
             pending = st.hasPendingOp ? st.pendingOp : nil
+            pendingRemoveNotice = st.hasPendingRemoveNotice ? st.pendingRemoveNotice : nil
             readError = ""
             if pending == nil { showPending = false }
         } catch { readError = errorText(error) }

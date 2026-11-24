@@ -308,7 +308,7 @@ func (e *Engine) HandleKeyAgreed(nowMs int64, ev *corev1.SecurityKeyAgreedEvent)
 	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
 		se := &secEvent{kind: evAgree, tag: w.tag, bytes: ev.Shared}
 		if ev.Error != "" {
-			se.err = errors.New(ev.Error)
+			se.err = newWfError("storage", ev.Error)
 		} else if w.cachePeer && len(ev.Shared) == 32 {
 			var k [32]byte
 			copy(k[:], ev.Shared)
@@ -1586,6 +1586,20 @@ func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
 		Error:               err.Error(),
 		StructuredErrorCode: StructuredErrorCode(err),
 	})
+}
+
+// VerifiedMachineReplacementOrigins verifies authority-signed replacement proofs
+// for target against the currently verified membership chain and returns the set
+// of replaced ancestor machine IDs.
+func (e *Engine) VerifiedMachineReplacementOrigins(target string, proofs []*v1.MachineReplacementProof) map[string]bool {
+	if !e.loaded || target == "" || len(proofs) == 0 {
+		return nil
+	}
+	origins, err := MachineReplacementOrigins(e.pin.Account, target, e.states, proofs)
+	if err != nil || len(origins) == 0 {
+		return nil
+	}
+	return origins
 }
 
 // HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).

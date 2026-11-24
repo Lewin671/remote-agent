@@ -113,6 +113,7 @@ message MachineListCardView {
   repeated SubtitleSegment subtitle_parts = 12;
   bool in_device_directory = 13;
   bool direct_ready = 14;
+  string short_id = 15;
 }
 
 message ClientRowView {

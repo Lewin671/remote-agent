@@ -19,6 +19,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/i18n"
+	"github.com/Lewin671/remote-agent/shared/devicesec"
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"google.golang.org/protobuf/proto"
 )
@@ -68,7 +69,10 @@ const (
 	maxAccountPushDeliveries = 32
 )
 
-var errPushBusy = errors.New("push capacity exhausted; try again later")
+var (
+	errPushBusy        = errors.New("push capacity exhausted; try again later")
+	errPushTargetOwned = errors.New("push target belongs to another device")
+)
 
 // Retained keys have a fixed size even when a peer supplies a very long
 // session identifier. JSON framing also keeps the fields unambiguous.
@@ -160,6 +164,22 @@ type pushRecent struct {
 	at   time.Time
 }
 
+func isAccountAuthorityTx(ctx context.Context, tx *sql.Tx, accountID, deviceID string) (bool, error) {
+	var raw []byte
+	err := tx.QueryRowContext(ctx, `SELECT state FROM security_states WHERE account_id = ? ORDER BY epoch DESC LIMIT 1`, accountID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	s, err := devicesec.ParseState(raw)
+	if err != nil {
+		return false, err
+	}
+	return s.Core.AuthorityID == deviceID, nil
+}
+
 func (p *pusher) subscribe(ctx context.Context, t *tstore, deviceID, sub string, kinds []pb.NotifyKind) error {
 	if !validNotifyKinds(kinds) {
 		return errors.New("unknown notification kind")
@@ -179,17 +199,58 @@ func (p *pusher) subscribe(ctx context.Context, t *tstore, deviceID, sub string,
 	for _, k := range kinds {
 		mask |= kindBit(k)
 	}
-	res, err := t.db.ExecContext(ctx, `INSERT INTO push_subs (device_id, account_id, subscription, kinds)
+	tx, err := t.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT device_id, subscription FROM push_subs WHERE account_id = ? AND device_id != ?`, t.acct, deviceID)
+	if err != nil {
+		return err
+	}
+	var stale []string
+	for rows.Next() {
+		var otherID, otherSub string
+		if err := rows.Scan(&otherID, &otherSub); err != nil {
+			rows.Close()
+			return err
+		}
+		var parsed webpush.Subscription
+		if json.Unmarshal([]byte(otherSub), &parsed) == nil && parsed.Endpoint == s.Endpoint {
+			stale = append(stale, otherID)
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return err
+	}
+	if len(stale) > 0 {
+		isAuth, err := isAccountAuthorityTx(ctx, tx, t.acct, deviceID)
+		if err != nil {
+			return err
+		}
+		if !isAuth {
+			return errPushTargetOwned
+		}
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO push_subs (device_id, account_id, subscription, kinds)
  SELECT ?, a.id, ?, ? FROM accounts a WHERE a.id=?
 		ON CONFLICT (device_id) DO UPDATE SET subscription = excluded.subscription, kinds = excluded.kinds
 		WHERE push_subs.account_id = excluded.account_id`, deviceID, sub, mask, t.acct)
-	if err == nil {
-		if n, _ := res.RowsAffected(); n == 0 {
-			var present int
-			return t.db.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		var present int
+		return tx.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+	}
+	for _, otherID := range stale {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM push_subs WHERE account_id = ? AND device_id = ?`, t.acct, otherID); err != nil {
+			return err
 		}
 	}
-	return err
+	return tx.Commit()
 }
 
 func kindMask(kinds []pb.NotifyKind) int {
@@ -211,17 +272,41 @@ func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, 
 	if len(token) > 4096 || strings.ContainsAny(token, " \n\t") {
 		return errors.New("malformed FCM token")
 	}
-	res, err := t.db.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, account_id, token, kinds)
+	tx, err := t.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var conflictCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM fcm_targets WHERE account_id = ? AND token = ? AND device_id != ?`, t.acct, token, deviceID).Scan(&conflictCount); err != nil {
+		return err
+	}
+	if conflictCount > 0 {
+		isAuth, err := isAccountAuthorityTx(ctx, tx, t.acct, deviceID)
+		if err != nil {
+			return err
+		}
+		if !isAuth {
+			return errPushTargetOwned
+		}
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, account_id, token, kinds)
  SELECT ?, a.id, ?, ? FROM accounts a WHERE a.id=?
 		ON CONFLICT (device_id) DO UPDATE SET token = excluded.token, kinds = excluded.kinds
 		WHERE fcm_targets.account_id = excluded.account_id`, deviceID, token, kindMask(kinds), t.acct)
-	if err == nil {
-		if n, _ := res.RowsAffected(); n == 0 {
-			var present int
-			return t.db.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		var present int
+		return tx.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+	}
+	if conflictCount > 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM fcm_targets WHERE account_id = ? AND token = ? AND device_id != ?`, t.acct, token, deviceID); err != nil {
+			return err
 		}
 	}
-	return err
+	return tx.Commit()
 }
 
 var pushText = map[pb.NotifyKind]string{
@@ -300,11 +385,19 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 	if err != nil {
 		return err
 	}
+	seenEndpoints := map[string]struct{}{}
 	for rows.Next() {
 		var t target
 		if err := rows.Scan(&t.device, &t.sub); err != nil {
 			rows.Close()
 			return err
+		}
+		var parsed webpush.Subscription
+		if json.Unmarshal([]byte(t.sub), &parsed) == nil && parsed.Endpoint != "" {
+			if _, dup := seenEndpoints[parsed.Endpoint]; dup {
+				continue
+			}
+			seenEndpoints[parsed.Endpoint] = struct{}{}
 		}
 		targets = append(targets, t)
 	}
@@ -326,11 +419,18 @@ func (p *pusher) notifyTo(ctx context.Context, st *tstore, deviceID, sessionID s
 		if err != nil {
 			return err
 		}
+		seenTokens := map[string]struct{}{}
 		for rows.Next() {
 			var t target
 			if err := rows.Scan(&t.device, &t.token); err != nil {
 				rows.Close()
 				return err
+			}
+			if t.token != "" {
+				if _, dup := seenTokens[t.token]; dup {
+					continue
+				}
+				seenTokens[t.token] = struct{}{}
 			}
 			targets = append(targets, t)
 		}
@@ -475,6 +575,9 @@ func (c *clientService) SetPushSubscription(ctx context.Context, req *connect.Re
 		return nil, invalid("subscription too large")
 	}
 	if err := c.s.push.subscribe(ctx, c.s.tenantOf(d).store, d.id, req.Msg.SubscriptionJson, req.Msg.Kinds); err != nil {
+		if errors.Is(err, errPushTargetOwned) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
 		return nil, invalid("%v", err)
 	}
 	return connect.NewResponse(&pb.SetPushSubscriptionResponse{}), nil
@@ -501,6 +604,9 @@ func (c *clientService) SetPushTarget(ctx context.Context, req *connect.Request[
 		return nil, invalid("unknown push type")
 	}
 	if err != nil {
+		if errors.Is(err, errPushTargetOwned) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
 		return nil, invalid("%v", err)
 	}
 	return connect.NewResponse(&pb.SetPushTargetResponse{Enabled: enabled}), nil

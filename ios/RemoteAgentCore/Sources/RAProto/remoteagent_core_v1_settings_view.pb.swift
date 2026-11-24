@@ -620,6 +620,11 @@ public struct PBMachineListCardView: @unchecked Sendable {
     set {_uniqueStorage()._directReady = newValue}
   }
 
+  public var shortID: String {
+    get {return _storage._shortID}
+    set {_uniqueStorage()._shortID = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3526,7 +3531,7 @@ extension PBSubtitleSegment: SwiftProtobuf.Message, SwiftProtobuf._MessageImplem
 
 extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineListCardView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{3}quota_summaries\0\u{3}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{3}status_warn\0\u{3}subtitle_parts\0\u{3}in_device_directory\0\u{3}direct_ready\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}member\0\u{3}protocol_mismatch\0\u{3}status_text\0\u{3}quota_summaries\0\u{3}last_seen_ms\0\u{3}direct_row\0\u{3}status_dot\0\u{3}status_warn\0\u{3}subtitle_parts\0\u{3}in_device_directory\0\u{3}direct_ready\0\u{3}short_id\0")
 
   fileprivate class _StorageClass {
     var _machineID: String = String()
@@ -3543,6 +3548,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _subtitleParts: [PBSubtitleSegment] = []
     var _inDeviceDirectory: Bool = false
     var _directReady: Bool = false
+    var _shortID: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3567,6 +3573,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _subtitleParts = source._subtitleParts
       _inDeviceDirectory = source._inDeviceDirectory
       _directReady = source._directReady
+      _shortID = source._shortID
     }
   }
 
@@ -3599,6 +3606,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._subtitleParts) }()
         case 13: try { try decoder.decodeSingularBoolField(value: &_storage._inDeviceDirectory) }()
         case 14: try { try decoder.decodeSingularBoolField(value: &_storage._directReady) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._shortID) }()
         default: break
         }
       }
@@ -3653,6 +3661,9 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._directReady != false {
         try visitor.visitSingularBoolField(value: _storage._directReady, fieldNumber: 14)
       }
+      if !_storage._shortID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._shortID, fieldNumber: 15)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3676,6 +3687,7 @@ extension PBMachineListCardView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._subtitleParts != rhs_storage._subtitleParts {return false}
         if _storage._inDeviceDirectory != rhs_storage._inDeviceDirectory {return false}
         if _storage._directReady != rhs_storage._directReady {return false}
+        if _storage._shortID != rhs_storage._shortID {return false}
         return true
       }
       if !storagesAreEqual {return false}

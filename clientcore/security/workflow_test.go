@@ -48,6 +48,8 @@ type fakeClientHarness struct {
 	store         map[mockStoreKey]mockStoreEntry
 	legacyCleared bool
 	conflictOnce  bool
+	storageReadErr string
+	keyAgreeErr    string
 
 	deviceEd ed25519.PrivateKey
 	deviceX  *ecdh.PrivateKey
@@ -248,6 +250,13 @@ func (h *fakeClientHarness) pump(effs []*corev1.Effect) {
 
 		case *corev1.Effect_SecurityKeyAgree:
 			ka := k.SecurityKeyAgree
+			if h.keyAgreeErr != "" {
+				queue = append(queue, h.eng.HandleKeyAgreed(h.nowMs, &corev1.SecurityKeyAgreedEvent{
+					OpId:  ka.OpId,
+					Error: h.keyAgreeErr,
+				})...)
+				continue
+			}
 			var priv *ecdh.PrivateKey
 			switch ka.KeyKind {
 			case corev1.SecurityKeyKind_SECURITY_KEY_KIND_DEVICE_X:
@@ -389,6 +398,10 @@ func (h *fakeClientHarness) handleStorageEffect(st *corev1.SecurityStorageEffect
 			ev.Data = slices.Clone(ent.data)
 		}
 	case corev1.SecurityStorageOp_SECURITY_STORAGE_OP_READ_BOOTSTRAP:
+		if h.storageReadErr != "" {
+			ev.Error = h.storageReadErr
+			break
+		}
 		for sk, ent := range h.store {
 			if st.Bucket != corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_UNSPECIFIED && sk.bucket != st.Bucket {
 				continue
@@ -1142,12 +1155,15 @@ func TestWorkflowLeaseRenewalClockSkewLegacyAndNotify(t *testing.T) {
 		t.Fatalf("expected UNSPECIFIED ExpectedKind to fail closed without title/body, got %+v", res)
 	}
 
-	// Remove machine (abandoning pending pair delivery) & verify stale Path A and removed-sender Path B reject!
-	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+	// Remove machine (abandoning pending pair delivery automatically) & verify stale Path A and removed-sender Path B reject!
+	remMach := h.runAction(&corev1.SecurityWorkflowActionEvent{
 		Action: &corev1.SecurityWorkflowActionEvent_RemoveDevice{
-			RemoveDevice: &corev1.SecurityRemoveDeviceAction{DeviceId: machMem.ID, AbandonPairDelivery: true},
+			RemoveDevice: &corev1.SecurityRemoveDeviceAction{DeviceId: machMem.ID},
 		},
 	})
+	if !remMach.Ok {
+		t.Fatalf("expected removing unfinished pairing candidate to abandon its pending delivery op, got %+v", remMach)
+	}
 	h.pump(h.eng.HandleOpenNotify(h.nowMs, &corev1.SecurityOpenNotifyEvent{
 		OpId:       9003,
 		NotifyBlob: ntfEntry.data, // bound to older head before RemoveDevice
@@ -2035,5 +2051,758 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 	}
 	if opened.GetDisplay().GetTitle() != nil || opened.GetDisplay().GetBody() != nil || opened.GetDisplay().GetSessionId() != "" || opened.GetDisplay().GetMachineId() != "" {
 		t.Fatalf("invalid SecurityNotifyDisplay must not carry plaintext fields, got %+v", opened.GetDisplay())
+	}
+}
+
+func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	h := newFakeClientHarness(t, relay, 0x71)
+	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	prep := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com", StoragePersisted: true},
+		},
+	})
+	if !prep.Ok {
+		t.Fatalf("PrepareCreation failed: %+v", prep)
+	}
+	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	cont := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	})
+	if !cont.Ok || cont.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+	advice := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: &corev1.SecurityActionEmpty{}},
+	})
+	if !advice.Ok || advice.ExitAdvice == nil || !advice.ExitAdvice.Authority ||
+		advice.ExitAdvice.Message != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
+		t.Fatalf("expected device-neutral sole authority exit advice, got %+v", advice)
+	}
+
+	// Transient storage/Keystore/Keychain lock errors must NOT be classified as INVALID,
+	// and retrying bootstrap after unlock must recover cleanly to READY without resetting.
+	h.storageReadErr = "keystore temporarily locked"
+	h.restart("https://relay.example.com", false)
+	resLockedRead := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resLockedRead.Ok || resLockedRead.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE ||
+		!resLockedRead.Retryable || resLockedRead.Status.Bootstrap == corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected transient STORAGE error (not INVALID) on locked storage read, got %+v", resLockedRead)
+	}
+	h.storageReadErr = ""
+
+	h.keyAgreeErr = "keychain interaction not allowed"
+	h.restart("https://relay.example.com", false)
+	resLockedAgree := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resLockedAgree.Ok || resLockedAgree.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_STORAGE ||
+		!resLockedAgree.Retryable || resLockedAgree.Status.Bootstrap == corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected transient STORAGE error (not INVALID) on locked key agree, got %+v", resLockedAgree)
+	}
+	h.keyAgreeErr = ""
+
+	resUnlocked := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !resUnlocked.Ok || resUnlocked.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
+		t.Fatalf("expected bootstrap retry after unlock to succeed as READY, got %+v", resUnlocked)
+	}
+
+	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY,
+	// while checkExitAdvice still identifies this device as sole authority from the verified record.
+	savedEd := h.deviceEd
+	h.deviceEd = nil
+	h.restart("https://relay.example.com", false)
+	resEd := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resEd.Ok || resEd.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected INVALID bootstrap when device Ed key missing, got %+v", resEd)
+	}
+	adviceMissingKey := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: &corev1.SecurityActionEmpty{}},
+	})
+	if !adviceMissingKey.Ok || adviceMissingKey.ExitAdvice == nil || !adviceMissingKey.ExitAdvice.Authority ||
+		adviceMissingKey.ExitAdvice.Message != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
+		t.Fatalf("expected authority exit advice even when device Ed key missing, got %+v", adviceMissingKey)
+	}
+	h.deviceEd = savedEd
+
+	// Re-bootstrapping with a missing device X25519 key must fail as INVALID, not READY.
+	savedX := h.deviceX
+	h.deviceX = nil
+	h.restart("https://relay.example.com", false)
+	resX := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resX.Ok || resX.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected INVALID bootstrap when device X key missing, got %+v", resX)
+	}
+	h.deviceX = savedX
+
+	// ClearSecurity must succeed from INVALID state and clear bootstrapInvalid.
+	cleared := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: &corev1.SecurityActionEmpty{}},
+	})
+	if !cleared.Ok || cleared.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY {
+		t.Fatalf("expected ClearSecurity to clear INVALID bootstrap state, got %+v", cleared)
+	}
+}
+
+func TestReplacementCandidateMatchingAndDefaultSelection(t *testing.T) {
+	now := int64(1_700_100_000_000)
+	fpCases := []struct {
+		name         string
+		meta         *v1.DeviceMeta
+		wantPlat     string
+		wantModel    string
+		wantSpecific bool
+	}{
+		{"android_specific_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 9"}, "android", "pixel 9", true},
+		{"android_os_upgrade_same_model", &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 9"}, "android", "pixel 9", true},
+		{"android_missing_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15"}, "android", "android 15", false},
+		{"android_generic_model", &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Android"}, "android", "android", false},
+		{"ios_specific_iphone_model", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone16,1"}, "ios", "iphone16,1", true},
+		{"ios_specific_ipad_model", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPad14,3"}, "ios", "ipad14,3", true},
+		{"ios_generic_iphone_fallback", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone"}, "ios", "iphone", false},
+		{"ios_generic_ipad_fallback", &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPad"}, "ios", "ipad", false},
+		{"web_coarse_descriptor", &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}, "web", "chrome on macos", false},
+		{"empty_meta", nil, "", "", false},
+	}
+	for _, tc := range fpCases {
+		t.Run("fingerprint/"+tc.name, func(t *testing.T) {
+			p, m, spec := deviceModelFingerprint(tc.meta)
+			if p != tc.wantPlat || m != tc.wantModel || spec != tc.wantSpecific {
+				t.Fatalf("got (%q, %q, %v), want (%q, %q, %v)", p, m, spec, tc.wantPlat, tc.wantModel, tc.wantSpecific)
+			}
+		})
+	}
+
+	selCases := []struct {
+		name        string
+		specific    bool
+		lastSeenMs  int64
+		nowMs       int64
+		wantDefault bool
+	}{
+		{"specific_inactive_48h", true, now - 48*3600_000, now, true},
+		{"specific_inactive_exactly_24h", true, now - dayMs, now, true},
+		{"specific_never_seen", true, 0, now, true},
+		{"specific_active_23h59m", true, now - dayMs + 60_000, now, false},
+		{"specific_active_just_now", true, now - 5_000, now, false},
+		{"specific_active_future_skew", true, now + 60_000, now, false},
+		{"non_specific_inactive_7d", false, now - 7*dayMs, now, false},
+		{"non_specific_never_seen", false, 0, now, false},
+		{"specific_unknown_now", true, now - 48*3600_000, 0, false},
+	}
+	for _, tc := range selCases {
+		t.Run("default_selected/"+tc.name, func(t *testing.T) {
+			if got := shouldDefaultSelectReplacement(tc.specific, tc.lastSeenMs, tc.nowMs); got != tc.wantDefault {
+				t.Fatalf("got %v, want %v", got, tc.wantDefault)
+			}
+		})
+	}
+
+	timeCases := []struct {
+		name       string
+		lastSeenMs int64
+		wantKey    string
+		wantStyle  corev1.TimestampStyle
+	}{
+		{"no_record", 0, text.KeySettingsNoRecord, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"just_now", now - 30_000, text.KeyTimeJustNow, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"minutes_ago", now - 5*60_000, text.KeyTimeMinutesAgo, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"hours_ago", now - 3*3600_000, text.KeyTimeHoursAgo, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"yesterday", now - 30*3600_000, text.KeyTimeYesterday, corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED},
+		{"older_date", now - 5*dayMs, "", corev1.TimestampStyle_TIMESTAMP_STYLE_DATE},
+	}
+	for _, tc := range timeCases {
+		t.Run("last_active/"+tc.name, func(t *testing.T) {
+			got := formatCandidateLastActive(tc.lastSeenMs, now)
+			if tc.wantKey != "" && got.GetKey() != tc.wantKey {
+				t.Fatalf("got key %q, want %q", got.GetKey(), tc.wantKey)
+			}
+			if tc.wantStyle != corev1.TimestampStyle_TIMESTAMP_STYLE_UNSPECIFIED && got.GetTimestamp().GetStyle() != tc.wantStyle {
+				t.Fatalf("got timestamp style %v, want %v", got.GetTimestamp().GetStyle(), tc.wantStyle)
+			}
+		})
+	}
+}
+
+func TestWorkflowPairingReplacementCandidatesAndPostApprovalRemoval(t *testing.T) {
+	// Verify fingerprint normalization across OS upgrades and platforms.
+	if p1, m1, s1 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 3"}); p1 != "android" || m1 != "pixel 3" || !s1 {
+		t.Fatalf("unexpected android fingerprint: %q %q %v", p1, m1, s1)
+	}
+	if p2, m2, s2 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 3"}); p2 != "android" || m2 != "pixel 3" || !s2 {
+		t.Fatalf("unexpected android upgrade fingerprint: %q %q %v", p2, m2, s2)
+	}
+	if p3, m3, s3 := deviceModelFingerprint(&v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}); p3 != "web" || m3 != "chrome on macos" || s3 {
+		t.Fatalf("unexpected web fingerprint: %q %q %v", p3, m3, s3)
+	}
+
+	relay := newFakeRelay(1_700_000_000_000)
+
+	// Authority A (phone) creates the account.
+	a := newFakeClientHarness(t, relay, 0x81)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	if cont := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	}); !cont.Ok {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	// Pair initial web browser B and another device C (Android).
+	pairClient := func(tag byte, platform, desc string) (*fakeClientHarness, string) {
+		p := a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+		})
+		if !p.Ok {
+			t.Fatalf("StartPairing failed: %+v", p)
+		}
+		h := newFakeClientHarness(t, relay, tag)
+		_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+		})
+		joinID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+				StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+					Server: "https://relay.example.com", Code: p.Pairing.Code,
+					Platform: platform, Description: desc,
+				},
+			},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[joinID] != nil })
+		confID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+				ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p.Pairing.PairingId, SasConfirmed: true},
+			},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[confID] != nil })
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		return h, h.eng.selfDeviceID
+	}
+
+	_, oldWebID := pairClient(0x82, "web", "Chrome on macOS")
+	_, otherAndroidID := pairClient(0x83, "android", "Android 14 · Pixel 3")
+
+	// Supply device directory to Authority A (with matching oldWebID and non-matching otherAndroidID).
+	dir := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: oldWebID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Name: "Work Chrome", Platform: "web", Description: "Chrome on macOS"}},
+		{ID: otherAndroidID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 3"}},
+	}
+	a.eng.SetDeviceDirectory(dir)
+
+	// Re-pair the same web browser as a new identity B2 after local storage clear.
+	p2 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir...)
+	b2 := newFakeClientHarness(t, relay, 0x84)
+	_ = b2.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	b2Join := b2.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p2.Pairing.Code,
+				Platform: "web", Description: "Chrome on macOS",
+			},
+		},
+	})
+	// Authority reveals SAS; then joiner B2 receives REVEALED and uploads encrypted joiner_meta.
+	pollReveal := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !pollReveal.Ok || !pollReveal.Pairing.Joined || len(pollReveal.Pairing.SasEmoji) != 4 {
+		t.Fatalf("expected joined SAS on first poll, got %+v", pollReveal)
+	}
+	b2.pumpPollTicks(5, func() bool { return b2.actionResults[b2Join] != nil })
+	if b2.actionResults[b2Join] == nil || !b2.actionResults[b2Join].Ok {
+		t.Fatalf("joiner B2 failed to reach SAS: %+v", b2.actionResults[b2Join])
+	}
+
+	// Authority polls again and receives decrypted joiner_meta + replacement candidate (only oldWebID, not self/authority or otherAndroidID).
+	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !pollMeta.Ok || !pollMeta.Pairing.JoinerMetaReceived {
+		t.Fatalf("expected joiner_meta received, got %+v", pollMeta.Pairing)
+	}
+	if len(pollMeta.Pairing.ReplacementCandidates) != 1 || pollMeta.Pairing.ReplacementCandidates[0].DeviceId != oldWebID || pollMeta.Pairing.ReplacementCandidates[0].DisplayName != "Work Chrome" {
+		t.Fatalf("expected only oldWebID candidate, got %+v", pollMeta.Pairing.ReplacementCandidates)
+	}
+	if pollMeta.Pairing.ReplacementCandidates[0].DefaultSelected {
+		t.Fatalf("expected coarse web candidate DefaultSelected=false, got %+v", pollMeta.Pairing.ReplacementCandidates[0])
+	}
+	if pollMeta.Pairing.ReplacementCandidates[0].GetLastActiveText() == nil {
+		t.Fatalf("expected core-formatted LastActiveText on candidate, got %+v", pollMeta.Pairing.ReplacementCandidates[0])
+	}
+	if pollMeta.Pairing.GetReplaceOldLabel().GetKey() != text.KeySecurityAlsoRemoveOldDevices ||
+		pollMeta.Pairing.GetReplaceOldHint().GetKey() != text.KeySecurityAlsoRemoveOldDevicesHint {
+		t.Fatalf("expected Core i18n copy on pairing info, got label=%+v hint=%+v", pollMeta.Pairing.ReplaceOldLabel, pollMeta.Pairing.ReplaceOldHint)
+	}
+
+	// Confirm SAS on B2, approve on A with RemoveDeviceIds=[oldWebID].
+	b2Conf := b2.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	})
+	appRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p2.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{oldWebID},
+			},
+		},
+	}, dir...)
+	if !appRes.Ok {
+		t.Fatalf("ApprovePairing failed: %+v", appRes)
+	}
+	// Before delivery completes, oldWebID is still a member (removal waits until approval/delivery succeeds).
+	if _, live := a.eng.head.Core.Member(oldWebID); !live {
+		t.Fatalf("expected oldWebID to stay until pairing delivery succeeds")
+	}
+
+	b2.pumpPollTicks(5, func() bool { return b2.actionResults[b2Conf] != nil })
+	if b2.actionResults[b2Conf] == nil || !b2.actionResults[b2Conf].Ok {
+		t.Fatalf("B2 failed to finish registration: %+v", b2.actionResults[b2Conf])
+	}
+	finRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !finRes.Ok || !finRes.Pairing.Delivered {
+		t.Fatalf("FinishPairingDelivery failed: %+v", finRes)
+	}
+
+	// After delivery completes, oldWebID must be removed while B2 and otherAndroidID remain members.
+	if _, live := a.eng.head.Core.Member(oldWebID); live {
+		t.Fatalf("expected oldWebID to be removed after pairing delivery succeeded")
+	}
+	if _, live := a.eng.head.Core.Member(b2.eng.selfDeviceID); !live {
+		t.Fatalf("expected newly paired B2 to remain a member")
+	}
+	if _, live := a.eng.head.Core.Member(otherAndroidID); !live {
+		t.Fatalf("expected unrelated otherAndroidID to remain a member")
+	}
+
+	// Verify background ResumePendingOp delivery path (e.g. Web continuePairing timer)
+	// also removes requested old devices once delivery completes.
+	b2ID := b2.eng.selfDeviceID
+	dir2 := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: b2ID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: otherAndroidID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 3"}},
+	}
+	a.eng.SetDeviceDirectory(dir2)
+	p3 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir2...)
+	b3 := newFakeClientHarness(t, relay, 0x85)
+	_ = b3.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	b3Join := b3.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p3.Pairing.Code,
+				Platform: "web", Description: "Chrome on macOS",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p3.Pairing.PairingId}},
+	}, dir2...)
+	b3.pumpPollTicks(5, func() bool { return b3.actionResults[b3Join] != nil })
+	pollMeta3 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p3.Pairing.PairingId}},
+	}, dir2...)
+	if !pollMeta3.Ok || len(pollMeta3.Pairing.ReplacementCandidates) != 1 || pollMeta3.Pairing.ReplacementCandidates[0].DeviceId != b2ID {
+		t.Fatalf("expected b2ID candidate on re-pair, got %+v", pollMeta3.Pairing)
+	}
+	b3Conf := b3.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p3.Pairing.PairingId}},
+	})
+	appRes3 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p3.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{b2ID},
+			},
+		},
+	}, dir2...)
+	if !appRes3.Ok {
+		t.Fatalf("ApprovePairing (p3) failed: %+v", appRes3)
+	}
+	b3.pumpPollTicks(5, func() bool { return b3.actionResults[b3Conf] != nil })
+	if b3.actionResults[b3Conf] == nil || !b3.actionResults[b3Conf].Ok {
+		t.Fatalf("B3 failed to finish registration: %+v", b3.actionResults[b3Conf])
+	}
+	// Complete delivery via ResumePendingOp instead of FinishPairingDelivery!
+	resOp := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: &corev1.SecurityActionEmpty{}},
+	}, dir2...)
+	if !resOp.Ok {
+		t.Fatalf("ResumePendingOp failed: %+v", resOp)
+	}
+	if _, live := a.eng.head.Core.Member(b2ID); live {
+		t.Fatalf("expected b2ID to be removed when delivery completes via ResumePendingOp")
+	}
+	if _, live := a.eng.head.Core.Member(b3.eng.selfDeviceID); !live {
+		t.Fatalf("expected B3 to remain a member")
+	}
+}
+
+func TestApprovePairingRejectsInvalidRemoveDeviceIDs(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	a := newFakeClientHarness(t, relay, 0x91)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	if cont := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	}); !cont.Ok {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	pairMember := func(seed byte, kind v1.DeviceKind, platform, desc string) string {
+		p := a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+		})
+		if kind == v1.DeviceKind_DEVICE_KIND_MACHINE {
+			machEd := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, 32))
+			machX, _ := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{seed + 1}, 32))
+			machEphem, _ := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{seed + 2}, 32))
+			machMem, _ := devicesec.NewMember(machEd.Public().(ed25519.PublicKey), machX.PublicKey().Bytes(), devicesec.Machine)
+			joinBytes, _ := (&v1.JoinPairingRequest{
+				Code:                p.Pairing.Code,
+				JoinerPublic:        machEphem.PublicKey().Bytes(),
+				JoinerKind:          v1.DeviceKind_DEVICE_KIND_MACHINE,
+				DevicePublicKey:     machMem.EdPublic[:],
+				DeviceHpkePublicKey: machMem.XPublic[:],
+				ProtocolVersion:     testRelayVersion,
+			}).Marshal()
+			if _, rpcErr := relay.call(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, "", joinBytes); rpcErr != nil {
+				t.Fatalf("machine join failed: %+v", rpcErr)
+			}
+			_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+			})
+			app := a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+					ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p.Pairing.PairingId, SasConfirmed: true},
+				},
+			})
+			if !app.Ok {
+				t.Fatalf("machine approve failed: %+v", app)
+			}
+			relay.mu.Lock()
+			if pr := relay.pairings[p.Pairing.PairingId]; pr != nil {
+				pr.state = v1.PairingState_PAIRING_STATE_DELIVERED
+			}
+			relay.mu.Unlock()
+			_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+			})
+			return machMem.ID
+		}
+		h := newFakeClientHarness(t, relay, seed)
+		_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+		})
+		jID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+				StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+					Server: "https://relay.example.com", Code: p.Pairing.Code, Platform: platform, Description: desc,
+				},
+			},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[jID] != nil })
+		cID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+				ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p.Pairing.PairingId, SasConfirmed: true},
+			},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[cID] != nil })
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		return h.eng.selfDeviceID
+	}
+
+	oldWebID := pairMember(0x92, v1.DeviceKind_DEVICE_KIND_CLIENT, "web", "Chrome on macOS")
+	otherClientID := pairMember(0x93, v1.DeviceKind_DEVICE_KIND_CLIENT, "android", "Android 15 · Pixel 9")
+	machineID := pairMember(0x94, v1.DeviceKind_DEVICE_KIND_MACHINE, "", "")
+
+	dir := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: oldWebID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: otherClientID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 9"}},
+		{ID: machineID, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+	}
+	a.eng.SetDeviceDirectory(dir)
+
+	p := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir...)
+	joiner := newFakeClientHarness(t, relay, 0x95)
+	_ = joiner.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	jID := joiner.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p.Pairing.Code, Platform: "web", Description: "Chrome on macOS",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+	}, dir...)
+	joiner.pumpPollTicks(5, func() bool { return joiner.actionResults[jID] != nil })
+	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+	}, dir...)
+	if !pollMeta.Ok || len(pollMeta.Pairing.ReplacementCandidates) != 1 || pollMeta.Pairing.ReplacementCandidates[0].DeviceId != oldWebID {
+		t.Fatalf("expected only oldWebID candidate, got %+v", pollMeta.Pairing)
+	}
+
+	headBefore := a.eng.head.Core.Epoch
+	candID := a.eng.wf.initPairings[p.Pairing.PairingId].candidateID
+	invalidCases := []struct {
+		name string
+		ids  []string
+	}{
+		{"empty_id", []string{""}},
+		{"self_authority", []string{a.eng.selfDeviceID}},
+		{"machine_member", []string{machineID}},
+		{"non_candidate_client", []string{otherClientID}},
+		{"candidate_self", []string{candID}},
+		{"mixed_valid_and_invalid", []string{oldWebID, machineID}},
+	}
+	for _, tc := range invalidCases {
+		res := a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+				ApprovePairing: &corev1.SecurityApprovePairingAction{
+					PairingId:       p.Pairing.PairingId,
+					SasConfirmed:    true,
+					RemoveDeviceIds: tc.ids,
+				},
+			},
+		}, dir...)
+		if res.Ok {
+			t.Fatalf("%s: expected ApprovePairing to reject invalid removeDeviceIds %v", tc.name, tc.ids)
+		}
+		if a.eng.head.Core.Epoch != headBefore {
+			t.Fatalf("%s: head epoch changed on rejected approval (%d -> %d)", tc.name, headBefore, a.eng.head.Core.Epoch)
+		}
+		if a.eng.wf.pendingOp != nil {
+			t.Fatalf("%s: expected no pendingOp after rejected approval, got %+v", tc.name, a.eng.wf.pendingOp)
+		}
+	}
+
+	okRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{oldWebID},
+			},
+		},
+	}, dir...)
+	if !okRes.Ok {
+		t.Fatalf("expected valid candidate subset approval to succeed, got %+v", okRes)
+	}
+}
+
+func TestPairingOldDeviceRemovalFailurePersistsAndResumesAcrossRestart(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	a := newFakeClientHarness(t, relay, 0xa1)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	if cont := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	}); !cont.Ok {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	// Enroll old Android device.
+	p1 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	})
+	oldPhone := newFakeClientHarness(t, relay, 0xa2)
+	_ = oldPhone.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	j1 := oldPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p1.Pairing.Code,
+				Platform: "android", Description: "Android 14 · Pixel 9",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	oldPhone.pumpPollTicks(5, func() bool { return oldPhone.actionResults[j1] != nil })
+	c1 := oldPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p1.Pairing.PairingId, SasConfirmed: true},
+		},
+	})
+	oldPhone.pumpPollTicks(5, func() bool { return oldPhone.actionResults[c1] != nil })
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p1.Pairing.PairingId}},
+	})
+	oldPhoneID := oldPhone.eng.selfDeviceID
+
+	// Re-pair same Pixel 9 model (inactive >24h -> DefaultSelected=true).
+	dir := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "ios", Description: "iOS 18.4 · iPhone16,1"}},
+		{ID: oldPhoneID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, LastSeenMs: a.nowMs - 2*dayMs, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 14 · Pixel 9"}},
+	}
+	a.eng.SetDeviceDirectory(dir)
+	p2 := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir...)
+	newPhone := newFakeClientHarness(t, relay, 0xa3)
+	_ = newPhone.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	j2 := newPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p2.Pairing.Code,
+				Platform: "android", Description: "Android 15 · Pixel 9",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	newPhone.pumpPollTicks(5, func() bool { return newPhone.actionResults[j2] != nil })
+	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !pollMeta.Ok || len(pollMeta.Pairing.ReplacementCandidates) != 1 || !pollMeta.Pairing.ReplacementCandidates[0].DefaultSelected {
+		t.Fatalf("expected DefaultSelected=true for inactive specific Android model, got %+v", pollMeta.Pairing)
+	}
+
+	c2 := newPhone.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	})
+	appRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p2.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{oldPhoneID},
+			},
+		},
+	}, dir...)
+	if !appRes.Ok {
+		t.Fatalf("ApprovePairing failed: %+v", appRes)
+	}
+	newPhone.pumpPollTicks(5, func() bool { return newPhone.actionResults[c2] != nil })
+
+	// Inject a transient relay failure during the post-delivery old-device removal PutSecurityState.
+	relay.mu.Lock()
+	relay.failNextMethod = corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_PUT_SECURITY_STATE
+	relay.failNextCode = connectCodeUnavailable
+	relay.mu.Unlock()
+
+	finRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p2.Pairing.PairingId}},
+	}, dir...)
+	if !finRes.Ok || !finRes.Pairing.Delivered {
+		t.Fatalf("expected pairing delivery to still succeed despite old-device removal failure, got %+v", finRes)
+	}
+	if finRes.Pairing.GetRemoveOldNotice().GetKey() != text.KeySecurityOldDevicesRemovalIncomplete {
+		t.Fatalf("expected RemoveOldNotice when old-device removal failed, got %+v", finRes.Pairing.GetRemoveOldNotice())
+	}
+	if _, live := a.eng.head.Core.Member(oldPhoneID); !live {
+		t.Fatalf("expected oldPhoneID to still be live after failed removal")
+	}
+	// Notice and pending list must persist inside the encrypted security record across restart.
+	a.restart("https://relay.example.com", false)
+	boot := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if !boot.Ok || len(boot.Status.PendingRemoveDeviceIds) != 1 || boot.Status.PendingRemoveDeviceIds[0] != oldPhoneID {
+		t.Fatalf("expected PendingRemoveDeviceIds persisted across restart, got %+v", boot.Status)
+	}
+	if boot.Status.GetPendingRemoveNotice().GetKey() != text.KeySecurityOldDevicesRemovalIncomplete {
+		t.Fatalf("expected PendingRemoveNotice after restart, got %+v", boot.Status.GetPendingRemoveNotice())
+	}
+
+	// Resuming pending operations after restart must automatically finish removing oldPhoneID and clear the notice.
+	resumed := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ResumePendingOp{ResumePendingOp: &corev1.SecurityActionEmpty{}},
+	})
+	if !resumed.Ok {
+		t.Fatalf("ResumePendingOp after restart failed: %+v", resumed)
+	}
+	if _, live := a.eng.head.Core.Member(oldPhoneID); live {
+		t.Fatalf("expected oldPhoneID to be removed after restart resume")
+	}
+	st := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_GetStatus{GetStatus: &corev1.SecurityActionEmpty{}},
+	})
+	if len(st.Status.PendingRemoveDeviceIds) != 0 || st.Status.PendingRemoveNotice != nil {
+		t.Fatalf("expected PendingRemoveDeviceIds and notice cleared after successful removal, got %+v", st.Status)
 	}
 }

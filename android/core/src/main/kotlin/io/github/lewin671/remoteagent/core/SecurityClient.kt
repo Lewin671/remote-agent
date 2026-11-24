@@ -296,10 +296,10 @@ class SecurityClient(
     suspend fun adoptCreationWithoutCode(): SecurityWorkflowResultEffect =
         empty { setAdoptCreationWithoutCode(it) }
 
-    suspend fun removeDevice(deviceId: String, abandonPairDelivery: Boolean = false) {
+    suspend fun removeDevice(deviceId: String) {
         run {
             setRemoveDevice(
-                SecurityRemoveDeviceAction.newBuilder().setDeviceId(deviceId).setAbandonPairDelivery(abandonPairDelivery).build(),
+                SecurityRemoveDeviceAction.newBuilder().setDeviceId(deviceId).build(),
             )
         }
     }
@@ -331,8 +331,20 @@ class SecurityClient(
 
     suspend fun pollPairing(pairingId: String): SecurityPairingInfo = str(pairingId) { setPollPairing(it) }.pairing
 
-    suspend fun approvePairing(pairingId: String, sasConfirmed: Boolean): SecurityPairingInfo =
-        run { setApprovePairing(SecurityApprovePairingAction.newBuilder().setPairingId(pairingId).setSasConfirmed(sasConfirmed).build()) }.pairing
+    suspend fun approvePairing(
+        pairingId: String,
+        sasConfirmed: Boolean,
+        removeDeviceIds: List<String> = emptyList(),
+    ): SecurityPairingInfo =
+        run {
+            setApprovePairing(
+                SecurityApprovePairingAction.newBuilder()
+                    .setPairingId(pairingId)
+                    .setSasConfirmed(sasConfirmed)
+                    .addAllRemoveDeviceIds(removeDeviceIds)
+                    .build(),
+            )
+        }.pairing
 
     suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
         str(pairingId) { setFinishPairingDelivery(it) }.pairing
@@ -346,13 +358,16 @@ class SecurityClient(
         existingRepair: Boolean = false,
         existingServer: String = "",
         rawLink: String = "",
+        platform: String = "",
+        description: String = "",
     ): SecurityPairingInfo =
         run {
             setStartJoinPairing(
                 SecurityStartJoinPairingAction.newBuilder()
                     .setServer(server).setCode(code)
                     .apply { if (commitHint != null && commitHint.isNotEmpty()) setCommitHint(ByteString.copyFrom(commitHint)) }
-                    .setExistingRepair(existingRepair).setExistingServer(existingServer).setRawLink(rawLink).build(),
+                    .setExistingRepair(existingRepair).setExistingServer(existingServer).setRawLink(rawLink)
+                    .setPlatform(platform).setDescription(description).build(),
             )
         }.pairing
 

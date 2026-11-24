@@ -127,11 +127,12 @@ function MachineRow({ m, go }: { m: MachineListCardView; go: Go }) {
       <span className="lead"><Laptop /></span>
       <span className="row-name">
         <b>{m.name}</b>
-        {m.subtitleParts.length > 0 && (
+        {(m.shortId || m.subtitleParts.length > 0) && (
           <small>
+            {m.shortId && <span>{m.shortId}</span>}
             {m.subtitleParts.map((part, idx) => (
               <Fragment key={idx}>
-                {idx > 0 && " · "}
+                {(m.shortId || idx > 0) && " · "}
                 <span className={part.warn ? "warn-txt" : undefined}>{renderText(part.text)}</span>
               </Fragment>
             ))}
@@ -392,7 +393,7 @@ export function Settings({ remote, go, onBack }: { remote: Remote; go: Go; onBac
       recoverySlot={<RecoveryNotice remote={remote} go={go} />}
       overlaysSlot={
         <>
-          {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
+          {leaving && <LeaveAlert remote={remote} onCancel={() => setLeaving(false)} />}
           {checking && <ConnCheck remote={remote} onClose={() => setChecking(false)} />}
         </>
       }
@@ -712,7 +713,10 @@ export function ClientsPage({
                 </span>
                 <span className="row-name">
                   <b>{kind === DeviceKind.MACHINE ? l10n.t("settings.computer") : l10n.t("security.client")}</b>
-                  <small>{l10n.t("settings.clients_pairing_incomplete_desc")}</small>
+                  <small>
+                    {l10n.t("settings.clients_pairing_incomplete_desc")}
+                    {d.shortId ? ` · ${d.shortId}` : ""}
+                  </small>
                 </span>
                 <span className="v warn-txt">{l10n.t("settings.clients_pairing_incomplete_badge")}</span>
               </div>
@@ -902,7 +906,7 @@ export function ClientPage({
       onUpdateName={(name, clear) => host.updateClientName(id, name, clear)}
       onOpenLeave={() => setLeaving(true)}
       removeSlot={<DeviceActions remote={remote} id={id} onRemoved={onBack} />}
-      leaveOverlaySlot={leaving ? <LeaveAlert onCancel={() => setLeaving(false)} /> : undefined}
+      leaveOverlaySlot={leaving ? <LeaveAlert remote={remote} onCancel={() => setLeaving(false)} /> : undefined}
     />
   );
 }
@@ -1065,7 +1069,7 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
             ? l10n.t("settings.signed_account_state_confirms_this_device_was_removed_sessions")
             : l10n.t("settings.the_device_may_have_been_removed_the_service_reset")}
         </p>
-        <RejoinButton server={remote.account.server}>{l10n.t("settings.rejoin_account")}</RejoinButton>
+        <RejoinButton server={remote.account.server} remote={remote}>{l10n.t("settings.rejoin_account")}</RejoinButton>
         <p className="muted small">{l10n.t("settings.the_account_keys_in_this_browser_will_be_deleted")}</p>
         <button
           className="link mid"

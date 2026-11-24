@@ -352,6 +352,74 @@ public  final class GetPairingResponse extends
     trust_ = getDefaultInstance().getTrust();
   }
 
+  public static final int JOINER_META_FIELD_NUMBER = 10;
+  private io.github.lewin671.remoteagent.proto.Envelope joinerMeta_;
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.Override
+  public boolean hasJoinerMeta() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta() {
+    return joinerMeta_ == null ? io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance() : joinerMeta_;
+  }
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    joinerMeta_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+    value.getClass();  // minimal bytecode null check
+    if (joinerMeta_ != null &&
+        joinerMeta_ != io.github.lewin671.remoteagent.proto.Envelope.getDefaultInstance()) {
+      joinerMeta_ =
+        io.github.lewin671.remoteagent.proto.Envelope.newBuilder(joinerMeta_).mergeFrom(value).buildPartial();
+    } else {
+      joinerMeta_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+   */
+  private void clearJoinerMeta() {
+    joinerMeta_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.proto.GetPairingResponse parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -795,6 +863,77 @@ public  final class GetPairingResponse extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    @java.lang.Override
+    public boolean hasJoinerMeta() {
+      return instance.hasJoinerMeta();
+    }
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.Envelope getJoinerMeta() {
+      return instance.getJoinerMeta();
+    }
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    public Builder setJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.setJoinerMeta(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    public Builder setJoinerMeta(
+        io.github.lewin671.remoteagent.proto.Envelope.Builder builderForValue) {
+      copyOnWrite();
+      instance.setJoinerMeta(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    public Builder mergeJoinerMeta(io.github.lewin671.remoteagent.proto.Envelope value) {
+      copyOnWrite();
+      instance.mergeJoinerMeta(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Opaque PAIRING envelope uploaded by the joiner and returned to the initiator.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.Envelope joiner_meta = 10 [json_name = "joinerMeta"];</code>
+     */
+    public Builder clearJoinerMeta() {  copyOnWrite();
+      instance.clearJoinerMeta();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.GetPairingResponse)
   }
   @java.lang.Override
@@ -821,10 +960,11 @@ public  final class GetPairingResponse extends
             "devicePublicKey_",
             "deviceHpkePublicKey_",
             "trust_",
+            "joinerMeta_",
           };
           java.lang.String info =
-              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0000\u0000\u0001\f\u0002\n\u0003\n\u0004\f" +
-              "\u0005\n\u0006\u1009\u0000\u0007\n\b\n\t\n";
+              "\u0000\n\u0000\u0001\u0001\n\n\u0000\u0000\u0000\u0001\f\u0002\n\u0003\n\u0004\f" +
+              "\u0005\n\u0006\u1009\u0000\u0007\n\b\n\t\n\n\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

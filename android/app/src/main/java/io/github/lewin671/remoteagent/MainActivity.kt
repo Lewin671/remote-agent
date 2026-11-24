@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     val loaded by app.loaded.collectAsState()
                     val remote by app.remote.collectAsState()
                     val accountError by app.accountError.collectAsState()
+                    val accountErrorAllowsReset by app.accountErrorAllowsReset.collectAsState()
                     val r = remote
                     val cacheReady = if (r != null) r.bootstrapped.collectAsState().value else false
                     when {
@@ -125,6 +126,8 @@ class MainActivity : ComponentActivity() {
                                 accountError,
                                 { app.loadAccount() },
                                 { app.discardAccount() },
+                                canDiscard = accountErrorAllowsReset,
+                                checkAdvice = { runCatching { app.checkExitAdvice() }.getOrNull() },
                             )
                         }
                         !loaded || (r != null && !cacheReady) ->
@@ -227,16 +230,7 @@ class MainActivity : ComponentActivity() {
             remote.coreHost.setUiLocale(uiLocale)
         }
         // The phone's own name where the system has one (小米 14), else its model number.
-        val phone = remember {
-            android.provider.Settings.Global.getString(
-                    contentResolver,
-                    android.provider.Settings.Global.DEVICE_NAME,
-                )
-                ?.trim()
-                .orEmpty()
-                .ifEmpty { Build.MODEL }
-        }
-        val description = "Android ${Build.VERSION.RELEASE} · $phone"
+        val description = remember { androidDeviceDescription(this@MainActivity) }
         io.github.lewin671.remoteagent.ui.DeviceDescription(
             syncView,
             remote.account.deviceId,
@@ -606,3 +600,13 @@ private fun pagePopExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTra
         Motion.reduced -> fadeOut(Motion.fadeOutSpec(Motion.SLOW))
         else -> slideOutHorizontally(slideOut()) { it }
     }
+
+internal fun androidDeviceDescription(context: android.content.Context): String {
+    val phone = runCatching {
+        android.provider.Settings.Global.getString(
+            context.contentResolver,
+            android.provider.Settings.Global.DEVICE_NAME,
+        )?.trim().orEmpty()
+    }.getOrDefault("").ifEmpty { Build.MODEL }
+    return "Android ${Build.VERSION.RELEASE} · $phone"
+}

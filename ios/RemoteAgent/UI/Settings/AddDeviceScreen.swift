@@ -6,11 +6,60 @@ import UIKit
 
 @MainActor @Observable
 final class AuthorityPairingModel {
+    static let maxMetaPolls = 15
+
     var initiation: PBSecurityPairingInfo?
     var approved = false
     var delivered = false
+    var removeOldNotice: PBCoreText?
+    var selectedRemoveIDs: Set<String> = []
     var error = ""
     var busy = false
+
+    @ObservationIgnored private var removeSelectionTouched = false
+    @ObservationIgnored private var metaPolls = 0
+
+    var needsMetaPoll: Bool {
+        guard let initiation, initiation.joined, !approved, !delivered else { return false }
+        return !initiation.joinerMetaReceived && metaPolls < Self.maxMetaPolls
+    }
+
+    var selectedRemoveDeviceIDs: [String] {
+        guard let initiation else { return [] }
+        return initiation.replacementCandidates
+            .map(\.deviceID)
+            .filter { selectedRemoveIDs.contains($0) }
+    }
+
+    func setRemoveCandidate(_ deviceID: String, selected: Bool) {
+        removeSelectionTouched = true
+        if selected {
+            selectedRemoveIDs.insert(deviceID)
+        } else {
+            selectedRemoveIDs.remove(deviceID)
+        }
+    }
+
+    func applyPolled(_ next: PBSecurityPairingInfo) {
+        let newlyJoined = initiation?.joined != true && next.joined
+        if newlyJoined { metaPolls = 0 }
+        initiation = next
+        if !next.replacementCandidates.isEmpty && !removeSelectionTouched {
+            selectedRemoveIDs = Set(
+                next.replacementCandidates.filter(\.defaultSelected).map(\.deviceID)
+            )
+        }
+    }
+
+    func resetState() {
+        initiation = nil
+        approved = false
+        delivered = false
+        removeOldNotice = nil
+        selectedRemoveIDs = []
+        removeSelectionTouched = false
+        metaPolls = 0
+    }
 
     static func ownsDelivery(_ pending: PBSecurityPendingOpSummary?, pairingID: String) -> Bool {
         guard let pending, !pairingID.isEmpty, pending.kind == "state", pending.hasDelivery_p else { return false }
@@ -30,7 +79,8 @@ final class AuthorityPairingModel {
                 webOrigin: webOrigin(server: remote.account.server, preferred: ""),
                 replacesDeviceId: replacing
             )
-            approved = false; delivered = false
+            approved = false; delivered = false; removeOldNotice = nil
+            selectedRemoveIDs = []; removeSelectionTouched = false; metaPolls = 0
         } catch { self.error = errorText(error) }
     }
 
@@ -44,14 +94,21 @@ final class AuthorityPairingModel {
                 try await remote.resumeSecurityOperation()
                 let res = try await remote.finishPairingDelivery(pairingId: initiation.pairingID)
                 self.initiation = res
+                if res.hasRemoveOldNotice { removeOldNotice = res.removeOldNotice }
                 if res.delivered {
                     delivered = true
                 } else {
                     let st = try await remote.getSecurityStatus()
                     delivered = !st.hasPendingOp
+                    if st.hasPendingRemoveNotice { removeOldNotice = st.pendingRemoveNotice }
                 }
             } else if !initiation.joined {
-                self.initiation = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+                let next = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+                applyPolled(next)
+            } else if !initiation.joinerMetaReceived && metaPolls < Self.maxMetaPolls {
+                metaPolls += 1
+                let next = try await remote.securityClient.pollPairing(pairingId: initiation.pairingID)
+                applyPolled(next)
             }
             error = ""
         } catch { self.error = errorText(error) }
@@ -63,14 +120,20 @@ final class AuthorityPairingModel {
         defer { busy = false }
         do {
             try await remote.ensureSecurityBootstrapped()
-            let res = try await remote.securityClient.approvePairing(pairingId: initiation.pairingID, sasConfirmed: true)
+            let res = try await remote.securityClient.approvePairing(
+                pairingId: initiation.pairingID,
+                sasConfirmed: true,
+                removeDeviceIds: selectedRemoveDeviceIDs
+            )
             self.initiation = res
             approved = true
+            if res.hasRemoveOldNotice { removeOldNotice = res.removeOldNotice }
             if res.delivered {
                 delivered = true
             } else {
                 let st = try await remote.getSecurityStatus()
                 delivered = !st.hasPendingOp
+                if st.hasPendingRemoveNotice { removeOldNotice = st.pendingRemoveNotice }
             }
             if delivered { await remote.refreshDevices() }
         } catch {
@@ -87,7 +150,7 @@ final class AuthorityPairingSessions {
     private var flows: [String: AuthorityPairingModel] = [:]
     func discard(pairingID: String) {
         for flow in flows.values where flow.initiation?.pairingID == pairingID {
-            flow.initiation = nil; flow.approved = false; flow.delivered = false
+            flow.resetState()
             flow.error = L10n.securityIosPairingAbandonedYouCanGenerateANewPairingCode()
         }
     }
@@ -117,6 +180,10 @@ struct AddDeviceScreen: View {
                 #endif
                 if flow.delivered {
                     GroupBanner(L10n.securityIosDeviceJoined(), tone: .plain)
+                    if let notice = flow.removeOldNotice {
+                        let text = notice.rendered()
+                        if !text.isEmpty { GroupBanner(text, tone: .warn) }
+                    }
                     Btn(L10n.securityIosAddAnotherDevice(), kind: .primary, enabled: !flow.busy) {
                         if replacing.isEmpty { perform { await flow.start($0, replacing: "") } }
                         else { nav.open(.addDevice()) }
@@ -129,6 +196,54 @@ struct AddDeviceScreen: View {
                         .frame(maxWidth: .infinity).padding(16)
                     GroupNote(L10n.securityCompareThe4PatternsOnTheNewDeviceConfirm())
                     if !flow.approved {
+                        if !initiation.replacementCandidates.isEmpty {
+                            let headerLabel = initiation.hasReplaceOldLabel
+                                ? initiation.replaceOldLabel.rendered().or(L10n.securityAlsoRemoveOldDevices())
+                                : L10n.securityAlsoRemoveOldDevices()
+                            let hintText = initiation.hasReplaceOldHint ? initiation.replaceOldHint.rendered() : ""
+                            GroupCard {
+                                Text(headerLabel)
+                                    .font(.body.weight(.medium))
+                                    .ink(DS.ink)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 14)
+                                    .padding(.top, 12)
+                                    .padding(.bottom, hintText.isEmpty ? 6 : 4)
+                                if !hintText.isEmpty {
+                                    Text(hintText)
+                                        .font(.subheadline)
+                                        .ink(DS.ink2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 14)
+                                        .padding(.bottom, 8)
+                                }
+                                ForEach(initiation.replacementCandidates, id: \.deviceID) { cand in
+                                    let name = cand.displayName.or(cand.description_p).or(cand.shortID)
+                                    let lastActive = cand.hasLastActiveText ? cand.lastActiveText.rendered() : ""
+                                    let detail = [
+                                        cand.description_p != name ? cand.description_p : "",
+                                        cand.shortID,
+                                        lastActive,
+                                    ].filter { !$0.isEmpty }.joined(separator: " · ")
+                                    Toggle(
+                                        isOn: Binding(
+                                            get: { flow.selectedRemoveIDs.contains(cand.deviceID) },
+                                            set: { flow.setRemoveCandidate(cand.deviceID, selected: $0) }
+                                        )
+                                    ) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(name).font(.subheadline.weight(.semibold)).ink(DS.ink).lineLimit(1)
+                                            if !detail.isEmpty {
+                                                Text(detail).font(.footnote).ink(DS.ink2).lineLimit(2)
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
                         Btn(L10n.securityAllowToJoin(), kind: .primary, enabled: !flow.busy) {
                             perform { await flow.approve($0) }
                         }.padding(.horizontal, 16)
@@ -194,7 +309,8 @@ struct AddDeviceScreen: View {
             guard !app.isDemo else { return }
             while !Task.isCancelled {
                 await flow.poll(context.remote)
-                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                let delaySeconds = flow.needsMetaPoll ? 1 : 2
+                do { try await Task.sleep(for: .seconds(delaySeconds)) } catch { return }
             }
         }
     }
@@ -206,7 +322,7 @@ struct AddDeviceScreen: View {
             guard let initiation = flow.initiation else { return }
             try await context.remote.ensureSecurityBootstrapped()
             try await context.remote.securityClient.cancelPairing(pairingId: initiation.pairingID)
-            flow.initiation = nil
+            flow.resetState()
         }
     }
 }

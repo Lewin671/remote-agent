@@ -84,4 +84,27 @@ class AccountExitTest {
         ui.onNodeWithText("取消").performClick()
         ui.runOnIdle { assertEquals(0, exits) }
     }
+
+    @Test
+    fun coreAuthorityExitAdviceKeyRendersDeviceNeutralCopyOnAndroid() {
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                Column {
+                    AccountExitAction(
+                        RemoteState(isAuthority = true),
+                        {
+                            io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
+                                .setAuthority(true)
+                                .setMessage("security.this_device_is_the_only_managing_client_transfer_management")
+                                .build()
+                        },
+                        {},
+                    )
+                }
+            }
+        }
+        ui.onNodeWithText("退出并删除本机密钥…").performClick()
+        ui.onNodeWithText("本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。").assertExists()
+        ui.onNodeWithText("此浏览器", substring = true).assertDoesNotExist()
+    }
 }
