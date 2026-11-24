@@ -994,22 +994,53 @@ func (lt *liveTerminal) abortRelayFailStop(detail linkcore.TermFrameStatus) {
 	lt.cancel()
 }
 
-// replayIncomplete checks whether ReplayOutput failed or truncated before targetSeq (N8).
-func replayIncomplete(frames []linkcore.TermFrame, fromSeq, targetSeq uint64, err error) bool {
+// replayPageMissing reports whether a paginated ReplayOutput call genuinely
+// missed frames from the replay window (window overflow/expiry) rather than
+// stopping cleanly at the caller's page limit (D).
+func replayPageMissing(frames []linkcore.TermFrame, fromSeq uint64, err error) bool {
 	if err != nil || len(frames) == 0 {
 		return true
 	}
-	if frames[0].Seq > fromSeq {
-		return true
+	return frames[0].Seq > fromSeq
+}
+
+// collectReplayFramesLocked paginates ReplayOutput from fromSeq through targetSeq
+// across the full 512-frame / 2 MiB replay window, failing only on genuine window loss (D).
+func (lt *liveTerminal) collectReplayFramesLocked(nowMs, fromSeq, targetSeq uint64) ([]linkcore.TermFrame, error) {
+	if fromSeq == 0 || fromSeq > targetSeq {
+		return nil, nil
 	}
-	if targetSeq > 0 && frames[len(frames)-1].Seq < targetSeq {
-		return true
+	var all []linkcore.TermFrame
+	var totalBytes uint64
+	cursor := fromSeq
+	const pageFrames = linkcore.TermGapMaxFrames // 128 frames per page
+	const pageBytes = linkcore.TermGapMaxBytes   // 1 MiB per page
+	for cursor <= targetSeq {
+		page, err := lt.stream.ReplayOutput(nowMs, cursor, targetSeq, pageBytes, pageFrames)
+		if replayPageMissing(page, cursor, err) {
+			if err != nil {
+				return nil, err
+			}
+			return nil, linkcore.ErrTermReplayWindow
+		}
+		for _, f := range page {
+			totalBytes += uint64(len(f.RawEnvelope))
+			if uint64(len(all)+1) > linkcore.TermOutputReplayMaxFrames || totalBytes > linkcore.TermOutputReplayMaxBytes {
+				return nil, linkcore.ErrTermReplayWindow
+			}
+			all = append(all, f)
+		}
+		lastSeq := page[len(page)-1].Seq
+		if lastSeq < cursor {
+			return nil, linkcore.ErrTermReplayWindow
+		}
+		cursor = lastSeq + 1
 	}
-	return false
+	return all, nil
 }
 
 // abortReplayOverflow explicitly fails and closes the terminal stream when output
-// replay exceeds the 1 MiB / 128-frame buffer instead of silently truncating (N8).
+// replay exceeds the 2 MiB / 512-frame buffer instead of silently truncating (N8/D).
 func (lt *liveTerminal) abortReplayOverflow(rp transport.Path, fromSeq, targetSeq uint64, rerr error) {
 	slog.Warn("relay: terminal output replay overflow; closing stream",
 		"stream", lt.streamID[:min(8, len(lt.streamID))],
@@ -1086,8 +1117,8 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 			replayFrom = floor + 1
 			replayTo = lt.outSeq
 			if replayFrom <= replayTo {
-				replayFrames, replayErr = lt.stream.ReplayOutput(nowMs, replayFrom, replayTo, 1<<20, 128)
-				replayOverflow = replayIncomplete(replayFrames, replayFrom, replayTo, replayErr)
+				replayFrames, replayErr = lt.collectReplayFramesLocked(nowMs, replayFrom, replayTo)
+				replayOverflow = replayErr != nil
 			}
 		}
 		lt.noteLegStateLocked(nowT)
@@ -1245,8 +1276,8 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			replayFrom := clientRendered + 1
 			replayTo := lt.outSeq
 			if clientRendered < lt.outSeq {
-				replayFrames, replayErr = lt.stream.ReplayOutput(uint64(hub.now().UnixMilli()), replayFrom, replayTo, 1<<20, 128)
-				replayOverflow = replayIncomplete(replayFrames, replayFrom, replayTo, replayErr)
+				replayFrames, replayErr = lt.collectReplayFramesLocked(uint64(hub.now().UnixMilli()), replayFrom, replayTo)
+				replayOverflow = replayErr != nil
 			}
 			lt.mu.Unlock()
 			if replayOverflow {
@@ -1266,6 +1297,11 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 				if werr != nil {
 					break
 				}
+				lt.mu.Lock()
+				if f.Seq == lt.relayWrittenSeq+1 {
+					lt.relayWrittenSeq = f.Seq
+				}
+				lt.mu.Unlock()
 			}
 			c.link.Run(func(context.Context) {
 				lt.readRelayLeg(legCtx, newPath, reqGen)
@@ -1371,14 +1407,28 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return 0, nil
 		}
 		lt.mu.Lock()
+		if msg.FromSeq > lt.outSeq {
+			lt.mu.Unlock()
+			return receipt()
+		}
 		targetSeq := msg.ThroughSeq
-		if targetSeq == 0 {
+		if targetSeq == 0 || targetSeq > lt.outSeq {
 			targetSeq = lt.outSeq
 		}
-		frames, rerr := lt.stream.ReplayOutput(now, msg.FromSeq, msg.ThroughSeq, msg.MaxBytes, msg.MaxFrames)
+		maxBytes := msg.MaxBytes
+		if maxBytes == 0 || maxBytes > linkcore.TermOutputReplayMaxBytes {
+			maxBytes = linkcore.TermOutputReplayMaxBytes
+		}
+		maxFrames := msg.MaxFrames
+		if maxFrames == 0 || maxFrames > linkcore.TermOutputReplayMaxFrames {
+			maxFrames = linkcore.TermOutputReplayMaxFrames
+		}
+		frames, rerr := lt.stream.ReplayOutput(now, msg.FromSeq, targetSeq, maxBytes, maxFrames)
 		rp := lt.relayPath
 		lt.mu.Unlock()
-		if replayIncomplete(frames, msg.FromSeq, targetSeq, rerr) {
+		// D: Normal paginated Replay stopping cleanly at maxFrames/maxBytes is NOT overflow;
+		// only abort when the replay window genuinely missed msg.FromSeq or errored.
+		if replayPageMissing(frames, msg.FromSeq, rerr) {
 			lt.abortReplayOverflow(rp, msg.FromSeq, targetSeq, rerr)
 			return receipt()
 		}

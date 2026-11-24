@@ -722,14 +722,14 @@ func TestReview2_N8_ReplayOverflowExplicitlyFailsWithHint(t *testing.T) {
 	}
 	time.Sleep(80 * time.Millisecond)
 
-	// Emit >1 MiB of output (exceeding TermMaxReplayBytes = 1 MiB) without ACKing output.
+	// Emit >2 MiB of output (exceeding TermOutputReplayMaxBytes = 2 MiB) without ACKing output.
 	const chunkSize = 32 << 10
-	const totalChunks = 40 // 1.28 MiB > 1 MiB replay buffer cap
+	const totalChunks = 76 // 2.43 MiB > 2 MiB replay buffer cap
 	chunk := bytes.Repeat([]byte("R"), chunkSize)
 	reached := make(chan struct{})
 	go func() {
 		var totalBytes int
-		for totalBytes < (1<<20)+(128<<10) {
+		for totalBytes < (2<<20)+(128<<10) {
 			raw, err := h.readPath.Read(h.ctx)
 			if err != nil {
 				return
