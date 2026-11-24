@@ -959,6 +959,7 @@ message RunMachineCommandResultEffect {
   bool ok = 2;
   string error_code = 3;
   Text error_text = 4;
+  remoteagent.v1.CommandResult result = 5;
 }
 
 message Effect {

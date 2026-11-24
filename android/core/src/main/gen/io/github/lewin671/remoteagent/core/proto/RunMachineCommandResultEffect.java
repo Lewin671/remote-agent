@@ -166,6 +166,54 @@ public  final class RunMachineCommandResultEffect extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
+  public static final int RESULT_FIELD_NUMBER = 5;
+  private io.github.lewin671.remoteagent.proto.CommandResult result_;
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   */
+  @java.lang.Override
+  public boolean hasResult() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.CommandResult getResult() {
+    return result_ == null ? io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance() : result_;
+  }
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
+    value.getClass();  // minimal bytecode null check
+    result_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
+    value.getClass();  // minimal bytecode null check
+    if (result_ != null &&
+        result_ != io.github.lewin671.remoteagent.proto.CommandResult.getDefaultInstance()) {
+      result_ =
+        io.github.lewin671.remoteagent.proto.CommandResult.newBuilder(result_).mergeFrom(value).buildPartial();
+    } else {
+      result_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   */
+  private void clearResult() {
+    result_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -415,6 +463,53 @@ public  final class RunMachineCommandResultEffect extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    @java.lang.Override
+    public boolean hasResult() {
+      return instance.hasResult();
+    }
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.CommandResult getResult() {
+      return instance.getResult();
+    }
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    public Builder setResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
+      copyOnWrite();
+      instance.setResult(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    public Builder setResult(
+        io.github.lewin671.remoteagent.proto.CommandResult.Builder builderForValue) {
+      copyOnWrite();
+      instance.setResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    public Builder mergeResult(io.github.lewin671.remoteagent.proto.CommandResult value) {
+      copyOnWrite();
+      instance.mergeResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+     */
+    public Builder clearResult() {  copyOnWrite();
+      instance.clearResult();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.RunMachineCommandResultEffect)
   }
   @java.lang.Override
@@ -436,10 +531,11 @@ public  final class RunMachineCommandResultEffect extends
             "ok_",
             "errorCode_",
             "errorText_",
+            "result_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0003\u0002\u0007" +
-              "\u0003\u0208\u0004\u1009\u0000";
+              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0003\u0002\u0007" +
+              "\u0003\u0208\u0004\u1009\u0000\u0005\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -301,6 +301,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 						Ok:        ok,
 						ErrorCode: errCode,
 						ErrorText: sc.ErrorText,
+						Result:    sc.Result,
 					},
 				},
 			})

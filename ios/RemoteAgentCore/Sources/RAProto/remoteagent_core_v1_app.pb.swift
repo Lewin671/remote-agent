@@ -4787,11 +4787,21 @@ public struct PBCoreRunMachineCommandResultEffect: Sendable {
   /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
   public mutating func clearErrorText() {self._errorText = nil}
 
+  public var result: PBCommandResult {
+    get {return _result ?? PBCommandResult()}
+    set {_result = newValue}
+  }
+  /// Returns true if `result` has been explicitly set.
+  public var hasResult: Bool {return self._result != nil}
+  /// Clears the value of `result`. Subsequent reads from it will return its default value.
+  public mutating func clearResult() {self._result = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _errorText: PBCoreText? = nil
+  fileprivate var _result: PBCommandResult? = nil
 }
 
 public struct PBCoreEffect: Sendable {
@@ -14251,7 +14261,7 @@ extension PBCoreCancelMachineCommandAction: SwiftProtobuf.Message, SwiftProtobuf
 
 extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".RunMachineCommandResultEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}ok\0\u{3}error_code\0\u{3}error_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}op_id\0\u{1}ok\0\u{3}error_code\0\u{3}error_text\0\u{1}result\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -14263,6 +14273,7 @@ extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProto
       case 2: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.errorCode) }()
       case 4: try { try decoder.decodeSingularMessageField(value: &self._errorText) }()
+      case 5: try { try decoder.decodeSingularMessageField(value: &self._result) }()
       default: break
       }
     }
@@ -14285,6 +14296,9 @@ extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProto
     try { if let v = self._errorText {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     } }()
+    try { if let v = self._result {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -14293,6 +14307,7 @@ extension PBCoreRunMachineCommandResultEffect: SwiftProtobuf.Message, SwiftProto
     if lhs.ok != rhs.ok {return false}
     if lhs.errorCode != rhs.errorCode {return false}
     if lhs._errorText != rhs._errorText {return false}
+    if lhs._result != rhs._result {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

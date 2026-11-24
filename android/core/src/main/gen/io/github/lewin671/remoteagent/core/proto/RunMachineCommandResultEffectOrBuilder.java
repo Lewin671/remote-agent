@@ -44,4 +44,15 @@ public interface RunMachineCommandResultEffectOrBuilder extends
    * @return The errorText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getErrorText();
+
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   * @return Whether the result field is set.
+   */
+  boolean hasResult();
+  /**
+   * <code>.remoteagent.v1.CommandResult result = 5 [json_name = "result"];</code>
+   * @return The result.
+   */
+  io.github.lewin671.remoteagent.proto.CommandResult getResult();
 }

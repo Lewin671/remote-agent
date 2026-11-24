@@ -2172,7 +2172,193 @@ var LitewireDesc_CommandResult = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(CommandResult{}.RequestKeyHash), Kind: litewire.KindBytes},
 		{Num: 7, Offset: unsafe.Offsetof(CommandResult{}.PayloadHash), Kind: litewire.KindBytes},
 		{Num: 8, Offset: unsafe.Offsetof(CommandResult{}.ResultAvailable), Kind: litewire.KindBool},
+		{Num: litewire.Number(1), Kind: litewire.KindCustom},
 	},
+}
+
+func (m *CommandResult) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CommandResult) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CommandResult)
+}
+
+func extraMarshal_CommandResult(base unsafe.Pointer, b []byte, idx litewire.Number) []byte {
+	m := (*CommandResult)(base)
+	if m.Kind != nil {
+		var ok bool
+		b, ok = m.appendMarshalKindPart0(b)
+		if !ok {
+			b, ok = m.appendMarshalKindPart1(b)
+		}
+		if !ok {
+			b, ok = m.appendMarshalKindPart2(b)
+		}
+	}
+	return b
+}
+
+//go:noinline
+func (m *CommandResult) appendMarshalKindPart0(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *CommandResult_Send:
+		if x != nil && x.Send != nil {
+			onum, omsg = 10, x.Send
+		}
+	case *CommandResult_Interrupt:
+		if x != nil && x.Interrupt != nil {
+			onum, omsg = 11, x.Interrupt
+		}
+	case *CommandResult_ResolveApproval:
+		if x != nil && x.ResolveApproval != nil {
+			onum, omsg = 12, x.ResolveApproval
+		}
+	case *CommandResult_AnswerQuestion:
+		if x != nil && x.AnswerQuestion != nil {
+			onum, omsg = 13, x.AnswerQuestion
+		}
+	case *CommandResult_StopSession:
+		if x != nil && x.StopSession != nil {
+			onum, omsg = 14, x.StopSession
+		}
+	case *CommandResult_CancelInput:
+		if x != nil && x.CancelInput != nil {
+			onum, omsg = 15, x.CancelInput
+		}
+	case *CommandResult_SetModel:
+		if x != nil && x.SetModel != nil {
+			onum, omsg = 16, x.SetModel
+		}
+	case *CommandResult_SetApprovalMode:
+		if x != nil && x.SetApprovalMode != nil {
+			onum, omsg = 17, x.SetApprovalMode
+		}
+	case *CommandResult_Compact:
+		if x != nil && x.Compact != nil {
+			onum, omsg = 18, x.Compact
+		}
+	case *CommandResult_AnswerPlan:
+		if x != nil && x.AnswerPlan != nil {
+			onum, omsg = 19, x.AnswerPlan
+		}
+	case *CommandResult_OpenTerminal:
+		if x != nil && x.OpenTerminal != nil {
+			onum, omsg = 20, x.OpenTerminal
+		}
+	case *CommandResult_ResumeSession:
+		if x != nil && x.ResumeSession != nil {
+			onum, omsg = 21, x.ResumeSession
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *CommandResult) appendMarshalKindPart1(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *CommandResult_ResumeInput:
+		if x != nil && x.ResumeInput != nil {
+			onum, omsg = 22, x.ResumeInput
+		}
+	case *CommandResult_RenameSession:
+		if x != nil && x.RenameSession != nil {
+			onum, omsg = 23, x.RenameSession
+		}
+	case *CommandResult_ForkSession:
+		if x != nil && x.ForkSession != nil {
+			onum, omsg = 24, x.ForkSession
+		}
+	case *CommandResult_CreateSession:
+		if x != nil && x.CreateSession != nil {
+			onum, omsg = 30, x.CreateSession
+		}
+	case *CommandResult_ListModels:
+		if x != nil && x.ListModels != nil {
+			onum, omsg = 31, x.ListModels
+		}
+	case *CommandResult_ListDirectories:
+		if x != nil && x.ListDirectories != nil {
+			onum, omsg = 32, x.ListDirectories
+		}
+	case *CommandResult_GetSettings:
+		if x != nil && x.GetSettings != nil {
+			onum, omsg = 33, x.GetSettings
+		}
+	case *CommandResult_UpdateSettings:
+		if x != nil && x.UpdateSettings != nil {
+			onum, omsg = 34, x.UpdateSettings
+		}
+	case *CommandResult_BeginImageUpload:
+		if x != nil && x.BeginImageUpload != nil {
+			onum, omsg = 35, x.BeginImageUpload
+		}
+	case *CommandResult_PutImageChunk:
+		if x != nil && x.PutImageChunk != nil {
+			onum, omsg = 36, x.PutImageChunk
+		}
+	case *CommandResult_GetImageUploadStatus:
+		if x != nil && x.GetImageUploadStatus != nil {
+			onum, omsg = 37, x.GetImageUploadStatus
+		}
+	case *CommandResult_CompleteImageUpload:
+		if x != nil && x.CompleteImageUpload != nil {
+			onum, omsg = 38, x.CompleteImageUpload
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *CommandResult) appendMarshalKindPart2(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Kind.(type) {
+	case *CommandResult_AbortImageUpload:
+		if x != nil && x.AbortImageUpload != nil {
+			onum, omsg = 39, x.AbortImageUpload
+		}
+	case *CommandResult_Schedule:
+		if x != nil && x.Schedule != nil {
+			onum, omsg = 40, x.Schedule
+		}
+	case *CommandResult_LiveSnapshot:
+		if x != nil && x.LiveSnapshot != nil {
+			onum, omsg = 41, x.LiveSnapshot
+		}
+	case *CommandResult_GetSharedFileChunk:
+		if x != nil && x.GetSharedFileChunk != nil {
+			onum, omsg = 42, x.GetSharedFileChunk
+		}
+	case *CommandResult_MachineStatus:
+		if x != nil && x.MachineStatus != nil {
+			onum, omsg = 43, x.MachineStatus
+		}
+	case *CommandResult_UsageStats:
+		if x != nil && x.UsageStats != nil {
+			onum, omsg = 44, x.UsageStats
+		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
 }
 
 func (m *CommandResult) Unmarshal(b []byte) error {
@@ -2518,6 +2704,14 @@ var LitewireDesc_OpenTerminalResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(OpenTerminalResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&OpenTerminalResponse{}) },
+}
+
+func (m *OpenTerminalResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *OpenTerminalResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_OpenTerminalResponse)
 }
 
 func (m *OpenTerminalResponse) Unmarshal(b []byte) error {
@@ -3796,6 +3990,7 @@ func init() {
 	LitewireDesc_AgentQuota.ExtraUnmarshal = extraUnmarshal_AgentQuota
 	LitewireDesc_Command.ExtraMarshal = extraMarshal_Command
 	LitewireDesc_Command.ExtraUnmarshal = extraUnmarshal_Command
+	LitewireDesc_CommandResult.ExtraMarshal = extraMarshal_CommandResult
 	LitewireDesc_CommandResult.ExtraUnmarshal = extraUnmarshal_CommandResult
 	LitewireDesc_TerminalFrame.ExtraUnmarshal = extraUnmarshal_TerminalFrame
 	LitewireDesc_PairingPayload.ExtraUnmarshal = extraUnmarshal_PairingPayload

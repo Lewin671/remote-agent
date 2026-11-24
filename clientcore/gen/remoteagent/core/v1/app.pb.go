@@ -9912,6 +9912,7 @@ type RunMachineCommandResultEffect struct {
 	Ok        bool
 	ErrorCode string
 	ErrorText *Text
+	Result    *v1.CommandResult
 }
 
 func (m *RunMachineCommandResultEffect) GetOpId() uint64 {
@@ -9938,6 +9939,12 @@ func (m *RunMachineCommandResultEffect) GetErrorText() *Text {
 	}
 	return nil
 }
+func (m *RunMachineCommandResultEffect) GetResult() *v1.CommandResult {
+	if m != nil {
+		return m.Result
+	}
+	return nil
+}
 
 var LitewireDesc_RunMachineCommandResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -9945,6 +9952,7 @@ var LitewireDesc_RunMachineCommandResultEffect = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(RunMachineCommandResultEffect{}.Ok), Kind: litewire.KindBool},
 		{Num: 3, Offset: unsafe.Offsetof(RunMachineCommandResultEffect{}.ErrorCode), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(RunMachineCommandResultEffect{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 5, Offset: unsafe.Offsetof(RunMachineCommandResultEffect{}.Result), Kind: litewire.KindMessage, Sub: &v1.LitewireDesc_CommandResult},
 	},
 }
 
