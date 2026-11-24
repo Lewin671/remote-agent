@@ -1144,6 +1144,40 @@
       },
       "zh-CN": "remote-agent：在 tmux 中托管与操控本机 AI 编程 CLI\n\n用法：\n{agentLines}\n  remote-agent session OPERATION           创建、查看与操控托管会话（见 session help）\n  remote-agent models [{agents}]           查看这台电脑可用的模型、推理强度与默认配置\n  remote-agent schedule OPERATION          管理持久定时任务（见 schedule help）\n  remote-agent account join|secret|status  将本机连接到账户服务器\n  remote-agent update [check|status|auto]  更新 daemon（见 update help）\n  remote-agent doctor [{agents}]           检查已安装的 CLI 是否与 remote-agent 兼容\n  remote-agent daemon [flags]              在前台运行 daemon\n  remote-agent --version                   查看产品版本与源码修订\n"
     },
+    "terminal.confirm_rebuild_input_body": {
+      "en": "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.",
+      "key": "terminal.confirm_rebuild_input_body",
+      "notes": "第 3 期终端输入失败或过期后需要用户确认的说明正文。允许多行，无变量。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。"
+    },
+    "terminal.confirm_rebuild_restart_body": {
+      "en": "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.",
+      "key": "terminal.confirm_rebuild_restart_body",
+      "notes": "第 3 期终端因电脑重启或原流失效需要用户确认的说明正文。允许多行，无变量。",
+      "params": {},
+      "platforms": [
+        "go",
+        "web",
+        "android",
+        "ios"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。"
+    },
     "terminal.replay_overflow": {
       "en": "Terminal output exceeded the replay buffer. Reconnect for the latest screen.",
       "key": "terminal.replay_overflow",

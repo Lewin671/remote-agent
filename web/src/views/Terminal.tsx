@@ -67,14 +67,15 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const viewport = useRef<{ width: number; height: number }>(undefined);
   const dimsSeen = useRef(false);
   const [dims, setDims] = useState<{ cols: number; rows: number }>();
-  const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
-  const stateRef = useRef<"connecting" | "live" | "closed">("connecting");
+  const [state, setState] = useState<"connecting" | "live" | "confirm" | "closed">("connecting");
+  const stateRef = useRef<"connecting" | "live" | "confirm" | "closed">("connecting");
   stateRef.current = state;
-  const setTerminalState = (next: "connecting" | "live" | "closed") => {
+  const setTerminalState = (next: "connecting" | "live" | "confirm" | "closed") => {
     stateRef.current = next;
     setState(next);
   };
   const [reason, setReason] = useState("");
+  const [confirmReason, setConfirmReason] = useState("");
   const [details, setDetails] = useState(false);
   const [, refreshHistory] = useState(0);
   const historyRef = useRef<TerminalHistory>(null);
@@ -152,7 +153,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     // come from layout notifications, not reads after changing font size.
     viewport.current = { width: box.current!.clientWidth, height: box.current!.clientHeight };
     t.open(host.current!);
-    const typed = t.onData((d) => !history.visible && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
+    const typed = t.onData((d) => !history.visible && stateRef.current === "live" && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
     // A fitted window follows the width of its pane: the browser window, or
     // the switch between the terminal alone and side by side. Height is left
     // alone, so a phone's keyboard never resizes the remote window.
@@ -322,6 +323,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     history.close();
     setTerminalState("connecting");
     setReason("");
+    setConfirmReason("");
     setDetails(false);
     setFitted(false);
     setShown(false);
@@ -392,6 +394,19 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, opened);
         },
         opening.signal,
+        (ev) => {
+          if (!alive || ended) return;
+          if (ev.kind === "confirm") {
+            setConfirmReason(ev.reasonKey);
+            setTerminalState("confirm");
+          } else if (ev.kind === "rebuild") {
+            ended = true;
+            conn.current = null;
+            const next = ++nextAttemptRef.current;
+            allowedAttemptRef.current = next;
+            setAttempt(next);
+          }
+        },
       )
       .then(
         (c) => {
@@ -493,9 +508,9 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           {live && !reading && <button onClick={toggleFit}>{fitted ? i18n.t("terminal.restore") : <><Maximize2 /> {wide ? i18n.t("terminal.fit_short") : i18n.t("terminal.fit")}</>}</button>}
         </div>
       </div>
-      <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
-        <div className={"tpan" + (shown || state === "closed" ? "" : " unfit")} ref={pan}>
-          <div ref={host} className={state === "closed" ? "stale" : ""} />
+      <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && live && term.current?.focus()}>
+        <div className={"tpan" + (shown || state === "closed" || state === "confirm" ? "" : " unfit")} ref={pan}>
+          <div ref={host} className={state === "closed" || state === "confirm" ? "stale" : ""} />
         </div>
         {history.phase === "loading" && <div className="thint">{history.error ? <>{i18n.t("terminal.read_failed")}<button onClick={() => beginRef.current(0)}>{i18n.t("common.retry")}</button></> : i18n.t("terminal.reading")}</div>}
         {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
@@ -507,6 +522,24 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
             <div className="btns">
               <button className="btn" onClick={() => setChanged(false)}>
                 {i18n.t("common.got_it")}</button>
+            </div>
+          </div>
+        )}
+        {state === "confirm" && (
+          <div className="tstate glass">
+            <b>{i18n.t("terminal.confirm_rebuild_title")}</b>
+            <p>{confirmReason === "terminal.confirm_rebuild_restart_body" ? i18n.t("terminal.confirm_rebuild_restart_body") : i18n.t("terminal.confirm_rebuild_input_body")}</p>
+            <div className="btns">
+              <button className="btn" onClick={() => {
+                conn.current?.close();
+                conn.current = null;
+                setTerminalState("closed");
+                setReason("");
+                hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, true);
+              }}>
+                {i18n.t("terminal.confirm_close_action")}</button>
+              <button className="btn pri" onClick={() => conn.current?.confirmRebuild?.()}>
+                {i18n.t("terminal.confirm_rebuild_action")}</button>
             </div>
           </div>
         )}

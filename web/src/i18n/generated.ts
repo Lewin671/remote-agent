@@ -1478,6 +1478,11 @@ export interface MessageArgs {
   "terminal.closed_ended_note": { [name: string]: never };
   "terminal.closed_running_note": { [name: string]: never };
   "terminal.computer_dimensions": { cols: number; rows: number };
+  "terminal.confirm_close_action": { [name: string]: never };
+  "terminal.confirm_rebuild_action": { [name: string]: never };
+  "terminal.confirm_rebuild_input_body": { [name: string]: never };
+  "terminal.confirm_rebuild_restart_body": { [name: string]: never };
+  "terminal.confirm_rebuild_title": { [name: string]: never };
   "terminal.connecting": { [name: string]: never };
   "terminal.disconnected": { [name: string]: never };
   "terminal.down": { [name: string]: never };
@@ -3754,6 +3759,11 @@ export const messages = {
     "terminal.closed_ended_note": "The last frame before disconnection is shown below. The session has ended.",
     "terminal.closed_running_note": "The last frame before disconnection is shown below. The session is still running; chat updates continue.",
     "terminal.computer_dimensions": "On computer {cols}×{rows}",
+    "terminal.confirm_close_action": "Close terminal",
+    "terminal.confirm_rebuild_action": "Rebuild terminal",
+    "terminal.confirm_rebuild_input_body": "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.",
+    "terminal.confirm_rebuild_restart_body": "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.",
+    "terminal.confirm_rebuild_title": "Confirm before rebuilding terminal",
     "terminal.connecting": "Connecting to terminal…",
     "terminal.disconnected": "Terminal disconnected",
     "terminal.down": "Down",
@@ -6013,6 +6023,11 @@ export const messages = {
     "terminal.closed_ended_note": "下面是断开前的画面。会话已经结束。",
     "terminal.closed_running_note": "下面是断开前的画面。会话还在运行，聊天照常更新。",
     "terminal.computer_dimensions": "电脑上 {cols}×{rows}",
+    "terminal.confirm_close_action": "关闭终端",
+    "terminal.confirm_rebuild_action": "重建终端",
+    "terminal.confirm_rebuild_input_body": "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。",
+    "terminal.confirm_rebuild_restart_body": "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。",
+    "terminal.confirm_rebuild_title": "需要确认后重建终端",
     "terminal.connecting": "连接终端…",
     "terminal.disconnected": "终端已断开",
     "terminal.down": "下",

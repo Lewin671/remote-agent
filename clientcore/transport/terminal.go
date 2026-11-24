@@ -52,7 +52,8 @@ type CoordTerminalAttachRelay struct {
 
 // CoordTerminalState notifies the shell of logical terminal continuity state
 // (reconnecting, non-bypassable Input fail-stop, daemon restart confirmation gate, or closed).
-// Unified shell close policy (M5): close iff State == TermStateClosed || NeedsConfirmation.
+// Unified shell policy (M4/M5): NeedsConfirmation renders the confirmation UI without
+// auto-closing; State == TermStateClosed closes (or rebuilds when Reason == "rebuild_confirmed").
 type CoordTerminalState struct {
 	StreamID          string
 	State             uint32
@@ -528,7 +529,7 @@ func (c *Coordinator) pruneEarlyOutputs(now int64) {
 }
 
 // TerminalDirectConfirmRebuild clears the user confirmation gate after fail-stop
-// or daemon restart so the shell may rebuild a fresh logical stream.
+// or daemon restart, releases the old stream, and signals the shell to rebuild a fresh stream.
 func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) []CoordEffect {
 	ct := c.termStreams[streamID]
 	if ct == nil {
@@ -537,7 +538,20 @@ func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) [
 	_ = ct.stream.ConfirmRebuild(nil)
 	ct.needsConfirm = false
 	ct.disconnectedAll = false
-	c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive, Reason: "confirmed"})
+	if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok && ct.directAttached {
+		legBytes := ct.stream.LegID("direct")
+		if len(legBytes) == 16 {
+			body := linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+				Stream:         ct.streamID,
+				LegID:          legBytes,
+				PathGeneration: ct.directGen,
+				Reason:         1,
+			})
+			_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlClosePath, Body: body})
+		}
+	}
+	delete(c.termStreams, streamID)
+	c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "rebuild_confirmed"})
 	return c.take()
 }
 

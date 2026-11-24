@@ -1913,6 +1913,11 @@
     <string name="terminal_closed_ended_note" formatted="false">"下面是断开前的画面。会话已经结束。"</string>
     <string name="terminal_closed_running_note" formatted="false">"下面是断开前的画面。会话还在运行，聊天照常更新。"</string>
     <string name="terminal_computer_dimensions">"电脑上 %1$d×%2$d"</string>
+    <string name="terminal_confirm_close_action" formatted="false">"关闭终端"</string>
+    <string name="terminal_confirm_rebuild_action" formatted="false">"重建终端"</string>
+    <string name="terminal_confirm_rebuild_input_body" formatted="false">"有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。"</string>
+    <string name="terminal_confirm_rebuild_restart_body" formatted="false">"电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。"</string>
+    <string name="terminal_confirm_rebuild_title" formatted="false">"需要确认后重建终端"</string>
     <string name="terminal_connecting" formatted="false">"连接终端…"</string>
     <string name="terminal_disconnected" formatted="false">"终端已断开"</string>
     <string name="terminal_down" formatted="false">"下"</string>

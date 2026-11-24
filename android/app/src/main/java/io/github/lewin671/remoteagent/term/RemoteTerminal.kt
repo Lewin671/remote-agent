@@ -46,6 +46,8 @@ class RemoteTerminal(
         data object Connecting : State
         /** The screen shows the remote terminal and what is typed goes to it. */
         data object Live : State
+        /** Core requires explicit user confirmation before rebuilding after input/daemon uncertainty. */
+        data class ConfirmRebuild(val reasonKey: String) : State
         data class Closed(val reason: MessageText) : State
     }
 
@@ -183,6 +185,22 @@ class RemoteTerminal(
                     override fun onClose(reason: io.github.lewin671.remoteagent.core.MessageText) {
                         enqueue(TerminalFrame.newBuilder().setClosed(io.github.lewin671.remoteagent.ui.sessionText(reason)).build())
                     }
+
+                    override fun onConfirmRebuild(reasonKey: String) {
+                        main.post {
+                            if (gen == generation && _state.value !is State.Closed) {
+                                _state.value = State.ConfirmRebuild(reasonKey)
+                            }
+                        }
+                    }
+
+                    override fun onRebuildConfirmed() {
+                        main.post {
+                            if (gen == generation && active) {
+                                openAttempt()
+                            }
+                        }
+                    }
                 })
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
@@ -297,6 +315,14 @@ class RemoteTerminal(
         _resizedElsewhere.value = false
         _fitted.value = fit.fitted
         return true
+    }
+
+    fun confirmRebuild() {
+        conn?.confirmRebuild()
+    }
+
+    fun closeFromConfirm() {
+        close()
     }
 
     fun close() {

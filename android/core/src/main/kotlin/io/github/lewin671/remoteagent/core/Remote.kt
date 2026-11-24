@@ -54,15 +54,19 @@ interface CipherCache {
 interface TermListener {
     fun onFrame(frame: TerminalFrame)
     fun onClose(reason: MessageText)
+    fun onConfirmRebuild(reasonKey: String) {}
+    fun onRebuildConfirmed() {}
 }
 
 class TermConn internal constructor(
     private val ws: FrameStream,
     private val sendFrame: (TerminalFrame) -> Unit,
     private val closeLocal: () -> Unit,
+    private val confirmRebuildAction: () -> Unit = {},
 ) {
     fun send(frame: TerminalFrame) = sendFrame(frame)
     fun close() = cleanup(closeLocal, { ws.close() })
+    fun confirmRebuild() = confirmRebuildAction()
 }
 
 internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
@@ -2452,17 +2456,25 @@ class Remote(
                 }
             },
             onState = { st, reason, needsConfirm ->
-                // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
-                if (!closed.get() && (st == 5 || needsConfirm)) {
-                    val err = lastRelayError.getAndSet(null)
-                    if (reason == "conflict") {
-                        finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
-                    } else if (reason == "replay_overflow") {
-                        finish(UiMessages.terminalReplayOverflow().messageText())
-                    } else if (err != null) {
-                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, state.value).resolve(copy))) })
-                    } else {
-                        finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
+                // rebuild_confirmed closes the old stream silently and triggers a fresh open.
+                if (!closed.get()) {
+                    if (needsConfirm) {
+                        listener.onConfirmRebuild(reason)
+                    } else if (st == 5 && reason == "rebuild_confirmed") {
+                        finish()
+                        listener.onRebuildConfirmed()
+                    } else if (st == 5) {
+                        val err = lastRelayError.getAndSet(null)
+                        if (reason == "conflict") {
+                            finish(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
+                        } else if (reason == "replay_overflow") {
+                            finish(UiMessages.terminalReplayOverflow().messageText())
+                        } else if (err != null) {
+                            finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, state.value).resolve(copy))) })
+                        } else {
+                            finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                        }
                     }
                 }
             },
@@ -2638,6 +2650,17 @@ class Remote(
                     }
                 },
                 closeLocal = { finish() },
+                confirmRebuildAction = {
+                    if (!closed.get()) {
+                        coreHost.dispatch(
+                            CoreEvent.newBuilder()
+                                .setTerminalDirectConfirmRebuild(
+                                    TerminalDirectConfirmRebuildAction.newBuilder().setStreamId(streamId),
+                                )
+                                .build(),
+                        )
+                    }
+                },
             )
         } catch (e: Exception) {
             finish()

@@ -1672,6 +1672,11 @@
 "terminal_closed_ended_note" = "The last frame before disconnection is shown below. The session has ended.";
 "terminal_closed_running_note" = "The last frame before disconnection is shown below. The session is still running; chat updates continue.";
 "terminal_computer_dimensions" = "On computer %1$lld×%2$lld";
+"terminal_confirm_close_action" = "Close terminal";
+"terminal_confirm_rebuild_action" = "Rebuild terminal";
+"terminal_confirm_rebuild_input_body" = "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.";
+"terminal_confirm_rebuild_restart_body" = "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.";
+"terminal_confirm_rebuild_title" = "Confirm before rebuilding terminal";
 "terminal_connecting" = "Connecting to terminal…";
 "terminal_disconnected" = "Terminal disconnected";
 "terminal_down" = "Down";

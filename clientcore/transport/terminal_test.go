@@ -152,16 +152,16 @@ func TestCoordinatorPhase3TerminalContinuityAndFailover(t *testing.T) {
 		t.Fatalf("expected NeedsConfirmation state on blocked input, got %+v", blockedEffs)
 	}
 
-	// ConfirmRebuild clears confirmation gate.
+	// ConfirmRebuild clears confirmation gate and signals shell rebuild.
 	confirmEffs := coord.TerminalDirectConfirmRebuild(now+40, streamID)
-	sawLive = false
+	sawRebuild := false
 	for _, e := range confirmEffs {
-		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateLive && !st.NeedsConfirmation {
-			sawLive = true
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateClosed && st.Reason == "rebuild_confirmed" && !st.NeedsConfirmation {
+			sawRebuild = true
 		}
 	}
-	if !sawLive {
-		t.Fatalf("expected ConfirmRebuild to clear gate, got %+v", confirmEffs)
+	if !sawRebuild {
+		t.Fatalf("expected ConfirmRebuild to emit TermStateClosed(rebuild_confirmed), got %+v", confirmEffs)
 	}
 }
 

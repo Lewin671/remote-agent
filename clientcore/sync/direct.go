@@ -6,6 +6,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -670,12 +671,20 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 			})
 
 		case transport.CoordTerminalState:
+			reason := eff.Reason
+			if eff.NeedsConfirmation {
+				if eff.State == transport.TermStateInstanceChange {
+					reason = text.KeyTerminalConfirmRebuildRestartBody
+				} else {
+					reason = text.KeyTerminalConfirmRebuildInputBody
+				}
+			}
 			ctx.emit(&corev1.Effect{
 				Effect: &corev1.Effect_TerminalDirectState{
 					TerminalDirectState: &corev1.TerminalDirectStateEffect{
 						StreamId:          eff.StreamID,
 						State:             eff.State,
-						Reason:            eff.Reason,
+						Reason:            reason,
 						NeedsConfirmation: eff.NeedsConfirmation,
 					},
 				},

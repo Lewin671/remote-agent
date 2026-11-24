@@ -2001,6 +2001,11 @@
     <string name="terminal_closed_ended_note" formatted="false">"The last frame before disconnection is shown below. The session has ended."</string>
     <string name="terminal_closed_running_note" formatted="false">"The last frame before disconnection is shown below. The session is still running; chat updates continue."</string>
     <string name="terminal_computer_dimensions">"On computer %1$d×%2$d"</string>
+    <string name="terminal_confirm_close_action" formatted="false">"Close terminal"</string>
+    <string name="terminal_confirm_rebuild_action" formatted="false">"Rebuild terminal"</string>
+    <string name="terminal_confirm_rebuild_input_body" formatted="false">"Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal."</string>
+    <string name="terminal_confirm_rebuild_restart_body" formatted="false">"The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal."</string>
+    <string name="terminal_confirm_rebuild_title" formatted="false">"Confirm before rebuilding terminal"</string>
     <string name="terminal_connecting" formatted="false">"Connecting to terminal…"</string>
     <string name="terminal_disconnected" formatted="false">"Terminal disconnected"</string>
     <string name="terminal_down" formatted="false">"Down"</string>

@@ -255,6 +255,88 @@
     }
   },
   {
+    "key": "terminal.confirm_close_action",
+    "zh-CN": "关闭终端",
+    "en": "Close terminal",
+    "notes": "第 3 期终端进入用户确认状态时的次操作按钮文案。按钮紧凑，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.confirm_rebuild_action",
+    "zh-CN": "重建终端",
+    "en": "Rebuild terminal",
+    "notes": "第 3 期终端进入用户确认状态时的主操作按钮文案。按钮紧凑，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.confirm_rebuild_input_body",
+    "zh-CN": "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。",
+    "en": "Some input may not have been delivered completely or has expired. Automatic resend is paused to prevent duplicate execution. Check the screen, then rebuild or close the terminal.",
+    "notes": "第 3 期终端输入失败或过期后需要用户确认的说明正文。允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.confirm_rebuild_restart_body",
+    "zh-CN": "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。",
+    "en": "The computer restarted or the terminal stream is no longer available, so unconfirmed input cannot be verified. Check the status, then rebuild or close the terminal.",
+    "notes": "第 3 期终端因电脑重启或原流失效需要用户确认的说明正文。允许多行，无变量。",
+    "params": {},
+    "platforms": [
+      "go",
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.confirm_rebuild_title",
+    "zh-CN": "需要确认后重建终端",
+    "en": "Confirm before rebuilding terminal",
+    "notes": "第 3 期终端需要用户确认卡片标题。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "terminal.connecting",
     "zh-CN": "连接终端…",
     "en": "Connecting to terminal…",

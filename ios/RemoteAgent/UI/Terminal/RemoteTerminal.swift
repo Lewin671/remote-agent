@@ -23,6 +23,8 @@ final class RemoteTerminal {
         case connecting
         /// The screen shows the remote terminal and what is typed goes to it.
         case live
+        /// Core requires explicit user confirmation before rebuilding the terminal stream.
+        case confirmRebuild(String)
         case closed(String)
 
         var isClosed: Bool {
@@ -174,21 +176,38 @@ final class RemoteTerminal {
         fit.reset()
         fitted = false
         autoFit = !released
-        let listener = Listener(queue: queue) { [weak self] offer in
-            switch offer {
-            case .schedule: onMain(after: Self.frameInterval) { self?.flush(gen, queue) }
-            case .overflow: onMain {
-                if let self, gen == self.generation {
-                    let wasOpened = self.conn != nil || self.liveNotified
-                    self.history.disconnected()
-                    self.drop()
-                    self.state = .closed(L10n.errorsTerminalConnectionDropped())
-                    self.link?.reportStream(self.terminalId, .closed, wasOpened)
+        let listener = Listener(
+            queue: queue,
+            wake: { [weak self] offer in
+                switch offer {
+                case .schedule: onMain(after: Self.frameInterval) { self?.flush(gen, queue) }
+                case .overflow: onMain {
+                    if let self, gen == self.generation {
+                        let wasOpened = self.conn != nil || self.liveNotified
+                        self.history.disconnected()
+                        self.drop()
+                        self.state = .closed(L10n.errorsTerminalConnectionDropped())
+                        self.link?.reportStream(self.terminalId, .closed, wasOpened)
+                    }
+                }
+                case .queued, .closed: break
+                }
+            },
+            onConfirm: { [weak self] reasonKey in
+                onMain {
+                    if let self, gen == self.generation, !self.state.isClosed {
+                        self.state = .confirmRebuild(reasonKey)
+                    }
+                }
+            },
+            onRebuild: { [weak self] in
+                onMain {
+                    if let self, gen == self.generation, self.active {
+                        self.openAttempt()
+                    }
                 }
             }
-            case .queued, .closed: break
-            }
-        }
+        )
         job = Task { [weak self] in
             do {
                 let opened = try await link.open(listener)
@@ -327,6 +346,14 @@ final class RemoteTerminal {
         return true
     }
 
+    func confirmRebuild() {
+        conn?.confirmRebuild()
+    }
+
+    func closeFromConfirm() {
+        close()
+    }
+
     func close() {
         active = false
         liveNotified = false
@@ -381,10 +408,19 @@ private func onMain(after seconds: TimeInterval = 0, _ body: @escaping @MainActo
 private final class Listener: TermListener {
     private let queue: TerminalFrames
     private let wake: @Sendable (TerminalFrames.Offer) -> Void
+    private let onConfirm: @Sendable (String) -> Void
+    private let onRebuild: @Sendable () -> Void
 
-    init(queue: TerminalFrames, wake: @escaping @Sendable (TerminalFrames.Offer) -> Void) {
+    init(
+        queue: TerminalFrames,
+        wake: @escaping @Sendable (TerminalFrames.Offer) -> Void,
+        onConfirm: @escaping @Sendable (String) -> Void = { _ in },
+        onRebuild: @escaping @Sendable () -> Void = {}
+    ) {
         self.queue = queue
         self.wake = wake
+        self.onConfirm = onConfirm
+        self.onRebuild = onRebuild
     }
 
     func onFrame(_ frame: PBTerminalFrame) {
@@ -395,5 +431,13 @@ private final class Listener: TermListener {
         var frame = PBTerminalFrame()
         frame.closed = reason
         wake(queue.offer(frame))
+    }
+
+    func onConfirmRebuild(_ reasonKey: String) {
+        onConfirm(reasonKey)
+    }
+
+    func onRebuildConfirmed() {
+        onRebuild()
     }
 }

@@ -1672,6 +1672,11 @@
 "terminal_closed_ended_note" = "下面是断开前的画面。会话已经结束。";
 "terminal_closed_running_note" = "下面是断开前的画面。会话还在运行，聊天照常更新。";
 "terminal_computer_dimensions" = "电脑上 %1$lld×%2$lld";
+"terminal_confirm_close_action" = "关闭终端";
+"terminal_confirm_rebuild_action" = "重建终端";
+"terminal_confirm_rebuild_input_body" = "有输入可能未完整送达或已过期，已暂停自动续发以避免重复执行。请核对屏幕内容后选择重建终端或关闭。";
+"terminal_confirm_rebuild_restart_body" = "电脑端已重启或原终端会话已失效，无法确认未送达的输入是否已执行。请核对状态后选择重建终端或关闭。";
+"terminal_confirm_rebuild_title" = "需要确认后重建终端";
 "terminal_connecting" = "连接终端…";
 "terminal_disconnected" = "终端已断开";
 "terminal_down" = "下";

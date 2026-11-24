@@ -5796,6 +5796,21 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val rows = message.args.getValue("rows") as Int
             resources.getString(R.string.terminal_computer_dimensions, cols, rows)
         }
+        "terminal.confirm_close_action" -> {
+            resources.getString(R.string.terminal_confirm_close_action)
+        }
+        "terminal.confirm_rebuild_action" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_action)
+        }
+        "terminal.confirm_rebuild_input_body" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_input_body)
+        }
+        "terminal.confirm_rebuild_restart_body" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_restart_body)
+        }
+        "terminal.confirm_rebuild_title" -> {
+            resources.getString(R.string.terminal_confirm_rebuild_title)
+        }
         "terminal.connecting" -> {
             resources.getString(R.string.terminal_connecting)
         }
@@ -6009,6 +6024,12 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
         "tools.command" -> {
             resources.getString(R.string.tools_command)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "tools.completed_calls" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.tools_completed_calls, count, count)
@@ -6029,12 +6050,6 @@ private fun resolveUiMessage11(resources: android.content.res.Resources, message
             val elapsed = message.args.getValue("elapsed") as String
             resources.getString(R.string.tools_elapsed_sync, elapsed)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "tools.exit_code" -> {
             val code = message.args.getValue("code") as String
             resources.getString(R.string.tools_exit_code, code)
@@ -6503,6 +6518,12 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.footer" -> {
             resources.getString(R.string.transport_footer)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "transport.popover_a11y" -> {
             resources.getString(R.string.transport_popover_a11y)
         }
@@ -6521,12 +6542,6 @@ private fun resolveUiMessage12(resources: android.content.res.Resources, message
         "transport.popover_file_only" -> {
             resources.getString(R.string.transport_popover_file_only)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage13(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "transport.popover_read_only" -> {
             resources.getString(R.string.transport_popover_read_only)
         }

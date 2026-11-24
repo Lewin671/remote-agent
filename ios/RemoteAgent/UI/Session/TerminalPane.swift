@@ -265,6 +265,19 @@ struct TerminalPane: View {
             switch state {
             case .connecting:
                 IconText(Mark.progress, L10n.terminalConnecting(), color: TermColors.dim, style: .subheadline)
+            case .confirmRebuild(let reasonKey):
+                let body = reasonKey == "terminal.confirm_rebuild_restart_body"
+                    ? L10n.terminalConfirmRebuildRestartBody()
+                    : L10n.terminalConfirmRebuildInputBody()
+                Text(L10n.terminalConfirmRebuildTitle()).font(.body.weight(.semibold)).ink(TermColors.fg)
+                    .accessibilityAddTraits(.isHeader)
+                Text(body)
+                    .font(.subheadline).ink(TermColors.dim)
+                    .padding(.top, 6).padding(.bottom, 14)
+                Btns {
+                    Btn(L10n.terminalConfirmCloseAction(), kind: .secondary) { terminal.closeFromConfirm() }
+                    Btn(L10n.terminalConfirmRebuildAction(), kind: .primary, enabled: online) { terminal.confirmRebuild() }
+                }
             case .closed(let reason):
                 Text(L10n.terminalClosed()).font(.body.weight(.semibold)).ink(TermColors.fg)
                     .accessibilityAddTraits(.isHeader)

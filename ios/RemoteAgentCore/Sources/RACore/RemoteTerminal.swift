@@ -13,6 +13,15 @@ public protocol TermListener: Sendable {
     func onFrame(_ frame: PBTerminalFrame)
     /// Called once, when the stream is over, unless this side closed it.
     func onClose(_ reason: String)
+    /// Called when Core requires explicit user confirmation before rebuilding the stream.
+    func onConfirmRebuild(_ reasonKey: String)
+    /// Called after the user confirmed rebuild and Core closed the old stream.
+    func onRebuildConfirmed()
+}
+
+public extension TermListener {
+    func onConfirmRebuild(_ reasonKey: String) {}
+    func onRebuildConfirmed() {}
 }
 
 /// Stateless lookup table mapping active logical terminal stream IDs to their I/O callbacks.
@@ -74,6 +83,7 @@ public final class TermConn: Sendable {
     private let dispatchInput: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)?
     private let finish: @Sendable (String) -> Void
     private let closeLocal: @Sendable () -> Void
+    private let confirmRebuildAction: @Sendable () -> Void
 
     init(
         socket: any TerminalSocket,
@@ -82,7 +92,8 @@ public final class TermConn: Sendable {
         seal: @escaping @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool),
         dispatchInput: (@Sendable (UInt64, Bool, Data, Data) async -> Bool)? = nil,
         finish: @escaping @Sendable (String) -> Void,
-        closeLocal: @escaping @Sendable () -> Void
+        closeLocal: @escaping @Sendable () -> Void,
+        confirmRebuild: @escaping @Sendable () -> Void = {}
     ) {
         self.socketBox = socketBox ?? OSAllocatedUnfairLock(initialState: socket)
         self.sendBudget = sendBudget
@@ -90,6 +101,7 @@ public final class TermConn: Sendable {
         self.dispatchInput = dispatchInput
         self.finish = finish
         self.closeLocal = closeLocal
+        self.confirmRebuildAction = confirmRebuild
     }
 
     /// Sends a frame. Frames go out in the order of the calls, each with the next number.
@@ -156,6 +168,10 @@ public final class TermConn: Sendable {
         out.withLock { $0.stopped = true }
         closeLocal()
         socketBox.withLock { $0 }.close()
+    }
+
+    public func confirmRebuild() {
+        confirmRebuildAction()
     }
 }
 
@@ -332,8 +348,19 @@ extension Remote {
                 }
             },
             onState: { st, reason, needsConfirm in
-                // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
-                if !closed.withLock({ $0 }) && (st == 5 || needsConfirm) {
+                // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
+                // rebuild_confirmed closes the old stream silently and triggers a fresh open.
+                guard !closed.withLock({ $0 }) else { return }
+                if needsConfirm {
+                    listener.onConfirmRebuild(reason)
+                    return
+                }
+                if st == 5 && reason == "rebuild_confirmed" {
+                    stream.end(cancelPath: true)
+                    listener.onRebuildConfirmed()
+                    return
+                }
+                if st == 5 {
                     let msg: String
                     if reason == "conflict" {
                         msg = L10n.errorsTerminalFramesAreOutOfOrder()
@@ -442,7 +469,15 @@ extension Remote {
             seal: sealFn,
             dispatchInput: dispatchInputFn,
             finish: finish,
-            closeLocal: { stream.end(cancelPath: false) }
+            closeLocal: { stream.end(cancelPath: false) },
+            confirmRebuild: { [weak self] in
+                guard let self, !closed.withLock({ $0 }) else { return }
+                Task {
+                    var ev = PBCoreEvent()
+                    ev.terminalDirectConfirmRebuild = .with { $0.streamID = streamId }
+                    await self.emitCoreEvent(ev)
+                }
+            }
         )
     }
 }

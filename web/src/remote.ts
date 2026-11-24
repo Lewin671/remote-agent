@@ -77,6 +77,7 @@ import {
 } from "./gen/remoteagent/core/v1/security_pb";
 import {
   TerminalDirectCloseEventSchema,
+  TerminalDirectConfirmRebuildActionSchema,
   TerminalDirectInputEventSchema,
   TerminalDirectLegEventSchema,
   TerminalDirectOpenEventSchema,
@@ -271,7 +272,8 @@ export function apiBase(server: string): string {
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
 }
 
-export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSchema>): void; close(): void; }
+export type TermStateEvent = { kind: "confirm"; reasonKey: string } | { kind: "rebuild" };
+export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSchema>): void; close(): void; confirmRebuild?: () => void; }
 export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
 
@@ -1956,6 +1958,7 @@ export class Remote implements CoreExecutor {
     onFrame: (f: TerminalFrame) => void | Promise<void>,
     onClose: (reason: string) => void,
     signal?: AbortSignal,
+    onStateChange?: (ev: TermStateEvent) => void,
   ): Promise<TermConn> {
     if (this.closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     const s = this.sessions.get(sid);
@@ -2146,8 +2149,24 @@ export class Remote implements CoreExecutor {
       },
       onState: (state, reason, needsConfirmation) => {
         if (closed) return;
-        // M5: unified Core-driven close policy (close iff TermStateClosed or NeedsConfirmation).
-        if (state === 5 || needsConfirmation) {
+        // M4/M5: NeedsConfirmation enters user confirmation UI without auto-closing;
+        // rebuild_confirmed closes the old stream silently and triggers a fresh open.
+        if (needsConfirmation) {
+          if (onStateChange) {
+            onStateChange({ kind: "confirm", reasonKey: reason });
+            return;
+          }
+          finish(l10n.t("errors.terminal_connection_dropped"));
+          activeWs.close();
+          return;
+        }
+        if (state === 5 && reason === "rebuild_confirmed") {
+          finish(l10n.t("errors.terminal_connection_closed"), false);
+          activeWs.close();
+          onStateChange?.({ kind: "rebuild" });
+          return;
+        }
+        if (state === 5) {
           finish(
             reason === "conflict"
               ? l10n.t("errors.terminal_frames_are_out_of_order")
@@ -2231,6 +2250,15 @@ export class Remote implements CoreExecutor {
         });
       },
       close: () => finish(l10n.t("errors.terminal_connection_closed"), false),
+      confirmRebuild: () => {
+        if (closed) return;
+        this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
+          event: {
+            case: "terminalDirectConfirmRebuild",
+            value: create(TerminalDirectConfirmRebuildActionSchema, { streamId }),
+          },
+        }));
+      },
     };
   }
 
