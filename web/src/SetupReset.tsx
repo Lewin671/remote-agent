@@ -20,12 +20,15 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
               await standalone.client.bootstrap();
               const a = await standalone.client.checkExitAdvice();
               setAdvice(translateSecurityKey(a.message));
-              setAsking(true);
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
+            } catch {
+              setAdvice(
+                l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will"),
+              );
             } finally {
               standalone.dispose();
             }
+            setError("");
+            setAsking(true);
           })();
         }}
       >
@@ -44,7 +47,11 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
           onOk={async () => {
             const standalone = createStandaloneSecurityClient();
             try {
-              await standalone.client.bootstrap();
+              try {
+                await standalone.client.bootstrap();
+              } catch {
+                // Local security storage may be corrupt or missing private keys; allow clearing anyway.
+              }
               await standalone.client.clearSecurity();
               setAsking(false);
               location.hash = "";

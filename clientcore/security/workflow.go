@@ -694,7 +694,7 @@ func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
 	if ev.kind == evChildDone {
-		return t.finish(e, wf, nil)
+		return t.finish(e, wf, ev.err)
 	}
 	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapError = true, false, ""
 	if ev.storage != nil && ev.storage.legacyCleared {
@@ -749,6 +749,9 @@ func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	if wf.record != nil {
 		if wf.record.Server != "" {
 			wf.server = wf.record.Server
+		}
+		if !wf.deviceEdPresent || !wf.deviceXPresent {
+			return t.finish(e, wf, devicesec.ErrInvalid)
 		}
 		e.applyPersistedRecordToEngine(wf.record, parentTarget(t, 0))
 		return nil

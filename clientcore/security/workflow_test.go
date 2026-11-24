@@ -2037,3 +2037,60 @@ func TestStructuredSecurityErrorCodeAndNotifyDisplayValidation(t *testing.T) {
 		t.Fatalf("invalid SecurityNotifyDisplay must not carry plaintext fields, got %+v", opened.GetDisplay())
 	}
 }
+
+func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	h := newFakeClientHarness(t, relay, 0x71)
+	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	prep := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com", StoragePersisted: true},
+		},
+	})
+	if !prep.Ok {
+		t.Fatalf("PrepareCreation failed: %+v", prep)
+	}
+	_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	cont := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	})
+	if !cont.Ok || cont.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_READY {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY.
+	savedEd := h.deviceEd
+	h.deviceEd = nil
+	h.restart("https://relay.example.com", false)
+	resEd := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resEd.Ok || resEd.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected INVALID bootstrap when device Ed key missing, got %+v", resEd)
+	}
+	h.deviceEd = savedEd
+
+	// Re-bootstrapping with a missing device X25519 key must fail as INVALID, not READY.
+	savedX := h.deviceX
+	h.deviceX = nil
+	h.restart("https://relay.example.com", false)
+	resX := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	if resX.Ok || resX.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
+		t.Fatalf("expected INVALID bootstrap when device X key missing, got %+v", resX)
+	}
+	h.deviceX = savedX
+
+	// ClearSecurity must succeed from INVALID state and clear bootstrapInvalid.
+	cleared := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ClearSecurity{ClearSecurity: &corev1.SecurityActionEmpty{}},
+	})
+	if !cleared.Ok || cleared.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_EMPTY {
+		t.Fatalf("expected ClearSecurity to clear INVALID bootstrap state, got %+v", cleared)
+	}
+}

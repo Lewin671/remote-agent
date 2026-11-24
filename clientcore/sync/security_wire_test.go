@@ -171,7 +171,9 @@ func bootstrapTestSecurityRecord(t *testing.T, e *Engine, actor syncTestActor, n
 		NowMs: nowMs,
 		Event: &corev1.Event_SecurityStorageResult{
 			SecurityStorageResult: &corev1.SecurityStorageResultEvent{
-				OpId: storOp,
+				OpId:        storOp,
+				HasDeviceEd: true,
+				HasDeviceX:  true,
 				Entries: []*corev1.SecurityStorageEntry{{
 					Bucket:   corev1.SecurityStoreBucket_SECURITY_STORE_BUCKET_RECORD,
 					Key:      "record",

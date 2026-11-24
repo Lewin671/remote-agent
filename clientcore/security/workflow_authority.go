@@ -1418,6 +1418,7 @@ func (t *clearLocalSecurityTask) step(e *Engine, ev *secEvent) error {
 	wf := e.ensureWF()
 	e.resetChainState()
 	e.loaded, e.isMember, e.removed, e.cleared, e.securityLocked = false, false, false, true, false
+	wf.bootstrapInvalid, wf.bootstrapError = false, ""
 	wf.record, wf.recordRev, wf.pendingOp, wf.pendingOpRev, wf.regIntent, wf.regIntentRev, wf.codeDraft = nil, "", nil, "", nil, "", nil
 	wf.cachedToken, wf.tokenExpiresMs = "", 0
 	wf.deviceEdPresent, wf.deviceEdPub, wf.deviceXPresent, wf.deviceXPub = false, nil, false, nil
