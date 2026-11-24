@@ -175,10 +175,12 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 	}
 
+	removed := st.Removed || syncView.GetRemoved()
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
 	for _, m := range sorted {
 		online := lists.MachineReachable(m)
 		unlinked := lists.MachineUnlinked(m, &st.World)
+		archived := m.Archived || removed
 		mismatch := lists.ProtocolMismatchDirection(m, clientVer)
 
 		var statusTxt *corev1.Text
@@ -191,7 +193,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			quotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
 		}
 
-		if unlinked {
+		if archived {
 			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_UNSPECIFIED
 			statusTxt = text.Msg(text.KeySettingsStatusRemoved)
 			subParts = append(subParts, &corev1.SubtitleSegment{
@@ -251,7 +253,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			Name:              lists.MachineName(m, m.ID),
 			ShortId:           machine.ShortMachineID(m.ID),
 			Online:            online,
-			Member:            !unlinked,
+			Member:            !archived,
 			ProtocolMismatch:  mismatch,
 			StatusText:        statusTxt,
 			StatusDot:         statusDot,
@@ -264,7 +266,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		if includeSummary {
 			card.QuotaSummaries = quotaSummaries
 			directPref, directReport := machineDirectInputs(st, extra, m.ID)
-			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked, directPref, directReport)
+			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked && !archived, directPref, directReport)
 		}
 		out = append(out, card)
 	}
@@ -520,7 +522,8 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	if extra == nil {
 		extra = NewSettingsExtra()
 	}
-	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	removed := st.Removed || syncView.GetRemoved()
+	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
 	isMgr := syncView.GetIsManager() || st.World.IsManager
 	authName := machine.AuthorityName(syncView, st.World.Machines)
 	online := st.World.Connection == lists.ConnConnected
@@ -569,7 +572,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 	if vm.ClockSkewed {
 		vm.ClockSkewBannerText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
 	}
-	if vm.Unlinked {
+	if removed {
 		vm.UnlinkedBannerText = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
 	}
 	if vm.RecoveryPending {
@@ -673,7 +676,8 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		extra = NewSettingsExtra()
 	}
 	m := findMachineByID(st, machineID)
-	unlinked := syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
+	removed := st.Removed || syncView.GetRemoved()
+	unlinked := removed || syncView.GetUnlinked() || lists.WorldUnlinked(&st.World)
 	isMgr := syncView.GetIsManager() || st.World.IsManager
 	authID := syncView.GetAuthorityDeviceId()
 	onlineWorld := st.World.Connection == lists.ConnConnected
@@ -699,7 +703,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	vm.Found = true
 	vm.Name = lists.MachineName(m, machineID)
 	vm.ShortId = machine.ShortMachineID(machineID)
-	vm.Member = !lists.MachineUnlinked(m, &st.World)
+	vm.Member = !m.Archived && !removed
 	vm.Online = lists.MachineReachable(m)
 	vm.ProtocolMismatch = lists.ProtocolMismatchDirection(m, st.World.ClientVersion)
 	vm.Editable = vm.Member && vm.Online && !unlinked && vm.ProtocolMismatch == 0

@@ -77,6 +77,7 @@ data class RemoteState(
     val connStep: MessageText = "".messageText(),
     val connStartedAtMs: Long? = null,
     val connError: MessageText = "".messageText(),
+    val archivedMachines: Set<String> = emptySet(),
 )
 
 /** Converts a test [RemoteState] fixture into a [SyncStateView] for direct composable rendering tests. */
@@ -244,7 +245,8 @@ internal fun seedCoreForTest(
                 DemoSecurity.newBuilder()
                     .setIsMember(!state.removed).setRemoved(state.removed).setSelfDeviceId(selfDeviceId)
                     .setAuthorityDeviceId(state.authorityDeviceId.ifEmpty { if (state.isAuthority) selfDeviceId else "authority" })
-                    .addAllTrustedMachineIds(state.machines.keys)
+                    .addAllTrustedMachineIds(state.machines.keys - state.archivedMachines)
+                    .addAllArchiveMachineIds(state.archivedMachines)
                     .addAllTrustedClientIds(
                         state.devices.values
                             .filter { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT }

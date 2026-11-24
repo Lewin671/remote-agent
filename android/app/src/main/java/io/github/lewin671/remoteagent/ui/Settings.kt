@@ -294,10 +294,8 @@ internal fun SettingsScreenContent(
                     NoticeTone.WARN,
                 )
             }
-            if (vm.unlinked) {
-                val unlinkedMsg = uiText(vm.unlinkedBannerText).ifEmpty {
-                    copy(UiMessages.settingsThisDeviceWasRemovedFromTheAccount())
-                }
+            val unlinkedMsg = uiText(vm.unlinkedBannerText)
+            if (vm.unlinked && unlinkedMsg.isNotEmpty()) {
                 Notice(
                     unlinkedMsg,
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

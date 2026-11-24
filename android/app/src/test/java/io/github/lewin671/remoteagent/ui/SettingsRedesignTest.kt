@@ -155,6 +155,23 @@ class SettingsRedesignTest {
     }
 
     @Test
+    fun settingsUnlinkedWithoutRemovalBannerDoesNotClaimRemovedFromAccount() {
+        val vm = SettingsViewModel.newBuilder()
+            .setOnline(false)
+            .setUnlinked(true)
+            .setCanExitAccount(true)
+            .build()
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalChartFrozen provides true) {
+                    SettingsScreenContent(vm = vm)
+                }
+            }
+        }
+        ui.onAllNodesWithText("本机已被移出账户", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     @Config(qualifiers = "w960dp-h720dp")
     fun settingsCentersReadable640DpColumnOnTablet() {
         val vm = SettingsViewModel.newBuilder()

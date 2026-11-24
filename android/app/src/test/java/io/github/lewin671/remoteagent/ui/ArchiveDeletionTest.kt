@@ -31,11 +31,13 @@ class ArchiveDeletionTest {
             conn = ConnState.OFFLINE,
             loaded = true,
             isAuthority = true,
+            archivedMachines = setOf(id),
         )
     private val current =
         archive.copy(
             conn = ConnState.ONLINE,
             devices = mapOf(id to DeviceView(id, DeviceKind.DEVICE_KIND_MACHINE, 0)),
+            archivedMachines = emptySet(),
         )
 
     @After
