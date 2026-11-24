@@ -91,6 +91,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
   const [route, go] = useRoute();
   const host = useCoreHost(remote, go);
   const sync = useSyncState(host);
+  const remoteRemoved = useSyncExternalStore(remote.subscribe, () => remote.removed);
   const schedulesVm = useSchedulesView(host, 1);
   const wide = useWide();
   const scheduling = schedulesVm.canCreate;
@@ -113,7 +114,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
       : prev.isSheet ? "back"
       : parsed.depth >= prev.depth ? "fwd" : "back";
   }
-  if (sync.removed || remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
+  if (sync.removed || remoteRemoved) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
   if (kind === "s")

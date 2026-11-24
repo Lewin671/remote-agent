@@ -13,6 +13,7 @@ import {
   SecurityPage,
 } from "./Security";
 import { Home } from "./Home";
+import Workspace from "../Workspace";
 import * as securityClient from "../core/security-client";
 import {
   SecurityBootstrapKind,
@@ -306,4 +307,17 @@ it("renders Core readable handoff candidates in the transfer management view", a
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   await click(message("security.transfer_management"));
   expect(host.textContent).toContain("Android · Pixel 9");
+});
+it("switches Workspace reactively to RemovedScreen when remote.removed flips without sync.removed", async () => {
+  const r = demo("role=member");
+  await mount(<Workspace remote={r} />);
+  expect(host.textContent).not.toContain("已通过账户签名状态核实本机被移除");
+  r.removalVerified = true;
+  await act(async () => {
+    await r.discardPendingOp();
+  });
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.textContent).toContain("已通过账户签名状态核实本机被移除");
+  });
 });
