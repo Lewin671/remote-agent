@@ -540,7 +540,7 @@ func (t *removeDeviceListTask) next(e *Engine) {
 		if id == "" || id == e.selfDeviceID || id == e.head.Core.AuthorityID {
 			continue
 		}
-		if _, live := e.head.Core.Member(id); !live {
+		if m, live := e.head.Core.Member(id); !live || m.Kind != devicesec.Client {
 			continue
 		}
 		e.stepTask(&removeDeviceTask{id: id}, &secEvent{kind: evStart, fgGen: t.fgGen, target: parentTarget(t, 0)})
@@ -601,13 +601,23 @@ func (t *approvePairingTask) step(e *Engine, ev *secEvent) error {
 			return devicesec.ErrUntrusted
 		}
 		sess := t.sess
+		allowed := make(map[string]bool, len(sess.replacementCandidates))
+		for _, cand := range sess.replacementCandidates {
+			if cand != nil && cand.DeviceId != "" {
+				allowed[cand.DeviceId] = true
+			}
+		}
 		var toRemove []string
 		seenRemove := make(map[string]bool, len(t.removeDeviceIDs))
 		for _, id := range t.removeDeviceIDs {
-			if id == "" || seenRemove[id] || id == e.selfDeviceID || id == e.head.Core.AuthorityID || id == sess.candidateID {
-				continue
+			if id == "" || id == e.selfDeviceID || id == e.head.Core.AuthorityID || id == sess.candidateID || !allowed[id] {
+				return devicesec.ErrInvalid
 			}
-			if _, live := e.head.Core.Member(id); !live {
+			member, live := e.head.Core.Member(id)
+			if !live || member.Kind != devicesec.Client {
+				return devicesec.ErrInvalid
+			}
+			if seenRemove[id] {
 				continue
 			}
 			seenRemove[id] = true

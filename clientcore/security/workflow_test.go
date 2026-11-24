@@ -2341,3 +2341,179 @@ func TestWorkflowPairingReplacementCandidatesAndPostApprovalRemoval(t *testing.T
 		t.Fatalf("expected B3 to remain a member")
 	}
 }
+
+func TestApprovePairingRejectsInvalidRemoveDeviceIDs(t *testing.T) {
+	relay := newFakeRelay(1_700_000_000_000)
+	a := newFakeClientHarness(t, relay, 0x91)
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PrepareCreation{
+			PrepareCreation: &corev1.SecurityPrepareCreationAction{Server: "https://relay.example.com"},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ConfirmCreationCodeSaved{ConfirmCreationCodeSaved: &corev1.SecurityActionEmpty{}},
+	})
+	if cont := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ContinueCreation{ContinueCreation: &corev1.SecurityStringAction{}},
+	}); !cont.Ok {
+		t.Fatalf("ContinueCreation failed: %+v", cont)
+	}
+
+	pairMember := func(seed byte, kind v1.DeviceKind, platform, desc string) string {
+		p := a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+		})
+		if kind == v1.DeviceKind_DEVICE_KIND_MACHINE {
+			machEd := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, 32))
+			machX, _ := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{seed + 1}, 32))
+			machEphem, _ := ecdh.X25519().NewPrivateKey(bytes.Repeat([]byte{seed + 2}, 32))
+			machMem, _ := devicesec.NewMember(machEd.Public().(ed25519.PublicKey), machX.PublicKey().Bytes(), devicesec.Machine)
+			joinBytes, _ := (&v1.JoinPairingRequest{
+				Code:                p.Pairing.Code,
+				JoinerPublic:        machEphem.PublicKey().Bytes(),
+				JoinerKind:          v1.DeviceKind_DEVICE_KIND_MACHINE,
+				DevicePublicKey:     machMem.EdPublic[:],
+				DeviceHpkePublicKey: machMem.XPublic[:],
+				ProtocolVersion:     testRelayVersion,
+			}).Marshal()
+			if _, rpcErr := relay.call(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_JOIN_PAIRING, "", joinBytes); rpcErr != nil {
+				t.Fatalf("machine join failed: %+v", rpcErr)
+			}
+			_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+			})
+			app := a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+					ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p.Pairing.PairingId, SasConfirmed: true},
+				},
+			})
+			if !app.Ok {
+				t.Fatalf("machine approve failed: %+v", app)
+			}
+			relay.mu.Lock()
+			if pr := relay.pairings[p.Pairing.PairingId]; pr != nil {
+				pr.state = v1.PairingState_PAIRING_STATE_DELIVERED
+			}
+			relay.mu.Unlock()
+			_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+				Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+			})
+			return machMem.ID
+		}
+		h := newFakeClientHarness(t, relay, seed)
+		_ = h.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+		})
+		jID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+				StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+					Server: "https://relay.example.com", Code: p.Pairing.Code, Platform: platform, Description: desc,
+				},
+			},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[jID] != nil })
+		cID := h.startAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ConfirmJoinSas{ConfirmJoinSas: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+				ApprovePairing: &corev1.SecurityApprovePairingAction{PairingId: p.Pairing.PairingId, SasConfirmed: true},
+			},
+		})
+		h.pumpPollTicks(5, func() bool { return h.actionResults[cID] != nil })
+		_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_FinishPairingDelivery{FinishPairingDelivery: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+		})
+		return h.eng.selfDeviceID
+	}
+
+	oldWebID := pairMember(0x92, v1.DeviceKind_DEVICE_KIND_CLIENT, "web", "Chrome on macOS")
+	otherClientID := pairMember(0x93, v1.DeviceKind_DEVICE_KIND_CLIENT, "android", "Android 15 · Pixel 9")
+	machineID := pairMember(0x94, v1.DeviceKind_DEVICE_KIND_MACHINE, "", "")
+
+	dir := []DeviceOfferInfo{
+		{ID: a.eng.selfDeviceID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: oldWebID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+		{ID: otherClientID, Kind: v1.DeviceKind_DEVICE_KIND_CLIENT, Meta: &v1.DeviceMeta{Platform: "android", Description: "Android 15 · Pixel 9"}},
+		{ID: machineID, Kind: v1.DeviceKind_DEVICE_KIND_MACHINE, Meta: &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS"}},
+	}
+	a.eng.SetDeviceDirectory(dir)
+
+	p := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartPairing{StartPairing: &corev1.SecurityStartPairingAction{}},
+	}, dir...)
+	joiner := newFakeClientHarness(t, relay, 0x95)
+	_ = joiner.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_Bootstrap{Bootstrap: &corev1.SecurityActionEmpty{}},
+	})
+	jID := joiner.startAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_StartJoinPairing{
+			StartJoinPairing: &corev1.SecurityStartJoinPairingAction{
+				Server: "https://relay.example.com", Code: p.Pairing.Code, Platform: "web", Description: "Chrome on macOS",
+			},
+		},
+	})
+	_ = a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+	}, dir...)
+	joiner.pumpPollTicks(5, func() bool { return joiner.actionResults[jID] != nil })
+	pollMeta := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_PollPairing{PollPairing: &corev1.SecurityStringAction{Value: p.Pairing.PairingId}},
+	}, dir...)
+	if !pollMeta.Ok || len(pollMeta.Pairing.ReplacementCandidates) != 1 || pollMeta.Pairing.ReplacementCandidates[0].DeviceId != oldWebID {
+		t.Fatalf("expected only oldWebID candidate, got %+v", pollMeta.Pairing)
+	}
+
+	headBefore := a.eng.head.Core.Epoch
+	candID := a.eng.wf.initPairings[p.Pairing.PairingId].candidateID
+	invalidCases := []struct {
+		name string
+		ids  []string
+	}{
+		{"empty_id", []string{""}},
+		{"self_authority", []string{a.eng.selfDeviceID}},
+		{"machine_member", []string{machineID}},
+		{"non_candidate_client", []string{otherClientID}},
+		{"candidate_self", []string{candID}},
+		{"mixed_valid_and_invalid", []string{oldWebID, machineID}},
+	}
+	for _, tc := range invalidCases {
+		res := a.runAction(&corev1.SecurityWorkflowActionEvent{
+			Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+				ApprovePairing: &corev1.SecurityApprovePairingAction{
+					PairingId:       p.Pairing.PairingId,
+					SasConfirmed:    true,
+					RemoveDeviceIds: tc.ids,
+				},
+			},
+		}, dir...)
+		if res.Ok {
+			t.Fatalf("%s: expected ApprovePairing to reject invalid removeDeviceIds %v", tc.name, tc.ids)
+		}
+		if a.eng.head.Core.Epoch != headBefore {
+			t.Fatalf("%s: head epoch changed on rejected approval (%d -> %d)", tc.name, headBefore, a.eng.head.Core.Epoch)
+		}
+		if a.eng.wf.pendingOp != nil {
+			t.Fatalf("%s: expected no pendingOp after rejected approval, got %+v", tc.name, a.eng.wf.pendingOp)
+		}
+	}
+
+	okRes := a.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_ApprovePairing{
+			ApprovePairing: &corev1.SecurityApprovePairingAction{
+				PairingId:       p.Pairing.PairingId,
+				SasConfirmed:    true,
+				RemoveDeviceIds: []string{oldWebID},
+			},
+		},
+	}, dir...)
+	if !okRes.Ok {
+		t.Fatalf("expected valid candidate subset approval to succeed, got %+v", okRes)
+	}
+}
