@@ -103,5 +103,31 @@ import Testing
         #expect(!MachineStatusScreen.resolvedCleanupPrompt("machine_status.cleanup_prompt").contains("machine_status.cleanup_prompt"))
         #expect(MachineStatusScreen.resolvedCleanupPrompt("Custom prompt") == "Custom prompt")
     }
+
+    @Test func memoryTotalSummaryDoesNotDuplicateSwap() {
+        let mem = PBMachineMemorySection.with {
+            $0.totalText = .with {
+                $0.key = "machine_status.total_swap"
+                $0.args = [
+                    .with { $0.name = "size"; $0.strValue = "16 GB" },
+                    .with { $0.name = "swap"; $0.strValue = "4.7 GB" },
+                ]
+            }
+            $0.swapText = .with {
+                $0.key = "machine_status.swap"
+                $0.args = [
+                    .with { $0.name = "size"; $0.strValue = "4.7 GB" },
+                ]
+            }
+        }
+        let zh = MachineStatusScreen.memoryTotalSummary(mem, locale: "zh-CN")
+        #expect(zh == "共 16 GB，交换 4.7 GB")
+        #expect(zh.components(separatedBy: "交换").count == 2)
+
+        let swapOnly = PBMachineMemorySection.with {
+            $0.swapText = mem.swapText
+        }
+        #expect(MachineStatusScreen.memoryTotalSummary(swapOnly, locale: "zh-CN") == "交换 4.7 GB")
+    }
 }
 #endif
