@@ -2317,6 +2317,7 @@ class Remote(
         val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
         val socket = java.util.concurrent.atomic.AtomicReference<FrameStream?>()
         val activeLegId = java.util.concurrent.atomic.AtomicReference(streamId.toByteArray(Charsets.UTF_8))
+        val lastRelayError = java.util.concurrent.atomic.AtomicReference<Throwable?>(null)
         val stream = deviceLink.openStream(stop = { reason ->
             if (closed.compareAndSet(false, true)) {
                 activeTerminals.remove(streamId)
@@ -2428,6 +2429,7 @@ class Remote(
                             }
                             override fun onFailure(stream: FrameStream, error: Throwable) {
                                 if (socket.get() !== stream || closed.get()) return
+                                lastRelayError.set(error)
                                 coreHost.dispatch(
                                     CoreEvent.newBuilder()
                                         .setTerminalDirectLeg(
@@ -2447,7 +2449,12 @@ class Remote(
             },
             onState = { st, _, needsConfirm ->
                 if (!closed.get() && (st == 5 || needsConfirm || st == 2)) {
-                    finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                    val err = lastRelayError.getAndSet(null)
+                    if (err != null) {
+                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(err, state.value).resolve(copy))) })
+                    } else {
+                        finish(UiMessages.errorsTerminalConnectionDropped().messageText())
+                    }
                 }
             },
             onDirectOutput = { machineId, pcId, env, raw ->
@@ -2513,6 +2520,7 @@ class Remote(
                     override fun onFailure(stream: FrameStream, error: Throwable) {
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
                         if (socket.get() !== stream) return
+                        lastRelayError.set(error)
                         coreHost.dispatch(
                             CoreEvent.newBuilder()
                                 .setTerminalDirectLeg(

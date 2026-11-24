@@ -37360,13 +37360,13 @@
         "en": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Loading and files are back on a direct connection."
+            "value": "Loading, files, and terminal are back on a direct connection."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "加载与文件现在已恢复直连。"
+            "value": "加载、文件与终端现在已恢复直连。"
           }
         }
       }
@@ -39736,13 +39736,13 @@
         "en": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Messages and approvals are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."
+            "value": "Messages, approvals, and terminal input are sent over both direct and relay, taking whichever arrives first; only relay is used in the background."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。"
+            "value": "发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。"
           }
         }
       }
@@ -39772,13 +39772,13 @@
         "en": {
           "stringUnit": {
             "state": "needs_review",
-            "value": "Loading and files use direct; messages and approvals are sent over both direct and relay, whichever arrives first."
+            "value": "Loading, files, and terminal use direct; messages, approvals, and terminal input are sent over both direct and relay, whichever arrives first."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。"
+            "value": "加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。"
           }
         }
       }

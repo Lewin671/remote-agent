@@ -1763,7 +1763,7 @@
 "transport_diag_check_path" = "局域网或公网直通";
 "transport_diag_check_peer" = "电脑在线并响应";
 "transport_diag_check_retry" = "后台自动重试";
-"transport_diag_connected_body" = "加载与文件现在已恢复直连。";
+"transport_diag_connected_body" = "加载、文件与终端现在已恢复直连。";
 "transport_diag_connected_title" = "直连已连上";
 "transport_diag_copy_permission" = "没能复制，请检查剪贴板权限";
 "transport_diag_count" = "×%1$lld";
@@ -1895,9 +1895,9 @@
 "transport_file_speed_both" = "直连 %1$@ · 中继 %2$@ MiB/s";
 "transport_file_speed_direct" = "直连 %1$@ MiB/s";
 "transport_file_speed_relay" = "中继 %1$@ MiB/s";
-"transport_footer" = "发消息和审批同时经直连和中继发出，以先到的为准；后台时只用中继。";
+"transport_footer" = "发消息、审批和终端输入同时经直连和中继发出，以先到的为准；后台时只用中继。";
 "transport_popover_a11y" = "直连已生效，点按查看连接详情";
-"transport_popover_direct_body" = "加载与文件走直连；发消息和审批同时经直连和中继发出，以先到的为准。";
+"transport_popover_direct_body" = "加载、文件与终端走直连；发消息、审批和终端输入同时经直连和中继发出，以先到的为准。";
 "transport_popover_direct_title" = "直连 %1$@";
 "transport_popover_direct_title_rtt" = "直连 %2$@ · %1$@ ms";
 "transport_popover_file_only" = "仅文件走直连";

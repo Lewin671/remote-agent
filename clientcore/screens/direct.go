@@ -62,6 +62,10 @@ func BuildDirectRouteReport(status transport.Status, enabled, daemonDisabled boo
 	if status.File == transport.Direct {
 		fileRoute = corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
 	}
+	terminalRoute := corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY
+	if status.Terminal == transport.Direct {
+		terminalRoute = corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
+	}
 
 	m := status.Measured
 	var activeRtt int32
@@ -84,6 +88,7 @@ func BuildDirectRouteReport(status transport.Status, enabled, daemonDisabled boo
 		Reason:             reason,
 		FileRoute:          fileRoute,
 		ReadRoute:          readRoute,
+		TerminalRoute:      terminalRoute,
 		HasActiveRttMs:     hasActiveRtt,
 		ActiveRttMs:        activeRtt,
 		HasDirectFileMibps: m.HasFileMiBps[transport.Direct],
@@ -109,7 +114,8 @@ func BuildSessionDirectChip(report *corev1.DirectRouteReport, computerName *core
 	}
 	readDirect := report.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
 	fileDirect := report.FileRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
-	active := readDirect || fileDirect
+	terminalDirect := report.TerminalRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT
+	active := readDirect || fileDirect || terminalDirect
 	if !active {
 		return nil
 	}
@@ -130,23 +136,24 @@ func BuildSessionDirectChip(report *corev1.DirectRouteReport, computerName *core
 	}
 	body = text.Msg(text.KeyTransportPopoverDirectBody)
 	switch {
-	case readDirect && fileDirect:
+	case (readDirect || terminalDirect) && fileDirect:
 		foot = text.Msg(text.KeyTransportPopoverStable)
-	case readDirect:
+	case readDirect || terminalDirect:
 		foot = text.Msg(text.KeyTransportPopoverReadOnly)
 	default:
 		foot = text.Msg(text.KeyTransportPopoverFileOnly)
 	}
 
 	return &corev1.SessionDirectChipView{
-		Visible:      true,
-		Active:       true,
-		ReadDirect:   readDirect,
-		FileDirect:   fileDirect,
-		LabelText:    text.Msg(text.KeyTransportDirect),
-		PopoverTitle: title,
-		PopoverBody:  body,
-		PopoverFoot:  foot,
+		Visible:        true,
+		Active:         true,
+		ReadDirect:     readDirect,
+		FileDirect:     fileDirect,
+		TerminalDirect: terminalDirect,
+		LabelText:      text.Msg(text.KeyTransportDirect),
+		PopoverTitle:   title,
+		PopoverBody:    body,
+		PopoverFoot:    foot,
 	}
 }
 
