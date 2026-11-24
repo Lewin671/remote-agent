@@ -125,11 +125,12 @@ import Testing
         #expect(!s.read(opID: 4, bucket: .draft, key: "b").found)
     }
 
-    @Test func bookmarksAndVideosRoundTripAndReleaseCleanly() throws {
+    @Test func bookmarksAndStreamedVideosRoundTripEncryptedAndReleaseCleanly() throws {
         defer { cleanUp() }
         let s = store()
         let tmpFile = FileManager.default.temporaryDirectory.appending(path: "ra-bmk-\(UUID().uuidString).mp4")
-        try Data("video-bytes".utf8).write(to: tmpFile)
+        let videoBytes = Data("SECRET-VIDEO-MARKER-".utf8) + Data((0..<(300 * 1024)).map { UInt8(($0 * 17) & 0xFF) })
+        try videoBytes.write(to: tmpFile)
         defer { try? FileManager.default.removeItem(at: tmpFile) }
 
         let bmkData = try PickedFile.bookmark(for: tmpFile)
@@ -138,15 +139,132 @@ import Testing
         try s.updateBookmark(bmkRef, bookmark: Data("refreshed".utf8))
         #expect(try s.readBookmark(bmkRef) == Data("refreshed".utf8))
 
-        let vid = try s.storeVideo(from: tmpFile, filename: "clip.mp4")
-        #expect(vid.ref.hasPrefix("vid:"))
-        #expect(try Data(contentsOf: try s.videoURL(vid.ref)) == Data("video-bytes".utf8))
+        let vidRef = try s.storeBlob(from: tmpFile, prefix: "vid")
+        #expect(vidRef.hasPrefix("blob:vid-"))
+        #expect(try s.readBlob(vidRef) == videoBytes)
+        let slice = try s.readBlobChunk(vidRef, offset: 256 * 1024 - 8, length: 32, expectedSizeBytes: Int64(videoBytes.count))
+        #expect(slice == Data(videoBytes[(256 * 1024 - 8)..<(256 * 1024 + 24)]))
+        let hashed = try s.hashBlob(vidRef, maxBytes: Int64(videoBytes.count))
+        #expect(hashed.sizeBytes == Int64(videoBytes.count) && hashed.sha256 == Data(SHA256.hash(data: videoBytes)))
+
+        // Zero plaintext video bytes stored on disk.
+        for file in filesOnDisk() {
+            let raw = try Data(contentsOf: file)
+            #expect(raw.range(of: Data("SECRET-VIDEO-MARKER".utf8)) == nil)
+        }
 
         let listed = s.list(opID: 1)
-        #expect(Set(listed.localRefs) == Set([bmkRef, vid.ref]))
+        #expect(Set(listed.localRefs) == Set([bmkRef, vidRef]))
 
-        s.releaseLocal(refs: [bmkRef, vid.ref])
+        s.releaseLocal(refs: [bmkRef, vidRef])
         #expect(s.list(opID: 2).localRefs.isEmpty)
+    }
+
+    @Test func lockedKeychainAndCorruptKeyRefuseToDeleteOrOverwrite() throws {
+        defer { cleanUp() }
+        let first = store()
+        #expect(first.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data("keep-me".utf8)).ok)
+        let recFile = try #require(filesOnDisk().first)
+        let beforeBytes = try Data(contentsOf: recFile)
+        let strayTmp = dir.appending(path: "v1/blobs/.pending.blob.tmp")
+        try FileManager.default.createDirectory(at: strayTmp.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("tmp".utf8).write(to: strayTmp)
+
+        // Simulated locked Keychain (`errSecInteractionNotAllowed`): must return `.other`,
+        // must NOT mark entries corrupt, must NOT delete files or overwrite key.
+        let lockedVault = Vault(
+            service: vault.service,
+            keychain: KeychainOps(
+                copyMatching: { _, _ in errSecInteractionNotAllowed },
+                add: { _, _ in
+                    Issue.record("locked Keychain must never add/overwrite pendingKey")
+                    return errSecInteractionNotAllowed
+                },
+                update: { _, _ in
+                    Issue.record("locked Keychain must never update pendingKey")
+                    return errSecInteractionNotAllowed
+                },
+                delete: { _ in
+                    Issue.record("locked Keychain must never delete pendingKey")
+                    return errSecInteractionNotAllowed
+                }
+            )
+        )
+        let lockedStore = PendingStore(directory: dir, vault: lockedVault)
+        let listed = lockedStore.list(opID: 2)
+        #expect(listed.errorKind == .other && listed.entries.isEmpty)
+        let readRes = lockedStore.read(opID: 3, bucket: .draft, key: "draft:session:s1")
+        #expect(!readRes.found && readRes.errorKind == .other)
+        let writeRes = lockedStore.write(opID: 4, bucket: .draft, key: "draft:session:s2", data: Data("new".utf8))
+        #expect(!writeRes.ok && writeRes.errorKind == .other)
+        #expect(try Data(contentsOf: recFile) == beforeBytes)
+        #expect(FileManager.default.fileExists(atPath: strayTmp.path))
+
+        // Corrupt key length (16 bytes instead of 32) must also fail safely without overwriting Keychain.
+        try vault.writeRawKeychainItemForTest(account: Vault.Item.pendingKey.rawValue, data: Data(repeating: 0xAB, count: 16))
+        let corruptStore = store()
+        #expect(corruptStore.list(opID: 5).errorKind == .other)
+        #expect(corruptStore.write(opID: 6, bucket: .draft, key: "draft:session:s3", data: Data("x".utf8)).errorKind == .other)
+        #expect(try vault.read(.pendingKey) == Data(repeating: 0xAB, count: 16))
+    }
+
+    @Test func residualTempFilesAreCleanedOnStartupList() throws {
+        defer { cleanUp() }
+        let s = store()
+        #expect(s.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data("ok".utf8)).ok)
+        let blobTmp = dir.appending(path: "v1/blobs/.orphan.blob.tmp")
+        let draftTmp = dir.appending(path: "v1/drafts/.partial.rec.tmp")
+        let outboxTmp = dir.appending(path: "v1/outbox/.dat.nosync1234")
+        for url in [blobTmp, draftTmp, outboxTmp] {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(repeating: 7, count: 4096).write(to: url)
+        }
+        let usedBefore = s.used
+
+        let listed = s.list(opID: 2)
+        #expect(listed.errorKind == .unspecified)
+        #expect(listed.entries.count == 1 && listed.entries.first?.key == "draft:session:s1")
+        for url in [blobTmp, draftTmp, outboxTmp] {
+            #expect(!FileManager.default.fileExists(atPath: url.path))
+        }
+        #expect(s.used < usedBefore)
+    }
+
+    @Test func aadRejectsBucketSwapAndBlobTampering() throws {
+        defer { cleanUp() }
+        let s = store()
+        #expect(s.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data("payload".utf8)).ok)
+        let draftFile = try #require(filesOnDisk().first { $0.path.contains("/drafts/") })
+        let outboxDir = dir.appending(path: "v1/outbox", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: outboxDir, withIntermediateDirectories: true)
+        let swapped = outboxDir.appending(path: draftFile.lastPathComponent)
+        try FileManager.default.copyItem(at: draftFile, to: swapped)
+
+        // Swapping a draft record into outbox fails bucket AAD verification.
+        let listed = s.list(opID: 2)
+        #expect(listed.errorKind == .unspecified)
+        let outboxEntry = try #require(listed.entries.first { $0.bucket == .outbox })
+        #expect(outboxEntry.corrupt)
+
+        // Renaming a blob file or tampering its header plainSize fails blob AAD verification.
+        let blobRef = try s.storeBlob(Data("hello-blob".utf8), prefix: "prep")
+        let blobID = String(blobRef.dropFirst("blob:".count))
+        let blobsDir = dir.appending(path: "v1/blobs", directoryHint: .isDirectory)
+        let origBlob = blobsDir.appending(path: "\(blobID).blob")
+        let renamedBlob = blobsDir.appending(path: "prep-renamed.blob")
+        try FileManager.default.copyItem(at: origBlob, to: renamedBlob)
+        #expect(throws: (any Error).self) {
+            _ = try s.readBlob("blob:prep-renamed")
+        }
+
+        // Tamper plainSize in header (bytes 8..16) from 10 to 9.
+        var tampered = try Data(contentsOf: origBlob)
+        var fakeSize = UInt64(9).bigEndian
+        withUnsafeBytes(of: &fakeSize) { tampered.replaceSubrange(8..<16, with: $0) }
+        try tampered.write(to: origBlob)
+        #expect(throws: (any Error).self) {
+            _ = try s.readBlob(blobRef)
+        }
     }
 
     @Test func staleScopeCannotTouchNextAccountAfterClearAll() throws {

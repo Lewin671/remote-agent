@@ -40,7 +40,6 @@ final class PendingStore: @unchecked Sendable {
     private var memOutbox: [String: Data] = [:]
     private var memBlobs: [String: Data] = [:]
     private var memBookmarks: [String: Data] = [:]
-    private var memVideos: [String: URL] = [:]
 
     static var defaultDirectory: URL {
         URL.applicationSupportDirectory.appending(path: "RemoteAgent/pending-images", directoryHint: .isDirectory)
@@ -106,7 +105,7 @@ final class PendingStore: @unchecked Sendable {
                 for (k, v) in memOutbox {
                     entries.append(.with { $0.bucket = .outbox; $0.key = k; $0.data = v })
                 }
-                let refs = Array(memBlobs.keys) + Array(memBookmarks.keys) + Array(memVideos.keys)
+                let refs = Array(memBlobs.keys) + Array(memBookmarks.keys)
                 return .with {
                     $0.opID = opID
                     $0.entries = entries
@@ -138,15 +137,21 @@ final class PendingStore: @unchecked Sendable {
                 }
             }
 
+            // Clean residual temp files left behind by interrupted atomic/blob writes.
+            Self.cleanResidualTempFiles(in: draftsDir)
+            Self.cleanResidualTempFiles(in: outboxDir)
+            Self.cleanResidualTempFiles(in: blobsDir)
+
             var entries: [PBDraftStorageEntry] = []
             var localRefs: [String] = []
 
             if let key = loadedKey {
                 for (bucket, dirURL) in [(PBDraftStorageBucket.draft, draftsDir), (PBDraftStorageBucket.outbox, outboxDir)] {
+                    let aad = Self.recordAAD(bucket: bucket)
                     let files = Self.visibleFiles(in: dirURL)
                     for file in files {
                         if let sealed = try? Data(contentsOf: file),
-                           let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key),
+                           let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key, authenticating: aad),
                            let decoded = Self.decodeRecord(plain)
                         {
                             entries.append(.with {
@@ -255,7 +260,7 @@ final class PendingStore: @unchecked Sendable {
                 }
             }
 
-            guard let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: loadedKey),
+            guard let plain = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: loadedKey, authenticating: Self.recordAAD(bucket: bucket)),
                   let decoded = Self.decodeRecord(plain),
                   decoded.key == key
             else {
@@ -287,7 +292,7 @@ final class PendingStore: @unchecked Sendable {
 
             do {
                 let plain = Self.encodeRecord(key: key, payload: data)
-                let sealed = try seal(plain)
+                let sealed = try seal(plain, authenticating: Self.recordAAD(bucket: bucket))
                 try ensureDir(bucket == .outbox ? outboxDir : draftsDir)
                 let file = recordURL(bucket: bucket, key: key)
                 let replacing = Self.fileSize(file)
@@ -345,7 +350,6 @@ final class PendingStore: @unchecked Sendable {
                 memOutbox.removeAll()
                 memBlobs.removeAll()
                 memBookmarks.removeAll()
-                memVideos.removeAll()
                 if FileManager.default.fileExists(atPath: directory.path) {
                     try? FileManager.default.removeItem(at: directory)
                 }
@@ -409,7 +413,7 @@ final class PendingStore: @unchecked Sendable {
                         guard let combined = try AES.GCM.seal(
                             slice,
                             using: key,
-                            authenticating: Self.blobAAD(ref: ref, chunkIndex: chunkIdx)
+                            authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
                         ).combined else {
                             throw AttachmentFileIOError(.other)
                         }
@@ -419,6 +423,89 @@ final class PendingStore: @unchecked Sendable {
                     chunkIdx += 1
                 }
                 try handle.synchronize()
+                try FileManager.default.moveItem(at: tmp, to: target)
+                return ref
+            } catch {
+                try? FileManager.default.removeItem(at: tmp)
+                throw error
+            }
+        }
+    }
+
+    /// Streams a file (e.g. a picked photo-library video) into a chunked AES-256-GCM blob without loading it into RAM.
+    func storeBlob(from sourceURL: URL, prefix: String = "vid") throws -> String {
+        try lock.withLock {
+            let id = "\(prefix)-\(newRequestId())"
+            let ref = "blob:\(id)"
+            let srcHandle = try FileHandle(forReadingFrom: sourceURL)
+            defer { try? srcHandle.close() }
+            let totalPlain = Int64(try srcHandle.seekToEnd())
+            try srcHandle.seek(toOffset: 0)
+
+            if ephemeral {
+                guard used + totalPlain <= limit else {
+                    throw AttachmentFileIOError(.storageFull)
+                }
+                let data = try srcHandle.readToEnd() ?? Data()
+                guard Int64(data.count) == totalPlain else {
+                    throw AttachmentFileIOError(.sourceChanged)
+                }
+                memBlobs[ref] = data
+                return ref
+            }
+
+            let key = try self.key()
+            let chunkSize = Self.blobChunkSize
+            let chunkCount = totalPlain == 0 ? 0 : Int((totalPlain + Int64(chunkSize) - 1) / Int64(chunkSize))
+            let estimatedBytes = Int64(Self.blobHeaderSize) + totalPlain + Int64(chunkCount) * Int64(Self.gcmOverhead)
+            guard ImageDiskPolicy.bytes(directory) + estimatedBytes <= limit else {
+                throw AttachmentFileIOError(.storageFull)
+            }
+            try ensureDir(blobsDir)
+            let target = blobsDir.appending(path: "\(id).blob")
+            let tmp = blobsDir.appending(path: ".\(id).blob.tmp")
+            FileManager.default.createFile(
+                atPath: tmp.path,
+                contents: nil,
+                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication]
+            )
+            do {
+                let dstHandle = try FileHandle(forWritingTo: tmp)
+                defer { try? dstHandle.close() }
+                var header = Data()
+                header.reserveCapacity(Self.blobHeaderSize)
+                header.append(Self.blobMagic)
+                var sizeBE = UInt64(totalPlain).bigEndian
+                withUnsafeBytes(of: &sizeBE) { header.append(contentsOf: $0) }
+                var chunkBE = UInt32(chunkSize).bigEndian
+                withUnsafeBytes(of: &chunkBE) { header.append(contentsOf: $0) }
+                try dstHandle.write(contentsOf: header)
+
+                var writtenPlain: Int64 = 0
+                var chunkIdx = 0
+                while writtenPlain < totalPlain {
+                    let remaining = totalPlain - writtenPlain
+                    let toRead = Int(min(Int64(chunkSize), remaining))
+                    try autoreleasepool {
+                        guard let plain = try srcHandle.read(upToCount: toRead), !plain.isEmpty else {
+                            throw AttachmentFileIOError(.sourceChanged)
+                        }
+                        guard let combined = try AES.GCM.seal(
+                            plain,
+                            using: key,
+                            authenticating: Self.blobAAD(ref: ref, plainSize: totalPlain, chunkIndex: chunkIdx)
+                        ).combined else {
+                            throw AttachmentFileIOError(.other)
+                        }
+                        try dstHandle.write(contentsOf: combined)
+                        writtenPlain += Int64(plain.count)
+                    }
+                    chunkIdx += 1
+                }
+                if let extra = try srcHandle.read(upToCount: 1), !extra.isEmpty {
+                    throw AttachmentFileIOError(.sourceChanged)
+                }
+                try dstHandle.synchronize()
                 try FileManager.default.moveItem(at: tmp, to: target)
                 return ref
             } catch {
@@ -464,7 +551,7 @@ final class PendingStore: @unchecked Sendable {
                     return try AES.GCM.open(
                         AES.GCM.SealedBox(combined: sealed),
                         using: key,
-                        authenticating: Self.blobAAD(ref: ref, chunkIndex: idx)
+                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
                     )
                 }
                 out.append(chunk)
@@ -523,7 +610,7 @@ final class PendingStore: @unchecked Sendable {
                     let plain = try AES.GCM.open(
                         AES.GCM.SealedBox(combined: sealed),
                         using: key,
-                        authenticating: Self.blobAAD(ref: ref, chunkIndex: idx)
+                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
                     )
                     let lo = max(0, Int(offset - chunkStart))
                     let hi = min(plainLen, Int(offset + Int64(length) - chunkStart))
@@ -571,7 +658,7 @@ final class PendingStore: @unchecked Sendable {
                     let plain = try AES.GCM.open(
                         AES.GCM.SealedBox(combined: sealed),
                         using: key,
-                        authenticating: Self.blobAAD(ref: ref, chunkIndex: idx)
+                        authenticating: Self.blobAAD(ref: ref, plainSize: plainSize, chunkIndex: idx)
                     )
                     hasher.update(data: plain)
                 }
@@ -589,7 +676,7 @@ final class PendingStore: @unchecked Sendable {
                 memBookmarks[ref] = bookmark
                 return ref
             }
-            let sealed = try seal(bookmark)
+            let sealed = try seal(bookmark, authenticating: Self.bookmarkAAD(ref: ref))
             try ensureDir(blobsDir)
             guard ImageDiskPolicy.bytes(directory) + Int64(sealed.count) <= limit else {
                 throw AttachmentFileIOError(.storageFull)
@@ -616,7 +703,11 @@ final class PendingStore: @unchecked Sendable {
             guard let key = try storedKey() else {
                 throw AttachmentFileIOError(.other)
             }
-            return try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
+            return try AES.GCM.open(
+                AES.GCM.SealedBox(combined: sealed),
+                using: key,
+                authenticating: Self.bookmarkAAD(ref: ref)
+            )
         }
     }
 
@@ -630,65 +721,12 @@ final class PendingStore: @unchecked Sendable {
             }
             let file = blobsDir.appending(path: id).appendingPathExtension("bmk")
             guard FileManager.default.fileExists(atPath: file.path) else { return }
-            let sealed = try seal(bookmark)
+            let sealed = try seal(bookmark, authenticating: Self.bookmarkAAD(ref: ref))
             let replacing = Self.fileSize(file)
             guard ImageDiskPolicy.bytes(directory) - replacing + Int64(sealed.count) <= limit else {
                 throw AttachmentFileIOError(.storageFull)
             }
             try sealed.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-        }
-    }
-
-    /// Moves/copies a photo-library video file into protected pending storage and returns `"vid:<id>"`.
-    func storeVideo(from sourceURL: URL, filename: String? = nil) throws -> (ref: String, url: URL) {
-        try lock.withLock {
-            let id = newRequestId()
-            let ref = "vid:\(id)"
-            let safeName: String = {
-                let raw = (filename?.isEmpty == false ? filename! : sourceURL.lastPathComponent)
-                return Self.isSafeFilename(raw) ? raw : "video.mov"
-            }()
-            let size = Self.fileSize(sourceURL)
-            guard ImageDiskPolicy.bytes(directory) + size <= limit else {
-                throw AttachmentFileIOError(.storageFull)
-            }
-            try ensureDir(videosDir)
-            let folder = videosDir.appending(path: id, directoryHint: .isDirectory)
-            try protectedDirectory(folder)
-            let dst = folder.appending(path: safeName)
-            do {
-                try FileManager.default.copyItem(at: sourceURL, to: dst)
-                try? FileManager.default.setAttributes(
-                    [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
-                    ofItemAtPath: dst.path
-                )
-            } catch {
-                try? FileManager.default.removeItem(at: folder)
-                throw error
-            }
-            if ephemeral {
-                memVideos[ref] = dst
-            }
-            return (ref, dst)
-        }
-    }
-
-    func videoURL(_ ref: String) throws -> URL {
-        try lock.withLock {
-            guard let id = Self.refID(ref, prefix: "vid:") else {
-                throw AttachmentFileIOError(.sourceMissing)
-            }
-            if ephemeral {
-                guard let url = memVideos[ref], FileManager.default.fileExists(atPath: url.path) else {
-                    throw AttachmentFileIOError(.sourceMissing)
-                }
-                return url
-            }
-            let folder = videosDir.appending(path: id, directoryHint: .isDirectory)
-            guard let first = Self.visibleFiles(in: folder).first else {
-                throw AttachmentFileIOError(.sourceMissing)
-            }
-            return first
         }
     }
 
@@ -703,13 +741,8 @@ final class PendingStore: @unchecked Sendable {
                     if ephemeral { memBookmarks.removeValue(forKey: ref) }
                     else { try? fm.removeItem(at: blobsDir.appending(path: id).appendingPathExtension("bmk")) }
                 } else if let id = Self.refID(ref, prefix: "vid:") {
-                    if ephemeral {
-                        if let url = memVideos.removeValue(forKey: ref) {
-                            try? fm.removeItem(at: url.deletingLastPathComponent())
-                        }
-                    } else {
-                        try? fm.removeItem(at: videosDir.appending(path: id, directoryHint: .isDirectory))
-                    }
+                    // Clean up any leftover pre-encryption dev-build video folders reported by list().
+                    try? fm.removeItem(at: videosDir.appending(path: id, directoryHint: .isDirectory))
                 }
             }
         }
@@ -739,6 +772,20 @@ final class PendingStore: @unchecked Sendable {
         !Self.visibleFiles(in: draftsDir).isEmpty
             || !Self.visibleFiles(in: outboxDir).isEmpty
             || !Self.visibleFiles(in: blobsDir).isEmpty
+    }
+
+    private static func cleanResidualTempFiles(in dir: URL) {
+        let fm = FileManager.default
+        guard let list = try? fm.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) else { return }
+        for item in list {
+            let name = item.lastPathComponent
+            if name.hasSuffix(".tmp") || name.hasPrefix(".dat.nosync") {
+                try? fm.removeItem(at: item)
+            }
+        }
     }
 
     private static func visibleFiles(in dir: URL) -> [URL] {
@@ -804,8 +851,16 @@ final class PendingStore: @unchecked Sendable {
         return (Int64(plainSizeU64), Int(chunkSizeU32))
     }
 
-    private static func blobAAD(ref: String, chunkIndex: Int) -> Data {
-        Data("\(ref):\(chunkIndex)".utf8)
+    private static func recordAAD(bucket: PBDraftStorageBucket) -> Data {
+        Data("rec:\(bucket.rawValue)".utf8)
+    }
+
+    private static func bookmarkAAD(ref: String) -> Data {
+        Data("bmk:\(ref)".utf8)
+    }
+
+    private static func blobAAD(ref: String, plainSize: Int64, chunkIndex: Int) -> Data {
+        Data("\(ref):\(plainSize):\(chunkIndex)".utf8)
     }
 
     private static func isMissing(_ error: any Error) -> Bool {
@@ -816,8 +871,8 @@ final class PendingStore: @unchecked Sendable {
 
     // MARK: - Sealing
 
-    private func seal(_ plain: Data) throws -> Data {
-        guard let combined = try AES.GCM.seal(plain, using: key()).combined else {
+    private func seal(_ plain: Data, authenticating aad: Data) throws -> Data {
+        guard let combined = try AES.GCM.seal(plain, using: key(), authenticating: aad).combined else {
             throw AttachmentFileIOError(.other)
         }
         return combined
@@ -825,7 +880,8 @@ final class PendingStore: @unchecked Sendable {
 
     private func storedKey() throws -> SymmetricKey? {
         if let cachedKey { return cachedKey }
-        guard let vault, let stored = try vault.read(.pendingKey), stored.count == keySize else { return nil }
+        guard let vault, let stored = try vault.read(.pendingKey) else { return nil }
+        guard stored.count == keySize else { throw VaultError.unreadable }
         let k = SymmetricKey(data: stored)
         cachedKey = k
         return k
@@ -884,6 +940,13 @@ struct PendingScope: Sendable {
         return ref
     }
 
+    func storeBlob(from sourceURL: URL, prefix: String = "vid") throws -> String {
+        guard let ref = try store.current(epoch, { try store.storeBlob(from: sourceURL, prefix: prefix) }) else {
+            throw AttachmentFileIOError(.other)
+        }
+        return ref
+    }
+
     func readBlob(_ ref: String) throws -> Data {
         guard let data = try store.current(epoch, { try store.readBlob(ref) }) else {
             throw AttachmentFileIOError(.sourceMissing)
@@ -921,20 +984,6 @@ struct PendingScope: Sendable {
 
     func updateBookmark(_ ref: String, bookmark: Data) throws {
         try store.current(epoch) { try store.updateBookmark(ref, bookmark: bookmark) }
-    }
-
-    func storeVideo(from sourceURL: URL, filename: String? = nil) throws -> (ref: String, url: URL) {
-        guard let res = try store.current(epoch, { try store.storeVideo(from: sourceURL, filename: filename) }) else {
-            throw AttachmentFileIOError(.other)
-        }
-        return res
-    }
-
-    func videoURL(_ ref: String) throws -> URL {
-        guard let url = try store.current(epoch, { try store.videoURL(ref) }) else {
-            throw AttachmentFileIOError(.sourceMissing)
-        }
-        return url
     }
 
     func releaseLocal(refs: [String]) {
