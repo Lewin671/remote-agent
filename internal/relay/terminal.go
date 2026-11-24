@@ -226,10 +226,12 @@ type liveTerminal struct {
 	relayDialInFlight int
 	relayCancel       context.CancelFunc
 	directGen         uint64
+	hadDirectLeg      bool
 	phase3Eligible    bool
 	explicitClosed    bool
 	zeroLegSince      time.Time
 	outSeq            uint64
+	relayWrittenSeq   uint64
 
 	inbound         chan inboundTermFrame
 	historyRequests chan *pb.TerminalHistoryRequest
@@ -324,6 +326,7 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 	hub.live[streamID] = lt
 	if pd, ok := hub.takePendingDirectLocked(streamID, peer, sessionID, hub.now()); ok {
 		lt.directGen = pd.gen
+		lt.hadDirectLeg = true
 		lt.phase3Eligible = true
 		_ = lt.stream.AttachLeg("direct", pd.legID, hub.instance, pd.gen)
 		lt.noteLegStateLocked(hub.now())
@@ -539,6 +542,11 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 		werr := rp.Write(wctx, raw)
 		wcancel()
 		if werr == nil {
+			lt.mu.Lock()
+			if seq == lt.relayWrittenSeq+1 {
+				lt.relayWrittenSeq = seq
+			}
+			lt.mu.Unlock()
 			return nil
 		}
 		if sentDirect {
@@ -1030,6 +1038,7 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 	for _, lt := range list {
 		lt.mu.Lock()
 		gen := lt.stream.LegGen("direct")
+		hadDirect := gen > 0 || lt.hadDirectLeg
 		if gen > 0 {
 			lt.stream.CloseLeg("direct", gen)
 		}
@@ -1041,10 +1050,15 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 		var replayFrom, replayTo uint64
 		var replayErr error
 		var replayOverflow bool
-		if rp != nil {
-			// M4 + N8: replay any direct-only output frames unacknowledged by the client over the live relay leg;
-			// if replay overflows/truncates, explicitly fail and close instead of silently freezing.
-			replayFrom = lt.stream.ClientOutputAck() + 1
+		// B: ONLY replay on streams that attached a direct leg with a Phase 3-capable peer,
+		// and ONLY for direct-only frames never written to relay (max(ack, relayWrittenSeq)+1..outSeq).
+		// Legacy clients (never declared Phase 3) NEVER receive replay or overflow closes.
+		if rp != nil && lt.phase3Eligible && hadDirect {
+			floor := lt.stream.ClientOutputAck()
+			if lt.relayWrittenSeq > floor {
+				floor = lt.relayWrittenSeq
+			}
+			replayFrom = floor + 1
 			replayTo = lt.outSeq
 			if replayFrom <= replayTo {
 				replayFrames, replayErr = lt.stream.ReplayOutput(nowMs, replayFrom, replayTo, 1<<20, 128)
@@ -1069,6 +1083,11 @@ func (c *endpoint) onDirectPeerPathClosed(peerID string) {
 					if err != nil {
 						return
 					}
+					lt.mu.Lock()
+					if f.Seq == lt.relayWrittenSeq+1 {
+						lt.relayWrittenSeq = f.Seq
+					}
+					lt.mu.Unlock()
 				}
 			})
 		}
@@ -1108,7 +1127,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		}
 		lt := hub.getLive(msg.Stream)
 		if lt == nil {
-			if strings.HasPrefix(msg.LegID, "d:") {
+			if strings.HasPrefix(msg.LegID, "d:") && p.peerTerminalDirect.Load() {
 				// H-B: buffer direct AttachPath arriving slightly ahead of openTerminal for up to 5s.
 				nowT := hub.now()
 				if hub.storePendingDirect(msg.Stream, pendingDirectAttach{
@@ -1128,9 +1147,13 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return linkcore.ControlUnsupported, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, o.Context.Seq), peerwire.B(4, o.Hash))
 		}
 		if strings.HasPrefix(msg.LegID, "d:") {
+			if !p.peerTerminalDirect.Load() {
+				return linkcore.ControlUnsupported, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, o.Context.Seq), peerwire.B(4, o.Hash))
+			}
 			lt.mu.Lock()
 			if !lt.stream.HasLeg("direct") || msg.PathGeneration > lt.directGen || (msg.PathGeneration == lt.directGen && msg.LegID != lt.stream.LegID("direct")) {
 				lt.directGen = msg.PathGeneration
+				lt.hadDirectLeg = true
 				lt.phase3Eligible = true
 				_ = lt.stream.AttachLeg("direct", msg.LegID, hub.instance, msg.PathGeneration)
 				lt.noteLegStateLocked(hub.now())
