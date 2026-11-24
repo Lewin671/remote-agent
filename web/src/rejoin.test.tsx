@@ -60,6 +60,35 @@ it.each([false, true])("rejoin clears data and goes directly to pairing; pending
   expect(localStorage.getItem("ra-server")).toBe("https://relay.example.com");
 });
 
+it("rejoin clears relay push subscription via provided remote before clearing keys", async () => {
+  const clearSecurity = vi.fn(async () => {});
+  const setPushSubscription = vi.fn(async () => {});
+  vi.spyOn(securityClient, "createStandaloneSecurityClient").mockReturnValue({
+    client: {
+      bootstrap: vi.fn(async () => create(SecurityWorkflowStatusSchema, {
+        bootstrap: SecurityBootstrapKind.READY,
+        server: "https://relay.example.com",
+      })),
+      checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
+        authority: false,
+        unresolved: false,
+        message: "",
+      })),
+      clearSecurity,
+    } as unknown as securityClient.SecurityClient,
+    dispose: vi.fn(),
+  });
+  const done = vi.fn();
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root.render(
+    <RejoinButton server="https://relay.example.com" remote={{ setPushSubscription }} onDone={done}>用配对码重新加入</RejoinButton>,
+  ));
+  await act(async () => host.querySelector("button")!.click());
+  expect(setPushSubscription).toHaveBeenCalledWith("", []);
+  expect(clearSecurity).toHaveBeenCalledOnce();
+  expect(done).toHaveBeenCalledOnce();
+});
+
 it.each([false, true])("startup decides before code entry and discards retained state on rejoin; denied=%s", async denied => {
   location.hash = "";
   let retainedDeviceId = "synthetic-device";

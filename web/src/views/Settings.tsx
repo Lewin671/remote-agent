@@ -1069,7 +1069,7 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
             ? l10n.t("settings.signed_account_state_confirms_this_device_was_removed_sessions")
             : l10n.t("settings.the_device_may_have_been_removed_the_service_reset")}
         </p>
-        <RejoinButton server={remote.account.server}>{l10n.t("settings.rejoin_account")}</RejoinButton>
+        <RejoinButton server={remote.account.server} remote={remote}>{l10n.t("settings.rejoin_account")}</RejoinButton>
         <p className="muted small">{l10n.t("settings.the_account_keys_in_this_browser_will_be_deleted")}</p>
         <button
           className="link mid"

@@ -527,6 +527,7 @@ class RaApp : Application() {
                 erasePending = true
                 _loaded.value = false
                 _accountError.value = ""
+                val leavingStatus = _bootstrapStatus.value
                 clearJoinState(pairing)
                 val leaving = _remote.value
                 leaving?.let { lastServer = it.account.server }
@@ -542,7 +543,16 @@ class RaApp : Application() {
                 io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
                 getSystemService(NotificationManager::class.java).cancelAll()
-                leaving?.let { Push.unregister(it) }
+                if (leaving != null) {
+                    Push.unregister(leaving)
+                } else {
+                    val srv = leavingStatus?.server.orEmpty().ifEmpty { lastServer }
+                    val devId = leavingStatus?.deviceId.orEmpty()
+                    if (srv.isNotEmpty() && devId.isNotEmpty()) {
+                        val tok = withContext(Dispatchers.IO) { runCatching { vault.loadLoginToken(srv, devId)?.token }.getOrNull() }
+                        if (!tok.isNullOrEmpty()) Push.unregisterStandalone(http, srv, tok)
+                    }
+                }
                 leaving?.clearAllDrafts()
                 leaving?.clearAllSharedFiles()
                 leaving?.close()

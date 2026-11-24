@@ -75,6 +75,23 @@ object Push {
         }
     }
 
+    /** Withdraws the FCM target when exiting before a live [Remote] exists (rejoin/reset). */
+    suspend fun unregisterStandalone(http: okhttp3.OkHttpClient, server: String, token: String) {
+        if (server.isBlank() || token.isBlank()) return
+        kotlinx.coroutines.withTimeoutOrNull(5_000) {
+            try {
+                Api(server, http).client.setPushTarget(
+                    SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).build(),
+                    Api.headers(token),
+                ).value()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "standalone push withdrawal failed: ${e.javaClass.simpleName}")
+            }
+        }
+    }
+
     fun createChannels(context: Context, copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) }) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL_ATTENTION, copy(UiMessages.settingsWhenINeedToAct()), NotificationManager.IMPORTANCE_HIGH).apply {

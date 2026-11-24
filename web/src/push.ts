@@ -1,7 +1,10 @@
 import * as l10n from "./i18n";
 // Web Push: subscribe this browser and choose which notifications to get.
 
-import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
+import { createClient } from "@connectrpc/connect";
+import { createConnectTransport } from "@connectrpc/connect-web";
+import { checkServer } from "./crypto";
+import { ClientService, NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import type { Remote } from "./remote";
 
 /** A run only identifies its last execution-log notification. Never match a
@@ -114,6 +117,41 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
     }
     localStorage.setItem(KEY, JSON.stringify(prefs));
   });
+}
+
+/** Creates a minimal relay push unsubscriber for exit paths without a live Remote (Rejoin / SetupReset). */
+export function createStandalonePushUnsubscriber(opts: {
+  server?: string;
+  getToken: () => string;
+  ensureToken?: () => Promise<string | undefined>;
+  fetch?: typeof fetch;
+}): Pick<Remote, "setPushSubscription"> {
+  return {
+    async setPushSubscription(subscriptionJson: string, kinds: NotifyKind[]): Promise<void> {
+      const rawServer = opts.server?.trim();
+      if (!rawServer) return;
+      const origin = checkServer(rawServer);
+      const baseUrl = import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
+      let token = opts.getToken();
+      if (!token && opts.ensureToken) {
+        token = (await opts.ensureToken()) ?? "";
+      }
+      if (!token) return;
+      const api = createClient(
+        ClientService,
+        createConnectTransport({
+          baseUrl,
+          useBinaryFormat: true,
+          defaultTimeoutMs: 4000,
+          fetch: opts.fetch,
+        }),
+      );
+      await api.setPushSubscription(
+        { subscriptionJson, kinds },
+        { headers: { Authorization: "Bearer " + token } },
+      );
+    },
+  };
 }
 
 /** Best-effort push teardown before clearing local keys on exit.

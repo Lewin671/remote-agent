@@ -2,7 +2,7 @@ import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
-import { unregisterPushOnExit } from "./push";
+import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
 export function SetupReset({ onDone }: { onDone: () => void }) {
@@ -58,14 +58,31 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
           danger
           onCancel={() => setAsking(false)}
           onOk={async () => {
-            const standalone = createStandaloneSecurityClient();
+            let authToken = "";
+            const standalone = createStandaloneSecurityClient({
+              onToken: (eff) => {
+                if (!eff.cleared && eff.token) authToken = eff.token;
+              },
+            });
             try {
+              let server = "";
               try {
-                await standalone.client.bootstrap();
+                const st = await standalone.client.bootstrap();
+                server = st?.server ?? "";
               } catch {
                 // Local security storage may be corrupt or missing private keys; allow clearing anyway.
               }
-              await unregisterPushOnExit();
+              const pushTarget = server
+                ? createStandalonePushUnsubscriber({
+                    server,
+                    getToken: () => authToken,
+                    ensureToken: async () => {
+                      await standalone.client.syncNow(false, "");
+                      return authToken;
+                    },
+                  })
+                : undefined;
+              await unregisterPushOnExit(pushTarget);
               await standalone.client.clearSecurity();
               setAsking(false);
               location.hash = "";
