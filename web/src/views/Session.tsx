@@ -1,9 +1,22 @@
 import * as i18n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
-import { getCoreHost, routeForTask, routeForUsage, useCoreHost, useScheduleSessionStripView, useSessionView, type Go, type SessionWindowOptions } from "../core/host";
+import type { AttachmentExecutor } from "../attachment-executor";
+import {
+  getCoreHost,
+  routeForTask,
+  routeForUsage,
+  sessionDraftScope,
+  useAttachmentDraftView,
+  useCoreHost,
+  useScheduleSessionStripView,
+  useSessionView,
+  type DraftCandidateEntry,
+  type Go,
+  type SessionWindowOptions,
+} from "../core/host";
 import { renderText } from "../core/text";
-import { newRequestID } from "../crypto";
+import type { AttachmentDraftView, OutboxAttachmentSummary } from "../gen/remoteagent/core/v1/attachments_pb";
 import {
   ComputerReachability,
   SessionCommandStatus,
@@ -16,7 +29,6 @@ import {
   type SessionCommandState,
   type SessionHeaderView,
   type SessionNotifyReceiptItem,
-  type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionSharedFileItem,
   type SessionTimelineItem,
@@ -48,7 +60,7 @@ import { saveBlobAsDownload } from "../shared-files";
 import { ModeSheet, RenameDialog, SessionSheet } from "../sheets";
 import { ActionSheet, Alert, Banner, ConnBar, Exp, NavBar, PathText, Sheet, StateMark, useRemote, type Mark } from "../ui";
 import { getView, setView, type View } from "../view";
-import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
+import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { Composer } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { FileChip, FileChips } from "./Files";
@@ -58,13 +70,13 @@ import {
   GenCard,
   ImageStrip,
   ImageViewer,
-  LocalThumbs,
   OpenImage,
+  OutboxThumbs,
   ViewerImagesMeta,
   viewerImageKey,
   type ImageAnchor,
 } from "./Images";
-import { PendingTray, type LocalSendAttachments } from "./Queue";
+import { PendingTray } from "./Queue";
 import { RememberDetails, RowState, useRowExpanded } from "./RowState";
 import { ScheduleCreate, ScheduleStrip } from "./pages";
 import { ScheduleText } from "./ScheduleText";
@@ -100,7 +112,6 @@ const DEFAULT_WINDOW_LIMIT = 80;
 const EMPTY_ITEMS: SessionTimelineItem[] = [];
 const EMPTY_REASONS: Array<{ id: string; reason: string }> = [];
 const LOCAL_SCROLL = new WeakMap<object, Map<string, { top: number; stick: boolean }>>();
-const SEND_ATTACHMENTS = new WeakMap<Remote, Map<string, LocalSendAttachments>>();
 const LOCAL_DOCK_STATE = new WeakMap<object, { seen: Set<string>; closed: Set<string> }>();
 function getDockState(remote?: Remote) {
   const key = remote ?? LOCAL_DOCK_STATE;
@@ -113,16 +124,6 @@ function getDockState(remote?: Remote) {
 }
 
 type Tab = View;
-
-function getSendAttachments(remote?: Remote): Map<string, LocalSendAttachments> | undefined {
-  if (!remote) return undefined;
-  let m = SEND_ATTACHMENTS.get(remote);
-  if (!m) {
-    m = new Map();
-    SEND_ATTACHMENTS.set(remote, m);
-  }
-  return m;
-}
 
 function sessionMark(header?: SessionHeaderView): Mark {
   if (!header) return "off";
@@ -292,7 +293,8 @@ export interface SessionScreenViewProps {
   scheduleTaskCount?: number;
   draft: string;
   onDraft: (v: string) => void;
-  tray?: ReturnType<typeof useTray>;
+  draftView?: AttachmentDraftView;
+  attachments?: AttachmentExecutor;
   trayView?: ReactNode;
   attach?: ReactNode;
   dropping?: boolean;
@@ -301,7 +303,6 @@ export interface SessionScreenViewProps {
   composerKey?: number;
   approvalReason?: string;
   onApprovalReasonChange?: (approvalId: string, v: string) => void;
-  localAttachments?: Map<string, LocalSendAttachments>;
   toast?: string;
   onClearToast?: () => void;
   sentCount?: number;
@@ -346,7 +347,8 @@ export function SessionScreenView({
   scheduleTaskCount = 0,
   draft,
   onDraft,
-  tray,
+  draftView,
+  attachments,
   trayView,
   attach,
   dropping = false,
@@ -355,7 +357,6 @@ export function SessionScreenView({
   composerKey = 0,
   approvalReason,
   onApprovalReasonChange,
-  localAttachments,
   toast = "",
   onClearToast,
   sentCount = 0,
@@ -951,6 +952,17 @@ export function SessionScreenView({
   const interruptCmd = actions?.interrupt;
   const endCmd = actions?.end;
   const forkUi = actions?.forkAction;
+  const activeDraft = draftView ?? composer?.draft;
+  const resolvedTrayView = trayView ?? (activeDraft ? <TrayView draft={activeDraft} attachments={attachments} /> : undefined);
+  const outboxAttachments = useMemo(() => {
+    const map = new Map<string, readonly OutboxAttachmentSummary[]>();
+    for (const it of composer?.pendingTray?.orderedItems ?? []) {
+      if (it.requestId && it.localAttachments.length > 0) {
+        map.set(it.requestId, it.localAttachments);
+      }
+    }
+    return map;
+  }, [composer?.pendingTray?.orderedItems]);
 
   const chatCol = (
     <div className="ccol" ref={setColRef}>
@@ -958,7 +970,8 @@ export function SessionScreenView({
         vm={vm}
         remote={remote}
         sent={sentCount}
-        localAttachments={localAttachments}
+        attachments={attachments}
+        outboxAttachments={outboxAttachments}
         retainedReasons={retainedReasons}
         onRestoreText={onRestoreText}
         onTerminal={exited ? undefined : toTerminal}
@@ -977,7 +990,7 @@ export function SessionScreenView({
           sessionId={sid}
           dock={dock}
           header={header}
-          drafting={!!draft.trim() || (tray?.items.length ?? 0) > 0}
+          drafting={!!draft.trim() || (activeDraft?.items.length ?? 0) > 0}
           room={room}
           height={colHeight}
           seenKeys={dockSeen}
@@ -1024,8 +1037,8 @@ export function SessionScreenView({
           }
           draft={draft}
           onDraft={onDraft}
-          tray={tray}
-          trayView={trayView}
+          draftView={activeDraft}
+          trayView={resolvedTrayView}
           pendingTray={
             <PendingTray
               tray={composer?.pendingTray}
@@ -1419,286 +1432,44 @@ export function SessionPage({
   const header = vm.header;
   const machineId = header?.machineId ?? "";
   const caps = header?.capabilities;
+  const scope = useMemo(() => sessionDraftScope(sessionId), [sessionId]);
+  const draftVm = useAttachmentDraftView(host, scope);
+  const draft = vm.composer?.draft ?? draftVm.draft;
+
+  useEffect(() => {
+    host.draftOpen(scope, machineId);
+  }, [host, scope, machineId]);
 
   const [toast, setToast] = useState("");
   const toastRef = useRef(setToast);
   toastRef.current = setToast;
   const [sent, setSent] = useState(0);
-  const [, setDraftVer] = useState(0);
   const [composerKey, setComposerKey] = useState(0);
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const attachWhy = renderText(caps?.imageUploadBlockedReason);
-  const fileWhy = renderText(caps?.fileUploadBlockedReason);
-  const tray = useTray(remote, sessionId, machineId, {
-    sessionId,
-    maxImages: caps?.maxImages ?? 0,
-    maxFiles: caps?.maxFiles ?? 0,
-    supportsFiles: !!caps?.supportsFiles,
-    originalImageMaxBytes: Number(caps?.originalImageMaxBytes ?? 0),
-    galleryAcceptMime: caps?.galleryAcceptMime || undefined,
-    originalImageHint: renderText(caps?.originalImageHint),
-    fileMetadataNotice: renderText(caps?.fileMetadataNotice),
-    blocked: attachWhy,
-    fileBlocked: fileWhy,
-  });
-  const drop = useDropPaste(tray, attachWhy, toastRef.current);
-  const stash = getSendAttachments(remote);
-  const pendingRestoreFiles = useRef(new Map<string, LocalSendAttachments["files"]>());
-  const mountedSession = useRef(true);
-  useEffect(() => {
-    mountedSession.current = true;
-    return () => {
-      mountedSession.current = false;
-    };
-  }, []);
+  const onPickFiles = useCallback(
+    (entries: DraftCandidateEntry[], forceFile: boolean) => {
+      host.stageAndAddDraftItems(scope, entries, forceFile);
+    },
+    [host, scope],
+  );
+  const drop = useDropPaste(onPickFiles, attachWhy, toastRef.current);
 
   useEffect(() => {
-    return host.onRestoreComposer(sessionId, (eff: SessionRestoreComposerEffect) => {
-      const saved = stash?.get(eff.requestId);
-      const files: NonNullable<LocalSendAttachments["files"]> =
-        saved?.files ??
-        pendingRestoreFiles.current.get(eff.requestId) ??
-        eff.fileIds.map((fileId) => ({ fileId, name: "", sizeBytes: 0n }));
-      pendingRestoreFiles.current.delete(eff.requestId);
-      const existingDraft = remote.drafts.get(sessionId) ?? "";
-      if (eff.text) {
-        remote.drafts.set(sessionId, existingDraft.trim() ? existingDraft.trimEnd() + "\n" + eff.text : eff.text);
-      }
-      const savedImages = saved?.items?.filter((it) => !it.kind) ?? [];
-      const imageCandidates = eff.imageIds.map((_, i) => {
-        const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
-        return {
-          name: src instanceof File ? src.name : "",
-          mimeType: src?.type,
-          sizeBytes: src?.size ?? 0,
-        };
-      });
-      const fileCandidates = files.map((f) => ({
-        name: f.name,
-        mimeType: f.file?.type ?? "",
-        sizeBytes: Number(f.sizeBytes),
-      }));
-      if (imageCandidates.length || fileCandidates.length) {
-        const check = tray.checkPutBack(imageCandidates, fileCandidates);
-        if (!check.ok) {
-          if (check.reason) toastRef.current(check.reason);
-          setComposerKey((k) => k + 1);
-          setTimeout(() => composerRef.current?.focus());
-          return;
-        }
-      }
-      if (eff.imageIds.length) {
-        tray.restore(
-          eff.imageIds.map((imageId, i) => ({
-            imageId,
-            thumb: saved?.thumbs?.[i],
-            file: savedImages[i]?.file,
-          })),
-          !!saved?.original,
-        );
-      }
-      if (files.length) {
-        tray.restoreFiles(files.map((f) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: f.file })));
-      }
-      stash?.delete(eff.requestId);
+    return host.onRestoreComposer(sessionId, (_eff: SessionRestoreComposerEffect) => {
       setComposerKey((k) => k + 1);
       setTimeout(() => composerRef.current?.focus());
     });
-  }, [host, remote, sessionId, machineId, tray, stash]);
+  }, [host, sessionId]);
 
-  useEffect(() => {
-    return host.onResendAttachments(sessionId, async (eff: SessionResendAttachmentsEffect) => {
-      const targetMachine = eff.machineId || machineId;
-      const saved = stash?.get(eff.sourceRequestId);
-      let imageIds = [...eff.imageIds];
-      let fileIds = [...eff.fileIds];
-      let nextSaved: LocalSendAttachments | undefined = saved
-        ? {
-            thumbs: saved.thumbs ? [...saved.thumbs] : undefined,
-            imageSizes: saved.imageSizes ? [...saved.imageSizes] : undefined,
-            files: saved.files ? [...saved.files] : undefined,
-            items: saved.items ? [...saved.items] : undefined,
-            original: saved.original,
-          }
-        : undefined;
-
-      if (saved?.items?.some((it) => it.file || it.prepared)) {
-        try {
-          const uploadedImages: string[] = [];
-          const uploadedFiles: NonNullable<LocalSendAttachments["files"]> = [];
-          const nextThumbs: Blob[] = [];
-          const nextSizes: { width: number; height: number }[] = [];
-          for (const it of saved.items) {
-            if (it.kind === "file") {
-              if (!it.file) continue;
-              const ab = await it.file.arrayBuffer();
-              const up = await remote.uploadImage(
-                targetMachine,
-                {
-                  bytes: new Uint8Array(ab),
-                  format: "file",
-                  fileName: it.name || "file",
-                },
-                () => undefined,
-              );
-              const fid = up.fileId || up.imageId;
-              uploadedFiles.push({
-                fileId: fid,
-                name: it.name || "file",
-                sizeBytes: BigInt(it.bytes ?? ab.byteLength),
-                file: it.file instanceof File ? it.file : undefined,
-              });
-            } else {
-              const prep = it.prepared ?? (it.file ? await remote.prepareImage(it.file, !!saved.original, tray.originalImageMaxBytes || Number(caps?.originalImageMaxBytes ?? 0)) : undefined);
-              if (!prep) continue;
-              const up = await remote.uploadImage(targetMachine, prep, () => undefined);
-              uploadedImages.push(up.imageId);
-              if (it.thumb) nextThumbs.push(it.thumb);
-              nextSizes.push({ width: prep.width, height: prep.height });
-            }
-          }
-          imageIds = uploadedImages;
-          fileIds = uploadedFiles.map((f) => f.fileId);
-          nextSaved = {
-            thumbs: nextThumbs.length ? nextThumbs : saved.thumbs,
-            imageSizes: nextSizes.length ? nextSizes : saved.imageSizes,
-            files: uploadedFiles.length ? uploadedFiles : saved.files,
-            items: saved.items.map((it) => ({ ...it })),
-            original: saved.original,
-          };
-        } catch (err) {
-          if (mountedSession.current) {
-            toastRef.current(err instanceof Error ? err.message : String(err));
-          }
-          return;
-        }
-      }
-
-      if (stash && nextSaved) {
-        stash.set(eff.newRequestId, nextSaved);
-      }
-      host.sessionSubmitCommand(
-        `send:${sessionId}:${eff.newRequestId}`,
-        targetMachine,
-        sessionId,
-        create(CommandSchema, {
-          kind: {
-            case: "send",
-            value: {
-              sessionId,
-              requestId: eff.newRequestId,
-              text: eff.text,
-              mode: eff.mode,
-              imageIds,
-              fileIds,
-            },
-          },
-        }),
-      );
-      if (mountedSession.current) setSent((n) => n + 1);
-    });
-  }, [host, remote, sessionId, machineId, stash]);
-
-  // Keep stash entries alive while retained by Core (including promote/cancel/5s undo), then prune once released.
-  const seenRetainedRef = useRef(new Set<string>());
-  useEffect(() => {
-    if (!stash) return;
-    const retained = new Set(vm.composer?.retainedAttachmentRequestIds ?? []);
-    for (const id of retained) {
-      seenRetainedRef.current.add(id);
-    }
-    for (const id of [...seenRetainedRef.current]) {
-      if (!retained.has(id)) {
-        stash.delete(id);
-        stash.delete(`send:${sessionId}:${id}`);
-        seenRetainedRef.current.delete(id);
-      }
-    }
-  }, [stash, sessionId, vm.composer?.retainedAttachmentRequestIds]);
-
-  const handleSend = (text: string, mode: SendMode) => {
-    const reqId = newRequestID();
-    const slotKey = `send:${sessionId}:${reqId}`;
-    const imgIds = tray.imageIds();
-    const files = tray.files().map((f) => ({
-      fileId: f.fileId!,
-      name: f.name!,
-      sizeBytes: BigInt(f.bytes ?? 0),
-      file: f.file instanceof File ? f.file : undefined,
-    }));
-    const fileIds = files.map((f) => f.fileId);
-    if (stash) {
-      const saved = {
-        thumbs: tray.images().map((i) => i.thumb!).filter(Boolean),
-        imageSizes: tray.images().map((i) => ({ width: i.prepared!.width, height: i.prepared!.height })),
-        files,
-        items: [...tray.items],
-        original: tray.original,
-      };
-      stash.set(reqId, saved);
-      stash.set(slotKey, saved);
-    }
-    host.sessionSubmitCommand(
-      slotKey,
-      machineId,
-      sessionId,
-      create(CommandSchema, {
-        kind: {
-          case: "send",
-          value: {
-            sessionId,
-            requestId: reqId,
-            text,
-            mode,
-            imageIds: imgIds,
-            fileIds,
-          },
-        },
-      }),
-    );
-    tray.clear();
-    remote.drafts.delete(sessionId);
-    setSent((n) => n + 1);
-  };
-
-  const handleRestoreTrayItem = async (reqId: string) => {
-    const it = (vm.composer?.pendingTray?.orderedItems ?? []).find((x) => x.requestId === reqId);
-    const saved = stash?.get(reqId);
-    const files =
-      saved?.files ?? (it?.fileIds ?? []).map((fileId) => ({ fileId, name: "", sizeBytes: 0n, file: undefined as File | undefined }));
-    try {
-      await remote.restoreDraft(sessionId, tray);
-    } catch {
-      return;
-    }
-    if (!mountedSession.current) return;
-    const savedImages = saved?.items?.filter((x) => !x.kind) ?? [];
-    const imageCandidates = (it?.imageIds ?? []).map((_, i) => {
-      const src = savedImages[i]?.file ?? saved?.thumbs?.[i];
-      return {
-        name: src instanceof File ? src.name : "",
-        mimeType: src?.type,
-        sizeBytes: src?.size ?? 0,
-      };
-    });
-    const fileCandidates = files.map((f) => ({
-      name: f.name,
-      mimeType: f.file?.type ?? "",
-      sizeBytes: Number(f.sizeBytes),
-    }));
-    if (imageCandidates.length || fileCandidates.length) {
-      const check = tray.checkPutBack(imageCandidates, fileCandidates);
-      if (!check.ok) {
-        if (check.reason) toastRef.current(check.reason);
-        return;
-      }
-    }
-    if (files.length) {
-      pendingRestoreFiles.current.set(reqId, files);
-    }
-    host.sessionRestoreTrayItem(sessionId, reqId);
-  };
+  const handleSend = useCallback(
+    (_text: string, mode: SendMode) => {
+      host.draftSendSession(sessionId, mode);
+      setSent((n) => n + 1);
+    },
+    [host, sessionId],
+  );
 
   const handleBack = () => {
     if (go && header?.taskOwned && header.scheduledTaskId && header.machineId) {
@@ -1713,8 +1484,6 @@ export function SessionPage({
 
   const timelineRef = useRef(vm.timeline);
   timelineRef.current = vm.timeline;
-  const restoreTrayRef = useRef(handleRestoreTrayItem);
-  restoreTrayRef.current = handleRestoreTrayItem;
 
   const onSubmitCommand = useCallback(
     (slotKey: string, cmd: Command) => host.sessionSubmitCommand(slotKey, machineId, sessionId, cmd),
@@ -1727,41 +1496,18 @@ export function SessionPage({
   const onCancelTrayItem = useCallback((reqId: string) => host.sessionCancelTrayItem(sessionId, reqId), [host, sessionId]);
   const onIgnoreTrayItem = useCallback((reqId: string) => host.sessionIgnoreTrayItem(sessionId, reqId), [host, sessionId]);
   const onPromoteTrayItem = useCallback((reqId: string) => host.sessionPromoteTrayItem(sessionId, reqId), [host, sessionId]);
-  const onRestoreTrayItem = useCallback((reqId: string) => void restoreTrayRef.current(reqId), []);
+  const onRestoreTrayItem = useCallback((reqId: string) => host.sessionRestoreTrayItem(sessionId, reqId), [host, sessionId]);
   const onRetryTrayItem = useCallback((reqId: string) => host.sessionRetryTrayItem(sessionId, reqId), [host, sessionId]);
   const onResumeTrayItem = useCallback((reqId: string) => host.sessionResumeTrayItem(sessionId, reqId), [host, sessionId]);
   const onCancelAllPaused = useCallback(() => host.sessionCancelAllPaused(sessionId), [host, sessionId]);
   const onUndoCancel = useCallback(() => host.sessionUndoCancel(sessionId), [host, sessionId]);
   const onRestoreText = useCallback(
-    async (text: string, reqId?: string) => {
-      try {
-        await remote.restoreDraft(sessionId, tray);
-      } catch {
-        return;
-      }
-      if (!mountedSession.current) return;
-      const saved = reqId ? stash?.get(reqId) : undefined;
-      if (saved?.items?.length) {
-        const images = saved.items.filter((it) => it.kind !== "file" && it.imageId);
-        if (
-          images.length &&
-          !tray.restore(
-            images.map((it, i) => ({ imageId: it.imageId!, thumb: saved.thumbs?.[i], file: it.file })),
-            !!saved.original,
-          )
-        ) {
-          if (tray.note) toastRef.current(tray.note);
-          return;
-        }
-      }
-      const cur = remote.drafts.get(sessionId) ?? "";
-      remote.drafts.set(sessionId, cur.trim() ? cur.trimEnd() + "\n" + text : text);
-      if (reqId) stash?.delete(reqId);
-      setComposerKey((k) => k + 1);
-      setTimeout(() => composerRef.current?.focus());
+    (_text: string, reqId?: string) => {
+      if (reqId) host.draftPutBackInput(sessionId, reqId);
     },
-    [remote, sessionId, tray, stash],
+    [host, sessionId],
   );
+  const onDraft = useCallback((text: string) => host.draftSetText(scope, text), [host, scope]);
   const onLoadEarlier = useCallback(() => {
     const tl = timelineRef.current;
     if (!tl) return;
@@ -1803,14 +1549,25 @@ export function SessionPage({
       go={go}
       remote={remote}
       scheduleTaskCount={stripVm.visible ? stripVm.tasks.length : 0}
-      draft={remote.drafts.get(sessionId) ?? ""}
-      onDraft={(text) => {
-        remote.drafts.set(sessionId, text);
-        setDraftVer((n) => n + 1);
-      }}
-      tray={tray}
-      trayView={<TrayView tray={tray} remote={remote} />}
-      attach={<AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />}
+      draft={draft?.text ?? ""}
+      onDraft={onDraft}
+      draftView={draft}
+      attachments={host.attachments}
+      trayView={
+        <TrayView
+          draft={draft}
+          attachments={host.attachments}
+          onRemove={(id) => host.draftRemoveItem(scope, id)}
+          onRetry={(id) => host.draftRetryItem(scope, id)}
+          onPause={(id) => host.attachmentPauseUpload(scope, id)}
+          onResume={(id) => host.attachmentResumeUpload(scope, id)}
+          onSetOriginal={(orig) => host.draftSetOriginal(scope, orig)}
+          onOpenViewer={(idx) => host.draftImageViewerOpen(scope, idx)}
+          onNavigateViewer={(delta) => host.draftImageViewerNavigate(scope, { delta })}
+          onCloseViewer={() => host.draftImageViewerClose(scope)}
+        />
+      }
+      attach={<AttachButton draft={draft} supportsFiles={!!caps?.supportsFiles} blocked={attachWhy} onPickFiles={onPickFiles} onBlocked={setToast} />}
       cardProps={wide ? drop.props : { onPaste: drop.props.onPaste }}
       dropping={drop.over}
       composerRef={composerRef}
@@ -1821,7 +1578,6 @@ export function SessionPage({
         else remote.approvalReasons.delete(id);
         remote.touch();
       }}
-      localAttachments={stash}
       toast={toast}
       onClearToast={() => setToast("")}
       sentCount={sent}
@@ -1854,7 +1610,8 @@ const ChatBody = memo(function ChatBody({
   vm,
   remote,
   sent,
-  localAttachments,
+  attachments,
+  outboxAttachments,
   retainedReasons = [],
   onRestoreText,
   onTerminal,
@@ -1866,7 +1623,8 @@ const ChatBody = memo(function ChatBody({
   vm: SessionViewModel;
   remote?: Remote;
   sent: number;
-  localAttachments?: Map<string, LocalSendAttachments>;
+  attachments?: AttachmentExecutor;
+  outboxAttachments?: Map<string, readonly OutboxAttachmentSummary[]>;
   retainedReasons?: Array<{ id: string; reason: string }>;
   onRestoreText?: (text: string, requestId?: string) => void;
   onTerminal?: () => void;
@@ -2131,13 +1889,14 @@ const ChatBody = memo(function ChatBody({
           hasSharedFiles={hasSharedFiles}
           locale={locale}
           onTerminal={onTerminal}
-          localAttachments={localAttachments}
+          attachments={attachments}
+          outboxAttachments={outboxAttachments}
           onRestoreText={onRestoreText}
           onExpandGroup={onExpandGroup}
         />
       </RowState>
     ),
-    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, localAttachments, onRestoreText, onExpandGroup],
+    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup],
   );
 
   return (
@@ -2298,7 +2057,8 @@ const TimelineRow = memo(function TimelineRow({
   remote,
   hasSharedFiles,
   locale: _locale,
-  localAttachments,
+  attachments,
+  outboxAttachments,
   onTerminal,
   onRestoreText,
   onExpandGroup,
@@ -2311,7 +2071,8 @@ const TimelineRow = memo(function TimelineRow({
   remote?: Remote;
   hasSharedFiles: boolean;
   locale: string;
-  localAttachments?: Map<string, LocalSendAttachments>;
+  attachments?: AttachmentExecutor;
+  outboxAttachments?: Map<string, readonly OutboxAttachmentSummary[]>;
   onTerminal?: () => void;
   onRestoreText?: (text: string, requestId?: string) => void;
   onExpandGroup: (groupId: string) => void;
@@ -2492,7 +2253,7 @@ const TimelineRow = memo(function TimelineRow({
       const s = item.kind.value;
       const status = renderText(s.statusText);
       const reason = renderText(s.reasonText);
-      const att = s.requestId ? localAttachments?.get(s.requestId) : undefined;
+      const att = s.requestId ? outboxAttachments?.get(s.requestId) : undefined;
       if (s.kind === SessionInputNoticeKind.CANCELED) {
         return null;
       }
@@ -2512,7 +2273,7 @@ const TimelineRow = memo(function TimelineRow({
       if (s.kind === SessionInputNoticeKind.NEEDS_TERMINAL) {
         return (
           <div className="me warn">
-            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <OutboxThumbs items={att} attachments={attachments} />
             <div>{s.preview || i18n.t("composer.message_fallback")}</div>
             <small>
               {reason || status}
@@ -2525,7 +2286,7 @@ const TimelineRow = memo(function TimelineRow({
       if (s.kind === SessionInputNoticeKind.FAILED) {
         return (
           <div className="me fail">
-            <LocalThumbs blobs={att?.thumbs} sizes={att?.imageSizes} />
+            <OutboxThumbs items={att} attachments={attachments} />
             <div>{s.preview || i18n.t("composer.message_fallback")}</div>
             <small>
               {reason || status}

@@ -14,8 +14,15 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import type { Tray, TrayItem } from "../attach";
+import type { AttachmentExecutor } from "../attachment-executor";
 import { renderText } from "../core/text";
+import {
+  AttachmentItemKind,
+  AttachmentItemState,
+  type AttachmentDraftItemView,
+  type DraftImageViewerView,
+  type OutboxAttachmentSummary,
+} from "../gen/remoteagent/core/v1/attachments_pb";
 import type {
   SessionImageViewerView,
   SessionViewerImageView,
@@ -77,6 +84,38 @@ function useObjectUrl(blob: Blob | undefined): string | undefined {
     return () => URL.revokeObjectURL(u);
   }, [blob]);
   return shown?.blob === blob ? shown?.url : undefined;
+}
+
+/** Resolves an opaque local attachment handle (source_ref/prepared_ref/thumb_ref) via AttachmentExecutor. */
+export function useLocalAttachmentBlob(
+  attachments: AttachmentExecutor | undefined,
+  ref: string | undefined,
+): Blob | undefined {
+  const [blob, setBlob] = useState<Blob | undefined>(() => (ref ? attachments?.cachedBlob(ref) : undefined));
+  useEffect(() => {
+    if (!attachments || !ref) {
+      setBlob(undefined);
+      return;
+    }
+    let alive = true;
+    const sync = () => {
+      const hit = attachments.cachedBlob(ref);
+      if (hit) {
+        if (alive) setBlob(hit);
+        return;
+      }
+      void attachments.ensureBlob(ref).then((loaded) => {
+        if (alive) setBlob(loaded);
+      });
+    };
+    sync();
+    const unsub = attachments.subscribeBlobs(sync);
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [attachments, ref]);
+  return blob;
 }
 
 /** A ref's embedded preview, if it is what it claims to be. */
@@ -261,17 +300,24 @@ function useDisplay(
   sid: string,
   img: SessionViewerImageView | undefined,
   attempt: number,
-  local?: TrayItem,
+  local?: AttachmentDraftItemView,
+  localBlob?: Blob,
 ): Load {
   useRemote(remote);
   const [state, setState] = useState<Load>({ kind: "idle" });
   const localLoad = useMemo<Load | undefined>(() => {
     if (!local) return;
-    const p = local.prepared;
-    if (!p || p.format === "file") return { kind: local.state === "failed" ? "error" : "loading" };
-    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format];
-    return { kind: "ok", blob: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: mimeOf(format) }), width: p.width, height: p.height, format };
-  }, [local?.key, local?.prepared, local?.state]);
+    if (localBlob) {
+      return {
+        kind: "ok",
+        blob: localBlob,
+        width: local.width,
+        height: local.height,
+        format: ImageFormat.UNSPECIFIED,
+      };
+    }
+    return { kind: local.state === AttachmentItemState.FAILED ? "error" : "loading" };
+  }, [local, localBlob]);
   const imageId = img?.ref?.imageId ?? "";
   const sync = img?.ref?.sync ?? ImageSync.UNSPECIFIED;
   const hasDisplayCopy = !!img?.hasDisplayCopy;
@@ -329,7 +375,7 @@ function loadNote(l: Load): string {
 }
 
 /** The viewer: Core-driven session pictures (via SessionImageViewerView),
- * a downloaded shared-file image, or local draft pictures. */
+ * Core-driven draft pictures (via DraftImageViewerView), or a downloaded shared-file image. */
 export function ImageViewer({
   remote,
   sid = "",
@@ -339,8 +385,10 @@ export function ImageViewer({
   wide,
   onNavigate,
   onClose,
-  draft,
-  draftStart = 0,
+  draftViewer,
+  attachments,
+  onDraftRetry,
+  onDraftRemove,
   sharedFile,
 }: {
   remote?: Remote;
@@ -351,30 +399,33 @@ export function ImageViewer({
   wide: boolean;
   onNavigate?: (delta: number) => void;
   onClose: () => void;
-  draft?: Tray;
-  draftStart?: number;
+  draftViewer?: DraftImageViewerView;
+  attachments?: AttachmentExecutor;
+  onDraftRetry?: (itemId: string) => void;
+  onDraftRemove?: (itemId: string) => void;
   sharedFile?: { blob: Blob; name: string; path: string; sizeText: string };
 }) {
-  const [draftIdx, setDraftIdx] = useState(draftStart);
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState("");
   const [zoom, setZoom] = useState(1);
 
-  const draftImages = draft?.images() ?? [];
-  const draftIndex = draftImages.length > 0 ? Math.min(draftIdx, draftImages.length - 1) : 0;
-  const local = draft ? draftImages[draftIndex] : undefined;
-  const problem = local?.state === "failed" ? local.problem : undefined;
+  const local = draftViewer?.currentImage;
+  const localBlob = useLocalAttachmentBlob(
+    attachments,
+    local ? local.preparedRef || local.sourceRef || local.thumbRef : undefined,
+  );
+  const problem = local?.state === AttachmentItemState.FAILED ? local.problem : undefined;
 
-  const img = !sharedFile && !draft ? viewer?.currentImage : undefined;
-  const hasPrev = draft ? draftIndex > 0 : !!viewer?.hasPrev;
-  const hasNext = draft ? draftIndex < draftImages.length - 1 : !!viewer?.hasNext;
-  const positionText = draft
-    ? `${draftIndex + 1} / ${draftImages.length}`
+  const img = !sharedFile && !draftViewer ? viewer?.currentImage : undefined;
+  const hasPrev = draftViewer ? draftViewer.hasPrev : !!viewer?.hasPrev;
+  const hasNext = draftViewer ? draftViewer.hasNext : !!viewer?.hasNext;
+  const positionText = draftViewer
+    ? renderText(draftViewer.positionText)
     : renderText(viewer?.positionText);
   const activeKey = sharedFile
     ? `sf:${sharedFile.name}`
-    : draft
-      ? `draft:${draftIndex}`
+    : draftViewer
+      ? `draft:${draftViewer.currentIndex}:${local?.itemId ?? ""}`
       : `session:${viewer?.currentIndex ?? 0}`;
 
   useEffect(() => {
@@ -382,7 +433,7 @@ export function ImageViewer({
     setNote("");
   }, [activeKey]);
 
-  const fetched = useDisplay(remote, sid, img, attempt, local);
+  const fetched = useDisplay(remote, sid, img, attempt, local, localBlob);
   const load: Load = sharedFile
     ? { kind: "ok", blob: sharedFile.blob, width: 0, height: 0, format: ImageFormat.UNSPECIFIED }
     : fetched;
@@ -393,11 +444,7 @@ export function ImageViewer({
     if (d < 0 && !hasPrev) return;
     if (d > 0 && !hasNext) return;
     setNote("");
-    if (draft) {
-      setDraftIdx((x) => Math.max(0, Math.min(draftImages.length - 1, x + d)));
-    } else {
-      onNavigate?.(d);
-    }
+    onNavigate?.(d);
   };
 
   useEscape(onClose);
@@ -416,7 +463,7 @@ export function ImageViewer({
   // Swipes: sideways to page (dispatched on pointerup/settle), down to close. Two fingers zoom.
   const touch = useRef<{ x: number; y: number; d?: number } | undefined>(undefined);
 
-  if (!sharedFile && !draft && (!viewer || viewer.totalCount === 0 || !img)) {
+  if (!sharedFile && !draftViewer && (!viewer || viewer.totalCount === 0 || !img)) {
     const emptyText = renderText(viewer?.emptyText) || i18n.t("image.viewer_empty");
     return (
       <div
@@ -447,16 +494,16 @@ export function ImageViewer({
       </div>
     );
   }
-  if (draft && !local) return null;
+  if (draftViewer && (!local || draftViewer.totalCount === 0)) return null;
 
-  const sourceLabel = draft
+  const sourceLabel = draftViewer
     ? i18n.t("image.draft")
     : renderText(img?.sourceLabel);
   const name = sharedFile
     ? sharedFile.name
-    : draft
+    : draftViewer
       ? ""
-      : img?.displayName || `image-${(viewer?.currentIndex ?? 0) + 1}.${img?.fileExtension || "jpg"}`;
+      : (img?.downloadName ?? "");
   const blob = load.kind === "ok" ? load.blob : undefined;
   const save = () => {
     // Agent-sent files are always saved as application/octet-stream, never with the preview MIME.
@@ -496,10 +543,20 @@ export function ImageViewer({
   };
   const status = local ? "" : loadNote(load);
   const retryable = load.kind === "error";
-  const draftActions = local && draft && <>
-    {problem?.retryable && <button className="glass" onClick={() => draft.retry(local.key)}>{t("common.retry")}</button>}
-    <button className="glass" onClick={() => { draft.remove(local.key); if (!draft.images().length) onClose(); }}>{t("common.remove")}</button>
-  </>;
+  const draftActions = local && draftViewer && (
+    <>
+      {local.canRetry && onDraftRetry && (
+        <button type="button" className="glass" onClick={() => onDraftRetry(local.itemId)}>
+          {t("common.retry")}
+        </button>
+      )}
+      {local.canRemove && onDraftRemove && (
+        <button type="button" className="glass" onClick={() => onDraftRemove(local.itemId)}>
+          {t("common.remove")}
+        </button>
+      )}
+    </>
+  );
   const picture = (
     <div
       className="vimg"
@@ -565,12 +622,14 @@ export function ImageViewer({
         </span>
       );
     }
-    if (local) {
+    if (local && draftViewer) {
       return (
         <>
-          <b>{i18n.t("image.position", { index: draftIndex + 1, count: draftImages.length })}</b>
-          {local.file instanceof File && <div>{local.file.name}</div>}
-          <div>{(problem && renderText(problem.message)) || (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
+          <b>{renderText(draftViewer.positionA11y) || renderText(local.positionA11y)}</b>
+          {local.displayName && <div>{local.displayName}</div>}
+          <div>
+            {renderText(problem?.message) || renderText(local.statusText) || i18n.t("image.draft")}
+          </div>
         </>
       );
     }
@@ -626,7 +685,7 @@ export function ImageViewer({
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
           {note && <span className="lb-note">{note}</span>}
-          {draft ? draftActions : <>
+          {draftViewer ? draftActions : <>
             <button className="glass" onClick={save} disabled={!full}>
               {t("common.save")}
             </button>
@@ -680,7 +739,7 @@ export function ImageViewer({
         {note && <div>{note}</div>}
       </div>
       <div className="vact">
-        {draft ? draftActions : <>
+        {draftViewer ? draftActions : <>
           <button className="glass" onClick={save} disabled={!full}>
             {t("common.save")}
           </button>
@@ -694,15 +753,31 @@ export function ImageViewer({
 
 /** Draft and message pictures use the same zooming, paging and dialog. Only
  * their source/available actions differ; drafts never fetch a server image. */
-export function DraftImageViewer({ remote, tray, start, onClose }: { remote: Remote; tray: Tray; start: number; onClose: () => void }) {
+export function DraftImageViewer({
+  viewer,
+  attachments,
+  onNavigate,
+  onRetry,
+  onRemove,
+  onClose,
+}: {
+  viewer: DraftImageViewerView;
+  attachments?: AttachmentExecutor;
+  onNavigate?: (delta: number) => void;
+  onRetry?: (itemId: string) => void;
+  onRemove?: (itemId: string) => void;
+  onClose: () => void;
+}) {
   return (
     <ImageViewer
-      remote={remote}
       title={i18n.t("image.draft")}
       wide={matchMedia("(min-width: 900px)").matches}
+      draftViewer={viewer}
+      attachments={attachments}
+      onNavigate={onNavigate}
+      onDraftRetry={onRetry}
+      onDraftRemove={onRemove}
       onClose={onClose}
-      draft={tray}
-      draftStart={start}
     />
   );
 }
@@ -723,6 +798,46 @@ async function toPng(blob: Blob): Promise<Blob> {
  * records the message with its own previews. */
 export function previewGeometry(aspect: number, height = 96): { width: number; height: number } {
   return { width: Math.round(height * Math.min(3, Math.max(0.4, aspect))), height };
+}
+
+export function OutboxThumbs({
+  items,
+  attachments,
+}: {
+  items?: readonly OutboxAttachmentSummary[];
+  attachments?: AttachmentExecutor;
+}) {
+  const images = useMemo(
+    () => (items ?? []).filter((it) => it.kind === AttachmentItemKind.IMAGE && it.thumbRef),
+    [items],
+  );
+  const [blobs, setBlobs] = useState<Blob[]>([]);
+  const refsKey = images.map((it) => it.thumbRef).join("\0");
+  useEffect(() => {
+    if (!attachments || images.length === 0) {
+      setBlobs([]);
+      return;
+    }
+    let alive = true;
+    const load = () => {
+      void Promise.all(images.map((it) => attachments.ensureBlob(it.thumbRef))).then((loaded) => {
+        if (alive) setBlobs(loaded.filter((b): b is Blob => !!b));
+      });
+    };
+    load();
+    const unsub = attachments.subscribeBlobs(load);
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [attachments, refsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!blobs.length) return null;
+  return (
+    <LocalThumbs
+      blobs={blobs}
+      sizes={images.map((it) => ({ width: it.width, height: it.height }))}
+    />
+  );
 }
 
 export function LocalThumbs({ blobs, sizes }: { blobs?: Blob[]; sizes?: { width: number; height: number }[] }) {
