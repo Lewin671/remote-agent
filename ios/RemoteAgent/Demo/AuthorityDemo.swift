@@ -13,17 +13,16 @@ enum AuthorityDemo {
         return args[i + 1]
     }
     static var code: String { "TEST-RECOVERY-CODE-DEMO" }
-    static func apply(_ state: inout RemoteState) {
-        state.authorityDeviceId = ["authority", "pending", "outgoing", "pair", "rotate"].contains(mode ?? "") ? Demo.me : other
-        state.recoveryStatusStale = false
-        state.leaseEndMs = UInt64(nowMs() + 48 * 3_600_000)
-        if mode == "pending" { state.recoveryPending = true; state.recoveryReadyMs = UInt64(nowMs() + 24 * 3_600_000) }
+    static func apply(_ world: inout DemoWorld) {
+        world.authorityDeviceId = ["authority", "pending", "outgoing", "pair", "rotate"].contains(mode ?? "") ? Demo.me : other
+        world.leaseEndMs = nowMs() + 48 * 3_600_000
+        if mode == "pending" { world.recoveryPending = true; world.recoveryReadyMs = nowMs() + 24 * 3_600_000 }
         if mode == "outgoing" {
-            state.devices[other]?.meta?.handoffRecoveryEd = Data(repeating: 4, count: 32)
+            world.devices[other]?.meta.handoffRecoveryEd = Data(repeating: 4, count: 32)
         }
         if mode == "machine" {
-            state.devices[Demo.me]?.kind = .machine
-            state.authorityDeviceId = Demo.me // Even this malformed role combination exposes no management controls.
+            world.devices[Demo.me]?.kind = .machine
+            world.authorityDeviceId = Demo.me // Even this malformed role combination exposes no management controls.
         }
     }
 }

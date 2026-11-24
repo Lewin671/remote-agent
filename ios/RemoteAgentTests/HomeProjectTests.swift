@@ -579,11 +579,9 @@ private actor NavRecorder {
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-dirpicker-\(UUID())")!)
         let model = AppModel(settings: settings)
         let remote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        let initial = Demo.world(.everyday)
         model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
-            await remote.showForTest(state: initial)
-        }
+        model.showDemo(account: Demo.account, remote: remote, world: initial)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         let core = try #require(model.context?.core)

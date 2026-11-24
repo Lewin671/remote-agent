@@ -116,7 +116,7 @@ import UIKit
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-viewer-\(UUID())")!)
         let model = AppModel(settings: settings)
         let demoRemote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        var world = Demo.world(.everyday)
         let events: [String: [PBEvent]] = [
             "s-view": [
                 .with {
@@ -131,13 +131,14 @@ import UIKit
                 }
             ]
         ]
-        var stateWithSession = initial
-        stateWithSession.sessions["s-view"] = SessionView(id: "s-view", machineId: "mac", info: .with { $0.title = "Viewer" })
-        let snapshot = stateWithSession
-        model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: demoRemote, initial: snapshot, events: events) {
-            await demoRemote.showForTest(state: snapshot)
+        world.sessions["s-view"] = .with {
+            $0.sessionID = "s-view"
+            $0.machineID = "mac"
+            $0.meta = .with { $0.id = "s-view"; $0.title = "Viewer" }
+            $0.metaRev = 1
         }
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: demoRemote, world: world, events: events)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         let token = await host.acquireSessionWatch("s-view")

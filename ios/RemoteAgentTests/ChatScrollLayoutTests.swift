@@ -71,15 +71,16 @@ private func sessionViewModel(
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
         let remote = Demo.remote()
-        let state = Demo.state(.everyday, now: 1_791_000_000_000)
+        let world = Demo.world(.everyday, now: 1_791_000_000_000)
         let defaultsName = "chat-scroll-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
-        model.showDemo(account: Demo.account, remote: remote, initial: state, events: [:]) {}
+        model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
-        let session = try #require(state.sessions["api"])
+        let session = try #require(world.sessions["api"])
+        let sessionID = session.sessionID
         var items: [PBSessionTimelineItem] = (1...120).map { n in
             .with {
                 $0.id = "e\(n)"
@@ -97,10 +98,10 @@ private func sessionViewModel(
             }
         }
         let holder = SessionHolder(
-            vm: sessionViewModel(sessionID: session.id, items: Array(items.suffix(20)), totalCount: items.count, loaded: false)
+            vm: sessionViewModel(sessionID: sessionID, items: Array(items.suffix(20)), totalCount: items.count, loaded: false)
         )
         let host = UIHostingController(rootView:
-            ChatPaneTestHost(sessionID: session.id, holder: holder)
+            ChatPaneTestHost(sessionID: sessionID, holder: holder)
                 .environment(model).environment(context).environment(Navigator()))
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
@@ -127,7 +128,7 @@ private func sessionViewModel(
             scroll.setContentOffset(CGPoint(x: 0, y: bottom * fraction), animated: false)
             if n < 4 {
                 holder.vm = sessionViewModel(
-                    sessionID: session.id,
+                    sessionID: sessionID,
                     items: Array(items.suffix(20 + (n + 1) * 25)),
                     totalCount: items.count,
                     loaded: false
@@ -141,7 +142,7 @@ private func sessionViewModel(
                         $0.markdown = "Streaming reply \(n)\n\n" + String(repeating: "More text.\n\n", count: n % 5 + 1)
                     }
                 })
-                holder.vm = sessionViewModel(sessionID: session.id, items: items, totalCount: items.count, loaded: true)
+                holder.vm = sessionViewModel(sessionID: sessionID, items: items, totalCount: items.count, loaded: true)
             }
             var frames = 0
             try await waitForLayout { frames += 1; return frames >= 2 }
@@ -151,7 +152,7 @@ private func sessionViewModel(
         let source = try #require(collection.dataSource as? UICollectionViewDiffableDataSource<Int, String>)
         // The seq fallback deliberately cannot match: this must find the
         // scheduled-run user row and position it at the viewport's top.
-        context.sessionStore.jumpToScheduledRun(session.id, runID: "target-run", seq: 999_999)
+        context.sessionStore.jumpToScheduledRun(sessionID, runID: "target-run", seq: 999_999)
         try await waitForLayout {
             guard let index = source.indexPath(for: "e81"),
                   let frame = collection.layoutAttributesForItem(at: index)?.frame
@@ -173,15 +174,16 @@ private func sessionViewModel(
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
         let remote = Demo.remote()
-        let state = Demo.state(.everyday, now: 1_791_000_000_000)
+        let world = Demo.world(.everyday, now: 1_791_000_000_000)
         let defaultsName = "mixed-chat-scroll-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: defaultsName))
         defer { defaults.removePersistentDomain(forName: defaultsName) }
         let model = AppModel(settings: SettingsStore(defaults: defaults))
-        model.showDemo(account: Demo.account, remote: remote, initial: state, events: [:]) {}
+        model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
-        let session = try #require(state.sessions["api"])
+        let session = try #require(world.sessions["api"])
+        let sessionID = session.sessionID
         var items: [PBSessionTimelineItem] = (1...80).map { n in
             .with {
                 $0.id = "m\(n)"
@@ -222,10 +224,10 @@ private func sessionViewModel(
             }
         }
         let holder = SessionHolder(
-            vm: sessionViewModel(sessionID: session.id, items: Array(items.suffix(21)), totalCount: items.count, loaded: false, dock: questionDock)
+            vm: sessionViewModel(sessionID: sessionID, items: Array(items.suffix(21)), totalCount: items.count, loaded: false, dock: questionDock)
         )
         let host = UIHostingController(rootView:
-            ChatPaneTestHost(sessionID: session.id, holder: holder)
+            ChatPaneTestHost(sessionID: sessionID, holder: holder)
                 .environment(model).environment(context).environment(Navigator())
                 .environment(\.dynamicTypeSize, size).preferredColorScheme(scheme))
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -253,7 +255,7 @@ private func sessionViewModel(
             scroll.setContentOffset(CGPoint(x: 0, y: bottom * CGFloat(n % 5) / 4), animated: false)
             if n < 4 {
                 holder.vm = sessionViewModel(
-                    sessionID: session.id,
+                    sessionID: sessionID,
                     items: Array(items.suffix(21 + (n + 1) * 15)),
                     totalCount: items.count,
                     loaded: false,
@@ -270,7 +272,7 @@ private func sessionViewModel(
                     })
                 }
                 items[items.count - 1].agentMessage.markdown += "\n\nMore streaming text with `code`."
-                holder.vm = sessionViewModel(sessionID: session.id, items: items, totalCount: items.count, loaded: true, dock: questionDock)
+                holder.vm = sessionViewModel(sessionID: sessionID, items: items, totalCount: items.count, loaded: true, dock: questionDock)
             }
             if n.isMultiple(of: 4) {
                 window.frame.size = n.isMultiple(of: 8)

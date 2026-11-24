@@ -704,11 +704,10 @@ final class AppModel {
 
     #if DEBUG
         func showDemo(
-            account: Account, remote: Remote, initial: RemoteState,
+            account: Account, remote: Remote, world: DemoWorld,
             events: [String: [PBEvent]] = [:],
             schedules: [String: Data] = [:],
-            scheduleSeen: [String: [PBScheduleSeenToken]] = [:],
-            load: @escaping @Sendable () async -> Void
+            scheduleSeen: [String: [PBScheduleSeenToken]] = [:]
         ) {
             isDemo = true
             generation += 1
@@ -750,9 +749,8 @@ final class AppModel {
                     scanStorage: false
                 )
                 guard self != nil else { return }
-                await load()
                 await host.seedDemo(
-                    state: remote.current,
+                    world: world,
                     events: events,
                     schedules: schedules,
                     scheduleSeen: scheduleSeen

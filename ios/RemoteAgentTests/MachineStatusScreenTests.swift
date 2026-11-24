@@ -29,11 +29,9 @@ import Testing
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-rings-\(UUID())")!)
         let model = AppModel(settings: settings)
         let remote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        let initial = Demo.world(.everyday)
         model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
-            await remote.showForTest(state: initial)
-        }
+        model.showDemo(account: Demo.account, remote: remote, world: initial)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         // Wait briefly for seedDemo Task in showDemo
@@ -55,7 +53,7 @@ import Testing
     @Test func watchTokensRefCountAndPreferLiveMode() async {
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-watch-\(UUID())")!)
         let model = AppModel(settings: settings)
-        model.showDemo(account: Demo.account, remote: Demo.remote(), initial: Demo.state(.everyday)) {}
+        model.showDemo(account: Demo.account, remote: Demo.remote(), world: Demo.world(.everyday))
         defer { model.closeSyncForTest() }
         let host = model.context!.coreHost
 
@@ -72,15 +70,13 @@ import Testing
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-locale-\(UUID())")!)
         let model = AppModel(settings: settings)
         let remote = Demo.remote()
-        let initial: RemoteState = {
-            var s = Demo.state(.everyday)
-            s.machines["mac"]?.meta?.capabilities.usageStats = true
+        let initial: DemoWorld = {
+            var s = Demo.world(.everyday)
+            s.machines["mac"]?.meta.capabilities.usageStats = true
             return s
         }()
         model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
-            await remote.showForTest(state: initial)
-        }
+        model.showDemo(account: Demo.account, remote: remote, world: initial)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         for _ in 0..<200 where !(model.context?.core.machineSettings.found ?? false) {

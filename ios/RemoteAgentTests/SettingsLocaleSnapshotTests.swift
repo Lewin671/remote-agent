@@ -15,7 +15,7 @@ import UIKit
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = SettingsStore(defaults: defaults)
         let model = AppModel(settings: settings)
-        model.showDemo(account: Demo.account, remote: Demo.remote(), initial: Demo.state(.everyday)) {}
+        model.showDemo(account: Demo.account, remote: Demo.remote(), world: Demo.world(.everyday))
         let context = try #require(model.context)
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let previous = scene.windows.first(where: \.isKeyWindow)

@@ -52,8 +52,8 @@ private struct ComposerWrapper: View {
         let remote = Demo.remote()
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "session-golden-" + UUID().uuidString)!)
         let model = AppModel(settings: settings)
-        let state = Demo.state(.everyday, now: 1_791_000_000_000)
-        model.showDemo(account: Demo.account, remote: remote, initial: state, events: [:]) {}
+        let world = Demo.world(.everyday, now: 1_791_000_000_000)
+        model.showDemo(account: Demo.account, remote: remote, world: world, events: [:])
         defer { ImageCenter.remove(remote) }
         guard let context = model.context else { Issue.record("missing context"); return }
         let nav = Navigator()
@@ -214,13 +214,13 @@ private struct ComposerWrapper: View {
 
     @Test func refCountedSessionWatchesMergeWindowsAndCoreSessionCommandsDispatch() async throws {
         let remote = Demo.remote()
-        let state = Demo.state(.everyday, now: 1_791_000_000_000)
+        let world = Demo.world(.everyday, now: 1_791_000_000_000)
         let defaults = UserDefaults(suiteName: "session-watch-" + UUID().uuidString)!
         let model = AppModel(settings: SettingsStore(defaults: defaults))
-        model.showDemo(account: Demo.account, remote: remote, initial: state, events: Demo.events(.everyday, now: 1_791_000_000_000)) {}
+        model.showDemo(account: Demo.account, remote: remote, world: world, events: Demo.events(.everyday, now: 1_791_000_000_000))
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
-        let sid = try #require(state.sessions.keys.sorted().first)
+        let sid = try #require(world.sessions.keys.sorted().first)
 
         // Two simultaneous watchers (e.g. SessionScreen + ScheduleResultCard) share one Core watch
         // and merge limit / expanded groups / revealRunID cleanly.
@@ -256,7 +256,7 @@ private struct ComposerWrapper: View {
                     $0.mode = .steer
                 }
             },
-            machineID: state.sessions[sid]?.machineId ?? ""
+            machineID: world.sessions[sid]?.machineID ?? ""
         )
 
         await context.coreHost.releaseSessionWatch(t2)

@@ -135,12 +135,12 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
             return nil
         }
 
-        var state = RemoteState()
-        state.conn = .online
-        state.link = .online
-        state.machines["m1"] = MachineView(
-            id: "m1", online: true, lastSeenMs: nowMs(),
-            meta: .with {
+        var world = DemoWorld()
+        world.machines["m1"] = .with {
+            $0.machineID = "m1"
+            $0.online = true
+            $0.lastSeenMs = nowMs()
+            $0.meta = .with {
                 $0.hostname = "MacBook"
                 $0.home = "/Users/me"
                 $0.os = "darwin"
@@ -150,20 +150,22 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
                     $0.sharedFileChunkBytes = Int32(server.blockBytes)
                     $0.maxSharedFileBytes = 104_857_600
                 }
-            },
-            metaRev: 1
-        )
-        state.sessions["s1"] = SessionView(
-            id: "s1", machineId: "m1",
-            info: .with {
+            }
+            $0.metaRev = 1
+        }
+        world.sessions["s1"] = .with {
+            $0.sessionID = "s1"
+            $0.machineID = "m1"
+            $0.meta = .with {
                 $0.id = "s1"
                 $0.cwd = "/Users/me/proj"
                 $0.title = "Files"
                 $0.status = .idle
                 $0.agent = .codex
-            },
-            metaRev: 1, updatedMs: nowMs()
-        )
+            }
+            $0.metaRev = 1
+            $0.updatedMs = nowMs()
+        }
         let ev = PBEvent.with {
             $0.seq = 1
             $0.toolCall = .with {
@@ -181,7 +183,7 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
                 }]
             }
         }
-        await host.seedDemo(state: state, events: ["s1": [ev]])
+        await host.seedDemo(world: world, events: ["s1": [ev]])
         if scanLocal {
             await host.dispatch(PBCoreEvent.with {
                 $0.sharedFileConfig = .with {

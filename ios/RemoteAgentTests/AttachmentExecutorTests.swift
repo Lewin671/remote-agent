@@ -124,12 +124,12 @@ private final class FakeUploadDaemon: @unchecked Sendable {
             daemon.action(for: eff, cmd: cmd)
         }
 
-        var state = RemoteState()
-        state.conn = .online
-        state.link = .online
-        state.machines["m1"] = MachineView(
-            id: "m1", online: true, lastSeenMs: nowMs(),
-            meta: .with {
+        var world = DemoWorld()
+        world.machines["m1"] = .with {
+            $0.machineID = "m1"
+            $0.online = true
+            $0.lastSeenMs = nowMs()
+            $0.meta = .with {
                 $0.hostname = "Mac-A"
                 $0.home = "/Users/me"
                 $0.os = "darwin"
@@ -142,21 +142,23 @@ private final class FakeUploadDaemon: @unchecked Sendable {
                     $0.maxFilesPerMessage = 5
                     $0.maxFileUploadBytes = 100 * 1024 * 1024
                 }
-            },
-            metaRev: 1
-        )
-        state.sessions["s1"] = SessionView(
-            id: "s1", machineId: "m1",
-            info: .with {
+            }
+            $0.metaRev = 1
+        }
+        world.sessions["s1"] = .with {
+            $0.sessionID = "s1"
+            $0.machineID = "m1"
+            $0.meta = .with {
                 $0.id = "s1"
                 $0.cwd = "/Users/me/proj"
                 $0.title = "Draft Smoke"
                 $0.status = .idle
                 $0.agent = .codex
-            },
-            metaRev: 1, updatedMs: nowMs()
-        )
-        await host.seedDemo(state: state)
+            }
+            $0.metaRev = 1
+            $0.updatedMs = nowMs()
+        }
+        await host.seedDemo(world: world)
         if persist {
             // Re-configure with persistence enabled so startup scan & disk persistence run.
             await host.dispatch(PBCoreEvent.with {

@@ -11,7 +11,7 @@
 //             sessions on it, quotas nearly used up;
 //   empty     an account that has just been made: this client and nothing else.
 //
-// The Remote that shows them is never started (`Remote.showForTest`):
+// The sample world feeds Core directly (`CoreHost.seedDemo`):
 // nothing is fetched, and commands fail as they would offline.
 #if DEBUG
 import Foundation
@@ -37,15 +37,12 @@ enum Demo {
         try! Remote(account: account, http: AppModel.http)
     }
 
-    static func state(_ set: DemoSet, now: Int64 = nowMs()) -> RemoteState {
-        var s: RemoteState = switch set {
+    static func world(_ set: DemoSet, now: Int64 = nowMs()) -> DemoWorld {
+        switch set {
         case .everyday: everyday(now)
         case .crowded: crowded(now)
         case .empty: empty(now)
         }
-        // Every sample computer is one the account trusts now.
-        s.currentMachines = Set(s.machines.keys)
-        return s
     }
 
     static func events(_ set: DemoSet, now: Int64 = nowMs()) -> [String: [PBEvent]] {
@@ -149,10 +146,12 @@ enum Demo {
 
     private static func machine(
         _ id: String, _ name: String, now: Int64, online: Bool = true, agents: [PBAgent] = [.codex], quotas: [PBAgentQuota] = []
-    ) -> MachineView {
-        MachineView(
-            id: id, online: online, lastSeenMs: online ? now : now - 2 * 3_600_000,
-            meta: .with { meta in
+    ) -> PBCorePlainMachine {
+        PBCorePlainMachine.with {
+            $0.machineID = id
+            $0.online = online
+            $0.lastSeenMs = online ? now : now - 2 * 3_600_000
+            $0.meta = .with { meta in
                 meta.hostname = name
                 meta.home = home
                 meta.os = "darwin"
@@ -169,8 +168,9 @@ enum Demo {
                     }
                 }
                 meta.quotas = quotas
-            },
-            metaRev: 1)
+            }
+            $0.metaRev = 1
+        }
     }
 
     private static func session(
@@ -179,7 +179,7 @@ enum Demo {
         updated: Int64? = nil, created: Int64? = nil, mode: PBApprovalMode = .ask, detail: String = "", context: Int64 = 0,
         queued: Int32 = 0, model: String? = nil, effort: String? = nil, contextWindow: Int64? = nil,
         modeLocked: Bool = false, fullAccessUnavailable: Bool = false
-    ) -> SessionView {
+    ) -> PBCorePlainSession {
         let updated = updated ?? now
         let defaultModel = agent == .claude ? "claude-sonnet-5-5" : (agent == .antigravity ? "gemini-3.1-pro" : "gpt-6-astra")
         let defaultEffort = (agent == .claude || agent == .antigravity) ? "high" : "medium"
@@ -207,32 +207,44 @@ enum Demo {
             if approvals > 0 || questions > 0 || plan || status == .blocked { $0.attentionSince = ts(updated) }
             if status == .exited { $0.endedAt = ts(updated) }
         }
-        return SessionView(
-            id: id, machineId: machine, info: info, metaRev: 1, updatedMs: updated,
-            listedEndedMs: status == .exited ? updated : 0)
+        return PBCorePlainSession.with {
+            $0.sessionID = id
+            $0.machineID = machine
+            $0.meta = info
+            $0.metaRev = 1
+            $0.updatedMs = updated
+            $0.listedEndedMs = status == .exited ? updated : 0
+        }
     }
 
-    private static func prefs(pinned: [String], hidden: [String] = []) -> PrefsObject {
-        PrefsObject(revision: 1, prefs: .with { p in
-            p.schema = 1
-            p.pinned = pinned.map { path in .with { $0.path = path } }
-            p.hidden = hidden.map { path in .with { $0.path = path } }
-        })
+    private static func prefs(pinned: [String], hidden: [String] = []) -> PBCorePlainAccountPrefs {
+        .with {
+            $0.revision = 1
+            $0.prefs = .with { p in
+                p.schema = 1
+                p.pinned = pinned.map { path in .with { $0.path = path } }
+                p.hidden = hidden.map { path in .with { $0.path = path } }
+            }
+        }
     }
 
-    private static func client(_ id: String, now: Int64, name: String = "", platform: String = "", description: String = "", ageMs: Int64, seenMs: Int64 = 0) -> DeviceView {
-        DeviceView(
-            id: id, kind: .client, createdMs: now - ageMs,
-            meta: .with {
+    private static func client(_ id: String, now: Int64, name: String = "", platform: String = "", description: String = "", ageMs: Int64, seenMs: Int64 = 0) -> PBCorePlainDevice {
+        .with {
+            $0.deviceID = id
+            $0.kind = .client
+            $0.createdMs = now - ageMs
+            $0.meta = .with {
                 $0.name = name
                 $0.platform = platform
                 $0.description_p = description
-            },
-            metaRev: 1, lastSeenMs: seenMs == 0 ? 0 : now - seenMs)
+            }
+            $0.metaRev = 1
+            $0.lastSeenMs = seenMs == 0 ? 0 : now - seenMs
+        }
     }
 
-    private static func keyed<V: Identifiable>(_ list: [V]) -> [String: V] where V.ID == String {
-        Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    private static func keyed<V>(_ list: [V], by id: (V) -> String) -> [String: V] {
+        Dictionary(list.map { (id($0), $0) }, uniquingKeysWith: { a, _ in a })
     }
 
     // Events, numbered in the order given, ending now.
@@ -320,7 +332,7 @@ enum Demo {
 
     // MARK: Everyday
 
-    private static func quotaMac(_ now: Int64) -> MachineView {
+    private static func quotaMac(_ now: Int64) -> PBCorePlainMachine {
         machine("mac", "MacBook", now: now, agents: [.codex, .claude, .antigravity], quotas: [
             .with {
                 $0.agent = .codex
@@ -396,9 +408,9 @@ enum Demo {
         ])
     }
 
-    private static func everyday(_ now: Int64) -> RemoteState {
-        var s = RemoteState()
-        s.machines = keyed([quotaMac(now), machine("vps", "VPS-dev", now: now), machine("imac", "iMac", now: now, online: false)])
+    private static func everyday(_ now: Int64) -> DemoWorld {
+        var s = DemoWorld()
+        s.machines = keyed([quotaMac(now), machine("vps", "VPS-dev", now: now), machine("imac", "iMac", now: now, online: false)], by: \.machineID)
         s.sessions = keyed([
             session("run", "mac", foo, "修复登录超时", now: now, status: .running, preview: "正在执行 go test ./auth/...", updated: now - 20_000, created: now - 60_000, context: 87_000),
             session("doc", "mac", foo, "补充接口文档", now: now, agent: .claude, preview: "已补充 12 个接口的说明，要生成 OpenAPI 吗？", updated: at(8, 12, now: now), created: at(8, 12, now: now)),
@@ -412,17 +424,13 @@ enum Demo {
             session("dep", "imac", home + "/Code/bar", "升级依赖", now: now, questions: 1, updated: at(9, 20, now: now)),
             session("plan", "mac", home + "/Code/shop", "拆分订单服务", now: now, plan: true, updated: at(9, 10, now: now), mode: .plan),
             session("trust", "vps", home + "/Code/billing", "对账脚本", now: now, status: .blocked, updated: at(9, 0, now: now), detail: "Trust this folder?"),
-        ])
+        ], by: \.sessionID)
         s.devices = keyed([
             client(me, now: now, platform: "ios", description: "iOS 26.0 · iPhone", ageMs: 86_400_000),
             client("b71c00000000b71c", now: now, name: "我的手机", platform: "android", description: "Android 16 · Pixel 9", ageMs: 3_600_000, seenMs: 40 * 60_000),
             client("a8f200000000a8f2", now: now, platform: "web", description: "Chrome · macOS", ageMs: 9 * 86_400_000, seenMs: 2 * 86_400_000),
-        ])
+        ], by: \.deviceID)
         s.prefs = prefs(pinned: [foo])
-        s.conn = .online
-        s.link = .online
-        s.loaded = true
-        s.synced = true
         return s
     }
 
@@ -479,8 +487,8 @@ enum Demo {
 
     private static let longTitle = "把结算服务里按商户维度聚合的对账任务从定时批处理迁到事件驱动，并补上幂等和重放的集成测试，顺便整理一下文档"
 
-    private static func crowded(_ now: Int64) -> RemoteState {
-        var s = RemoteState()
+    private static func crowded(_ now: Int64) -> DemoWorld {
+        var s = DemoWorld()
         let nearlyOut: [PBAgentQuota] = [
             .with {
                 $0.agent = .codex
@@ -530,7 +538,7 @@ enum Demo {
             machine("studio", "Mac-Studio-录音棚", now: now, agents: [.codex, .claude, .antigravity]),
             machine("ci", "ci-runner-07", now: now, online: false, agents: [.codex]),
             machine("nas", "", now: now, agents: [.codex]),
-        ])
+        ], by: \.machineID)
         let projects = [
             foo, home + "/Code/billing", home + "/Code/shop", home + "/Code/remote-agent", home + "/work/blog",
             home + "/Code/a-very-long-project-name-that-keeps-going-and-going/services/settlement-reconciliation-worker",
@@ -538,7 +546,7 @@ enum Demo {
             home + "/Code/design-system", home + "/tmp/scratch",
         ]
         let hosts = ["mac", "vps", "imac", "studio", "ci", "nas"]
-        var list: [SessionView] = [
+        var list: [PBCorePlainSession] = [
             // Everything that can wait, at once, on one session.
             session("all", "mac", foo, longTitle, now: now, status: .running, agent: .claude, approvals: 3, questions: 2, plan: true, preview: "请求执行 kubectl --context prod-cn-east-2 -n settlement rollout restart deployment/reconciliation-worker", updated: now - 40 * 60_000, mode: .fullAccess, context: 752_000, queued: 4),
             session("ask2", "vps", projects[5], "Fix flaky test TestReconcile_ReplayAfterPartialFailure_WithOutOfOrderEventsAndClockSkew", now: now, approvals: 12, preview: "rm -rf ./build && make -j16 all test integration-test e2e-test", updated: now - 3 * 60_000),
@@ -566,7 +574,7 @@ enum Demo {
                 status: .exited, agent: i % 4 == 0 ? .claude : .codex, preview: "最后一条回复的开头，第 \(i) 条",
                 updated: now - Int64(i) * 9 * 3_600_000 - 30 * 60_000))
         }
-        s.sessions = keyed(list)
+        s.sessions = keyed(list, by: \.sessionID)
         var devices = [client(me, now: now, name: "一个名字特别长的客户端，用来看一行放不放得下", platform: "ios", description: "iOS 26.0 · iPhone", ageMs: 200 * 86_400_000)]
         for i in 0..<14 {
             let id = String(repeating: String(i, radix: 16), count: 16)
@@ -575,12 +583,8 @@ enum Demo {
                 platform: ["android", "ios", "web", ""][i % 4], description: i % 5 == 0 ? "" : ["Android 16 · Pixel 9 Pro XL", "iOS 26.0 · iPad", "Chrome 141 · macOS 26"][i % 3],
                 ageMs: Int64(i + 1) * 20 * 86_400_000, seenMs: i % 4 == 0 ? 0 : Int64(i) * 3 * 86_400_000 + 60_000))
         }
-        s.devices = keyed(devices)
+        s.devices = keyed(devices, by: \.deviceID)
         s.prefs = prefs(pinned: Array(projects.prefix(5)), hidden: [projects[11], home + "/Code/demo"])
-        s.conn = .online
-        s.link = .online
-        s.loaded = true
-        s.synced = true
         return s
     }
 
@@ -626,14 +630,9 @@ enum Demo {
 
     // MARK: Empty
 
-    private static func empty(_ now: Int64) -> RemoteState {
-        var s = RemoteState()
-        s.devices = keyed([client(me, now: now, platform: "ios", description: "iOS 26.0 · iPhone", ageMs: 60_000)])
-        s.prefs = .empty
-        s.conn = .online
-        s.link = .online
-        s.loaded = true
-        s.synced = true
+    private static func empty(_ now: Int64) -> DemoWorld {
+        var s = DemoWorld()
+        s.devices = keyed([client(me, now: now, platform: "ios", description: "iOS 26.0 · iPhone", ageMs: 60_000)], by: \.deviceID)
         return s
     }
 }

@@ -9,6 +9,22 @@ import RACore
 import RAProto
 import Security
 
+/// In-memory Core proto snapshot for `-demo` / preview launches (no `RemoteState` reverse-conversion).
+struct DemoWorld: Equatable, Sendable {
+    var machines: [String: PBCorePlainMachine] = [:]
+    var sessions: [String: PBCorePlainSession] = [:]
+    var devices: [String: PBCorePlainDevice] = [:]
+    var prefs: PBCorePlainAccountPrefs = .with { $0.prefs.schema = 1 }
+    var connection: PBCoreConnState = .connected
+    var error = ""
+    var removed = false
+    var authorityDeviceId = ""
+    var leaseEndMs: Int64 = 0
+    var recoveryPending = false
+    var recoveryReadyMs: Int64 = 0
+    var clockSkewed = false
+}
+
 /// Main-actor observable snapshots published by `CoreHost` for the migrated screens.
 @MainActor
 @Observable
@@ -320,7 +336,7 @@ actor CoreHost: SyncEngine {
     private let sleep: Sleeper
     private var demoDirectories: DirectorySource?
     private var demoModels: [String: PBListModelsResponse]
-    private var demoState = RemoteState()
+    private var demoWorld = DemoWorld()
     private var demoEvents: [String: [PBEvent]] = [:]
     private var demoSchedules: [String: Data] = [:]
     private var demoScheduleSeen: [String: [PBScheduleSeenToken]] = [:]
@@ -3506,36 +3522,10 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private static func plainMachines(_ state: RemoteState) -> [PBCorePlainMachine] {
-        state.machines.values.map { m in
-            PBCorePlainMachine.with {
-                $0.machineID = m.id; $0.online = m.online; $0.lastSeenMs = m.lastSeenMs
-                if let meta = m.meta { $0.meta = meta }; $0.metaRev = m.metaRev
-            }
-        }
-    }
-
-    private func plainSession(_ s: SessionView) -> PBCorePlainSession {
-        let maxSeq = max(s.lastSeq, demoEvents[s.id]?.last?.seq ?? 0)
-        return PBCorePlainSession.with {
-            $0.sessionID = s.id; $0.machineID = s.machineId
-            if let info = s.info { $0.meta = info }; $0.metaRev = s.metaRev
-            $0.lastSeq = maxSeq; $0.updatedMs = s.updatedMs; $0.listedEndedMs = s.listedEndedMs
-            if let cp = s.checkpoint { $0.checkpoint = cp }
-        }
-    }
-
-    private func plainSessions(_ state: RemoteState) -> [PBCorePlainSession] {
-        state.sessions.values.map(plainSession)
-    }
-
-    private static func plainDevices(_ state: RemoteState) -> [PBCorePlainDevice] {
-        state.devices.values.map { d in
-            PBCorePlainDevice.with {
-                $0.deviceID = d.id; $0.kind = d.kind; $0.createdMs = d.createdMs
-                $0.lastSeenMs = d.lastSeenMs; if let meta = d.meta { $0.meta = meta }; $0.metaRev = d.metaRev
-            }
-        }
+    private func adjustedDemoSession(_ s: PBCorePlainSession) -> PBCorePlainSession {
+        var copy = s
+        copy.lastSeq = max(s.lastSeq, demoEvents[s.sessionID]?.last?.seq ?? 0)
+        return copy
     }
 
     private static func plainEvents(_ list: [PBEvent]) -> [PBCorePlainEvent] {
@@ -3547,13 +3537,12 @@ actor CoreHost: SyncEngine {
     private func demoCacheReadReply(_ r: PBCoreCacheReadEffect) -> PBCoreEvent? {
         switch r.kind {
         case .bootstrap(let b):
-            let p = demoState.prefs ?? PrefsObject(revision: 0, prefs: PBProjectPrefs())
             return .with {
                 $0.cacheBootstrapLoaded = .with {
                     $0.opID = b.opID
-                    $0.machines = Self.plainMachines(demoState)
-                    $0.sessions = plainSessions(demoState)
-                    $0.prefs = .with { $0.revision = p.revision; $0.prefs = p.prefs }
+                    $0.machines = Array(demoWorld.machines.values)
+                    $0.sessions = demoWorld.sessions.values.map(adjustedDemoSession)
+                    $0.prefs = demoWorld.prefs
                 }
             }
         case .events(let e):
@@ -3575,25 +3564,24 @@ actor CoreHost: SyncEngine {
             return .with {
                 $0.listsFetched = .with {
                     $0.opID = r.opID
-                    $0.machines = Self.plainMachines(demoState)
-                    $0.sessions = plainSessions(demoState)
-                    $0.devices = Self.plainDevices(demoState)
+                    $0.machines = Array(demoWorld.machines.values)
+                    $0.sessions = demoWorld.sessions.values.map(adjustedDemoSession)
+                    $0.devices = Array(demoWorld.devices.values)
                 }
             }
         case .getAccountPrefs:
-            let p = demoState.prefs ?? PrefsObject(revision: 0, prefs: PBProjectPrefs())
             return .with {
                 $0.accountPrefsFetched = .with {
                     $0.opID = r.opID
-                    $0.prefs = .with { $0.revision = p.revision; $0.prefs = p.prefs }
+                    $0.prefs = demoWorld.prefs
                 }
             }
         case .fetchSessionByID(let s):
             return .with {
                 $0.sessionByIDFetched = .with {
                     $0.opID = r.opID
-                    if let sess = demoState.sessions[s.sessionID] {
-                        $0.session = plainSession(sess)
+                    if let sess = demoWorld.sessions[s.sessionID] {
+                        $0.session = adjustedDemoSession(sess)
                     } else {
                         $0.error = "not_found"
                     }
@@ -3616,7 +3604,7 @@ actor CoreHost: SyncEngine {
             return .with {
                 $0.devicesFetched = .with {
                     $0.opID = r.opID
-                    $0.devices = Self.plainDevices(demoState)
+                    $0.devices = Array(demoWorld.devices.values)
                 }
             }
         case .fetchSessionsPage:
@@ -3647,6 +3635,9 @@ actor CoreHost: SyncEngine {
     }
 
     #if DEBUG
+    func currentDemoWorld() -> DemoWorld { demoWorld }
+    func isDemoSeeded() -> Bool { demoLegID > 0 }
+
     private func stepDemo(_ build: (inout PBCoreEvent) -> Void) async -> [PBCoreEffect] {
         guard !closed else { return [] }
         var envelope = PBCoreEvent()
@@ -3666,33 +3657,51 @@ actor CoreHost: SyncEngine {
         return batch.effects
     }
 
-    private func mergeDemo(state shown: RemoteState, events: [String: [PBEvent]]) {
-        demoState.conn = shown.conn
-        demoState.link = shown.link
-        demoState.removed = shown.removed
-        demoState.recoveryPending = shown.recoveryPending
-        demoState.recoveryReadyMs = shown.recoveryReadyMs
-        demoState.leaseEndMs = shown.leaseEndMs
-        if !shown.authorityDeviceId.isEmpty { demoState.authorityDeviceId = shown.authorityDeviceId }
-        if !shown.clockWarning.isEmpty { demoState.clockWarning = shown.clockWarning }
-        if !shown.error.isEmpty { demoState.error = shown.error }
-        if let prefs = shown.prefs { demoState.prefs = prefs }
-        for (id, m) in shown.machines { demoState.machines[id] = m }
-        for (id, s) in shown.sessions { demoState.sessions[id] = s }
-        for (id, d) in shown.devices { demoState.devices[id] = d }
+    private func mergeDemo(world shown: DemoWorld, events: [String: [PBEvent]]) {
+        demoWorld.connection = shown.connection
+        demoWorld.removed = shown.removed
+        demoWorld.recoveryPending = shown.recoveryPending
+        demoWorld.recoveryReadyMs = shown.recoveryReadyMs
+        demoWorld.leaseEndMs = shown.leaseEndMs
+        demoWorld.clockSkewed = shown.clockSkewed
+        if !shown.authorityDeviceId.isEmpty { demoWorld.authorityDeviceId = shown.authorityDeviceId }
+        if !shown.error.isEmpty { demoWorld.error = shown.error }
+        if shown.prefs.revision > 0 || shown.prefs.hasPrefs { demoWorld.prefs = shown.prefs }
+        for (id, m) in shown.machines { demoWorld.machines[id] = m }
+        for (id, s) in shown.sessions { demoWorld.sessions[id] = s }
+        for (id, d) in shown.devices { demoWorld.devices[id] = d }
         for (sid, list) in events { demoEvents[sid] = list }
     }
 
-    /// Populates Core from an in-memory `RemoteState` for `-demo` / preview launches.
+    private func demoSecuritySeed() -> PBDemoSecurity {
+        .with {
+            $0.isMember = !demoWorld.removed
+            $0.removed = demoWorld.removed
+            $0.authorityDeviceID = demoWorld.authorityDeviceId
+            $0.trustedMachineIds = demoWorld.machines.keys.sorted()
+            $0.trustedClientIds = demoWorld.devices.values.filter { $0.kind == .client }.map(\.deviceID)
+            $0.archiveMachineIds = demoWorld.machines.keys.sorted()
+            $0.headEpoch = 1
+            $0.leaseEndMs = demoWorld.leaseEndMs
+            $0.recoveryPending = demoWorld.recoveryPending
+            $0.recoveryReadyMs = demoWorld.recoveryReadyMs
+            $0.recoveryObjectsPending = false
+            $0.clockSkewed = demoWorld.clockSkewed
+            $0.selfDeviceID = self.account.deviceId
+        }
+    }
+
+    /// Populates Core directly from an in-memory `DemoWorld` for `-demo` / preview launches.
     func seedDemo(
-        state shown: RemoteState,
+        world shown: DemoWorld,
         events: [String: [PBEvent]] = [:],
         schedules: [String: Data] = [:],
         scheduleSeen: [String: [PBScheduleSeenToken]] = [:]
     ) async {
         guard !closed else { return }
         demoMode = true; started = true; foregrounded = true
-        mergeDemo(state: shown, events: events)
+        demoWorld = shown
+        for (sid, list) in events { demoEvents[sid] = list }
         for (mid, data) in schedules { demoSchedules[mid] = data }
         for (mid, tokens) in scheduleSeen { demoScheduleSeen[mid] = tokens }
         var tokenOpID: UInt64 = 0
@@ -3740,23 +3749,8 @@ actor CoreHost: SyncEngine {
         scanPre(await stepDemo { $0.scheduleLocalContext = Self.makeScheduleLocalContext(nowMs: clock()) })
         scanPre(await stepDemo { $0.localeChanged = .with { $0.uiLocale = MessageLocale.current } })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
-        _ = await stepDemo {
-            $0.seedDemoWorld.security = .with {
-                $0.isMember = !demoState.removed
-                $0.removed = demoState.removed
-                $0.authorityDeviceID = demoState.authorityDeviceId
-                $0.trustedMachineIds = demoState.machines.keys.sorted()
-                $0.trustedClientIds = demoState.devices.values.filter { $0.kind == .client }.map(\.id)
-                $0.archiveMachineIds = demoState.machines.keys.sorted()
-                $0.headEpoch = 1
-                $0.leaseEndMs = Int64(demoState.leaseEndMs)
-                $0.recoveryPending = demoState.recoveryPending
-                $0.recoveryReadyMs = Int64(demoState.recoveryReadyMs)
-                $0.recoveryObjectsPending = false
-                $0.clockSkewed = !demoState.clockWarning.isEmpty
-                $0.selfDeviceID = self.account.deviceId
-            }
-        }
+        let secSeed = demoSecuritySeed()
+        _ = await stepDemo { $0.seedDemoWorld.security = secSeed }
         var legID: UInt64 = 0
         if tokenOpID > 0 {
             let effs = await stepDemo {
@@ -3769,19 +3763,19 @@ actor CoreHost: SyncEngine {
             // `streamReady` triggers `fetchLists` & `getAccountPrefs` RPCs, answered by `demoRpcReply`.
             _ = await stepDemo { $0.streamReady = .with { $0.legID = legID; $0.serverTimeMs = self.clock() } }
         }
-        switch demoState.link {
+        switch demoWorld.connection {
         case .noNetwork:
             _ = await stepDemo { $0.networkChanged = .with { $0.signature = "none"; $0.available = false } }
-        case .noServer:
-            let dropEffs = await stepDemo { $0.streamClosed = .with { $0.legID = legID; $0.unresolvedHost = true; $0.error = self.demoState.error } }
+        case .offline:
+            let dropEffs = await stepDemo { $0.streamClosed = .with { $0.legID = legID; $0.unresolvedHost = true; $0.error = self.demoWorld.error } }
             for eff in dropEffs {
                 if case .scheduleTimer(let t)? = eff.effect, t.kind == .linkGrace {
                     _ = await stepDemo { $0.timerFired = .with { $0.timerID = t.timerID; $0.kind = t.kind; $0.key = t.key } }
                 }
             }
-        case .waiting:
+        case .connecting, .reconnecting:
             _ = await stepDemo { $0.streamClosed = .with { $0.legID = legID } }
-        case .online:
+        case .connected, .unspecified, .UNRECOGNIZED:
             break
         }
         await renderTargets([.syncState, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
@@ -3797,7 +3791,7 @@ actor CoreHost: SyncEngine {
     }
 
     func appendDemoSessionData(
-        state shown: RemoteState,
+        world shown: DemoWorld = DemoWorld(),
         events: [String: [PBEvent]] = [:],
         modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = []
     ) async {
@@ -3807,25 +3801,11 @@ actor CoreHost: SyncEngine {
             demoModels["\(m.machineId)/\(m.agent.rawValue)"] = m.models
         }
         let previousEvents = demoEvents
-        mergeDemo(state: shown, events: events)
+        mergeDemo(world: shown, events: events)
         guard demoLegID > 0 else { return }
-        _ = await stepDemo {
-            $0.seedDemoWorld.security = .with {
-                $0.isMember = !self.demoState.removed
-                $0.removed = self.demoState.removed
-                $0.authorityDeviceID = self.demoState.authorityDeviceId
-                $0.trustedMachineIds = self.demoState.machines.keys.sorted()
-                $0.trustedClientIds = self.demoState.devices.values.filter { $0.kind == .client }.map(\.id)
-                $0.archiveMachineIds = self.demoState.machines.keys.sorted()
-                $0.headEpoch = 1
-                $0.leaseEndMs = Int64(self.demoState.leaseEndMs)
-                $0.recoveryPending = self.demoState.recoveryPending
-                $0.recoveryReadyMs = Int64(self.demoState.recoveryReadyMs)
-                $0.clockSkewed = !self.demoState.clockWarning.isEmpty
-                $0.selfDeviceID = self.account.deviceId
-            }
-        }
-        for m in Self.plainMachines(shown) {
+        let secSeed = demoSecuritySeed()
+        _ = await stepDemo { $0.seedDemoWorld.security = secSeed }
+        for m in shown.machines.values {
             _ = await stepDemo {
                 $0.streamFrame = .with {
                     $0.legID = self.demoLegID
@@ -3833,11 +3813,27 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        for s in plainSessions(shown) {
+        for s in shown.sessions.values.map(adjustedDemoSession) {
             _ = await stepDemo {
                 $0.streamFrame = .with {
                     $0.legID = self.demoLegID
                     $0.sessionUpdated = s
+                }
+            }
+        }
+        for d in shown.devices.values {
+            _ = await stepDemo {
+                $0.streamFrame = .with {
+                    $0.legID = self.demoLegID
+                    $0.deviceUpdated = d
+                }
+            }
+        }
+        if shown.prefs.revision > 0 {
+            _ = await stepDemo {
+                $0.streamFrame = .with {
+                    $0.legID = self.demoLegID
+                    $0.accountPrefsUpdated = shown.prefs
                 }
             }
         }
