@@ -80,11 +80,7 @@ struct LocalImageFiles: Sendable {
     static func stores(cache: CipherStore?, pending: PendingStore, shared: SharedFileCenter? = nil) -> LocalImageFiles {
         let root = SharedFileCenter.defaultRoot
         return LocalImageFiles(
-            pendingUsed: {
-                // Drafts expire when one is read or written; none may have been since the app started.
-                pending.expire()
-                return pending.used
-            },
+            pendingUsed: { pending.used },
             cacheUsed: { cache?.imageBytes ?? 0 },
             clearCache: { cache?.clearImages() },
             receivedUsed: { ImageDiskPolicy.bytes(root) },

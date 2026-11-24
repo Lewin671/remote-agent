@@ -1,7 +1,6 @@
 // Shell-level session rules that stay outside Go Core: scroll-to-bottom
-// tracking (`ChatScroll`), composer send enablement (`composerCanSend`),
-// slash-command warning, queue folding (`shownPending`), and VoiceOver
-// arrival announcements (`LiveAnnouncer`).
+// tracking (`ChatScroll`), slash-command warning, queue folding
+// (`shownPending`), and VoiceOver arrival announcements (`LiveAnnouncer`).
 import Foundation
 import RACore
 import RAProto
@@ -43,10 +42,6 @@ func shownPending<T>(_ all: [T], expanded: Bool) -> [T] {
 }
 
 // MARK: The message box
-
-func composerCanSend(text: String, online: Bool, keeping: Bool, hasImages: Bool, imagesReady: Bool, refused: Bool) -> Bool {
-    !keeping && online && !refused && (!text.jvmIsBlank || hasImages) && (!hasImages || imagesReady)
-}
 
 func slashWarning(_ text: String) -> Bool {
     text.drop { $0.isWhitespace }.hasPrefix("/")

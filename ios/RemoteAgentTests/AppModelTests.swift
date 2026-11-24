@@ -98,7 +98,7 @@ final class Harness {
             return try await host.client.bootstrap()
         }
         parts.checkExitAdvice = { [unowned self] _ in await MainActor.run { self.exitAdvice } }
-        parts.makeEngine = { [unowned self] account, _, _ in
+        parts.makeEngine = { [unowned self] account, _, _, _ in
             let engine = try FakeEngine(account: account)
             self.engines.append(engine)
             return EngineParts(engine: engine, remote: engine.remote)
@@ -114,7 +114,7 @@ final class Harness {
         defaults = UserDefaults(suiteName: suite)!
         settings = SettingsStore(defaults: defaults)
         pending = PendingStore(
-            directory: root.appending(path: "pending"), vault: vault, defaults: defaults)
+            directory: root.appending(path: "pending"), vault: vault)
     }
 
     var engine: FakeEngine { engines.last! }
@@ -381,7 +381,7 @@ final class Harness {
         defer { h.cleanUp() }
         try await h.ready()
         try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
-        try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
         h.settings.update { $0.theme = .dark }
         h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
         h.defaults.set("kept", forKey: "other")
@@ -459,10 +459,10 @@ final class Harness {
                 vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
         try await h.ready()
-        try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
         await h.model.logout()
         #expect(h.model.stage == .failed("没能删除缓存"))
-        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
         h.bootstrapStatus = nil
         h.model.loadAccount()
         await h.model.waitForLoadForTest()

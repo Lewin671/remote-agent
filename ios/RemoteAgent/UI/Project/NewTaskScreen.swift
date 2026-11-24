@@ -49,13 +49,13 @@ struct NewTaskScreen: View {
                 })
             }
             if let cleanupPrompt, !cleanupPrompt.isEmpty {
-                let existing = context.core.newSession.prompt
+                let scope = PBDraftScope.newSession(key)
+                await context.coreHost.openDraft(scope: scope, machineID: machine ?? context.core.newSession.config.machineID)
+                let existing = context.core.newSession.draft.text.isEmpty ? context.core.newSession.prompt : context.core.newSession.draft.text
                 if !existing.contains(cleanupPrompt) {
                     let trimmed = existing.trimmingCharacters(in: .whitespacesAndNewlines)
                     let combined = trimmed.isEmpty ? cleanupPrompt : trimmed + "\n\n" + cleanupPrompt
-                    await context.coreHost.dispatch(PBCoreEvent.with {
-                        $0.newSessionSetPrompt.prompt = combined
-                    })
+                    await context.coreHost.setDraftText(scope: scope, text: combined)
                 }
             }
         }

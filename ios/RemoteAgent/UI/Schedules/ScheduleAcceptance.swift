@@ -20,7 +20,7 @@ import RAProto
         parts.defaults = defaults
         parts.allowPlainHttp = true
         parts.clearNotifications = {}
-        parts.makeEngine = { account, cache, securityStore in
+        parts.makeEngine = { account, cache, securityStore, pending in
             let remote = try Remote(
                 account: account, http: AppModel.http, cache: cache,
                 securityStore: securityStore, allowPlainHttp: true
@@ -28,7 +28,7 @@ import RAProto
             let screens = CoreScreens()
             let host = try CoreHost.live(
                 remote: remote, account: account, defaults: defaults,
-                screens: screens, onNavigate: { _ in }
+                screens: screens, pendingStore: pending, onNavigate: { _ in }
             )
             return EngineParts(engine: host, remote: remote, coreHost: host, coreScreens: screens)
         }
@@ -43,7 +43,7 @@ import RAProto
             _ = try await host.client.bootstrap()
             return try await host.client.checkExitAdvice()
         }
-        parts.storage = AccountStorage(vault: vault, cacheRoot: root.appendingPathComponent("cache"), pending: PendingStore(directory: root.appendingPathComponent("pending"), vault: vault, defaults: defaults))
+        parts.storage = AccountStorage(vault: vault, cacheRoot: root.appendingPathComponent("cache"), pending: PendingStore(directory: root.appendingPathComponent("pending"), vault: vault))
         return parts
     }
 

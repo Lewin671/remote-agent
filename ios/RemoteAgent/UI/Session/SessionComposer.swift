@@ -125,8 +125,8 @@ struct AttachMenu: View {
                 if paste {
                     Button { images.paste() } label: { Label(L10n.attachmentIosPasteImage(), systemImage: "doc.on.clipboard") }
                 }
-                if files, !images.caps.fileMetadataNotice.isEmpty {
-                    Section { Text(images.caps.fileMetadataNotice) }
+                if files, !images.fileMetadataNotice.isEmpty {
+                    Section { Text(images.fileMetadataNotice) }
                 }
             } label: {
                 PlusCircle()
@@ -147,54 +147,50 @@ struct SessionComposer: View {
     var keyboardOpen = false
     var maxTrayHeight: CGFloat = 340
     var onTerminal: () -> Void = {}
-    /// A message is being sent from this box, with or without images.
+    /// A message is being sent from this box, with or without attachments.
     var onSent: () -> Void = {}
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var notice = ""
+    @State private var text = ""
+    @State private var inFlightTextEdits = 0
 
     private var machineID: String { header.machineID }
+    private var scope: PBDraftScope { .session(sessionID) }
+    private var draft: PBAttachmentDraftView { composer.draft }
 
     private var images: ComposerAttachments {
-        ComposerAttachments(sessionID: sessionID, header: header, remote: context.remote)
+        ComposerAttachments(context: context, scope: scope, draft: draft)
+    }
+
+    private func setDraftInput(_ next: String) {
+        guard next != text else { return }
+        text = next
+        inFlightTextEdits += 1
+        let host = context.coreHost
+        let scope = self.scope
+        Task {
+            await host.setDraftText(scope: scope, text: next)
+            await MainActor.run {
+                inFlightTextEdits = max(0, inFlightTextEdits - 1)
+            }
+        }
     }
 
     private func send(_ mode: PBSendMode) {
-        guard composer.enabled else { return }
-        let store = context.sessionStore
-        let message = store.draft(sessionID).jvmTrim()
-        let images = images
-        let attached = images.hasImages
-        if message.isEmpty && !attached { return }
-        images.refresh()
-        if attached && !images.ready { return }
+        guard composer.enabled && !header.protocolMismatch else { return }
+        let draft = self.draft
+        let currentText = text
+        let hasText = !currentText.jvmIsBlank
+        let hasItems = !draft.items.isEmpty
+        guard hasText || hasItems else { return }
+        guard !draft.restoring && !draft.sending && !draft.hasPendingPicks_p && draft.ready else { return }
         SessionHaptics.tap()
         onSent()
-        let taken = SessionImages.send(context, session: sessionID, machineId: machineID, text: message, mode: mode) { kept in
-            switch kept {
-            case .success:
-                if store.draft(sessionID).jvmTrim() == message { store.setDraft(sessionID, "") }
-            case .failure(let error):
-                notice = L10n.composerIosNotSent(reason: errorText(error))
-            }
-        }
-        if taken { return }
-        notice = ""
-        store.setDraft(sessionID, "")
-        let reqID = newRequestId()
+        let host = context.coreHost
+        let sid = sessionID
+        let scope = self.scope
         Task {
-            await context.coreHost.submitSessionCommand(
-                sessionID: sessionID,
-                command: .with {
-                    $0.send = .with {
-                        $0.sessionID = sessionID
-                        $0.text = message
-                        $0.requestID = reqID
-                        $0.mode = mode
-                    }
-                },
-                machineID: machineID
-            )
+            await host.setDraftText(scope: scope, text: currentText)
+            await host.sendSessionDraft(sessionID: sid, mode: mode)
         }
     }
 
@@ -211,14 +207,11 @@ struct SessionComposer: View {
     }
 
     var body: some View {
-        let store = context.sessionStore
-        let images = images
-        let attached = images.hasImages
-        let text = store.draft(sessionID)
-        let canSend = composerCanSend(
-            text: text, online: composer.enabled, keeping: store.isKeeping(sessionID),
-            hasImages: attached, imagesReady: images.ready, refused: header.protocolMismatch
-        )
+        let draft = self.draft
+        let images = self.images
+        let hasDraft = draft.hasUnsavedContent_p || !text.jvmIsBlank
+        let canSend = composer.enabled && !header.protocolMismatch && !draft.restoring && !draft.sending
+            && !draft.hasPendingPicks_p && draft.ready && hasDraft
         let placeholder = composer.hasPlaceholder ? composer.placeholder.rendered() : L10n.composerMessage()
         let interruptBusy = actions.interrupt.status == .pending || actions.interrupt.busy
         let interruptError: String = {
@@ -227,11 +220,20 @@ struct SessionComposer: View {
             if s.hasErrorText { return s.errorText.rendered() }
             return s.errorCode
         }()
+        let sendHint: String = {
+            if !composer.enabled {
+                return composer.hasDisabledReason ? composer.disabledReason.rendered() : L10n.composerIosConnectSend()
+            }
+            if !canSend && draft.hasSendBlockedReason {
+                return draft.sendBlockedReason.rendered()
+            }
+            return ""
+        }()
         let tray = composer.pendingTray
         let showTray = tray.totalCount > 0 || (tray.hasUndo && tray.undo.visible)
         VStack(spacing: 0) {
             SessionComposeBox(
-                text: Binding(get: { store.draft(sessionID) }, set: { store.setDraft(sessionID, $0) }),
+                text: Binding(get: { text }, set: { setDraftInput($0) }),
                 placeholder: placeholder,
                 canSend: canSend,
                 onSend: { send(composer.defaultSendMode) },
@@ -239,31 +241,28 @@ struct SessionComposer: View {
                 onQueue: composer.hasActiveTurn_p && composer.supportsQueueMode ? { send(.queue) } : nil,
                 onInterrupt: composer.interruptVisible ? { sendInterrupt() } : nil,
                 canInterrupt: actions.canInterrupt && !interruptBusy,
-                hasDraft: !text.jvmIsBlank || attached,
+                hasDraft: hasDraft,
                 hasTray: showTray,
                 focus: focus,
-                sendHint: composer.enabled ? "" : (composer.hasDisabledReason ? composer.disabledReason.rendered() : L10n.composerIosConnectSend())
+                sendHint: sendHint
             ) {
                 PendingTrayView(
                     sessionID: sessionID,
-                    caps: images.caps,
                     tray: tray,
                     keyboardOpen: keyboardOpen,
                     maxHeight: maxTrayHeight,
                     onTerminal: onTerminal
                 )
             } top: {
-                images.strip(focus: focus, session: (sessionID, store))
+                images.strip(focus: focus)
             }
             Color.clear.frame(height: 0)
-                .debugSignal("session.draft") { store.setDraft(sessionID, SessionDebug.text) }
+                .debugSignal("session.draft") { setDraftInput(SessionDebug.text) }
                 .debugSignal("session.send") { send(composer.defaultSendMode) }
                 .debugSignal("session.queue") {
                     send((composer.hasActiveTurn_p && composer.supportsQueueMode) ? .queue : composer.defaultSendMode)
                 }
                 .debugSignal("session.interrupt") { sendInterrupt() }
-            if !notice.isEmpty { Notice(notice, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
-            if let error = store.draftErrors[sessionID] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
             if !interruptError.isEmpty {
                 Notice(L10n.sessionIosInterruptFailed(reason: interruptError), tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
             }
@@ -272,6 +271,26 @@ struct SessionComposer: View {
                 Text(warningText).font(.footnote).foregroundStyle(DS.orangeInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, DS.Space.xl).padding(.bottom, 6)
+            }
+        }
+        .onAppear {
+            if inFlightTextEdits == 0 && text != draft.text {
+                text = draft.text
+            }
+        }
+        .onChange(of: draft.textRevision) { _, _ in
+            if inFlightTextEdits == 0 && text != draft.text {
+                text = draft.text
+            }
+        }
+        .onChange(of: draft.text) { _, coreText in
+            if inFlightTextEdits == 0 && text != coreText {
+                text = coreText
+            }
+        }
+        .onChange(of: inFlightTextEdits) { _, pending in
+            if pending == 0 && text != draft.text {
+                text = draft.text
             }
         }
     }

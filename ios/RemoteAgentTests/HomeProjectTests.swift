@@ -327,13 +327,10 @@ private actor NavRecorder {
         await waitUntil { !screens.newSession.modelPanel.models.isEmpty }
         #expect(screens.newSession.modelPanel.models.first?.slug == "gpt-5")
 
+        await host.setDraftText(scope: .newSession("/Users/me/Code/foo"), text: "Run checks")
         await host.submitNewSession(
             projectKey: "/Users/me/Code/foo",
-            prompt: "Run checks",
-            attachmentCount: 0,
-            attachmentsMoved: false,
-            autoModeSupported: false,
-            attachments: nil
+            autoModeSupported: false
         )
         await waitUntil { await executor.createdRequests.contains { $0.prompt == "Run checks" && $0.cwd == "/Users/me/Code/foo" } }
         await waitUntil { await navRecorder.navigated.contains { $0.route == .session && $0.sessionID == "sess-created" } }

@@ -207,17 +207,13 @@ enum ImageLeaving {
     /// What would leave for an image now: the display copy if it was loaded, else the preview; nil without either.
     @MainActor
     static func picture(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, loader: ViewerLoader) -> LeavingImage? {
+        let name = image.downloadName.isEmpty ? image.displayName : image.downloadName
         if let held = loader.held(image.ref) {
-            return LeavingImage(
-                bytes: held.bytes, format: held.format,
-                name: savedImageName(displayName: image.displayName, ext: imageExtension(held.format)))
+            return LeavingImage(bytes: held.bytes, format: held.format, name: name)
         }
         let previewSource = previewRef ?? image.ref
         if previewSource.preview.isEmpty { return nil }
-        let ext = image.fileExtension.isEmpty ? imageExtension(previewSource.previewFormat) : image.fileExtension
-        return LeavingImage(
-            bytes: previewSource.preview, format: previewSource.previewFormat,
-            name: savedImageName(displayName: image.displayName, ext: ext))
+        return LeavingImage(bytes: previewSource.preview, format: previewSource.previewFormat, name: name)
     }
 
     /// Adds the picture to the photo library, with the access that only adds: the app never reads the library.

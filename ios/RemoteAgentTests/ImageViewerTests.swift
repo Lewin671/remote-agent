@@ -15,8 +15,15 @@ import UIKit
         http: AppModel.http)
 
     private func center() -> ImageCenter {
-        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles())
-        return ImageCenter.of(remote)
+        let host = try! CoreHost.live(
+            remote: remote,
+            account: remote.account,
+            defaults: UserDefaults(suiteName: "ra-viewer-center-\(UUID().uuidString)")!,
+            screens: CoreScreens(),
+            demoMode: true,
+            onNavigate: { _ in }
+        )
+        return ImageCenter.install(remote: remote, coreHost: host, pending: PendingStore.ephemeral().scoped())
     }
 
     private func png(_ color: UIColor) -> Data {
@@ -35,6 +42,7 @@ import UIKit
             $0.ref = ref
             $0.displayName = "shot.png"
             $0.fileExtension = "png"
+            $0.downloadName = "shot-1.png"
             $0.hasDisplayCopy_p = true
         }
         final class Heard: @unchecked Sendable { var yes = false }
@@ -49,7 +57,7 @@ import UIKit
         #expect(heard.yes)
         let picture = ImageLeaving.picture(viewerImg, loader: loader)
         #expect(picture?.bytes == bytes && picture?.format == .png)
-        #expect(picture?.name.hasPrefix("shot-") == true && picture?.name.hasSuffix(".png") == true)
+        #expect(picture?.name == "shot-1.png")
     }
 
     /// A preview-only image can still leave via its embedded timeline preview ref when Core strips preview bytes from `viewer_images`.

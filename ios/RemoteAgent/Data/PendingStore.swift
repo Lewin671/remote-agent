@@ -135,7 +135,6 @@ final class PendingStore: @unchecked Sendable {
                 return .with {
                     $0.opID = opID
                     $0.errorKind = .other
-                    $0.errorDetail = "pending attachment key unavailable"
                 }
             }
 
@@ -245,7 +244,6 @@ final class PendingStore: @unchecked Sendable {
                     return .with {
                         $0.opID = opID; $0.bucket = bucket; $0.key = key
                         $0.found = false; $0.errorKind = .other
-                        $0.errorDetail = "pending attachment key unavailable"
                     }
                 }
                 loadedKey = k
@@ -413,7 +411,7 @@ final class PendingStore: @unchecked Sendable {
                             using: key,
                             authenticating: Self.blobAAD(ref: ref, chunkIndex: chunkIdx)
                         ).combined else {
-                            throw AttachmentFileIOError(.other, detail: "seal failed")
+                            throw AttachmentFileIOError(.other)
                         }
                         try handle.write(contentsOf: combined)
                     }
@@ -445,7 +443,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other, detail: "pending attachment key unavailable")
+                throw AttachmentFileIOError(.other)
             }
             let handle = try FileHandle(forReadingFrom: file)
             defer { try? handle.close() }
@@ -495,7 +493,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other, detail: "pending attachment key unavailable")
+                throw AttachmentFileIOError(.other)
             }
             let handle = try FileHandle(forReadingFrom: file)
             defer { try? handle.close() }
@@ -553,7 +551,7 @@ final class PendingStore: @unchecked Sendable {
                 throw AttachmentFileIOError(.sourceMissing)
             }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other, detail: "pending attachment key unavailable")
+                throw AttachmentFileIOError(.other)
             }
             let handle = try FileHandle(forReadingFrom: file)
             defer { try? handle.close() }
@@ -596,7 +594,7 @@ final class PendingStore: @unchecked Sendable {
             guard ImageDiskPolicy.bytes(directory) + Int64(sealed.count) <= limit else {
                 throw AttachmentFileIOError(.storageFull)
             }
-            let file = blobsDir.appending(path: "\(id).bmk")
+            let file = blobsDir.appending(path: id).appendingPathExtension("bmk")
             try sealed.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             return ref
         }
@@ -611,12 +609,12 @@ final class PendingStore: @unchecked Sendable {
                 guard let data = memBookmarks[ref] else { throw AttachmentFileIOError(.sourceMissing) }
                 return data
             }
-            let file = blobsDir.appending(path: "\(id).bmk")
+            let file = blobsDir.appending(path: id).appendingPathExtension("bmk")
             let sealed: Data
             do { sealed = try Data(contentsOf: file) }
             catch where Self.isMissing(error) { throw AttachmentFileIOError(.sourceMissing) }
             guard let key = try storedKey() else {
-                throw AttachmentFileIOError(.other, detail: "pending attachment key unavailable")
+                throw AttachmentFileIOError(.other)
             }
             return try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
         }
@@ -630,7 +628,7 @@ final class PendingStore: @unchecked Sendable {
                 if memBookmarks[ref] != nil { memBookmarks[ref] = bookmark }
                 return
             }
-            let file = blobsDir.appending(path: "\(id).bmk")
+            let file = blobsDir.appending(path: id).appendingPathExtension("bmk")
             guard FileManager.default.fileExists(atPath: file.path) else { return }
             let sealed = try seal(bookmark)
             let replacing = Self.fileSize(file)
@@ -703,7 +701,7 @@ final class PendingStore: @unchecked Sendable {
                     else { try? fm.removeItem(at: blobsDir.appending(path: "\(id).blob")) }
                 } else if let id = Self.refID(ref, prefix: "bmk:") {
                     if ephemeral { memBookmarks.removeValue(forKey: ref) }
-                    else { try? fm.removeItem(at: blobsDir.appending(path: "\(id).bmk")) }
+                    else { try? fm.removeItem(at: blobsDir.appending(path: id).appendingPathExtension("bmk")) }
                 } else if let id = Self.refID(ref, prefix: "vid:") {
                     if ephemeral {
                         if let url = memVideos.removeValue(forKey: ref) {
@@ -820,7 +818,7 @@ final class PendingStore: @unchecked Sendable {
 
     private func seal(_ plain: Data) throws -> Data {
         guard let combined = try AES.GCM.seal(plain, using: key()).combined else {
-            throw AttachmentFileIOError(.other, detail: "seal failed")
+            throw AttachmentFileIOError(.other)
         }
         return combined
     }
@@ -836,7 +834,7 @@ final class PendingStore: @unchecked Sendable {
     private func key() throws -> SymmetricKey {
         if let stored = try storedKey() { return stored }
         if hasEncryptedV1Files() {
-            throw AttachmentFileIOError(.other, detail: "pending attachment key unavailable")
+            throw AttachmentFileIOError(.other)
         }
         let fresh = randomBytes(keySize)
         try vault?.write(.pendingKey, fresh)
@@ -867,7 +865,7 @@ struct PendingScope: Sendable {
     func write(opID: UInt64, bucket: PBDraftStorageBucket, key: String, data: Data) -> PBDraftStorageWriteResultEvent {
         store.current(epoch) { store.write(opID: opID, bucket: bucket, key: key, data: data) } ?? .with {
             $0.opID = opID; $0.bucket = bucket; $0.key = key
-            $0.ok = false; $0.errorKind = .other; $0.errorDetail = "signed out"
+            $0.ok = false; $0.errorKind = .other
         }
     }
 
@@ -881,42 +879,42 @@ struct PendingScope: Sendable {
 
     func storeBlob(_ data: Data, prefix: String = "b") throws -> String {
         guard let ref = try store.current(epoch, { try store.storeBlob(data, prefix: prefix) }) else {
-            throw AttachmentFileIOError(.other, detail: "signed out")
+            throw AttachmentFileIOError(.other)
         }
         return ref
     }
 
     func readBlob(_ ref: String) throws -> Data {
         guard let data = try store.current(epoch, { try store.readBlob(ref) }) else {
-            throw AttachmentFileIOError(.sourceMissing, detail: "signed out")
+            throw AttachmentFileIOError(.sourceMissing)
         }
         return data
     }
 
     func readBlobChunk(_ ref: String, offset: Int64, length: Int, expectedSizeBytes: Int64) throws -> Data {
         guard let data = try store.current(epoch, { try store.readBlobChunk(ref, offset: offset, length: length, expectedSizeBytes: expectedSizeBytes) }) else {
-            throw AttachmentFileIOError(.sourceMissing, detail: "signed out")
+            throw AttachmentFileIOError(.sourceMissing)
         }
         return data
     }
 
     func hashBlob(_ ref: String, maxBytes: Int64) throws -> (sizeBytes: Int64, sha256: Data) {
         guard let res = try store.current(epoch, { try store.hashBlob(ref, maxBytes: maxBytes) }) else {
-            throw AttachmentFileIOError(.sourceMissing, detail: "signed out")
+            throw AttachmentFileIOError(.sourceMissing)
         }
         return res
     }
 
     func storeBookmark(_ bookmark: Data) throws -> String {
         guard let ref = try store.current(epoch, { try store.storeBookmark(bookmark) }) else {
-            throw AttachmentFileIOError(.other, detail: "signed out")
+            throw AttachmentFileIOError(.other)
         }
         return ref
     }
 
     func readBookmark(_ ref: String) throws -> Data {
         guard let data = try store.current(epoch, { try store.readBookmark(ref) }) else {
-            throw AttachmentFileIOError(.sourceMissing, detail: "signed out")
+            throw AttachmentFileIOError(.sourceMissing)
         }
         return data
     }
@@ -927,14 +925,14 @@ struct PendingScope: Sendable {
 
     func storeVideo(from sourceURL: URL, filename: String? = nil) throws -> (ref: String, url: URL) {
         guard let res = try store.current(epoch, { try store.storeVideo(from: sourceURL, filename: filename) }) else {
-            throw AttachmentFileIOError(.other, detail: "signed out")
+            throw AttachmentFileIOError(.other)
         }
         return res
     }
 
     func videoURL(_ ref: String) throws -> URL {
         guard let url = try store.current(epoch, { try store.videoURL(ref) }) else {
-            throw AttachmentFileIOError(.sourceMissing, detail: "signed out")
+            throw AttachmentFileIOError(.sourceMissing)
         }
         return url
     }

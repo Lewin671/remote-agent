@@ -1,99 +1,123 @@
-import ImageIO
+// Full-screen viewer for images in an editable draft, driven by Core's
+// `PBAttachmentDraftView.imageViewer` (`DraftImageViewerOpen/Navigate/Close`).
 import RACore
 import RAProto
 import SwiftUI
 import UIKit
 
-struct DraftImageSelection: Identifiable { let index: Int; var id: Int { index } }
-
 struct DraftImageViewer: View {
     let center: ImageCenter
-    let key: String
-    let onClose: () -> Void
-    @State private var page: Int
+    let host: CoreHost
+    let scope: PBDraftScope
+    let draft: PBAttachmentDraftView
+
+    @State private var localPage = 0
     @State private var pokes = ViewerPokes()
 
-    init(center: ImageCenter, key: String, start: Int, onClose: @escaping () -> Void) {
-        self.center = center; self.key = key; self.onClose = onClose
-        _page = State(initialValue: start)
-    }
-
-    private struct FailureEvalKey: Equatable {
-        var locale: String
-        var failed: [FailedEntry]
-        struct FailedEntry: Equatable {
-            var id: String
-            var input: PBImageProblemInput
-        }
+    private func close() {
+        Task { await host.closeDraftImageViewer(scope: scope) }
     }
 
     var body: some View {
-        let images = center.draft(key).photos
-        let failedEntries: [FailureEvalKey.FailedEntry] = images.compactMap { img in
-            if case .failed(let why) = img.state {
-                return FailureEvalKey.FailedEntry(id: img.id, input: why.input)
-            }
-            return nil
-        }
-        PagedImageViewer(count: images.count, selection: $page, empty: L10n.imageIosEmpty(), onClose: onClose,
+        let images = draft.images
+        let viewer = draft.imageViewer
+        let emptyText = viewer.hasEmptyText ? viewer.emptyText.rendered() : L10n.imageIosEmpty()
+        let positionText: String? = {
+            guard viewer.hasPositionText, Int(viewer.currentIndex) == localPage else { return nil }
+            let rendered = viewer.positionText.rendered()
+            return rendered.isEmpty ? nil : rendered
+        }()
+
+        PagedImageViewer(
+            count: images.count,
+            selection: $localPage,
+            positionText: positionText,
+            empty: emptyText,
+            onClose: close,
             picture: { i, drag in
-                DraftViewerPage(center: center, image: images[i], current: i == page, pokes: pokes,
-                    onDrag: { drag.wrappedValue = $0 }, onClose: onClose)
-                    .id(images[i].id)
-            }, info: { i in
                 let img = images[i]
-                let failure: PBImageProblemView? = {
-                    if case .failed = img.state { return center.evaluatedProblems[img.id] }
-                    return nil
+                return DraftViewerPage(
+                    center: center,
+                    item: img,
+                    current: i == localPage,
+                    pokes: pokes,
+                    onDrag: { drag.wrappedValue = $0 },
+                    onClose: close
+                )
+                .id(img.itemID)
+            },
+            info: { i in
+                let img = images[i]
+                let pos = img.hasPositionText ? img.positionText.rendered() : L10n.imagePosition(count: images.count, index: i + 1)
+                let caption: String = {
+                    if img.state == .failed, img.hasProblem, img.problem.hasMessage {
+                        let msg = img.problem.message.rendered()
+                        if !msg.isEmpty { return msg }
+                    }
+                    return img.hasStatusText ? img.statusText.rendered() : ""
                 }()
-                let caption = failure.flatMap { $0.hasMessage ? $0.message.rendered() : nil } ?? draftImageState(img, problem: failure)
                 return VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.imagePosition(count: Int(images.count), index: Int(i + 1))).font(.subheadline.weight(.semibold))
-                    Text(caption).font(.body)
+                    Text(pos).font(.subheadline.weight(.semibold))
+                    if !caption.isEmpty {
+                        Text(caption).font(.body)
+                    }
                     HStack(spacing: 24) {
-                        if failure?.retryable == true { action(L10n.commonRetry()) { center.retry(key, img) } }
-                        action(L10n.commonRemove()) { center.remove(key, img); if center.draft(key).photos.isEmpty { onClose() } }
+                        if img.canRetry {
+                            action(L10n.commonRetry()) {
+                                Task { await host.retryDraftItem(scope: scope, itemID: img.itemID) }
+                            }
+                        }
+                        if img.canRemove {
+                            action(L10n.commonRemove()) {
+                                Task { await host.removeDraftItem(scope: scope, itemID: img.itemID) }
+                            }
+                        }
                     }
                 }
                 .foregroundStyle(ViewerInk.text).frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16).background(ViewerInk.panel, ignoresSafeAreaEdges: .bottom)
-            })
-            .task(id: FailureEvalKey(locale: MessageLocale.current, failed: failedEntries)) {
-                await center.refreshProblems(key)
             }
-            .debugSignal("viewer.close", onClose)
-            .debugSignal("viewer.next") { if page + 1 < images.count { page += 1 } }
-            .debugSignal("viewer.zoom") { pokes.zoom += 1 }
-            .debugSignal("viewer.retry") {
-                guard images.indices.contains(page),
-                      case .failed = images[page].state,
-                      center.evaluatedProblems[images[page].id]?.retryable == true
-                else { return }
-                center.retry(key, images[page])
+        )
+        .onAppear {
+            if !images.isEmpty {
+                localPage = min(max(Int(viewer.currentIndex), 0), images.count - 1)
             }
-            .onChange(of: images.count) { _, count in if count == 0 { onClose() } }
+        }
+        .onChange(of: localPage) { _, next in
+            guard viewer.open, !images.isEmpty, next != Int(viewer.currentIndex) else { return }
+            Task { await host.navigateDraftImageViewer(scope: scope, setIndex: true, index: Int32(next)) }
+        }
+        .onChange(of: viewer.currentIndex) { _, coreIdx in
+            guard viewer.open, !images.isEmpty else { return }
+            let clamped = min(max(Int(coreIdx), 0), images.count - 1)
+            if localPage != clamped { localPage = clamped }
+        }
+        .onChange(of: images.count) { _, count in
+            if count == 0 { close() }
+        }
+        .debugSignal("viewer.close", close)
+        .debugSignal("viewer.next") {
+            Task { await host.navigateDraftImageViewer(scope: scope, delta: 1) }
+        }
+        .debugSignal("viewer.zoom") { pokes.zoom += 1 }
+        .debugSignal("viewer.retry") {
+            guard images.indices.contains(localPage), images[localPage].canRetry else { return }
+            let id = images[localPage].itemID
+            Task { await host.retryDraftItem(scope: scope, itemID: id) }
+        }
     }
 
     private func action(_ text: String, _ run: @escaping () -> Void) -> some View {
-        Button(action: run) { Text(text).font(.body).foregroundStyle(ViewerInk.action).frame(minWidth: DS.minHit, minHeight: DS.minHit) }
-            .buttonStyle(PressStyle())
-    }
-}
-
-@MainActor func draftImageState(_ image: PendingImage, problem: PBImageProblemView? = nil) -> String {
-    switch image.state {
-    case .processing: return L10n.imagePreparing()
-    case .uploading(let progress): return L10n.imageIosUploadProgress(percent: Int(Int(progress * 100)))
-    case .ready: return L10n.imageUploaded()
-    case .failed:
-        let reason = problem.flatMap { $0.hasMessage ? $0.message.rendered() : nil } ?? L10n.attachmentFailed()
-        return L10n.attachmentFailure(reason: reason)
+        Button(action: run) {
+            Text(text).font(.body).foregroundStyle(ViewerInk.action).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+        }
+        .buttonStyle(PressStyle())
     }
 }
 
 private struct DraftViewerPage: View {
     let center: ImageCenter
-    let image: PendingImage
+    let item: PBAttachmentDraftItemView
     let current: Bool
     let pokes: ViewerPokes
     let onDrag: (CGFloat) -> Void
@@ -103,24 +127,21 @@ private struct DraftViewerPage: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let thumbRef = item.thumbRef.isEmpty ? item.preparedRef : item.thumbRef
+        let fullRef = item.preparedRef.isEmpty ? item.sourceRef : item.preparedRef
         ZStack {
-            if let shown = sharp ?? center.thumb(image) {
+            if let shown = sharp ?? center.localImage(for: thumbRef) {
                 ZoomableImage(image: shown, zoomToggles: zoom, reduceMotion: reduceMotion, onDrag: onDrag, onClose: onClose)
                     .ignoresSafeArea().accessibilityLabel(L10n.imageDraft())
-            } else { Text(image.state == .processing ? L10n.imagePreparing() : L10n.imageIosNoPreview()).foregroundStyle(ViewerInk.text) }
+            } else {
+                Text(item.state == .preparing ? L10n.imagePreparing() : L10n.imageIosNoPreview())
+                    .foregroundStyle(ViewerInk.text)
+            }
         }
-        .task(id: "\(image.id)/\(image.generation)/\(image.processed?.bytes.count ?? 0)") {
-            guard let processed = image.processed else { return }
-            let viewed = await Task.detached { () -> ViewedImage? in
-                guard let source = CGImageSourceCreateWithData(processed.bytes as CFData, nil),
-                    let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                        kCGImageSourceCreateThumbnailFromImageAlways: true,
-                        kCGImageSourceCreateThumbnailWithTransform: true,
-                        kCGImageSourceThumbnailMaxPixelSize: 2048,
-                    ] as CFDictionary) else { return nil }
-                return ViewedImage(image: UIImage(cgImage: cg), bytes: processed.bytes, format: processed.format)
-            }.value
-            if !Task.isCancelled { sharp = viewed?.image }
+        .task(id: "\(item.itemID)/\(fullRef)") {
+            guard !fullRef.isEmpty else { return }
+            let decoded = await center.loadSharpImage(for: fullRef)
+            if !Task.isCancelled { sharp = decoded }
         }
         .onChange(of: pokes.zoom) { if current { zoom += 1 } }
     }

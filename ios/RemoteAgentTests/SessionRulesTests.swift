@@ -188,19 +188,6 @@ extension Ref<LiveAnnouncer> {
         #expect(shownPending(Array(four.prefix(3)), expanded: false).count == 3)
     }
 
-    @Test func sendingNeedsTextAConnectionAndAComputerThatSpeaksTheSameProtocol() {
-        func can(_ text: String, online: Bool = true, keeping: Bool = false, images: Bool = false, ready: Bool = true, refused: Bool = false) -> Bool {
-            composerCanSend(text: text, online: online, keeping: keeping, hasImages: images, imagesReady: ready, refused: refused)
-        }
-        #expect(can("你好"))
-        #expect(!can("  \n"))
-        #expect(!can("你好", online: false), "the draft stays and sending waits")
-        #expect(!can("你好", refused: true))
-        #expect(!can("你好", keeping: true))
-        #expect(can("", images: true))
-        #expect(!can("带图", images: true, ready: false), "never a message with some of its images")
-    }
-
     @Test func aLeadingSlashIsWarnedAbout() {
         #expect(slashWarning("/compact"))
         #expect(slashWarning("  /model"))

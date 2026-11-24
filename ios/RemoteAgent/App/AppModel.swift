@@ -20,8 +20,8 @@ final class AccountContext {
     let account: Account
     let remote: Remote
     let preferenceDefaults: UserDefaults
-    let draftFiles: (any RACore.SealedFiles)?
-    /// What this run keeps in memory for the account: drafts and the like.
+    let pendingStore: PendingScope
+    /// What this run keeps in memory for the account: UI state and the like.
     let memory = AccountMemory()
     let core: CoreScreens
     let coreHost: CoreHost
@@ -35,7 +35,7 @@ final class AccountContext {
         account: Account,
         remote: Remote,
         preferenceDefaults: UserDefaults = .standard,
-        draftFiles: (any RACore.SealedFiles)? = nil,
+        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
         sharedFileRoot: URL = SharedFileCenter.defaultRoot,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
@@ -46,7 +46,7 @@ final class AccountContext {
         self.account = account
         self.remote = remote
         self.preferenceDefaults = preferenceDefaults
-        self.draftFiles = draftFiles
+        self.pendingStore = pendingStore
         let screens = core ?? CoreScreens()
         self.core = screens
         self.coreHost = coreHost ?? (try! CoreHost.live(
@@ -55,6 +55,7 @@ final class AccountContext {
             defaults: preferenceDefaults,
             screens: screens,
             sharedFileStore: SharedFileStore(root: sharedFileRoot),
+            pendingStore: pendingStore,
             demoDirectories: demoDirectories,
             demoModels: demoModels,
             demoMode: demoMode,
@@ -74,20 +75,12 @@ final class AccountContext {
 
     func submitNewSession(
         projectKey: String,
-        prompt: String,
-        attachmentCount: Int32,
-        attachmentsMoved: Bool,
-        autoModeSupported: Bool,
-        attachments: NewSessionAttachmentsSubmission?
+        autoModeSupported: Bool
     ) {
         Task {
             await coreHost.submitNewSession(
                 projectKey: projectKey,
-                prompt: prompt,
-                attachmentCount: attachmentCount,
-                attachmentsMoved: attachmentsMoved,
-                autoModeSupported: autoModeSupported,
-                attachments: attachments
+                autoModeSupported: autoModeSupported
             )
         }
     }
@@ -200,8 +193,8 @@ final class AppModel {
         var makeEngine:
             @MainActor (
                 _ account: Account, _ cache: (any CipherCache)?,
-                _ securityStore: any SecurityStoreV4
-            ) throws -> EngineParts = { account, cache, securityStore in
+                _ securityStore: any SecurityStoreV4, _ pending: PendingScope
+            ) throws -> EngineParts = { account, cache, securityStore, pending in
                 let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "sync")
                 // The engine hands over error texts only, never content or keys.
                 let remote = try Remote(
@@ -213,7 +206,7 @@ final class AppModel {
                 let screens = CoreScreens()
                 let host = try CoreHost.live(
                     remote: remote, account: account, defaults: .standard,
-                    screens: screens, onNavigate: { _ in })
+                    screens: screens, pendingStore: pending, onNavigate: { _ in })
                 return EngineParts(engine: host, remote: remote, coreHost: host, coreScreens: screens)
             }
         var bootstrapSecurity: @Sendable (_ vault: Vault) async throws -> PBSecurityWorkflowStatus = { vault in
@@ -511,19 +504,20 @@ final class AppModel {
             return
         }
         if store == nil { log.error("the cache does not open; going on without it") }
+        let pendingScope = parts.storage.pending.scoped()
         let made: EngineParts
         do {
-            made = try parts.makeEngine(account, store, parts.storage.vault)
+            made = try parts.makeEngine(account, store, parts.storage.vault, pendingScope)
         } catch {
             try? store?.close()
             stage = .failed(errorText(error))
             return
         }
-        await adopt(account: account, made: made, store: store)
+        await adopt(account: account, made: made, store: store, pending: pendingScope)
         if foreground { made.engine.start() }
     }
 
-    private func adopt(account: Account, made: EngineParts, store: CipherStore?) async {
+    private func adopt(account: Account, made: EngineParts, store: CipherStore?, pending: PendingScope) async {
         cache = store
         engine = made.engine
         described = nil
@@ -532,16 +526,15 @@ final class AppModel {
             account: account,
             remote: made.remote,
             preferenceDefaults: parts.defaults,
-            draftFiles: parts.storage.pending.scoped(),
+            pendingStore: pending,
             core: made.coreScreens,
             coreHost: made.coreHost
         )
         context = ctx
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
+            guard let ctx else { return }
+            await ctx.coreHost.forgetDraftSession(sid)
             await MainActor.run {
-                guard let ctx else { return }
-                ctx.sessionStore.forgetSession(sid)
-                ImageCenter.of(ctx.remote).forgetSession(sid)
                 SharedFileCenter.of(ctx.remote).forgetSession(sid)
             }
         }
@@ -553,7 +546,10 @@ final class AppModel {
         await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
         await ctx.coreHost.reportNotificationPref(supported: false)
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
-        ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, files: parts.storage.pending.scoped())
+        let imageCenter = ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, pending: pending)
+        await ctx.coreHost.setAttachmentHandlers(imageCenter.handlers())
+        // Configure Core attachments before any screen mounts (`stage = .ready`) so DraftStorageList runs first.
+        await ctx.coreHost.configureAttachments(persistDrafts: !isDemo, persistOutbox: !isDemo, scanStorage: !isDemo)
         // What the agent shared is kept in the cache, per session, and counts in 附件存储.
         let sharedCenter = SharedFileCenter.install(remote: made.remote, coreHost: ctx.coreHost, root: SharedFileCenter.defaultRoot)
         await ctx.coreHost.setSharedFileHandlers(sharedCenter.handlers())
@@ -722,6 +718,7 @@ final class AppModel {
         }
         if let leavingHost {
             await leavingHost.clearAllSharedFiles()
+            await leavingHost.clearAllDrafts()
             await leavingHost.closeAsync()
         }
         // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
@@ -793,16 +790,18 @@ final class AppModel {
                 uniquingKeysWith: { _, rhs in rhs }
             )
             let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
+            let demoPending = PendingStore.ephemeral().scoped()
             let ctx = AccountContext(
                 account: account,
                 remote: remote,
+                pendingStore: demoPending,
                 sharedFileRoot: demoSharedRoot,
                 demoDirectories: Demo.directories,
                 demoModels: models,
                 demoMode: true
             )
             context = ctx
-            ImageCenter.install(remote: remote, coreHost: ctx.coreHost, files: VolatileFiles(), live: false)
+            let imageCenter = ImageCenter.install(remote: remote, coreHost: ctx.coreHost, pending: demoPending, live: false)
             let sharedCenter = SharedFileCenter.install(
                 remote: remote,
                 coreHost: ctx.coreHost,
@@ -813,6 +812,7 @@ final class AppModel {
             let host = ctx.coreHost
             let initialTheme = settings.settings.theme.proto
             Task { [weak self] in
+                await host.setAttachmentHandlers(imageCenter.handlers())
                 await host.setSharedFileHandlers(sharedCenter.handlers())
                 await host.setPersistClientPrefsHandler { eff in
                     self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
