@@ -632,21 +632,15 @@ export async function loadLoginToken(server: string, memberID: string, now = Dat
   }
 }
 
-export async function saveLocalData(server: string, memberID: string, values: Map<string, Uint8Array | undefined>): Promise<void> {
-  const owner = JSON.stringify([server, memberID]);
-  const sealed = await Promise.all([...values].map(async ([n, b]) => [n, b === undefined ? undefined : await sealLocalValue(JSON.stringify([owner, n]), b)] as const));
-  await writeMetaIfHasRecord("save local data failed", true, (mStore) => {
-    for (const [n, v] of sealed) v === undefined ? mStore.delete("local-content:" + n) : mStore.put(v, "local-content:" + n);
-  });
-}
+const LEGACY_COMPOSER_PREFIX = "local-content:composer";
 
-export async function removeLocalData(_server: string, _memberID: string, name: string): Promise<void> {
-  await withDB(indexedDB, (db) =>
-    runTx(db, V4_STORE_META, "readwrite", "remove local data failed", (tx) => {
+/** Drops pre-3C-1 sealed composer drafts & image bytes from META without migrating (Contract §0.5). */
+export async function purgeLegacyComposerLocalData(idb: IDBFactory = indexedDB): Promise<void> {
+  await withDB(idb, (db) =>
+    runTx(db, V4_STORE_META, "readwrite", "purge legacy composer drafts failed", (tx) => {
       const mStore = tx.objectStore(V4_STORE_META);
-      const key = "local-content:" + name;
-      mStore.delete(key);
-      const cur = mStore.openCursor(IDBKeyRange.bound(key + "/", key + "/\uffff"));
+      mStore.delete(LEGACY_COMPOSER_PREFIX);
+      const cur = mStore.openCursor(IDBKeyRange.bound(LEGACY_COMPOSER_PREFIX + "/", LEGACY_COMPOSER_PREFIX + "/\uffff"));
       cur.onsuccess = () => {
         if (cur.result) {
           cur.result.delete();
@@ -656,18 +650,6 @@ export async function removeLocalData(_server: string, _memberID: string, name: 
       return () => undefined;
     }),
   );
-}
-
-export async function loadLocalData(server: string, memberID: string, name: string): Promise<Uint8Array | undefined> {
-  const binding = JSON.stringify([JSON.stringify([server, memberID]), name]);
-  const stored = await withDB(indexedDB, (db) => readMetaIfHasRecord(db, "local-content:" + name, "load local data failed"));
-  if (!stored) return undefined;
-  if (stored.binding !== binding || !(stored.key instanceof CryptoKey) || stored.key.extractable) throw new CorruptLocalContent();
-  try {
-    return await openLocalValue(stored);
-  } catch {
-    throw new CorruptLocalContent();
-  }
 }
 
 const DRAFT_V1_PREFIX = "draft-v1:";

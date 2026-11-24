@@ -941,6 +941,7 @@ export class CoreHost {
       opts.attachmentStore ??
       remote?.attachmentStore ??
       (remote ? new WebAttachmentStore(remote.account) : new MemoryAttachmentStore());
+    attStore.onOpfsDegraded = () => this.onAttachmentStorageDegraded();
     this.attachments = new AttachmentExecutor({
       store: attStore,
       onEvent: (event) => {
@@ -1042,14 +1043,32 @@ export class CoreHost {
   private ensureAttachmentConfigured() {
     if (this.closed || this.attachmentConfigured) return;
     this.attachmentConfigured = true;
+    const owned = this.attachments.store.storageOwned;
     this.emit({
       case: "attachmentConfig",
       value: create(AttachmentConfigEventSchema, {
-        persistDrafts: true,
-        persistOutbox: true,
-        scanStorage: true,
+        persistDrafts: owned,
+        persistOutbox: owned,
+        scanStorage: owned,
         maxChunkBytes: 0,
-        hasPersistedPreparedImages: this.attachments.store.hasPersistedPreparedImages,
+        hasPersistedPreparedImages: owned && this.attachments.store.hasPersistedPreparedImages,
+        storageLockedByOther: !owned,
+      }),
+    });
+  }
+
+  private onAttachmentStorageDegraded() {
+    if (this.closed || !this.attachmentConfigured) return;
+    const owned = this.attachments.store.storageOwned;
+    this.emit({
+      case: "attachmentConfig",
+      value: create(AttachmentConfigEventSchema, {
+        persistDrafts: owned,
+        persistOutbox: owned,
+        scanStorage: false,
+        maxChunkBytes: 0,
+        hasPersistedPreparedImages: false,
+        storageLockedByOther: !owned,
       }),
     });
   }
@@ -1111,8 +1130,12 @@ export class CoreHost {
     this.ensureSecurityConfigured();
     await this.ensureSecurityBootstrapped();
     if (this.closed) return;
-    await this.attachments.store.probe().catch(() => false);
+    const owned = await (this.attachments.store.acquireStorageLock?.() ?? Promise.resolve(true)).catch(() => true);
     if (this.closed) return;
+    if (owned) {
+      await this.attachments.store.probe().catch(() => false);
+      if (this.closed) return;
+    }
     this.ensureAttachmentConfigured();
     if (!this.bootstrapped) {
       try {
@@ -3443,6 +3466,7 @@ export class CoreHost {
     this.retryNowWaiters.clear();
     this.rejectSecurityOps();
     this.securityClient.rejectAll();
+    this.attachments.store.releaseStorageLock?.();
     this.core.close();
   }
 }

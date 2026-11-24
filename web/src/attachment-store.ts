@@ -4,6 +4,7 @@ import {
   getOrCreateAttachmentBlobKey,
   listDraftRecords,
   loadAttachmentBlobKey,
+  purgeLegacyComposerLocalData,
   readDraftRecord,
   writeDraftRecord,
   type DraftRecordBucketName,
@@ -39,6 +40,14 @@ export type HashLocalBlobResult =
 
 export interface AttachmentStore {
   readonly hasPersistedPreparedImages: boolean;
+  /** True when this tab owns persistent draft/outbox storage (Web Locks). */
+  readonly storageOwned: boolean;
+  /** Optional callback fired when OPFS degrades to memory mid-session (L7). */
+  onOpfsDegraded?: () => void;
+  /** Attempts to acquire exclusive tab ownership of persistent draft/outbox storage (M5). */
+  acquireStorageLock?(): Promise<boolean>;
+  /** Releases exclusive tab ownership lock (called on dispose/logout). */
+  releaseStorageLock?(): void;
   probe(): Promise<boolean>;
   /** Synchronously mints an opaque ref and holds the Blob in memory until persisted or released. */
   stageBlob(blob: Blob | Uint8Array, opts?: { mimeType?: string; ext?: string }): string;
@@ -162,6 +171,8 @@ export class MemoryAttachmentStore implements AttachmentStore {
   private readonly maxBytes?: number;
   private usedBytes = 0;
   readonly hasPersistedPreparedImages: boolean;
+  readonly storageOwned = true;
+  onOpfsDegraded?: () => void;
 
   constructor(opts?: { maxBytes?: number; hasPersistedPreparedImages?: boolean }) {
     this.maxBytes = opts?.maxBytes;
@@ -503,17 +514,95 @@ export class WebAttachmentStore implements AttachmentStore {
   private opfsAvailable: boolean | undefined;
   private probePromise?: Promise<boolean>;
   private blobKey?: CryptoKey;
+  private _storageOwned = true;
+  private lockAttempted = false;
+  private lockPromise?: Promise<boolean>;
+  private releaseLockFn?: () => void;
+  onOpfsDegraded?: () => void;
 
   constructor(
     private readonly account?: { server: string; deviceId: string },
     private readonly idb?: IDBFactory,
     private readonly getOpfsRoot?: () => Promise<FileSystemDirectoryHandle>,
+    private readonly lockManager?: Pick<LockManager, "request">,
   ) {}
 
+  get storageOwned(): boolean {
+    return this._storageOwned;
+  }
+
   get hasPersistedPreparedImages(): boolean {
-    if (!this.useIdb()) return false;
+    if (!this._storageOwned || !this.useIdb()) return false;
     if (this.opfsAvailable !== undefined) return this.opfsAvailable;
     return this.getOpfsRoot !== undefined || (typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function");
+  }
+
+  private getLocks(): Pick<LockManager, "request"> | undefined {
+    if (this.lockManager) return this.lockManager;
+    if (typeof navigator !== "undefined" && typeof navigator.locks?.request === "function") {
+      return navigator.locks;
+    }
+    return undefined;
+  }
+
+  /** Acquires exclusive multi-tab ownership via Web Locks (M5). Non-owner tabs stay memory-only. */
+  async acquireStorageLock(): Promise<boolean> {
+    if (this.lockAttempted) return this._storageOwned;
+    if (this.lockPromise) return this.lockPromise;
+    if (!this.useIdb()) {
+      this.lockAttempted = true;
+      this._storageOwned = true;
+      return true;
+    }
+    const locks = this.getLocks();
+    if (!locks) {
+      this.lockAttempted = true;
+      this._storageOwned = true;
+      return true;
+    }
+    const lockName = `ra-draft-owner:${this.account!.server}:${this.account!.deviceId}`;
+    this.lockPromise = new Promise<boolean>((resolve) => {
+      let settled = false;
+      const done = (owned: boolean) => {
+        if (settled) return;
+        settled = true;
+        this.lockAttempted = true;
+        this._storageOwned = owned;
+        if (!owned) {
+          this.opfsAvailable = false;
+        }
+        resolve(owned);
+      };
+      void Promise.resolve(
+        locks.request(lockName, { ifAvailable: true }, (lock) => {
+          if (!lock) {
+            done(false);
+            return;
+          }
+          return new Promise<void>((release) => {
+            this.releaseLockFn = release;
+            done(true);
+          });
+        }),
+      ).catch(() => {
+        done(true);
+      });
+    });
+    return this.lockPromise;
+  }
+
+  releaseStorageLock(): void {
+    const fn = this.releaseLockFn;
+    this.releaseLockFn = undefined;
+    fn?.();
+  }
+
+  private markOpfsDegraded(): void {
+    const wasAvailable = this.opfsAvailable === true;
+    this.opfsAvailable = false;
+    if (wasAvailable) {
+      this.onOpfsDegraded?.();
+    }
   }
 
   private useIdb(): boolean {
@@ -552,7 +641,7 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   async probe(): Promise<boolean> {
-    if (!this.useIdb()) {
+    if (!this._storageOwned || !this.useIdb()) {
       this.opfsAvailable = false;
       return false;
     }
@@ -586,7 +675,7 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   private async blobsDir(create: boolean): Promise<FileSystemDirectoryHandle | undefined> {
-    if (!this.useIdb() || this.opfsAvailable === false) return undefined;
+    if (!this._storageOwned || !this.useIdb() || this.opfsAvailable === false) return undefined;
     if (this.opfsAvailable === undefined) {
       const ok = await this.probe();
       if (!ok) return undefined;
@@ -594,7 +683,7 @@ export class WebAttachmentStore implements AttachmentStore {
     try {
       const root = await this.opfsRoot();
       if (!root) {
-        this.opfsAvailable = false;
+        this.markOpfsDegraded();
         return undefined;
       }
       const attDir = await root.getDirectoryHandle(OPFS_ROOT_DIR, { create });
@@ -602,7 +691,7 @@ export class WebAttachmentStore implements AttachmentStore {
     } catch (err) {
       if (!create && isNotFound(err)) return undefined;
       if (hasQuotaExceeded(err)) throw new StorageQuotaError();
-      this.opfsAvailable = false;
+      this.markOpfsDegraded();
       return undefined;
     }
   }
@@ -628,8 +717,8 @@ export class WebAttachmentStore implements AttachmentStore {
       return ref;
     } catch (err) {
       if (hasQuotaExceeded(err)) throw new StorageQuotaError();
-      // OPFS became unavailable at write time -> fall back cleanly to memory.
-      this.opfsAvailable = false;
+      // OPFS became unavailable at write time -> fall back cleanly to memory and notify Core (L7).
+      this.markOpfsDegraded();
       this.memoryBlobs.set(ref, b);
       return ref;
     }
@@ -643,7 +732,7 @@ export class WebAttachmentStore implements AttachmentStore {
     for (const ref of refs) {
       const staged = this.stagedBlobs.get(ref);
       if (!staged) continue;
-      if (this.opfsAvailable === false) {
+      if (!this._storageOwned || this.opfsAvailable === false) {
         this.memoryBlobs.set(ref, staged);
         this.stagedBlobs.delete(ref);
         continue;
@@ -660,7 +749,7 @@ export class WebAttachmentStore implements AttachmentStore {
         this.stagedBlobs.delete(ref);
       } catch (err) {
         if (hasQuotaExceeded(err)) throw new StorageQuotaError();
-        this.opfsAvailable = false;
+        this.markOpfsDegraded();
         this.memoryBlobs.set(ref, staged);
         this.stagedBlobs.delete(ref);
       }
@@ -743,8 +832,12 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   async list(): Promise<{ entries: StoredDraftEntry[]; localRefs: string[] }> {
+    if (!this._storageOwned) {
+      return { entries: [], localRefs: [] };
+    }
     const entries: StoredDraftEntry[] = [];
     if (this.useIdb()) {
+      await purgeLegacyComposerLocalData(this.getIDB()).catch(() => undefined);
       const recs = await listDraftRecords(this.account!.server, this.account!.deviceId, this.getIDB());
       for (const r of recs) {
         entries.push({ bucket: nameToBucket(r.bucket), key: r.key, data: r.data, corrupt: r.corrupt });
@@ -779,6 +872,7 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   async read(bucket: DraftStorageBucket, key: string): Promise<ReadDraftRecordResult> {
+    if (!this._storageOwned) return { found: false };
     if (this.useIdb()) {
       return readDraftRecord(this.account!.server, this.account!.deviceId, bucketToName(bucket), key, this.getIDB());
     }
@@ -788,6 +882,7 @@ export class WebAttachmentStore implements AttachmentStore {
 
   async write(bucket: DraftStorageBucket, key: string, data: Uint8Array, referencedRefs: readonly string[] = []): Promise<void> {
     await this.persistStagedRefs(referencedRefs);
+    if (!this._storageOwned) return;
     if (this.useIdb()) {
       try {
         await writeDraftRecord(this.account!.server, this.account!.deviceId, bucketToName(bucket), key, data, this.getIDB());
@@ -801,6 +896,7 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   async delete(bucket: DraftStorageBucket, key: string): Promise<void> {
+    if (!this._storageOwned) return;
     if (this.useIdb()) {
       await deleteDraftRecord(bucketToName(bucket), key, this.getIDB());
       return;

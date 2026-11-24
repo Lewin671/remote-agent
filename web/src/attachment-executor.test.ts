@@ -778,4 +778,163 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
       AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
     );
   });
+
+  it("Web Locks gives exclusive ownership to first tab; second tab skips scan/tmp-delete/GC and shows Core notice (M5), purges legacy composer/* (L3), and reports mid-session OPFS degradation (L7)", async () => {
+    const f = await storedSecurity();
+    vi.stubGlobal("IDBKeyRange", IDBKeyRange);
+    const idb = indexedDB as unknown as IDBFactory;
+
+    // Seed legacy pre-3C-1 composer/* entries in IDB META to verify L3 purge.
+    await new Promise<void>((resolve, reject) => {
+      const open = idb.open("remote-agent-security-v4", 1);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction("meta", "readwrite");
+        tx.objectStore("meta").put({ legacy: true }, "local-content:composer/s1");
+        tx.objectStore("meta").put({ legacy: true }, "local-content:composer/s1/img1");
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      open.onerror = () => reject(open.error);
+    });
+
+    // Shared in-memory LockManager simulating two browser tabs competing for the same lock.
+    const heldLocks = new Set<string>();
+    const fakeLocks: Pick<LockManager, "request"> = {
+      request: ((name: string, opts: LockOptions, cb: (lock: Lock | null) => Promise<unknown>) => {
+        if (opts.ifAvailable && heldLocks.has(name)) {
+          return Promise.resolve(cb(null));
+        }
+        heldLocks.add(name);
+        return Promise.resolve(cb({ name, mode: "exclusive" })).finally(() => {
+          heldLocks.delete(name);
+        });
+      }) as LockManager["request"],
+    };
+
+    const rawFiles = new Map<string, Uint8Array>();
+    rawFiles.set("att_inflight.bin.tmp", new Uint8Array([1, 2, 3]));
+    let failWrites = false;
+    const makeOpfsRoot = (): FileSystemDirectoryHandle => {
+      const blobsDir = {
+        kind: "directory" as const,
+        name: "blobs",
+        async getFileHandle(name: string, opts?: { create?: boolean }) {
+          if (failWrites && name !== ".probe") throw new Error("opfs disk error");
+          if (!opts?.create && !rawFiles.has(name)) {
+            const err = new Error("missing");
+            err.name = "NotFoundError";
+            throw err;
+          }
+          return {
+            kind: "file" as const,
+            name,
+            async createWritable() {
+              if (failWrites) throw new Error("opfs write error");
+              const chunks: Uint8Array[] = [];
+              return {
+                async write(d: Uint8Array) { chunks.push(new Uint8Array(d)); },
+                async close() {
+                  const total = chunks.reduce((n, c) => n + c.byteLength, 0);
+                  const merged = new Uint8Array(total);
+                  let off = 0;
+                  for (const c of chunks) { merged.set(c, off); off += c.byteLength; }
+                  rawFiles.set(name, merged);
+                },
+                async abort() {},
+              };
+            },
+            async move(newName: string) {
+              const prev = rawFiles.get(name);
+              if (prev) { rawFiles.set(newName, prev); rawFiles.delete(name); }
+            },
+            async getFile() {
+              const bytes = rawFiles.get(name)!;
+              return new Blob([bytes as Uint8Array<ArrayBuffer>]) as unknown as File;
+            },
+          };
+        },
+        async removeEntry(name: string) { rawFiles.delete(name); },
+        async *entries() {
+          for (const name of rawFiles.keys()) yield [name, { kind: "file" as const, name }] as [string, FileSystemHandle];
+        },
+      };
+      return {
+        kind: "directory" as const,
+        name: "root",
+        async getDirectoryHandle() {
+          return {
+            kind: "directory" as const,
+            name: "remote-agent-attachments",
+            async getDirectoryHandle() { return blobsDir; },
+          };
+        },
+        async removeEntry() { rawFiles.clear(); },
+      } as unknown as FileSystemDirectoryHandle;
+    };
+
+    const acct = { server: "https://relay.example.com", deviceId: f.memberID };
+    const storeA = new WebAttachmentStore(acct, idb, async () => makeOpfsRoot(), fakeLocks);
+    const storeB = new WebAttachmentStore(acct, idb, async () => makeOpfsRoot(), fakeLocks);
+
+    // Tab A acquires lock; Tab B does not.
+    expect(await storeA.acquireStorageLock()).toBe(true);
+    expect(await storeB.acquireStorageLock()).toBe(false);
+    expect(storeA.storageOwned).toBe(true);
+    expect(storeB.storageOwned).toBe(false);
+    expect(storeB.hasPersistedPreparedImages).toBe(false);
+
+    // Tab B list() must NOT delete Tab A's .tmp file or touch OPFS/IDB!
+    const listB = await storeB.list();
+    expect(listB).toEqual({ entries: [], localRefs: [] });
+    expect(rawFiles.has("att_inflight.bin.tmp")).toBe(true);
+
+    // Wire Tab B to a real CoreHost: Core receives storageLockedByOther=true and surfaces localized notice.
+    const { CoreHost, sessionDraftScope } = await import("./core/host");
+    const hostB = new CoreHost(undefined, { attachmentStore: storeB });
+    try {
+      const s = sessionDraftScope("s-tab-b");
+      hostB.draftOpen(s);
+      const dv = hostB.viewAttachmentDraft(s).draft!;
+      expect(dv.storageError?.key).toBe("attachment.other_tab_owns_storage");
+    } finally {
+      hostB.dispose();
+    }
+
+    // Tab A's list() cleans .tmp AND purges legacy local-content:composer/* keys (L3).
+    expect(await storeA.probe()).toBe(true);
+    await storeA.list();
+    expect(rawFiles.has("att_inflight.bin.tmp")).toBe(false);
+    const remainingLegacy = await new Promise<number>((resolve, reject) => {
+      const open = idb.open("remote-agent-security-v4", 1);
+      open.onsuccess = () => {
+        const db = open.result;
+        const tx = db.transaction("meta", "readonly");
+        const req = tx.objectStore("meta").getAllKeys(IDBKeyRange.bound("local-content:composer", "local-content:composer\uffff"));
+        req.onsuccess = () => { db.close(); resolve(req.result.length); };
+        req.onerror = () => reject(req.error);
+      };
+      open.onerror = () => reject(open.error);
+    });
+    expect(remainingLegacy).toBe(0);
+
+    // L7: Mid-session OPFS write error fires onOpfsDegraded so CoreHost updates Core config.
+    let degradedCount = 0;
+    storeA.onOpfsDegraded = () => { degradedCount++; };
+    failWrites = true;
+    const memRef = await storeA.putLocalBlob(new Uint8Array([4, 5, 6]), { mimeType: "image/png", ext: "png" });
+    expect(degradedCount).toBe(1);
+    expect(storeA.hasPersistedPreparedImages).toBe(false);
+    expect(storeA.peekMemoryBlob(memRef)).toBeDefined();
+
+    // Releasing Tab A's lock lets another tab acquire ownership.
+    storeA.releaseStorageLock();
+    await Promise.resolve();
+    const storeC = new WebAttachmentStore(acct, idb, async () => makeOpfsRoot(), fakeLocks);
+    expect(await storeC.acquireStorageLock()).toBe(true);
+    storeC.releaseStorageLock();
+  });
 });
