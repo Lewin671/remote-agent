@@ -18,12 +18,24 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
           void (async () => {
             const standalone = createStandaloneSecurityClient();
             try {
-              await standalone.client.bootstrap();
-              const a = await standalone.client.checkExitAdvice();
-              setAdvice(translateSecurityKey(a.message));
-            } catch {
+              let bootErr: unknown;
+              try {
+                await standalone.client.bootstrap();
+              } catch (e) {
+                bootErr = e;
+              }
+              let nextAdvice = "";
+              try {
+                const a = await standalone.client.checkExitAdvice();
+                if (a.authority || a.unresolved || !bootErr) {
+                  nextAdvice = translateSecurityKey(a.message);
+                }
+              } catch {
+                // Fall back to the generic reset warning when exit advice cannot be read.
+              }
               setAdvice(
-                l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will"),
+                nextAdvice ||
+                  l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will"),
               );
             } finally {
               standalone.dispose();

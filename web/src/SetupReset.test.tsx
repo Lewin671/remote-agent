@@ -38,6 +38,7 @@ afterEach(() => {
 
 it("opens confirmation and clears corrupt local security storage even when bootstrap fails", async () => {
   mockClient.bootstrap.mockRejectedValue(new Error("corrupt record"));
+  mockClient.checkExitAdvice.mockResolvedValue({ authority: false, unresolved: false, message: "generic" });
   mockClient.clearSecurity.mockResolvedValue(undefined);
   const onDone = vi.fn();
 
@@ -67,4 +68,29 @@ it("opens confirmation and clears corrupt local security storage even when boots
 
   expect(mockClient.clearSecurity).toHaveBeenCalledTimes(1);
   expect(onDone).toHaveBeenCalledTimes(1);
+});
+
+it("preserves sole-authority exit warning when bootstrap fails but record still identifies authority", async () => {
+  const authMsg = "security.this_device_is_the_only_managing_client_transfer_management";
+  mockClient.bootstrap.mockRejectedValue(new Error("missing key"));
+  mockClient.checkExitAdvice.mockResolvedValue({
+    authority: true,
+    unresolved: false,
+    message: authMsg,
+  });
+
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root.render(<SetupReset onDone={vi.fn()} />));
+
+  const startBtn = [...host.querySelectorAll("button")].find(
+    (b) => b.textContent === message("security.exit_and_start_over"),
+  );
+  await act(async () => {
+    startBtn!.click();
+  });
+
+  expect(mockClient.checkExitAdvice).toHaveBeenCalledTimes(1);
+  expect(host.textContent).toContain(authMsg);
 });

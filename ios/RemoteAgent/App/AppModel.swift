@@ -225,11 +225,20 @@ final class AppModel {
         var checkExitAdvice: @Sendable (_ vault: Vault) async throws -> PBSecurityExitAdvice = { vault in
             let host = try StandaloneSecurityHost(store: vault, http: AppModel.http, allowPlainHttp: false)
             defer { host.close() }
-            let st = try await host.client.bootstrap()
-            if st.bootstrap == .invalid {
-                throw VaultError.unreadable
+            var bootErr: Error?
+            do {
+                let st = try await host.client.bootstrap()
+                if st.bootstrap == .invalid {
+                    bootErr = VaultError.unreadable
+                }
+            } catch {
+                bootErr = error
             }
-            return try await host.client.checkExitAdvice()
+            if let adv = try? await host.client.checkExitAdvice(),
+               adv.authority || adv.unresolved || bootErr == nil {
+                return adv
+            }
+            throw bootErr ?? VaultError.unreadable
         }
         var wipeLegacyCaches: @Sendable (AccountStorage) -> Void = { storage in
             try? CipherStore.eraseAll(root: storage.cacheRoot)

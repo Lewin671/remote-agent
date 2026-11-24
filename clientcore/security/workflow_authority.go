@@ -1385,9 +1385,24 @@ func (t *checkRetainedDeniedTask) step(e *Engine, ev *secEvent) error {
 	return nil
 }
 
+func (e *Engine) recordIndicatesAuthority() bool {
+	if e.isAuthority() {
+		return true
+	}
+	wf := e.ensureWF()
+	if wf.record == nil || !wf.record.Member || len(wf.record.States) == 0 {
+		return false
+	}
+	head, err := devicesec.ParseState(wf.record.States[len(wf.record.States)-1])
+	if err != nil {
+		return false
+	}
+	return head.Core.AuthorityID == wf.record.MemberID
+}
+
 func (e *Engine) checkExitAdviceOp(actionID uint64) {
 	wf := e.ensureWF()
-	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.isAuthority()
+	unresolved, auth := wf.pendingOp != nil || wf.regIntent != nil, e.recordIndicatesAuthority()
 	msg := text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair
 	if unresolved {
 		msg = text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe

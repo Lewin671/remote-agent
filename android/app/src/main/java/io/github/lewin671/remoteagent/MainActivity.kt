@@ -127,6 +127,7 @@ class MainActivity : ComponentActivity() {
                                 { app.loadAccount() },
                                 { app.discardAccount() },
                                 canDiscard = accountErrorAllowsReset,
+                                checkAdvice = { runCatching { app.checkExitAdvice() }.getOrNull() },
                             )
                         }
                         !loaded || (r != null && !cacheReady) ->

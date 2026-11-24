@@ -504,7 +504,7 @@ class RaApp : Application() {
             monotonic = android.os.SystemClock::elapsedRealtime,
         )
         try {
-            host.client.bootstrap()
+            runCatching { host.client.bootstrap() }
             host.client.checkExitAdvice()
         } finally {
             host.close()

@@ -2116,7 +2116,8 @@ func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
 		t.Fatalf("expected bootstrap retry after unlock to succeed as READY, got %+v", resUnlocked)
 	}
 
-	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY.
+	// Re-bootstrapping with a missing device Ed25519 key must fail as INVALID, not READY,
+	// while checkExitAdvice still identifies this device as sole authority from the verified record.
 	savedEd := h.deviceEd
 	h.deviceEd = nil
 	h.restart("https://relay.example.com", false)
@@ -2125,6 +2126,13 @@ func TestBootstrapRejectsMissingDeviceKeysAndClearResetsInvalid(t *testing.T) {
 	})
 	if resEd.Ok || resEd.Status.Bootstrap != corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID {
 		t.Fatalf("expected INVALID bootstrap when device Ed key missing, got %+v", resEd)
+	}
+	adviceMissingKey := h.runAction(&corev1.SecurityWorkflowActionEvent{
+		Action: &corev1.SecurityWorkflowActionEvent_CheckExitAdvice{CheckExitAdvice: &corev1.SecurityActionEmpty{}},
+	})
+	if !adviceMissingKey.Ok || adviceMissingKey.ExitAdvice == nil || !adviceMissingKey.ExitAdvice.Authority ||
+		adviceMissingKey.ExitAdvice.Message != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
+		t.Fatalf("expected authority exit advice even when device Ed key missing, got %+v", adviceMissingKey)
 	}
 	h.deviceEd = savedEd
 
