@@ -142,11 +142,8 @@ export function NewBoxView(p: {
   }, [vm.busy, vm.frozen, currentSig]);
   const changedSinceFrozen = vm.frozen && frozenSigRef.current !== undefined && frozenSigRef.current !== currentSig;
 
-  const hasDraftItems = (activeDraft?.items.length ?? 0) > 0 || !!activeDraft?.hasPendingPicks;
   const draftReady = activeDraft
-    ? hasDraftItems
-      ? activeDraft.ready && !activeDraft.sending && !activeDraft.restoring && !activeDraft.hasPendingPicks && !activeDraft.sendBlockedReason
-      : !activeDraft.sending && !activeDraft.restoring && !!prompt.trim()
+    ? activeDraft.canSend && !activeDraft.sending && !activeDraft.restoring
     : !!prompt.trim();
 
   const submit = () => {

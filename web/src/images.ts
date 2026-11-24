@@ -2,12 +2,13 @@ import * as l10n from "./i18n";
 // Preparing images the user sends to an agent (architecture.md §17,
 // 「从客户端发图片」). Two ways out:
 //
-//   compressImage(file)   the default: at most MAX_EDGE px on the long edge,
-//                         JPEG (PNG when transparent), under COMPRESSED_BUDGET
+//   compressImage(file, backend, limits)
+//                         the default: fit long edge into Core's maxDimensionPx,
+//                         JPEG (PNG when transparent), under Core's maxCompressedBytes
 //                         so the sealed envelope fits in one 1 MiB command.
-//   prepareOriginal(file) "send original": original pixels and quality for
-//                         PNG/JPEG/WebP/GIF, up to Core's original_image_max_bytes,
-//                         sent in CHUNK_BYTES pieces (chunkBytes, sha256Hex).
+//   prepareOriginal(file, maxOriginalBytes, backend?)
+//                         "send original": original pixels and quality for
+//                         PNG/JPEG/WebP/GIF, up to Core's max_original_bytes.
 //
 // Both turn the image upright by its EXIF orientation and remove metadata
 // (location, camera, XMP, text chunks) before anything leaves the device.
@@ -36,18 +37,6 @@ export { ImageError, type ImageErrorCode } from "./imagecodec/error";
 export { rotateJpegLossless } from "./imagecodec/jpeg";
 export { imageSize, readOrientation, sniffFormat, stripMetadata, type ImageFormat, type PassthroughFormat } from "./imagecodec/metadata";
 
-/** Images per message, the first message of a new session included. */
-export const MAX_IMAGES = 6;
-/** Long edge of a compressed image. The CLIs shrink to about 2000px themselves. */
-export const MAX_EDGE = 2048;
-/** Piece size for sending originals; each piece is sealed into its own envelope. */
-export const CHUNK_BYTES = 768 * 1024;
-/**
- * Largest compressed image. The sealed envelope adds the header, nonce, GCM
- * tag and Protobuf framing to it and must stay under 1 MiB; 900 KiB leaves
- * over 100 KiB for that.
- */
-export const COMPRESSED_BUDGET = 900 * 1024;
 /**
  * Largest canvas re-encoded at original size. iOS Safari refuses canvases
  * over 16 Mi pixels (4096 x 4096); larger originals have to be sent compressed.
@@ -254,8 +243,8 @@ export interface CompressLimits {
  */
 export async function compressImage(
   file: Blob,
-  backend: ImageBackend = browserBackend,
-  limits: CompressLimits = { maxDimensionPx: MAX_EDGE, maxCompressedBytes: COMPRESSED_BUDGET },
+  backend: ImageBackend,
+  limits: CompressLimits,
 ): Promise<PreparedImage> {
   const maxEdge = limits.maxDimensionPx;
   const maxBytes = limits.maxCompressedBytes;

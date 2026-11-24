@@ -212,8 +212,8 @@ function Thumb({
     item.state === AttachmentItemState.UPLOADING ||
     item.state === AttachmentItemState.WAITING_RECONNECT;
   const failed = item.state === AttachmentItemState.FAILED;
-  const paused = item.state === AttachmentItemState.PAUSED;
   const statusText = renderText(item.statusText);
+  const badgeText = renderText(item.badgeText);
   const stateLabel = failed ? i18n.t("attachment.failure", { reason: renderText(item.problem?.message) || statusText }) : statusText;
   const index = item.imageIndex >= 0 ? item.imageIndex + 1 : 1;
   return (
@@ -230,17 +230,16 @@ function Thumb({
             <b style={{ width: `${Math.round(item.progress * 100)}%` }} />
           </span>
         ) : (
-          busy && <span className="ring spin" aria-label={statusText || i18n.t("attachment.uploading")} />
+          busy && <span className="ring spin" aria-label={statusText} />
         )}
-        {paused && <span className="badge" aria-hidden="true">{statusText || i18n.t("attachment.upload_paused")}</span>}
-        {failed && <span className="badge" aria-hidden="true">{i18n.t("attachment.failed")}</span>}
+        {badgeText && <span className="badge" aria-hidden="true">{badgeText}</span>}
       </button>
       {item.canRemove && (
         <button
           type="button"
           className="x"
           onClick={onRemove}
-          aria-label={renderText(item.removeA11y) || i18n.t("image.remove_index", { index })}
+          aria-label={renderText(item.removeA11y)}
         >
           <span className="draft-remove-mark">
             <X />
@@ -304,7 +303,7 @@ function VideoThumb({
           <b style={{ width: `${Math.round(item.progress * 100)}%` }} />
         </span>
       ) : (
-        busy && <span className="ring spin" aria-label={renderText(item.statusText) || i18n.t("attachment.uploading")} />
+        busy && <span className="ring spin" aria-label={renderText(item.statusText)} />
       )}
       {item.canPause && onPause && (
         <button type="button" className="badge" onClick={onPause}>
@@ -326,7 +325,7 @@ function VideoThumb({
           type="button"
           className="x"
           onClick={onRemove}
-          aria-label={renderText(item.removeA11y) || i18n.t("attachment.remove_video", { name: label }).trim()}
+          aria-label={renderText(item.removeA11y)}
         >
           <X />
         </button>

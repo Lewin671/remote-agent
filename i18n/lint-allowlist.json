@@ -5798,5 +5798,25 @@
     "path": "web/src/views/Session.tsx",
     "literal": "), [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup], ); return (",
     "reason": "Lexical JSX scanner false positive: TypeScript hook dependency array between `>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/attachment-store.ts",
+    "literal": "application/octet-stream",
+    "reason": "Standard binary MIME type passed to Blob constructor; never rendered as user-facing text."
+  },
+  {
+    "path": "web/src/attachment-store.ts",
+    "literal": "corrupt encrypted opfs chunk",
+    "reason": "Internal exception diagnostic caught inside WebAttachmentStore and converted to structured AttachmentIOErrorKind; never displayed."
+  },
+  {
+    "path": "web/src/attachment-store.ts",
+    "literal": "corrupt encrypted opfs header",
+    "reason": "Internal exception diagnostic caught inside WebAttachmentStore and converted to structured AttachmentIOErrorKind; never displayed."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "button",
+    "reason": "HTML button type attribute near identifier ending in Text; never rendered as user-facing text."
   }
 ]

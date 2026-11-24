@@ -1,15 +1,11 @@
 import { t as message } from "./i18n";
 import { describe, expect, it } from "vitest";
 import {
-  CHUNK_BYTES,
   chunkBytes,
-  COMPRESSED_BUDGET,
   compressImage,
   ImageError,
   imageSize,
   MAX_CANVAS_PIXELS,
-  MAX_EDGE,
-  MAX_IMAGES,
   orientationMatrix,
   prepareOriginal,
   readOrientation,
@@ -234,20 +230,12 @@ describe("bytes", () => {
     expect(chunkBytes(b.subarray(0, 2000), 1000)).toHaveLength(2);
     expect(chunkBytes(new Uint8Array(0), 1000)).toEqual([]);
     expect(() => chunkBytes(b, 0)).toThrow();
-    // A 20 MiB original goes in 27 pieces.
-    expect(Math.ceil((20 * 1024 * 1024) / CHUNK_BYTES)).toBe(27);
+    // A 20 MiB original at Core's 768 KiB chunk size goes in 27 pieces.
+    expect(Math.ceil((20 * 1024 * 1024) / (768 * 1024))).toBe(27);
   });
 
   it("hashes with SHA-256", async () => {
     expect(await sha256Hex(text.encode("abc"))).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-  });
-
-  it("has the limits architecture.md sets", () => {
-    expect(MAX_IMAGES).toBe(6);
-    expect(MAX_EDGE).toBe(2048);
-    // Room for header, nonce, tag and Protobuf framing under the 1 MiB envelope.
-    expect(COMPRESSED_BUDGET).toBeLessThanOrEqual(1024 * 1024 - 64 * 1024);
-    expect(CHUNK_BYTES).toBeLessThanOrEqual(COMPRESSED_BUDGET);
   });
 });
 
@@ -323,10 +311,12 @@ function fakeBackend(width: number, height: number, opts: { alpha?: boolean; siz
 const ops = (calls: Call[]) => calls.map((c) => [c.op, ...c.args]);
 
 describe("compressImage", () => {
-  it("turns a phone photo upright, fits it in MAX_EDGE and strips it first", async () => {
+  const TEST_LIMITS = { maxDimensionPx: 2048, maxCompressedBytes: 900 * 1024 };
+
+  it("turns a phone photo upright, fits it in maxDimensionPx and strips it first", async () => {
     const photo = withSegments(fixture(s420), segment(0xe1, exifOrientation(6)));
     const f = fakeBackend(4032, 3024);
-    const out = await compressImage(new Blob([photo as Uint8Array<ArrayBuffer>]), f.backend);
+    const out = await compressImage(new Blob([photo as Uint8Array<ArrayBuffer>]), f.backend, TEST_LIMITS);
     expect(out).toMatchObject({ format: "jpeg", width: 1536, height: 2048 });
     expect(ops(f.calls)).toEqual([
       ["decode"],
@@ -339,8 +329,10 @@ describe("compressImage", () => {
   });
 
   it("lowers quality, then size, until it fits the budget", async () => {
-    const f = fakeBackend(1000, 500, { sizeOf: (_t, q, w) => (w > 600 || q! > 0.6 ? COMPRESSED_BUDGET + 1 : COMPRESSED_BUDGET) });
-    const out = await compressImage(new Blob([fixture(s420) as Uint8Array<ArrayBuffer>]), f.backend);
+    const f = fakeBackend(1000, 500, {
+      sizeOf: (_t, q, w) => (w > 600 || q! > 0.6 ? TEST_LIMITS.maxCompressedBytes + 1 : TEST_LIMITS.maxCompressedBytes),
+    });
+    const out = await compressImage(new Blob([fixture(s420) as Uint8Array<ArrayBuffer>]), f.backend, TEST_LIMITS);
     expect(out).toMatchObject({ format: "jpeg", width: 563, height: 281 });
     expect(ops(f.calls)).toEqual([
       ["decode"],
@@ -365,7 +357,7 @@ describe("compressImage", () => {
   it("keeps transparency as PNG", async () => {
     const png = concat(PNG_SIGNATURE, pngIHDR(), pngIDAT(), pngChunk("IEND", ""));
     const f = fakeBackend(300, 200, { alpha: true });
-    const out = await compressImage(new Blob([png as Uint8Array<ArrayBuffer>]), f.backend);
+    const out = await compressImage(new Blob([png as Uint8Array<ArrayBuffer>]), f.backend, TEST_LIMITS);
     expect(out).toMatchObject({ format: "png", width: 300, height: 200 });
     expect(ops(f.calls)).toEqual([["decode"], ["draw", 1, 300, 200], ["hasAlpha"], ["encode", "image/png", undefined]]);
   });
@@ -373,7 +365,7 @@ describe("compressImage", () => {
   it("hands formats it cannot parse to the browser as they are", async () => {
     const heic = ftyp("heic", "mif1");
     const f = fakeBackend(3000, 4000);
-    const out = await compressImage(new Blob([heic as Uint8Array<ArrayBuffer>]), f.backend);
+    const out = await compressImage(new Blob([heic as Uint8Array<ArrayBuffer>]), f.backend, TEST_LIMITS);
     expect(f.decoded[0]).toEqual(heic);
     expect(out).toMatchObject({ format: "jpeg", width: 1536, height: 2048 });
     expect(f.calls[1]).toEqual({ op: "draw", args: [1, 1536, 2048] });
@@ -469,7 +461,9 @@ describe("oversized images (review B3)", () => {
 
   it("does not hand a huge image to the decoder, compressed or original", async () => {
     const f = fakeBackend(60000, 60000);
-    await expect(compressImage(new Blob([huge() as Uint8Array<ArrayBuffer>]), f.backend)).rejects.toThrow(ImageError);
+    await expect(
+      compressImage(new Blob([huge() as Uint8Array<ArrayBuffer>]), f.backend, { maxDimensionPx: 2048, maxCompressedBytes: 900 * 1024 }),
+    ).rejects.toThrow(ImageError);
     const photo = withSegments(huge(), segment(0xe1, exifOrientation(6)));
     await expect(prepareOriginal(new Blob([photo as Uint8Array<ArrayBuffer>]), 20 * 1024 * 1024, f.backend)).rejects.toThrow(ImageError);
     expect(f.calls.filter((c) => c.op === "decode")).toEqual([]);
