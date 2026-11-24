@@ -476,4 +476,194 @@ describe("AttachmentExecutor FIFO queue and platform I/O", () => {
       r1.dispose();
     }
   });
+
+  it("WebAttachmentStore encrypts OPFS blobs in 256 KiB AES-GCM chunks bound to ref, decrypts slices in O(1), and avoids pinning prepared blobs in RAM", async () => {
+    const f = await storedSecurity();
+    vi.stubGlobal("IDBKeyRange", IDBKeyRange);
+    const idb = indexedDB as unknown as IDBFactory;
+
+    // Minimal in-memory fake OPFS directory that tracks slice reads to prove O(1) range decryption.
+    const rawFiles = new Map<string, Uint8Array>();
+    const sliceReads: Array<[number, number]> = [];
+    const makeFileHandle = (name: string) => ({
+      kind: "file" as const,
+      name,
+      async createWritable() {
+        const chunks: Uint8Array[] = [];
+        return {
+          async write(data: Uint8Array) {
+            chunks.push(new Uint8Array(data));
+          },
+          async close() {
+            const total = chunks.reduce((n, c) => n + c.byteLength, 0);
+            const merged = new Uint8Array(total);
+            let off = 0;
+            for (const c of chunks) {
+              merged.set(c, off);
+              off += c.byteLength;
+            }
+            rawFiles.set(name, merged);
+          },
+          async abort() {
+            chunks.length = 0;
+          },
+        };
+      },
+      async move(newName: string) {
+        const prev = rawFiles.get(name);
+        if (prev) {
+          rawFiles.set(newName, prev);
+          rawFiles.delete(name);
+        }
+      },
+      async getFile() {
+        const bytes = rawFiles.get(name);
+        if (!bytes) {
+          const err = new Error("missing");
+          err.name = "NotFoundError";
+          throw err;
+        }
+        const backing = new Blob([bytes as Uint8Array<ArrayBuffer>]);
+        return {
+          size: backing.size,
+          type: "",
+          slice(start?: number, end?: number) {
+            const s = start ?? 0;
+            const e = end ?? backing.size;
+            sliceReads.push([s, e]);
+            return backing.slice(s, e);
+          },
+          arrayBuffer: () => backing.arrayBuffer(),
+        } as unknown as File;
+      },
+    });
+    const blobsDir = {
+      kind: "directory" as const,
+      name: "blobs",
+      async getFileHandle(name: string, opts?: { create?: boolean }) {
+        if (!opts?.create && !rawFiles.has(name)) {
+          const err = new Error("missing");
+          err.name = "NotFoundError";
+          throw err;
+        }
+        return makeFileHandle(name);
+      },
+      async removeEntry(name: string) {
+        rawFiles.delete(name);
+      },
+      async *entries() {
+        for (const name of rawFiles.keys()) {
+          yield [name, { kind: "file" as const, name }] as [string, FileSystemHandle];
+        }
+      },
+    };
+    const rootDir = {
+      kind: "directory" as const,
+      name: "root",
+      async getDirectoryHandle() {
+        return {
+          kind: "directory" as const,
+          name: "remote-agent-attachments",
+          async getDirectoryHandle() {
+            return blobsDir;
+          },
+        };
+      },
+      async removeEntry() {
+        rawFiles.clear();
+      },
+    } as unknown as FileSystemDirectoryHandle;
+
+    const acct = { server: "https://relay.example.com", deviceId: f.memberID };
+    const store1 = new WebAttachmentStore(acct, idb, async () => rootDir);
+    expect(await store1.probe()).toBe(true);
+    expect(store1.hasPersistedPreparedImages).toBe(true);
+
+    // 600 KiB payload spanning 3 encrypted chunks (256 KiB + 256 KiB + 88 KiB) with recognizable marker.
+    const plain = new Uint8Array(600 * 1024);
+    for (let i = 0; i < plain.length; i++) plain[i] = (i * 31 + 7) & 0xff;
+    const marker = new TextEncoder().encode("TOP-SECRET-PLAINTEXT-MARKER");
+    plain.set(marker, 1024);
+
+    const ref = await store1.putLocalBlob(plain, { mimeType: "application/octet-stream", ext: "bin" });
+    const rawOnDisk = rawFiles.get(ref)!;
+    expect(rawOnDisk).toBeDefined();
+    // Header starts with "RAB1" and ciphertext MUST NOT contain plaintext marker!
+    expect(new TextDecoder().decode(rawOnDisk.subarray(0, 4))).toBe("RAB1");
+    expect(new TextDecoder("latin1").decode(rawOnDisk)).not.toContain("TOP-SECRET-PLAINTEXT-MARKER");
+
+    // Reload into a fresh WebAttachmentStore sharing IDB + OPFS -> decrypts with persisted non-extractable key.
+    const store2 = new WebAttachmentStore(acct, idb, async () => rootDir);
+    expect(await store2.probe()).toBe(true);
+
+    // O(1) range read crossing chunk 0 -> chunk 1 boundary must NOT read chunk 2!
+    sliceReads.length = 0;
+    const sliceRes = await store2.readLocalSlice(ref, 256 * 1024 - 16, 48, plain.length);
+    expect(sliceRes.kind).toBe("ok");
+    if (sliceRes.kind === "ok") {
+      expect(sliceRes.data).toEqual(plain.subarray(256 * 1024 - 16, 256 * 1024 + 32));
+    }
+    // Header (16B) + chunk 0 + chunk 1 only (total bytes read < raw file size).
+    const totalSliceBytes = sliceReads.reduce((acc, [s, e]) => acc + (e - s), 0);
+    expect(totalSliceBytes).toBeLessThan(rawOnDisk.byteLength);
+
+    // Streaming hash over encrypted OPFS matches exact SHA-256 of plaintext.
+    const hashed = await store2.hashLocalBlob(ref, plain.length + 1);
+    expect(hashed.kind).toBe("ok");
+    if (hashed.kind === "ok") {
+      expect(hashed.sizeBytes).toBe(plain.length);
+      const expectedSha = new Uint8Array(await crypto.subtle.digest("SHA-256", plain));
+      expect(hashed.sha256).toEqual(expectedSha);
+    }
+
+    // Renaming the encrypted file to a different ref breaks AAD ref binding -> rejected!
+    rawFiles.set("att_renamed.bin", rawOnDisk.slice());
+    expect((await store2.readLocalSlice("att_renamed.bin", 0, 16, plain.length)).kind).toBe("changed");
+    expect(await store2.getLocalBlob("att_renamed.bin")).toBeUndefined();
+
+    // Tampering a ciphertext byte breaks GCM auth -> rejected!
+    const tampered = rawOnDisk.slice();
+    tampered[40] ^= 0xff;
+    rawFiles.set("att_tampered.bin", tampered);
+    expect((await store2.readLocalSlice("att_tampered.bin", 0, 16, plain.length)).kind).toBe("changed");
+
+    // L8: handlePrepareImage on OPFS-backed store caches thumbRef only, NOT full preparedBlob in RAM.
+    const prepEvents: Event["event"][] = [];
+    const exec = new AttachmentExecutor({
+      store: store2,
+      onEvent: (ev) => prepEvents.push(ev),
+      prepareImage: async () => ({
+        bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 9, 8, 7, 6]),
+        format: "png",
+        width: 32,
+        height: 24,
+      }),
+    });
+    const srcRef = exec.stagePickedBlob(new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }));
+    exec.handlePrepareImage(
+      create(AttachmentPrepareImageEffectSchema, {
+        opId: 91n,
+        scope: SESSION_SCOPE,
+        itemId: "img-opfs",
+        sourceRef: srcRef,
+        original: false,
+        maxOriginalBytes: 20_971_520n,
+        maxDimensionPx: 2048,
+        maxCompressedBytes: 921_600n,
+      }),
+    );
+    await exec.whenIdle();
+    const prepEv = prepEvents.find((e) => e.case === "attachmentPrepareImageResult" && e.value.opId === 91n);
+    expect(prepEv?.case === "attachmentPrepareImageResult" && prepEv.value.ok).toBe(true);
+    if (prepEv?.case === "attachmentPrepareImageResult") {
+      expect(exec.cachedBlob(prepEv.value.thumbRef)).toBeDefined();
+      expect(exec.cachedBlob(prepEv.value.preparedRef)).toBeUndefined();
+      // Viewer can still lazily decrypt preparedRef on demand via ensureBlob!
+      const loaded = await exec.ensureBlob(prepEv.value.preparedRef);
+      expect(new Uint8Array(await loaded!.arrayBuffer())).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 9, 8, 7, 6]));
+    }
+
+    await store2.clearAll();
+    expect(rawFiles.size).toBe(0);
+  });
 });

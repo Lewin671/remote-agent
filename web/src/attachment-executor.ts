@@ -23,7 +23,7 @@ import {
 import { ImageFormat } from "./gen/remoteagent/v1/event_pb";
 import { browserBackend, compressImage, ImageError, prepareOriginal } from "./images";
 import { mimeOf } from "./imageview";
-import { hashBlobStreaming, PartialTruncatedError, StreamingSha256 } from "./shared-file-sha256";
+import { PartialTruncatedError, StreamingSha256 } from "./shared-file-sha256";
 import { hasQuotaExceeded } from "./shared-file-store";
 
 export interface PreparedImageOutput {
@@ -497,7 +497,9 @@ export class AttachmentExecutor {
           mimeType: thumb.blob.type || mime,
           ext: thumb.ext,
         });
-        this.blobCache.set(preparedRef, preparedBlob);
+        if (!this.store.hasPersistedPreparedImages) {
+          this.blobCache.set(preparedRef, preparedBlob);
+        }
         this.blobCache.set(thumbRef, thumb.blob);
         this.emitBlobs();
         this.onEvent({
@@ -545,8 +547,8 @@ export class AttachmentExecutor {
         itemId: eff.itemId,
       };
       try {
-        const source = await this.store.getLocalBlob(eff.sourceRef);
-        if (!source) {
+        const hashed = await this.store.hashLocalBlob(eff.sourceRef, Number(eff.maxBytes));
+        if (hashed.kind === "missing") {
           this.onEvent({
             case: "attachmentHashFileResult",
             value: create(AttachmentHashFileResultEventSchema, {
@@ -557,24 +559,34 @@ export class AttachmentExecutor {
           });
           return;
         }
-        const size = source.size;
-        if (eff.maxBytes > 0n && BigInt(size) > eff.maxBytes) {
+        if (hashed.kind === "too_large") {
           this.onEvent({
             case: "attachmentHashFileResult",
             value: create(AttachmentHashFileResultEventSchema, {
               ...base,
               ok: false,
-              sizeBytes: BigInt(size),
+              sizeBytes: BigInt(hashed.sizeBytes),
               errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_FILE_TOO_LARGE,
             }),
           });
           return;
         }
-        const sha256 = (await hashBlobStreaming(source, size)) as Uint8Array<ArrayBuffer>;
+        if (hashed.kind === "changed") {
+          this.onEvent({
+            case: "attachmentHashFileResult",
+            value: create(AttachmentHashFileResultEventSchema, {
+              ...base,
+              ok: false,
+              errorKind: AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+            }),
+          });
+          return;
+        }
         let hasDuration = false;
         let durationMs = 0n;
         if (eff.isVideo) {
-          const ms = await this.probeVideoDurationFn(source).catch(() => undefined);
+          const source = await this.store.getLocalBlob(eff.sourceRef);
+          const ms = source ? await this.probeVideoDurationFn(source).catch(() => undefined) : undefined;
           if (ms !== undefined && Number.isFinite(ms) && ms > 0) {
             hasDuration = true;
             durationMs = BigInt(Math.round(ms));
@@ -585,8 +597,8 @@ export class AttachmentExecutor {
           value: create(AttachmentHashFileResultEventSchema, {
             ...base,
             ok: true,
-            sizeBytes: BigInt(size),
-            sha256,
+            sizeBytes: BigInt(hashed.sizeBytes),
+            sha256: hashed.sha256,
             hasDuration,
             durationMs,
           }),

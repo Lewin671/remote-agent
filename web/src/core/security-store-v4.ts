@@ -671,6 +671,68 @@ export async function loadLocalData(server: string, memberID: string, name: stri
 }
 
 const DRAFT_V1_PREFIX = "draft-v1:";
+const BLOB_KEY_META_KEY = `${DRAFT_V1_PREFIX}blob-key`;
+
+interface StoredAttachmentBlobKey {
+  binding: string;
+  key: CryptoKey;
+}
+
+export async function loadAttachmentBlobKey(
+  server: string,
+  memberID: string,
+  idb: IDBFactory = indexedDB,
+): Promise<CryptoKey | undefined> {
+  const owner = JSON.stringify([server, memberID]);
+  const stored = await withDB(idb, (db) =>
+    runTx(db, [V4_STORE_BUCKETS, V4_STORE_META], "readonly", "load attachment blob key failed", (tx) => {
+      const bReq = tx.objectStore(V4_STORE_BUCKETS).get(RECORD_ID) as IDBRequest<StoredBucketRow | undefined>;
+      const mReq = tx.objectStore(V4_STORE_META).get(BLOB_KEY_META_KEY) as IDBRequest<StoredAttachmentBlobKey | undefined>;
+      return () => (bReq.result?.data.byteLength ? mReq.result : undefined);
+    }),
+  );
+  if (!stored || stored.binding !== owner || !(stored.key instanceof CryptoKey) || stored.key.extractable) {
+    return undefined;
+  }
+  return stored.key;
+}
+
+export async function getOrCreateAttachmentBlobKey(
+  server: string,
+  memberID: string,
+  idb: IDBFactory = indexedDB,
+): Promise<CryptoKey> {
+  const existing = await loadAttachmentBlobKey(server, memberID, idb);
+  if (existing) return existing;
+  const owner = JSON.stringify([server, memberID]);
+  const fresh = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  return withDB(idb, (db) =>
+    runTx(db, [V4_STORE_BUCKETS, V4_STORE_META], "readwrite", "save attachment blob key failed", (tx) => {
+      const bStore = tx.objectStore(V4_STORE_BUCKETS);
+      const mStore = tx.objectStore(V4_STORE_META);
+      const bReq = bStore.get(RECORD_ID) as IDBRequest<StoredBucketRow | undefined>;
+      const mReq = mStore.get(BLOB_KEY_META_KEY) as IDBRequest<StoredAttachmentBlobKey | undefined>;
+      let chosen = fresh;
+      let pending = 2;
+      const decide = () => {
+        if (--pending !== 0) return;
+        if (!bReq.result?.data.byteLength) {
+          tx.abort();
+          return;
+        }
+        const cur = mReq.result;
+        if (cur && cur.binding === owner && cur.key instanceof CryptoKey && !cur.key.extractable) {
+          chosen = cur.key;
+          return;
+        }
+        mStore.put({ binding: owner, key: fresh } satisfies StoredAttachmentBlobKey, BLOB_KEY_META_KEY);
+      };
+      bReq.onsuccess = decide;
+      mReq.onsuccess = decide;
+      return () => chosen;
+    }),
+  );
+}
 
 export type DraftRecordBucketName = "draft" | "outbox";
 

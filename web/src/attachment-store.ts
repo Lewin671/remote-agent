@@ -1,13 +1,16 @@
 import {
   clearAllDraftRecords,
   deleteDraftRecord,
+  getOrCreateAttachmentBlobKey,
   listDraftRecords,
+  loadAttachmentBlobKey,
   readDraftRecord,
   writeDraftRecord,
   type DraftRecordBucketName,
 } from "./core/security-store-v4";
 import { newRequestID } from "./crypto";
 import { DraftStorageBucket } from "./gen/remoteagent/core/v1/attachments_pb";
+import { hashBlobStreaming, StreamingSha256 } from "./shared-file-sha256";
 import { hasQuotaExceeded, StorageQuotaError } from "./shared-file-store";
 
 export interface StoredDraftEntry {
@@ -28,17 +31,25 @@ export type ReadLocalSliceResult =
   | { kind: "missing" }
   | { kind: "changed" };
 
+export type HashLocalBlobResult =
+  | { kind: "ok"; sizeBytes: number; sha256: Uint8Array<ArrayBuffer> }
+  | { kind: "missing" }
+  | { kind: "too_large"; sizeBytes: number }
+  | { kind: "changed" };
+
 export interface AttachmentStore {
   readonly hasPersistedPreparedImages: boolean;
   probe(): Promise<boolean>;
   /** Synchronously mints an opaque ref and holds the Blob in memory until persisted or released. */
   stageBlob(blob: Blob | Uint8Array, opts?: { mimeType?: string; ext?: string }): string;
-  /** Stores a newly prepared/thumbnail blob (persisting to OPFS when available). */
+  /** Stores a newly prepared/thumbnail blob (persisting encrypted chunks to OPFS when available). */
   putLocalBlob(blob: Blob | Uint8Array, opts?: { mimeType?: string; ext?: string }): Promise<string>;
-  /** Returns a lazy Blob/File handle for reading or UI preview without loading large files into RAM. */
+  /** Returns a decrypted Blob/File handle for UI preview or image preparation. */
   getLocalBlob(ref: string): Promise<Blob | undefined>;
   /** Synchronous lookup for blobs already staged or cached in memory. */
   peekMemoryBlob(ref: string): Blob | undefined;
+  /** Streams SHA-256 over the local blob without loading large encrypted OPFS files into RAM. */
+  hashLocalBlob(ref: string, maxBytes: number): Promise<HashLocalBlobResult>;
   /** Reads exact [offset, offset+length) bytes after verifying existence and expectedSize. */
   readLocalSlice(ref: string, offset: number, length: number, expectedSize: number): Promise<ReadLocalSliceResult>;
   /** Deletes the given opaque refs from both memory and persistent storage. */
@@ -53,7 +64,13 @@ export interface AttachmentStore {
 
 const OPFS_ROOT_DIR = "remote-agent-attachments";
 const OPFS_BLOBS_DIR = "blobs";
-const STREAM_SLICE_BYTES = 1024 * 1024;
+const OPFS_BLOB_MAGIC = new Uint8Array([0x52, 0x41, 0x42, 0x31]); // "RAB1"
+const OPFS_BLOB_HEADER_BYTES = 16;
+const OPFS_BLOB_CHUNK_BYTES = 256 * 1024;
+const OPFS_GCM_IV_BYTES = 12;
+const OPFS_GCM_TAG_BYTES = 16;
+const OPFS_GCM_OVERHEAD_BYTES = OPFS_GCM_IV_BYTES + OPFS_GCM_TAG_BYTES;
+const TEXT_ENCODER = new TextEncoder();
 
 type IterableDirectoryHandle = FileSystemDirectoryHandle & {
   entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
@@ -190,6 +207,14 @@ export class MemoryAttachmentStore implements AttachmentStore {
     return this.blobs.get(ref);
   }
 
+  async hashLocalBlob(ref: string, maxBytes: number): Promise<HashLocalBlobResult> {
+    const blob = this.blobs.get(ref);
+    if (!blob) return { kind: "missing" };
+    if (maxBytes > 0 && blob.size > maxBytes) return { kind: "too_large", sizeBytes: blob.size };
+    const sha256 = (await hashBlobStreaming(blob, blob.size)) as Uint8Array<ArrayBuffer>;
+    return { kind: "ok", sizeBytes: blob.size, sha256 };
+  }
+
   async readLocalSlice(ref: string, offset: number, length: number, expectedSize: number): Promise<ReadLocalSliceResult> {
     const blob = this.blobs.get(ref);
     if (!blob) return { kind: "missing" };
@@ -261,7 +286,102 @@ export class MemoryAttachmentStore implements AttachmentStore {
   }
 }
 
-async function writeBlobToOpfs(dir: FileSystemDirectoryHandle, name: string, blob: Blob): Promise<void> {
+function opfsBlobChunkAad(owner: string, ref: string, totalSize: number, chunkIndex: number): Uint8Array<ArrayBuffer> {
+  return TEXT_ENCODER.encode(JSON.stringify(["RAB1", owner, ref, totalSize, chunkIndex])) as Uint8Array<ArrayBuffer>;
+}
+
+function buildEncryptedOpfsHeader(totalSize: number, chunkSize: number): Uint8Array<ArrayBuffer> {
+  const buf = new ArrayBuffer(OPFS_BLOB_HEADER_BYTES);
+  const bytes = new Uint8Array(buf);
+  bytes.set(OPFS_BLOB_MAGIC, 0);
+  const view = new DataView(buf);
+  view.setBigUint64(4, BigInt(totalSize), false);
+  view.setUint32(12, chunkSize, false);
+  return bytes;
+}
+
+async function readEncryptedOpfsHeader(file: Blob): Promise<{ totalSize: number; chunkSize: number } | undefined> {
+  if (file.size < OPFS_BLOB_HEADER_BYTES) return undefined;
+  const raw = new Uint8Array(await file.slice(0, OPFS_BLOB_HEADER_BYTES).arrayBuffer());
+  if (raw.byteLength !== OPFS_BLOB_HEADER_BYTES) return undefined;
+  for (let i = 0; i < OPFS_BLOB_MAGIC.length; i++) {
+    if (raw[i] !== OPFS_BLOB_MAGIC[i]) return undefined;
+  }
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const totalBig = view.getBigUint64(4, false);
+  if (totalBig > BigInt(Number.MAX_SAFE_INTEGER)) return undefined;
+  const totalSize = Number(totalBig);
+  const chunkSize = view.getUint32(12, false);
+  if (chunkSize <= 0) return undefined;
+  const chunkCount = totalSize === 0 ? 0 : Math.ceil(totalSize / chunkSize);
+  const expectedFileSize = OPFS_BLOB_HEADER_BYTES + totalSize + chunkCount * OPFS_GCM_OVERHEAD_BYTES;
+  if (file.size !== expectedFileSize) return undefined;
+  return { totalSize, chunkSize };
+}
+
+async function decryptOpfsChunk(
+  file: Blob,
+  ref: string,
+  key: CryptoKey,
+  owner: string,
+  totalSize: number,
+  chunkSize: number,
+  chunkIndex: number,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const totalChunks = Math.ceil(totalSize / chunkSize);
+  const plainStart = chunkIndex * chunkSize;
+  const plainLen = chunkIndex === totalChunks - 1 ? totalSize - plainStart : chunkSize;
+  const fullFrameBytes = chunkSize + OPFS_GCM_OVERHEAD_BYTES;
+  const frameStart = OPFS_BLOB_HEADER_BYTES + chunkIndex * fullFrameBytes;
+  const frameLen = plainLen + OPFS_GCM_OVERHEAD_BYTES;
+  const frame = new Uint8Array(await file.slice(frameStart, frameStart + frameLen).arrayBuffer());
+  if (frame.byteLength !== frameLen) throw new Error("corrupt encrypted opfs chunk");
+  const iv = frame.subarray(0, OPFS_GCM_IV_BYTES);
+  const cipher = frame.subarray(OPFS_GCM_IV_BYTES);
+  const plain = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv, additionalData: opfsBlobChunkAad(owner, ref, totalSize, chunkIndex) },
+    key,
+    cipher,
+  );
+  return new Uint8Array(plain);
+}
+
+async function writeEncryptedStreamToWritable(
+  w: FileSystemWritableFileStream,
+  blob: Blob,
+  ref: string,
+  key: CryptoKey,
+  owner: string,
+): Promise<void> {
+  const totalSize = blob.size;
+  await w.write(buildEncryptedOpfsHeader(totalSize, OPFS_BLOB_CHUNK_BYTES));
+  let chunkIndex = 0;
+  for (let off = 0; off < totalSize; off += OPFS_BLOB_CHUNK_BYTES) {
+    const end = Math.min(totalSize, off + OPFS_BLOB_CHUNK_BYTES);
+    const plain = await blob.slice(off, end).arrayBuffer();
+    const iv = crypto.getRandomValues(new Uint8Array(OPFS_GCM_IV_BYTES));
+    const cipher = new Uint8Array(
+      await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv, additionalData: opfsBlobChunkAad(owner, ref, totalSize, chunkIndex) },
+        key,
+        plain,
+      ),
+    );
+    const frame = new Uint8Array(OPFS_GCM_IV_BYTES + cipher.byteLength);
+    frame.set(iv, 0);
+    frame.set(cipher, OPFS_GCM_IV_BYTES);
+    await w.write(frame);
+    chunkIndex++;
+  }
+}
+
+async function writeEncryptedBlobToOpfs(
+  dir: FileSystemDirectoryHandle,
+  name: string,
+  blob: Blob,
+  key: CryptoKey,
+  owner: string,
+): Promise<void> {
   const tmpName = `${name}.tmp`;
   const targetHandle = await dir.getFileHandle(tmpName, { create: true });
   if (typeof targetHandle.createWritable !== "function") {
@@ -270,11 +390,7 @@ async function writeBlobToOpfs(dir: FileSystemDirectoryHandle, name: string, blo
   }
   const w = await targetHandle.createWritable({ keepExistingData: false });
   try {
-    for (let off = 0; off < blob.size; off += STREAM_SLICE_BYTES) {
-      const end = Math.min(blob.size, off + STREAM_SLICE_BYTES);
-      const buf = await blob.slice(off, end).arrayBuffer();
-      if (buf.byteLength > 0) await w.write(new Uint8Array(buf));
-    }
+    await writeEncryptedStreamToWritable(w, blob, name, key, owner);
     await w.close();
   } catch (err) {
     try {
@@ -295,11 +411,7 @@ async function writeBlobToOpfs(dir: FileSystemDirectoryHandle, name: string, blo
   const finalHandle = await dir.getFileHandle(name, { create: true });
   const fw = await finalHandle.createWritable({ keepExistingData: false });
   try {
-    for (let off = 0; off < blob.size; off += STREAM_SLICE_BYTES) {
-      const end = Math.min(blob.size, off + STREAM_SLICE_BYTES);
-      const buf = await blob.slice(off, end).arrayBuffer();
-      if (buf.byteLength > 0) await fw.write(new Uint8Array(buf));
-    }
+    await writeEncryptedStreamToWritable(fw, blob, name, key, owner);
     await fw.close();
   } catch (err) {
     try {
@@ -314,9 +426,75 @@ async function writeBlobToOpfs(dir: FileSystemDirectoryHandle, name: string, blo
   }
 }
 
+async function readEncryptedOpfsSlice(
+  file: Blob,
+  ref: string,
+  key: CryptoKey,
+  owner: string,
+  offset: number,
+  length: number,
+  expectedSize: number,
+): Promise<ReadLocalSliceResult> {
+  const hdr = await readEncryptedOpfsHeader(file);
+  if (!hdr) return { kind: "changed" };
+  if (hdr.totalSize !== expectedSize) return { kind: "changed" };
+  if (length === 0) return { kind: "ok", data: new Uint8Array() };
+  if (offset < 0 || length < 0 || offset + length > hdr.totalSize) return { kind: "changed" };
+  const firstChunk = Math.floor(offset / hdr.chunkSize);
+  const lastChunk = Math.floor((offset + length - 1) / hdr.chunkSize);
+  const out = new Uint8Array(length);
+  let outPos = 0;
+  for (let idx = firstChunk; idx <= lastChunk; idx++) {
+    const plain = await decryptOpfsChunk(file, ref, key, owner, hdr.totalSize, hdr.chunkSize, idx);
+    const chunkStart = idx * hdr.chunkSize;
+    const copyStart = Math.max(offset, chunkStart) - chunkStart;
+    const copyEnd = Math.min(offset + length, chunkStart + plain.byteLength) - chunkStart;
+    out.set(plain.subarray(copyStart, copyEnd), outPos);
+    outPos += copyEnd - copyStart;
+  }
+  return { kind: "ok", data: out };
+}
+
+async function decryptOpfsBlobFull(file: Blob, ref: string, key: CryptoKey, owner: string): Promise<Blob> {
+  const hdr = await readEncryptedOpfsHeader(file);
+  if (!hdr) throw new Error("corrupt encrypted opfs header");
+  const mime = mimeFromRef(ref) || "application/octet-stream";
+  if (hdr.totalSize === 0) return new Blob([], { type: mime });
+  const totalChunks = Math.ceil(hdr.totalSize / hdr.chunkSize);
+  const parts: Uint8Array<ArrayBuffer>[] = [];
+  for (let idx = 0; idx < totalChunks; idx++) {
+    parts.push(await decryptOpfsChunk(file, ref, key, owner, hdr.totalSize, hdr.chunkSize, idx));
+  }
+  return new Blob(parts, { type: mime });
+}
+
+async function hashEncryptedOpfsBlob(
+  file: Blob,
+  ref: string,
+  key: CryptoKey,
+  owner: string,
+  maxBytes: number,
+): Promise<HashLocalBlobResult> {
+  const hdr = await readEncryptedOpfsHeader(file);
+  if (!hdr) return { kind: "changed" };
+  if (maxBytes > 0 && hdr.totalSize > maxBytes) {
+    return { kind: "too_large", sizeBytes: hdr.totalSize };
+  }
+  const hasher = new StreamingSha256();
+  if (hdr.totalSize > 0) {
+    const totalChunks = Math.ceil(hdr.totalSize / hdr.chunkSize);
+    for (let idx = 0; idx < totalChunks; idx++) {
+      const plain = await decryptOpfsChunk(file, ref, key, owner, hdr.totalSize, hdr.chunkSize, idx);
+      hasher.update(plain);
+    }
+  }
+  return { kind: "ok", sizeBytes: hdr.totalSize, sha256: hasher.digest() as Uint8Array<ArrayBuffer> };
+}
+
 /** Persistent Web AttachmentStore:
  * - DRAFT/OUTBOX records are sealed with non-extractable AES-GCM-256 keys in IndexedDB (v4 security store).
- * - Local attachment blobs (source/prepared/thumb) are stored in OPFS (streamed in 1 MiB slices) when available,
+ * - Local attachment blobs (source/prepared/thumb) are stored as chunked AES-GCM-256 encrypted files ("RAB1",
+ *   256 KiB chunks, AAD bound to owner+ref+totalSize+chunkIndex) in OPFS using a non-extractable key in v4 META,
  *   falling back cleanly to in-memory storage when OPFS or createWritable is unavailable. */
 export class WebAttachmentStore implements AttachmentStore {
   private readonly stagedBlobs = new Map<string, Blob>();
@@ -324,15 +502,18 @@ export class WebAttachmentStore implements AttachmentStore {
   private readonly fallbackRecords = new Map<string, Uint8Array>();
   private opfsAvailable: boolean | undefined;
   private probePromise?: Promise<boolean>;
+  private blobKey?: CryptoKey;
 
   constructor(
     private readonly account?: { server: string; deviceId: string },
     private readonly idb?: IDBFactory,
+    private readonly getOpfsRoot?: () => Promise<FileSystemDirectoryHandle>,
   ) {}
 
   get hasPersistedPreparedImages(): boolean {
+    if (!this.useIdb()) return false;
     if (this.opfsAvailable !== undefined) return this.opfsAvailable;
-    return typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function";
+    return this.getOpfsRoot !== undefined || (typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function");
   }
 
   private useIdb(): boolean {
@@ -343,16 +524,51 @@ export class WebAttachmentStore implements AttachmentStore {
     return this.idb ?? indexedDB;
   }
 
+  private ownerBinding(): string {
+    return JSON.stringify([this.account?.server ?? "", this.account?.deviceId ?? ""]);
+  }
+
+  private async ensureBlobKey(): Promise<CryptoKey> {
+    if (this.blobKey) return this.blobKey;
+    const key = await getOrCreateAttachmentBlobKey(this.account!.server, this.account!.deviceId, this.getIDB());
+    this.blobKey = key;
+    return key;
+  }
+
+  private async loadExistingBlobKey(): Promise<CryptoKey | undefined> {
+    if (this.blobKey) return this.blobKey;
+    if (!this.useIdb()) return undefined;
+    const key = await loadAttachmentBlobKey(this.account!.server, this.account!.deviceId, this.getIDB());
+    if (key) this.blobKey = key;
+    return key;
+  }
+
+  private async opfsRoot(): Promise<FileSystemDirectoryHandle | undefined> {
+    if (this.getOpfsRoot) return this.getOpfsRoot();
+    if (typeof navigator === "undefined" || typeof navigator.storage?.getDirectory !== "function") {
+      return undefined;
+    }
+    return navigator.storage.getDirectory();
+  }
+
   async probe(): Promise<boolean> {
+    if (!this.useIdb()) {
+      this.opfsAvailable = false;
+      return false;
+    }
     if (this.opfsAvailable !== undefined) return this.opfsAvailable;
     if (this.probePromise) return this.probePromise;
     this.probePromise = (async () => {
-      if (typeof navigator === "undefined" || typeof navigator.storage?.getDirectory !== "function") {
+      if (typeof crypto === "undefined" || !crypto.subtle) {
         this.opfsAvailable = false;
         return false;
       }
       try {
-        const root = await navigator.storage.getDirectory();
+        const root = await this.opfsRoot();
+        if (!root) {
+          this.opfsAvailable = false;
+          return false;
+        }
         const attDir = await root.getDirectoryHandle(OPFS_ROOT_DIR, { create: true });
         const blobsDir = await attDir.getDirectoryHandle(OPFS_BLOBS_DIR, { create: true });
         const testName = ".probe";
@@ -370,13 +586,17 @@ export class WebAttachmentStore implements AttachmentStore {
   }
 
   private async blobsDir(create: boolean): Promise<FileSystemDirectoryHandle | undefined> {
-    if (this.opfsAvailable === false) return undefined;
+    if (!this.useIdb() || this.opfsAvailable === false) return undefined;
     if (this.opfsAvailable === undefined) {
       const ok = await this.probe();
       if (!ok) return undefined;
     }
     try {
-      const root = await navigator.storage.getDirectory();
+      const root = await this.opfsRoot();
+      if (!root) {
+        this.opfsAvailable = false;
+        return undefined;
+      }
       const attDir = await root.getDirectoryHandle(OPFS_ROOT_DIR, { create });
       return await attDir.getDirectoryHandle(OPFS_BLOBS_DIR, { create });
     } catch (err) {
@@ -403,7 +623,8 @@ export class WebAttachmentStore implements AttachmentStore {
       return ref;
     }
     try {
-      await writeBlobToOpfs(dir, ref, b);
+      const key = await this.ensureBlobKey();
+      await writeEncryptedBlobToOpfs(dir, ref, b, key, this.ownerBinding());
       return ref;
     } catch (err) {
       if (hasQuotaExceeded(err)) throw new StorageQuotaError();
@@ -417,6 +638,8 @@ export class WebAttachmentStore implements AttachmentStore {
   private async persistStagedRefs(refs: readonly string[]): Promise<void> {
     if (!refs.length) return;
     let dir: FileSystemDirectoryHandle | undefined;
+    let key: CryptoKey | undefined;
+    const owner = this.ownerBinding();
     for (const ref of refs) {
       const staged = this.stagedBlobs.get(ref);
       if (!staged) continue;
@@ -432,7 +655,8 @@ export class WebAttachmentStore implements AttachmentStore {
         continue;
       }
       try {
-        await writeBlobToOpfs(dir, ref, staged);
+        if (!key) key = await this.ensureBlobKey();
+        await writeEncryptedBlobToOpfs(dir, ref, staged, key, owner);
         this.stagedBlobs.delete(ref);
       } catch (err) {
         if (hasQuotaExceeded(err)) throw new StorageQuotaError();
@@ -447,25 +671,61 @@ export class WebAttachmentStore implements AttachmentStore {
     return this.stagedBlobs.get(ref) ?? this.memoryBlobs.get(ref);
   }
 
-  async getLocalBlob(ref: string): Promise<Blob | undefined> {
-    const mem = this.peekMemoryBlob(ref);
-    if (mem) return mem;
+  private async openOpfsFile(ref: string): Promise<File | undefined> {
     const dir = await this.blobsDir(false);
     if (!dir) return undefined;
     try {
-      const file = await (await dir.getFileHandle(ref)).getFile();
-      const mime = mimeFromRef(ref);
-      return mime && !file.type ? new Blob([file], { type: mime }) : file;
+      return await (await dir.getFileHandle(ref)).getFile();
     } catch (err) {
       if (isNotFound(err)) return undefined;
       throw err;
     }
   }
 
+  async getLocalBlob(ref: string): Promise<Blob | undefined> {
+    const mem = this.peekMemoryBlob(ref);
+    if (mem) return mem;
+    const file = await this.openOpfsFile(ref);
+    if (!file) return undefined;
+    const key = await this.loadExistingBlobKey();
+    if (!key) return undefined;
+    try {
+      return await decryptOpfsBlobFull(file, ref, key, this.ownerBinding());
+    } catch {
+      return undefined;
+    }
+  }
+
+  async hashLocalBlob(ref: string, maxBytes: number): Promise<HashLocalBlobResult> {
+    const mem = this.peekMemoryBlob(ref);
+    if (mem) {
+      if (maxBytes > 0 && mem.size > maxBytes) return { kind: "too_large", sizeBytes: mem.size };
+      const sha256 = (await hashBlobStreaming(mem, mem.size)) as Uint8Array<ArrayBuffer>;
+      return { kind: "ok", sizeBytes: mem.size, sha256 };
+    }
+    const file = await this.openOpfsFile(ref);
+    if (!file) return { kind: "missing" };
+    const key = await this.loadExistingBlobKey();
+    if (!key) return { kind: "missing" };
+    try {
+      return await hashEncryptedOpfsBlob(file, ref, key, this.ownerBinding(), maxBytes);
+    } catch {
+      return { kind: "changed" };
+    }
+  }
+
   async readLocalSlice(ref: string, offset: number, length: number, expectedSize: number): Promise<ReadLocalSliceResult> {
-    const blob = await this.getLocalBlob(ref);
-    if (!blob) return { kind: "missing" };
-    return readSliceFromBlob(blob, offset, length, expectedSize);
+    const mem = this.peekMemoryBlob(ref);
+    if (mem) return readSliceFromBlob(mem, offset, length, expectedSize);
+    const file = await this.openOpfsFile(ref);
+    if (!file) return { kind: "missing" };
+    const key = await this.loadExistingBlobKey();
+    if (!key) return { kind: "missing" };
+    try {
+      return await readEncryptedOpfsSlice(file, ref, key, this.ownerBinding(), offset, length, expectedSize);
+    } catch {
+      return { kind: "changed" };
+    }
   }
 
   async deleteLocalRefs(refs: readonly string[]): Promise<void> {
@@ -552,10 +812,16 @@ export class WebAttachmentStore implements AttachmentStore {
     this.stagedBlobs.clear();
     this.memoryBlobs.clear();
     this.fallbackRecords.clear();
+    this.blobKey = undefined;
     if (this.useIdb()) {
       await clearAllDraftRecords(this.getIDB()).catch(() => undefined);
     }
-    await clearDefaultAttachmentOpfs();
+    const root = await this.opfsRoot().catch(() => undefined);
+    if (root) {
+      await removeQuiet(root, OPFS_ROOT_DIR, true);
+    } else {
+      await clearDefaultAttachmentOpfs();
+    }
   }
 }
 
