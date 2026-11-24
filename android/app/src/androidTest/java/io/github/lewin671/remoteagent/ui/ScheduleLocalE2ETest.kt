@@ -64,8 +64,8 @@ class ScheduleLocalE2ETest {
         ui.onNodeWithText("完成").performClick()
         }
         val remote = requireNotNull(RaApp.instance.remote.value)
-        ui.waitUntil(60_000) { remote.state.value.machines.values.any { it.online } }
-        val machine=remote.state.value.machines.values.first { it.online }.id
+        ui.waitUntil(60_000) { remote.coreHost.syncStateView.value.machinesList.any { it.online } }
+        val machine=remote.coreHost.syncStateView.value.machinesList.first { it.online }.machineId
         // Seed a throwaway project preference; task creation and every task operation use the UI.
         val project = requireNotNull(args.getString("scheduleProject"))
         remote.coreHost.openNewSession(project)

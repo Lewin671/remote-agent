@@ -34,11 +34,8 @@ class AuthorityBackupTest {
     fun handoffOfferRequiresBackupConfirmationAndFailureRetainsTheCode() {
         var attempts = 0
         var offerPublished by mutableStateOf(false)
-        val state = RemoteState()
         show {
                 HandoffPreparationContent(
-                    state = state,
-                    self = "self",
                     hasHandoffOffer = offerPublished,
                     prepareCode = { "synthetic-offline-code" },
                 ) {
@@ -65,7 +62,7 @@ class AuthorityBackupTest {
         var attempts = 0
         var backs = 0
         show {
-                RotateRecoveryContent(RemoteState(isAuthority = true), { "synthetic-offline-code" }, {
+                RotateRecoveryContent(io.github.lewin671.remoteagent.core.proto.SyncStateView.newBuilder().setIsManager(true).build(), { "synthetic-offline-code" }, {
                     attempts++
                     if (attempts == 1) throw IllegalStateException("save failed")
                 }, { backs++ })

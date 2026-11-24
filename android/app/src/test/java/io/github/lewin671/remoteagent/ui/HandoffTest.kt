@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.showForTest
+
 import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.CompositionLocalProvider
@@ -94,5 +96,21 @@ class HandoffTest {
             ui.onNodeWithText("交接给 $name").assertDoesNotExist()
         }
         ui.onNodeWithText("等待接任设备生成并保存恢复码").assertExists()
+    }
+
+    @Test
+    fun rendersCoreHandoffCandidatesDirectly() {
+        val candidates = listOf(
+            io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.newBuilder()
+                .setDeviceId("d-1")
+                .setDisplayName("Chrome · macOS · a1b2")
+                .build(),
+        )
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                Column { HandoffControlsContent(candidates = candidates, onTransfer = {}) }
+            }
+        }
+        ui.onNodeWithText("交接给 Chrome · macOS · a1b2").assertExists()
     }
 }

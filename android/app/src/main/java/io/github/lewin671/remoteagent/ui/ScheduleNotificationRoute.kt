@@ -1,8 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.proto.ScheduleSessionStripViewModel
 import io.github.lewin671.remoteagent.core.proto.SchedulesViewModel
+import io.github.lewin671.remoteagent.core.proto.SyncSessionView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -14,11 +14,11 @@ internal sealed interface ScheduleNotificationRoute {
 
 internal fun cachedScheduleNotificationRoute(
     session: String,
-    view: SessionView?,
+    view: SyncSessionView?,
     schedules: SchedulesViewModel? = null,
     strip: ScheduleSessionStripViewModel? = null,
 ): ScheduleNotificationRoute? {
-    val info = view?.info
+    val info = view?.takeIf { it.hasInfo() }?.info
     if (info != null) {
         if (info.taskOwned && info.scheduledTaskId.isNotEmpty() && view.machineId.isNotEmpty()) {
             return ScheduleNotificationRoute.Task(view.machineId, info.scheduledTaskId)

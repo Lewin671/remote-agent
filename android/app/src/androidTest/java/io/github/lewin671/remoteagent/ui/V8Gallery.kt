@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.showForTest
+import io.github.lewin671.remoteagent.core.toTestSyncStateView
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -438,28 +441,28 @@ class V8Gallery {
 
     @Test fun accountSecurityAuthority() {
         val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000)
-        shoot("50-security-authority", state) { AccountSecurityContent(state) }
+        shoot("50-security-authority", state) { AccountSecurityContent(state.toTestSyncStateView(remote.account.deviceId)) }
     }
 
     @Test fun accountSecurityMember() {
         val state = accountState().copy(authorityDeviceId = "b71c00000000b71c", leaseEndMs = now + 48 * 3600_000)
-        shoot("51-security-member", state) { AccountSecurityContent(state) }
+        shoot("51-security-member", state) { AccountSecurityContent(state.toTestSyncStateView(remote.account.deviceId)) }
     }
 
     @Test fun accountSecurityPending() {
         val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000, recoveryPending = true, recoveryReadyMs = now + 24 * 3600_000)
-        shoot("52-security-pending", state) { AccountSecurityContent(state, pending = true) }
+        shoot("52-security-pending", state) { AccountSecurityContent(state.toTestSyncStateView(remote.account.deviceId), pending = true) }
     }
 
     @Test fun recoveryCode() {
         val state = accountState().copy(isAuthority = true)
-        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(state, { "synthetic-offline-code" }, {}, {}) }
+        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(state.toTestSyncStateView(remote.account.deviceId), { "synthetic-offline-code" }, {}, {}) }
     }
 
     @Test fun takeover() {
         val state = accountState().copy(authorityDeviceId = "b71c00000000b71c")
         shoot("54-takeover", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) {
-            HandoffPreparationContent(state, "self", prepareCode = { "synthetic-offline-code" }) {}
+            HandoffPreparationContent(state.toTestSyncStateView(remote.account.deviceId), prepareCode = { "synthetic-offline-code" }) {}
         }
     }
 

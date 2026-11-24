@@ -34,9 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.coreTextToMessageText
-import io.github.lewin671.remoteagent.core.machineName
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import kotlinx.coroutines.delay
@@ -253,8 +251,6 @@ fun Confirm(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) = Alert(title = title, text = text, confirm = confirm, danger = danger, onDismiss = onDismiss, onConfirm = onConfirm)
-
-fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id, copy = ::sessionText)
 
 object ScheduleJump {
     val requested = mutableStateMapOf<String, Long>()

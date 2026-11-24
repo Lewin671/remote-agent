@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
                         !loaded || (r != null && !cacheReady) ->
                             io.github.lewin671.remoteagent.ui.StartupShell(null)
                         r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
-                        r.state.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
+                        r.coreHost.syncStateView.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
                         // The first-level pages run under the system bars; every other page keeps clear of them.
                         else -> Main(r)
                     }
@@ -186,12 +186,12 @@ class MainActivity : ComponentActivity() {
                         cached = {
                             io.github.lewin671.remoteagent.ui.cachedScheduleNotificationRoute(
                                 sid,
-                                remote.state.value.sessions[sid],
+                                remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid },
                                 remote.schedulesView.value,
                             )
                         },
                         load = {
-                            remote.state.first { it.loaded || it.removed }
+                            remote.coreHost.syncStateView.first { it.machinesListed || it.sessionsListed || it.prefsLoaded || it.removed }
                             remote.fetchSession(sid)
                         },
                     )
@@ -210,7 +210,7 @@ class MainActivity : ComponentActivity() {
                     notificationScope.launch {
                         kotlinx.coroutines.withTimeoutOrNull(3_000) {
                             val machine = (destination as? io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task)?.machineId
-                                ?: remote.state.value.sessions[sid]?.machineId
+                                ?: remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId
                             if (!machine.isNullOrEmpty()) remote.coreHost.refreshSchedules(machine)
                         }
                     }

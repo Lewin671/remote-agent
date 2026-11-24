@@ -76,11 +76,11 @@ class AdmissionFlowMeasurementTest {
         try {
             control("reset")
             remote.start()
-            withTimeout(10000) { remote.state.first { it.conn == ConnState.ONLINE && it.sessions[sid] != null } }
+            withTimeout(10000) { remote.coreHost.syncStateView.first { it.connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED && it.sessionsList.any { s -> s.sessionId == sid } } }
             val feed = remote.watchSession(sid)
             follow = launch(start = CoroutineStart.UNDISPATCHED) { feed.collect {} }
             withTimeout(10000) { feed.first { it.header.title.literal.startsWith("owner-read-") } }
-            val mid = remote.state.value.sessions[sid]?.machineId.orEmpty()
+            val mid = remote.coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId.orEmpty()
             repeat(20) { remote.coreHost.runMachineCommand(mid, sid, approval(it)) }
             val load = control("start"); loaded = true
             assertEquals(4, load.getValue("normal").jsonPrimitive.int)

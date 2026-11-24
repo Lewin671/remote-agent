@@ -38,7 +38,9 @@ class ShowForTestTest {
                 RemoteState(machines = mapOf("m" to m), loaded = true),
                 sessions = mapOf("s" to vm),
             )
-            assertEquals(m, remote.state.value.machines["m"])
+            val gotMachine = remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == "m" }
+            assertEquals("m", gotMachine?.machineId)
+            assertEquals(true, gotMachine?.online)
             val got = remote.watchSession("s").first()
             // Nothing was fetched over the fixed history: the session is not in the lists.
             assertEquals("你好", got.timeline.itemsList.single().agentMessage.markdown)
@@ -57,7 +59,7 @@ class ShowForTestTest {
         try {
             val expected = RemoteState(conn = ConnState.ONLINE, loaded = true)
             remote.showForTest(expected)
-            assertEquals(expected, remote.state.value)
+            assertEquals(io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED, remote.coreHost.syncStateView.value.connection)
         } finally {
             remote.close()
         }

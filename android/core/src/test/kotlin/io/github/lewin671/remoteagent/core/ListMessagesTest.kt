@@ -22,6 +22,5 @@ class ListMessagesTest {
         assertEquals("运行中", UiMessages.listStateRunning().messageText().testText())
         assertEquals("Running", UiMessages.listStateRunning().messageText().testText("en"))
         assertEquals("Unknown project", listProjectName("").testText("en"))
-        assertEquals("Unknown computer", listMachineName(null).testText("en"))
     }
 }

@@ -5,11 +5,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
-fun machineName(m: MachineView?, id: String = "", copy: MessageResolver): String =
-    m?.meta?.hostname?.removeSuffix(".local")?.takeIf { it.isNotEmpty() }
-        ?: m?.id?.take(8)
-        ?: id.take(8).ifEmpty { copy(UiMessages.commonUnknownComputer()) }
-
 /** Table rows in list previews keep their words, without pipes or alignment rows. */
 private fun previewTableText(text: String): String {
     val lines = text.split("\n")
@@ -55,43 +50,3 @@ fun clock(ms: Long): String {
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s % 3600 / 60, s % 60)
     else "%d:%02d".format(s / 60, s % 60)
 }
-
-// --- devices and where actions came from ---
-
-/** The account name, or a readable platform name disambiguated across all clients. */
-fun clientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String =
-    d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id, clients, copy = copy) }
-
-private sealed interface ClientBase {
-    data class Raw(val value: String) : ClientBase
-    data object Browser : ClientBase
-    data object Client : ClientBase
-
-    fun display(copy: MessageResolver): String = when (this) {
-        is Raw -> value
-        Browser -> copy(UiMessages.securityBrowser())
-        Client -> copy(UiMessages.securityClient())
-    }
-}
-
-private fun clientBase(d: DeviceView?): ClientBase {
-    val meta = d?.meta
-    val description = meta?.description.orEmpty().trim()
-    val model = description.substringAfter(" · ", "").trim()
-    return when (meta?.platform) {
-        "web" -> description.replace(" on ", " · ").takeIf { it.isNotEmpty() }?.let(ClientBase::Raw) ?: ClientBase.Browser
-        "android" -> ClientBase.Raw("Android" + if (model.isNotEmpty()) " · $model" else "")
-        "ios" -> ClientBase.Raw(model.ifEmpty { "iOS" })
-        else -> ClientBase.Client
-    }
-}
-
-/** Compare raw metadata / fallback identities, including clients with a user-supplied name. */
-fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String {
-    val base = clientBase(d)
-    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBase(it) == base }
-    return base.display(copy) + if (duplicate) " · ${shortId(id)}" else ""
-}
-
-/** The last four hex digits of a device ID, as shown next to a name. */
-private fun shortId(id: String): String = id.takeLast(4)

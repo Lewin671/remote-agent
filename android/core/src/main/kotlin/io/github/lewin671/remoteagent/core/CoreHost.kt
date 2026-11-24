@@ -195,7 +195,6 @@ class CoreHost(
     var onScheduleLoadSeen: (ScheduleLoadSeenEffect) -> Unit = {}
     var onScheduleSaveSeen: (ScheduleSaveSeenEffect) -> Unit = {}
     var onScheduleDismissNotifications: (ScheduleDismissNotificationsEffect) -> Unit = {}
-    var onRender: (List<ScreenTarget>) -> Unit = {}
     var onUsageCacheWrite: (UsageCacheWriteEffect) -> Unit = {}
     var onHydrateUsageCache: (String) -> Unit = {}
     var onSharedFileScanLocal: (SharedFileScanLocalEffect) -> Unit = {}
@@ -510,7 +509,6 @@ class CoreHost(
         if (!testOverrideViews) {
             for (target in targets) refreshScreenOnWorker(target)
         }
-        onRender(targets)
     }
 
     private fun handleEffectOnWorker(effect: Effect) {
@@ -527,7 +525,6 @@ class CoreHost(
                     if (!testOverrideViews) {
                         for (target in targets) refreshScreenOnWorker(target)
                     }
-                    onRender(targets)
                 }
             }
             Effect.EffectCase.OPEN_STREAM -> onOpenStream(effect.openStream)

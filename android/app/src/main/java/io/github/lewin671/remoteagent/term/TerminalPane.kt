@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.term
 import io.github.lewin671.remoteagent.ui.uiText
 import io.github.lewin671.remoteagent.ui.sessionText
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.isSessionMachineReady
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -186,15 +187,15 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     val scope = rememberCoroutineScope()
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val transportState = remote.state.collectAsStateWithLifecycle().value
-    val online = transportState.peer(transportState.sessions[sessionId]?.machineId).ready
+    val transportState = remote.coreHost.syncStateView.collectAsStateWithLifecycle().value
+    val online = transportState.isSessionMachineReady(sessionId)
     val waitingReachability = !online && (transportState.reachabilityUnknown || transportState.displayGrace)
     DisposableEffect(term, owner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_START -> {
-                    val currentState = remote.state.value
-                    val ready = currentState.peer(currentState.sessions[sessionId]?.machineId).ready
+                    val currentState = remote.coreHost.syncStateView.value
+                    val ready = currentState.isSessionMachineReady(sessionId)
                     if (ready) term.connect()
                     else if (!currentState.reachabilityUnknown && !currentState.displayGrace) term.close()
                 }
@@ -402,7 +403,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                                 style = T.s15, color = CardColors.text.copy(alpha = .7f), modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                             )
                             var details by remember { mutableIntStateOf(0) }
-                            CardButton(copy(UiMessages.terminalReconnect()), { if (remote.state.value.peer(remote.state.value.sessions[sessionId]?.machineId).ready) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
+                            CardButton(copy(UiMessages.terminalReconnect()), { if (remote.coreHost.syncStateView.value.isSessionMachineReady(sessionId)) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
                             Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.Center) {
                                 Text(if (details % 2 == 1) copy(UiMessages.terminalAndroidHideDetails()) else copy(UiMessages.terminalViewDetails()), style = T.s13, color = CardColors.link)
                             }

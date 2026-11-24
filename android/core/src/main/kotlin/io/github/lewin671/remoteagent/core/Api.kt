@@ -195,15 +195,25 @@ class CommandException(
 }
 
 /** Short text for an error, without content. */
-fun errorText(e: Throwable, state: RemoteState? = null): MessageText = localized { copy ->
+fun errorText(e: Throwable, sync: io.github.lewin671.remoteagent.core.proto.SyncStateView? = null): MessageText = localized { copy ->
     when (e) {
         is MessageFailure -> e.display.resolve(copy)
         is SecurityFailure -> when (e.code) {
             "unavailable" -> copy(UiMessages.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote())
             "invalid", "untrusted" -> copy(UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed())
             "conflict" -> copy(UiMessages.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd())
-            "lease" -> copy(UiMessages.errorsAndroidRemoteControlAuthorizationExpiredCannotSaveChangesControlSessionsOr(
-                state?.renewalAdvice?.resolve(copy) ?: copy(UiMessages.securityAndroidRenewOnAuthority())))
+            "lease" -> {
+                val advice = when {
+                    sync == null -> copy(UiMessages.securityAndroidRenewOnAuthority())
+                    sync.isManager -> copy(UiMessages.securityRenewNow())
+                    else -> {
+                        val name = if (sync.hasManagerName()) coreTextToMessageText(sync.managerName).resolve(copy) else ""
+                        if (name.isNotEmpty()) copy(UiMessages.errorsAndroidOpenValue1ToRenew(name))
+                        else copy(UiMessages.securityAndroidRenewOnAuthority())
+                    }
+                }
+                copy(UiMessages.errorsAndroidRemoteControlAuthorizationExpiredCannotSaveChangesControlSessionsOr(advice))
+            }
             "clock" -> copy(UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerMembershipState())
             else -> e.message ?: copy(UiMessages.errorsAndroidSecurityStateUnavailable())
         }

@@ -37,6 +37,6 @@ internal fun sessionText(message: UiMessage): String =
 
 internal fun sessionText(message: io.github.lewin671.remoteagent.core.MessageText): String = message.resolve(::sessionText)
 
-fun displayError(error: Throwable, state: io.github.lewin671.remoteagent.core.RemoteState? = null,
+fun displayError(error: Throwable, sync: io.github.lewin671.remoteagent.core.proto.SyncStateView? = null,
     copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String =
-    io.github.lewin671.remoteagent.core.errorText(error, state).resolve(copy)
+    io.github.lewin671.remoteagent.core.errorText(error, sync).resolve(copy)

@@ -4,10 +4,12 @@ import java.time.Duration
 // crypto, pairing, sync and event reduction, all testable on the JVM.
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    `java-test-fixtures`
 }
 
 kotlin {
     jvmToolchain(17)
+    target.compilations.getByName("testFixtures").associateWith(target.compilations.getByName("main"))
 }
 
 sourceSets {

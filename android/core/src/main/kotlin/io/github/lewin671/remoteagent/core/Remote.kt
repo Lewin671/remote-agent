@@ -105,7 +105,6 @@ class Remote(
 
     private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
-    @Volatile private var relayObservation = RemoteState()
     private val directServerHost: String =
         if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
     private val directConfiguredStun: String = stunUrls?.joinToString(",") ?: ""
@@ -218,27 +217,8 @@ class Remote(
         api = api,
         sockets = { socketFactory ?: streamHttp },
         token = { currentToken() },
-        observe = { id ->
-            relayObservation.let {
-                val directReady = coreHost.syncStateView.value.machinesList.firstOrNull { m -> m.machineId == id }?.directReady == true
-                val base = RelayPath.discovery(
-                    it.machines[id],
-                    ready = directReady || it.conn == ConnState.ONLINE,
-                    authorized = !it.removed,
-                    unlinked = it.unlinked,
-                )
-                base.copy(
-                    reachable = directReady || it.machines[id]?.online == true,
-                    relayRequired = !directReady,
-                    knownOffline = !directReady && it.machines[id]?.online == false,
-                    protocolVersion = if (directReady) PEER_PROTOCOL_VERSION else base.protocolVersion,
-                    capabilities = base.capabilities,
-                )
-            }
-        },
     ))
 
-    fun peer(machineId: String?) = state.value.peer(machineId)
     fun directEnabled(machineId: String): Boolean =
         runCatching { directPrefs.isEnabled(account.server, account.deviceId, machineId) }.getOrDefault(true)
     fun setDirectEnabled(machineId: String, enabled: Boolean) = coreHost.updateDirectPreference(machineId, enabled)
@@ -331,7 +311,7 @@ class Remote(
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
     fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> {
-        state.value.sessions[sid]?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
+        coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
         return coreHost.watchSession(sid, initialWindow)
     }
 
@@ -380,38 +360,11 @@ class Remote(
     fun loadEarlierSessionHistory(sid: String) =
         coreHost.loadEarlierSessionHistory(sid)
 
-    // --- Transitional Step 4 view & schedule projection ---
-
-    @Volatile private var testStateOverride: RemoteState? = null
-    private val _testStateFlow = MutableStateFlow<RemoteState?>(null)
     private val pendingSessionLookups = ConcurrentHashMap<String, java.util.concurrent.CopyOnWriteArrayList<CompletableDeferred<Boolean>>>()
-    private val _networkAvailableFlow = MutableStateFlow(true)
-    private val _state = MutableStateFlow(RemoteState())
-    val state: StateFlow<RemoteState> = _state.asStateFlow()
-
-    private fun updateProjectedStateNow() {
-        val next = testStateOverride ?: coreHost.syncStateView.value.toRemoteState(networkAvailable)
-        relayObservation = next
-        _state.value = next
-    }
 
     init {
         coreHost.onDirectPreference = { eff ->
             runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
-        }
-        coreHost.onRender = { targets ->
-            if (io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE in targets) {
-                updateProjectedStateNow()
-            }
-        }
-        scope.launch {
-            combine(
-                coreHost.syncStateView,
-                _networkAvailableFlow,
-                _testStateFlow,
-            ) { syncView, net, override ->
-                (override ?: syncView.toRemoteState(net)).also { relayObservation = it }
-            }.collect { _state.value = it }
         }
     }
 
@@ -713,7 +666,6 @@ class Remote(
             runCatching { securityStore.clearLoginToken(account.server, account.deviceId) }
         }
         coreHost.dispatchAndWait(CoreEvent.getDefaultInstance())
-        updateProjectedStateNow()
         pruneUntrustedCaches()
     }
 
@@ -1450,7 +1402,6 @@ class Remote(
         val realChange = lastNetworkSignature != null && (lastNetworkSignature != signature || networkAvailable != available)
         lastNetworkSignature = signature
         networkAvailable = available
-        _networkAvailableFlow.value = available
         if (realChange) {
             inFlightToken?.completeExceptionally(NetworkResetException())
             inFlightToken = null
@@ -1575,7 +1526,7 @@ class Remote(
         coreHost.closeSessionImageViewer(sid)
 
     suspend fun fetchSession(sid: String): Boolean {
-        if (state.value.sessions[sid] != null) return true
+        if (coreHost.syncStateView.value.sessionsList.any { it.sessionId == sid }) return true
         val deferred = CompletableDeferred<Boolean>()
         pendingSessionLookups.computeIfAbsent(sid) { java.util.concurrent.CopyOnWriteArrayList() }.add(deferred)
         coreHost.fetchSession(sid)
@@ -1611,19 +1562,9 @@ class Remote(
         )
     }
 
-    // --- Transitional Step 3/4 UI & Test Helpers ---
-
-    fun showForTest(
-        state: RemoteState,
-        modelLists: Map<Pair<String, Agent>, ListModelsResponse> = emptyMap(),
-        sessions: Map<String, SessionViewModel> = emptyMap(),
-    ) {
+    internal fun prepareForTest(sessions: Map<String, SessionViewModel> = emptyMap()) {
         check(!running) { "showForTest on a started Remote" }
         _bootstrapped.value = true
-        relayObservation = state
-        testStateOverride = state
-        _testStateFlow.value = state
-        _state.value = state
         coreHost.dispatchOnWorker(
             CoreEvent.newBuilder()
                 .setTransportConfig(
@@ -1649,7 +1590,6 @@ class Remote(
                 .build(),
         )
         coreHost.showViewsForTest(sessions = sessions)
-        seedCoreForTest(coreHost, account.deviceId, state, modelLists)
     }
 
     // --- S6 Security Management & Recovery (delegated to Core SecurityClient) ---
@@ -1668,7 +1608,6 @@ class Remote(
         val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
         val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllWireDevices(ds.devicesList).build()
         coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(ev).build())
-        updateProjectedStateNow()
     }
 
     suspend fun getSecurityStatus(): SecurityWorkflowStatus =
@@ -1783,7 +1722,8 @@ class Remote(
     }
 
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
-        val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
         var env = runCatching { cache?.image(cacheKey)?.let { Envelope.parseFrom(it) } }.getOrNull()
@@ -1812,7 +1752,7 @@ class Remote(
         } catch (e: OpenException) {
             return@withContext ImageResult.Corrupt(e.display)
         } catch (e: SecurityFailure) {
-            return@withContext ImageResult.Corrupt(errorText(e, state.value))
+            return@withContext ImageResult.Corrupt(errorText(e, coreHost.syncStateView.value))
         }
         if (detectFormat(payload.data.toByteArray()) != payload.format) {
             return@withContext ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
@@ -1822,7 +1762,8 @@ class Remote(
     }
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
-        val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val tok = currentToken()
         val streamId = newRequestId()
@@ -1867,7 +1808,7 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                finish(errorText(e, state.value))
+                finish(errorText(e, coreHost.syncStateView.value))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
@@ -1896,7 +1837,7 @@ class Remote(
                     }
                     override fun onFailure(stream: FrameStream, error: Throwable) {
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
+                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, coreHost.syncStateView.value).resolve(copy))) })
                     }
                 },
             )
@@ -1931,7 +1872,7 @@ class Remote(
                         if (!closed.get()) ws.send(env.toByteArray())
                     }
                 } catch (e: Exception) {
-                    finish(errorText(e, state.value))
+                    finish(errorText(e, coreHost.syncStateView.value))
                 }
             }
             return TermConn(

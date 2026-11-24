@@ -1,29 +1,24 @@
 package io.github.lewin671.remoteagent.ui
 
-import io.github.lewin671.remoteagent.core.UiMessages
-
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.clientName
-import io.github.lewin671.remoteagent.ui.displayError
-import io.github.lewin671.remoteagent.proto.DeviceKind
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.proto.HandoffCandidateView
+import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
+import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import kotlinx.coroutines.launch
 
 /** The successor client only offers its public recovery key after explicit backup confirmation. */
 @Composable
 fun HandoffPreparation(onBack: (() -> Unit)? = null) {
     val remote = LocalRemote.current
-    val state by remote.state.collectAsState()
+    val syncView by remote.coreHost.syncStateView.collectAsState()
     val settingsView by remote.settingsView.collectAsState()
     HandoffPreparationContent(
-        state = state,
-        self = remote.account.deviceId,
+        syncView = syncView,
         hasHandoffOffer = settingsView.security.hasHandoffOffer,
         prepareCode = { remote.prepareHandoffCode(storagePersisted = true) },
         onBack = onBack,
@@ -33,9 +28,8 @@ fun HandoffPreparation(onBack: (() -> Unit)? = null) {
 
 @Composable
 internal fun HandoffPreparationContent(
-    state: RemoteState,
-    self: String,
-    hasHandoffOffer: Boolean = state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32,
+    syncView: SyncStateView = SyncStateView.getDefaultInstance(),
+    hasHandoffOffer: Boolean = false,
     prepareCode: suspend () -> String,
     onBack: (() -> Unit)? = null,
     publishOffer: suspend () -> Unit,
@@ -65,7 +59,7 @@ internal fun HandoffPreparationContent(
                                 publishOffer()
                                 prepared = null
                             } catch (e: Exception) {
-                                error = displayError(e, state)
+                                error = displayError(e, syncView)
                             } finally {
                                 busy = false
                             }
@@ -87,7 +81,7 @@ internal fun HandoffPreparationContent(
                             try {
                                 prepared = prepareCode()
                             } catch (e: Exception) {
-                                error = displayError(e, state)
+                                error = displayError(e, syncView)
                             } finally {
                                 busy = false
                             }
@@ -106,34 +100,43 @@ internal fun HandoffPreparationContent(
 /** The current authority authenticates the successor client through ordinary pairing first. */
 @Composable
 fun HandoffControls() {
-    val copy = uiText()
     val remote = LocalRemote.current
-    val state by remote.state.collectAsState()
+    val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
+    val rawVm by remote.settingsView.collectAsState()
+    val vm = if (rawVm != SettingsViewModel.getDefaultInstance()) rawVm else initialVm
+    HandoffControlsContent(
+        candidates = vm.security.handoffCandidatesList,
+        onTransfer = { id -> remote.handoffAuthority(id) },
+        syncViewProvider = { remote.coreHost.syncStateView.value },
+    )
+}
+
+@Composable
+internal fun HandoffControlsContent(
+    candidates: List<HandoffCandidateView>,
+    onTransfer: suspend (String) -> Unit,
+    syncViewProvider: () -> SyncStateView = { SyncStateView.getDefaultInstance() },
+) {
+    val copy = uiText()
     val scope = rememberAuthorityScope()
-    var target by remember { mutableStateOf<String?>(null) }
+    var target by remember { mutableStateOf<HandoffCandidateView?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
-    val candidates =
-        state.devices.values.filter {
-            it.id != remote.account.deviceId &&
-                it.kind == DeviceKind.DEVICE_KIND_CLIENT &&
-                it.meta?.handoffRecoveryEd?.size() == 32
-        }
     GLabel(copy(UiMessages.securityTransferManagement()))
     Hint(copy(UiMessages.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts()), Modifier)
-    for (d in candidates) PillButton(
-        copy(UiMessages.securityAndroidTransferTo(clientName(d, d.id, state.devices.values, copy = copy))),
-        { target = d.id },
+    for (c in candidates) PillButton(
+        copy(UiMessages.securityAndroidTransferTo(c.displayName)),
+        { target = c },
         Modifier.fillMaxWidth().padding(top = 8.dp),
         ButtonKind.SECONDARY,
         enabled = !busy,
     )
     if (candidates.isEmpty()) Hint(copy(UiMessages.securityWaitingForTheSuccessorDeviceToGenerateAndSave()), Modifier.padding(vertical = 8.dp))
     if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
-    target?.let { id ->
+    target?.let { cand ->
         Alert(
             copy(UiMessages.securityTransferManagement()),
-            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery((clientName(state.devices[id], id, state.devices.values, copy = copy)).toString())),
+            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(cand.displayName)),
             copy(UiMessages.securityConfirmTransfer()),
             danger = true,
             onDismiss = { target = null },
@@ -142,9 +145,9 @@ fun HandoffControls() {
             busy = true
             scope.launch {
                 try {
-                    remote.handoffAuthority(id)
+                    onTransfer(cand.deviceId)
                 } catch (e: Exception) {
-                    error = displayError(e, remote.state.value)
+                    error = displayError(e, syncViewProvider())
                 } finally {
                     busy = false
                 }
@@ -158,8 +161,8 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
     val copy = uiText()
     if (!authority) return
     val remote = LocalRemote.current
-    val state by remote.state.collectAsState()
-    if (id in state.devices) return
+    val syncView by remote.coreHost.syncStateView.collectAsState()
+    if (syncView.devicesList.any { it.deviceId == id }) return
     val scope = rememberAuthorityScope()
     var confirm by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -188,7 +191,7 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
                 try {
                     remote.deleteMachineRecords(id)
                 } catch (e: Exception) {
-                    error = displayError(e, remote.state.value)
+                    error = displayError(e, remote.coreHost.syncStateView.value)
                 } finally {
                     busy = false
                 }
