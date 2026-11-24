@@ -2280,3 +2280,106 @@ func TestAttachments_FileRetryRecomputesHash(t *testing.T) {
 		t.Fatalf("expected no BeginImageUpload before fresh hash completes")
 	}
 }
+
+func TestAttachments_ServerCanceledPutBackPreCheckFails_PreservesTextAndOutbox(t *testing.T) {
+	h := newAttHarness(t, false, true)
+	scope := h.sessionScope()
+
+	// 1. Send a message with text + 1 image -> SendRequest succeeds and enters server PendingInputs.
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "important text"}}})
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("keep.jpg", 4, "src-keep-8", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff, "prep-keep-8", "thumb-keep-8", 4, attTestHash(0xb9), "img-keep-8", h.nowMs+600_000)
+	sendEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSendSession{DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_QUEUE}}})
+	outWrite := findDraftWriteEffects(sendEff)[0]
+	commitEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftStorageWriteResult{DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: outWrite.OpId, Ok: true}}})
+	sendCmd := findDispatchedCmds(commitEff)[0]
+	reqID := sendCmd.cmd.GetSend().RequestId
+	h.settleCmdOK(sendCmd.dc, &v1.CommandResult{})
+
+	// Deliver server-backed PendingInputs projection for reqID.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_EventsAppended{
+					EventsAppended: &corev1.EventsAppendedFrame{
+						SessionId: h.sessionID,
+						Events: []*corev1.PlainEvent{
+							{
+								Seq: 2, Verified: true,
+								Event: &v1.Event{
+									Seq: 2, SessionId: h.sessionID,
+									Kind: &v1.Event_InputState{
+										InputState: &v1.InputState{
+											RequestId: reqID,
+											Status:    v1.InputStatus_INPUT_STATUS_QUEUED,
+											Mode:      v1.SendMode_SEND_MODE_QUEUE,
+											Text:      "important text",
+											ImageIds:  []string{"img-keep-8"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// 2. Request put-back while draft is empty -> submits CancelInput to daemon!
+	restoreEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRestoreTrayItem{SessionRestoreTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: reqID}},
+	})
+	var cancelCmd *attDispatchedCmd
+	for _, sc := range findDispatchedCmds(restoreEff) {
+		if sc.cmd.GetCancelInput() != nil {
+			cp := sc
+			cancelCmd = &cp
+		}
+	}
+	if cancelCmd == nil {
+		t.Fatalf("expected CancelInput submitted for server-backed restore")
+	}
+
+	// 3. BEFORE CancelInput settles, fill all 6 image slots in the draft so put-back attachment pre-check WILL FAIL!
+	var six []*corev1.DraftPickedItem
+	for i := 0; i < 6; i++ {
+		six = append(six, pickedImage("fill.jpg", 4, "src-fill-"+string(rune('a'+i)), true))
+	}
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftAddItems{DraftAddItems: &corev1.DraftAddItemsAction{Scope: scope, Items: six}}})
+
+	// 4. CancelInput settles OK -> MUST still merge text into draft, show notice, AND keep outbox & restorable row!
+	settleEff := h.settleCmdOK(cancelCmd.dc, &v1.CommandResult{})
+	dv := h.draftView(scope)
+	if dv.Text != "important text" {
+		t.Fatalf("expected text merged even when attachment put-back failed after server cancel, got %q", dv.Text)
+	}
+	if dv.Notice == nil {
+		t.Fatalf("expected notice explaining why attachments could not fit")
+	}
+	if h.core.m.attachments.outbox[reqID] == nil {
+		t.Fatalf("expected outbox record preserved when attachment put-back failed after server cancel")
+	}
+	for _, d := range findDraftDeleteEffects(settleEff) {
+		if d.Bucket == corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+			t.Fatalf("must NOT delete persisted outbox when attachment put-back was deferred")
+		}
+	}
+	var keptRow bool
+	for _, it := range h.sessionView().GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.RequestId == reqID && it.CanRestore {
+			keptRow = true
+		}
+	}
+	if !keptRow {
+		t.Fatalf("expected restorable tray row preserved for deferred attachment put-back")
+	}
+}

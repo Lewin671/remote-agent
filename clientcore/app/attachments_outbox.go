@@ -991,10 +991,14 @@ func (c *Core) canPutBackRequest(sid, reqID string, imgIDs, fileIDs []string) (*
 // applyPutBackToDraft puts a message's text and attachments back into the session draft,
 // invalidating all historical remote IDs, starting re-uploads for local copies, marking
 // remote-only items failed, and applying the persist-draft-before-delete-outbox (whenKept) barrier.
+// When alreadyCanceled is true (server CancelInput already settled) and attachment pre-check fails,
+// text is still merged into the draft while the outbox record and a restorable failed tray row are kept
+// so the user never loses attachments.
 func (c *Core) applyPutBackToDraft(
 	ctx *sync.StepContext,
 	sid, reqID, restoredText string,
 	imgIDs, fileIDs []string,
+	alreadyCanceled bool,
 	effects *[]*corev1.Effect,
 ) bool {
 	if c.m.attachments == nil || !c.m.attachments.configured {
@@ -1005,10 +1009,72 @@ func (c *Core) applyPutBackToDraft(
 	}
 	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: sid}
 	d := c.ensureDraftState(scope)
+	d.activated = true
 	mgr := c.m.ensureAttachments()
 
 	if reason, ok := c.canPutBackRequest(sid, reqID, imgIDs, fileIDs); !ok {
 		d.notice = reason
+		if alreadyCanceled {
+			// Server already canceled the message: never drop content!
+			// 1. Merge text into composer right away.
+			if restoredText != "" {
+				d.text = attachments.MergePutBackText(d.text, restoredText)
+				d.textRev++
+				if mgr.persistDrafts {
+					if d.loadState == draftLoadLoaded {
+						c.enqueueDraftWrite(d, effects)
+					} else if d.loadState == draftLoadUnloaded || d.loadState == draftLoadFailed {
+						c.startDraftLoad(d, effects)
+					}
+				}
+			}
+			// 2. Keep outbox record and surface a restorable failed tray row so user can put back attachments later.
+			outRec := mgr.outbox[reqID]
+			if outRec != nil {
+				outRec.text = ""
+			}
+			if len(imgIDs) > 0 || len(fileIDs) > 0 || (outRec != nil && len(outRec.items) > 0) {
+				store := c.m.ensureSessionStore()
+				ui := store.ensureUI(sid)
+				delete(ui.DismissedInputIDs, reqID)
+				var summaries []*corev1.OutboxAttachmentSummary
+				var mode v1.SendMode
+				if outRec != nil {
+					summaries = makeOutboxSummaries(outRec.items)
+					mode = outRec.mode
+					if len(imgIDs) == 0 {
+						imgIDs = outRec.imageIDs
+					}
+					if len(fileIDs) == 0 {
+						fileIDs = outRec.fileIDs
+					}
+				}
+				ui.LocalContents[reqID] = &screens.LocalSentContent{
+					RequestID:        reqID,
+					Text:             "",
+					ImageIDs:         slices.Clone(imgIDs),
+					FileIDs:          slices.Clone(fileIDs),
+					Mode:             mode,
+					LocalAttachments: summaries,
+				}
+				if !hasOutgoingReq(ui, reqID) {
+					ui.Outgoing = append(ui.Outgoing, &screens.SessionOutgoingRecord{
+						RequestID:        reqID,
+						SlotKey:          "send:" + sid + ":" + reqID,
+						Text:             "",
+						ImageIDs:         slices.Clone(imgIDs),
+						FileIDs:          slices.Clone(fileIDs),
+						Mode:             mode,
+						State:            screens.OutgoingFailed,
+						ErrorCode:        "put_back_deferred",
+						ErrorText:        reason,
+						LocalAttachments: summaries,
+						CreatedMs:        c.m.sync.NowMs(),
+					})
+				}
+				store.pendingDirty = true
+			}
+		}
 		c.markDraftDirty(ctx, d.scope)
 		return true
 	}
@@ -1176,7 +1242,7 @@ func (c *Core) handleDraftPutBackInput(ctx *sync.StepContext, act *corev1.DraftP
 	var effects []*corev1.Effect
 	c.clearOutgoingAndSlot(ctx, store, ui, reqID, "", true)
 	ui.DismissedInputIDs[reqID] = true
-	c.applyPutBackToDraft(ctx, sid, reqID, textStr, imgIDs, fileIDs, &effects)
+	c.applyPutBackToDraft(ctx, sid, reqID, textStr, imgIDs, fileIDs, false, &effects)
 	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 	store.pendingDirty = true
 	effects = append(effects, &corev1.Effect{

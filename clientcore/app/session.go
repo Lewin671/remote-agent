@@ -1334,7 +1334,7 @@ func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore,
 		c.abortResendJob(ctx, reqID, true, &effects)
 		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, true)
 		ui.DismissedInputIDs[reqID] = true
-		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, &effects)
+		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, false, &effects)
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
 		effects = append(effects, &corev1.Effect{
@@ -1541,7 +1541,7 @@ func (c *Core) settleCancelInput(
 			*effects = append(*effects, effs...)
 		}
 	case screens.CancelIntentRestore:
-		handled := c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, effects)
+		handled := c.applyPutBackToDraft(ctx, meta.sessionID, intent.SourceReqID, intent.Text, intent.ImageIDs, intent.FileIDs, true, effects)
 		*effects = append(*effects, &corev1.Effect{
 			Effect: &corev1.Effect_SessionRestoreComposer{
 				SessionRestoreComposer: &corev1.SessionRestoreComposerEffect{
