@@ -207,7 +207,7 @@ enum ImageLeaving {
     /// What would leave for an image now: the display copy if it was loaded, else the preview; nil without either.
     @MainActor
     static func picture(_ image: PBSessionViewerImageView, previewRef: PBImageRef? = nil, loader: ViewerLoader) -> LeavingImage? {
-        let name = image.downloadName.isEmpty ? image.displayName : image.downloadName
+        let name = image.downloadName
         if let held = loader.held(image.ref) {
             return LeavingImage(bytes: held.bytes, format: held.format, name: name)
         }

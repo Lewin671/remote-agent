@@ -309,9 +309,9 @@ final class ImageCenter {
     func plus(scope: PBDraftScope, draft: PBAttachmentDraftView) {
         let key = scope.debugKey
         if !draft.canPickGallery && !draft.canPickFiles {
-            let reason = draft.hasGalleryBlockedReason ? draft.galleryBlockedReason.rendered()
-                : (draft.hasImagesPickBlockedReason ? draft.imagesPickBlockedReason.rendered() : "")
-            if !reason.isEmpty { say(key, reason) }
+            if draft.hasGalleryBlockedReason {
+                say(key, draft.galleryBlockedReason.rendered())
+            }
             return
         }
         if draft.galleryAllowsVideo {
@@ -330,9 +330,9 @@ final class ImageCenter {
     func library(scope: PBDraftScope, draft: PBAttachmentDraftView, offerPaste: Bool = false) {
         let key = scope.debugKey
         guard draft.canPickGallery else {
-            let reason = draft.hasGalleryBlockedReason ? draft.galleryBlockedReason.rendered()
-                : (draft.hasImagesPickBlockedReason ? draft.imagesPickBlockedReason.rendered() : "")
-            if !reason.isEmpty { say(key, reason) }
+            if draft.hasGalleryBlockedReason {
+                say(key, draft.galleryBlockedReason.rendered())
+            }
             return
         }
         picking[key] = (offerPaste && UIPasteboard.general.hasImages) ? .choose : .photos

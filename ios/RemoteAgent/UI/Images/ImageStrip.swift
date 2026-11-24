@@ -301,7 +301,7 @@ private struct ImagePickerHost: ViewModifier {
     func body(content: Content) -> some View {
         let editorFocused = focus?.wrappedValue ?? false
         let videos = draft.galleryAllowsVideo
-        let room = max(Int(draft.libraryRoom), 1)
+        let room = Int(draft.libraryRoom)
         content
             .actionMenu(
                 isPresented: Binding(
@@ -341,7 +341,7 @@ private struct ImagePickerHost: ViewModifier {
             .sheet(item: Binding(
                 get: {
                     switch center.picking[key] {
-                    case .photos: NativePicker.photos
+                    case .photos: room > 0 ? NativePicker.photos : nil
                     case .documents: NativePicker.documents
                     default: nil
                     }

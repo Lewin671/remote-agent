@@ -25,15 +25,7 @@ struct ComposerAttachments {
 
     var blocked: String? {
         guard !draft.canPickGallery && !draft.canPickFiles else { return nil }
-        if draft.hasGalleryBlockedReason {
-            let text = draft.galleryBlockedReason.rendered()
-            if !text.isEmpty { return text }
-        }
-        if draft.hasImagesPickBlockedReason {
-            let text = draft.imagesPickBlockedReason.rendered()
-            if !text.isEmpty { return text }
-        }
-        return ""
+        return draft.hasGalleryBlockedReason ? draft.galleryBlockedReason.rendered() : ""
     }
 
     /// The computer accepts files: ＋ offers Files and the photo library includes videos.

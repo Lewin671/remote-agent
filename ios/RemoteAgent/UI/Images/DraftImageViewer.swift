@@ -22,13 +22,7 @@ struct DraftImageViewer: View {
         let images = draft.images
         let viewer = draft.imageViewer
         let emptyText = viewer.hasEmptyText ? viewer.emptyText.rendered() : ""
-        let positionText: String = {
-            if images.indices.contains(localPage) {
-                let itemPos = images[localPage].positionText.rendered()
-                if !itemPos.isEmpty { return itemPos }
-            }
-            return viewer.positionText.rendered()
-        }()
+        let positionText = viewer.hasPositionText ? viewer.positionText.rendered() : ""
 
         PagedImageViewer(
             count: images.count,
@@ -103,9 +97,6 @@ struct DraftImageViewer: View {
             guard viewer.open, !images.isEmpty else { return }
             let clamped = min(max(Int(coreIdx), 0), images.count - 1)
             if localPage != clamped { localPage = clamped }
-        }
-        .onChange(of: images.count) { _, count in
-            if count == 0 { close() }
         }
         .debugSignal("viewer.close", close)
         .debugSignal("viewer.next") {
