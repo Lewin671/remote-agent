@@ -63,13 +63,14 @@ class SharedFileIoExecutor(
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val queue = Channel<() -> Unit>(Channel.UNLIMITED)
     private val closed = AtomicBoolean(false)
+    private val diskLock = Any()
 
     init {
         scope.launch {
             for (task in queue) {
                 if (closed.get()) break
                 try {
-                    task()
+                    synchronized(diskLock) { task() }
                 } catch (e: CancellationException) {
                     if (closed.get()) break
                 } catch (_: Throwable) {
@@ -226,7 +227,7 @@ class SharedFileIoExecutor(
         displayName: String,
         bytes: ByteArray,
         durationMs: Long? = null,
-    ): File {
+    ): File = synchronized(diskLock) {
         val dir = fileDir(sessionId, fileId)
         val fileDir = File(dir, COMMITTED_FILE_DIR).apply { mkdirs() }
         val finalFile = File(fileDir, safeLocalFileName(displayName)).apply { writeBytes(bytes) }
@@ -241,7 +242,7 @@ class SharedFileIoExecutor(
             }
         }
         writePropertiesAtomic(committedMetaFile(dir), props)
-        return finalFile
+        finalFile
     }
 
     fun usedBytes(): Long = ImageDiskPolicy.bytes(rootDir)
