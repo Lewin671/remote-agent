@@ -51,10 +51,12 @@ interface CipherCache {
     suspend fun removeBlob(name: String) {}
 }
 
+enum class TermConfirmKind { INPUT, RESTART }
+
 interface TermListener {
     fun onFrame(frame: TerminalFrame)
     fun onClose(reason: MessageText)
-    fun onConfirmRebuild(reasonKey: String) {}
+    fun onConfirmRebuild(kind: TermConfirmKind) {}
     fun onRebuildConfirmed() {}
 }
 
@@ -2460,7 +2462,7 @@ class Remote(
                 // rebuild_confirmed closes the old stream silently and triggers a fresh open.
                 if (!closed.get()) {
                     if (needsConfirm) {
-                        listener.onConfirmRebuild(reason)
+                        listener.onConfirmRebuild(if (st == 4) TermConfirmKind.RESTART else TermConfirmKind.INPUT)
                     } else if (st == 5 && reason == "rebuild_confirmed") {
                         finish()
                         listener.onRebuildConfirmed()

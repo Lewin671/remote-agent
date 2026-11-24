@@ -15,6 +15,7 @@ import com.termux.view.TerminalView
 import com.termux.view.TerminalViewClient
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.TermConfirmKind
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
 import io.github.lewin671.remoteagent.core.proto.TerminalStreamEventKind
@@ -47,7 +48,7 @@ class RemoteTerminal(
         /** The screen shows the remote terminal and what is typed goes to it. */
         data object Live : State
         /** Core requires explicit user confirmation before rebuilding after input/daemon uncertainty. */
-        data class ConfirmRebuild(val reasonKey: String) : State
+        data class ConfirmRebuild(val kind: TermConfirmKind) : State
         data class Closed(val reason: MessageText) : State
     }
 
@@ -186,10 +187,10 @@ class RemoteTerminal(
                         enqueue(TerminalFrame.newBuilder().setClosed(io.github.lewin671.remoteagent.ui.sessionText(reason)).build())
                     }
 
-                    override fun onConfirmRebuild(reasonKey: String) {
+                    override fun onConfirmRebuild(kind: TermConfirmKind) {
                         main.post {
                             if (gen == generation && _state.value !is State.Closed) {
-                                _state.value = State.ConfirmRebuild(reasonKey)
+                                _state.value = State.ConfirmRebuild(kind)
                             }
                         }
                     }

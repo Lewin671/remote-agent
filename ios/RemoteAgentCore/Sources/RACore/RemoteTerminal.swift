@@ -8,19 +8,24 @@ import Foundation
 import RAProto
 import os
 
+public enum TermConfirmKind: Equatable, Sendable {
+    case input
+    case restart
+}
+
 public protocol TermListener: Sendable {
     /// Called for each frame in order, one at a time.
     func onFrame(_ frame: PBTerminalFrame)
     /// Called once, when the stream is over, unless this side closed it.
     func onClose(_ reason: String)
     /// Called when Core requires explicit user confirmation before rebuilding the stream.
-    func onConfirmRebuild(_ reasonKey: String)
+    func onConfirmRebuild(_ kind: TermConfirmKind)
     /// Called after the user confirmed rebuild and Core closed the old stream.
     func onRebuildConfirmed()
 }
 
 public extension TermListener {
-    func onConfirmRebuild(_ reasonKey: String) {}
+    func onConfirmRebuild(_ kind: TermConfirmKind) {}
     func onRebuildConfirmed() {}
 }
 
@@ -352,7 +357,7 @@ extension Remote {
                 // rebuild_confirmed closes the old stream silently and triggers a fresh open.
                 guard !closed.withLock({ $0 }) else { return }
                 if needsConfirm {
-                    listener.onConfirmRebuild(reason)
+                    listener.onConfirmRebuild(st == 4 ? .restart : .input)
                     return
                 }
                 if st == 5 && reason == "rebuild_confirmed" {

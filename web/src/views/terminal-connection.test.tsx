@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { patchSyncState } from "../test/remote-fixture";
-import type { Remote } from "../remote";
+import { TermConfirmKind, type Remote } from "../remote";
 import { TerminalView } from "./Terminal";
 
 const terminal = vi.hoisted(() => ({ writes: vi.fn(), resize: vi.fn() }));
@@ -309,7 +309,7 @@ it("renders Core-driven rebuild confirmation without auto-closing and dispatches
 
   // Core enters NeedsConfirmation -> shell MUST NOT auto-close terminal; renders rebuild & close buttons.
   await act(async () => {
-    vm.onStateChange?.({ kind: "confirm", reasonKey: "terminal.confirm_rebuild_input_body" });
+    vm.onStateChange?.({ kind: "confirm", confirmKind: TermConfirmKind.Input });
   });
   expect(vm.close).not.toHaveBeenCalled();
   const card = host.querySelector(".tstate");
@@ -333,7 +333,7 @@ it("renders Core-driven rebuild confirmation without auto-closing and dispatches
 
   // Choosing close in confirmation card closes the terminal instead of rebuilding.
   await act(async () => {
-    vm.onStateChange?.({ kind: "confirm", reasonKey: "terminal.confirm_rebuild_restart_body" });
+    vm.onStateChange?.({ kind: "confirm", confirmKind: TermConfirmKind.Restart });
   });
   const closeBtn2 = host.querySelector<HTMLButtonElement>(".tstate button.btn:not(.pri)")!;
   await act(async () => { closeBtn2.click(); });

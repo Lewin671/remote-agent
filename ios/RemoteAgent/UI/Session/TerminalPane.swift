@@ -265,10 +265,11 @@ struct TerminalPane: View {
             switch state {
             case .connecting:
                 IconText(Mark.progress, L10n.terminalConnecting(), color: TermColors.dim, style: .subheadline)
-            case .confirmRebuild(let reasonKey):
-                let body = reasonKey == "terminal.confirm_rebuild_restart_body"
-                    ? L10n.terminalConfirmRebuildRestartBody()
-                    : L10n.terminalConfirmRebuildInputBody()
+            case .confirmRebuild(let kind):
+                let body = switch kind {
+                case .restart: L10n.terminalConfirmRebuildRestartBody()
+                case .input: L10n.terminalConfirmRebuildInputBody()
+                }
                 Text(L10n.terminalConfirmRebuildTitle()).font(.body.weight(.semibold)).ink(TermColors.fg)
                     .accessibilityAddTraits(.isHeader)
                 Text(body)

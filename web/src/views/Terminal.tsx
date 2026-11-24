@@ -7,7 +7,7 @@ import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { TerminalStreamEventKind, useCoreHost } from "../core/host";
-import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
+import { errorText, TermConfirmKind, type Remote, type SessionView, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
 let nextTerminalStreamId = 0;
@@ -75,7 +75,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     setState(next);
   };
   const [reason, setReason] = useState("");
-  const [confirmReason, setConfirmReason] = useState("");
+  const [confirmKind, setConfirmKind] = useState(TermConfirmKind.Input as TermConfirmKind);
   const [details, setDetails] = useState(false);
   const [, refreshHistory] = useState(0);
   const historyRef = useRef<TerminalHistory>(null);
@@ -323,7 +323,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     history.close();
     setTerminalState("connecting");
     setReason("");
-    setConfirmReason("");
+    setConfirmKind(TermConfirmKind.Input);
     setDetails(false);
     setFitted(false);
     setShown(false);
@@ -397,7 +397,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         (ev) => {
           if (!alive || ended) return;
           if (ev.kind === "confirm") {
-            setConfirmReason(ev.reasonKey);
+            setConfirmKind(ev.confirmKind);
             setTerminalState("confirm");
           } else if (ev.kind === "rebuild") {
             ended = true;
@@ -497,6 +497,9 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
 
   const live = state === "live";
   const reading = history.phase === "reading";
+  const confirmBody = confirmKind === TermConfirmKind.Restart
+    ? i18n.t("terminal.confirm_rebuild_restart_body")
+    : i18n.t("terminal.confirm_rebuild_input_body");
   return (
     <div className={"termview" + (compact ? " compact" : "")}>
       {/* The size capsule, dark glass over the terminal in either theme. */}
@@ -528,7 +531,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         {state === "confirm" && (
           <div className="tstate glass">
             <b>{i18n.t("terminal.confirm_rebuild_title")}</b>
-            <p>{confirmReason === "terminal.confirm_rebuild_restart_body" ? i18n.t("terminal.confirm_rebuild_restart_body") : i18n.t("terminal.confirm_rebuild_input_body")}</p>
+            <p>{confirmBody}</p>
             <div className="btns">
               <button className="btn" onClick={() => {
                 conn.current?.close();

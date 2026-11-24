@@ -57,6 +57,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.termux.terminal.TerminalColors
 import com.termux.view.TerminalView
 import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.TermConfirmKind
 import io.github.lewin671.remoteagent.ui.pal
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -396,10 +397,9 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
                             Text(copy(UiMessages.terminalConnecting()), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(start = 8.dp))
                         }
                         is RemoteTerminal.State.ConfirmRebuild -> {
-                            val body = if (s.reasonKey == "terminal.confirm_rebuild_restart_body") {
-                                copy(UiMessages.terminalConfirmRebuildRestartBody())
-                            } else {
-                                copy(UiMessages.terminalConfirmRebuildInputBody())
+                            val body = when (s.kind) {
+                                TermConfirmKind.RESTART -> copy(UiMessages.terminalConfirmRebuildRestartBody())
+                                TermConfirmKind.INPUT -> copy(UiMessages.terminalConfirmRebuildInputBody())
                             }
                             Text(copy(UiMessages.terminalConfirmRebuildTitle()), style = T.s17b, color = CardColors.text)
                             Text(

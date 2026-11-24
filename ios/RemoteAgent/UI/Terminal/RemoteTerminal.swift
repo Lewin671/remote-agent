@@ -24,7 +24,7 @@ final class RemoteTerminal {
         /// The screen shows the remote terminal and what is typed goes to it.
         case live
         /// Core requires explicit user confirmation before rebuilding the terminal stream.
-        case confirmRebuild(String)
+        case confirmRebuild(TermConfirmKind)
         case closed(String)
 
         var isClosed: Bool {
@@ -193,10 +193,10 @@ final class RemoteTerminal {
                 case .queued, .closed: break
                 }
             },
-            onConfirm: { [weak self] reasonKey in
+            onConfirm: { [weak self] kind in
                 onMain {
                     if let self, gen == self.generation, !self.state.isClosed {
-                        self.state = .confirmRebuild(reasonKey)
+                        self.state = .confirmRebuild(kind)
                     }
                 }
             },
@@ -408,13 +408,13 @@ private func onMain(after seconds: TimeInterval = 0, _ body: @escaping @MainActo
 private final class Listener: TermListener {
     private let queue: TerminalFrames
     private let wake: @Sendable (TerminalFrames.Offer) -> Void
-    private let onConfirm: @Sendable (String) -> Void
+    private let onConfirm: @Sendable (TermConfirmKind) -> Void
     private let onRebuild: @Sendable () -> Void
 
     init(
         queue: TerminalFrames,
         wake: @escaping @Sendable (TerminalFrames.Offer) -> Void,
-        onConfirm: @escaping @Sendable (String) -> Void = { _ in },
+        onConfirm: @escaping @Sendable (TermConfirmKind) -> Void = { _ in },
         onRebuild: @escaping @Sendable () -> Void = {}
     ) {
         self.queue = queue
@@ -433,8 +433,8 @@ private final class Listener: TermListener {
         wake(queue.offer(frame))
     }
 
-    func onConfirmRebuild(_ reasonKey: String) {
-        onConfirm(reasonKey)
+    func onConfirmRebuild(_ kind: TermConfirmKind) {
+        onConfirm(kind)
     }
 
     func onRebuildConfirmed() {

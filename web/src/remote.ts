@@ -272,7 +272,9 @@ export function apiBase(server: string): string {
   return import.meta.env.VITE_SAME_ORIGIN_API ? location.origin : origin;
 }
 
-export type TermStateEvent = { kind: "confirm"; reasonKey: string } | { kind: "rebuild" };
+export const TermConfirmKind = { Input: 1, Restart: 2 } as const;
+export type TermConfirmKind = (typeof TermConfirmKind)[keyof typeof TermConfirmKind];
+export type TermStateEvent = { kind: "confirm"; confirmKind: TermConfirmKind } | { kind: "rebuild" };
 export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSchema>): void; close(): void; confirmRebuild?: () => void; }
 export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
@@ -2153,7 +2155,7 @@ export class Remote implements CoreExecutor {
         // rebuild_confirmed closes the old stream silently and triggers a fresh open.
         if (needsConfirmation) {
           if (onStateChange) {
-            onStateChange({ kind: "confirm", reasonKey: reason });
+            onStateChange({ kind: "confirm", confirmKind: state === 4 ? TermConfirmKind.Restart : TermConfirmKind.Input });
             return;
           }
           finish(l10n.t("errors.terminal_connection_dropped"));
