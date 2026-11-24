@@ -363,6 +363,10 @@ func TestPhase2CrossPathFaultInjection10000(t *testing.T) {
 						recordErr(fmt.Errorf("iter %d: missing conflict reply", idx))
 						return
 					}
+					if res := openCommandResult(t, client, rep); res == nil || res.Outcome != "conflict" || res.ConflictKind != "identity" {
+						recordErr(fmt.Errorf("iter %d: expected outcome=conflict conflict_kind=identity, got %+v", idx, res))
+						return
+					}
 				case 6:
 					// Direct-only arrival (relay dropped in transit).
 					dCh := make(chan *pb.ForwardReply, 1)
@@ -569,5 +573,189 @@ func TestPhase2ApprovalSchedulingP99UnderSaturation(t *testing.T) {
 	}
 	if p99 > 100.0 {
 		t.Fatalf("approval scheduling p99=%.2fms exceeded 100ms budget", p99)
+	}
+}
+
+// TestPhase2DeterministicVerifiedCacheAndRestart verifies M9 & L3:
+//   - true concurrent dual-path barrier race executes exactly once and returns both replies
+//   - verifiedCache 10s TTL expiry with deterministic injected clock re-verifies after 10s
+//   - per-peer verifiedCache stays strictly bounded at <=4096 entries and <=4 MiB (FIFO eviction)
+//   - restarting commandAdmission (simulating daemon restart over durable accept log) re-verifies
+//     late duplicates and returns stored result with 0 duplicate side effects
+func TestPhase2DeterministicVerifiedCacheAndRestart(t *testing.T) {
+	backend := &phase2FaultBackend{
+		counts:   map[string]int{},
+		sessions: []string{"s-phase2"},
+	}
+	ep := testEndpoint(t, New(backend))
+	client := endpointClient(t, ep)
+	defer func() {
+		ep.link.DrainCalls()
+		ep.admissionOwner().close()
+	}()
+
+	_, head, selfID := ep.security.endpoint.Snapshot()
+	selfMember, _ := head.Core.Member(selfID)
+	peerMember, _ := head.Core.Member(head.Core.AuthorityID)
+	headHash, err := head.Hash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding := deviceauth.PeerBinding{Self: selfMember, Peer: peerMember, Head: headHash}
+
+	var clockMu sync.Mutex
+	fakeNow := time.Now()
+	nowFn := func() time.Time {
+		clockMu.Lock()
+		defer clockMu.Unlock()
+		return fakeNow
+	}
+	advance := func(d time.Duration) {
+		clockMu.Lock()
+		fakeNow = fakeNow.Add(d)
+		clockMu.Unlock()
+	}
+
+	adm := ep.admissionOwner()
+	adm.nowFn = nowFn
+	origAuth := adm.authenticate
+	var authCalls atomic.Uint64
+	adm.authenticate = func(w devicesec.Wire) (*deviceauth.Authenticated, error) {
+		authCalls.Add(1)
+		return origAuth(w)
+	}
+
+	seal := func(reqID, text string) *pb.Envelope {
+		cmd := &pb.Command{
+			ProtocolVersion: protocol.PeerVersion,
+			Kind:            &pb.Command_Send{Send: &pb.SendRequest{SessionId: "s-phase2", Text: text}},
+		}
+		body, err := proto.Marshal(cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wire, err := client.Prepare(devicesec.Header{
+			Purpose:  devicesec.Command,
+			Kind:     5,
+			Machine:  ep.acct.DeviceID,
+			Session:  "s-phase2",
+			Request:  reqID,
+			Deadline: uint64(nowFn().Add(5 * time.Minute).UnixMilli()),
+		}, nil, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		env, err := deviceauth.Envelope(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return env
+	}
+
+	// 1) True concurrent barrier race across relay + direct.
+	raceEnv := seal("barrier-race-req-0001", "barrier-race")
+	start := make(chan struct{})
+	rCh := make(chan *pb.ForwardReply, 1)
+	dCh := make(chan *pb.ForwardReply, 1)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 1, AttemptId: "r", Command: raceEnv}, func(r *pb.ForwardReply) { rCh <- r })
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		ep.dispatchDirect(context.Background(), binding, 1, func() bool { return true }, raceEnv, func(r *pb.ForwardReply) { dCh <- r })
+	}()
+	close(start)
+	wg.Wait()
+	r1, r2 := <-rCh, <-dCh
+	if openCommandResult(t, client, r1).Outcome != "executed" || openCommandResult(t, client, r2).Outcome != "executed" {
+		t.Fatalf("expected both barrier race legs to return executed")
+	}
+	if got := backend.counts["send:barrier-race"]; got != 1 {
+		t.Fatalf("expected exactly 1 execution under concurrent barrier race, got %d", got)
+	}
+
+	// 2) Deterministic 10s TTL check: at +5s hits cache (no extra auth), at +11s expires (re-verifies, 0 dup exec).
+	before5s := authCalls.Load()
+	advance(5 * time.Second)
+	ch5 := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 2, AttemptId: "r5", Command: raceEnv}, func(r *pb.ForwardReply) { ch5 <- r })
+	if res := openCommandResult(t, client, <-ch5); res == nil || res.Outcome != "executed" {
+		t.Fatalf("expected cached replay at +5s to return executed, got %+v", res)
+	}
+	if got := authCalls.Load(); got != before5s {
+		t.Fatalf("expected verifiedCache hit at +5s without extra authenticate call (before=%d after=%d)", before5s, got)
+	}
+
+	advance(6 * time.Second) // total +11s > 10s TTL
+	ch11 := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 3, AttemptId: "r11", Command: raceEnv}, func(r *pb.ForwardReply) { ch11 <- r })
+	if res := openCommandResult(t, client, <-ch11); res == nil || res.Outcome != "executed" {
+		t.Fatalf("expected expired replay at +11s to return stored executed result, got %+v", res)
+	}
+	if got := authCalls.Load(); got != before5s+1 {
+		t.Fatalf("expected verifiedCache expiry at +11s to re-authenticate once (before=%d after=%d)", before5s, got)
+	}
+	if got := backend.counts["send:barrier-race"]; got != 1 {
+		t.Fatalf("expired replay must still execute 0 additional times, got %d", got)
+	}
+
+	// 3) Per-peer verifiedCache hard bounds: 4,150 unique verified wires must cap at <=4,096 entries and <=4 MiB.
+	raceWire, err := deviceauth.FromEnvelope(raceEnv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validAuth, err := origAuth(raceWire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adm.authenticate = func(devicesec.Wire) (*deviceauth.Authenticated, error) {
+		return validAuth, nil
+	}
+	for i := range 4150 {
+		w := raceWire
+		w.Origin = []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)}
+		if _, err := adm.authenticateWithDedup(context.Background(), peerMember.ID, w); err != nil {
+			t.Fatalf("iter %d authenticateWithDedup failed: %v", i, err)
+		}
+	}
+	adm.authMu.Lock()
+	pc := adm.verifiedPeers[peerMember.ID]
+	entryCount := len(pc.entries)
+	byteCount := pc.bytes
+	adm.authMu.Unlock()
+	if entryCount > 4096 {
+		t.Fatalf("verifiedCache exceeded per-peer 4096 entry cap: %d", entryCount)
+	}
+	if byteCount > verifiedCacheMaxBytesPerPeer {
+		t.Fatalf("verifiedCache exceeded per-peer 4 MiB byte cap: %d", byteCount)
+	}
+
+	// 4) Simulated daemon restart: drop in-memory admission/cache while retaining durable deviceauth accept log.
+	adm.close()
+	ep.admission = nil
+	ep.admissionOnce = sync.Once{}
+	newAdm := ep.admissionOwner()
+	newAdm.nowFn = nowFn
+	var postRestartAuth atomic.Uint64
+	origPost := newAdm.authenticate
+	newAdm.authenticate = func(w devicesec.Wire) (*deviceauth.Authenticated, error) {
+		postRestartAuth.Add(1)
+		return origPost(w)
+	}
+	chRestart := make(chan *pb.ForwardReply, 1)
+	ep.dispatch(context.Background(), &pb.ForwardCall{CallId: 4, AttemptId: "restart", Command: raceEnv}, func(r *pb.ForwardReply) { chRestart <- r })
+	if res := openCommandResult(t, client, <-chRestart); res == nil || res.Outcome != "executed" {
+		t.Fatalf("expected post-restart replay to return durable stored executed result, got %+v", res)
+	}
+	if postRestartAuth.Load() != 1 {
+		t.Fatalf("expected post-restart replay to re-verify signature once, got %d", postRestartAuth.Load())
+	}
+	if got := backend.counts["send:barrier-race"]; got != 1 {
+		t.Fatalf("post-restart replay caused duplicate side effect: count=%d", got)
 	}
 }

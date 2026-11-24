@@ -85,3 +85,29 @@ func DirectFreshForTest(r *Relay) bool {
 	s := r.security.Load()
 	return s != nil && s.directFresh.Load() != nil
 }
+func SetTerminalClockForTest(r *Relay, ttl time.Duration, fn func() time.Time) {
+	r.termZeroLegTTL = ttl
+	r.termClock = fn
+}
+func TerminalRegistryActiveForTest(r *Relay) int {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.registry.ActiveCount()
+}
+func TerminalRelayAttachGenForTest(r *Relay, streamID string) uint64 {
+	h := r.termHubRef.Load()
+	if h == nil {
+		return 0
+	}
+	lt := h.getLive(streamID)
+	if lt == nil {
+		return 0
+	}
+	lt.mu.Lock()
+	defer lt.mu.Unlock()
+	return lt.relayAttachGen
+}

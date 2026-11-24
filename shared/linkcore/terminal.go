@@ -381,7 +381,7 @@ func (s *TerminalStream) ReceiveInput(now uint64, f TermFrame) (TermInputAction,
 	if s.Stopped {
 		return TermInputReject, nil, ErrTermStopped
 	}
-	if f.Seq == 0 || (f.DeadlineMs > 0 && now >= f.DeadlineMs) {
+	if f.Seq == 0 {
 		return TermInputReject, nil, ErrTermExpired
 	}
 	if old, ok := s.details[f.Seq]; ok {

@@ -90,12 +90,15 @@ func (c *endpoint) terminalHubOwner() *terminalHub {
 			inst = hex.EncodeToString(dm.self.Instance)
 		}
 		c.termHub = &terminalHub{
-			registry:  linkcore.NewTerminalRegistry(termMaxActiveStreams, termMaxRetiredStreams),
-			dedup:     linkcore.NewCipherDedup(),
-			live:      map[string]*liveTerminal{},
-			snapshots: map[string]frozenStatusCache{},
-			instance:  inst,
+			registry:   linkcore.NewTerminalRegistry(termMaxActiveStreams, termMaxRetiredStreams),
+			dedup:      linkcore.NewCipherDedup(),
+			live:       map[string]*liveTerminal{},
+			snapshots:  map[string]frozenStatusCache{},
+			instance:   inst,
+			nowFn:      c.r.termClock,
+			zeroLegTTL: c.r.termZeroLegTTL,
 		}
+		c.r.termHubRef.Store(c.termHub)
 	})
 	return c.termHub
 }

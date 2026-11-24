@@ -63,6 +63,9 @@ type Relay struct {
 	directSTUN     []string
 	directLoopback bool
 	directClock    func() time.Time
+	termClock      func() time.Time
+	termZeroLegTTL time.Duration
+	termHubRef     atomic.Pointer[terminalHub]
 	// SchedulerNow and SchedulerAfter override the command scheduler clock and
 	// timers when non-nil; tests use them to avoid wall-clock races.
 	SchedulerNow   func() time.Time
