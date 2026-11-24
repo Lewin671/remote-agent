@@ -1,7 +1,6 @@
 package screens
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
@@ -306,28 +305,31 @@ func TestSettingsRedesignProjections(t *testing.T) {
 	}
 
 	on := byID["m-online"]
-	if on.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE || len(on.SubtitleParts) != 3 {
-		t.Fatalf("unexpected online card: dot=%v parts=%+v", on.StatusDot, on.SubtitleParts)
+	if on.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_GREEN_LIVE || on.Dimmed || len(on.Alerts) != 1 || len(on.QuotaItems) != 2 {
+		t.Fatalf("unexpected online card: dot=%v dimmed=%v alerts=%+v quotas=%+v", on.StatusDot, on.Dimmed, on.Alerts, on.QuotaItems)
 	}
-	if on.SubtitleParts[0].GetText().GetKey() != text.KeySettingsMachineSubDiskAlert || !on.SubtitleParts[0].Warn {
-		t.Fatalf("expected disk warn part first, got %+v", on.SubtitleParts[0])
+	if on.Alerts[0].Kind != corev1.MachineAlertKind_MACHINE_ALERT_KIND_DISK_LOW || on.Alerts[0].GetText().GetKey() != text.KeySettingsMachineSubDiskAlert || !on.Alerts[0].Warn {
+		t.Fatalf("expected disk warn alert first, got %+v", on.Alerts[0])
 	}
-	if !on.SubtitleParts[1].Warn || on.SubtitleParts[2].Warn {
-		t.Fatalf("expected Codex 18%% warn=true and Claude 54%% warn=false, got %+v", on.SubtitleParts)
+	if !on.QuotaItems[0].Warn || on.QuotaItems[0].RemainingPercent != 18 || on.QuotaItems[1].Warn || on.QuotaItems[1].RemainingPercent != 54 {
+		t.Fatalf("expected Codex 18%% warn=true and Claude 54%% warn=false, got %+v", on.QuotaItems)
 	}
 
 	mm := byID["m-mismatch"]
-	if !mm.StatusWarn || mm.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC || mm.GetStatusText().GetKey() != text.KeySettingsStatusNeedsUpdate {
+	if mm.Dimmed || mm.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC || mm.GetStatusText().GetKey() != text.KeySettingsStatusNeedsUpdate {
 		t.Fatalf("unexpected mismatch card: %+v", mm)
+	}
+	if len(mm.Alerts) != 1 || mm.Alerts[0].Kind != corev1.MachineAlertKind_MACHINE_ALERT_KIND_PROTOCOL_MISMATCH || mm.Alerts[0].GetText().GetKey() != text.KeySettingsMachineSubVersionMismatch {
+		t.Fatalf("expected daemon mismatch alert, got %+v", mm.Alerts)
 	}
 
 	off := byID["m-offline"]
-	if off.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC || len(off.SubtitleParts) != 0 || off.GetStatusText().GetKey() != text.KeyTimeHoursAgo {
-		t.Fatalf("unexpected offline card (must omit prefix & stale quotas): %+v", off)
+	if !off.Dimmed || off.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC || len(off.Alerts) != 0 || len(off.QuotaItems) != 0 || off.GetStatusText().GetKey() != text.KeyTimeHoursAgo {
+		t.Fatalf("unexpected offline card (must be dimmed & omit stale quotas): %+v", off)
 	}
 
 	rem := byID["m-removed"]
-	if rem.GetStatusText().GetKey() != text.KeySettingsStatusRemoved || len(rem.SubtitleParts) != 1 || rem.SubtitleParts[0].Warn {
+	if !rem.Dimmed || rem.StatusDot != corev1.MachineStatusDot_MACHINE_STATUS_DOT_UNSPECIFIED || rem.GetStatusText().GetKey() != text.KeySettingsStatusRemoved || rem.GetSecondaryNote().GetKey() != text.KeySettingsMachineSubRemoved {
 		t.Fatalf("unexpected removed card: %+v", rem)
 	}
 
@@ -513,8 +515,8 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	if !setVM.ConnCheck.NetworkAvailable || !setVM.ConnCheck.EverOnline || setVM.ConnCheck.Failures != 2 || setVM.ConnCheck.ConnStartedAtMs != now-5_000 {
 		t.Fatalf("unexpected ConnCheckSummaryView fields: %+v", setVM.ConnCheck)
 	}
-	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady || setVM.Machines[0].ShortId != "" {
-		t.Fatalf("expected InDeviceDirectory, DirectReady, and no ShortId on a uniquely named machine card, got %+v", setVM.Machines)
+	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady || setVM.Machines[0].Disambiguator != "" {
+		t.Fatalf("expected InDeviceDirectory, DirectReady, and no Disambiguator on a uniquely named machine card, got %+v", setVM.Machines)
 	}
 	devVM := BuildDevices(st, sv, nil)
 	if !devVM.LoadFailed || devVM.GetErrorText().GetLiteral() != "devices rpc failed" || devVM.LeaseEndMs != now+600_000 {
@@ -714,9 +716,8 @@ func TestOfflineNetworkDoesNotShowRemovedBannerOrRemovedMachines(t *testing.T) {
 	}
 }
 
-// The short ID appears only when two computers share a name, and it comes last
-// in the subtitle so the quota summary stays first.
-func TestMachineCardShortIDOnlyForDuplicateNames(t *testing.T) {
+// Disambiguator (last 4 chars without ellipsis) appears only when two computers share a name.
+func TestMachineCardDisambiguatorOnlyForDuplicateNames(t *testing.T) {
 	now := int64(1_791_633_600_000)
 	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: now, TodayStartMs: now - 10_800_000}
@@ -733,29 +734,182 @@ func TestMachineCardShortIDOnlyForDuplicateNames(t *testing.T) {
 		}}
 	}
 	st.World.Machines = []*lists.Machine{
-		mk("aaaaaaaa11111111", "Mac"),
-		mk("bbbbbbbb22222222", "Mac"),
+		mk("aaaaaaaa111174c7", "Mac"),
+		mk("bbbbbbbb2222a91e", "Mac"),
 		mk("cccccccc33333333", "Studio"),
 	}
 	vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
 	if len(vm.Machines) != 3 {
 		t.Fatalf("want 3 machine cards, got %d", len(vm.Machines))
 	}
+	wantDisambig := map[string]string{
+		"aaaaaaaa111174c7": "74c7",
+		"bbbbbbbb2222a91e": "a91e",
+		"cccccccc33333333": "",
+	}
 	for _, c := range vm.Machines {
-		if c.ShortId != "" {
-			t.Fatalf("%s: ShortId must stay empty, got %q", c.MachineId, c.ShortId)
+		if c.Disambiguator != wantDisambig[c.MachineId] {
+			t.Fatalf("%s (%s): disambiguator=%q want %q", c.MachineId, c.Name, c.Disambiguator, wantDisambig[c.MachineId])
 		}
-		parts := c.SubtitleParts
-		if len(parts) == 0 {
-			t.Fatalf("%s: missing subtitle", c.MachineId)
-		}
-		last := parts[len(parts)-1].GetText().GetLiteral()
-		hasShort := strings.HasPrefix(last, "…")
-		if dup := c.Name == "Mac"; dup != hasShort {
-			t.Fatalf("%s (%s): short id last=%q, want present=%v", c.MachineId, c.Name, last, dup)
-		}
-		if parts[0].GetText().GetLiteral() != "" && strings.HasPrefix(parts[0].GetText().GetLiteral(), "…") && len(parts) > 1 {
-			t.Fatalf("%s: short id must not lead the subtitle", c.MachineId)
+		if len(c.QuotaItems) != 1 || c.QuotaItems[0].RemainingPercent != 70 || c.QuotaItems[0].GetValueText().GetKey() != text.KeyQuotaLeft {
+			t.Fatalf("%s: unexpected quota items: %+v", c.MachineId, c.QuotaItems)
 		}
 	}
+
+	// NewSession machine choices use the exact same duplicate-name disambiguator rule.
+	ns := BuildNewSession(st, "")
+	for _, ch := range ns.GetModelPanel().GetMachineChoices() {
+		if ch.Disambiguator != wantDisambig[ch.MachineId] {
+			t.Fatalf("new_session choice %s: disambiguator=%q want %q", ch.MachineId, ch.Disambiguator, wantDisambig[ch.MachineId])
+		}
+	}
+}
+
+func TestMachineCardPlanBStatesAndConnCheckFooter(t *testing.T) {
+	now := int64(1_791_633_600_000)
+
+	t.Run("protocol mismatch distinguishes daemon-older vs client-older", func(t *testing.T) {
+		cases := []struct {
+			name        string
+			machineVer  uint32
+			wantAlert   string
+			wantDirSign int32
+		}{
+			{"daemon older", 15, text.KeySettingsMachineSubVersionMismatch, -1},
+			{"client older", 19, text.KeySettingsMachineSubVersionMismatchClient, 1},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				st := NewState(nil)
+				st.Cal = lists.Calendar{NowMs: now}
+				st.World.Connection = lists.ConnConnected
+				st.World.ClientVersion = 17
+				st.World.Machines = []*lists.Machine{{
+					ID: "m1", Online: true,
+					Meta: &v1.MachineMeta{Hostname: "Lab", ProtocolVersion: tc.machineVer},
+				}}
+				vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+				c := vm.Machines[0]
+				if c.ProtocolMismatch != tc.wantDirSign || c.Dimmed {
+					t.Fatalf("mismatch=%d dimmed=%v want (%d, false)", c.ProtocolMismatch, c.Dimmed, tc.wantDirSign)
+				}
+				if len(c.Alerts) != 1 || c.Alerts[0].Kind != corev1.MachineAlertKind_MACHINE_ALERT_KIND_PROTOCOL_MISMATCH || c.Alerts[0].GetText().GetKey() != tc.wantAlert {
+					t.Fatalf("unexpected alerts: %+v", c.Alerts)
+				}
+				if len(c.QuotaItems) != 0 || c.DirectActive {
+					t.Fatalf("mismatched machine must not show quotas or direct_active: %+v", c)
+				}
+
+				mvm := BuildMachineSettings(st, &corev1.SyncStateView{}, nil, "m1")
+				if mvm.GetOfflineOrMismatchBanner().GetKey() != tc.wantAlert {
+					t.Fatalf("MachineSettings banner=%q want %q", mvm.GetOfflineOrMismatchBanner().GetKey(), tc.wantAlert)
+				}
+			})
+		}
+	})
+
+	t.Run("quota exhausted sets 0 percent, exhausted=true, warn=true, and exhausted value_text", func(t *testing.T) {
+		st := NewState(nil)
+		st.Cal = lists.Calendar{NowMs: now}
+		st.World.Connection = lists.ConnConnected
+		st.World.ClientVersion = 17
+		st.World.Machines = []*lists.Machine{{
+			ID: "m-ex", Online: true,
+			Meta: &v1.MachineMeta{
+				Hostname: "Work", ProtocolVersion: 17,
+				Quotas: []*v1.AgentQuota{
+					{
+						Agent: v1.Agent_AGENT_CODEX, State: v1.QuotaState_QUOTA_STATE_OK, ObservedMs: now - 30_000,
+						Windows: []*v1.QuotaWindow{{Name: "primary", UsedPercent: ptrF64(88), ResetsAtMs: now + 3_600_000}},
+					},
+					{
+						Agent: v1.Agent_AGENT_CLAUDE, State: v1.QuotaState_QUOTA_STATE_OK, ObservedMs: now - 30_000,
+						Windows: []*v1.QuotaWindow{{Name: "seven_day", UsedPercent: ptrF64(100), ResetsAtMs: now + 3_600_000}},
+					},
+				},
+			},
+		}}
+		vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+		qs := vm.Machines[0].QuotaItems
+		if len(qs) != 2 {
+			t.Fatalf("want 2 quota items, got %+v", qs)
+		}
+		if qs[0].Agent != v1.Agent_AGENT_CODEX || qs[0].RemainingPercent != 12 || !qs[0].Warn || qs[0].Exhausted || qs[0].GetValueText().GetKey() != text.KeyQuotaLeft {
+			t.Fatalf("unexpected codex quota item: %+v", qs[0])
+		}
+		if qs[1].Agent != v1.Agent_AGENT_CLAUDE || qs[1].RemainingPercent != 0 || !qs[1].Warn || !qs[1].Exhausted || qs[1].GetValueText().GetKey() != text.KeyQuotaExhaustedQuota {
+			t.Fatalf("unexpected claude exhausted quota item: %+v", qs[1])
+		}
+	})
+
+	t.Run("direct_active and connCheck footer reflect active routes", func(t *testing.T) {
+		directReport := &corev1.DirectRouteReport{
+			Enabled:   true,
+			Capable:   true,
+			State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED,
+			ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+			FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT,
+		}
+		relayReport := &corev1.DirectRouteReport{
+			Enabled:   true,
+			Capable:   true,
+			State:     corev1.DirectRouteState_DIRECT_ROUTE_STATE_NONE,
+			Reason:    corev1.DirectRouteReason_DIRECT_ROUTE_REASON_NO_TRAVERSAL,
+			ReadRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+			FileRoute: corev1.DirectPathChoice_DIRECT_PATH_CHOICE_RELAY,
+		}
+
+		cases := []struct {
+			name            string
+			reports         map[string]*corev1.DirectRouteReport
+			wantDirect      map[string]bool
+			wantFooterKey   string
+		}{
+			{
+				name:          "all online direct",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": directReport, "m2": directReport},
+				wantDirect:    map[string]bool{"m1": true, "m2": true, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyFooterDirect,
+			},
+			{
+				name:          "mixed direct and relay",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": directReport, "m2": relayReport},
+				wantDirect:    map[string]bool{"m1": true, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyFooterMixed,
+			},
+			{
+				name:          "all relay",
+				reports:       map[string]*corev1.DirectRouteReport{"m1": relayReport, "m2": relayReport},
+				wantDirect:    map[string]bool{"m1": false, "m2": false, "m3": false},
+				wantFooterKey: text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				st := NewState(nil)
+				st.Cal = lists.Calendar{NowMs: now}
+				st.World.Connection = lists.ConnConnected
+				st.World.ClientVersion = 17
+				st.World.Machines = []*lists.Machine{
+					{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Alpha", ProtocolVersion: 17}},
+					{ID: "m2", Online: true, Meta: &v1.MachineMeta{Hostname: "Beta", ProtocolVersion: 17}},
+					{ID: "m3", Online: false, Meta: &v1.MachineMeta{Hostname: "Gamma", ProtocolVersion: 17}},
+				}
+				st.DirectReportFn = func(id string) (bool, *corev1.DirectRouteReport, bool) {
+					r, ok := tc.reports[id]
+					return true, r, ok
+				}
+				vm := BuildSettings(st, &corev1.SyncStateView{}, nil)
+				if vm.GetConnCheck().GetFooterText().GetKey() != tc.wantFooterKey {
+					t.Fatalf("footer=%q want %q", vm.GetConnCheck().GetFooterText().GetKey(), tc.wantFooterKey)
+				}
+				for _, m := range vm.Machines {
+					if m.DirectActive != tc.wantDirect[m.MachineId] {
+						t.Fatalf("%s: DirectActive=%v want %v", m.MachineId, m.DirectActive, tc.wantDirect[m.MachineId])
+					}
+				}
+			})
+		}
+	})
 }

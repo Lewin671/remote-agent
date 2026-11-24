@@ -139,6 +139,8 @@
 "connection_ios_retry_now" = "重试";
 "connection_ios_server_error" = "连不上服务器：%1$@";
 "connection_last_failure" = "上一次失败：%1$@";
+"connection_latency_footer_direct" = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。";
+"connection_latency_footer_mixed" = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行按当前路线测量，走直连时直接往返电脑，走中继时经服务器再回来。";
 "connection_latency_is_one_round_trip_the_server_row_measures" = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。";
 "connection_live_push" = "实时推送";
 "connection_live_push_is_not_connected" = "实时推送未连接。";
@@ -1462,10 +1464,9 @@
 "settings_local_cache" = "本机缓存";
 "settings_machine_count" = "%1$lld 台";
 "settings_machine_sub_disk_alert" = "磁盘剩 %1$@";
-"settings_machine_sub_quota_exhausted" = "%1$@ 已用尽";
-"settings_machine_sub_quota_left" = "%1$@ 剩 %2$@%%";
 "settings_machine_sub_removed" = "保留历史会话记录";
 "settings_machine_sub_version_mismatch" = "协议版本不一致，需在电脑上更新";
+"settings_machine_sub_version_mismatch_client" = "协议版本不一致，需更新此应用";
 "settings_managing_client" = "管理端";
 "settings_name" = "名称";
 "settings_name_save_error" = "没能保存名称：%1$@";

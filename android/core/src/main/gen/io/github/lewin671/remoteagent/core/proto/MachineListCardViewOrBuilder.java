@@ -64,20 +64,6 @@ public interface MachineListCardViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.Text getStatusText();
 
   /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.QuotaCliSection> 
-      getQuotaSummariesList();
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.QuotaCliSection getQuotaSummaries(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  int getQuotaSummariesCount();
-
-  /**
    * <code>int64 last_seen_ms = 8 [json_name = "lastSeenMs"];</code>
    * @return The lastSeenMs.
    */
@@ -106,26 +92,6 @@ public interface MachineListCardViewOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.MachineStatusDot getStatusDot();
 
   /**
-   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-   * @return The statusWarn.
-   */
-  boolean getStatusWarn();
-
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> 
-      getSubtitlePartsList();
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index);
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  int getSubtitlePartsCount();
-
-  /**
    * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
    * @return The inDeviceDirectory.
    */
@@ -138,14 +104,65 @@ public interface MachineListCardViewOrBuilder extends
   boolean getDirectReady();
 
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @return The shortId.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @return The disambiguator.
    */
-  java.lang.String getShortId();
+  java.lang.String getDisambiguator();
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @return The bytes for shortId.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @return The bytes for disambiguator.
    */
   com.google.protobuf.ByteString
-      getShortIdBytes();
+      getDisambiguatorBytes();
+
+  /**
+   * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+   * @return The dimmed.
+   */
+  boolean getDimmed();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> 
+      getAlertsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineCardAlert getAlerts(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  int getAlertsCount();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> 
+      getQuotaItemsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem getQuotaItems(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  int getQuotaItemsCount();
+
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   * @return Whether the secondaryNote field is set.
+   */
+  boolean hasSecondaryNote();
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   * @return The secondaryNote.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSecondaryNote();
+
+  /**
+   * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+   * @return The directActive.
+   */
+  boolean getDirectActive();
 }

@@ -6,35 +6,77 @@
 package io.github.lewin671.remoteagent.core.proto;
 
 /**
- * Protobuf type {@code remoteagent.core.v1.SubtitleSegment}
+ * Protobuf type {@code remoteagent.core.v1.MachineCardAlert}
  */
 @com.google.protobuf.Generated
-public  final class SubtitleSegment extends
+public  final class MachineCardAlert extends
     com.google.protobuf.GeneratedMessageLite<
-        SubtitleSegment, SubtitleSegment.Builder> implements
-    // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SubtitleSegment)
-    SubtitleSegmentOrBuilder {
-  private SubtitleSegment() {
+        MachineCardAlert, MachineCardAlert.Builder> implements
+    // @@protoc_insertion_point(message_implements:remoteagent.core.v1.MachineCardAlert)
+    MachineCardAlertOrBuilder {
+  private MachineCardAlert() {
   }
   private int bitField0_;
-  public static final int TEXT_FIELD_NUMBER = 1;
+  public static final int KIND_FIELD_NUMBER = 1;
+  private int kind_;
+  /**
+   * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+   * @return The enum numeric value on the wire for kind.
+   */
+  @java.lang.Override
+  public int getKindValue() {
+    return kind_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+   * @return The kind.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineAlertKind getKind() {
+    io.github.lewin671.remoteagent.core.proto.MachineAlertKind result = io.github.lewin671.remoteagent.core.proto.MachineAlertKind.forNumber(kind_);
+    return result == null ? io.github.lewin671.remoteagent.core.proto.MachineAlertKind.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+   * @param value The enum numeric value on the wire for kind to set.
+   */
+  private void setKindValue(int value) {
+      kind_ = value;
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+   * @param value The kind to set.
+   */
+  private void setKind(io.github.lewin671.remoteagent.core.proto.MachineAlertKind value) {
+    kind_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+   */
+  private void clearKind() {
+
+    kind_ = 0;
+  }
+
+  public static final int TEXT_FIELD_NUMBER = 2;
   private io.github.lewin671.remoteagent.core.proto.Text text_;
   /**
-   * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+   * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
    */
   @java.lang.Override
   public boolean hasText() {
     return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+   * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
    */
   @java.lang.Override
   public io.github.lewin671.remoteagent.core.proto.Text getText() {
     return text_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : text_;
   }
   /**
-   * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+   * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setText(io.github.lewin671.remoteagent.core.proto.Text value) {
@@ -43,7 +85,7 @@ public  final class SubtitleSegment extends
     bitField0_ |= 0x00000001;
   }
   /**
-   * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+   * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
    */
   @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
   private void mergeText(io.github.lewin671.remoteagent.core.proto.Text value) {
@@ -58,17 +100,17 @@ public  final class SubtitleSegment extends
     bitField0_ |= 0x00000001;
   }
   /**
-   * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+   * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
    */
   private void clearText() {
     text_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
-  public static final int WARN_FIELD_NUMBER = 2;
+  public static final int WARN_FIELD_NUMBER = 3;
   private boolean warn_;
   /**
-   * <code>bool warn = 2 [json_name = "warn"];</code>
+   * <code>bool warn = 3 [json_name = "warn"];</code>
    * @return The warn.
    */
   @java.lang.Override
@@ -76,7 +118,7 @@ public  final class SubtitleSegment extends
     return warn_;
   }
   /**
-   * <code>bool warn = 2 [json_name = "warn"];</code>
+   * <code>bool warn = 3 [json_name = "warn"];</code>
    * @param value The warn to set.
    */
   private void setWarn(boolean value) {
@@ -84,57 +126,57 @@ public  final class SubtitleSegment extends
     warn_ = value;
   }
   /**
-   * <code>bool warn = 2 [json_name = "warn"];</code>
+   * <code>bool warn = 3 [json_name = "warn"];</code>
    */
   private void clearWarn() {
 
     warn_ = false;
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(byte[] data)
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, data, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(java.io.InputStream input)
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, input);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -142,24 +184,24 @@ public  final class SubtitleSegment extends
         DEFAULT_INSTANCE, input, extensionRegistry);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseDelimitedFrom(java.io.InputStream input)
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return parseDelimitedFrom(DEFAULT_INSTANCE, input);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseDelimitedFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return parseDelimitedFrom(DEFAULT_INSTANCE, input, extensionRegistry);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageLite.parseFrom(
         DEFAULT_INSTANCE, input);
   }
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment parseFrom(
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -170,40 +212,86 @@ public  final class SubtitleSegment extends
   public static Builder newBuilder() {
     return (Builder) DEFAULT_INSTANCE.createBuilder();
   }
-  public static Builder newBuilder(io.github.lewin671.remoteagent.core.proto.SubtitleSegment prototype) {
+  public static Builder newBuilder(io.github.lewin671.remoteagent.core.proto.MachineCardAlert prototype) {
     return DEFAULT_INSTANCE.createBuilder(prototype);
   }
 
   /**
-   * Protobuf type {@code remoteagent.core.v1.SubtitleSegment}
+   * Protobuf type {@code remoteagent.core.v1.MachineCardAlert}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageLite.Builder<
-        io.github.lewin671.remoteagent.core.proto.SubtitleSegment, Builder> implements
-      // @@protoc_insertion_point(builder_implements:remoteagent.core.v1.SubtitleSegment)
-      io.github.lewin671.remoteagent.core.proto.SubtitleSegmentOrBuilder {
-    // Construct using io.github.lewin671.remoteagent.core.proto.SubtitleSegment.newBuilder()
+        io.github.lewin671.remoteagent.core.proto.MachineCardAlert, Builder> implements
+      // @@protoc_insertion_point(builder_implements:remoteagent.core.v1.MachineCardAlert)
+      io.github.lewin671.remoteagent.core.proto.MachineCardAlertOrBuilder {
+    // Construct using io.github.lewin671.remoteagent.core.proto.MachineCardAlert.newBuilder()
     private Builder() {
       super(DEFAULT_INSTANCE);
     }
 
 
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+     * @return The enum numeric value on the wire for kind.
+     */
+    @java.lang.Override
+    public int getKindValue() {
+      return instance.getKindValue();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+     * @param value The kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKindValue(int value) {
+      copyOnWrite();
+      instance.setKindValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+     * @return The kind.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineAlertKind getKind() {
+      return instance.getKind();
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+     * @param value The enum numeric value on the wire for kind to set.
+     * @return This builder for chaining.
+     */
+    public Builder setKind(io.github.lewin671.remoteagent.core.proto.MachineAlertKind value) {
+      copyOnWrite();
+      instance.setKind(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.MachineAlertKind kind = 1 [json_name = "kind"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearKind() {
+      copyOnWrite();
+      instance.clearKind();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     @java.lang.Override
     public boolean hasText() {
       return instance.hasText();
     }
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     @java.lang.Override
     public io.github.lewin671.remoteagent.core.proto.Text getText() {
       return instance.getText();
     }
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     public Builder setText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -211,7 +299,7 @@ public  final class SubtitleSegment extends
       return this;
       }
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     public Builder setText(
         io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
@@ -220,7 +308,7 @@ public  final class SubtitleSegment extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     public Builder mergeText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -228,7 +316,7 @@ public  final class SubtitleSegment extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text text = 1 [json_name = "text"];</code>
+     * <code>.remoteagent.core.v1.Text text = 2 [json_name = "text"];</code>
      */
     public Builder clearText() {  copyOnWrite();
       instance.clearText();
@@ -236,7 +324,7 @@ public  final class SubtitleSegment extends
     }
 
     /**
-     * <code>bool warn = 2 [json_name = "warn"];</code>
+     * <code>bool warn = 3 [json_name = "warn"];</code>
      * @return The warn.
      */
     @java.lang.Override
@@ -244,7 +332,7 @@ public  final class SubtitleSegment extends
       return instance.getWarn();
     }
     /**
-     * <code>bool warn = 2 [json_name = "warn"];</code>
+     * <code>bool warn = 3 [json_name = "warn"];</code>
      * @param value The warn to set.
      * @return This builder for chaining.
      */
@@ -254,7 +342,7 @@ public  final class SubtitleSegment extends
       return this;
     }
     /**
-     * <code>bool warn = 2 [json_name = "warn"];</code>
+     * <code>bool warn = 3 [json_name = "warn"];</code>
      * @return This builder for chaining.
      */
     public Builder clearWarn() {
@@ -263,7 +351,7 @@ public  final class SubtitleSegment extends
       return this;
     }
 
-    // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SubtitleSegment)
+    // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineCardAlert)
   }
   @java.lang.Override
   @java.lang.SuppressWarnings({"ThrowNull"})
@@ -272,7 +360,7 @@ public  final class SubtitleSegment extends
       java.lang.Object arg0, java.lang.Object arg1) {
     switch (method) {
       case NEW_MUTABLE_INSTANCE: {
-        return new io.github.lewin671.remoteagent.core.proto.SubtitleSegment();
+        return new io.github.lewin671.remoteagent.core.proto.MachineCardAlert();
       }
       case NEW_BUILDER: {
         return new Builder();
@@ -280,25 +368,26 @@ public  final class SubtitleSegment extends
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
             "bitField0_",
+            "kind_",
             "text_",
             "warn_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0001\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u1009\u0000\u0002" +
-              "\u0007";
+              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\f\u0002\u1009" +
+              "\u0000\u0003\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
         return DEFAULT_INSTANCE;
       }
       case GET_PARSER: {
-        com.google.protobuf.Parser<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> parser = PARSER;
+        com.google.protobuf.Parser<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> parser = PARSER;
         if (parser == null) {
-          synchronized (io.github.lewin671.remoteagent.core.proto.SubtitleSegment.class) {
+          synchronized (io.github.lewin671.remoteagent.core.proto.MachineCardAlert.class) {
             parser = PARSER;
             if (parser == null) {
               parser =
-                  new DefaultInstanceBasedParser<io.github.lewin671.remoteagent.core.proto.SubtitleSegment>(
+                  new DefaultInstanceBasedParser<io.github.lewin671.remoteagent.core.proto.MachineCardAlert>(
                       DEFAULT_INSTANCE);
               PARSER = parser;
             }
@@ -318,24 +407,24 @@ public  final class SubtitleSegment extends
   }
 
 
-  // @@protoc_insertion_point(class_scope:remoteagent.core.v1.SubtitleSegment)
-  private static final io.github.lewin671.remoteagent.core.proto.SubtitleSegment DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:remoteagent.core.v1.MachineCardAlert)
+  private static final io.github.lewin671.remoteagent.core.proto.MachineCardAlert DEFAULT_INSTANCE;
   static {
-    SubtitleSegment defaultInstance = new SubtitleSegment();
+    MachineCardAlert defaultInstance = new MachineCardAlert();
     // New instances are implicitly immutable so no need to make
     // immutable.
     DEFAULT_INSTANCE = defaultInstance;
     com.google.protobuf.GeneratedMessageLite.registerDefaultInstance(
-      SubtitleSegment.class, defaultInstance);
+      MachineCardAlert.class, defaultInstance);
   }
 
-  public static io.github.lewin671.remoteagent.core.proto.SubtitleSegment getDefaultInstance() {
+  public static io.github.lewin671.remoteagent.core.proto.MachineCardAlert getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static volatile com.google.protobuf.Parser<SubtitleSegment> PARSER;
+  private static volatile com.google.protobuf.Parser<MachineCardAlert> PARSER;
 
-  public static com.google.protobuf.Parser<SubtitleSegment> parser() {
+  public static com.google.protobuf.Parser<MachineCardAlert> parser() {
     return DEFAULT_INSTANCE.getParserForType();
   }
 }

@@ -56,4 +56,16 @@ public interface MachineChoiceViewOrBuilder extends
    * @return The note.
    */
   io.github.lewin671.remoteagent.core.proto.Text getNote();
+
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @return The disambiguator.
+   */
+  java.lang.String getDisambiguator();
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @return The bytes for disambiguator.
+   */
+  com.google.protobuf.ByteString
+      getDisambiguatorBytes();
 }

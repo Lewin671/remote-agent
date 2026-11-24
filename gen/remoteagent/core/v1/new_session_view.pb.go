@@ -793,6 +793,7 @@ type MachineChoiceView struct {
 	Online        bool                   `protobuf:"varint,3,opt,name=online,proto3" json:"online,omitempty"`
 	Selected      bool                   `protobuf:"varint,4,opt,name=selected,proto3" json:"selected,omitempty"`
 	Note          *Text                  `protobuf:"bytes,5,opt,name=note,proto3" json:"note,omitempty"`
+	Disambiguator string                 `protobuf:"bytes,6,opt,name=disambiguator,proto3" json:"disambiguator,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -860,6 +861,13 @@ func (x *MachineChoiceView) GetNote() *Text {
 		return x.Note
 	}
 	return nil
+}
+
+func (x *MachineChoiceView) GetDisambiguator() string {
+	if x != nil {
+		return x.Disambiguator
+	}
+	return ""
 }
 
 type NewSessionModelPanelView struct {
@@ -1456,14 +1464,15 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\achecked\x18\x04 \x01(\bR\achecked\x12#\n" +
 	"\rsupports_auto\x18\x05 \x01(\bR\fsupportsAuto\x12\x1f\n" +
 	"\vsupports_1m\x18\x06 \x01(\bR\n" +
-	"supports1m\"\xa9\x01\n" +
+	"supports1m\"\xcf\x01\n" +
 	"\x11MachineChoiceView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06online\x18\x03 \x01(\bR\x06online\x12\x1a\n" +
 	"\bselected\x18\x04 \x01(\bR\bselected\x12-\n" +
-	"\x04note\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\x04note\"\xb7\x06\n" +
+	"\x04note\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\x04note\x12$\n" +
+	"\rdisambiguator\x18\x06 \x01(\tR\rdisambiguator\"\xb7\x06\n" +
 	"\x18NewSessionModelPanelView\x12%\n" +
 	"\x0emodels_loading\x18\x01 \x01(\bR\rmodelsLoading\x12<\n" +
 	"\fmodels_error\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\vmodelsError\x12I\n" +

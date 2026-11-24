@@ -106,6 +106,14 @@ const (
 	ConnProbeState_CONN_PROBE_STATE_UNAVAILABLE ConnProbeState = 5
 )
 
+type MachineAlertKind int32
+
+const (
+	MachineAlertKind_MACHINE_ALERT_KIND_UNSPECIFIED       MachineAlertKind = 0
+	MachineAlertKind_MACHINE_ALERT_KIND_DISK_LOW          MachineAlertKind = 1
+	MachineAlertKind_MACHINE_ALERT_KIND_PROTOCOL_MISMATCH MachineAlertKind = 2
+)
+
 type DiagCheckMark int32
 
 const (
@@ -126,38 +134,112 @@ func (m *SettingsScreenRequest) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SettingsScreenRequest)
 }
 
-type SubtitleSegment struct {
+type MachineCardAlert struct {
 	_    [0]func()
+	Kind MachineAlertKind
 	Text *Text
 	Warn bool
 }
 
-func (m *SubtitleSegment) GetText() *Text {
+func (m *MachineCardAlert) GetKind() MachineAlertKind {
+	if m != nil {
+		return m.Kind
+	}
+	return 0
+}
+func (m *MachineCardAlert) GetText() *Text {
 	if m != nil {
 		return m.Text
 	}
 	return nil
 }
-func (m *SubtitleSegment) GetWarn() bool {
+func (m *MachineCardAlert) GetWarn() bool {
 	if m != nil {
 		return m.Warn
 	}
 	return false
 }
 
-var LitewireDesc_SubtitleSegment = litewire.MessageDesc{
+var LitewireDesc_MachineCardAlert = litewire.MessageDesc{
 	Fields: []litewire.Field{
-		{Num: 1, Offset: unsafe.Offsetof(SubtitleSegment{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 2, Offset: unsafe.Offsetof(SubtitleSegment{}.Warn), Kind: litewire.KindBool},
+		{Num: 1, Offset: unsafe.Offsetof(MachineCardAlert{}.Kind), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(MachineCardAlert{}.Text), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 3, Offset: unsafe.Offsetof(MachineCardAlert{}.Warn), Kind: litewire.KindBool},
 	},
 }
 
-func (m *SubtitleSegment) Marshal() ([]byte, error) {
+func (m *MachineCardAlert) Marshal() ([]byte, error) {
 	return m.AppendMarshal(nil), nil
 }
 
-func (m *SubtitleSegment) AppendMarshal(b []byte) []byte {
-	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SubtitleSegment)
+func (m *MachineCardAlert) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineCardAlert)
+}
+
+type MachineCardQuotaItem struct {
+	_                [0]func()
+	Agent            v1.Agent
+	AgentName        string
+	RemainingPercent int32
+	Exhausted        bool
+	Warn             bool
+	ValueText        *Text
+}
+
+func (m *MachineCardQuotaItem) GetAgent() v1.Agent {
+	if m != nil {
+		return m.Agent
+	}
+	return 0
+}
+func (m *MachineCardQuotaItem) GetAgentName() string {
+	if m != nil {
+		return m.AgentName
+	}
+	return ""
+}
+func (m *MachineCardQuotaItem) GetRemainingPercent() int32 {
+	if m != nil {
+		return m.RemainingPercent
+	}
+	return 0
+}
+func (m *MachineCardQuotaItem) GetExhausted() bool {
+	if m != nil {
+		return m.Exhausted
+	}
+	return false
+}
+func (m *MachineCardQuotaItem) GetWarn() bool {
+	if m != nil {
+		return m.Warn
+	}
+	return false
+}
+func (m *MachineCardQuotaItem) GetValueText() *Text {
+	if m != nil {
+		return m.ValueText
+	}
+	return nil
+}
+
+var LitewireDesc_MachineCardQuotaItem = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.Agent), Kind: litewire.KindInt32},
+		{Num: 2, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.AgentName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.RemainingPercent), Kind: litewire.KindInt32},
+		{Num: 4, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.Exhausted), Kind: litewire.KindBool},
+		{Num: 5, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.Warn), Kind: litewire.KindBool},
+		{Num: 6, Offset: unsafe.Offsetof(MachineCardQuotaItem{}.ValueText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *MachineCardQuotaItem) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineCardQuotaItem) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineCardQuotaItem)
 }
 
 type MachineListCardView struct {
@@ -168,15 +250,17 @@ type MachineListCardView struct {
 	Member            bool
 	ProtocolMismatch  int32
 	StatusText        *Text
-	QuotaSummaries    []*QuotaCliSection
 	LastSeenMs        int64
 	DirectRow         *ConnCheckDirectRowView
 	StatusDot         MachineStatusDot
-	StatusWarn        bool
-	SubtitleParts     []*SubtitleSegment
 	InDeviceDirectory bool
 	DirectReady       bool
-	ShortId           string
+	Disambiguator     string
+	Dimmed            bool
+	Alerts            []*MachineCardAlert
+	QuotaItems        []*MachineCardQuotaItem
+	SecondaryNote     *Text
+	DirectActive      bool
 }
 
 func (m *MachineListCardView) GetMachineId() string {
@@ -215,12 +299,6 @@ func (m *MachineListCardView) GetStatusText() *Text {
 	}
 	return nil
 }
-func (m *MachineListCardView) GetQuotaSummaries() []*QuotaCliSection {
-	if m != nil {
-		return m.QuotaSummaries
-	}
-	return nil
-}
 func (m *MachineListCardView) GetLastSeenMs() int64 {
 	if m != nil {
 		return m.LastSeenMs
@@ -239,18 +317,6 @@ func (m *MachineListCardView) GetStatusDot() MachineStatusDot {
 	}
 	return 0
 }
-func (m *MachineListCardView) GetStatusWarn() bool {
-	if m != nil {
-		return m.StatusWarn
-	}
-	return false
-}
-func (m *MachineListCardView) GetSubtitleParts() []*SubtitleSegment {
-	if m != nil {
-		return m.SubtitleParts
-	}
-	return nil
-}
 func (m *MachineListCardView) GetInDeviceDirectory() bool {
 	if m != nil {
 		return m.InDeviceDirectory
@@ -263,11 +329,41 @@ func (m *MachineListCardView) GetDirectReady() bool {
 	}
 	return false
 }
-func (m *MachineListCardView) GetShortId() string {
+func (m *MachineListCardView) GetDisambiguator() string {
 	if m != nil {
-		return m.ShortId
+		return m.Disambiguator
 	}
 	return ""
+}
+func (m *MachineListCardView) GetDimmed() bool {
+	if m != nil {
+		return m.Dimmed
+	}
+	return false
+}
+func (m *MachineListCardView) GetAlerts() []*MachineCardAlert {
+	if m != nil {
+		return m.Alerts
+	}
+	return nil
+}
+func (m *MachineListCardView) GetQuotaItems() []*MachineCardQuotaItem {
+	if m != nil {
+		return m.QuotaItems
+	}
+	return nil
+}
+func (m *MachineListCardView) GetSecondaryNote() *Text {
+	if m != nil {
+		return m.SecondaryNote
+	}
+	return nil
+}
+func (m *MachineListCardView) GetDirectActive() bool {
+	if m != nil {
+		return m.DirectActive
+	}
+	return false
 }
 
 var LitewireDesc_MachineListCardView = litewire.MessageDesc{
@@ -278,15 +374,17 @@ var LitewireDesc_MachineListCardView = litewire.MessageDesc{
 		{Num: 4, Offset: unsafe.Offsetof(MachineListCardView{}.Member), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(MachineListCardView{}.ProtocolMismatch), Kind: litewire.KindInt32},
 		{Num: 6, Offset: unsafe.Offsetof(MachineListCardView{}.StatusText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
-		{Num: 7, Offset: unsafe.Offsetof(MachineListCardView{}.QuotaSummaries), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_QuotaCliSection},
 		{Num: 8, Offset: unsafe.Offsetof(MachineListCardView{}.LastSeenMs), Kind: litewire.KindInt64},
 		{Num: 9, Offset: unsafe.Offsetof(MachineListCardView{}.DirectRow), Kind: litewire.KindMessage, Sub: &LitewireDesc_ConnCheckDirectRowView},
 		{Num: 10, Offset: unsafe.Offsetof(MachineListCardView{}.StatusDot), Kind: litewire.KindInt32},
-		{Num: 11, Offset: unsafe.Offsetof(MachineListCardView{}.StatusWarn), Kind: litewire.KindBool},
-		{Num: 12, Offset: unsafe.Offsetof(MachineListCardView{}.SubtitleParts), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_SubtitleSegment},
 		{Num: 13, Offset: unsafe.Offsetof(MachineListCardView{}.InDeviceDirectory), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(MachineListCardView{}.DirectReady), Kind: litewire.KindBool},
-		{Num: 15, Offset: unsafe.Offsetof(MachineListCardView{}.ShortId), Kind: litewire.KindString},
+		{Num: 16, Offset: unsafe.Offsetof(MachineListCardView{}.Disambiguator), Kind: litewire.KindString},
+		{Num: 17, Offset: unsafe.Offsetof(MachineListCardView{}.Dimmed), Kind: litewire.KindBool},
+		{Num: 18, Offset: unsafe.Offsetof(MachineListCardView{}.Alerts), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineCardAlert},
+		{Num: 19, Offset: unsafe.Offsetof(MachineListCardView{}.QuotaItems), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineCardQuotaItem},
+		{Num: 20, Offset: unsafe.Offsetof(MachineListCardView{}.SecondaryNote), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 21, Offset: unsafe.Offsetof(MachineListCardView{}.DirectActive), Kind: litewire.KindBool},
 	},
 }
 
@@ -894,6 +992,7 @@ type ConnCheckSummaryView struct {
 	DisplayGrace      bool
 	IsConnecting      bool
 	BannerText        *Text
+	FooterText        *Text
 }
 
 func (m *ConnCheckSummaryView) GetServerState() ConnProbeState {
@@ -986,6 +1085,12 @@ func (m *ConnCheckSummaryView) GetBannerText() *Text {
 	}
 	return nil
 }
+func (m *ConnCheckSummaryView) GetFooterText() *Text {
+	if m != nil {
+		return m.FooterText
+	}
+	return nil
+}
 
 var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1004,6 +1109,7 @@ var LitewireDesc_ConnCheckSummaryView = litewire.MessageDesc{
 		{Num: 13, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.DisplayGrace), Kind: litewire.KindBool},
 		{Num: 14, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.IsConnecting), Kind: litewire.KindBool},
 		{Num: 15, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.BannerText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 16, Offset: unsafe.Offsetof(ConnCheckSummaryView{}.FooterText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

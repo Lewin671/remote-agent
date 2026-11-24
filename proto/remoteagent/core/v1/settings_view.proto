@@ -93,27 +93,48 @@ enum ConnProbeState {
 
 message SettingsScreenRequest {}
 
-message SubtitleSegment {
-  Text text = 1;
-  bool warn = 2;
+enum MachineAlertKind {
+  MACHINE_ALERT_KIND_UNSPECIFIED = 0;
+  MACHINE_ALERT_KIND_DISK_LOW = 1;
+  MACHINE_ALERT_KIND_PROTOCOL_MISMATCH = 2;
+}
+
+message MachineCardAlert {
+  MachineAlertKind kind = 1;
+  Text text = 2;
+  bool warn = 3;
+}
+
+message MachineCardQuotaItem {
+  remoteagent.v1.Agent agent = 1;
+  string agent_name = 2;
+  int32 remaining_percent = 3;
+  bool exhausted = 4;
+  bool warn = 5;
+  Text value_text = 6;
 }
 
 message MachineListCardView {
+  reserved 7, 11, 12, 15;
+  reserved "quota_summaries", "status_warn", "subtitle_parts", "short_id";
+
   string machine_id = 1;
   string name = 2;
   bool online = 3;
   bool member = 4;
   int32 protocol_mismatch = 5;
   Text status_text = 6;
-  repeated QuotaCliSection quota_summaries = 7;
   int64 last_seen_ms = 8;
   ConnCheckDirectRowView direct_row = 9;
   MachineStatusDot status_dot = 10;
-  bool status_warn = 11;
-  repeated SubtitleSegment subtitle_parts = 12;
   bool in_device_directory = 13;
   bool direct_ready = 14;
-  string short_id = 15;
+  string disambiguator = 16;
+  bool dimmed = 17;
+  repeated MachineCardAlert alerts = 18;
+  repeated MachineCardQuotaItem quota_items = 19;
+  Text secondary_note = 20;
+  bool direct_active = 21;
 }
 
 message ClientRowView {
@@ -210,6 +231,7 @@ message ConnCheckSummaryView {
   bool display_grace = 13;
   bool is_connecting = 14;
   Text banner_text = 15;
+  Text footer_text = 16;
 }
 
 message SettingsViewModel {

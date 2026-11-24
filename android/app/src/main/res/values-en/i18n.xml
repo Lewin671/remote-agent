@@ -153,6 +153,8 @@
     <string name="connection_connecting_conn_check" formatted="false">"Connecting"</string>
     <string name="connection_connecting_conn_check_label" formatted="false">"Connecting"</string>
     <string name="connection_last_failure">"Last failure: %1$s"</string>
+    <string name="connection_latency_footer_direct" formatted="false">"Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer."</string>
+    <string name="connection_latency_footer_mixed" formatted="false">"Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay."</string>
     <string name="connection_latency_is_one_round_trip_the_server_row_measures" formatted="false">"Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower."</string>
     <string name="connection_live_push" formatted="false">"Live push"</string>
     <string name="connection_live_push_is_not_connected" formatted="false">"Live push is not connected."</string>
@@ -1807,10 +1809,9 @@
     <string name="settings_local_cache" formatted="false">"Local cache"</string>
     <string name="settings_machine_count">"%1$d"</string>
     <string name="settings_machine_sub_disk_alert">"Disk %1$s free"</string>
-    <string name="settings_machine_sub_quota_exhausted">"%1$s exhausted"</string>
-    <string name="settings_machine_sub_quota_left">"%1$s %2$s%% left"</string>
     <string name="settings_machine_sub_removed" formatted="false">"Retaining session history"</string>
     <string name="settings_machine_sub_version_mismatch" formatted="false">"Protocol mismatch; update on the computer"</string>
+    <string name="settings_machine_sub_version_mismatch_client" formatted="false">"Protocol mismatch; update this app"</string>
     <string name="settings_managing_client" formatted="false">"Managing client"</string>
     <string name="settings_name" formatted="false">"Name"</string>
     <string name="settings_name_save_error">"Could not save name: %1$s"</string>

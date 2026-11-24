@@ -5,6 +5,7 @@ import (
 
 	attdomain "github.com/Lewin671/remote-agent/clientcore/domain/attachments"
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
@@ -635,6 +636,12 @@ func buildModelPanelView(
 		}
 	}
 
+	nameCount := make(map[string]int, len(st.World.Machines))
+	for _, m := range st.World.Machines {
+		if m != nil {
+			nameCount[lists.MachineName(m, m.ID)]++
+		}
+	}
 	machineChoices := make([]*corev1.MachineChoiceView, 0, len(st.World.Machines))
 	for _, m := range st.World.Machines {
 		if m == nil {
@@ -649,12 +656,18 @@ func buildModelPanelView(
 		} else {
 			note = text.Join(text.KeyCommonNoteSeparator, text.Msg(text.KeyCommonOnline), text.Msg(text.KeyNewSessionReadingCli, text.Str("agent", agentCap.Name)))
 		}
+		name := lists.MachineName(m, m.ID)
+		var disambiguator string
+		if nameCount[name] > 1 {
+			disambiguator = machine.Last4(m.ID)
+		}
 		machineChoices = append(machineChoices, &corev1.MachineChoiceView{
-			MachineId: m.ID,
-			Name:      lists.MachineName(m, m.ID),
-			Online:    online,
-			Selected:  m.ID == cfg.MachineID,
-			Note:      note,
+			MachineId:     m.ID,
+			Name:          name,
+			Online:        online,
+			Selected:      m.ID == cfg.MachineID,
+			Note:          note,
+			Disambiguator: disambiguator,
 		})
 	}
 

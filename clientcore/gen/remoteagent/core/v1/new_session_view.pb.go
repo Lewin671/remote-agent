@@ -454,12 +454,13 @@ func (m *ModelOptionView) AppendMarshal(b []byte) []byte {
 }
 
 type MachineChoiceView struct {
-	_         [0]func()
-	MachineId string
-	Name      string
-	Online    bool
-	Selected  bool
-	Note      *Text
+	_             [0]func()
+	MachineId     string
+	Name          string
+	Online        bool
+	Selected      bool
+	Note          *Text
+	Disambiguator string
 }
 
 func (m *MachineChoiceView) GetMachineId() string {
@@ -492,6 +493,12 @@ func (m *MachineChoiceView) GetNote() *Text {
 	}
 	return nil
 }
+func (m *MachineChoiceView) GetDisambiguator() string {
+	if m != nil {
+		return m.Disambiguator
+	}
+	return ""
+}
 
 var LitewireDesc_MachineChoiceView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -500,6 +507,7 @@ var LitewireDesc_MachineChoiceView = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(MachineChoiceView{}.Online), Kind: litewire.KindBool},
 		{Num: 4, Offset: unsafe.Offsetof(MachineChoiceView{}.Selected), Kind: litewire.KindBool},
 		{Num: 5, Offset: unsafe.Offsetof(MachineChoiceView{}.Note), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 6, Offset: unsafe.Offsetof(MachineChoiceView{}.Disambiguator), Kind: litewire.KindString},
 	},
 }
 

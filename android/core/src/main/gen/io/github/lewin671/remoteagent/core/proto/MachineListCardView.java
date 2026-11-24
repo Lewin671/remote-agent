@@ -17,9 +17,9 @@ public  final class MachineListCardView extends
   private MachineListCardView() {
     machineId_ = "";
     name_ = "";
-    quotaSummaries_ = emptyProtobufList();
-    subtitleParts_ = emptyProtobufList();
-    shortId_ = "";
+    disambiguator_ = "";
+    alerts_ = emptyProtobufList();
+    quotaItems_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -244,103 +244,6 @@ public  final class MachineListCardView extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
-  public static final int QUOTA_SUMMARIES_FIELD_NUMBER = 7;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.QuotaCliSection> quotaSummaries_;
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.QuotaCliSection> getQuotaSummariesList() {
-    return quotaSummaries_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.QuotaCliSectionOrBuilder> 
-      getQuotaSummariesOrBuilderList() {
-    return quotaSummaries_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.Override
-  public int getQuotaSummariesCount() {
-    return quotaSummaries_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.QuotaCliSection getQuotaSummaries(int index) {
-    return quotaSummaries_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.QuotaCliSectionOrBuilder getQuotaSummariesOrBuilder(
-      int index) {
-    return quotaSummaries_.get(index);
-  }
-  private void ensureQuotaSummariesIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.QuotaCliSection> tmp = quotaSummaries_;
-    if (!tmp.isModifiable()) {
-      quotaSummaries_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setQuotaSummaries(
-      int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-    value.getClass();  // minimal bytecode null check
-    ensureQuotaSummariesIsMutable();
-    quotaSummaries_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addQuotaSummaries(io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-    value.getClass();  // minimal bytecode null check
-    ensureQuotaSummariesIsMutable();
-    quotaSummaries_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addQuotaSummaries(
-      int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-    value.getClass();  // minimal bytecode null check
-    ensureQuotaSummariesIsMutable();
-    quotaSummaries_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  private void addAllQuotaSummaries(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.QuotaCliSection> values) {
-    ensureQuotaSummariesIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, quotaSummaries_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  private void clearQuotaSummaries() {
-    quotaSummaries_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-   */
-  private void removeQuotaSummaries(int index) {
-    ensureQuotaSummariesIsMutable();
-    quotaSummaries_.remove(index);
-  }
-
   public static final int LAST_SEEN_MS_FIELD_NUMBER = 8;
   private long lastSeenMs_;
   /**
@@ -457,129 +360,6 @@ public  final class MachineListCardView extends
     statusDot_ = 0;
   }
 
-  public static final int STATUS_WARN_FIELD_NUMBER = 11;
-  private boolean statusWarn_;
-  /**
-   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-   * @return The statusWarn.
-   */
-  @java.lang.Override
-  public boolean getStatusWarn() {
-    return statusWarn_;
-  }
-  /**
-   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-   * @param value The statusWarn to set.
-   */
-  private void setStatusWarn(boolean value) {
-    
-    statusWarn_ = value;
-  }
-  /**
-   * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-   */
-  private void clearStatusWarn() {
-
-    statusWarn_ = false;
-  }
-
-  public static final int SUBTITLE_PARTS_FIELD_NUMBER = 12;
-  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> subtitleParts_;
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.Override
-  public java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> getSubtitlePartsList() {
-    return subtitleParts_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegmentOrBuilder> 
-      getSubtitlePartsOrBuilderList() {
-    return subtitleParts_;
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.Override
-  public int getSubtitlePartsCount() {
-    return subtitleParts_.size();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index) {
-    return subtitleParts_.get(index);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  public io.github.lewin671.remoteagent.core.proto.SubtitleSegmentOrBuilder getSubtitlePartsOrBuilder(
-      int index) {
-    return subtitleParts_.get(index);
-  }
-  private void ensureSubtitlePartsIsMutable() {
-    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> tmp = subtitleParts_;
-    if (!tmp.isModifiable()) {
-      subtitleParts_ =
-          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
-     }
-  }
-
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setSubtitleParts(
-      int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSubtitlePartsIsMutable();
-    subtitleParts_.set(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSubtitleParts(io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSubtitlePartsIsMutable();
-    subtitleParts_.add(value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void addSubtitleParts(
-      int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-    value.getClass();  // minimal bytecode null check
-    ensureSubtitlePartsIsMutable();
-    subtitleParts_.add(index, value);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  private void addAllSubtitleParts(
-      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegment> values) {
-    ensureSubtitlePartsIsMutable();
-    com.google.protobuf.AbstractMessageLite.addAll(
-        values, subtitleParts_);
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  private void clearSubtitleParts() {
-    subtitleParts_ = emptyProtobufList();
-  }
-  /**
-   * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-   */
-  private void removeSubtitleParts(int index) {
-    ensureSubtitlePartsIsMutable();
-    subtitleParts_.remove(index);
-  }
-
   public static final int IN_DEVICE_DIRECTORY_FIELD_NUMBER = 13;
   private boolean inDeviceDirectory_;
   /**
@@ -632,52 +412,346 @@ public  final class MachineListCardView extends
     directReady_ = false;
   }
 
-  public static final int SHORT_ID_FIELD_NUMBER = 15;
-  private java.lang.String shortId_;
+  public static final int DISAMBIGUATOR_FIELD_NUMBER = 16;
+  private java.lang.String disambiguator_;
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @return The shortId.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @return The disambiguator.
    */
   @java.lang.Override
-  public java.lang.String getShortId() {
-    return shortId_;
+  public java.lang.String getDisambiguator() {
+    return disambiguator_;
   }
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @return The bytes for shortId.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @return The bytes for disambiguator.
    */
   @java.lang.Override
   public com.google.protobuf.ByteString
-      getShortIdBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(shortId_);
+      getDisambiguatorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(disambiguator_);
   }
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @param value The shortId to set.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @param value The disambiguator to set.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setShortId(
+  private void setDisambiguator(
       java.lang.String value) {
     value.getClass();  // minimal bytecode null check
 
-    shortId_ = value;
+    disambiguator_ = value;
   }
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
    */
-  private void clearShortId() {
+  private void clearDisambiguator() {
 
-    shortId_ = getDefaultInstance().getShortId();
+    disambiguator_ = getDefaultInstance().getDisambiguator();
   }
   /**
-   * <code>string short_id = 15 [json_name = "shortId"];</code>
-   * @param value The bytes for shortId to set.
+   * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+   * @param value The bytes for disambiguator to set.
    */
-  private void setShortIdBytes(
+  private void setDisambiguatorBytes(
       com.google.protobuf.ByteString value) {
     checkByteStringIsUtf8(value);
-    shortId_ = value.toStringUtf8();
+    disambiguator_ = value.toStringUtf8();
 
+  }
+
+  public static final int DIMMED_FIELD_NUMBER = 17;
+  private boolean dimmed_;
+  /**
+   * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+   * @return The dimmed.
+   */
+  @java.lang.Override
+  public boolean getDimmed() {
+    return dimmed_;
+  }
+  /**
+   * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+   * @param value The dimmed to set.
+   */
+  private void setDimmed(boolean value) {
+    
+    dimmed_ = value;
+  }
+  /**
+   * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+   */
+  private void clearDimmed() {
+
+    dimmed_ = false;
+  }
+
+  public static final int ALERTS_FIELD_NUMBER = 18;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> alerts_;
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> getAlertsList() {
+    return alerts_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.MachineCardAlertOrBuilder> 
+      getAlertsOrBuilderList() {
+    return alerts_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.Override
+  public int getAlertsCount() {
+    return alerts_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineCardAlert getAlerts(int index) {
+    return alerts_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.MachineCardAlertOrBuilder getAlertsOrBuilder(
+      int index) {
+    return alerts_.get(index);
+  }
+  private void ensureAlertsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> tmp = alerts_;
+    if (!tmp.isModifiable()) {
+      alerts_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAlerts(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAlertsIsMutable();
+    alerts_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addAlerts(io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAlertsIsMutable();
+    alerts_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addAlerts(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+    value.getClass();  // minimal bytecode null check
+    ensureAlertsIsMutable();
+    alerts_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  private void addAllAlerts(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardAlert> values) {
+    ensureAlertsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, alerts_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  private void clearAlerts() {
+    alerts_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+   */
+  private void removeAlerts(int index) {
+    ensureAlertsIsMutable();
+    alerts_.remove(index);
+  }
+
+  public static final int QUOTA_ITEMS_FIELD_NUMBER = 19;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> quotaItems_;
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> getQuotaItemsList() {
+    return quotaItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItemOrBuilder> 
+      getQuotaItemsOrBuilderList() {
+    return quotaItems_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.Override
+  public int getQuotaItemsCount() {
+    return quotaItems_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem getQuotaItems(int index) {
+    return quotaItems_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItemOrBuilder getQuotaItemsOrBuilder(
+      int index) {
+    return quotaItems_.get(index);
+  }
+  private void ensureQuotaItemsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> tmp = quotaItems_;
+    if (!tmp.isModifiable()) {
+      quotaItems_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setQuotaItems(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotaItemsIsMutable();
+    quotaItems_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addQuotaItems(io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotaItemsIsMutable();
+    quotaItems_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addQuotaItems(
+      int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+    value.getClass();  // minimal bytecode null check
+    ensureQuotaItemsIsMutable();
+    quotaItems_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  private void addAllQuotaItems(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> values) {
+    ensureQuotaItemsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, quotaItems_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  private void clearQuotaItems() {
+    quotaItems_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+   */
+  private void removeQuotaItems(int index) {
+    ensureQuotaItemsIsMutable();
+    quotaItems_.remove(index);
+  }
+
+  public static final int SECONDARY_NOTE_FIELD_NUMBER = 20;
+  private io.github.lewin671.remoteagent.core.proto.Text secondaryNote_;
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   */
+  @java.lang.Override
+  public boolean hasSecondaryNote() {
+    return ((bitField0_ & 0x00000004) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getSecondaryNote() {
+    return secondaryNote_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : secondaryNote_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSecondaryNote(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    secondaryNote_ = value;
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeSecondaryNote(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (secondaryNote_ != null &&
+        secondaryNote_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      secondaryNote_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(secondaryNote_).mergeFrom(value).buildPartial();
+    } else {
+      secondaryNote_ = value;
+    }
+    bitField0_ |= 0x00000004;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+   */
+  private void clearSecondaryNote() {
+    secondaryNote_ = null;
+    bitField0_ = (bitField0_ & ~0x00000004);
+  }
+
+  public static final int DIRECT_ACTIVE_FIELD_NUMBER = 21;
+  private boolean directActive_;
+  /**
+   * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+   * @return The directActive.
+   */
+  @java.lang.Override
+  public boolean getDirectActive() {
+    return directActive_;
+  }
+  /**
+   * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+   * @param value The directActive to set.
+   */
+  private void setDirectActive(boolean value) {
+    
+    directActive_ = value;
+  }
+  /**
+   * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+   */
+  private void clearDirectActive() {
+
+    directActive_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineListCardView parseFrom(
@@ -1007,108 +1081,6 @@ public  final class MachineListCardView extends
     }
 
     /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.QuotaCliSection> getQuotaSummariesList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getQuotaSummariesList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    @java.lang.Override
-    public int getQuotaSummariesCount() {
-      return instance.getQuotaSummariesCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.QuotaCliSection getQuotaSummaries(int index) {
-      return instance.getQuotaSummaries(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder setQuotaSummaries(
-        int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-      copyOnWrite();
-      instance.setQuotaSummaries(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder setQuotaSummaries(
-        int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection.Builder builderForValue) {
-      copyOnWrite();
-      instance.setQuotaSummaries(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder addQuotaSummaries(io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-      copyOnWrite();
-      instance.addQuotaSummaries(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder addQuotaSummaries(
-        int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection value) {
-      copyOnWrite();
-      instance.addQuotaSummaries(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder addQuotaSummaries(
-        io.github.lewin671.remoteagent.core.proto.QuotaCliSection.Builder builderForValue) {
-      copyOnWrite();
-      instance.addQuotaSummaries(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder addQuotaSummaries(
-        int index, io.github.lewin671.remoteagent.core.proto.QuotaCliSection.Builder builderForValue) {
-      copyOnWrite();
-      instance.addQuotaSummaries(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder addAllQuotaSummaries(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.QuotaCliSection> values) {
-      copyOnWrite();
-      instance.addAllQuotaSummaries(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder clearQuotaSummaries() {
-      copyOnWrite();
-      instance.clearQuotaSummaries();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.QuotaCliSection quota_summaries = 7 [json_name = "quotaSummaries"];</code>
-     */
-    public Builder removeQuotaSummaries(int index) {
-      copyOnWrite();
-      instance.removeQuotaSummaries(index);
-      return this;
-    }
-
-    /**
      * <code>int64 last_seen_ms = 8 [json_name = "lastSeenMs"];</code>
      * @return The lastSeenMs.
      */
@@ -1230,136 +1202,6 @@ public  final class MachineListCardView extends
     }
 
     /**
-     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-     * @return The statusWarn.
-     */
-    @java.lang.Override
-    public boolean getStatusWarn() {
-      return instance.getStatusWarn();
-    }
-    /**
-     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-     * @param value The statusWarn to set.
-     * @return This builder for chaining.
-     */
-    public Builder setStatusWarn(boolean value) {
-      copyOnWrite();
-      instance.setStatusWarn(value);
-      return this;
-    }
-    /**
-     * <code>bool status_warn = 11 [json_name = "statusWarn"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearStatusWarn() {
-      copyOnWrite();
-      instance.clearStatusWarn();
-      return this;
-    }
-
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    @java.lang.Override
-    public java.util.List<io.github.lewin671.remoteagent.core.proto.SubtitleSegment> getSubtitlePartsList() {
-      return java.util.Collections.unmodifiableList(
-          instance.getSubtitlePartsList());
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    @java.lang.Override
-    public int getSubtitlePartsCount() {
-      return instance.getSubtitlePartsCount();
-    }/**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.SubtitleSegment getSubtitleParts(int index) {
-      return instance.getSubtitleParts(index);
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder setSubtitleParts(
-        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-      copyOnWrite();
-      instance.setSubtitleParts(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder setSubtitleParts(
-        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
-      copyOnWrite();
-      instance.setSubtitleParts(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder addSubtitleParts(io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-      copyOnWrite();
-      instance.addSubtitleParts(value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder addSubtitleParts(
-        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment value) {
-      copyOnWrite();
-      instance.addSubtitleParts(index, value);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder addSubtitleParts(
-        io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSubtitleParts(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder addSubtitleParts(
-        int index, io.github.lewin671.remoteagent.core.proto.SubtitleSegment.Builder builderForValue) {
-      copyOnWrite();
-      instance.addSubtitleParts(index,
-          builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder addAllSubtitleParts(
-        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.SubtitleSegment> values) {
-      copyOnWrite();
-      instance.addAllSubtitleParts(values);
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder clearSubtitleParts() {
-      copyOnWrite();
-      instance.clearSubtitleParts();
-      return this;
-    }
-    /**
-     * <code>repeated .remoteagent.core.v1.SubtitleSegment subtitle_parts = 12 [json_name = "subtitleParts"];</code>
-     */
-    public Builder removeSubtitleParts(int index) {
-      copyOnWrite();
-      instance.removeSubtitleParts(index);
-      return this;
-    }
-
-    /**
      * <code>bool in_device_directory = 13 [json_name = "inDeviceDirectory"];</code>
      * @return The inDeviceDirectory.
      */
@@ -1416,51 +1258,358 @@ public  final class MachineListCardView extends
     }
 
     /**
-     * <code>string short_id = 15 [json_name = "shortId"];</code>
-     * @return The shortId.
+     * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+     * @return The disambiguator.
      */
     @java.lang.Override
-    public java.lang.String getShortId() {
-      return instance.getShortId();
+    public java.lang.String getDisambiguator() {
+      return instance.getDisambiguator();
     }
     /**
-     * <code>string short_id = 15 [json_name = "shortId"];</code>
-     * @return The bytes for shortId.
+     * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+     * @return The bytes for disambiguator.
      */
     @java.lang.Override
     public com.google.protobuf.ByteString
-        getShortIdBytes() {
-      return instance.getShortIdBytes();
+        getDisambiguatorBytes() {
+      return instance.getDisambiguatorBytes();
     }
     /**
-     * <code>string short_id = 15 [json_name = "shortId"];</code>
-     * @param value The shortId to set.
+     * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+     * @param value The disambiguator to set.
      * @return This builder for chaining.
      */
-    public Builder setShortId(
+    public Builder setDisambiguator(
         java.lang.String value) {
       copyOnWrite();
-      instance.setShortId(value);
+      instance.setDisambiguator(value);
       return this;
     }
     /**
-     * <code>string short_id = 15 [json_name = "shortId"];</code>
+     * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
      * @return This builder for chaining.
      */
-    public Builder clearShortId() {
+    public Builder clearDisambiguator() {
       copyOnWrite();
-      instance.clearShortId();
+      instance.clearDisambiguator();
       return this;
     }
     /**
-     * <code>string short_id = 15 [json_name = "shortId"];</code>
-     * @param value The bytes for shortId to set.
+     * <code>string disambiguator = 16 [json_name = "disambiguator"];</code>
+     * @param value The bytes for disambiguator to set.
      * @return This builder for chaining.
      */
-    public Builder setShortIdBytes(
+    public Builder setDisambiguatorBytes(
         com.google.protobuf.ByteString value) {
       copyOnWrite();
-      instance.setShortIdBytes(value);
+      instance.setDisambiguatorBytes(value);
+      return this;
+    }
+
+    /**
+     * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+     * @return The dimmed.
+     */
+    @java.lang.Override
+    public boolean getDimmed() {
+      return instance.getDimmed();
+    }
+    /**
+     * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+     * @param value The dimmed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDimmed(boolean value) {
+      copyOnWrite();
+      instance.setDimmed(value);
+      return this;
+    }
+    /**
+     * <code>bool dimmed = 17 [json_name = "dimmed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDimmed() {
+      copyOnWrite();
+      instance.clearDimmed();
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardAlert> getAlertsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getAlertsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    @java.lang.Override
+    public int getAlertsCount() {
+      return instance.getAlertsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineCardAlert getAlerts(int index) {
+      return instance.getAlerts(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder setAlerts(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+      copyOnWrite();
+      instance.setAlerts(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder setAlerts(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAlerts(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder addAlerts(io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+      copyOnWrite();
+      instance.addAlerts(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder addAlerts(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert value) {
+      copyOnWrite();
+      instance.addAlerts(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder addAlerts(
+        io.github.lewin671.remoteagent.core.proto.MachineCardAlert.Builder builderForValue) {
+      copyOnWrite();
+      instance.addAlerts(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder addAlerts(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardAlert.Builder builderForValue) {
+      copyOnWrite();
+      instance.addAlerts(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder addAllAlerts(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardAlert> values) {
+      copyOnWrite();
+      instance.addAllAlerts(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder clearAlerts() {
+      copyOnWrite();
+      instance.clearAlerts();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardAlert alerts = 18 [json_name = "alerts"];</code>
+     */
+    public Builder removeAlerts(int index) {
+      copyOnWrite();
+      instance.removeAlerts(index);
+      return this;
+    }
+
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> getQuotaItemsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getQuotaItemsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    @java.lang.Override
+    public int getQuotaItemsCount() {
+      return instance.getQuotaItemsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem getQuotaItems(int index) {
+      return instance.getQuotaItems(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder setQuotaItems(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+      copyOnWrite();
+      instance.setQuotaItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder setQuotaItems(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.Builder builderForValue) {
+      copyOnWrite();
+      instance.setQuotaItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder addQuotaItems(io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+      copyOnWrite();
+      instance.addQuotaItems(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder addQuotaItems(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem value) {
+      copyOnWrite();
+      instance.addQuotaItems(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder addQuotaItems(
+        io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.Builder builderForValue) {
+      copyOnWrite();
+      instance.addQuotaItems(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder addQuotaItems(
+        int index, io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.Builder builderForValue) {
+      copyOnWrite();
+      instance.addQuotaItems(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder addAllQuotaItems(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem> values) {
+      copyOnWrite();
+      instance.addAllQuotaItems(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder clearQuotaItems() {
+      copyOnWrite();
+      instance.clearQuotaItems();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.MachineCardQuotaItem quota_items = 19 [json_name = "quotaItems"];</code>
+     */
+    public Builder removeQuotaItems(int index) {
+      copyOnWrite();
+      instance.removeQuotaItems(index);
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    @java.lang.Override
+    public boolean hasSecondaryNote() {
+      return instance.hasSecondaryNote();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getSecondaryNote() {
+      return instance.getSecondaryNote();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    public Builder setSecondaryNote(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setSecondaryNote(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    public Builder setSecondaryNote(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSecondaryNote(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    public Builder mergeSecondaryNote(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeSecondaryNote(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text secondary_note = 20 [json_name = "secondaryNote"];</code>
+     */
+    public Builder clearSecondaryNote() {  copyOnWrite();
+      instance.clearSecondaryNote();
+      return this;
+    }
+
+    /**
+     * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+     * @return The directActive.
+     */
+    @java.lang.Override
+    public boolean getDirectActive() {
+      return instance.getDirectActive();
+    }
+    /**
+     * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+     * @param value The directActive to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDirectActive(boolean value) {
+      copyOnWrite();
+      instance.setDirectActive(value);
+      return this;
+    }
+    /**
+     * <code>bool direct_active = 21 [json_name = "directActive"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDirectActive() {
+      copyOnWrite();
+      instance.clearDirectActive();
       return this;
     }
 
@@ -1487,22 +1636,25 @@ public  final class MachineListCardView extends
             "member_",
             "protocolMismatch_",
             "statusText_",
-            "quotaSummaries_",
-            io.github.lewin671.remoteagent.core.proto.QuotaCliSection.class,
             "lastSeenMs_",
             "directRow_",
             "statusDot_",
-            "statusWarn_",
-            "subtitleParts_",
-            io.github.lewin671.remoteagent.core.proto.SubtitleSegment.class,
             "inDeviceDirectory_",
             "directReady_",
-            "shortId_",
+            "disambiguator_",
+            "dimmed_",
+            "alerts_",
+            io.github.lewin671.remoteagent.core.proto.MachineCardAlert.class,
+            "quotaItems_",
+            io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.class,
+            "secondaryNote_",
+            "directActive_",
           };
           java.lang.String info =
-              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0007\u0005\u0004\u0006\u1009\u0000\u0007\u001b\b\u0002\t\u1009" +
-              "\u0001\n\f\u000b\u0007\f\u001b\r\u0007\u000e\u0007\u000f\u0208";
+              "\u0000\u0011\u0000\u0001\u0001\u0015\u0011\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0007\u0005\u0004\u0006\u1009\u0000\b\u0002\t\u1009\u0001\n\f" +
+              "\r\u0007\u000e\u0007\u0010\u0208\u0011\u0007\u0012\u001b\u0013\u001b\u0014\u1009" +
+              "\u0002\u0015\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

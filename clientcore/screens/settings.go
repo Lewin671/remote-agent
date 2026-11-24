@@ -131,20 +131,37 @@ func machineDirectInputs(st *State, _ *SettingsExtra, machineID string) (bool, *
 	return true, nil
 }
 
-type settingsMachinesSorted []*lists.Machine
+type settingsMachinesSorted struct {
+	list    []*lists.Machine
+	removed bool
+}
 
-func (s settingsMachinesSorted) Len() int      { return len(s) }
-func (s settingsMachinesSorted) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s settingsMachinesSorted) rank(m *lists.Machine) int {
+	if m.Archived || s.removed {
+		return 2
+	}
+	if lists.MachineReachable(m) {
+		return 0
+	}
+	return 1
+}
+
+func (s settingsMachinesSorted) Len() int      { return len(s.list) }
+func (s settingsMachinesSorted) Swap(i, j int) { s.list[i], s.list[j] = s.list[j], s.list[i] }
 func (s settingsMachinesSorted) Less(i, j int) bool {
-	ni := strings.ToLower(lists.MachineName(s[i], s[i].ID))
-	nj := strings.ToLower(lists.MachineName(s[j], s[j].ID))
+	ri, rj := s.rank(s.list[i]), s.rank(s.list[j])
+	if ri != rj {
+		return ri < rj
+	}
+	ni := strings.ToLower(lists.MachineName(s.list[i], s.list[i].ID))
+	nj := strings.ToLower(lists.MachineName(s.list[j], s.list[j].ID))
 	if ni != nj {
 		return ni < nj
 	}
-	return s[i].ID < s[j].ID
+	return s.list[i].ID < s.list[j].ID
 }
 
-func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) []*corev1.MachineListCardView {
+func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines []*lists.Machine, extra *SettingsExtra, includeSummary bool) ([]*corev1.MachineListCardView, map[string]bool) {
 	sorted := make([]*lists.Machine, 0, len(machines))
 	for _, m := range machines {
 		if m != nil {
@@ -152,7 +169,8 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 	}
 	clientVer := st.World.ClientVersion
-	sortutil.SortInterface(settingsMachinesSorted(sorted))
+	removed := st.Removed || syncView.GetRemoved()
+	sortutil.SortInterface(settingsMachinesSorted{list: sorted, removed: removed})
 
 	var inDir map[string]bool
 	var directReady map[string]bool
@@ -175,42 +193,40 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 	}
 
-	removed := st.Removed || syncView.GetRemoved()
-	// The short ID only tells apart computers that share a name; it trails the
-	// subtitle so the quota summary stays first.
+	// Disambiguator (last 4 chars) only appears when two computers share a name.
 	nameCount := make(map[string]int, len(sorted))
 	for _, m := range sorted {
 		nameCount[lists.MachineName(m, m.ID)]++
 	}
 	out := make([]*corev1.MachineListCardView, 0, len(sorted))
+	pingDirect := make(map[string]bool, len(sorted))
 	for _, m := range sorted {
 		online := lists.MachineReachable(m)
 		unlinked := lists.MachineUnlinked(m, &st.World)
 		archived := m.Archived || removed
 		mismatch := lists.ProtocolMismatchDirection(m, clientVer)
+		dimmed := archived || !online
 
 		var statusTxt *corev1.Text
 		var statusDot corev1.MachineStatusDot
-		var statusWarn bool
-		var subParts []*corev1.SubtitleSegment
-
-		var quotaSummaries []*corev1.QuotaCliSection
-		if includeSummary {
-			quotaSummaries = quota.MachineCardSummaries(m, st.Cal.NowMs)
-		}
+		var alerts []*corev1.MachineCardAlert
+		var quotaItems []*corev1.MachineCardQuotaItem
+		var secondaryNote *corev1.Text
 
 		if archived {
 			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_UNSPECIFIED
 			statusTxt = text.Msg(text.KeySettingsStatusRemoved)
-			subParts = append(subParts, &corev1.SubtitleSegment{
-				Text: text.Msg(text.KeySettingsMachineSubRemoved),
-			})
+			secondaryNote = text.Msg(text.KeySettingsMachineSubRemoved)
 		} else if online && mismatch != 0 {
 			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_ORANGE_STATIC
-			statusWarn = true
 			statusTxt = text.Msg(text.KeySettingsStatusNeedsUpdate)
-			subParts = append(subParts, &corev1.SubtitleSegment{
-				Text: text.Msg(text.KeySettingsMachineSubVersionMismatch),
+			alertKey := text.KeySettingsMachineSubVersionMismatch
+			if mismatch > 0 {
+				alertKey = text.KeySettingsMachineSubVersionMismatchClient
+			}
+			alerts = append(alerts, &corev1.MachineCardAlert{
+				Kind: corev1.MachineAlertKind_MACHINE_ALERT_KIND_PROTOCOL_MISMATCH,
+				Text: text.Msg(alertKey),
 				Warn: true,
 			})
 		} else if online {
@@ -218,31 +234,39 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			statusTxt = text.Msg(text.KeyCommonOnline)
 			if m.Meta != nil && m.Meta.Capabilities != nil && m.Meta.Capabilities.MachineStatus &&
 				m.Meta.DiskStatus != nil && m.Meta.DiskStatus.AvailableBytes < machine.DiskReminderThresholdBytes {
-				subParts = append(subParts, &corev1.SubtitleSegment{
+				alerts = append(alerts, &corev1.MachineCardAlert{
+					Kind: corev1.MachineAlertKind_MACHINE_ALERT_KIND_DISK_LOW,
 					Text: text.Msg(text.KeySettingsMachineSubDiskAlert, text.ArgText("size", machine.FormatDecimalSize(m.Meta.DiskStatus.AvailableBytes))),
 					Warn: true,
 				})
 			}
-			for _, qs := range quotaSummaries {
-				r := qs.SummaryRow
-				if r == nil || !r.HasPercent || r.Stale || r.PastReset {
-					continue
+			if includeSummary {
+				for _, qs := range quota.MachineCardSummaries(m, st.Cal.NowMs) {
+					r := qs.SummaryRow
+					if r == nil || !r.HasPercent || r.Stale || r.PastReset {
+						continue
+					}
+					warn := r.Tone == corev1.QuotaTone_QUOTA_TONE_WARN || r.Tone == corev1.QuotaTone_QUOTA_TONE_FULL
+					rem := r.RemainingPercent
+					var valTxt *corev1.Text
+					if r.Exhausted {
+						rem = 0
+						valTxt = text.Msg(text.KeyQuotaExhaustedQuota)
+					} else {
+						valTxt = text.Msg(
+							text.KeyQuotaLeft,
+							text.Str("value", strconv.FormatInt(int64(rem), 10)),
+						)
+					}
+					quotaItems = append(quotaItems, &corev1.MachineCardQuotaItem{
+						Agent:            qs.Agent,
+						AgentName:        qs.AgentName,
+						RemainingPercent: rem,
+						Exhausted:        r.Exhausted,
+						Warn:             warn,
+						ValueText:        valTxt,
+					})
 				}
-				warn := r.Tone == corev1.QuotaTone_QUOTA_TONE_WARN || r.Tone == corev1.QuotaTone_QUOTA_TONE_FULL
-				var segText *corev1.Text
-				if r.Exhausted {
-					segText = text.Msg(text.KeySettingsMachineSubQuotaExhausted, text.Str("name", qs.AgentName))
-				} else {
-					segText = text.Msg(
-						text.KeySettingsMachineSubQuotaLeft,
-						text.Str("name", qs.AgentName),
-						text.Str("value", strconv.FormatInt(int64(r.RemainingPercent), 10)),
-					)
-				}
-				subParts = append(subParts, &corev1.SubtitleSegment{
-					Text: segText,
-					Warn: warn,
-				})
 			}
 		} else {
 			statusDot = corev1.MachineStatusDot_MACHINE_STATUS_DOT_GRAY_STATIC
@@ -255,8 +279,9 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		}
 
 		name := lists.MachineName(m, m.ID)
+		var disambiguator string
 		if nameCount[name] > 1 {
-			subParts = append(subParts, &corev1.SubtitleSegment{Text: text.Plain(machine.ShortMachineID(m.ID))})
+			disambiguator = machine.Last4(m.ID)
 		}
 		card := &corev1.MachineListCardView{
 			MachineId:         m.ID,
@@ -266,20 +291,31 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 			ProtocolMismatch:  mismatch,
 			StatusText:        statusTxt,
 			StatusDot:         statusDot,
-			StatusWarn:        statusWarn,
-			SubtitleParts:     subParts,
 			LastSeenMs:        m.LastSeenMs,
 			InDeviceDirectory: inDir[m.ID],
 			DirectReady:       directReady[m.ID],
+			Disambiguator:     disambiguator,
+			Dimmed:            dimmed,
+			Alerts:            alerts,
+			QuotaItems:        quotaItems,
+			SecondaryNote:     secondaryNote,
 		}
 		if includeSummary {
-			card.QuotaSummaries = quotaSummaries
 			directPref, directReport := machineDirectInputs(st, extra, m.ID)
 			card.DirectRow = machine.BuildConnCheckDirectRow(online && !unlinked && !archived, directPref, directReport)
+			card.DirectActive = online && !unlinked && !archived && mismatch == 0 &&
+				card.DirectRow != nil && card.DirectRow.Stage == corev1.ConnectionGroupStage_CONNECTION_GROUP_STAGE_DIRECT
+			if online && !unlinked && !archived {
+				if card.DirectReady || (directReport != nil &&
+					directReport.State == corev1.DirectRouteState_DIRECT_ROUTE_STATE_CONNECTED &&
+					directReport.ReadRoute == corev1.DirectPathChoice_DIRECT_PATH_CHOICE_DIRECT) {
+					pingDirect[m.ID] = true
+				}
+			}
 		}
 		out = append(out, card)
 	}
-	return out
+	return out, pingDirect
 }
 
 func buildClientRows(st *State, syncView *corev1.SyncStateView) (rows []*corev1.ClientRowView, unfinished []*corev1.ClientRowView) {
@@ -425,12 +461,30 @@ func buildAppearanceView(theme corev1.ThemePreference) *corev1.AppearanceView {
 	}
 }
 
-func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnCheckState) *corev1.ConnCheckSummaryView {
+func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnCheckState, machines []*corev1.MachineListCardView, pingDirect map[string]bool) *corev1.ConnCheckSummaryView {
 	connState := mapSessionConnState(st.World.Connection)
 	isConnecting := st.World.Connection == lists.ConnConnecting || st.World.Connection == lists.ConnReconnecting
 	networkAvailable := st.World.Connection != lists.ConnNoNetwork
 	if syncView != nil {
 		networkAvailable = syncView.GetNetworkAvailable()
+	}
+	var onlineMembers, directMembers int
+	for _, m := range machines {
+		if m != nil && m.Online && m.Member {
+			onlineMembers++
+			if pingDirect[m.MachineId] {
+				directMembers++
+			}
+		}
+	}
+	var footerTxt *corev1.Text
+	switch {
+	case onlineMembers > 0 && directMembers == onlineMembers:
+		footerTxt = text.Msg(text.KeyConnectionLatencyFooterDirect)
+	case directMembers > 0:
+		footerTxt = text.Msg(text.KeyConnectionLatencyFooterMixed)
+	default:
+		footerTxt = text.Msg(text.KeyConnectionLatencyIsOneRoundTripTheServerRowMeasures)
 	}
 	out := &corev1.ConnCheckSummaryView{
 		ServerState:       cc.ServerState,
@@ -444,6 +498,7 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		ConnStep:          syncView.GetConnectionStep(),
 		DisplayGrace:      st.DisplayGrace || syncView.GetDisplayGrace(),
 		IsConnecting:      isConnecting,
+		FooterText:        footerTxt,
 	}
 	if st != nil && !st.ConnectionReason.IsZero() {
 		out.LastFailureText = ReasonText(st.ConnectionReason)
@@ -554,6 +609,8 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		}
 	}
 
+	machineCards, pingDirect := buildMachineListCards(st, syncView, st.World.Machines, extra, true)
+
 	vm := &corev1.SettingsViewModel{
 		Online:            online,
 		ClockSkewed:       st.World.AccountClockSkewed || syncView.GetAccountClockSkewed(),
@@ -563,7 +620,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		AuthorityName:     authName,
 		RecoveryPending:   syncView.GetRecoveryPending(),
 		RecoveryReadyMs:   syncView.GetRecoveryReadyMs(),
-		Machines:          buildMachineListCards(st, syncView, st.World.Machines, extra, true),
+		Machines:          machineCards,
 		CanAddDevice:      isMgr && !unlinked,
 		RecentClients:     recent,
 		HasMoreClients:    hasMore,
@@ -571,7 +628,7 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		Notifications:     buildNotificationsView(extra.Notifications),
 		Appearance:        buildAppearanceView(extra.Theme),
 		Update:            buildClientUpdateView(extra.Update, st.World.ClientVersion),
-		ConnCheck:         buildConnCheckSummary(st, syncView, extra.ConnCheck),
+		ConnCheck:         buildConnCheckSummary(st, syncView, extra.ConnCheck, machineCards, pingDirect),
 		DiskReminders:     machine.BuildDiskReminders(st.World.Machines),
 		QuotaBanner:       quota.Banner(st.World.Machines, st.Cal.NowMs),
 		CanExitAccount:    syncView.GetSelfDeviceId() != "",
@@ -721,8 +778,10 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 		vm.RemovedBanner = text.Msg(text.KeySettingsThisDeviceWasRemovedFromTheAccount)
 	} else if !vm.Online {
 		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsComputerSettingsOffline, text.Str("name", vm.Name))
-	} else if vm.ProtocolMismatch != 0 {
-		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsComputerSettingsOffline, text.Str("name", vm.Name))
+	} else if vm.ProtocolMismatch < 0 {
+		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsMachineSubVersionMismatch)
+	} else if vm.ProtocolMismatch > 0 {
+		vm.OfflineOrMismatchBanner = text.Msg(text.KeySettingsMachineSubVersionMismatchClient)
 	}
 
 	// Top bar dot + subtitle
@@ -1259,6 +1318,7 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 	authName := machine.AuthorityName(syncView, st.World.Machines)
 	clients, unfinished := buildClientRows(st, syncView)
 
+	deviceComputers, _ := buildMachineListCards(st, syncView, st.World.Machines, extra, false)
 	vm := &corev1.DevicesViewModel{
 		IsManager:          isMgr,
 		Online:             online,
@@ -1266,7 +1326,7 @@ func BuildDevices(st *State, syncView *corev1.SyncStateView, extra *SettingsExtr
 		AuthorityDeviceId:  syncView.GetAuthorityDeviceId(),
 		AuthorityName:      authName,
 		CanAddDevice:       isMgr && !unlinked,
-		Computers:          buildMachineListCards(st, syncView, st.World.Machines, extra, false),
+		Computers:          deviceComputers,
 		Clients:            clients,
 		UnfinishedPairings: unfinished,
 		ErrorText:          syncView.GetDevicesErrorText(),

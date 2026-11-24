@@ -113,6 +113,7 @@ message MachineChoiceView {
   bool online = 3;
   bool selected = 4;
   Text note = 5;
+  string disambiguator = 6;
 }
 
 message NewSessionModelPanelView {

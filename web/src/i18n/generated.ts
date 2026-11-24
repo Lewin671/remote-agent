@@ -170,6 +170,8 @@ export interface MessageArgs {
   "connection.connecting_conn_check": { [name: string]: never };
   "connection.connecting_conn_check_label": { [name: string]: never };
   "connection.last_failure": { value: string };
+  "connection.latency_footer_direct": { [name: string]: never };
+  "connection.latency_footer_mixed": { [name: string]: never };
   "connection.latency_is_one_round_trip_the_server_row_measures": { [name: string]: never };
   "connection.live_push": { [name: string]: never };
   "connection.live_push_is_not_connected": { [name: string]: never };
@@ -1317,10 +1319,9 @@ export interface MessageArgs {
   "settings.local_cache": { [name: string]: never };
   "settings.machine_count": { count: number };
   "settings.machine_sub_disk_alert": { size: string };
-  "settings.machine_sub_quota_exhausted": { name: string };
-  "settings.machine_sub_quota_left": { name: string; value: string };
   "settings.machine_sub_removed": { [name: string]: never };
   "settings.machine_sub_version_mismatch": { [name: string]: never };
+  "settings.machine_sub_version_mismatch_client": { [name: string]: never };
   "settings.managing_client": { [name: string]: never };
   "settings.name": { [name: string]: never };
   "settings.name_save_error": { reason: string };
@@ -1953,6 +1954,8 @@ export const messages = {
     "connection.connecting_conn_check": "Connecting",
     "connection.connecting_conn_check_label": "Connecting",
     "connection.last_failure": "Last failure: {value}",
+    "connection.latency_footer_direct": "Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer.",
+    "connection.latency_footer_mixed": "Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay.",
     "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.",
     "connection.live_push": "Live push",
     "connection.live_push_is_not_connected": "Live push is not connected.",
@@ -3580,10 +3583,9 @@ export const messages = {
     "settings.local_cache": "Local cache",
     "settings.machine_count": "{count}",
     "settings.machine_sub_disk_alert": "Disk {size} free",
-    "settings.machine_sub_quota_exhausted": "{name} exhausted",
-    "settings.machine_sub_quota_left": "{name} {value}% left",
     "settings.machine_sub_removed": "Retaining session history",
     "settings.machine_sub_version_mismatch": "Protocol mismatch; update on the computer",
+    "settings.machine_sub_version_mismatch_client": "Protocol mismatch; update this app",
     "settings.managing_client": "Managing client",
     "settings.name": "Name",
     "settings.name_save_error": "Could not save name: {reason}",
@@ -4306,6 +4308,8 @@ export const messages = {
     "connection.connecting_conn_check": "连接中",
     "connection.connecting_conn_check_label": "连接",
     "connection.last_failure": "上一次失败：{value}",
+    "connection.latency_footer_direct": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。",
+    "connection.latency_footer_mixed": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行按当前路线测量，走直连时直接往返电脑，走中继时经服务器再回来。",
     "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。",
     "connection.live_push": "实时推送",
     "connection.live_push_is_not_connected": "实时推送未连接。",
@@ -5853,10 +5857,9 @@ export const messages = {
     "settings.local_cache": "本机缓存",
     "settings.machine_count": "{count} 台",
     "settings.machine_sub_disk_alert": "磁盘剩 {size}",
-    "settings.machine_sub_quota_exhausted": "{name} 已用尽",
-    "settings.machine_sub_quota_left": "{name} 剩 {value}%",
     "settings.machine_sub_removed": "保留历史会话记录",
     "settings.machine_sub_version_mismatch": "协议版本不一致，需在电脑上更新",
+    "settings.machine_sub_version_mismatch_client": "协议版本不一致，需更新此应用",
     "settings.managing_client": "管理端",
     "settings.name": "名称",
     "settings.name_save_error": "没能保存名称：{reason}",

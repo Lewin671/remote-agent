@@ -549,6 +549,54 @@ public  final class ConnCheckSummaryView extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int FOOTER_TEXT_FIELD_NUMBER = 16;
+  private io.github.lewin671.remoteagent.core.proto.Text footerText_;
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasFooterText() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getFooterText() {
+    return footerText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : footerText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setFooterText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    footerText_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeFooterText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (footerText_ != null &&
+        footerText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      footerText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(footerText_).mergeFrom(value).buildPartial();
+    } else {
+      footerText_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   */
+  private void clearFooterText() {
+    footerText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.ConnCheckSummaryView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1197,6 +1245,53 @@ public  final class ConnCheckSummaryView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasFooterText() {
+      return instance.hasFooterText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getFooterText() {
+      return instance.getFooterText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    public Builder setFooterText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setFooterText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    public Builder setFooterText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setFooterText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    public Builder mergeFooterText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeFooterText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+     */
+    public Builder clearFooterText() {  copyOnWrite();
+      instance.clearFooterText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.ConnCheckSummaryView)
   }
   @java.lang.Override
@@ -1229,12 +1324,13 @@ public  final class ConnCheckSummaryView extends
             "displayGrace_",
             "isConnecting_",
             "bannerText_",
+            "footerText_",
           };
           java.lang.String info =
-              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0000\u0000\u0001\f\u0002\u0004" +
+              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\f\u0002\u0004" +
               "\u0003\u1009\u0000\u0004\u1009\u0001\u0005\u1009\u0002\u0006\f\u0007\u0007\b\u0007" +
               "\t\u0007\n\u0004\u000b\u0002\f\u1009\u0003\r\u0007\u000e\u0007\u000f\u1009\u0004" +
-              "";
+              "\u0010\u1009\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -214,12 +214,17 @@ func deviceClientBase(d *corev1.SyncDeviceView) clientBase {
 	}
 }
 
-func last4(id string) string {
+// Last4 returns the last 4 runes of an ID without a leading ellipsis, or the ID itself if <= 4 runes.
+func Last4(id string) string {
 	r := []rune(id)
 	if len(r) <= 4 {
 		return id
 	}
 	return string(r[len(r)-4:])
+}
+
+func last4(id string) string {
+	return Last4(id)
 }
 
 func hasDuplicateClientBase(d *corev1.SyncDeviceView, base clientBase, allDevices []*corev1.SyncDeviceView) bool {

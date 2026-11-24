@@ -17,6 +17,7 @@ public  final class MachineChoiceView extends
   private MachineChoiceView() {
     machineId_ = "";
     name_ = "";
+    disambiguator_ = "";
   }
   private int bitField0_;
   public static final int MACHINE_ID_FIELD_NUMBER = 1;
@@ -213,6 +214,54 @@ public  final class MachineChoiceView extends
   private void clearNote() {
     note_ = null;
     bitField0_ = (bitField0_ & ~0x00000001);
+  }
+
+  public static final int DISAMBIGUATOR_FIELD_NUMBER = 6;
+  private java.lang.String disambiguator_;
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @return The disambiguator.
+   */
+  @java.lang.Override
+  public java.lang.String getDisambiguator() {
+    return disambiguator_;
+  }
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @return The bytes for disambiguator.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDisambiguatorBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(disambiguator_);
+  }
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @param value The disambiguator to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisambiguator(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    disambiguator_ = value;
+  }
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   */
+  private void clearDisambiguator() {
+
+    disambiguator_ = getDefaultInstance().getDisambiguator();
+  }
+  /**
+   * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+   * @param value The bytes for disambiguator to set.
+   */
+  private void setDisambiguatorBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    disambiguator_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.MachineChoiceView parseFrom(
@@ -513,6 +562,55 @@ public  final class MachineChoiceView extends
       return this;
     }
 
+    /**
+     * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+     * @return The disambiguator.
+     */
+    @java.lang.Override
+    public java.lang.String getDisambiguator() {
+      return instance.getDisambiguator();
+    }
+    /**
+     * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+     * @return The bytes for disambiguator.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDisambiguatorBytes() {
+      return instance.getDisambiguatorBytes();
+    }
+    /**
+     * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+     * @param value The disambiguator to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisambiguator(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDisambiguator(value);
+      return this;
+    }
+    /**
+     * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDisambiguator() {
+      copyOnWrite();
+      instance.clearDisambiguator();
+      return this;
+    }
+    /**
+     * <code>string disambiguator = 6 [json_name = "disambiguator"];</code>
+     * @param value The bytes for disambiguator to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDisambiguatorBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDisambiguatorBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.MachineChoiceView)
   }
   @java.lang.Override
@@ -535,10 +633,11 @@ public  final class MachineChoiceView extends
             "online_",
             "selected_",
             "note_",
+            "disambiguator_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0001\u0001\u0005\u0005\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0007\u0004\u0007\u0005\u1009\u0000";
+              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0007\u0004\u0007\u0005\u1009\u0000\u0006\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -139,6 +139,8 @@
 "connection_ios_retry_now" = "Retry now";
 "connection_ios_server_error" = "Cannot reach the server: %1$@";
 "connection_last_failure" = "Last failure: %1$@";
+"connection_latency_footer_direct" = "Latency is one round trip. The server row measures this device to the server; computer rows measure a direct round trip to the computer.";
+"connection_latency_footer_mixed" = "Latency is one round trip. The server row measures this device to the server; each computer row follows its active route—directly to the computer when using direct, or through the server when using relay.";
 "connection_latency_is_one_round_trip_the_server_row_measures" = "Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.";
 "connection_live_push" = "Live push";
 "connection_live_push_is_not_connected" = "Live push is not connected.";
@@ -1462,10 +1464,9 @@
 "settings_local_cache" = "Local cache";
 "settings_machine_count" = "%1$lld";
 "settings_machine_sub_disk_alert" = "Disk %1$@ free";
-"settings_machine_sub_quota_exhausted" = "%1$@ exhausted";
-"settings_machine_sub_quota_left" = "%1$@ %2$@%% left";
 "settings_machine_sub_removed" = "Retaining session history";
 "settings_machine_sub_version_mismatch" = "Protocol mismatch; update on the computer";
+"settings_machine_sub_version_mismatch_client" = "Protocol mismatch; update this app";
 "settings_managing_client" = "Managing client";
 "settings_name" = "Name";
 "settings_name_save_error" = "Could not save name: %1$@";

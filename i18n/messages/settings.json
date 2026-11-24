@@ -4287,52 +4287,6 @@
     }
   },
   {
-    "key": "settings.machine_sub_quota_left",
-    "zh-CN": "{name} 剩 {value}%",
-    "en": "{name} {value}% left",
-    "notes": "设置页电脑副行中的 CLI 剩余额度段。",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Codex"
-      },
-      "value": {
-        "type": "string",
-        "example": "18"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "settings.machine_sub_quota_exhausted",
-    "zh-CN": "{name} 已用尽",
-    "en": "{name} exhausted",
-    "notes": "设置页电脑副行中的 CLI 额度耗尽段。",
-    "params": {
-      "name": {
-        "type": "string",
-        "example": "Codex"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "settings.daemon_version_tag",
     "zh-CN": "daemon {version}",
     "en": "daemon {version}",
@@ -5140,6 +5094,22 @@
     "zh-CN": "查看全文",
     "en": "View text",
     "notes": "Web 端开源许可二级页查看全文操作文案。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.machine_sub_version_mismatch_client",
+    "zh-CN": "协议版本不一致，需更新此应用",
+    "en": "Protocol mismatch; update this app",
+    "notes": "设置页电脑卡片及电脑详情页顶部横幅：电脑端协议版本高于本机客户端时的提醒文案，引导用户更新本机应用。无变量。",
     "params": {},
     "platforms": [
       "web",

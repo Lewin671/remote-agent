@@ -134,4 +134,15 @@ public interface ConnCheckSummaryViewOrBuilder extends
    * @return The bannerText.
    */
   io.github.lewin671.remoteagent.core.proto.Text getBannerText();
+
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   * @return Whether the footerText field is set.
+   */
+  boolean hasFooterText();
+  /**
+   * <code>.remoteagent.core.v1.Text footer_text = 16 [json_name = "footerText"];</code>
+   * @return The footerText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getFooterText();
 }

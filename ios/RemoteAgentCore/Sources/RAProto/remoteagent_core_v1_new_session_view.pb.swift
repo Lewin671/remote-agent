@@ -515,6 +515,8 @@ public struct PBCoreMachineChoiceView: Sendable {
   /// Clears the value of `note`. Subsequent reads from it will return its default value.
   public mutating func clearNote() {self._note = nil}
 
+  public var disambiguator: String = String()
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1370,7 +1372,7 @@ extension PBCoreModelOptionView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
 
 extension PBCoreMachineChoiceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineChoiceView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}selected\0\u{1}note\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{1}name\0\u{1}online\0\u{1}selected\0\u{1}note\0\u{1}disambiguator\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1383,6 +1385,7 @@ extension PBCoreMachineChoiceView: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 3: try { try decoder.decodeSingularBoolField(value: &self.online) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.selected) }()
       case 5: try { try decoder.decodeSingularMessageField(value: &self._note) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.disambiguator) }()
       default: break
       }
     }
@@ -1408,6 +1411,9 @@ extension PBCoreMachineChoiceView: SwiftProtobuf.Message, SwiftProtobuf._Message
     try { if let v = self._note {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
     } }()
+    if !self.disambiguator.isEmpty {
+      try visitor.visitSingularStringField(value: self.disambiguator, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1417,6 +1423,7 @@ extension PBCoreMachineChoiceView: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.online != rhs.online {return false}
     if lhs.selected != rhs.selected {return false}
     if lhs._note != rhs._note {return false}
+    if lhs.disambiguator != rhs.disambiguator {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
