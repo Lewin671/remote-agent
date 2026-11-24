@@ -55,7 +55,7 @@ func (f *phase3FakeTerminal) Snapshot() (*pb.TerminalSnapshot, error) {
 func (f *phase3FakeTerminal) History(*pb.TerminalHistoryRequest) (*pb.TerminalHistoryPage, error) {
 	return &pb.TerminalHistoryPage{RequestId: "h1"}, nil
 }
-func (f *phase3FakeTerminal) Output() <-chan []byte       { return f.outCh }
+func (f *phase3FakeTerminal) Output() <-chan []byte        { return f.outCh }
 func (f *phase3FakeTerminal) SizeChanged() <-chan struct{} { return f.sizeCh }
 func (f *phase3FakeTerminal) Done() <-chan struct{}        { return f.doneCh }
 func (f *phase3FakeTerminal) Reason() string               { return "closed" }
@@ -104,19 +104,19 @@ func (b *phase3TermBackend) OpenTerminal(string) (relay.Terminal, error) {
 }
 
 type phase3PionHarness struct {
-	t         *testing.T
-	e         *env
-	backend   *phase3TermBackend
-	ctx       context.Context
-	cancel    context.CancelFunc
-	link      *direct.Session
-	readPath  *direct.Path
-	ep        *deviceauth.Endpoint
-	session   string
-	sessKey   []byte
-	controls  chan peerwire.Opened
-	streamWS  *websocket.Conn
-	workers   sync.WaitGroup
+	t        *testing.T
+	e        *env
+	backend  *phase3TermBackend
+	ctx      context.Context
+	cancel   context.CancelFunc
+	link     *direct.Session
+	readPath *direct.Path
+	ep       *deviceauth.Endpoint
+	session  string
+	sessKey  []byte
+	controls chan peerwire.Opened
+	streamWS *websocket.Conn
+	workers  sync.WaitGroup
 }
 
 func startPhase3PionHarness(t *testing.T) *phase3PionHarness {
@@ -194,7 +194,7 @@ func startPhase3PionHarness(t *testing.T) *phase3PionHarness {
 	link, err := direct.NewSession(ctx, direct.SessionConfig{
 		Self: self, Peer: peer, Codec: codec, Connection: connection,
 		Deadline: uint64(directNow().Add(9 * time.Second).UnixMilli()),
-		Pool: direct.NewPool(4), Allow: func() bool { return true },
+		Pool:     direct.NewPool(4), Allow: func() bool { return true },
 		LoopbackOnly: true, Now: directNow,
 		Send: func(frame direct.Outbound) bool {
 			select {

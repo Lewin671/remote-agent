@@ -76,11 +76,11 @@ type earlyTermOutput struct {
 }
 
 type clientTermStream struct {
-	streamID        string
-	machineID       string
-	sessionID       string
-	stream          *linkcore.TerminalStream
-	daemonReady     bool
+	streamID              string
+	machineID             string
+	sessionID             string
+	stream                *linkcore.TerminalStream
+	daemonReady           bool
 	relayOpen             bool
 	relayLegID            string
 	relayGen              uint64
@@ -89,18 +89,18 @@ type clientTermStream struct {
 	relayRecoveryLeg      string
 	relayRetryAt          int64
 	relayRetryAttempts    int
-	directAttached  bool
-	directPCID      uint64
-	directGen       uint64
-	directAttachGen uint64
-	phase3Used      bool
-	disconnectedAll bool
-	disconnectedAt  int64
-	queryInFlight   bool
-	queryID         []byte
-	pendingDetails  []linkcore.TermFrameStatus
-	needsConfirm    bool
-	replaySentSeq   uint64
+	directAttached        bool
+	directPCID            uint64
+	directGen             uint64
+	directAttachGen       uint64
+	phase3Used            bool
+	disconnectedAll       bool
+	disconnectedAt        int64
+	queryInFlight         bool
+	queryID               []byte
+	pendingDetails        []linkcore.TermFrameStatus
+	needsConfirm          bool
+	replaySentSeq         uint64
 }
 
 func (c *Coordinator) ensureTermStreams() {
@@ -152,10 +152,10 @@ func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, session
 	ts := linkcore.NewTerminalStream(streamID, sessionID, machineID, string(c.instance), uint64(now))
 	_ = ts.AttachLeg("relay", legStr, string(c.instance), 1)
 	ct := &clientTermStream{
-		streamID:   streamID,
-		machineID:  machineID,
-		sessionID:  sessionID,
-		stream:     ts,
+		streamID:       streamID,
+		machineID:      machineID,
+		sessionID:      sessionID,
+		stream:         ts,
 		relayOpen:      true,
 		relayLegID:     legStr,
 		relayGen:       1,
@@ -732,6 +732,32 @@ func (c *Coordinator) attachDirectTerminalsForMachine(now int64, machineID strin
 			c.maybeAttachDirectTerminal(now, ct)
 		}
 	}
+}
+
+// onTerminalAttachUnsupported handles daemon ControlUnsupported (10) rejecting
+// an AttachPath for streamID (e.g. stream retired or gone on daemon) (N-K).
+func (c *Coordinator) onTerminalAttachUnsupported(now int64, r *coordRound, streamID string) {
+	ct := c.termStreams[streamID]
+	if ct == nil || ct.machineID != r.machine {
+		return
+	}
+	if ct.directAttached {
+		ct.stream.CloseLeg("direct", ct.directGen)
+	}
+	ct.directAttached = false
+	ct.directPCID = 0
+	ct.relayRecoveryInFlight = false
+	ct.relayRecoveryLeg = ""
+	ct.relayRetryAt = 0
+	ct.disconnectedAll = false
+	ct.needsConfirm = true
+	ct.stream.OnInstanceChanged()
+	c.emit(CoordTerminalState{
+		StreamID:          ct.streamID,
+		State:             TermStateInstanceChange,
+		Reason:            "attach_unsupported",
+		NeedsConfirmation: true,
+	})
 }
 
 func (c *Coordinator) detachDirectTerminalsForPC(now int64, pcID uint64) {

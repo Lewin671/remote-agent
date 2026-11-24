@@ -135,7 +135,7 @@ func TestPhase2PionDualPathCommandLoopback(t *testing.T) {
 	link, err := direct.NewSession(ctx, direct.SessionConfig{
 		Self: self, Peer: peer, Codec: codec, Connection: connection,
 		Deadline: uint64(directNow().Add(9 * time.Second).UnixMilli()),
-		Pool: direct.NewPool(4), Allow: func() bool { return true },
+		Pool:     direct.NewPool(4), Allow: func() bool { return true },
 		LoopbackOnly: true, Now: directNow,
 		Send: func(frame direct.Outbound) bool {
 			select {

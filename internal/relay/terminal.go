@@ -165,6 +165,37 @@ func (h *terminalHub) getQueryable(streamID string, now uint64) (*liveTerminal, 
 	return h.live[streamID], h.registry.GetQueryable(streamID)
 }
 
+// evictOldestZeroLegLocked reclaims the oldest zero-leg idle stream belonging to peerID
+// when the active stream cap is reached (N-M), preventing rapid offline close/reopen from failing.
+func (h *terminalHub) evictOldestZeroLegLocked(peerID string, nowMs uint64) *liveTerminal {
+	var oldest *liveTerminal
+	var oldestAt time.Time
+	for _, lt := range h.live {
+		if lt.ownerPeer != peerID {
+			continue
+		}
+		lt.mu.Lock()
+		zl := lt.zeroLegSince
+		lt.mu.Unlock()
+		if zl.IsZero() {
+			continue
+		}
+		if oldest == nil || zl.Before(oldestAt) {
+			oldest = lt
+			oldestAt = zl
+		}
+	}
+	if oldest == nil {
+		return nil
+	}
+	oldest.mu.Lock()
+	oldest.explicitClosed = true
+	oldest.mu.Unlock()
+	delete(h.live, oldest.streamID)
+	h.registry.ForceRetire(oldest.streamID, nowMs)
+	return oldest
+}
+
 func (h *terminalHub) storeSnapshot(key, stream, peer string, snap linkcore.TermStatusSnapshot, now uint64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -316,7 +347,19 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 
 	hub.mu.Lock()
 	hub.registry.Prune(nowMs)
-	if err := hub.registry.Add(ts); err != nil {
+	if err := hub.registry.Add(ts); errors.Is(err, linkcore.ErrTermRegistryFull) {
+		if evicted := hub.evictOldestZeroLegLocked(peer, nowMs); evicted != nil {
+			evicted.cancel()
+			err = hub.registry.Add(ts)
+		}
+		if err != nil {
+			hub.mu.Unlock()
+			ltCancel()
+			t.Close()
+			path.Close()
+			return err
+		}
+	} else if err != nil {
 		hub.mu.Unlock()
 		ltCancel()
 		t.Close()

@@ -1005,6 +1005,7 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 	}
 	hash := f[4].B
 	var matchedUse uint64
+	var matchedStream string
 	matched := false
 	for _, sender := range s.senders() {
 		if pending := sender.Pending[string(hash)]; pending != nil {
@@ -1014,6 +1015,11 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 			}
 			matched = true
 			matchedUse = original.Context.Use
+			if original.Context.Class == 2 && original.Type == ControlAttachPath {
+				if ap, err := DecodeAttachPath(original.Payload); err == nil {
+					matchedStream = ap.Stream
+				}
+			}
 			break
 		}
 	}
@@ -1029,7 +1035,7 @@ func (s *Session) receiveUnsupported(o peerwire.Opened, now uint64) {
 			p.pc = 0
 		}
 	}
-	s.emit(PeerUnsupported{Class: f[1].U, Type: f[2].U, Use: matchedUse})
+	s.emit(PeerUnsupported{Class: f[1].U, Type: f[2].U, Use: matchedUse, Stream: matchedStream})
 }
 
 func (s *Session) controlHandled(e ControlHandled, now uint64) {

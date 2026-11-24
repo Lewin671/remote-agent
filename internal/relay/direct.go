@@ -621,12 +621,15 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 		path.Wait()
 		if use == 1 {
 			m.mu.Lock()
-			if peer.paths[0] == path {
+			wasActive := peer.paths[0] == path
+			if wasActive {
 				peer.paths[0] = nil
 				m.reconcileTailersLocked(nil)
 			}
 			m.mu.Unlock()
-			if m.d != nil && m.d.endpoint != nil {
+			// N-L: only notify terminal hub if the closed path was still the active use=1 path,
+			// so a late-closing stale path cannot tear down a newly attached direct leg.
+			if wasActive && m.d != nil && m.d.endpoint != nil {
 				m.d.endpoint.onDirectPeerPathClosed(peer.binding.Peer.ID)
 			}
 		}

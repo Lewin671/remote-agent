@@ -476,9 +476,9 @@ func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 }
 
 // TestReview2Repro_HB_EarlyDirectAttachBufferedAndUnknownNonDirectRejected reproduces review2 H-B:
-// 1. Direct "d:" AttachPath arriving BEFORE openTerminal is buffered and consumed by openTerminal,
-//    so 16 KiB output flows over the direct hot-standby leg.
-// 2. Non-direct AttachPath for an unknown stream receives explicit Control 8 (Unsupported).
+//  1. Direct "d:" AttachPath arriving BEFORE openTerminal is buffered and consumed by openTerminal,
+//     so 16 KiB output flows over the direct hot-standby leg.
+//  2. Non-direct AttachPath for an unknown stream receives explicit Control 8 (Unsupported).
 func TestReview2Repro_HB_EarlyDirectAttachBufferedAndUnknownNonDirectRejected(t *testing.T) {
 	h := startPhase3PionHarness(t)
 	h.advertisePhase3ClientCapabilities()

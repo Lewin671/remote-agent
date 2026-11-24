@@ -75,7 +75,7 @@ func ActivePoolsForTest(r *Relay) [3]int {
 	return [3]int{}
 }
 
-func SetDirectLoopbackForTest(r *Relay) { r.directLoopback = true; r.directSTUN = []string{} }
+func SetDirectLoopbackForTest(r *Relay)                   { r.directLoopback = true; r.directSTUN = []string{} }
 func SetDirectClockForTest(r *Relay, fn func() time.Time) { r.directClock = fn }
 func SetSchedulerClockForTest(r *Relay, now func() time.Time, after func(time.Duration, func()) func() bool) {
 	r.SchedulerNow = now

@@ -1914,6 +1914,8 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 				c.retireAndFailUnsupported(now, r)
 			} else if eff.Class == 1 && (eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk)) {
 				r.useUnsupp[eff.Use] = true
+			} else if eff.Class == 2 && eff.Type == linkcore.ControlAttachPath && eff.Stream != "" {
+				c.onTerminalAttachUnsupported(now, r, eff.Stream)
 			}
 
 		case linkcore.SignalRejected:

@@ -8,43 +8,43 @@ import (
 
 // Terminal continuity budgets and limits (docs/transport.md §3, docs/transport-wire-draft.md).
 const (
-	TermGapMaxFrames               = 128
-	TermGapMaxBytes                = 1 << 20 // 1 MiB per direction
-	TermGapTimeoutMs        uint64 = 10_000  // 10 s per gap
-	TermAckBatchFrames             = 16
-	TermAckIntervalMs       uint64 = 20 // 20 ms
-	TermOutputReplayMaxFrames      = 512
-	TermOutputReplayMaxBytes       = 2 << 20 // 2 MiB
-	TermOutputReplayMaxMs   uint64 = 30_000  // 30 s
-	TermOutputMaxIdentities        = 512
-	TermInputCacheMaxFrames        = 128
-	TermInputCacheMaxBytes         = 64 << 10 // 64 KiB
-	TermInputCacheMaxMs     uint64 = 30_000   // 30 s (3x direct 10s recovery target)
-	TermInputDetailMax             = 128
-	TermHotStandbyMaxBytes         = 4 << 10  // 4 KiB per frame
-	TermHotStandbyRateBPS          = 32 << 10 // 32 KiB/s
-	TermHotStandbyBurst            = 64 << 10 // 64 KiB burst
-	TermMaxActiveStreams           = 16
-	TermMaxRetiredStreams          = 16
-	TermRetiredRetainMs     uint64 = 30_000 // 30 s retired query window
-	TermMaxClientStreams           = 8
-	TermBarrierTimeoutMs    uint64 = 5_000 // 5 s barrier wait
+	TermGapMaxFrames                 = 128
+	TermGapMaxBytes                  = 1 << 20 // 1 MiB per direction
+	TermGapTimeoutMs          uint64 = 10_000  // 10 s per gap
+	TermAckBatchFrames               = 16
+	TermAckIntervalMs         uint64 = 20 // 20 ms
+	TermOutputReplayMaxFrames        = 512
+	TermOutputReplayMaxBytes         = 2 << 20 // 2 MiB
+	TermOutputReplayMaxMs     uint64 = 30_000  // 30 s
+	TermOutputMaxIdentities          = 512
+	TermInputCacheMaxFrames          = 128
+	TermInputCacheMaxBytes           = 64 << 10 // 64 KiB
+	TermInputCacheMaxMs       uint64 = 30_000   // 30 s (3x direct 10s recovery target)
+	TermInputDetailMax               = 128
+	TermHotStandbyMaxBytes           = 4 << 10  // 4 KiB per frame
+	TermHotStandbyRateBPS            = 32 << 10 // 32 KiB/s
+	TermHotStandbyBurst              = 64 << 10 // 64 KiB burst
+	TermMaxActiveStreams             = 16
+	TermMaxRetiredStreams            = 16
+	TermRetiredRetainMs       uint64 = 30_000 // 30 s retired query window
+	TermMaxClientStreams             = 8
+	TermBarrierTimeoutMs      uint64 = 5_000 // 5 s barrier wait
 	// TermRelayFailStopTag prefixes TerminalFrame.closed when daemon must abort a
 	// pure-relay stream after input fail-stop without a direct control channel (C).
 	TermRelayFailStopTag = "[input_fail_stop]"
 )
 
 var (
-	ErrTermStopped          = errors.New("terminal_stream_stopped")
-	ErrTermConflict         = errors.New("terminal_payload_conflict")
-	ErrTermExpired          = errors.New("terminal_frame_expired")
-	ErrTermBudget           = errors.New("terminal_budget_exceeded")
-	ErrTermReplayWindow     = errors.New("terminal_output_replay_window")
-	ErrTermAttachBinding    = errors.New("terminal_attach_binding")
-	ErrTermIdentityUnknown  = errors.New("terminal_output_identity_unavailable")
-	ErrTermRegistryFull     = errors.New("terminal_registry_full")
-	ErrTermNotStopped       = errors.New("terminal_retire_without_barrier")
-	ErrTermInvalidControl   = errors.New("terminal_invalid_control")
+	ErrTermStopped         = errors.New("terminal_stream_stopped")
+	ErrTermConflict        = errors.New("terminal_payload_conflict")
+	ErrTermExpired         = errors.New("terminal_frame_expired")
+	ErrTermBudget          = errors.New("terminal_budget_exceeded")
+	ErrTermReplayWindow    = errors.New("terminal_output_replay_window")
+	ErrTermAttachBinding   = errors.New("terminal_attach_binding")
+	ErrTermIdentityUnknown = errors.New("terminal_output_identity_unavailable")
+	ErrTermRegistryFull    = errors.New("terminal_registry_full")
+	ErrTermNotStopped      = errors.New("terminal_retire_without_barrier")
+	ErrTermInvalidControl  = errors.New("terminal_invalid_control")
 )
 
 // TermOutcome matches FrameOutcome in proto/remoteagent/v1/transport.proto.
@@ -186,30 +186,30 @@ type TerminalStream struct {
 	legs map[string]termLeg // keyed by path name ("relay", "direct")
 
 	// Input direction (client -> daemon):
-	processed       uint64
-	inputSuccess    uint64
-	failedInputSeq  uint64
-	details         map[uint64]TermFrameStatus
-	inflight        *TermFrame
-	inputPending    map[uint64]termQueued
-	inputPendBytes  int
-	inputGapDue     uint64
+	processed      uint64
+	inputSuccess   uint64
+	failedInputSeq uint64
+	details        map[uint64]TermFrameStatus
+	inflight       *TermFrame
+	inputPending   map[uint64]termQueued
+	inputPendBytes int
+	inputGapDue    uint64
 
 	// Output direction (daemon -> client):
-	rendered         uint64
-	outputPending    map[uint64]termQueued
-	outputPendBytes  int
-	outputGapDue     uint64
-	renderedIDs      map[uint64]termOutputIdentity
-	renderReady      *TermFrame
-	clientAckOutput  uint64 // daemon's view of client's rendered output watermark
+	rendered        uint64
+	outputPending   map[uint64]termQueued
+	outputPendBytes int
+	outputGapDue    uint64
+	renderedIDs     map[uint64]termOutputIdentity
+	renderReady     *TermFrame
+	clientAckOutput uint64 // daemon's view of client's rendered output watermark
 
 	// Daemon output replay & hot-standby rate limiter:
-	replay        []termReplayItem
-	replayBytes   int
-	mirrorBucket  float64
-	mirrorLastMs  int64
-	mirrorInited  bool
+	replay       []termReplayItem
+	replayBytes  int
+	mirrorBucket float64
+	mirrorLastMs int64
+	mirrorInited bool
 
 	// Client input cache & recovery state:
 	inputCache      map[uint64]termInputCacheItem
@@ -236,17 +236,17 @@ type TerminalStream struct {
 // NewTerminalStream initializes a logical terminal stream bound to daemon instance.
 func NewTerminalStream(streamID, sessionID, peerID, instance string, now uint64) *TerminalStream {
 	return &TerminalStream{
-		StreamID:     streamID,
-		SessionID:    sessionID,
-		PeerID:       peerID,
-		Instance:     instance,
-		legs:         map[string]termLeg{},
-		details:      map[uint64]TermFrameStatus{},
-		inputPending: map[uint64]termQueued{},
+		StreamID:      streamID,
+		SessionID:     sessionID,
+		PeerID:        peerID,
+		Instance:      instance,
+		legs:          map[string]termLeg{},
+		details:       map[uint64]TermFrameStatus{},
+		inputPending:  map[uint64]termQueued{},
 		outputPending: map[uint64]termQueued{},
-		renderedIDs:  map[uint64]termOutputIdentity{},
-		inputCache:   map[uint64]termInputCacheItem{},
-		lastACK:      now,
+		renderedIDs:   map[uint64]termOutputIdentity{},
+		inputCache:    map[uint64]termInputCacheItem{},
+		lastACK:       now,
 	}
 }
 
@@ -983,6 +983,22 @@ func (s *TerminalStream) ReconcileStatus(now uint64, snap TermStatusSnapshot) (t
 	}
 	if needUserConfirm {
 		return nil, false, true
+	}
+	if len(toResend) > 0 && !needBarrier {
+		// H-A gap detection: if any uncached seq gap exists above daemon's Processed
+		// watermark, resending higher seqs would leave them permanently stuck in Buffered.
+		expected := snap.State.ToDaemon.Processed + 1
+		for _, f := range toResend {
+			if f.Seq <= snap.State.ToDaemon.Processed {
+				continue
+			}
+			if f.Seq > expected {
+				s.Paused = true
+				s.NeedsUserConfirm = true
+				return nil, false, true
+			}
+			expected = f.Seq + 1
+		}
 	}
 	return toResend, needBarrier, false
 }
