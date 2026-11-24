@@ -18,7 +18,6 @@ public  final class SecurityWorkflowStatus extends
     server_ = "";
     deviceId_ = "";
     accountId_ = "";
-    error_ = "";
   }
   private int bitField0_;
   public static final int BOOTSTRAP_FIELD_NUMBER = 1;
@@ -671,52 +670,52 @@ public  final class SecurityWorkflowStatus extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
-  public static final int ERROR_FIELD_NUMBER = 22;
-  private java.lang.String error_;
+  public static final int ERROR_TEXT_FIELD_NUMBER = 23;
+  private io.github.lewin671.remoteagent.core.proto.Text errorText_;
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.Override
-  public java.lang.String getError() {
-    return error_;
+  public boolean hasErrorText() {
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The bytes for error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getErrorBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(error_);
+  public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+    return errorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : errorText_;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @param value The error to set.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setError(
-      java.lang.String value) {
+  private void setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
-
-    error_ = value;
+    errorText_ = value;
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
-  private void clearError() {
-
-    error_ = getDefaultInstance().getError();
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (errorText_ != null &&
+        errorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      errorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(errorText_).mergeFrom(value).buildPartial();
+    } else {
+      errorText_ = value;
+    }
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @param value The bytes for error to set.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
-  private void setErrorBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    error_ = value.toStringUtf8();
-
+  private void clearErrorText() {
+    errorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus parseFrom(
@@ -1505,51 +1504,49 @@ public  final class SecurityWorkflowStatus extends
     }
 
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return The error.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
     @java.lang.Override
-    public java.lang.String getError() {
-      return instance.getError();
+    public boolean hasErrorText() {
+      return instance.hasErrorText();
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return The bytes for error.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString
-        getErrorBytes() {
-      return instance.getErrorBytes();
+    public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+      return instance.getErrorText();
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @param value The error to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder setError(
-        java.lang.String value) {
+    public Builder setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.setError(value);
+      instance.setErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+     */
+    public Builder setErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setErrorText(builderForValue.build());
       return this;
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder clearError() {
+    public Builder mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.clearError();
+      instance.mergeErrorText(value);
       return this;
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @param value The bytes for error to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder setErrorBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setErrorBytes(value);
+    public Builder clearErrorText() {  copyOnWrite();
+      instance.clearErrorText();
       return this;
     }
 
@@ -1591,13 +1588,13 @@ public  final class SecurityWorkflowStatus extends
             "hasHandoffOffer_",
             "takingOver_",
             "pendingOp_",
-            "error_",
+            "errorText_",
           };
           java.lang.String info =
-              "\u0000\u0016\u0000\u0001\u0001\u0016\u0016\u0000\u0000\u0000\u0001\f\u0002\u0007" +
+              "\u0000\u0016\u0000\u0001\u0001\u0017\u0016\u0000\u0000\u0000\u0001\f\u0002\u0007" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0208\b\u0208\t\u0003\n\u0002" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0007\u0010\u0007\u0011\u0007\u0012" +
-              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0016\u0208";
+              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0017\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

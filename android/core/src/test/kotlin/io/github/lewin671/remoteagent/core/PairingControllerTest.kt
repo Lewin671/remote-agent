@@ -209,7 +209,7 @@ class PairingControllerTest {
         driver.nextApproveOutcome = {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
-                .setError("security.pairing_expired_or_was_canceled")
+                .setErrorText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.pairing_expired_or_was_canceled"))
                 .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_NOT_FOUND)
                 .setRetryable(false)
                 .setUncertain(false)
@@ -228,7 +228,7 @@ class PairingControllerTest {
         driver.nextApproveOutcome = {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
-                .setError("security.the_security_operation_s_outcome_is_unverified_continue_the")
+                .setErrorText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.the_security_operation_s_outcome_is_unverified_continue_the"))
                 .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_UNAVAILABLE)
                 .setRetryable(true)
                 .setUncertain(true)
@@ -255,7 +255,7 @@ class PairingControllerTest {
         driver.nextApproveOutcome = {
             SecurityWorkflowResultEffect.newBuilder()
                 .setOk(false)
-                .setError("security.pairing_expired_or_was_canceled")
+                .setErrorText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.pairing_expired_or_was_canceled"))
                 .setStructuredErrorCode(io.github.lewin671.remoteagent.core.proto.SecurityErrorCode.SECURITY_ERROR_CODE_NOT_FOUND)
                 .setRetryable(false)
                 .setUncertain(false)

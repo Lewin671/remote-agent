@@ -219,32 +219,40 @@ func TestSecurityReasonTextAndBuildNotifyDisplay(t *testing.T) {
 		t.Fatalf("unexpected invalid display: %+v", inv)
 	}
 
-	// DecorateSecurityEffects fills ErrorText, ExitAdvice.MessageText, and NotifyOpened.Display.
+	// DecorateSecurityEffects fills ErrorText, ExitAdvice.MessageText, Status.ErrorText, and NotifyOpened.Display.
 	wfRes := &corev1.SecurityWorkflowResultEffect{
 		ActionId:   10,
 		Ok:         false,
-		Error:      "security: invalid",
+		Status:     &corev1.SecurityWorkflowStatus{Bootstrap: corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID},
 		ExitAdvice: &corev1.SecurityExitAdvice{Authority: true},
+	}
+	scEff := &corev1.SecurityStatusChangedEffect{
+		Status: &corev1.SecurityWorkflowStatus{Bootstrap: corev1.SecurityBootstrapKind_SECURITY_BOOTSTRAP_KIND_INVALID},
 	}
 	noEff := &corev1.SecurityNotifyOpenedEffect{OpId: 20}
 	DecorateSecurityEffects(
 		[]*corev1.Effect{
 			{Effect: &corev1.Effect_SecurityWorkflowResult{SecurityWorkflowResult: wfRes}},
+			{Effect: &corev1.Effect_SecurityStatusChanged{SecurityStatusChanged: scEff}},
 			{Effect: &corev1.Effect_SecurityNotifyOpened{SecurityNotifyOpened: noEff}},
 		},
 		map[uint64]security.WorkflowMeta{
-			10: {ActionID: 10, ErrReason: security.WorkflowReasonInvalidPairingKey, ExitReason: security.ExitAdviceOnlyManagingClient},
+			10: {ActionID: 10, ErrReason: security.WorkflowReasonInvalidPairingKey, ErrRaw: "security: invalid", ExitReason: security.ExitAdviceOnlyManagingClient},
 		},
 		map[uint64]security.NotifyOutcome{
 			20: {OpID: 20, Valid: true, Kind: v1.NotifyKind_NOTIFY_KIND_SCHEDULED, Title: "T", Text: "B"},
 		},
+		security.BootstrapErrorMeta{Reason: security.WorkflowReasonAccountPubKeyMissing},
 	)
-	if wfRes.ErrorText.GetKey() != text.KeySecurityInvalidPairingKey || wfRes.Error != text.KeySecurityInvalidPairingKey {
-		t.Fatalf("unexpected decorated workflow error: text=%+v err=%q", wfRes.ErrorText, wfRes.Error)
+	if wfRes.ErrorText.GetKey() != text.KeySecurityInvalidPairingKey {
+		t.Fatalf("unexpected decorated workflow error: text=%+v", wfRes.ErrorText)
 	}
-	if wfRes.ExitAdvice.MessageText.GetKey() != text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement ||
-		wfRes.ExitAdvice.Message != text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement {
+	if wfRes.ExitAdvice.MessageText.GetKey() != text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement {
 		t.Fatalf("unexpected decorated exit advice: %+v", wfRes.ExitAdvice)
+	}
+	if wfRes.Status.ErrorText.GetKey() != text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA ||
+		scEff.Status.ErrorText.GetKey() != text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA {
+		t.Fatalf("unexpected decorated status error text: wf=%+v sc=%+v", wfRes.Status.ErrorText, scEff.Status.ErrorText)
 	}
 	if noEff.Display == nil || !noEff.Display.Valid || noEff.Display.Title.GetLiteral() != "T" {
 		t.Fatalf("unexpected decorated notify display: %+v", noEff.Display)

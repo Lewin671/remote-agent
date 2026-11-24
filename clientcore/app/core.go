@@ -160,7 +160,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		}
 		effects := append(syncRes.Effects, hookEffects...)
 		effects = append(effects, extra...)
-		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes)
+		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes, syncRes.SecurityBootstrapError)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
@@ -185,7 +185,7 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	effects = append(effects, stepRes.Effects...)
 	effects = append(effects, uiEffects...)
 	effects = append(effects, extra...)
-	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes)
+	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes, stepRes.SecurityBootstrapError)
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}

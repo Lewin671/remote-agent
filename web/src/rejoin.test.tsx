@@ -16,6 +16,7 @@ import {
   SecurityExitAdviceSchema,
   SecurityWorkflowStatusSchema,
 } from "./gen/remoteagent/core/v1/security_pb";
+import { TextSchema } from "./gen/remoteagent/core/v1/text_pb";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 afterEach(() => { if (root) act(() => root.unmount()); host?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -38,7 +39,7 @@ it.each([false, true])("rejoin clears data and goes directly to pairing; pending
       checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
         authority: false,
         unresolved: pending,
-        message: "原操作尚未完成。",
+        messageText: create(TextSchema, { literal: "原操作尚未完成。" }),
       })),
       clearSecurity,
     } as unknown as securityClient.SecurityClient,
@@ -76,7 +77,6 @@ it.each([false, true])("startup decides before code entry and discards retained 
       checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
         authority: false,
         unresolved: false,
-        message: "",
       })),
       clearSecurity,
     } as unknown as securityClient.SecurityClient,

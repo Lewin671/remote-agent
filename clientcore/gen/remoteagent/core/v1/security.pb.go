@@ -2772,7 +2772,7 @@ type SecurityWorkflowStatus struct {
 	HasHandoffOffer           bool
 	TakingOver                bool
 	PendingOp                 *SecurityPendingOpSummary
-	Error                     string
+	ErrorText                 *Text
 }
 
 func (m *SecurityWorkflowStatus) GetBootstrap() SecurityBootstrapKind {
@@ -2901,11 +2901,11 @@ func (m *SecurityWorkflowStatus) GetPendingOp() *SecurityPendingOpSummary {
 	}
 	return nil
 }
-func (m *SecurityWorkflowStatus) GetError() string {
+func (m *SecurityWorkflowStatus) GetErrorText() *Text {
 	if m != nil {
-		return m.Error
+		return m.ErrorText
 	}
-	return ""
+	return nil
 }
 
 var LitewireDesc_SecurityWorkflowStatus = litewire.MessageDesc{
@@ -2931,7 +2931,7 @@ var LitewireDesc_SecurityWorkflowStatus = litewire.MessageDesc{
 		{Num: 19, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.HasHandoffOffer), Kind: litewire.KindBool},
 		{Num: 20, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.TakingOver), Kind: litewire.KindBool},
 		{Num: 21, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.PendingOp), Kind: litewire.KindMessage, Sub: &LitewireDesc_SecurityPendingOpSummary},
-		{Num: 22, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.Error), Kind: litewire.KindString},
+		{Num: 23, Offset: unsafe.Offsetof(SecurityWorkflowStatus{}.ErrorText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 
@@ -3129,7 +3129,6 @@ type SecurityExitAdvice struct {
 	_           [0]func()
 	Authority   bool
 	Unresolved  bool
-	Message     string
 	MessageText *Text
 }
 
@@ -3145,12 +3144,6 @@ func (m *SecurityExitAdvice) GetUnresolved() bool {
 	}
 	return false
 }
-func (m *SecurityExitAdvice) GetMessage() string {
-	if m != nil {
-		return m.Message
-	}
-	return ""
-}
 func (m *SecurityExitAdvice) GetMessageText() *Text {
 	if m != nil {
 		return m.MessageText
@@ -3162,7 +3155,6 @@ var LitewireDesc_SecurityExitAdvice = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Authority), Kind: litewire.KindBool},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Unresolved), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityExitAdvice{}.Message), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(SecurityExitAdvice{}.MessageText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
@@ -4529,7 +4521,6 @@ type SecurityWorkflowResultEffect struct {
 	_                     [0]func()
 	ActionId              uint64
 	Ok                    bool
-	Error                 string
 	Retryable             bool
 	Uncertain             bool
 	ErrorAction           string
@@ -4559,12 +4550,6 @@ func (m *SecurityWorkflowResultEffect) GetOk() bool {
 		return m.Ok
 	}
 	return false
-}
-func (m *SecurityWorkflowResultEffect) GetError() string {
-	if m != nil {
-		return m.Error
-	}
-	return ""
 }
 func (m *SecurityWorkflowResultEffect) GetRetryable() bool {
 	if m != nil {
@@ -4667,7 +4652,6 @@ var LitewireDesc_SecurityWorkflowResultEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ActionId), Kind: litewire.KindUint64},
 		{Num: 2, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Ok), Kind: litewire.KindBool},
-		{Num: 3, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Error), Kind: litewire.KindString},
 		{Num: 5, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Retryable), Kind: litewire.KindBool},
 		{Num: 6, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.Uncertain), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(SecurityWorkflowResultEffect{}.ErrorAction), Kind: litewire.KindString},

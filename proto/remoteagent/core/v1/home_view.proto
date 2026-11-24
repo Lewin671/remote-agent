@@ -15,11 +15,12 @@ enum ConnState {
 }
 
 message ConnectionStatusView {
+  reserved 5;
+  reserved "reason";
   ConnState state = 1;
   Text badge_text = 2;
   Text detail_text = 3;
   bool live_push_connected = 4;
-  string reason = 5;
   int64 disconnected_at_ms = 6;
 }
 

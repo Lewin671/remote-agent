@@ -477,16 +477,15 @@ final class AppModel {
                     stage = .join
                 case .pendingRegistration:
                     if !status.server.isEmpty { lastServer = status.server }
-                    if !status.error.isEmpty {
-                        stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(
-                            value: translateSecurityKey(status.error)))
+                    let regErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
+                    if !regErr.isEmpty {
+                        stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: regErr))
                     } else {
                         stage = .join
                     }
                 case .invalid, .clockSkewed:
-                    let msg = status.error.isEmpty
-                        ? VaultError.unreadable.localizedDescription
-                        : translateSecurityKey(status.error)
+                    let statusErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
+                    let msg = statusErr.isEmpty ? VaultError.unreadable.localizedDescription : statusErr
                     stage = .failed(msg)
                 case .empty, .unspecified, .UNRECOGNIZED:
                     retainedIdentityDenied = false

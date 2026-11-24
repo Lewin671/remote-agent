@@ -165,14 +165,13 @@ public interface SecurityWorkflowStatusOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary getPendingOp();
 
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+   * @return Whether the errorText field is set.
    */
-  java.lang.String getError();
+  boolean hasErrorText();
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The bytes for error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+   * @return The errorText.
    */
-  com.google.protobuf.ByteString
-      getErrorBytes();
+  io.github.lewin671.remoteagent.core.proto.Text getErrorText();
 }

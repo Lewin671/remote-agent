@@ -91,32 +91,23 @@ export class SecurityWorkflowError extends Error {
   }
 }
 
-export function translateSecurityKey(raw: string): string {
-  if (raw.includes(".") && !raw.includes(" ")) {
-    const translated = (l10n.t as (key: string) => string)(raw);
-    if (translated && translated !== raw) return translated;
-  }
-  return raw;
-}
-
 export function translateSecurityErrorMessage(
-  res: Pick<SecurityWorkflowResultEffect, "error" | "errorAction" | "errorText">,
+  res: Pick<SecurityWorkflowResultEffect, "errorText" | "structuredErrorCode">,
 ): string {
   if (res.errorText) {
     const rendered = renderText(res.errorText);
     if (rendered) return rendered;
   }
-  return translateSecurityKey(res.error || "security error");
+  if (res.structuredErrorCode) {
+    return SecurityErrorCode[res.structuredErrorCode] ?? "";
+  }
+  return "";
 }
 
 export function renderExitAdviceMessage(
-  a: Pick<SecurityExitAdvice, "message" | "messageText">,
+  a: Pick<SecurityExitAdvice, "messageText">,
 ): string {
-  if (a.messageText) {
-    const rendered = renderText(a.messageText);
-    if (rendered) return rendered;
-  }
-  return translateSecurityKey(a.message);
+  return a.messageText ? renderText(a.messageText) : "";
 }
 
 export interface SecurityWorkflowDispatcher {

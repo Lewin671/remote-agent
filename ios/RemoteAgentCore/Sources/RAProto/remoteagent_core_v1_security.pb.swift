@@ -1600,10 +1600,14 @@ public struct PBSecurityWorkflowStatus: @unchecked Sendable {
   /// Clears the value of `pendingOp`. Subsequent reads from it will return its default value.
   public mutating func clearPendingOp() {_uniqueStorage()._pendingOp = nil}
 
-  public var error: String {
-    get {return _storage._error}
-    set {_uniqueStorage()._error = newValue}
+  public var errorText: PBCoreText {
+    get {return _storage._errorText ?? PBCoreText()}
+    set {_uniqueStorage()._errorText = newValue}
   }
+  /// Returns true if `errorText` has been explicitly set.
+  public var hasErrorText: Bool {return _storage._errorText != nil}
+  /// Clears the value of `errorText`. Subsequent reads from it will return its default value.
+  public mutating func clearErrorText() {_uniqueStorage()._errorText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1682,8 +1686,6 @@ public struct PBSecurityExitAdvice: Sendable {
   public var authority: Bool = false
 
   public var unresolved: Bool = false
-
-  public var message: String = String()
 
   public var messageText: PBCoreText {
     get {return _messageText ?? PBCoreText()}
@@ -2279,11 +2281,6 @@ public struct PBSecurityWorkflowResultEffect: @unchecked Sendable {
   public var ok: Bool {
     get {return _storage._ok}
     set {_uniqueStorage()._ok = newValue}
-  }
-
-  public var error: String {
-    get {return _storage._error}
-    set {_uniqueStorage()._error = newValue}
   }
 
   public var retryable: Bool {
@@ -4965,7 +4962,7 @@ extension PBSecurityPendingOpSummary: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityWorkflowStatus"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bootstrap\0\u{3}legacy_repair_notice\0\u{3}is_member\0\u{3}is_authority\0\u{1}removed\0\u{1}server\0\u{3}device_id\0\u{3}account_id\0\u{3}head_epoch\0\u{3}lease_end_ms\0\u{3}lease_valid\0\u{3}clock_skewed\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_status_stale\0\u{3}recovery_objects_pending\0\u{3}needs_recovery_code_rotation\0\u{3}has_account_public_profile\0\u{3}has_handoff_offer\0\u{3}taking_over\0\u{3}pending_op\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}bootstrap\0\u{3}legacy_repair_notice\0\u{3}is_member\0\u{3}is_authority\0\u{1}removed\0\u{1}server\0\u{3}device_id\0\u{3}account_id\0\u{3}head_epoch\0\u{3}lease_end_ms\0\u{3}lease_valid\0\u{3}clock_skewed\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}recovery_status_stale\0\u{3}recovery_objects_pending\0\u{3}needs_recovery_code_rotation\0\u{3}has_account_public_profile\0\u{3}has_handoff_offer\0\u{3}taking_over\0\u{3}pending_op\0\u{4}\u{2}error_text\0\u{b}error\0\u{c}\u{16}\u{1}")
 
   fileprivate class _StorageClass {
     var _bootstrap: PBSecurityBootstrapKind = .unspecified
@@ -4989,7 +4986,7 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
     var _hasHandoffOffer_p: Bool = false
     var _takingOver: Bool = false
     var _pendingOp: PBSecurityPendingOpSummary? = nil
-    var _error: String = String()
+    var _errorText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -5021,7 +5018,7 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
       _hasHandoffOffer_p = source._hasHandoffOffer_p
       _takingOver = source._takingOver
       _pendingOp = source._pendingOp
-      _error = source._error
+      _errorText = source._errorText
     }
   }
 
@@ -5061,7 +5058,7 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
         case 19: try { try decoder.decodeSingularBoolField(value: &_storage._hasHandoffOffer_p) }()
         case 20: try { try decoder.decodeSingularBoolField(value: &_storage._takingOver) }()
         case 21: try { try decoder.decodeSingularMessageField(value: &_storage._pendingOp) }()
-        case 22: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
+        case 23: try { try decoder.decodeSingularMessageField(value: &_storage._errorText) }()
         default: break
         }
       }
@@ -5137,9 +5134,9 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
       try { if let v = _storage._pendingOp {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 21)
       } }()
-      if !_storage._error.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 22)
-      }
+      try { if let v = _storage._errorText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 23)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -5170,7 +5167,7 @@ extension PBSecurityWorkflowStatus: SwiftProtobuf.Message, SwiftProtobuf._Messag
         if _storage._hasHandoffOffer_p != rhs_storage._hasHandoffOffer_p {return false}
         if _storage._takingOver != rhs_storage._takingOver {return false}
         if _storage._pendingOp != rhs_storage._pendingOp {return false}
-        if _storage._error != rhs_storage._error {return false}
+        if _storage._errorText != rhs_storage._errorText {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5337,7 +5334,7 @@ extension PBSecurityHandoffCandidate: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityExitAdvice"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}authority\0\u{1}unresolved\0\u{1}message\0\u{3}message_text\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}authority\0\u{1}unresolved\0\u{4}\u{2}message_text\0\u{b}message\0\u{c}\u{3}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5347,7 +5344,6 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularBoolField(value: &self.authority) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.unresolved) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
       case 4: try { try decoder.decodeSingularMessageField(value: &self._messageText) }()
       default: break
       }
@@ -5365,9 +5361,6 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
     if self.unresolved != false {
       try visitor.visitSingularBoolField(value: self.unresolved, fieldNumber: 2)
     }
-    if !self.message.isEmpty {
-      try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
-    }
     try { if let v = self._messageText {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
     } }()
@@ -5377,7 +5370,6 @@ extension PBSecurityExitAdvice: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static func ==(lhs: PBSecurityExitAdvice, rhs: PBSecurityExitAdvice) -> Bool {
     if lhs.authority != rhs.authority {return false}
     if lhs.unresolved != rhs.unresolved {return false}
-    if lhs.message != rhs.message {return false}
     if lhs._messageText != rhs._messageText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6560,12 +6552,11 @@ extension PBSecurityWorkflowActionEvent: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecurityWorkflowResultEffect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{1}error\0\u{2}\u{2}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0\u{3}structured_error_code\0\u{3}error_text\0\u{b}error_code\0\u{c}\u{4}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}action_id\0\u{1}ok\0\u{2}\u{3}retryable\0\u{1}uncertain\0\u{3}error_action\0\u{1}status\0\u{3}recovery_code\0\u{3}resumed_draft\0\u{3}code_saved\0\u{3}needs_recovery_rotation\0\u{1}pairing\0\u{1}recovery\0\u{3}handoff_candidates\0\u{3}exit_advice\0\u{3}account_adopted\0\u{1}flag\0\u{3}structured_error_code\0\u{3}error_text\0\u{b}error\0\u{b}error_code\0\u{c}\u{3}\u{1}\u{c}\u{4}\u{1}")
 
   fileprivate class _StorageClass {
     var _actionID: UInt64 = 0
     var _ok: Bool = false
-    var _error: String = String()
     var _retryable: Bool = false
     var _uncertain: Bool = false
     var _errorAction: String = String()
@@ -6594,7 +6585,6 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
     init(copying source: _StorageClass) {
       _actionID = source._actionID
       _ok = source._ok
-      _error = source._error
       _retryable = source._retryable
       _uncertain = source._uncertain
       _errorAction = source._errorAction
@@ -6631,7 +6621,6 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         switch fieldNumber {
         case 1: try { try decoder.decodeSingularUInt64Field(value: &_storage._actionID) }()
         case 2: try { try decoder.decodeSingularBoolField(value: &_storage._ok) }()
-        case 3: try { try decoder.decodeSingularStringField(value: &_storage._error) }()
         case 5: try { try decoder.decodeSingularBoolField(value: &_storage._retryable) }()
         case 6: try { try decoder.decodeSingularBoolField(value: &_storage._uncertain) }()
         case 7: try { try decoder.decodeSingularStringField(value: &_storage._errorAction) }()
@@ -6665,9 +6654,6 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
       }
       if _storage._ok != false {
         try visitor.visitSingularBoolField(value: _storage._ok, fieldNumber: 2)
-      }
-      if !_storage._error.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._error, fieldNumber: 3)
       }
       if _storage._retryable != false {
         try visitor.visitSingularBoolField(value: _storage._retryable, fieldNumber: 5)
@@ -6728,7 +6714,6 @@ extension PBSecurityWorkflowResultEffect: SwiftProtobuf.Message, SwiftProtobuf._
         let rhs_storage = _args.1
         if _storage._actionID != rhs_storage._actionID {return false}
         if _storage._ok != rhs_storage._ok {return false}
-        if _storage._error != rhs_storage._error {return false}
         if _storage._retryable != rhs_storage._retryable {return false}
         if _storage._uncertain != rhs_storage._uncertain {return false}
         if _storage._errorAction != rhs_storage._errorAction {return false}

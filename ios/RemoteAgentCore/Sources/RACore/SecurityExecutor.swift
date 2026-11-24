@@ -369,7 +369,7 @@ public func openNotifyDisplayViaCore(
     for eff in batch.effects {
         if case .securityNotifyOpened(let res)? = eff.effect, res.opID == 1 {
             if !res.error.isEmpty {
-                throw SecurityWorkflowError(message: translateSecurityKey(res.error), code: .invalid, retryable: false, uncertain: false, errorAction: "")
+                throw SecurityWorkflowError(message: res.error, code: .invalid, retryable: false, uncertain: false, errorAction: "")
             }
             guard res.hasDisplay, res.display.valid else { return nil }
             return res.display

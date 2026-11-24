@@ -23,18 +23,6 @@ public interface SecurityWorkflowResultEffectOrBuilder extends
   boolean getOk();
 
   /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The error.
-   */
-  java.lang.String getError();
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The bytes for error.
-   */
-  com.google.protobuf.ByteString
-      getErrorBytes();
-
-  /**
    * <code>bool retryable = 5 [json_name = "retryable"];</code>
    * @return The retryable.
    */

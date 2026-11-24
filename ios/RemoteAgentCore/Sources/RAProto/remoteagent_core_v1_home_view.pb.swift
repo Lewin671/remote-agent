@@ -477,11 +477,6 @@ public struct PBCoreConnectionStatusView: @unchecked Sendable {
     set {_uniqueStorage()._livePushConnected = newValue}
   }
 
-  public var reason: String {
-    get {return _storage._reason}
-    set {_uniqueStorage()._reason = newValue}
-  }
-
   public var disconnectedAtMs: Int64 {
     get {return _storage._disconnectedAtMs}
     set {_uniqueStorage()._disconnectedAtMs = newValue}
@@ -1533,14 +1528,13 @@ extension PBCoreAlwaysAllowKind: SwiftProtobuf._ProtoNameProviding {
 
 extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ConnectionStatusView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{3}badge_text\0\u{3}detail_text\0\u{3}live_push_connected\0\u{1}reason\0\u{3}disconnected_at_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}state\0\u{3}badge_text\0\u{3}detail_text\0\u{3}live_push_connected\0\u{4}\u{2}disconnected_at_ms\0\u{b}reason\0\u{c}\u{5}\u{1}")
 
   fileprivate class _StorageClass {
     var _state: PBCoreConnState = .unspecified
     var _badgeText: PBCoreText? = nil
     var _detailText: PBCoreText? = nil
     var _livePushConnected: Bool = false
-    var _reason: String = String()
     var _disconnectedAtMs: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
@@ -1556,7 +1550,6 @@ extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       _badgeText = source._badgeText
       _detailText = source._detailText
       _livePushConnected = source._livePushConnected
-      _reason = source._reason
       _disconnectedAtMs = source._disconnectedAtMs
     }
   }
@@ -1580,7 +1573,6 @@ extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         case 2: try { try decoder.decodeSingularMessageField(value: &_storage._badgeText) }()
         case 3: try { try decoder.decodeSingularMessageField(value: &_storage._detailText) }()
         case 4: try { try decoder.decodeSingularBoolField(value: &_storage._livePushConnected) }()
-        case 5: try { try decoder.decodeSingularStringField(value: &_storage._reason) }()
         case 6: try { try decoder.decodeSingularInt64Field(value: &_storage._disconnectedAtMs) }()
         default: break
         }
@@ -1606,9 +1598,6 @@ extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._Mess
       if _storage._livePushConnected != false {
         try visitor.visitSingularBoolField(value: _storage._livePushConnected, fieldNumber: 4)
       }
-      if !_storage._reason.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._reason, fieldNumber: 5)
-      }
       if _storage._disconnectedAtMs != 0 {
         try visitor.visitSingularInt64Field(value: _storage._disconnectedAtMs, fieldNumber: 6)
       }
@@ -1625,7 +1614,6 @@ extension PBCoreConnectionStatusView: SwiftProtobuf.Message, SwiftProtobuf._Mess
         if _storage._badgeText != rhs_storage._badgeText {return false}
         if _storage._detailText != rhs_storage._detailText {return false}
         if _storage._livePushConnected != rhs_storage._livePushConnected {return false}
-        if _storage._reason != rhs_storage._reason {return false}
         if _storage._disconnectedAtMs != rhs_storage._disconnectedAtMs {return false}
         return true
       }

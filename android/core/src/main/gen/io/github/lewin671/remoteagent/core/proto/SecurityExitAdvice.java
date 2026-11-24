@@ -15,7 +15,6 @@ public  final class SecurityExitAdvice extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SecurityExitAdvice)
     SecurityExitAdviceOrBuilder {
   private SecurityExitAdvice() {
-    message_ = "";
   }
   private int bitField0_;
   public static final int AUTHORITY_FIELD_NUMBER = 1;
@@ -68,54 +67,6 @@ public  final class SecurityExitAdvice extends
   private void clearUnresolved() {
 
     unresolved_ = false;
-  }
-
-  public static final int MESSAGE_FIELD_NUMBER = 3;
-  private java.lang.String message_;
-  /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The message.
-   */
-  @java.lang.Override
-  public java.lang.String getMessage() {
-    return message_;
-  }
-  /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The bytes for message.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getMessageBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(message_);
-  }
-  /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @param value The message to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMessage(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    message_ = value;
-  }
-  /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   */
-  private void clearMessage() {
-
-    message_ = getDefaultInstance().getMessage();
-  }
-  /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @param value The bytes for message to set.
-   */
-  private void setMessageBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    message_ = value.toStringUtf8();
-
   }
 
   public static final int MESSAGE_TEXT_FIELD_NUMBER = 4;
@@ -320,55 +271,6 @@ public  final class SecurityExitAdvice extends
     }
 
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return The message.
-     */
-    @java.lang.Override
-    public java.lang.String getMessage() {
-      return instance.getMessage();
-    }
-    /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return The bytes for message.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getMessageBytes() {
-      return instance.getMessageBytes();
-    }
-    /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @param value The message to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMessage(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setMessage(value);
-      return this;
-    }
-    /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearMessage() {
-      copyOnWrite();
-      instance.clearMessage();
-      return this;
-    }
-    /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @param value The bytes for message to set.
-     * @return This builder for chaining.
-     */
-    public Builder setMessageBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setMessageBytes(value);
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
     @java.lang.Override
@@ -434,12 +336,11 @@ public  final class SecurityExitAdvice extends
             "bitField0_",
             "authority_",
             "unresolved_",
-            "message_",
             "messageText_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0001\u0001\u0004\u0004\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0208\u0004\u1009\u0000";
+              "\u0000\u0003\u0000\u0001\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

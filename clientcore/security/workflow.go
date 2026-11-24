@@ -180,6 +180,7 @@ type workflowState struct {
 	fgGen              uint64
 	bootstrapped       bool
 	bootstrapInvalid   bool
+	bootstrapErrReason WorkflowReason
 	bootstrapError     string
 	legacyRepairNotice bool
 
@@ -451,7 +452,7 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 		}
 	}
 	if err != nil {
-		res.Error = err.Error()
+		meta.ErrRaw = err.Error()
 		if we := asWfError(err); we != nil {
 			res.Retryable, res.Uncertain, res.ErrorAction = we.retryable, we.uncertain, we.action
 			res.StructuredErrorCode = StructuredErrorCodeFromString(we.code)
@@ -491,10 +492,18 @@ func (e *Engine) emitStatusChanged() {
 }
 
 // BuildWorkflowStatus returns the unified security workflow & identity status for shell UIs.
+// BootstrapError returns the structured error metadata from the latest security bootstrap.
+func (e *Engine) BootstrapError() BootstrapErrorMeta {
+	if e == nil || e.wf == nil {
+		return BootstrapErrorMeta{}
+	}
+	return BootstrapErrorMeta{Reason: e.wf.bootstrapErrReason, Raw: e.wf.bootstrapError}
+}
+
 func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 	wf := e.ensureWF()
 	st := &corev1.SecurityWorkflowStatus{
-		LegacyRepairNotice: wf.legacyRepairNotice, Server: wf.server, DeviceId: e.selfDeviceID, AccountId: e.account, Error: wf.bootstrapError,
+		LegacyRepairNotice: wf.legacyRepairNotice, Server: wf.server, DeviceId: e.selfDeviceID, AccountId: e.account,
 	}
 	switch {
 	case !wf.bootstrapped:
@@ -696,6 +705,11 @@ type bootstrapTask struct{ actionID uint64 }
 func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 	if err != nil {
 		wf.bootstrapInvalid, wf.bootstrapError = true, err.Error()
+		if we := asWfError(err); we != nil {
+			wf.bootstrapErrReason = we.reason
+		} else {
+			wf.bootstrapErrReason = WorkflowReasonNone
+		}
 	}
 	e.emitActionResult(t.actionID, nil, err)
 	e.emitStatusChanged()
@@ -707,7 +721,7 @@ func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	if ev.kind == evChildDone {
 		return t.finish(e, wf, nil)
 	}
-	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapError = true, false, ""
+	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapErrReason, wf.bootstrapError = true, false, WorkflowReasonNone, ""
 	if ev.storage != nil && ev.storage.legacyCleared {
 		wf.legacyRepairNotice = true
 	}

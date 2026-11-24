@@ -225,6 +225,7 @@ type StepContext struct {
 	Settled                []SettledCommand
 	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
 	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
+	SecurityBootstrapError security.BootstrapErrorMeta
 }
 
 // StepResult summarizes the outputs of Engine.Step or direct Engine calls.
@@ -234,6 +235,7 @@ type StepResult struct {
 	Settled                []SettledCommand
 	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
 	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
+	SecurityBootstrapError security.BootstrapErrorMeta
 }
 
 // StepContext intentionally omits generic reflection; helper keeps Emit concise.
@@ -744,6 +746,7 @@ func finalizeResult(ctx *StepContext) StepResult {
 		Settled:                ctx.Settled,
 		SecurityWorkflowMeta:   ctx.SecurityWorkflowMeta,
 		SecurityNotifyOutcomes: ctx.SecurityNotifyOutcomes,
+		SecurityBootstrapError: ctx.SecurityBootstrapError,
 	}
 }
 

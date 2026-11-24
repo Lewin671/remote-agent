@@ -15,7 +15,6 @@ public  final class SecurityWorkflowResultEffect extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SecurityWorkflowResultEffect)
     SecurityWorkflowResultEffectOrBuilder {
   private SecurityWorkflowResultEffect() {
-    error_ = "";
     errorAction_ = "";
     recoveryCode_ = "";
     handoffCandidates_ = emptyProtobufList();
@@ -71,54 +70,6 @@ public  final class SecurityWorkflowResultEffect extends
   private void clearOk() {
 
     ok_ = false;
-  }
-
-  public static final int ERROR_FIELD_NUMBER = 3;
-  private java.lang.String error_;
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The error.
-   */
-  @java.lang.Override
-  public java.lang.String getError() {
-    return error_;
-  }
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The bytes for error.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getErrorBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(error_);
-  }
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @param value The error to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setError(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    error_ = value;
-  }
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   */
-  private void clearError() {
-
-    error_ = getDefaultInstance().getError();
-  }
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @param value The bytes for error to set.
-   */
-  private void setErrorBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    error_ = value.toStringUtf8();
-
   }
 
   public static final int RETRYABLE_FIELD_NUMBER = 5;
@@ -954,55 +905,6 @@ public  final class SecurityWorkflowResultEffect extends
     }
 
     /**
-     * <code>string error = 3 [json_name = "error"];</code>
-     * @return The error.
-     */
-    @java.lang.Override
-    public java.lang.String getError() {
-      return instance.getError();
-    }
-    /**
-     * <code>string error = 3 [json_name = "error"];</code>
-     * @return The bytes for error.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getErrorBytes() {
-      return instance.getErrorBytes();
-    }
-    /**
-     * <code>string error = 3 [json_name = "error"];</code>
-     * @param value The error to set.
-     * @return This builder for chaining.
-     */
-    public Builder setError(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setError(value);
-      return this;
-    }
-    /**
-     * <code>string error = 3 [json_name = "error"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearError() {
-      copyOnWrite();
-      instance.clearError();
-      return this;
-    }
-    /**
-     * <code>string error = 3 [json_name = "error"];</code>
-     * @param value The bytes for error to set.
-     * @return This builder for chaining.
-     */
-    public Builder setErrorBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setErrorBytes(value);
-      return this;
-    }
-
-    /**
      * <code>bool retryable = 5 [json_name = "retryable"];</code>
      * @return The retryable.
      */
@@ -1717,7 +1619,6 @@ public  final class SecurityWorkflowResultEffect extends
             "bitField0_",
             "actionId_",
             "ok_",
-            "error_",
             "retryable_",
             "uncertain_",
             "errorAction_",
@@ -1737,10 +1638,10 @@ public  final class SecurityWorkflowResultEffect extends
             "errorText_",
           };
           java.lang.String info =
-              "\u0000\u0013\u0000\u0001\u0001\u0014\u0013\u0000\u0001\u0000\u0001\u0003\u0002\u0007" +
-              "\u0003\u0208\u0005\u0007\u0006\u0007\u0007\u0208\b\u1009\u0000\t\u0208\n\u0007\u000b" +
-              "\u0007\f\u0007\r\u1009\u0001\u000e\u1009\u0002\u000f\u001b\u0010\u1009\u0003\u0011" +
-              "\u1009\u0004\u0012\u0007\u0013\f\u0014\u1009\u0005";
+              "\u0000\u0012\u0000\u0001\u0001\u0014\u0012\u0000\u0001\u0000\u0001\u0003\u0002\u0007" +
+              "\u0005\u0007\u0006\u0007\u0007\u0208\b\u1009\u0000\t\u0208\n\u0007\u000b\u0007\f" +
+              "\u0007\r\u1009\u0001\u000e\u1009\u0002\u000f\u001b\u0010\u1009\u0003\u0011\u1009" +
+              "\u0004\u0012\u0007\u0013\f\u0014\u1009\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

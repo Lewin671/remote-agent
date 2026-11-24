@@ -157,6 +157,7 @@ func (e *Engine) emitSecurityEffects(ctx *StepContext, effs []*corev1.Effect) {
 			}
 			maps.Copy(ctx.SecurityNotifyOutcomes, nm)
 		}
+		ctx.SecurityBootstrapError = e.secEngine.BootstrapError()
 	}
 	if len(effs) == 0 {
 		return

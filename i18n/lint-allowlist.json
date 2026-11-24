@@ -5843,10 +5843,5 @@
     "path": "clientcore/security/workflow_op.go",
     "literal": "offer",
     "reason": "Internal persisted security operation kind discriminator in switch case; flagged only because newWfError(...) precedes it within the scanner window."
-  },
-  {
-    "path": "web/src/core/security-client.ts",
-    "literal": "security error",
-    "reason": "Pre-existing defensive fallback when both core errorText and error are absent; newly matched only because renderText(...) precedes it within the scanner window."
   }
 ]

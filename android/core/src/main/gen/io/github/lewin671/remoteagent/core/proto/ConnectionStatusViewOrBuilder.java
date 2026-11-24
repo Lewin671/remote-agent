@@ -50,18 +50,6 @@ public interface ConnectionStatusViewOrBuilder extends
   boolean getLivePushConnected();
 
   /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @return The reason.
-   */
-  java.lang.String getReason();
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @return The bytes for reason.
-   */
-  com.google.protobuf.ByteString
-      getReasonBytes();
-
-  /**
    * <code>int64 disconnected_at_ms = 6 [json_name = "disconnectedAtMs"];</code>
    * @return The disconnectedAtMs.
    */

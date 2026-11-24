@@ -50,7 +50,14 @@ const (
 type WorkflowMeta struct {
 	ActionID   uint64
 	ErrReason  WorkflowReason
+	ErrRaw     string
 	ExitReason ExitAdviceReason
+}
+
+// BootstrapErrorMeta carries the structured bootstrap error for SecurityWorkflowStatus.
+type BootstrapErrorMeta struct {
+	Reason WorkflowReason
+	Raw    string
 }
 
 // NotifyOutcome holds the validated, non-localized push notification fields produced

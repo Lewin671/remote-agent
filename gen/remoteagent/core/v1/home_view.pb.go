@@ -510,7 +510,6 @@ type ConnectionStatusView struct {
 	BadgeText         *Text                  `protobuf:"bytes,2,opt,name=badge_text,json=badgeText,proto3" json:"badge_text,omitempty"`
 	DetailText        *Text                  `protobuf:"bytes,3,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
 	LivePushConnected bool                   `protobuf:"varint,4,opt,name=live_push_connected,json=livePushConnected,proto3" json:"live_push_connected,omitempty"`
-	Reason            string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
 	DisconnectedAtMs  int64                  `protobuf:"varint,6,opt,name=disconnected_at_ms,json=disconnectedAtMs,proto3" json:"disconnected_at_ms,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -572,13 +571,6 @@ func (x *ConnectionStatusView) GetLivePushConnected() bool {
 		return x.LivePushConnected
 	}
 	return false
-}
-
-func (x *ConnectionStatusView) GetReason() string {
-	if x != nil {
-		return x.Reason
-	}
-	return ""
 }
 
 func (x *ConnectionStatusView) GetDisconnectedAtMs() int64 {
@@ -2240,16 +2232,15 @@ var File_remoteagent_core_v1_home_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\n" +
-	"#remoteagent/core/v1/home_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xb8\x02\n" +
+	"#remoteagent/core/v1/home_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xae\x02\n" +
 	"\x14ConnectionStatusView\x124\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\x05state\x128\n" +
 	"\n" +
 	"badge_text\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\tbadgeText\x12:\n" +
 	"\vdetail_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"detailText\x12.\n" +
-	"\x13live_push_connected\x18\x04 \x01(\bR\x11livePushConnected\x12\x16\n" +
-	"\x06reason\x18\x05 \x01(\tR\x06reason\x12,\n" +
-	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMs\"\x95\x03\n" +
+	"\x13live_push_connected\x18\x04 \x01(\bR\x11livePushConnected\x12,\n" +
+	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMsJ\x04\b\x05\x10\x06R\x06reason\"\x95\x03\n" +
 	"\x10HomeHeadlineView\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.remoteagent.core.v1.HeadlineKindR\x04kind\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x12'\n" +

@@ -377,13 +377,16 @@ func BuildNotifyDisplay(o security.NotifyOutcome) *corev1.SecurityNotifyDisplay 
 	}
 }
 
-// DecorateSecurityEffects fills corev1.Text fields on SecurityWorkflowResultEffect and
-// SecurityNotifyOpenedEffect using structured reasons and outcomes produced by security.
+// DecorateSecurityEffects fills corev1.Text fields on SecurityWorkflowResultEffect,
+// SecurityStatusChangedEffect, and SecurityNotifyOpenedEffect using structured
+// reasons and outcomes produced by security.
 func DecorateSecurityEffects(
 	effects []*corev1.Effect,
 	wfMeta map[uint64]security.WorkflowMeta,
 	notifyMeta map[uint64]security.NotifyOutcome,
+	bootErr security.BootstrapErrorMeta,
 ) {
+	bootErrText := SecurityWorkflowReasonText(bootErr.Reason, bootErr.Raw)
 	for _, eff := range effects {
 		if eff == nil {
 			continue
@@ -396,12 +399,12 @@ func DecorateSecurityEffects(
 			}
 			meta := wfMeta[res.ActionId]
 			if !res.Ok {
-				if txt := SecurityWorkflowReasonText(meta.ErrReason, res.Error); txt != nil {
+				if txt := SecurityWorkflowReasonText(meta.ErrReason, meta.ErrRaw); txt != nil {
 					res.ErrorText = txt
-					if txt.Key != "" {
-						res.Error = txt.Key
-					}
 				}
+			}
+			if res.Status != nil && bootErrText != nil {
+				res.Status.ErrorText = bootErrText
 			}
 			if res.ExitAdvice != nil {
 				exitReason := meta.ExitReason
@@ -415,11 +418,12 @@ func DecorateSecurityEffects(
 						exitReason = security.ExitAdviceDefault
 					}
 				}
-				txt := SecurityExitAdviceText(exitReason)
-				res.ExitAdvice.MessageText = txt
-				if txt != nil && txt.Key != "" {
-					res.ExitAdvice.Message = txt.Key
-				}
+				res.ExitAdvice.MessageText = SecurityExitAdviceText(exitReason)
+			}
+		case *corev1.Effect_SecurityStatusChanged:
+			sc := k.SecurityStatusChanged
+			if sc != nil && sc.Status != nil && bootErrText != nil {
+				sc.Status.ErrorText = bootErrText
 			}
 		case *corev1.Effect_SecurityNotifyOpened:
 			no := k.SecurityNotifyOpened
