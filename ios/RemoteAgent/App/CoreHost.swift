@@ -1597,6 +1597,21 @@ actor CoreHost: SyncEngine {
         }).attachmentEval) ?? PBAttachmentEvalViewModel()
     }
 
+    /// Queries Core's authoritative per-file byte limit for `scope` (0 when unavailable).
+    func maxFileBytes(for scope: PBDraftScope) -> Int64 {
+        guard !closed else { return 0 }
+        switch scope.kind {
+        case .session:
+            return evaluateAttachments(.with { $0.sessionID = scope.id }).maxFileBytes
+        case .newSession:
+            return (try? client.view(PBCoreScreen.with {
+                $0.newSession = .with { $0.projectKey = scope.id }
+            }).newSession.maxFileBytes) ?? 0
+        default:
+            return 0
+        }
+    }
+
     func submitSessionCommand(
         sessionID: String,
         command: PBCommand,

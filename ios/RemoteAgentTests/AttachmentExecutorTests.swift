@@ -411,6 +411,55 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(h.center.localImageCacheCountForTesting <= ImageCenter.maxLocalImages)
     }
 
+    @Test func oversizedLibraryVideoSkipsCopyAndIsRejectedByCore() async throws {
+        let store = PendingStore.ephemeral()
+        let h = try await makeHarness(store: store, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+        let scope = PBDraftScope.session("s1")
+        let maxBytes = await h.host.maxFileBytes(for: scope)
+        #expect(maxBytes == 100 * 1024 * 1024)
+
+        let tmpDir = FileManager.default.temporaryDirectory.appending(path: "att-bigvid-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let stagingRoot = tmpDir.appending(path: "library-videos", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let hugeFile = tmpDir.appending(path: "huge.mp4")
+        FileManager.default.createFile(atPath: hugeFile.path, contents: nil)
+        let fh = try FileHandle(forWritingTo: hugeFile)
+        try fh.truncate(atOffset: UInt64(maxBytes) + 1)
+        try fh.close()
+
+        let staged = try LibraryVideos.stage(hugeFile, maxBytes: maxBytes, root: stagingRoot)
+        guard case .rejectedCandidate(let info) = staged else {
+            Issue.record("expected oversized video to skip staging copy")
+            return
+        }
+        #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
+        #expect(store.used == 0)
+
+        await h.host.openDraft(scope: scope, machineID: "m1")
+        await h.host.addDraftItems(scope: scope, items: [.with {
+            $0.candidate = info.candidate(forceFile: false)
+            $0.sourceRef = ""
+        }])
+        await eventually("Core rejects oversized video candidate with notice") {
+            let d = h.screens.sessions["s1"]?.composer.draft
+            return d?.files.isEmpty == true && d?.hasNotice == true && !(d?.notice.rendered().isEmpty ?? true)
+        }
+
+        // Startup cleanup removes any residual staged library videos.
+        let leftover = try LibraryVideos.copy(hugeFile, root: stagingRoot)
+        #expect(FileManager.default.fileExists(atPath: leftover.path))
+        LibraryVideos.discardAll(root: stagingRoot)
+        #expect(!FileManager.default.fileExists(atPath: stagingRoot.path))
+    }
+
     @Test func draftStorageEffectsEnqueueInBatchOrderAcrossActorReentrancy() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "att-order-\(UUID().uuidString)", directoryHint: .isDirectory)
         let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")

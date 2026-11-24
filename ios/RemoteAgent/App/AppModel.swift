@@ -322,6 +322,9 @@ final class AppModel {
     init(settings: SettingsStore, parts: Parts = Parts()) {
         self.settings = settings
         self.parts = parts
+        Task.detached(priority: .utility) {
+            LibraryVideos.discardAll()
+        }
     }
 
     // MARK: Lifecycle

@@ -386,6 +386,7 @@ final class ImageCenter {
                 imageSlots: Int32(imageCount),
                 fileSlots: Int32(videoCount)
             )
+            let coreMaxFileBytes: Int64 = videoCount > 0 ? await host.maxFileBytes(for: scope) : 0
             var picked: [PBDraftPickedItem] = []
             var createdRefs: [String] = []
             var copyFailed = false
@@ -393,25 +394,41 @@ final class ImageCenter {
             for provider in providers {
                 if provider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                     do {
-                        let video: LibraryVideo = try await withCheckedThrowingContinuation { done in
-                            _ = provider.loadTransferable(type: LibraryVideo.self) { done.resume(with: $0) }
-                        }
-                        defer { LibraryVideos.discard(video.url) }
-                        let (inspection, ref, durationMs) = try await Task.detached(priority: .userInitiated) {
-                            let info = try PickedFile.inspect(url: video.url)
-                            let dur = await CoreHost.probeVideoDurationMs(at: video.url, securityScoped: false)
-                            let ref = try store.storeBlob(from: video.url, prefix: "vid")
-                            return (info, ref, dur)
-                        }.value
-                        createdRefs.append(ref)
-                        picked.append(.with {
-                            $0.candidate = inspection.candidate(forceFile: false)
-                            $0.sourceRef = ref
-                            if durationMs > 0 {
-                                $0.hasDuration_p = true
-                                $0.durationMs = durationMs
+                        let staged: StagedLibraryVideo = try await withCheckedThrowingContinuation { done in
+                            _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                                guard let url else {
+                                    done.resume(throwing: error ?? AttachmentFileIOError(.sourceMissing))
+                                    return
+                                }
+                                done.resume(with: Result {
+                                    try LibraryVideos.stage(url, maxBytes: coreMaxFileBytes)
+                                })
                             }
-                        })
+                        }
+                        switch staged {
+                        case .rejectedCandidate(let info):
+                            // Hand the oversized/directory candidate straight to Core without copying or encrypting bytes.
+                            picked.append(.with {
+                                $0.candidate = info.candidate(forceFile: false)
+                                $0.sourceRef = ""
+                            })
+                        case .copied(let info, let copiedURL):
+                            defer { LibraryVideos.discard(copiedURL) }
+                            let (ref, durationMs) = try await Task.detached(priority: .userInitiated) {
+                                let dur = await CoreHost.probeVideoDurationMs(at: copiedURL, securityScoped: false)
+                                let ref = try store.storeBlob(from: copiedURL, prefix: "vid")
+                                return (ref, dur)
+                            }.value
+                            createdRefs.append(ref)
+                            picked.append(.with {
+                                $0.candidate = info.candidate(forceFile: false)
+                                $0.sourceRef = ref
+                                if durationMs > 0 {
+                                    $0.hasDuration_p = true
+                                    $0.durationMs = durationMs
+                                }
+                            })
+                        }
                     } catch {
                         copyFailed = true
                         if firstError == nil { firstError = error }
@@ -590,20 +607,27 @@ final class ImageCenter {
     }
 }
 
-/// Temporary transfer wrapper for `PHPicker` movie imports; copied into `PendingStore` (`vid:<id>`) immediately.
-struct LibraryVideo: Transferable {
-    let url: URL
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(importedContentType: .movie) { received in
-            LibraryVideo(url: try LibraryVideos.copy(received.file))
-        }
-    }
+/// Result of inspecting a picked library movie before deciding whether to copy and encrypt it.
+enum StagedLibraryVideo: Sendable {
+    /// Video exceeds Core's `maxFileBytes` (or is a directory); pass candidate straight to Core to reject without copying bytes.
+    case rejectedCandidate(PickedFileInspection)
+    /// Video is within Core's limit and copied into transient staging for duration probe + streaming encryption.
+    case copied(PickedFileInspection, URL)
 }
 
 /// Transient staging folder for `PHPicker` movie transfers before they are copied into `PendingStore`.
+/// Cleared on app startup and logout so interrupted transfers never leave plaintext videos behind.
 enum LibraryVideos {
     static let root = FileManager.default.temporaryDirectory.appendingPathComponent("library-videos", isDirectory: true)
+
+    /// Inspects `file` in place first; only copies into `root` when within Core's `maxBytes` limit.
+    static func stage(_ file: URL, maxBytes: Int64, root: URL = root) throws -> StagedLibraryVideo {
+        let info = try PickedFile.inspect(url: file)
+        if info.isDirectory || (maxBytes > 0 && info.sizeBytes > maxBytes) {
+            return .rejectedCandidate(info)
+        }
+        return .copied(info, try copy(file, root: root))
+    }
 
     static func copy(_ file: URL, root: URL = root) throws -> URL {
         let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
