@@ -30,7 +30,6 @@
 "attachment_disconnected" = "Disconnected from server. Reconnect to add images.";
 "attachment_disconnected_files" = "Disconnected from server. Reconnect to add files.";
 "attachment_failed" = "Failed";
-"attachment_failed_send_hint" = "%1$@. Retry or remove the file before sending.";
 "attachment_failure" = "Failed: %1$@";
 "attachment_file" = "File";
 "attachment_file_changed" = "The file changed during upload. Retry or select it again.";

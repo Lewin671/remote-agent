@@ -5663,5 +5663,140 @@
     "path": "web/src/shared-files.ts",
     "literal": "StorageError",
     "reason": "Internal non-empty error sentinel in SharedFileLocalScannedEvent.error; Core only checks error != \"\" to preserve state on scan failure and never renders it."
+  },
+  {
+    "path": "web/src/attachment-executor.ts",
+    "literal": "draftStorageListed",
+    "reason": "Protobuf oneof event discriminator name, never rendered to the user."
+  },
+  {
+    "path": "web/src/attachment-executor.ts",
+    "literal": "draftStorageReadResult",
+    "reason": "Protobuf oneof event discriminator name, never rendered to the user."
+  },
+  {
+    "path": "web/src/attachment-executor.ts",
+    "literal": "draftStorageWriteResult",
+    "reason": "Protobuf oneof event discriminator name, never rendered to the user."
+  },
+  {
+    "path": "web/src/attachment-executor.ts",
+    "literal": "attachmentPrepareImageResult",
+    "reason": "Protobuf oneof event discriminator name, never rendered to the user."
+  },
+  {
+    "path": "web/src/attachment-store.ts",
+    "literal": "OPFS createWritable unavailable",
+    "reason": "Internal OPFS feature-probe exception caught immediately to fall back to in-memory storage; never shown to users."
+  },
+  {
+    "path": "web/src/attachment-store.ts",
+    "literal": "${bucket}:${key}",
+    "reason": "Internal composite storage map key, never rendered to the user."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "s-run",
+    "reason": "Demo fixture session ID passed to sessionDraftScope, not user-facing copy."
+  },
+  {
+    "path": "web/src/dev/demo.ts",
+    "literal": "upload not found",
+    "reason": "Internal demo RPC error detail matching daemon not_found protocol code, never shown verbatim to users."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "draft-remove-mark",
+    "reason": "CSS class name on remove button icon wrapper, flagged because adjacent aria-label matches lexical sink."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "pic tthumb video",
+    "reason": "CSS class name on video thumbnail container, flagged because adjacent errText matches lexical sink."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": " plain",
+    "reason": "CSS modifier class name on unreadable video thumbnail, not user-facing copy."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "void; accept: string; media: RefObject",
+    "reason": "Lexical JSX scanner false positive: TypeScript type signature between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "= 0 ? item.imageIndex + 1 : 1; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between `>=` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "!i.isVideo); const failureSummary = renderText(draft.failureSummary); const storageError = renderText(draft.storageError); const noticeText = renderText(draft.notice); const originalHint = renderText(draft.originalHint); const fileMetadataNotice = renderText(draft.fileMetadataNotice); const originalTotalSizeText = renderText(draft.originalTotalSizeText); const originalDisabledReason = renderText(draft.originalToggleDisabledReason); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript arrow function body between `=>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "i.kind === AttachmentItemKind.FILE ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript arrow function body between `=>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "0 && originalHint &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between `>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "0 && fileMetadataNotice &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript expression between `>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Composer.tsx",
+    "literal": "void; draftView?: AttachmentDraftView; trayView?: ReactNode; pendingTray?: ReactNode; attach?: ReactNode; cardProps?: HTMLAttributes",
+    "reason": "Lexical JSX scanner false positive: TypeScript props type between `=>` and generic `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "); const picture = (",
+    "reason": "Lexical JSX scanner false positive: JSX/TypeScript fragment closing before JSX opening, not rendered text."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "it.kind === AttachmentItemKind.IMAGE && it.thumbRef), [items], ); const [blobs, setBlobs] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript arrow function and hook generic between `=>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": "n.kind === NoticeKind.ATTACHMENTS_MOVED); const trayView = (activeDraft || toast || movedNotice) && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript arrow function body between `=>` and JSX `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": "); const attach = p.onPickFiles && (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX code between `>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/NewSession.tsx",
+    "literal": "); const body = variant === \"sheet\" ? (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX code between `>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "void; draftView?: AttachmentDraftView; attachments?: AttachmentExecutor; trayView?: ReactNode; attach?: ReactNode; dropping?: boolean; cardProps?: React.HTMLAttributes",
+    "reason": "Lexical JSX scanner false positive: TypeScript props type between `=>` and generic `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "); const interruptCmd = actions?.interrupt; const endCmd = actions?.end; const forkUi = actions?.forkAction; const activeDraft = draftView ?? composer?.draft; const resolvedTrayView = trayView ?? (activeDraft ?",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX code between `>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": ": undefined); const chatCol = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX code between `>` and `<`, not rendered text."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "), [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup], ); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript hook dependency array between `>` and JSX `<`, not rendered text."
   }
 ]
