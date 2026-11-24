@@ -16,7 +16,7 @@ import (
 const crockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 var (
-	errInvalidServer       = newWfError("invalid", WorkflowReasonServerMustUseHTTPS)
+	errInvalidServer       = fatalWfError("invalid", WorkflowReasonServerMustUseHTTPS, "")
 	errInvalidRecoveryCode = newWfError("invalid", WorkflowReasonInvalidRecoveryCode)
 )
 

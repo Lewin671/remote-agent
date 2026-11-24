@@ -1977,3 +1977,20 @@ func TestEmitActionResultPreservesRawErrorMeta(t *testing.T) {
 		t.Fatalf("rpcError meta = %+v, want ErrRaw='login failed'", got)
 	}
 }
+
+func TestErrInvalidServerIsNonRetryable(t *testing.T) {
+	eng := NewEngine(&entropy.Pool{}, 0)
+	eng.emitActionResult(42, nil, errInvalidServer)
+	effs := eng.DrainEffects()
+	if len(effs) != 1 || effs[0].GetSecurityWorkflowResult() == nil {
+		t.Fatalf("expected 1 SecurityWorkflowResultEffect, got %+v", effs)
+	}
+	res := effs[0].GetSecurityWorkflowResult()
+	if res.Ok || res.Retryable || res.Uncertain || res.StructuredErrorCode != corev1.SecurityErrorCode_SECURITY_ERROR_CODE_INVALID {
+		t.Fatalf("errInvalidServer effect = %+v, want non-retryable INVALID", res)
+	}
+	meta := eng.DrainWorkflowMeta()
+	if meta[42].ErrReason != WorkflowReasonServerMustUseHTTPS {
+		t.Fatalf("errInvalidServer meta = %+v, want WorkflowReasonServerMustUseHTTPS", meta[42])
+	}
+}
