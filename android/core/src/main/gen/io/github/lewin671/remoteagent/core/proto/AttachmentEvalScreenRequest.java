@@ -563,6 +563,82 @@ public  final class AttachmentEvalScreenRequest extends
     putBack_ = false;
   }
 
+  public static final int TOTAL_IMAGE_BYTES_FIELD_NUMBER = 8;
+  private long totalImageBytes_;
+  /**
+   * <pre>
+   * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+   * </pre>
+   *
+   * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+   * @return The totalImageBytes.
+   */
+  @java.lang.Override
+  public long getTotalImageBytes() {
+    return totalImageBytes_;
+  }
+  /**
+   * <pre>
+   * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+   * </pre>
+   *
+   * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+   * @param value The totalImageBytes to set.
+   */
+  private void setTotalImageBytes(long value) {
+    
+    totalImageBytes_ = value;
+  }
+  /**
+   * <pre>
+   * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+   * </pre>
+   *
+   * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+   */
+  private void clearTotalImageBytes() {
+
+    totalImageBytes_ = 0L;
+  }
+
+  public static final int DRAFT_VIEWER_INDEX_FIELD_NUMBER = 9;
+  private int draftViewerIndex_;
+  /**
+   * <pre>
+   * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+   * </pre>
+   *
+   * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+   * @return The draftViewerIndex.
+   */
+  @java.lang.Override
+  public int getDraftViewerIndex() {
+    return draftViewerIndex_;
+  }
+  /**
+   * <pre>
+   * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+   * </pre>
+   *
+   * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+   * @param value The draftViewerIndex to set.
+   */
+  private void setDraftViewerIndex(int value) {
+    
+    draftViewerIndex_ = value;
+  }
+  /**
+   * <pre>
+   * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+   * </pre>
+   *
+   * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+   */
+  private void clearDraftViewerIndex() {
+
+    draftViewerIndex_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1229,6 +1305,86 @@ public  final class AttachmentEvalScreenRequest extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+     * </pre>
+     *
+     * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+     * @return The totalImageBytes.
+     */
+    @java.lang.Override
+    public long getTotalImageBytes() {
+      return instance.getTotalImageBytes();
+    }
+    /**
+     * <pre>
+     * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+     * </pre>
+     *
+     * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+     * @param value The totalImageBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTotalImageBytes(long value) {
+      copyOnWrite();
+      instance.setTotalImageBytes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+     * </pre>
+     *
+     * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTotalImageBytes() {
+      copyOnWrite();
+      instance.clearTotalImageBytes();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+     * </pre>
+     *
+     * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+     * @return The draftViewerIndex.
+     */
+    @java.lang.Override
+    public int getDraftViewerIndex() {
+      return instance.getDraftViewerIndex();
+    }
+    /**
+     * <pre>
+     * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+     * </pre>
+     *
+     * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+     * @param value The draftViewerIndex to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDraftViewerIndex(int value) {
+      copyOnWrite();
+      instance.setDraftViewerIndex(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+     * </pre>
+     *
+     * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDraftViewerIndex() {
+      copyOnWrite();
+      instance.clearDraftViewerIndex();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentEvalScreenRequest)
   }
   @java.lang.Override
@@ -1254,10 +1410,12 @@ public  final class AttachmentEvalScreenRequest extends
             "problems_",
             io.github.lewin671.remoteagent.core.proto.ImageProblemInput.class,
             "putBack_",
+            "totalImageBytes_",
+            "draftViewerIndex_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0000\u0001\u0007\u0007\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0004\u0004\u0004\u0005\u001b\u0006\u001b\u0007\u0007";
+              "\u0000\t\u0000\u0000\u0001\t\t\u0000\u0002\u0000\u0001\u0208\u0002\u0208\u0003\u0004" +
+              "\u0004\u0004\u0005\u001b\u0006\u001b\u0007\u0007\b\u0002\t\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

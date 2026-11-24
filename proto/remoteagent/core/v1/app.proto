@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/attachments.proto";
 import "remoteagent/core/v1/attachments_view.proto";
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/machine_view.proto";
@@ -63,6 +64,7 @@ message Screen {
     UsageScreenRequest usage = 36;
     DirectDiagnosticsScreenRequest direct_diagnostics = 37;
     AttachmentEvalScreenRequest attachment_eval = 38;
+    AttachmentDraftScreenRequest attachment_draft = 39;
     SessionScreenRequest session = 10;
     SchedulesScreenRequest schedules = 20;
     ScheduleDetailScreenRequest schedule_detail = 21;
@@ -89,6 +91,7 @@ message ViewModel {
     UsageViewModel usage = 36;
     DirectDiagnosticsViewModel direct_diagnostics = 37;
     AttachmentEvalViewModel attachment_eval = 38;
+    AttachmentDraftViewModel attachment_draft = 39;
     SessionViewModel session = 10;
     SchedulesViewModel schedules = 20;
     ScheduleDetailViewModel schedule_detail = 21;
@@ -163,6 +166,9 @@ enum TimerKind {
   TIMER_KIND_TERMINAL_REOPEN = 14;
   TIMER_KIND_SECURITY_POLL = 15;
   TIMER_KIND_SHARED_FILE_RECONNECT = 16;
+  TIMER_KIND_ATTACHMENT_UPLOAD_POLL = 17;
+  TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT = 18;
+  TIMER_KIND_DRAFT_EXPIRY = 19;
 }
 
 message TimerFiredEvent {
@@ -617,6 +623,33 @@ message Event {
     SharedFileDiskInspectedEvent shared_file_disk_inspected = 231;
     SharedFileWriteChunkResultEvent shared_file_write_chunk_result = 232;
     SharedFileVerifyAndCommitResultEvent shared_file_verify_and_commit_result = 233;
+    AttachmentConfigEvent attachment_config = 240;
+    DraftStorageListedEvent draft_storage_listed = 241;
+    DraftStorageReadResultEvent draft_storage_read_result = 242;
+    DraftStorageWriteResultEvent draft_storage_write_result = 243;
+    DraftOpenAction draft_open = 244;
+    DraftSetTextAction draft_set_text = 245;
+    DraftSetTargetMachineAction draft_set_target_machine = 246;
+    DraftReserveSlotsAction draft_reserve_slots = 247;
+    DraftReleaseSlotsAction draft_release_slots = 248;
+    DraftAddItemsAction draft_add_items = 249;
+    DraftRemoveItemAction draft_remove_item = 250;
+    DraftRetryItemAction draft_retry_item = 251;
+    DraftSetOriginalAction draft_set_original = 252;
+    DraftClearAction draft_clear = 253;
+    DraftForgetSessionAction draft_forget_session = 254;
+    DraftClearAllAction draft_clear_all = 255;
+    DraftDismissNoticeAction draft_dismiss_notice = 256;
+    AttachmentPauseUploadAction attachment_pause_upload = 257;
+    AttachmentResumeUploadAction attachment_resume_upload = 258;
+    AttachmentPrepareImageResultEvent attachment_prepare_image_result = 259;
+    AttachmentHashFileResultEvent attachment_hash_file_result = 260;
+    AttachmentReadChunkResultEvent attachment_read_chunk_result = 261;
+    DraftSendSessionAction draft_send_session = 262;
+    DraftPutBackInputAction draft_put_back_input = 263;
+    DraftImageViewerOpenAction draft_image_viewer_open = 264;
+    DraftImageViewerNavigateAction draft_image_viewer_navigate = 265;
+    DraftImageViewerCloseAction draft_image_viewer_close = 266;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;
@@ -712,6 +745,7 @@ enum ScreenTarget {
   SCREEN_TARGET_CLIENT_DETAIL = 35;
   SCREEN_TARGET_USAGE = 36;
   SCREEN_TARGET_DIRECT_DIAGNOSTICS = 37;
+  SCREEN_TARGET_ATTACHMENT_DRAFT = 39;
   SCREEN_TARGET_SESSION = 10;
   SCREEN_TARGET_SCHEDULES = 20;
   SCREEN_TARGET_SCHEDULE_DETAIL = 21;
@@ -931,6 +965,15 @@ message Effect {
     PersistClientPrefsEffect persist_client_prefs = 74;
     PrepareCleanupSessionEffect prepare_cleanup_session = 75;
     UsageCacheWriteEffect usage_cache_write = 76;
+    DraftStorageListEffect draft_storage_list = 80;
+    DraftStorageReadEffect draft_storage_read = 81;
+    DraftStorageWriteEffect draft_storage_write = 82;
+    DraftStorageDeleteEffect draft_storage_delete = 83;
+    DraftStorageClearAllEffect draft_storage_clear_all = 84;
+    AttachmentPrepareImageEffect attachment_prepare_image = 85;
+    AttachmentHashFileEffect attachment_hash_file = 86;
+    AttachmentReadChunkEffect attachment_read_chunk = 87;
+    AttachmentReleaseLocalEffect attachment_release_local = 88;
     SessionRestoreComposerEffect session_restore_composer = 40;
     SessionResendAttachmentsEffect session_resend_attachments = 41;
     SharedFileScanLocalEffect shared_file_scan_local = 42;

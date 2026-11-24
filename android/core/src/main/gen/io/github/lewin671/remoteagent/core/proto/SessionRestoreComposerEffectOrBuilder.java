@@ -95,4 +95,10 @@ public interface SessionRestoreComposerEffectOrBuilder extends
    */
   com.google.protobuf.ByteString
       getFileIdsBytes(int index);
+
+  /**
+   * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+   * @return The handledByCore.
+   */
+  boolean getHandledByCore();
 }

@@ -42,6 +42,15 @@ public  final class Effect extends
     PERSIST_CLIENT_PREFS(74),
     PREPARE_CLEANUP_SESSION(75),
     USAGE_CACHE_WRITE(76),
+    DRAFT_STORAGE_LIST(80),
+    DRAFT_STORAGE_READ(81),
+    DRAFT_STORAGE_WRITE(82),
+    DRAFT_STORAGE_DELETE(83),
+    DRAFT_STORAGE_CLEAR_ALL(84),
+    ATTACHMENT_PREPARE_IMAGE(85),
+    ATTACHMENT_HASH_FILE(86),
+    ATTACHMENT_READ_CHUNK(87),
+    ATTACHMENT_RELEASE_LOCAL(88),
     SESSION_RESTORE_COMPOSER(40),
     SESSION_RESEND_ATTACHMENTS(41),
     SHARED_FILE_SCAN_LOCAL(42),
@@ -121,6 +130,15 @@ public  final class Effect extends
         case 74: return PERSIST_CLIENT_PREFS;
         case 75: return PREPARE_CLEANUP_SESSION;
         case 76: return USAGE_CACHE_WRITE;
+        case 80: return DRAFT_STORAGE_LIST;
+        case 81: return DRAFT_STORAGE_READ;
+        case 82: return DRAFT_STORAGE_WRITE;
+        case 83: return DRAFT_STORAGE_DELETE;
+        case 84: return DRAFT_STORAGE_CLEAR_ALL;
+        case 85: return ATTACHMENT_PREPARE_IMAGE;
+        case 86: return ATTACHMENT_HASH_FILE;
+        case 87: return ATTACHMENT_READ_CHUNK;
+        case 88: return ATTACHMENT_RELEASE_LOCAL;
         case 40: return SESSION_RESTORE_COMPOSER;
         case 41: return SESSION_RESEND_ATTACHMENTS;
         case 42: return SHARED_FILE_SCAN_LOCAL;
@@ -1374,6 +1392,474 @@ public  final class Effect extends
    */
   private void clearUsageCacheWrite() {
     if (effectCase_ == 76) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DRAFT_STORAGE_LIST_FIELD_NUMBER = 80;
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftStorageList() {
+    return effectCase_ == 80;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect getDraftStorageList() {
+    if (effectCase_ == 80) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftStorageList(io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 80;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftStorageList(io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 80 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 80;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   */
+  private void clearDraftStorageList() {
+    if (effectCase_ == 80) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DRAFT_STORAGE_READ_FIELD_NUMBER = 81;
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftStorageRead() {
+    return effectCase_ == 81;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect getDraftStorageRead() {
+    if (effectCase_ == 81) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftStorageRead(io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 81;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftStorageRead(io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 81 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 81;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   */
+  private void clearDraftStorageRead() {
+    if (effectCase_ == 81) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DRAFT_STORAGE_WRITE_FIELD_NUMBER = 82;
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftStorageWrite() {
+    return effectCase_ == 82;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect getDraftStorageWrite() {
+    if (effectCase_ == 82) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftStorageWrite(io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 82;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftStorageWrite(io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 82 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 82;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   */
+  private void clearDraftStorageWrite() {
+    if (effectCase_ == 82) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DRAFT_STORAGE_DELETE_FIELD_NUMBER = 83;
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftStorageDelete() {
+    return effectCase_ == 83;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect getDraftStorageDelete() {
+    if (effectCase_ == 83) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftStorageDelete(io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 83;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftStorageDelete(io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 83 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 83;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   */
+  private void clearDraftStorageDelete() {
+    if (effectCase_ == 83) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int DRAFT_STORAGE_CLEAR_ALL_FIELD_NUMBER = 84;
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftStorageClearAll() {
+    return effectCase_ == 84;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect getDraftStorageClearAll() {
+    if (effectCase_ == 84) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftStorageClearAll(io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 84;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftStorageClearAll(io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 84 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 84;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   */
+  private void clearDraftStorageClearAll() {
+    if (effectCase_ == 84) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_PREPARE_IMAGE_FIELD_NUMBER = 85;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentPrepareImage() {
+    return effectCase_ == 85;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect getAttachmentPrepareImage() {
+    if (effectCase_ == 85) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentPrepareImage(io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 85;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentPrepareImage(io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 85 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 85;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   */
+  private void clearAttachmentPrepareImage() {
+    if (effectCase_ == 85) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_HASH_FILE_FIELD_NUMBER = 86;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentHashFile() {
+    return effectCase_ == 86;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect getAttachmentHashFile() {
+    if (effectCase_ == 86) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentHashFile(io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 86;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentHashFile(io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 86 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 86;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   */
+  private void clearAttachmentHashFile() {
+    if (effectCase_ == 86) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_READ_CHUNK_FIELD_NUMBER = 87;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentReadChunk() {
+    return effectCase_ == 87;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect getAttachmentReadChunk() {
+    if (effectCase_ == 87) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentReadChunk(io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 87;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentReadChunk(io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 87 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 87;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   */
+  private void clearAttachmentReadChunk() {
+    if (effectCase_ == 87) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_RELEASE_LOCAL_FIELD_NUMBER = 88;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentReleaseLocal() {
+    return effectCase_ == 88;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect getAttachmentReleaseLocal() {
+    if (effectCase_ == 88) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentReleaseLocal(io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 88;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentReleaseLocal(io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 88 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 88;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   */
+  private void clearAttachmentReleaseLocal() {
+    if (effectCase_ == 88) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -4745,6 +5231,438 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftStorageList() {
+      return instance.hasDraftStorageList();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect getDraftStorageList() {
+      return instance.getDraftStorageList();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    public Builder setDraftStorageList(io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect value) {
+      copyOnWrite();
+      instance.setDraftStorageList(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    public Builder setDraftStorageList(
+        io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftStorageList(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    public Builder mergeDraftStorageList(io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect value) {
+      copyOnWrite();
+      instance.mergeDraftStorageList(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+     */
+    public Builder clearDraftStorageList() {
+      copyOnWrite();
+      instance.clearDraftStorageList();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftStorageRead() {
+      return instance.hasDraftStorageRead();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect getDraftStorageRead() {
+      return instance.getDraftStorageRead();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    public Builder setDraftStorageRead(io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect value) {
+      copyOnWrite();
+      instance.setDraftStorageRead(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    public Builder setDraftStorageRead(
+        io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftStorageRead(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    public Builder mergeDraftStorageRead(io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect value) {
+      copyOnWrite();
+      instance.mergeDraftStorageRead(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+     */
+    public Builder clearDraftStorageRead() {
+      copyOnWrite();
+      instance.clearDraftStorageRead();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftStorageWrite() {
+      return instance.hasDraftStorageWrite();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect getDraftStorageWrite() {
+      return instance.getDraftStorageWrite();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    public Builder setDraftStorageWrite(io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect value) {
+      copyOnWrite();
+      instance.setDraftStorageWrite(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    public Builder setDraftStorageWrite(
+        io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftStorageWrite(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    public Builder mergeDraftStorageWrite(io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect value) {
+      copyOnWrite();
+      instance.mergeDraftStorageWrite(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+     */
+    public Builder clearDraftStorageWrite() {
+      copyOnWrite();
+      instance.clearDraftStorageWrite();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftStorageDelete() {
+      return instance.hasDraftStorageDelete();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect getDraftStorageDelete() {
+      return instance.getDraftStorageDelete();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    public Builder setDraftStorageDelete(io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect value) {
+      copyOnWrite();
+      instance.setDraftStorageDelete(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    public Builder setDraftStorageDelete(
+        io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftStorageDelete(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    public Builder mergeDraftStorageDelete(io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect value) {
+      copyOnWrite();
+      instance.mergeDraftStorageDelete(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+     */
+    public Builder clearDraftStorageDelete() {
+      copyOnWrite();
+      instance.clearDraftStorageDelete();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftStorageClearAll() {
+      return instance.hasDraftStorageClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect getDraftStorageClearAll() {
+      return instance.getDraftStorageClearAll();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    public Builder setDraftStorageClearAll(io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect value) {
+      copyOnWrite();
+      instance.setDraftStorageClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    public Builder setDraftStorageClearAll(
+        io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftStorageClearAll(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    public Builder mergeDraftStorageClearAll(io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect value) {
+      copyOnWrite();
+      instance.mergeDraftStorageClearAll(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+     */
+    public Builder clearDraftStorageClearAll() {
+      copyOnWrite();
+      instance.clearDraftStorageClearAll();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentPrepareImage() {
+      return instance.hasAttachmentPrepareImage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect getAttachmentPrepareImage() {
+      return instance.getAttachmentPrepareImage();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    public Builder setAttachmentPrepareImage(io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect value) {
+      copyOnWrite();
+      instance.setAttachmentPrepareImage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    public Builder setAttachmentPrepareImage(
+        io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentPrepareImage(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    public Builder mergeAttachmentPrepareImage(io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect value) {
+      copyOnWrite();
+      instance.mergeAttachmentPrepareImage(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+     */
+    public Builder clearAttachmentPrepareImage() {
+      copyOnWrite();
+      instance.clearAttachmentPrepareImage();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentHashFile() {
+      return instance.hasAttachmentHashFile();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect getAttachmentHashFile() {
+      return instance.getAttachmentHashFile();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    public Builder setAttachmentHashFile(io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect value) {
+      copyOnWrite();
+      instance.setAttachmentHashFile(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    public Builder setAttachmentHashFile(
+        io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentHashFile(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    public Builder mergeAttachmentHashFile(io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect value) {
+      copyOnWrite();
+      instance.mergeAttachmentHashFile(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+     */
+    public Builder clearAttachmentHashFile() {
+      copyOnWrite();
+      instance.clearAttachmentHashFile();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentReadChunk() {
+      return instance.hasAttachmentReadChunk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect getAttachmentReadChunk() {
+      return instance.getAttachmentReadChunk();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    public Builder setAttachmentReadChunk(io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect value) {
+      copyOnWrite();
+      instance.setAttachmentReadChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    public Builder setAttachmentReadChunk(
+        io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentReadChunk(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    public Builder mergeAttachmentReadChunk(io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect value) {
+      copyOnWrite();
+      instance.mergeAttachmentReadChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+     */
+    public Builder clearAttachmentReadChunk() {
+      copyOnWrite();
+      instance.clearAttachmentReadChunk();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentReleaseLocal() {
+      return instance.hasAttachmentReleaseLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect getAttachmentReleaseLocal() {
+      return instance.getAttachmentReleaseLocal();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    public Builder setAttachmentReleaseLocal(io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect value) {
+      copyOnWrite();
+      instance.setAttachmentReleaseLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    public Builder setAttachmentReleaseLocal(
+        io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentReleaseLocal(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    public Builder mergeAttachmentReleaseLocal(io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect value) {
+      copyOnWrite();
+      instance.mergeAttachmentReleaseLocal(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+     */
+    public Builder clearAttachmentReleaseLocal() {
+      copyOnWrite();
+      instance.clearAttachmentReleaseLocal();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
      */
     @java.lang.Override
@@ -6794,6 +7712,15 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.PersistClientPrefsEffect.class,
             io.github.lewin671.remoteagent.core.proto.PrepareCleanupSessionEffect.class,
             io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect.class,
+            io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectSignalSendEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcCreateEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectPcDescribeEffect.class,
@@ -6820,15 +7747,16 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000@\u0001\u0000\u0001\u0091@\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000I\u0001\u0000\u0001\u0091I\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
               ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000" +
               "<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000" +
-              "J<\u0000K<\u0000L<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000" +
-              "m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000" +
-              "\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f" +
-              "<\u0000\u0090<\u0000\u0091<\u0000";
+              "J<\u0000K<\u0000L<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
+              "W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000" +
+              "o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089" +
+              "<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000" +
+              "\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

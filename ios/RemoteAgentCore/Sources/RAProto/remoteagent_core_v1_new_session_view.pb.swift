@@ -893,6 +893,15 @@ public struct PBCoreNewSessionViewModel: @unchecked Sendable {
   /// Clears the value of `fileMetadataNotice`. Subsequent reads from it will return its default value.
   public mutating func clearFileMetadataNotice() {_uniqueStorage()._fileMetadataNotice = nil}
 
+  public var draft: PBAttachmentDraftView {
+    get {return _storage._draft ?? PBAttachmentDraftView()}
+    set {_uniqueStorage()._draft = newValue}
+  }
+  /// Returns true if `draft` has been explicitly set.
+  public var hasDraft: Bool {return _storage._draft != nil}
+  /// Clears the value of `draft`. Subsequent reads from it will return its default value.
+  public mutating func clearDraft() {_uniqueStorage()._draft = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1583,7 +1592,7 @@ extension PBCoreNewSessionModelPanelView: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".NewSessionViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_selectable\0\u{3}project_key\0\u{3}project_name\0\u{3}short_path\0\u{3}has_projects\0\u{1}prompt\0\u{1}drafting\0\u{1}busy\0\u{1}settled\0\u{1}frozen\0\u{1}config\0\u{3}machine_name\0\u{3}machine_selectable\0\u{3}agent_name\0\u{3}available_agents\0\u{3}model_label\0\u{3}effort_label\0\u{3}default_mode\0\u{3}location_text\0\u{1}notices\0\u{3}can_start\0\u{3}disabled_reason\0\u{3}model_panel\0\u{3}project_removed\0\u{3}auto_issue\0\u{3}prefs_blocked\0\u{3}prefs_blocked_reason\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}image_upload_blocked_reason\0\u{3}disk_full\0\u{3}file_upload_blocked_reason\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}project_selectable\0\u{3}project_key\0\u{3}project_name\0\u{3}short_path\0\u{3}has_projects\0\u{1}prompt\0\u{1}drafting\0\u{1}busy\0\u{1}settled\0\u{1}frozen\0\u{1}config\0\u{3}machine_name\0\u{3}machine_selectable\0\u{3}agent_name\0\u{3}available_agents\0\u{3}model_label\0\u{3}effort_label\0\u{3}default_mode\0\u{3}location_text\0\u{1}notices\0\u{3}can_start\0\u{3}disabled_reason\0\u{3}model_panel\0\u{3}project_removed\0\u{3}auto_issue\0\u{3}prefs_blocked\0\u{3}prefs_blocked_reason\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}image_upload_blocked_reason\0\u{3}disk_full\0\u{3}file_upload_blocked_reason\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0\u{1}draft\0")
 
   fileprivate class _StorageClass {
     var _projectSelectable: Bool = false
@@ -1629,6 +1638,7 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _originalImageMaxBytes: Int64 = 0
     var _originalImageHint: PBCoreText? = nil
     var _fileMetadataNotice: PBCoreText? = nil
+    var _draft: PBAttachmentDraftView? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1682,6 +1692,7 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _originalImageMaxBytes = source._originalImageMaxBytes
       _originalImageHint = source._originalImageHint
       _fileMetadataNotice = source._fileMetadataNotice
+      _draft = source._draft
     }
   }
 
@@ -1743,6 +1754,7 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 41: try { try decoder.decodeSingularInt64Field(value: &_storage._originalImageMaxBytes) }()
         case 42: try { try decoder.decodeSingularMessageField(value: &_storage._originalImageHint) }()
         case 43: try { try decoder.decodeSingularMessageField(value: &_storage._fileMetadataNotice) }()
+        case 44: try { try decoder.decodeSingularMessageField(value: &_storage._draft) }()
         default: break
         }
       }
@@ -1884,6 +1896,9 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._fileMetadataNotice {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 43)
       } }()
+      try { if let v = _storage._draft {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 44)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1936,6 +1951,7 @@ extension PBCoreNewSessionViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._originalImageMaxBytes != rhs_storage._originalImageMaxBytes {return false}
         if _storage._originalImageHint != rhs_storage._originalImageHint {return false}
         if _storage._fileMetadataNotice != rhs_storage._fileMetadataNotice {return false}
+        if _storage._draft != rhs_storage._draft {return false}
         return true
       }
       if !storagesAreEqual {return false}

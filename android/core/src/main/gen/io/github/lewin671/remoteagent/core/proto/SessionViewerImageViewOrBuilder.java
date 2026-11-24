@@ -174,4 +174,24 @@ public interface SessionViewerImageViewOrBuilder extends
    * @return The inCollapsedGroup.
    */
   boolean getInCollapsedGroup();
+
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @return The downloadName.
+   */
+  java.lang.String getDownloadName();
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @return The bytes for downloadName.
+   */
+  com.google.protobuf.ByteString
+      getDownloadNameBytes();
 }

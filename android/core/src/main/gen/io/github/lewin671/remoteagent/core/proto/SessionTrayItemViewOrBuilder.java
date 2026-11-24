@@ -257,4 +257,24 @@ public interface SessionTrayItemViewOrBuilder extends
    * @return The isSkeleton.
    */
   boolean getIsSkeleton();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> 
+      getLocalAttachmentsList();
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary getLocalAttachments(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  int getLocalAttachmentsCount();
+
+  /**
+   * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+   * @return The restoredFromCrash.
+   */
+  boolean getRestoredFromCrash();
 }

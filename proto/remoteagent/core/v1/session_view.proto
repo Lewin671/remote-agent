@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/attachments.proto";
 import "remoteagent/core/v1/home_view.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/event.proto";
@@ -438,6 +439,8 @@ message SessionTrayItemView {
   bool network_actions_disabled = 25;
   bool server_backed = 26;
   bool is_skeleton = 27;
+  repeated OutboxAttachmentSummary local_attachments = 28;
+  bool restored_from_crash = 29;
 }
 
 message SessionTrayGroupView {
@@ -481,6 +484,7 @@ message SessionComposerView {
   bool is_default_placeholder = 12;
   Text slash_warning_title = 13;
   Text slash_warning_text = 14;
+  AttachmentDraftView draft = 15;
 }
 
 message SessionTimelineView {
@@ -765,6 +769,8 @@ message SessionViewerImageView {
   string file_extension = 16;
   string mime_type = 17;
   bool in_collapsed_group = 18;
+  // Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-<N>.<ext>").
+  string download_name = 19;
 }
 
 message SessionImageViewerView {
@@ -956,13 +962,15 @@ message SessionImageViewerCloseAction {
   string session_id = 1;
 }
 
-// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
+// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
+// (or simply focus the composer when handled_by_core is true).
 message SessionRestoreComposerEffect {
   string session_id = 1;
   string request_id = 2;
   string text = 3;
   repeated string image_ids = 4;
   repeated string file_ids = 5;
+  bool handled_by_core = 6;
 }
 
 // SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.

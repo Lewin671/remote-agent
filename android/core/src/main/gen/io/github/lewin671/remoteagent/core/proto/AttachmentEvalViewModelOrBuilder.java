@@ -250,4 +250,42 @@ public interface AttachmentEvalViewModelOrBuilder extends
    * @return The filesPickBlockedReason.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFilesPickBlockedReason();
+
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   * @return Whether the originalTotalSizeText field is set.
+   */
+  boolean hasOriginalTotalSizeText();
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   * @return The originalTotalSizeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getOriginalTotalSizeText();
+
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   * @return Whether the draftViewerPositionText field is set.
+   */
+  boolean hasDraftViewerPositionText();
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   * @return The draftViewerPositionText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDraftViewerPositionText();
 }

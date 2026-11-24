@@ -264,6 +264,105 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.UsageCacheWriteEffect getUsageCacheWrite();
 
   /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   * @return Whether the draftStorageList field is set.
+   */
+  boolean hasDraftStorageList();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListEffect draft_storage_list = 80 [json_name = "draftStorageList"];</code>
+   * @return The draftStorageList.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageListEffect getDraftStorageList();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   * @return Whether the draftStorageRead field is set.
+   */
+  boolean hasDraftStorageRead();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadEffect draft_storage_read = 81 [json_name = "draftStorageRead"];</code>
+   * @return The draftStorageRead.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageReadEffect getDraftStorageRead();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   * @return Whether the draftStorageWrite field is set.
+   */
+  boolean hasDraftStorageWrite();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteEffect draft_storage_write = 82 [json_name = "draftStorageWrite"];</code>
+   * @return The draftStorageWrite.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageWriteEffect getDraftStorageWrite();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   * @return Whether the draftStorageDelete field is set.
+   */
+  boolean hasDraftStorageDelete();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageDeleteEffect draft_storage_delete = 83 [json_name = "draftStorageDelete"];</code>
+   * @return The draftStorageDelete.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageDeleteEffect getDraftStorageDelete();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   * @return Whether the draftStorageClearAll field is set.
+   */
+  boolean hasDraftStorageClearAll();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageClearAllEffect draft_storage_clear_all = 84 [json_name = "draftStorageClearAll"];</code>
+   * @return The draftStorageClearAll.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageClearAllEffect getDraftStorageClearAll();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   * @return Whether the attachmentPrepareImage field is set.
+   */
+  boolean hasAttachmentPrepareImage();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageEffect attachment_prepare_image = 85 [json_name = "attachmentPrepareImage"];</code>
+   * @return The attachmentPrepareImage.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageEffect getAttachmentPrepareImage();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   * @return Whether the attachmentHashFile field is set.
+   */
+  boolean hasAttachmentHashFile();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileEffect attachment_hash_file = 86 [json_name = "attachmentHashFile"];</code>
+   * @return The attachmentHashFile.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentHashFileEffect getAttachmentHashFile();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   * @return Whether the attachmentReadChunk field is set.
+   */
+  boolean hasAttachmentReadChunk();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkEffect attachment_read_chunk = 87 [json_name = "attachmentReadChunk"];</code>
+   * @return The attachmentReadChunk.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect getAttachmentReadChunk();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   * @return Whether the attachmentReleaseLocal field is set.
+   */
+  boolean hasAttachmentReleaseLocal();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReleaseLocalEffect attachment_release_local = 88 [json_name = "attachmentReleaseLocal"];</code>
+   * @return The attachmentReleaseLocal.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentReleaseLocalEffect getAttachmentReleaseLocal();
+
+  /**
    * <code>.remoteagent.core.v1.SessionRestoreComposerEffect session_restore_composer = 40 [json_name = "sessionRestoreComposer"];</code>
    * @return Whether the sessionRestoreComposer field is set.
    */

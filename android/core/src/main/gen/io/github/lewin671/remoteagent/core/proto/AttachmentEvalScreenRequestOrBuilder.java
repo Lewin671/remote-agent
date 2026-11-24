@@ -133,4 +133,24 @@ public interface AttachmentEvalScreenRequestOrBuilder extends
    * @return The putBack.
    */
   boolean getPutBack();
+
+  /**
+   * <pre>
+   * Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+   * </pre>
+   *
+   * <code>int64 total_image_bytes = 8 [json_name = "totalImageBytes"];</code>
+   * @return The totalImageBytes.
+   */
+  long getTotalImageBytes();
+
+  /**
+   * <pre>
+   * 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+   * </pre>
+   *
+   * <code>int32 draft_viewer_index = 9 [json_name = "draftViewerIndex"];</code>
+   * @return The draftViewerIndex.
+   */
+  int getDraftViewerIndex();
 }

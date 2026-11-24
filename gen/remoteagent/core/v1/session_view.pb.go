@@ -3848,34 +3848,36 @@ func (x *SessionTerminalPopupDockView) GetIsTrustFolder() bool {
 }
 
 type SessionTrayItemView struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	RequestId              string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SlotKey                string                 `protobuf:"bytes,2,opt,name=slot_key,json=slotKey,proto3" json:"slot_key,omitempty"`
-	Group                  SessionTrayGroupKind   `protobuf:"varint,3,opt,name=group,proto3,enum=remoteagent.core.v1.SessionTrayGroupKind" json:"group,omitempty"`
-	Tone                   SessionTrayTone        `protobuf:"varint,4,opt,name=tone,proto3,enum=remoteagent.core.v1.SessionTrayTone" json:"tone,omitempty"`
-	Activity               SessionTrayRowActivity `protobuf:"varint,5,opt,name=activity,proto3,enum=remoteagent.core.v1.SessionTrayRowActivity" json:"activity,omitempty"`
-	QueueNumber            int32                  `protobuf:"varint,6,opt,name=queue_number,json=queueNumber,proto3" json:"queue_number,omitempty"`
-	ShowSpinner            bool                   `protobuf:"varint,7,opt,name=show_spinner,json=showSpinner,proto3" json:"show_spinner,omitempty"`
-	Text                   string                 `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
-	SourceLabel            *Text                  `protobuf:"bytes,9,opt,name=source_label,json=sourceLabel,proto3" json:"source_label,omitempty"`
-	ForeignDimmed          bool                   `protobuf:"varint,10,opt,name=foreign_dimmed,json=foreignDimmed,proto3" json:"foreign_dimmed,omitempty"`
-	AttachmentCount        int32                  `protobuf:"varint,11,opt,name=attachment_count,json=attachmentCount,proto3" json:"attachment_count,omitempty"`
-	ImageCount             int32                  `protobuf:"varint,12,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
-	FileCount              int32                  `protobuf:"varint,13,opt,name=file_count,json=fileCount,proto3" json:"file_count,omitempty"`
-	ImageIds               []string               `protobuf:"bytes,14,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
-	FileIds                []string               `protobuf:"bytes,15,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
-	Mode                   v1.SendMode            `protobuf:"varint,16,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
-	ReasonText             *Text                  `protobuf:"bytes,17,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
-	CanCancel              bool                   `protobuf:"varint,18,opt,name=can_cancel,json=canCancel,proto3" json:"can_cancel,omitempty"`
-	CanResume              bool                   `protobuf:"varint,19,opt,name=can_resume,json=canResume,proto3" json:"can_resume,omitempty"`
-	CanRetry               bool                   `protobuf:"varint,20,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
-	CanOpenTerminal        bool                   `protobuf:"varint,21,opt,name=can_open_terminal,json=canOpenTerminal,proto3" json:"can_open_terminal,omitempty"`
-	CanIgnore              bool                   `protobuf:"varint,22,opt,name=can_ignore,json=canIgnore,proto3" json:"can_ignore,omitempty"`
-	CanPromote             bool                   `protobuf:"varint,23,opt,name=can_promote,json=canPromote,proto3" json:"can_promote,omitempty"`
-	CanRestore             bool                   `protobuf:"varint,24,opt,name=can_restore,json=canRestore,proto3" json:"can_restore,omitempty"`
-	NetworkActionsDisabled bool                   `protobuf:"varint,25,opt,name=network_actions_disabled,json=networkActionsDisabled,proto3" json:"network_actions_disabled,omitempty"`
-	ServerBacked           bool                   `protobuf:"varint,26,opt,name=server_backed,json=serverBacked,proto3" json:"server_backed,omitempty"`
-	IsSkeleton             bool                   `protobuf:"varint,27,opt,name=is_skeleton,json=isSkeleton,proto3" json:"is_skeleton,omitempty"`
+	state                  protoimpl.MessageState     `protogen:"open.v1"`
+	RequestId              string                     `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlotKey                string                     `protobuf:"bytes,2,opt,name=slot_key,json=slotKey,proto3" json:"slot_key,omitempty"`
+	Group                  SessionTrayGroupKind       `protobuf:"varint,3,opt,name=group,proto3,enum=remoteagent.core.v1.SessionTrayGroupKind" json:"group,omitempty"`
+	Tone                   SessionTrayTone            `protobuf:"varint,4,opt,name=tone,proto3,enum=remoteagent.core.v1.SessionTrayTone" json:"tone,omitempty"`
+	Activity               SessionTrayRowActivity     `protobuf:"varint,5,opt,name=activity,proto3,enum=remoteagent.core.v1.SessionTrayRowActivity" json:"activity,omitempty"`
+	QueueNumber            int32                      `protobuf:"varint,6,opt,name=queue_number,json=queueNumber,proto3" json:"queue_number,omitempty"`
+	ShowSpinner            bool                       `protobuf:"varint,7,opt,name=show_spinner,json=showSpinner,proto3" json:"show_spinner,omitempty"`
+	Text                   string                     `protobuf:"bytes,8,opt,name=text,proto3" json:"text,omitempty"`
+	SourceLabel            *Text                      `protobuf:"bytes,9,opt,name=source_label,json=sourceLabel,proto3" json:"source_label,omitempty"`
+	ForeignDimmed          bool                       `protobuf:"varint,10,opt,name=foreign_dimmed,json=foreignDimmed,proto3" json:"foreign_dimmed,omitempty"`
+	AttachmentCount        int32                      `protobuf:"varint,11,opt,name=attachment_count,json=attachmentCount,proto3" json:"attachment_count,omitempty"`
+	ImageCount             int32                      `protobuf:"varint,12,opt,name=image_count,json=imageCount,proto3" json:"image_count,omitempty"`
+	FileCount              int32                      `protobuf:"varint,13,opt,name=file_count,json=fileCount,proto3" json:"file_count,omitempty"`
+	ImageIds               []string                   `protobuf:"bytes,14,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
+	FileIds                []string                   `protobuf:"bytes,15,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	Mode                   v1.SendMode                `protobuf:"varint,16,opt,name=mode,proto3,enum=remoteagent.v1.SendMode" json:"mode,omitempty"`
+	ReasonText             *Text                      `protobuf:"bytes,17,opt,name=reason_text,json=reasonText,proto3" json:"reason_text,omitempty"`
+	CanCancel              bool                       `protobuf:"varint,18,opt,name=can_cancel,json=canCancel,proto3" json:"can_cancel,omitempty"`
+	CanResume              bool                       `protobuf:"varint,19,opt,name=can_resume,json=canResume,proto3" json:"can_resume,omitempty"`
+	CanRetry               bool                       `protobuf:"varint,20,opt,name=can_retry,json=canRetry,proto3" json:"can_retry,omitempty"`
+	CanOpenTerminal        bool                       `protobuf:"varint,21,opt,name=can_open_terminal,json=canOpenTerminal,proto3" json:"can_open_terminal,omitempty"`
+	CanIgnore              bool                       `protobuf:"varint,22,opt,name=can_ignore,json=canIgnore,proto3" json:"can_ignore,omitempty"`
+	CanPromote             bool                       `protobuf:"varint,23,opt,name=can_promote,json=canPromote,proto3" json:"can_promote,omitempty"`
+	CanRestore             bool                       `protobuf:"varint,24,opt,name=can_restore,json=canRestore,proto3" json:"can_restore,omitempty"`
+	NetworkActionsDisabled bool                       `protobuf:"varint,25,opt,name=network_actions_disabled,json=networkActionsDisabled,proto3" json:"network_actions_disabled,omitempty"`
+	ServerBacked           bool                       `protobuf:"varint,26,opt,name=server_backed,json=serverBacked,proto3" json:"server_backed,omitempty"`
+	IsSkeleton             bool                       `protobuf:"varint,27,opt,name=is_skeleton,json=isSkeleton,proto3" json:"is_skeleton,omitempty"`
+	LocalAttachments       []*OutboxAttachmentSummary `protobuf:"bytes,28,rep,name=local_attachments,json=localAttachments,proto3" json:"local_attachments,omitempty"`
+	RestoredFromCrash      bool                       `protobuf:"varint,29,opt,name=restored_from_crash,json=restoredFromCrash,proto3" json:"restored_from_crash,omitempty"`
 	unknownFields          protoimpl.UnknownFields
 	sizeCache              protoimpl.SizeCache
 }
@@ -4095,6 +4097,20 @@ func (x *SessionTrayItemView) GetServerBacked() bool {
 func (x *SessionTrayItemView) GetIsSkeleton() bool {
 	if x != nil {
 		return x.IsSkeleton
+	}
+	return false
+}
+
+func (x *SessionTrayItemView) GetLocalAttachments() []*OutboxAttachmentSummary {
+	if x != nil {
+		return x.LocalAttachments
+	}
+	return nil
+}
+
+func (x *SessionTrayItemView) GetRestoredFromCrash() bool {
+	if x != nil {
+		return x.RestoredFromCrash
 	}
 	return false
 }
@@ -4359,6 +4375,7 @@ type SessionComposerView struct {
 	IsDefaultPlaceholder         bool                    `protobuf:"varint,12,opt,name=is_default_placeholder,json=isDefaultPlaceholder,proto3" json:"is_default_placeholder,omitempty"`
 	SlashWarningTitle            *Text                   `protobuf:"bytes,13,opt,name=slash_warning_title,json=slashWarningTitle,proto3" json:"slash_warning_title,omitempty"`
 	SlashWarningText             *Text                   `protobuf:"bytes,14,opt,name=slash_warning_text,json=slashWarningText,proto3" json:"slash_warning_text,omitempty"`
+	Draft                        *AttachmentDraftView    `protobuf:"bytes,15,opt,name=draft,proto3" json:"draft,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
 }
@@ -4487,6 +4504,13 @@ func (x *SessionComposerView) GetSlashWarningTitle() *Text {
 func (x *SessionComposerView) GetSlashWarningText() *Text {
 	if x != nil {
 		return x.SlashWarningText
+	}
+	return nil
+}
+
+func (x *SessionComposerView) GetDraft() *AttachmentDraftView {
+	if x != nil {
+		return x.Draft
 	}
 	return nil
 }
@@ -6255,8 +6279,10 @@ type SessionViewerImageView struct {
 	FileExtension      string                 `protobuf:"bytes,16,opt,name=file_extension,json=fileExtension,proto3" json:"file_extension,omitempty"`
 	MimeType           string                 `protobuf:"bytes,17,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
 	InCollapsedGroup   bool                   `protobuf:"varint,18,opt,name=in_collapsed_group,json=inCollapsedGroup,proto3" json:"in_collapsed_group,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-<N>.<ext>").
+	DownloadName  string `protobuf:"bytes,19,opt,name=download_name,json=downloadName,proto3" json:"download_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SessionViewerImageView) Reset() {
@@ -6413,6 +6439,13 @@ func (x *SessionViewerImageView) GetInCollapsedGroup() bool {
 		return x.InCollapsedGroup
 	}
 	return false
+}
+
+func (x *SessionViewerImageView) GetDownloadName() string {
+	if x != nil {
+		return x.DownloadName
+	}
+	return ""
 }
 
 type SessionImageViewerView struct {
@@ -7820,7 +7853,8 @@ func (x *SessionImageViewerCloseAction) GetSessionId() string {
 	return ""
 }
 
-// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
+// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
+// (or simply focus the composer when handled_by_core is true).
 type SessionRestoreComposerEffect struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -7828,6 +7862,7 @@ type SessionRestoreComposerEffect struct {
 	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	ImageIds      []string               `protobuf:"bytes,4,rep,name=image_ids,json=imageIds,proto3" json:"image_ids,omitempty"`
 	FileIds       []string               `protobuf:"bytes,5,rep,name=file_ids,json=fileIds,proto3" json:"file_ids,omitempty"`
+	HandledByCore bool                   `protobuf:"varint,6,opt,name=handled_by_core,json=handledByCore,proto3" json:"handled_by_core,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7895,6 +7930,13 @@ func (x *SessionRestoreComposerEffect) GetFileIds() []string {
 		return x.FileIds
 	}
 	return nil
+}
+
+func (x *SessionRestoreComposerEffect) GetHandledByCore() bool {
+	if x != nil {
+		return x.HandledByCore
+	}
+	return false
 }
 
 // SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.
@@ -8002,7 +8044,7 @@ var File_remoteagent_core_v1_session_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\n" +
-	"&remoteagent/core/v1/session_view.proto\x12\x13remoteagent.core.v1\x1a#remoteagent/core/v1/home_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1bremoteagent/v1/remote.proto\"x\n" +
+	"&remoteagent/core/v1/session_view.proto\x12\x13remoteagent.core.v1\x1a%remoteagent/core/v1/attachments.proto\x1a#remoteagent/core/v1/home_view.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\x1a\x1aremoteagent/v1/local.proto\x1a\x1bremoteagent/v1/remote.proto\"x\n" +
 	"\x14SessionScreenRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12A\n" +
@@ -8334,7 +8376,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"popupTitle\x12-\n" +
 	"\x04hint\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x04hint\x12&\n" +
 	"\x0fcan_go_terminal\x18\x03 \x01(\bR\rcanGoTerminal\x12&\n" +
-	"\x0fis_trust_folder\x18\x04 \x01(\bR\risTrustFolder\"\xc7\b\n" +
+	"\x0fis_trust_folder\x18\x04 \x01(\bR\risTrustFolder\"\xd2\t\n" +
 	"\x13SessionTrayItemView\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
@@ -8373,7 +8415,9 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x18network_actions_disabled\x18\x19 \x01(\bR\x16networkActionsDisabled\x12#\n" +
 	"\rserver_backed\x18\x1a \x01(\bR\fserverBacked\x12\x1f\n" +
 	"\vis_skeleton\x18\x1b \x01(\bR\n" +
-	"isSkeleton\"\x83\x03\n" +
+	"isSkeleton\x12Y\n" +
+	"\x11local_attachments\x18\x1c \x03(\v2,.remoteagent.core.v1.OutboxAttachmentSummaryR\x10localAttachments\x12.\n" +
+	"\x13restored_from_crash\x18\x1d \x01(\bR\x11restoredFromCrash\"\x83\x03\n" +
 	"\x14SessionTrayGroupView\x12=\n" +
 	"\x04kind\x18\x01 \x01(\x0e2).remoteagent.core.v1.SessionTrayGroupKindR\x04kind\x128\n" +
 	"\x04tone\x18\x02 \x01(\x0e2$.remoteagent.core.v1.SessionTrayToneR\x04tone\x12/\n" +
@@ -8396,7 +8440,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"totalCount\x12!\n" +
 	"\ffailed_count\x18\x04 \x01(\x05R\vfailedCount\x12\x18\n" +
 	"\aoffline\x18\x05 \x01(\bR\aoffline\x12<\n" +
-	"\x04undo\x18\x06 \x01(\v2(.remoteagent.core.v1.SessionTrayUndoViewR\x04undo\"\xb2\x06\n" +
+	"\x04undo\x18\x06 \x01(\v2(.remoteagent.core.v1.SessionTrayUndoViewR\x04undo\"\xf2\x06\n" +
 	"\x13SessionComposerView\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12B\n" +
 	"\x0fdisabled_reason\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x0edisabledReason\x12;\n" +
@@ -8412,7 +8456,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x11default_send_mode\x18\v \x01(\x0e2\x18.remoteagent.v1.SendModeR\x0fdefaultSendMode\x124\n" +
 	"\x16is_default_placeholder\x18\f \x01(\bR\x14isDefaultPlaceholder\x12I\n" +
 	"\x13slash_warning_title\x18\r \x01(\v2\x19.remoteagent.core.v1.TextR\x11slashWarningTitle\x12G\n" +
-	"\x12slash_warning_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x10slashWarningText\"\x98\b\n" +
+	"\x12slash_warning_text\x18\x0e \x01(\v2\x19.remoteagent.core.v1.TextR\x10slashWarningText\x12>\n" +
+	"\x05draft\x18\x0f \x01(\v2(.remoteagent.core.v1.AttachmentDraftViewR\x05draft\"\x98\b\n" +
 	"\x13SessionTimelineView\x12>\n" +
 	"\x05items\x18\x01 \x03(\v2(.remoteagent.core.v1.SessionTimelineItemR\x05items\x12\x1f\n" +
 	"\vhas_earlier\x18\x02 \x01(\bR\n" +
@@ -8589,7 +8634,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x05files\x18\x01 \x03(\v2*.remoteagent.core.v1.SessionSharedFileItemR\x05files\"u\n" +
 	"\x1aSessionGeneratedImagesItem\x12%\n" +
 	"\x0erevised_prompt\x18\x01 \x01(\tR\rrevisedPrompt\x120\n" +
-	"\x06images\x18\x02 \x03(\v2\x18.remoteagent.v1.ImageRefR\x06images\"\xe1\x05\n" +
+	"\x06images\x18\x02 \x03(\v2\x18.remoteagent.v1.ImageRefR\x06images\"\x86\x06\n" +
 	"\x16SessionViewerImageView\x12!\n" +
 	"\fviewer_index\x18\x01 \x01(\x05R\vviewerIndex\x12\x10\n" +
 	"\x03seq\x18\x02 \x01(\x04R\x03seq\x12*\n" +
@@ -8610,7 +8655,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\fdisplay_path\x18\x0f \x01(\tR\vdisplayPath\x12%\n" +
 	"\x0efile_extension\x18\x10 \x01(\tR\rfileExtension\x12\x1b\n" +
 	"\tmime_type\x18\x11 \x01(\tR\bmimeType\x12,\n" +
-	"\x12in_collapsed_group\x18\x12 \x01(\bR\x10inCollapsedGroup\"\xf4\x02\n" +
+	"\x12in_collapsed_group\x18\x12 \x01(\bR\x10inCollapsedGroup\x12#\n" +
+	"\rdownload_name\x18\x13 \x01(\tR\fdownloadName\"\xf4\x02\n" +
 	"\x16SessionImageViewerView\x12\x12\n" +
 	"\x04open\x18\x01 \x01(\bR\x04open\x12#\n" +
 	"\rcurrent_index\x18\x02 \x01(\x05R\fcurrentIndex\x12\x1f\n" +
@@ -8733,7 +8779,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x05index\x18\x04 \x01(\x05R\x05index\">\n" +
 	"\x1dSessionImageViewerCloseAction\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\"\xa8\x01\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\xd0\x01\n" +
 	"\x1cSessionRestoreComposerEffect\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -8741,7 +8787,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
 	"\timage_ids\x18\x04 \x03(\tR\bimageIds\x12\x19\n" +
-	"\bfile_ids\x18\x05 \x03(\tR\afileIds\"\xaa\x02\n" +
+	"\bfile_ids\x18\x05 \x03(\tR\afileIds\x12&\n" +
+	"\x0fhandled_by_core\x18\x06 \x01(\bR\rhandledByCore\"\xaa\x02\n" +
 	"\x1eSessionResendAttachmentsEffect\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -8981,12 +9028,14 @@ var file_remoteagent_core_v1_session_view_proto_goTypes = []any{
 	(AlwaysAllowKind)(0),                     // 87: remoteagent.core.v1.AlwaysAllowKind
 	(v1.PlanChoice)(0),                       // 88: remoteagent.v1.PlanChoice
 	(v1.SendMode)(0),                         // 89: remoteagent.v1.SendMode
-	(*v1.ImageRef)(nil),                      // 90: remoteagent.v1.ImageRef
-	(*v1.Origin)(nil),                        // 91: remoteagent.v1.Origin
-	(v1.ToolKind)(0),                         // 92: remoteagent.v1.ToolKind
-	(v1.ToolBackground)(0),                   // 93: remoteagent.v1.ToolBackground
-	(v1.TurnOutcome)(0),                      // 94: remoteagent.v1.TurnOutcome
-	(*v1.Command)(nil),                       // 95: remoteagent.v1.Command
+	(*OutboxAttachmentSummary)(nil),          // 90: remoteagent.core.v1.OutboxAttachmentSummary
+	(*AttachmentDraftView)(nil),              // 91: remoteagent.core.v1.AttachmentDraftView
+	(*v1.ImageRef)(nil),                      // 92: remoteagent.v1.ImageRef
+	(*v1.Origin)(nil),                        // 93: remoteagent.v1.Origin
+	(v1.ToolKind)(0),                         // 94: remoteagent.v1.ToolKind
+	(v1.ToolBackground)(0),                   // 95: remoteagent.v1.ToolBackground
+	(v1.TurnOutcome)(0),                      // 96: remoteagent.v1.TurnOutcome
+	(*v1.Command)(nil),                       // 97: remoteagent.v1.Command
 }
 var file_remoteagent_core_v1_session_view_proto_depIdxs = []int32{
 	18,  // 0: remoteagent.core.v1.SessionScreenRequest.window:type_name -> remoteagent.core.v1.SessionWindowRequest
@@ -9091,107 +9140,109 @@ var file_remoteagent_core_v1_session_view_proto_depIdxs = []int32{
 	81,  // 99: remoteagent.core.v1.SessionTrayItemView.source_label:type_name -> remoteagent.core.v1.Text
 	89,  // 100: remoteagent.core.v1.SessionTrayItemView.mode:type_name -> remoteagent.v1.SendMode
 	81,  // 101: remoteagent.core.v1.SessionTrayItemView.reason_text:type_name -> remoteagent.core.v1.Text
-	3,   // 102: remoteagent.core.v1.SessionTrayGroupView.kind:type_name -> remoteagent.core.v1.SessionTrayGroupKind
-	4,   // 103: remoteagent.core.v1.SessionTrayGroupView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
-	81,  // 104: remoteagent.core.v1.SessionTrayGroupView.title:type_name -> remoteagent.core.v1.Text
-	81,  // 105: remoteagent.core.v1.SessionTrayGroupView.header_text:type_name -> remoteagent.core.v1.Text
-	38,  // 106: remoteagent.core.v1.SessionTrayGroupView.items:type_name -> remoteagent.core.v1.SessionTrayItemView
-	81,  // 107: remoteagent.core.v1.SessionTrayUndoView.label:type_name -> remoteagent.core.v1.Text
-	39,  // 108: remoteagent.core.v1.SessionPendingTrayView.groups:type_name -> remoteagent.core.v1.SessionTrayGroupView
-	38,  // 109: remoteagent.core.v1.SessionPendingTrayView.ordered_items:type_name -> remoteagent.core.v1.SessionTrayItemView
-	40,  // 110: remoteagent.core.v1.SessionPendingTrayView.undo:type_name -> remoteagent.core.v1.SessionTrayUndoView
-	81,  // 111: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	81,  // 112: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
-	41,  // 113: remoteagent.core.v1.SessionComposerView.pending_tray:type_name -> remoteagent.core.v1.SessionPendingTrayView
-	89,  // 114: remoteagent.core.v1.SessionComposerView.default_send_mode:type_name -> remoteagent.v1.SendMode
-	81,  // 115: remoteagent.core.v1.SessionComposerView.slash_warning_title:type_name -> remoteagent.core.v1.Text
-	81,  // 116: remoteagent.core.v1.SessionComposerView.slash_warning_text:type_name -> remoteagent.core.v1.Text
-	44,  // 117: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	81,  // 118: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
-	81,  // 119: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
-	81,  // 120: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
-	56,  // 121: remoteagent.core.v1.SessionTimelineView.viewer_images:type_name -> remoteagent.core.v1.SessionViewerImageView
-	47,  // 122: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
-	48,  // 123: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
-	49,  // 124: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
-	50,  // 125: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
-	51,  // 126: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
-	54,  // 127: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
-	55,  // 128: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
-	58,  // 129: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
-	59,  // 130: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
-	60,  // 131: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
-	62,  // 132: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
-	63,  // 133: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
-	64,  // 134: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
-	65,  // 135: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
-	66,  // 136: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
-	67,  // 137: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
-	61,  // 138: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
-	81,  // 139: remoteagent.core.v1.SessionFileRefView.size_text:type_name -> remoteagent.core.v1.Text
-	81,  // 140: remoteagent.core.v1.SessionMessageTextSegment.image_label:type_name -> remoteagent.core.v1.Text
-	90,  // 141: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
-	45,  // 142: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
-	91,  // 143: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
-	81,  // 144: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
-	46,  // 145: remoteagent.core.v1.SessionUserMessageItem.text_segments:type_name -> remoteagent.core.v1.SessionMessageTextSegment
-	92,  // 146: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
-	6,   // 147: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
-	93,  // 148: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
-	81,  // 149: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
-	81,  // 150: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
-	90,  // 151: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
-	50,  // 152: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
-	81,  // 153: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
-	12,  // 154: remoteagent.core.v1.SharedFileMenuItemView.action:type_name -> remoteagent.core.v1.SharedFileMenuAction
-	81,  // 155: remoteagent.core.v1.SharedFileMenuItemView.label:type_name -> remoteagent.core.v1.Text
-	81,  // 156: remoteagent.core.v1.SharedFileMenuItemView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	7,   // 157: remoteagent.core.v1.SessionSharedFileItem.kind:type_name -> remoteagent.core.v1.SharedFileKind
-	81,  // 158: remoteagent.core.v1.SessionSharedFileItem.kind_label:type_name -> remoteagent.core.v1.Text
-	81,  // 159: remoteagent.core.v1.SessionSharedFileItem.size_text:type_name -> remoteagent.core.v1.Text
-	81,  // 160: remoteagent.core.v1.SessionSharedFileItem.source_caption:type_name -> remoteagent.core.v1.Text
-	10,  // 161: remoteagent.core.v1.SessionSharedFileItem.status:type_name -> remoteagent.core.v1.SharedFileCardStatus
-	81,  // 162: remoteagent.core.v1.SessionSharedFileItem.subtitle:type_name -> remoteagent.core.v1.Text
-	81,  // 163: remoteagent.core.v1.SessionSharedFileItem.a11y_label:type_name -> remoteagent.core.v1.Text
-	11,  // 164: remoteagent.core.v1.SessionSharedFileItem.primary_action:type_name -> remoteagent.core.v1.SharedFilePrimaryAction
-	81,  // 165: remoteagent.core.v1.SessionSharedFileItem.primary_label:type_name -> remoteagent.core.v1.Text
-	81,  // 166: remoteagent.core.v1.SessionSharedFileItem.primary_disabled_reason:type_name -> remoteagent.core.v1.Text
-	52,  // 167: remoteagent.core.v1.SessionSharedFileItem.menu_items:type_name -> remoteagent.core.v1.SharedFileMenuItemView
-	8,   // 168: remoteagent.core.v1.SessionSharedFileItem.web_preview_kind:type_name -> remoteagent.core.v1.SharedFileWebPreviewKind
-	53,  // 169: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
-	90,  // 170: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
-	13,  // 171: remoteagent.core.v1.SessionViewerImageView.kind:type_name -> remoteagent.core.v1.SessionImageSourceKind
-	90,  // 172: remoteagent.core.v1.SessionViewerImageView.ref:type_name -> remoteagent.v1.ImageRef
-	81,  // 173: remoteagent.core.v1.SessionViewerImageView.source_label:type_name -> remoteagent.core.v1.Text
-	81,  // 174: remoteagent.core.v1.SessionImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
-	56,  // 175: remoteagent.core.v1.SessionImageViewerView.current_image:type_name -> remoteagent.core.v1.SessionViewerImageView
-	81,  // 176: remoteagent.core.v1.SessionImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
-	33,  // 177: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
-	15,  // 178: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
-	14,  // 179: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
-	81,  // 180: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
-	81,  // 181: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
-	81,  // 182: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
-	81,  // 183: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
-	81,  // 184: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
-	94,  // 185: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
-	81,  // 186: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
-	81,  // 187: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
-	81,  // 188: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
-	81,  // 189: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
-	16,  // 190: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
-	81,  // 191: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
-	81,  // 192: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
-	81,  // 193: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
-	44,  // 194: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	81,  // 195: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
-	95,  // 196: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
-	89,  // 197: remoteagent.core.v1.SessionResendAttachmentsEffect.mode:type_name -> remoteagent.v1.SendMode
-	198, // [198:198] is the sub-list for method output_type
-	198, // [198:198] is the sub-list for method input_type
-	198, // [198:198] is the sub-list for extension type_name
-	198, // [198:198] is the sub-list for extension extendee
-	0,   // [0:198] is the sub-list for field type_name
+	90,  // 102: remoteagent.core.v1.SessionTrayItemView.local_attachments:type_name -> remoteagent.core.v1.OutboxAttachmentSummary
+	3,   // 103: remoteagent.core.v1.SessionTrayGroupView.kind:type_name -> remoteagent.core.v1.SessionTrayGroupKind
+	4,   // 104: remoteagent.core.v1.SessionTrayGroupView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
+	81,  // 105: remoteagent.core.v1.SessionTrayGroupView.title:type_name -> remoteagent.core.v1.Text
+	81,  // 106: remoteagent.core.v1.SessionTrayGroupView.header_text:type_name -> remoteagent.core.v1.Text
+	38,  // 107: remoteagent.core.v1.SessionTrayGroupView.items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	81,  // 108: remoteagent.core.v1.SessionTrayUndoView.label:type_name -> remoteagent.core.v1.Text
+	39,  // 109: remoteagent.core.v1.SessionPendingTrayView.groups:type_name -> remoteagent.core.v1.SessionTrayGroupView
+	38,  // 110: remoteagent.core.v1.SessionPendingTrayView.ordered_items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	40,  // 111: remoteagent.core.v1.SessionPendingTrayView.undo:type_name -> remoteagent.core.v1.SessionTrayUndoView
+	81,  // 112: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	81,  // 113: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
+	41,  // 114: remoteagent.core.v1.SessionComposerView.pending_tray:type_name -> remoteagent.core.v1.SessionPendingTrayView
+	89,  // 115: remoteagent.core.v1.SessionComposerView.default_send_mode:type_name -> remoteagent.v1.SendMode
+	81,  // 116: remoteagent.core.v1.SessionComposerView.slash_warning_title:type_name -> remoteagent.core.v1.Text
+	81,  // 117: remoteagent.core.v1.SessionComposerView.slash_warning_text:type_name -> remoteagent.core.v1.Text
+	91,  // 118: remoteagent.core.v1.SessionComposerView.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
+	44,  // 119: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	81,  // 120: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
+	81,  // 121: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
+	81,  // 122: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
+	56,  // 123: remoteagent.core.v1.SessionTimelineView.viewer_images:type_name -> remoteagent.core.v1.SessionViewerImageView
+	47,  // 124: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
+	48,  // 125: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
+	49,  // 126: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
+	50,  // 127: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
+	51,  // 128: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
+	54,  // 129: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
+	55,  // 130: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
+	58,  // 131: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
+	59,  // 132: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
+	60,  // 133: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
+	62,  // 134: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
+	63,  // 135: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
+	64,  // 136: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
+	65,  // 137: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
+	66,  // 138: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
+	67,  // 139: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
+	61,  // 140: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
+	81,  // 141: remoteagent.core.v1.SessionFileRefView.size_text:type_name -> remoteagent.core.v1.Text
+	81,  // 142: remoteagent.core.v1.SessionMessageTextSegment.image_label:type_name -> remoteagent.core.v1.Text
+	92,  // 143: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
+	45,  // 144: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
+	93,  // 145: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
+	81,  // 146: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
+	46,  // 147: remoteagent.core.v1.SessionUserMessageItem.text_segments:type_name -> remoteagent.core.v1.SessionMessageTextSegment
+	94,  // 148: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
+	6,   // 149: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
+	95,  // 150: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
+	81,  // 151: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
+	81,  // 152: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
+	92,  // 153: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
+	50,  // 154: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
+	81,  // 155: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
+	12,  // 156: remoteagent.core.v1.SharedFileMenuItemView.action:type_name -> remoteagent.core.v1.SharedFileMenuAction
+	81,  // 157: remoteagent.core.v1.SharedFileMenuItemView.label:type_name -> remoteagent.core.v1.Text
+	81,  // 158: remoteagent.core.v1.SharedFileMenuItemView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	7,   // 159: remoteagent.core.v1.SessionSharedFileItem.kind:type_name -> remoteagent.core.v1.SharedFileKind
+	81,  // 160: remoteagent.core.v1.SessionSharedFileItem.kind_label:type_name -> remoteagent.core.v1.Text
+	81,  // 161: remoteagent.core.v1.SessionSharedFileItem.size_text:type_name -> remoteagent.core.v1.Text
+	81,  // 162: remoteagent.core.v1.SessionSharedFileItem.source_caption:type_name -> remoteagent.core.v1.Text
+	10,  // 163: remoteagent.core.v1.SessionSharedFileItem.status:type_name -> remoteagent.core.v1.SharedFileCardStatus
+	81,  // 164: remoteagent.core.v1.SessionSharedFileItem.subtitle:type_name -> remoteagent.core.v1.Text
+	81,  // 165: remoteagent.core.v1.SessionSharedFileItem.a11y_label:type_name -> remoteagent.core.v1.Text
+	11,  // 166: remoteagent.core.v1.SessionSharedFileItem.primary_action:type_name -> remoteagent.core.v1.SharedFilePrimaryAction
+	81,  // 167: remoteagent.core.v1.SessionSharedFileItem.primary_label:type_name -> remoteagent.core.v1.Text
+	81,  // 168: remoteagent.core.v1.SessionSharedFileItem.primary_disabled_reason:type_name -> remoteagent.core.v1.Text
+	52,  // 169: remoteagent.core.v1.SessionSharedFileItem.menu_items:type_name -> remoteagent.core.v1.SharedFileMenuItemView
+	8,   // 170: remoteagent.core.v1.SessionSharedFileItem.web_preview_kind:type_name -> remoteagent.core.v1.SharedFileWebPreviewKind
+	53,  // 171: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
+	92,  // 172: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
+	13,  // 173: remoteagent.core.v1.SessionViewerImageView.kind:type_name -> remoteagent.core.v1.SessionImageSourceKind
+	92,  // 174: remoteagent.core.v1.SessionViewerImageView.ref:type_name -> remoteagent.v1.ImageRef
+	81,  // 175: remoteagent.core.v1.SessionViewerImageView.source_label:type_name -> remoteagent.core.v1.Text
+	81,  // 176: remoteagent.core.v1.SessionImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
+	56,  // 177: remoteagent.core.v1.SessionImageViewerView.current_image:type_name -> remoteagent.core.v1.SessionViewerImageView
+	81,  // 178: remoteagent.core.v1.SessionImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
+	33,  // 179: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
+	15,  // 180: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
+	14,  // 181: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
+	81,  // 182: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
+	81,  // 183: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
+	81,  // 184: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
+	81,  // 185: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
+	81,  // 186: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
+	96,  // 187: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
+	81,  // 188: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
+	81,  // 189: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
+	81,  // 190: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
+	81,  // 191: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
+	16,  // 192: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
+	81,  // 193: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
+	81,  // 194: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
+	81,  // 195: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
+	44,  // 196: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	81,  // 197: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
+	97,  // 198: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
+	89,  // 199: remoteagent.core.v1.SessionResendAttachmentsEffect.mode:type_name -> remoteagent.v1.SendMode
+	200, // [200:200] is the sub-list for method output_type
+	200, // [200:200] is the sub-list for method input_type
+	200, // [200:200] is the sub-list for extension type_name
+	200, // [200:200] is the sub-list for extension extendee
+	0,   // [0:200] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_session_view_proto_init() }
@@ -9199,6 +9250,7 @@ func file_remoteagent_core_v1_session_view_proto_init() {
 	if File_remoteagent_core_v1_session_view_proto != nil {
 		return
 	}
+	file_remoteagent_core_v1_attachments_proto_init()
 	file_remoteagent_core_v1_home_view_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
 	file_remoteagent_core_v1_session_view_proto_msgTypes[13].OneofWrappers = []any{

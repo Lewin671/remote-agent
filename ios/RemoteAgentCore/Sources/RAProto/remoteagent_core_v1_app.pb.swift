@@ -94,6 +94,9 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
   case terminalReopen // = 14
   case securityPoll // = 15
   case sharedFileReconnect // = 16
+  case attachmentUploadPoll // = 17
+  case attachmentUploadReconnect // = 18
+  case draftExpiry // = 19
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -119,6 +122,9 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 14: self = .terminalReopen
     case 15: self = .securityPoll
     case 16: self = .sharedFileReconnect
+    case 17: self = .attachmentUploadPoll
+    case 18: self = .attachmentUploadReconnect
+    case 19: self = .draftExpiry
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -142,6 +148,9 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .terminalReopen: return 14
     case .securityPoll: return 15
     case .sharedFileReconnect: return 16
+    case .attachmentUploadPoll: return 17
+    case .attachmentUploadReconnect: return 18
+    case .draftExpiry: return 19
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -165,6 +174,9 @@ public enum PBCoreTimerKind: SwiftProtobuf.Enum, Swift.CaseIterable {
     .terminalReopen,
     .securityPoll,
     .sharedFileReconnect,
+    .attachmentUploadPoll,
+    .attachmentUploadReconnect,
+    .draftExpiry,
   ]
 
 }
@@ -235,6 +247,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
   case clientDetail // = 35
   case usage // = 36
   case directDiagnostics // = 37
+  case attachmentDraft // = 39
   case session // = 10
   case schedules // = 20
   case scheduleDetail // = 21
@@ -267,6 +280,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 35: self = .clientDetail
     case 36: self = .usage
     case 37: self = .directDiagnostics
+    case 39: self = .attachmentDraft
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -292,6 +306,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .clientDetail: return 35
     case .usage: return 36
     case .directDiagnostics: return 37
+    case .attachmentDraft: return 39
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -312,6 +327,7 @@ public enum PBCoreScreenTarget: SwiftProtobuf.Enum, Swift.CaseIterable {
     .clientDetail,
     .usage,
     .directDiagnostics,
+    .attachmentDraft,
     .session,
     .schedules,
     .scheduleDetail,
@@ -598,6 +614,14 @@ public struct PBCoreScreen: Sendable {
     set {screen = .attachmentEval(newValue)}
   }
 
+  public var attachmentDraft: PBAttachmentDraftScreenRequest {
+    get {
+      if case .attachmentDraft(let v)? = screen {return v}
+      return PBAttachmentDraftScreenRequest()
+    }
+    set {screen = .attachmentDraft(newValue)}
+  }
+
   public var session: PBSessionScreenRequest {
     get {
       if case .session(let v)? = screen {return v}
@@ -657,6 +681,7 @@ public struct PBCoreScreen: Sendable {
     case usage(PBCoreUsageScreenRequest)
     case directDiagnostics(PBDirectDiagnosticsScreenRequest)
     case attachmentEval(PBAttachmentEvalScreenRequest)
+    case attachmentDraft(PBAttachmentDraftScreenRequest)
     case session(PBSessionScreenRequest)
     case schedules(PBSchedulesScreenRequest)
     case scheduleDetail(PBScheduleDetailScreenRequest)
@@ -789,6 +814,14 @@ public struct PBCoreViewModel: Sendable {
     set {view = .attachmentEval(newValue)}
   }
 
+  public var attachmentDraft: PBAttachmentDraftViewModel {
+    get {
+      if case .attachmentDraft(let v)? = view {return v}
+      return PBAttachmentDraftViewModel()
+    }
+    set {view = .attachmentDraft(newValue)}
+  }
+
   public var session: PBSessionViewModel {
     get {
       if case .session(let v)? = view {return v}
@@ -848,6 +881,7 @@ public struct PBCoreViewModel: Sendable {
     case usage(PBCoreUsageViewModel)
     case directDiagnostics(PBDirectDiagnosticsViewModel)
     case attachmentEval(PBAttachmentEvalViewModel)
+    case attachmentDraft(PBAttachmentDraftViewModel)
     case session(PBSessionViewModel)
     case schedules(PBSchedulesViewModel)
     case scheduleDetail(PBScheduleDetailViewModel)
@@ -3021,6 +3055,222 @@ public struct PBCoreEvent: @unchecked Sendable {
     set {_uniqueStorage()._event = .sharedFileVerifyAndCommitResult(newValue)}
   }
 
+  public var attachmentConfig: PBAttachmentConfigEvent {
+    get {
+      if case .attachmentConfig(let v)? = _storage._event {return v}
+      return PBAttachmentConfigEvent()
+    }
+    set {_uniqueStorage()._event = .attachmentConfig(newValue)}
+  }
+
+  public var draftStorageListed: PBDraftStorageListedEvent {
+    get {
+      if case .draftStorageListed(let v)? = _storage._event {return v}
+      return PBDraftStorageListedEvent()
+    }
+    set {_uniqueStorage()._event = .draftStorageListed(newValue)}
+  }
+
+  public var draftStorageReadResult: PBDraftStorageReadResultEvent {
+    get {
+      if case .draftStorageReadResult(let v)? = _storage._event {return v}
+      return PBDraftStorageReadResultEvent()
+    }
+    set {_uniqueStorage()._event = .draftStorageReadResult(newValue)}
+  }
+
+  public var draftStorageWriteResult: PBDraftStorageWriteResultEvent {
+    get {
+      if case .draftStorageWriteResult(let v)? = _storage._event {return v}
+      return PBDraftStorageWriteResultEvent()
+    }
+    set {_uniqueStorage()._event = .draftStorageWriteResult(newValue)}
+  }
+
+  public var draftOpen: PBDraftOpenAction {
+    get {
+      if case .draftOpen(let v)? = _storage._event {return v}
+      return PBDraftOpenAction()
+    }
+    set {_uniqueStorage()._event = .draftOpen(newValue)}
+  }
+
+  public var draftSetText: PBDraftSetTextAction {
+    get {
+      if case .draftSetText(let v)? = _storage._event {return v}
+      return PBDraftSetTextAction()
+    }
+    set {_uniqueStorage()._event = .draftSetText(newValue)}
+  }
+
+  public var draftSetTargetMachine: PBDraftSetTargetMachineAction {
+    get {
+      if case .draftSetTargetMachine(let v)? = _storage._event {return v}
+      return PBDraftSetTargetMachineAction()
+    }
+    set {_uniqueStorage()._event = .draftSetTargetMachine(newValue)}
+  }
+
+  public var draftReserveSlots: PBDraftReserveSlotsAction {
+    get {
+      if case .draftReserveSlots(let v)? = _storage._event {return v}
+      return PBDraftReserveSlotsAction()
+    }
+    set {_uniqueStorage()._event = .draftReserveSlots(newValue)}
+  }
+
+  public var draftReleaseSlots: PBDraftReleaseSlotsAction {
+    get {
+      if case .draftReleaseSlots(let v)? = _storage._event {return v}
+      return PBDraftReleaseSlotsAction()
+    }
+    set {_uniqueStorage()._event = .draftReleaseSlots(newValue)}
+  }
+
+  public var draftAddItems: PBDraftAddItemsAction {
+    get {
+      if case .draftAddItems(let v)? = _storage._event {return v}
+      return PBDraftAddItemsAction()
+    }
+    set {_uniqueStorage()._event = .draftAddItems(newValue)}
+  }
+
+  public var draftRemoveItem: PBDraftRemoveItemAction {
+    get {
+      if case .draftRemoveItem(let v)? = _storage._event {return v}
+      return PBDraftRemoveItemAction()
+    }
+    set {_uniqueStorage()._event = .draftRemoveItem(newValue)}
+  }
+
+  public var draftRetryItem: PBDraftRetryItemAction {
+    get {
+      if case .draftRetryItem(let v)? = _storage._event {return v}
+      return PBDraftRetryItemAction()
+    }
+    set {_uniqueStorage()._event = .draftRetryItem(newValue)}
+  }
+
+  public var draftSetOriginal: PBDraftSetOriginalAction {
+    get {
+      if case .draftSetOriginal(let v)? = _storage._event {return v}
+      return PBDraftSetOriginalAction()
+    }
+    set {_uniqueStorage()._event = .draftSetOriginal(newValue)}
+  }
+
+  public var draftClear: PBDraftClearAction {
+    get {
+      if case .draftClear(let v)? = _storage._event {return v}
+      return PBDraftClearAction()
+    }
+    set {_uniqueStorage()._event = .draftClear(newValue)}
+  }
+
+  public var draftForgetSession: PBDraftForgetSessionAction {
+    get {
+      if case .draftForgetSession(let v)? = _storage._event {return v}
+      return PBDraftForgetSessionAction()
+    }
+    set {_uniqueStorage()._event = .draftForgetSession(newValue)}
+  }
+
+  public var draftClearAll: PBDraftClearAllAction {
+    get {
+      if case .draftClearAll(let v)? = _storage._event {return v}
+      return PBDraftClearAllAction()
+    }
+    set {_uniqueStorage()._event = .draftClearAll(newValue)}
+  }
+
+  public var draftDismissNotice: PBDraftDismissNoticeAction {
+    get {
+      if case .draftDismissNotice(let v)? = _storage._event {return v}
+      return PBDraftDismissNoticeAction()
+    }
+    set {_uniqueStorage()._event = .draftDismissNotice(newValue)}
+  }
+
+  public var attachmentPauseUpload: PBAttachmentPauseUploadAction {
+    get {
+      if case .attachmentPauseUpload(let v)? = _storage._event {return v}
+      return PBAttachmentPauseUploadAction()
+    }
+    set {_uniqueStorage()._event = .attachmentPauseUpload(newValue)}
+  }
+
+  public var attachmentResumeUpload: PBAttachmentResumeUploadAction {
+    get {
+      if case .attachmentResumeUpload(let v)? = _storage._event {return v}
+      return PBAttachmentResumeUploadAction()
+    }
+    set {_uniqueStorage()._event = .attachmentResumeUpload(newValue)}
+  }
+
+  public var attachmentPrepareImageResult: PBAttachmentPrepareImageResultEvent {
+    get {
+      if case .attachmentPrepareImageResult(let v)? = _storage._event {return v}
+      return PBAttachmentPrepareImageResultEvent()
+    }
+    set {_uniqueStorage()._event = .attachmentPrepareImageResult(newValue)}
+  }
+
+  public var attachmentHashFileResult: PBAttachmentHashFileResultEvent {
+    get {
+      if case .attachmentHashFileResult(let v)? = _storage._event {return v}
+      return PBAttachmentHashFileResultEvent()
+    }
+    set {_uniqueStorage()._event = .attachmentHashFileResult(newValue)}
+  }
+
+  public var attachmentReadChunkResult: PBAttachmentReadChunkResultEvent {
+    get {
+      if case .attachmentReadChunkResult(let v)? = _storage._event {return v}
+      return PBAttachmentReadChunkResultEvent()
+    }
+    set {_uniqueStorage()._event = .attachmentReadChunkResult(newValue)}
+  }
+
+  public var draftSendSession: PBDraftSendSessionAction {
+    get {
+      if case .draftSendSession(let v)? = _storage._event {return v}
+      return PBDraftSendSessionAction()
+    }
+    set {_uniqueStorage()._event = .draftSendSession(newValue)}
+  }
+
+  public var draftPutBackInput: PBDraftPutBackInputAction {
+    get {
+      if case .draftPutBackInput(let v)? = _storage._event {return v}
+      return PBDraftPutBackInputAction()
+    }
+    set {_uniqueStorage()._event = .draftPutBackInput(newValue)}
+  }
+
+  public var draftImageViewerOpen: PBDraftImageViewerOpenAction {
+    get {
+      if case .draftImageViewerOpen(let v)? = _storage._event {return v}
+      return PBDraftImageViewerOpenAction()
+    }
+    set {_uniqueStorage()._event = .draftImageViewerOpen(newValue)}
+  }
+
+  public var draftImageViewerNavigate: PBDraftImageViewerNavigateAction {
+    get {
+      if case .draftImageViewerNavigate(let v)? = _storage._event {return v}
+      return PBDraftImageViewerNavigateAction()
+    }
+    set {_uniqueStorage()._event = .draftImageViewerNavigate(newValue)}
+  }
+
+  public var draftImageViewerClose: PBDraftImageViewerCloseAction {
+    get {
+      if case .draftImageViewerClose(let v)? = _storage._event {return v}
+      return PBDraftImageViewerCloseAction()
+    }
+    set {_uniqueStorage()._event = .draftImageViewerClose(newValue)}
+  }
+
   public var scheduleCacheLoaded: PBScheduleCacheLoadedEvent {
     get {
       if case .scheduleCacheLoaded(let v)? = _storage._event {return v}
@@ -3685,6 +3935,33 @@ public struct PBCoreEvent: @unchecked Sendable {
     case sharedFileDiskInspected(PBSharedFileDiskInspectedEvent)
     case sharedFileWriteChunkResult(PBSharedFileWriteChunkResultEvent)
     case sharedFileVerifyAndCommitResult(PBSharedFileVerifyAndCommitResultEvent)
+    case attachmentConfig(PBAttachmentConfigEvent)
+    case draftStorageListed(PBDraftStorageListedEvent)
+    case draftStorageReadResult(PBDraftStorageReadResultEvent)
+    case draftStorageWriteResult(PBDraftStorageWriteResultEvent)
+    case draftOpen(PBDraftOpenAction)
+    case draftSetText(PBDraftSetTextAction)
+    case draftSetTargetMachine(PBDraftSetTargetMachineAction)
+    case draftReserveSlots(PBDraftReserveSlotsAction)
+    case draftReleaseSlots(PBDraftReleaseSlotsAction)
+    case draftAddItems(PBDraftAddItemsAction)
+    case draftRemoveItem(PBDraftRemoveItemAction)
+    case draftRetryItem(PBDraftRetryItemAction)
+    case draftSetOriginal(PBDraftSetOriginalAction)
+    case draftClear(PBDraftClearAction)
+    case draftForgetSession(PBDraftForgetSessionAction)
+    case draftClearAll(PBDraftClearAllAction)
+    case draftDismissNotice(PBDraftDismissNoticeAction)
+    case attachmentPauseUpload(PBAttachmentPauseUploadAction)
+    case attachmentResumeUpload(PBAttachmentResumeUploadAction)
+    case attachmentPrepareImageResult(PBAttachmentPrepareImageResultEvent)
+    case attachmentHashFileResult(PBAttachmentHashFileResultEvent)
+    case attachmentReadChunkResult(PBAttachmentReadChunkResultEvent)
+    case draftSendSession(PBDraftSendSessionAction)
+    case draftPutBackInput(PBDraftPutBackInputAction)
+    case draftImageViewerOpen(PBDraftImageViewerOpenAction)
+    case draftImageViewerNavigate(PBDraftImageViewerNavigateAction)
+    case draftImageViewerClose(PBDraftImageViewerCloseAction)
     case scheduleCacheLoaded(PBScheduleCacheLoadedEvent)
     case scheduleSeenLoaded(PBScheduleSeenLoadedEvent)
     case scheduleLocalContext(PBScheduleLocalContextEvent)
@@ -4624,6 +4901,78 @@ public struct PBCoreEffect: Sendable {
     set {effect = .usageCacheWrite(newValue)}
   }
 
+  public var draftStorageList: PBDraftStorageListEffect {
+    get {
+      if case .draftStorageList(let v)? = effect {return v}
+      return PBDraftStorageListEffect()
+    }
+    set {effect = .draftStorageList(newValue)}
+  }
+
+  public var draftStorageRead: PBDraftStorageReadEffect {
+    get {
+      if case .draftStorageRead(let v)? = effect {return v}
+      return PBDraftStorageReadEffect()
+    }
+    set {effect = .draftStorageRead(newValue)}
+  }
+
+  public var draftStorageWrite: PBDraftStorageWriteEffect {
+    get {
+      if case .draftStorageWrite(let v)? = effect {return v}
+      return PBDraftStorageWriteEffect()
+    }
+    set {effect = .draftStorageWrite(newValue)}
+  }
+
+  public var draftStorageDelete: PBDraftStorageDeleteEffect {
+    get {
+      if case .draftStorageDelete(let v)? = effect {return v}
+      return PBDraftStorageDeleteEffect()
+    }
+    set {effect = .draftStorageDelete(newValue)}
+  }
+
+  public var draftStorageClearAll: PBDraftStorageClearAllEffect {
+    get {
+      if case .draftStorageClearAll(let v)? = effect {return v}
+      return PBDraftStorageClearAllEffect()
+    }
+    set {effect = .draftStorageClearAll(newValue)}
+  }
+
+  public var attachmentPrepareImage: PBAttachmentPrepareImageEffect {
+    get {
+      if case .attachmentPrepareImage(let v)? = effect {return v}
+      return PBAttachmentPrepareImageEffect()
+    }
+    set {effect = .attachmentPrepareImage(newValue)}
+  }
+
+  public var attachmentHashFile: PBAttachmentHashFileEffect {
+    get {
+      if case .attachmentHashFile(let v)? = effect {return v}
+      return PBAttachmentHashFileEffect()
+    }
+    set {effect = .attachmentHashFile(newValue)}
+  }
+
+  public var attachmentReadChunk: PBAttachmentReadChunkEffect {
+    get {
+      if case .attachmentReadChunk(let v)? = effect {return v}
+      return PBAttachmentReadChunkEffect()
+    }
+    set {effect = .attachmentReadChunk(newValue)}
+  }
+
+  public var attachmentReleaseLocal: PBAttachmentReleaseLocalEffect {
+    get {
+      if case .attachmentReleaseLocal(let v)? = effect {return v}
+      return PBAttachmentReleaseLocalEffect()
+    }
+    set {effect = .attachmentReleaseLocal(newValue)}
+  }
+
   public var sessionRestoreComposer: PBSessionRestoreComposerEffect {
     get {
       if case .sessionRestoreComposer(let v)? = effect {return v}
@@ -4979,6 +5328,15 @@ public struct PBCoreEffect: Sendable {
     case persistClientPrefs(PBPersistClientPrefsEffect)
     case prepareCleanupSession(PBPrepareCleanupSessionEffect)
     case usageCacheWrite(PBCoreUsageCacheWriteEffect)
+    case draftStorageList(PBDraftStorageListEffect)
+    case draftStorageRead(PBDraftStorageReadEffect)
+    case draftStorageWrite(PBDraftStorageWriteEffect)
+    case draftStorageDelete(PBDraftStorageDeleteEffect)
+    case draftStorageClearAll(PBDraftStorageClearAllEffect)
+    case attachmentPrepareImage(PBAttachmentPrepareImageEffect)
+    case attachmentHashFile(PBAttachmentHashFileEffect)
+    case attachmentReadChunk(PBAttachmentReadChunkEffect)
+    case attachmentReleaseLocal(PBAttachmentReleaseLocalEffect)
     case sessionRestoreComposer(PBSessionRestoreComposerEffect)
     case sessionResendAttachments(PBSessionResendAttachmentsEffect)
     case sharedFileScanLocal(PBSharedFileScanLocalEffect)
@@ -5048,7 +5406,7 @@ extension PBCoreSyncLifecycleKind: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreTimerKind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0\u{1}TIMER_KIND_SECURITY_POLL\0\u{1}TIMER_KIND_SHARED_FILE_RECONNECT\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TIMER_KIND_UNSPECIFIED\0\u{1}TIMER_KIND_RECONNECT\0\u{1}TIMER_KIND_STREAM_OPEN\0\u{1}TIMER_KIND_LIVENESS\0\u{1}TIMER_KIND_LINK_GRACE\0\u{1}TIMER_KIND_LIST_RETRY\0\u{1}TIMER_KIND_PREFS_RETRY\0\u{1}TIMER_KIND_HISTORY_SWEEP\0\u{1}TIMER_KIND_LIVE_POLL\0\u{1}TIMER_KIND_COMMAND_RETRY\0\u{1}TIMER_KIND_SESSION_UNDO\0\u{1}TIMER_KIND_SESSION_STEER_GRACE\0\u{1}TIMER_KIND_DIRECT_ENGINE\0\u{1}TIMER_KIND_DIRECT_SESSION\0\u{1}TIMER_KIND_TERMINAL_REOPEN\0\u{1}TIMER_KIND_SECURITY_POLL\0\u{1}TIMER_KIND_SHARED_FILE_RECONNECT\0\u{1}TIMER_KIND_ATTACHMENT_UPLOAD_POLL\0\u{1}TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT\0\u{1}TIMER_KIND_DRAFT_EXPIRY\0")
 }
 
 extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
@@ -5056,7 +5414,7 @@ extension PBCoreOutcomeSource: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBCoreScreenTarget: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{1}SCREEN_TARGET_SYNC_STATE\0\u{1}SCREEN_TARGET_SESSION_DATA\0\u{2}\u{5}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0\u{1}SCREEN_TARGET_USAGE\0\u{1}SCREEN_TARGET_DIRECT_DIAGNOSTICS\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0SCREEN_TARGET_UNSPECIFIED\0\u{1}SCREEN_TARGET_HOME\0\u{1}SCREEN_TARGET_PROJECT\0\u{1}SCREEN_TARGET_NEW_SESSION\0\u{1}SCREEN_TARGET_SYNC_STATE\0\u{1}SCREEN_TARGET_SESSION_DATA\0\u{2}\u{5}SCREEN_TARGET_SESSION\0\u{2}\u{a}SCREEN_TARGET_SCHEDULES\0\u{1}SCREEN_TARGET_SCHEDULE_DETAIL\0\u{1}SCREEN_TARGET_SCHEDULE_FORM\0\u{1}SCREEN_TARGET_SCHEDULE_SESSION_STRIP\0\u{2}\u{7}SCREEN_TARGET_SETTINGS\0\u{1}SCREEN_TARGET_MACHINE_STATUS\0\u{1}SCREEN_TARGET_MACHINE_SETTINGS\0\u{1}SCREEN_TARGET_QUOTA\0\u{1}SCREEN_TARGET_DEVICES\0\u{1}SCREEN_TARGET_CLIENT_DETAIL\0\u{1}SCREEN_TARGET_USAGE\0\u{1}SCREEN_TARGET_DIRECT_DIAGNOSTICS\0\u{2}\u{2}SCREEN_TARGET_ATTACHMENT_DRAFT\0")
 }
 
 extension PBCoreCommandRouteHint: SwiftProtobuf._ProtoNameProviding {
@@ -5228,7 +5586,7 @@ extension PBCoreSessionDataScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._
 
 extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Screen"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5483,6 +5841,19 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.screen = .attachmentEval(v)
         }
       }()
+      case 39: try {
+        var v: PBAttachmentDraftScreenRequest?
+        var hadOneofValue = false
+        if let current = self.screen {
+          hadOneofValue = true
+          if case .attachmentDraft(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.screen = .attachmentDraft(v)
+        }
+      }()
       default: break
       }
     }
@@ -5570,6 +5941,10 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
       guard case .attachmentEval(let v)? = self.screen else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
     }()
+    case .attachmentDraft?: try {
+      guard case .attachmentDraft(let v)? = self.screen else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 39)
+    }()
     case nil: break
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -5584,7 +5959,7 @@ extension PBCoreScreen: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
 
 extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}home\0\u{1}project\0\u{3}new_session\0\u{3}sync_state\0\u{3}session_data\0\u{2}\u{5}session\0\u{2}\u{a}schedules\0\u{3}schedule_detail\0\u{3}schedule_form\0\u{3}schedule_session_strip\0\u{2}\u{7}settings\0\u{3}machine_status\0\u{3}machine_settings\0\u{1}quota\0\u{1}devices\0\u{3}client_detail\0\u{1}usage\0\u{3}direct_diagnostics\0\u{3}attachment_eval\0\u{3}attachment_draft\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5839,6 +6214,19 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.view = .attachmentEval(v)
         }
       }()
+      case 39: try {
+        var v: PBAttachmentDraftViewModel?
+        var hadOneofValue = false
+        if let current = self.view {
+          hadOneofValue = true
+          if case .attachmentDraft(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.view = .attachmentDraft(v)
+        }
+      }()
       default: break
       }
     }
@@ -5925,6 +6313,10 @@ extension PBCoreViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .attachmentEval?: try {
       guard case .attachmentEval(let v)? = self.view else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 38)
+    }()
+    case .attachmentDraft?: try {
+      guard case .attachmentDraft(let v)? = self.view else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 39)
     }()
     case nil: break
     }
@@ -8787,7 +9179,7 @@ extension PBCoreNewSessionSubmitAction: SwiftProtobuf.Message, SwiftProtobuf._Me
 
 extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Event"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{4}\u{2}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{3}shared_file_config\0\u{3}shared_file_local_scanned\0\u{3}shared_file_start_download\0\u{3}shared_file_pause_download\0\u{3}shared_file_cancel_download\0\u{3}shared_file_delete_local\0\u{3}shared_file_set_visible_session\0\u{3}shared_file_forget_session\0\u{3}shared_file_duration_probed\0\u{3}shared_file_local_missing\0\u{3}shared_file_clear_all\0\u{3}shared_file_disk_inspected\0\u{3}shared_file_write_chunk_result\0\u{3}shared_file_verify_and_commit_result\0\u{4}C\u{1}schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0\u{b}shared_file_local_state\0\u{c}X\u{3}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}clock_updated\0\u{3}entropy_provided\0\u{3}sync_lifecycle\0\u{3}network_changed\0\u{3}timer_fired\0\u{3}cache_bootstrap_loaded\0\u{3}cache_events_loaded\0\u{3}token_result\0\u{3}locale_changed\0\u{3}stream_ready\0\u{3}stream_closed\0\u{3}stream_frame\0\u{3}lists_fetched\0\u{3}sessions_page_fetched\0\u{3}session_by_id_fetched\0\u{3}events_page_fetched\0\u{3}account_prefs_fetched\0\u{3}account_prefs_put_result\0\u{3}devices_fetched\0\u{3}command_outcome\0\u{3}session_watch\0\u{3}session_pin\0\u{3}retry_session_events\0\u{3}fetch_session\0\u{4}\u{2}session_schedule_hints\0\u{3}direct_events_received\0\u{4}\u{3}home_set_scope\0\u{3}home_set_filter\0\u{3}home_load_more_ended\0\u{3}home_retry_load\0\u{3}home_select_session\0\u{4}\u{6}project_set_search\0\u{3}project_toggle_pin\0\u{3}project_toggle_hide\0\u{3}project_add\0\u{3}project_load_more_ended\0\u{3}project_open_dir_picker\0\u{3}project_dir_navigate\0\u{3}project_close_dir_picker\0\u{4}\u{3}new_session_open\0\u{3}new_session_select_project\0\u{3}new_session_select_machine\0\u{3}new_session_select_agent\0\u{3}new_session_select_model\0\u{3}new_session_set_prompt\0\u{3}new_session_retry_models\0\u{3}new_session_retry_save_config\0\u{3}new_session_submit\0\u{3}new_session_abandon_start\0\u{4}'now_ms\0\u{3}mono_ms\0\u{3}random_ids\0\u{3}unit_floats\0\u{4}c\u{1}session_submit_command\0\u{3}session_abandon_command\0\u{3}session_open\0\u{4}\u{3}session_set_question_index\0\u{3}session_load_earlier\0\u{3}session_cancel_tray_item\0\u{3}session_ignore_tray_item\0\u{3}session_promote_tray_item\0\u{3}session_restore_tray_item\0\u{3}session_retry_tray_item\0\u{3}session_resume_tray_item\0\u{3}session_cancel_all_paused\0\u{3}session_undo_cancel\0\u{3}session_retry_load\0\u{4}\u{2}session_image_viewer_open\0\u{3}session_image_viewer_navigate\0\u{3}session_image_viewer_close\0\u{3}shared_file_config\0\u{3}shared_file_local_scanned\0\u{3}shared_file_start_download\0\u{3}shared_file_pause_download\0\u{3}shared_file_cancel_download\0\u{3}shared_file_delete_local\0\u{3}shared_file_set_visible_session\0\u{3}shared_file_forget_session\0\u{3}shared_file_duration_probed\0\u{3}shared_file_local_missing\0\u{3}shared_file_clear_all\0\u{3}shared_file_disk_inspected\0\u{3}shared_file_write_chunk_result\0\u{3}shared_file_verify_and_commit_result\0\u{4}\u{7}attachment_config\0\u{3}draft_storage_listed\0\u{3}draft_storage_read_result\0\u{3}draft_storage_write_result\0\u{3}draft_open\0\u{3}draft_set_text\0\u{3}draft_set_target_machine\0\u{3}draft_reserve_slots\0\u{3}draft_release_slots\0\u{3}draft_add_items\0\u{3}draft_remove_item\0\u{3}draft_retry_item\0\u{3}draft_set_original\0\u{3}draft_clear\0\u{3}draft_forget_session\0\u{3}draft_clear_all\0\u{3}draft_dismiss_notice\0\u{3}attachment_pause_upload\0\u{3}attachment_resume_upload\0\u{3}attachment_prepare_image_result\0\u{3}attachment_hash_file_result\0\u{3}attachment_read_chunk_result\0\u{3}draft_send_session\0\u{3}draft_put_back_input\0\u{3}draft_image_viewer_open\0\u{3}draft_image_viewer_navigate\0\u{3}draft_image_viewer_close\0\u{4}\"schedule_cache_loaded\0\u{3}schedule_seen_loaded\0\u{3}schedule_local_context\0\u{3}schedule_refresh\0\u{3}schedule_set_visible_session\0\u{4}\u{6}schedule_list_open\0\u{3}schedule_select_task\0\u{3}schedule_toggle_ended\0\u{3}schedule_mark_read\0\u{3}schedule_mark_unread\0\u{4}\u{6}schedule_detail_open\0\u{3}schedule_detail_hide\0\u{3}schedule_detail_close\0\u{3}schedule_detail_show_latest_result\0\u{3}schedule_detail_toggle_quiet_group\0\u{3}schedule_detail_show_all_runs\0\u{3}schedule_detail_open_run\0\u{4}\u{4}schedule_operate\0\u{3}schedule_rename\0\u{3}schedule_set_notify\0\u{3}schedule_update_message\0\u{3}schedule_abandon_mutation\0\u{3}schedule_retry_mutation\0\u{4}\u{3}schedule_form_open\0\u{3}schedule_form_close\0\u{3}schedule_form_set_message\0\u{3}schedule_form_set_title\0\u{3}schedule_form_set_notify\0\u{3}schedule_form_select_project\0\u{3}schedule_form_select_machine\0\u{3}schedule_form_select_agent\0\u{3}schedule_form_select_model\0\u{3}schedule_form_update_timing\0\u{3}schedule_form_submit\0\u{3}schedule_form_retry_models\0\u{3}machine_status_watch\0\u{3}machine_status_retry\0\u{3}machine_status_tab\0\u{3}machine_status_scrub\0\u{3}machine_status_cleanup\0\u{3}machine_status_poll_tick\0\u{4}\u{5}machine_settings_open\0\u{3}machine_settings_select_agent\0\u{3}update_machine_agent_defaults\0\u{3}update_machine_daemon_settings\0\u{3}update_direct_preference\0\u{4}\u{2}toggle_machine_agent\0\u{4}\u{4}update_client_name\0\u{4}\u{5}set_notification_pref\0\u{3}set_appearance_pref\0\u{3}conn_check_status\0\u{3}client_update_state\0\u{3}check_for_updates\0\u{3}usage_screen_open\0\u{3}usage_screen_retry\0\u{3}usage_cache_loaded\0\u{3}usage_screen_select_sort\0\u{3}usage_screen_select_series\0\u{3}usage_screen_scrub\0\u{4}\u{f}transport_config\0\u{4}\u{2}direct_signal_received\0\u{3}direct_signal_delivery\0\u{4}\u{3}direct_pc_created\0\u{3}direct_pc_description\0\u{3}direct_pc_remote_set\0\u{3}direct_pc_candidates_added\0\u{3}direct_pc_local_candidate\0\u{3}direct_pc_state\0\u{3}direct_pc_stun_error\0\u{3}direct_pc_closed\0\u{3}direct_dc_state\0\u{3}direct_dc_stats\0\u{3}direct_retry_now\0\u{3}direct_refresh_diagnostics\0\u{3}direct_bulk_transfer_begin\0\u{3}direct_bulk_transfer_done\0\u{3}terminal_stream\0\u{3}direct_preferences_loaded\0\u{4}\u{1d}security_config\0\u{4}\u{2}security_key_signed\0\u{3}security_key_agreed\0\u{4}\u{3}security_crypto_batch_done\0\u{3}security_op_request\0\u{3}seed_demo_world\0\u{3}security_key_generated\0\u{3}security_key_encapsulated\0\u{3}security_storage_result\0\u{3}security_rpc_result\0\u{3}security_foreground\0\u{3}security_action\0\u{3}security_open_notify\0\u{b}shared_file_local_state\0\u{c}X\u{3}\u{1}")
 
   fileprivate class _StorageClass {
     var _event: PBCoreEvent.OneOf_Event?
@@ -9870,6 +10262,357 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
           if let v = v {
             if hadOneofValue {try decoder.handleConflictingOneOf()}
             _storage._event = .sharedFileVerifyAndCommitResult(v)
+          }
+        }()
+        case 240: try {
+          var v: PBAttachmentConfigEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentConfig(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentConfig(v)
+          }
+        }()
+        case 241: try {
+          var v: PBDraftStorageListedEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftStorageListed(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftStorageListed(v)
+          }
+        }()
+        case 242: try {
+          var v: PBDraftStorageReadResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftStorageReadResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftStorageReadResult(v)
+          }
+        }()
+        case 243: try {
+          var v: PBDraftStorageWriteResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftStorageWriteResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftStorageWriteResult(v)
+          }
+        }()
+        case 244: try {
+          var v: PBDraftOpenAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftOpen(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftOpen(v)
+          }
+        }()
+        case 245: try {
+          var v: PBDraftSetTextAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftSetText(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftSetText(v)
+          }
+        }()
+        case 246: try {
+          var v: PBDraftSetTargetMachineAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftSetTargetMachine(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftSetTargetMachine(v)
+          }
+        }()
+        case 247: try {
+          var v: PBDraftReserveSlotsAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftReserveSlots(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftReserveSlots(v)
+          }
+        }()
+        case 248: try {
+          var v: PBDraftReleaseSlotsAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftReleaseSlots(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftReleaseSlots(v)
+          }
+        }()
+        case 249: try {
+          var v: PBDraftAddItemsAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftAddItems(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftAddItems(v)
+          }
+        }()
+        case 250: try {
+          var v: PBDraftRemoveItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftRemoveItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftRemoveItem(v)
+          }
+        }()
+        case 251: try {
+          var v: PBDraftRetryItemAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftRetryItem(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftRetryItem(v)
+          }
+        }()
+        case 252: try {
+          var v: PBDraftSetOriginalAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftSetOriginal(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftSetOriginal(v)
+          }
+        }()
+        case 253: try {
+          var v: PBDraftClearAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftClear(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftClear(v)
+          }
+        }()
+        case 254: try {
+          var v: PBDraftForgetSessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftForgetSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftForgetSession(v)
+          }
+        }()
+        case 255: try {
+          var v: PBDraftClearAllAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftClearAll(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftClearAll(v)
+          }
+        }()
+        case 256: try {
+          var v: PBDraftDismissNoticeAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftDismissNotice(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftDismissNotice(v)
+          }
+        }()
+        case 257: try {
+          var v: PBAttachmentPauseUploadAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentPauseUpload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentPauseUpload(v)
+          }
+        }()
+        case 258: try {
+          var v: PBAttachmentResumeUploadAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentResumeUpload(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentResumeUpload(v)
+          }
+        }()
+        case 259: try {
+          var v: PBAttachmentPrepareImageResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentPrepareImageResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentPrepareImageResult(v)
+          }
+        }()
+        case 260: try {
+          var v: PBAttachmentHashFileResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentHashFileResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentHashFileResult(v)
+          }
+        }()
+        case 261: try {
+          var v: PBAttachmentReadChunkResultEvent?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .attachmentReadChunkResult(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .attachmentReadChunkResult(v)
+          }
+        }()
+        case 262: try {
+          var v: PBDraftSendSessionAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftSendSession(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftSendSession(v)
+          }
+        }()
+        case 263: try {
+          var v: PBDraftPutBackInputAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftPutBackInput(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftPutBackInput(v)
+          }
+        }()
+        case 264: try {
+          var v: PBDraftImageViewerOpenAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftImageViewerOpen(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftImageViewerOpen(v)
+          }
+        }()
+        case 265: try {
+          var v: PBDraftImageViewerNavigateAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftImageViewerNavigate(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftImageViewerNavigate(v)
+          }
+        }()
+        case 266: try {
+          var v: PBDraftImageViewerCloseAction?
+          var hadOneofValue = false
+          if let current = _storage._event {
+            hadOneofValue = true
+            if case .draftImageViewerClose(let m) = current {v = m}
+          }
+          try decoder.decodeSingularMessageField(value: &v)
+          if let v = v {
+            if hadOneofValue {try decoder.handleConflictingOneOf()}
+            _storage._event = .draftImageViewerClose(v)
           }
         }()
         case 300: try {
@@ -11402,6 +12145,114 @@ extension PBCoreEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
       case .sharedFileVerifyAndCommitResult?: try {
         guard case .sharedFileVerifyAndCommitResult(let v)? = _storage._event else { preconditionFailure() }
         try visitor.visitSingularMessageField(value: v, fieldNumber: 233)
+      }()
+      case .attachmentConfig?: try {
+        guard case .attachmentConfig(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 240)
+      }()
+      case .draftStorageListed?: try {
+        guard case .draftStorageListed(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 241)
+      }()
+      case .draftStorageReadResult?: try {
+        guard case .draftStorageReadResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 242)
+      }()
+      case .draftStorageWriteResult?: try {
+        guard case .draftStorageWriteResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 243)
+      }()
+      case .draftOpen?: try {
+        guard case .draftOpen(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 244)
+      }()
+      case .draftSetText?: try {
+        guard case .draftSetText(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 245)
+      }()
+      case .draftSetTargetMachine?: try {
+        guard case .draftSetTargetMachine(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 246)
+      }()
+      case .draftReserveSlots?: try {
+        guard case .draftReserveSlots(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 247)
+      }()
+      case .draftReleaseSlots?: try {
+        guard case .draftReleaseSlots(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 248)
+      }()
+      case .draftAddItems?: try {
+        guard case .draftAddItems(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 249)
+      }()
+      case .draftRemoveItem?: try {
+        guard case .draftRemoveItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 250)
+      }()
+      case .draftRetryItem?: try {
+        guard case .draftRetryItem(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 251)
+      }()
+      case .draftSetOriginal?: try {
+        guard case .draftSetOriginal(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 252)
+      }()
+      case .draftClear?: try {
+        guard case .draftClear(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 253)
+      }()
+      case .draftForgetSession?: try {
+        guard case .draftForgetSession(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 254)
+      }()
+      case .draftClearAll?: try {
+        guard case .draftClearAll(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 255)
+      }()
+      case .draftDismissNotice?: try {
+        guard case .draftDismissNotice(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 256)
+      }()
+      case .attachmentPauseUpload?: try {
+        guard case .attachmentPauseUpload(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 257)
+      }()
+      case .attachmentResumeUpload?: try {
+        guard case .attachmentResumeUpload(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 258)
+      }()
+      case .attachmentPrepareImageResult?: try {
+        guard case .attachmentPrepareImageResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 259)
+      }()
+      case .attachmentHashFileResult?: try {
+        guard case .attachmentHashFileResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 260)
+      }()
+      case .attachmentReadChunkResult?: try {
+        guard case .attachmentReadChunkResult(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 261)
+      }()
+      case .draftSendSession?: try {
+        guard case .draftSendSession(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 262)
+      }()
+      case .draftPutBackInput?: try {
+        guard case .draftPutBackInput(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 263)
+      }()
+      case .draftImageViewerOpen?: try {
+        guard case .draftImageViewerOpen(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 264)
+      }()
+      case .draftImageViewerNavigate?: try {
+        guard case .draftImageViewerNavigate(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 265)
+      }()
+      case .draftImageViewerClose?: try {
+        guard case .draftImageViewerClose(let v)? = _storage._event else { preconditionFailure() }
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 266)
       }()
       case .scheduleCacheLoaded?: try {
         guard case .scheduleCacheLoaded(let v)? = _storage._event else { preconditionFailure() }
@@ -13194,7 +14045,7 @@ extension PBCoreRequestEntropyEffect: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Effect"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{3}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{1a}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}render\0\u{3}open_stream\0\u{3}close_stream\0\u{3}ensure_token\0\u{3}discard_token\0\u{4}\u{2}schedule_timer\0\u{3}cancel_timer\0\u{3}cache_read\0\u{3}cache_write\0\u{3}cache_delete\0\u{1}rpc\0\u{3}dispatch_command\0\u{3}save_home_scope\0\u{1}navigate\0\u{3}attachments_settled\0\u{3}request_entropy\0\u{4}\u{17}session_restore_composer\0\u{3}session_resend_attachments\0\u{3}shared_file_scan_local\0\u{3}shared_file_inspect_disk\0\u{3}shared_file_write_chunk\0\u{3}shared_file_verify_and_commit\0\u{3}shared_file_delete_partial\0\u{3}shared_file_delete_local\0\u{3}shared_file_delete_session\0\u{3}shared_file_clear_all\0\u{3}shared_file_completed\0\u{4}\u{a}schedule_read_cache\0\u{3}schedule_delete_cache\0\u{3}schedule_load_seen\0\u{3}schedule_save_seen\0\u{3}schedule_dismiss_notifications\0\u{3}schedule_navigate\0\u{4}\u{5}schedule_machine_poll\0\u{3}direct_preference\0\u{3}rename_client\0\u{3}check_updates\0\u{3}persist_client_prefs\0\u{3}prepare_cleanup_session\0\u{3}usage_cache_write\0\u{4}\u{4}draft_storage_list\0\u{3}draft_storage_read\0\u{3}draft_storage_write\0\u{3}draft_storage_delete\0\u{3}draft_storage_clear_all\0\u{3}attachment_prepare_image\0\u{3}attachment_hash_file\0\u{3}attachment_read_chunk\0\u{3}attachment_release_local\0\u{4}\u{e}direct_signal_send\0\u{3}direct_pc_create\0\u{3}direct_pc_describe\0\u{3}direct_pc_set_remote\0\u{3}direct_pc_add_candidates\0\u{3}direct_pc_confirm\0\u{3}direct_pc_close\0\u{3}direct_dc_read_stats\0\u{4}\u{2}direct_bulk_route\0\u{3}terminal_reopen\0\u{3}direct_retry_now_result\0\u{4}\u{11}security_key_sign\0\u{3}security_key_agree\0\u{4}\u{4}security_crypto_batch\0\u{3}security_op_result\0\u{3}security_key_generate\0\u{3}security_key_encapsulate\0\u{3}security_key_discard\0\u{3}security_storage\0\u{3}security_rpc\0\u{3}security_workflow_result\0\u{3}security_status_changed\0\u{3}security_notify_opened\0\u{3}security_token_updated\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -13722,6 +14573,123 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
           self.effect = .usageCacheWrite(v)
         }
       }()
+      case 80: try {
+        var v: PBDraftStorageListEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .draftStorageList(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .draftStorageList(v)
+        }
+      }()
+      case 81: try {
+        var v: PBDraftStorageReadEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .draftStorageRead(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .draftStorageRead(v)
+        }
+      }()
+      case 82: try {
+        var v: PBDraftStorageWriteEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .draftStorageWrite(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .draftStorageWrite(v)
+        }
+      }()
+      case 83: try {
+        var v: PBDraftStorageDeleteEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .draftStorageDelete(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .draftStorageDelete(v)
+        }
+      }()
+      case 84: try {
+        var v: PBDraftStorageClearAllEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .draftStorageClearAll(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .draftStorageClearAll(v)
+        }
+      }()
+      case 85: try {
+        var v: PBAttachmentPrepareImageEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .attachmentPrepareImage(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .attachmentPrepareImage(v)
+        }
+      }()
+      case 86: try {
+        var v: PBAttachmentHashFileEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .attachmentHashFile(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .attachmentHashFile(v)
+        }
+      }()
+      case 87: try {
+        var v: PBAttachmentReadChunkEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .attachmentReadChunk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .attachmentReadChunk(v)
+        }
+      }()
+      case 88: try {
+        var v: PBAttachmentReleaseLocalEffect?
+        var hadOneofValue = false
+        if let current = self.effect {
+          hadOneofValue = true
+          if case .attachmentReleaseLocal(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.effect = .attachmentReleaseLocal(v)
+        }
+      }()
       case 102: try {
         var v: PBCoreDirectSignalSendEffect?
         var hadOneofValue = false
@@ -14204,6 +15172,42 @@ extension PBCoreEffect: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementat
     case .usageCacheWrite?: try {
       guard case .usageCacheWrite(let v)? = self.effect else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 76)
+    }()
+    case .draftStorageList?: try {
+      guard case .draftStorageList(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 80)
+    }()
+    case .draftStorageRead?: try {
+      guard case .draftStorageRead(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 81)
+    }()
+    case .draftStorageWrite?: try {
+      guard case .draftStorageWrite(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 82)
+    }()
+    case .draftStorageDelete?: try {
+      guard case .draftStorageDelete(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 83)
+    }()
+    case .draftStorageClearAll?: try {
+      guard case .draftStorageClearAll(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 84)
+    }()
+    case .attachmentPrepareImage?: try {
+      guard case .attachmentPrepareImage(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 85)
+    }()
+    case .attachmentHashFile?: try {
+      guard case .attachmentHashFile(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 86)
+    }()
+    case .attachmentReadChunk?: try {
+      guard case .attachmentReadChunk(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 87)
+    }()
+    case .attachmentReleaseLocal?: try {
+      guard case .attachmentReleaseLocal(let v)? = self.effect else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 88)
     }()
     case .directSignalSend?: try {
       guard case .directSignalSend(let v)? = self.effect else { preconditionFailure() }

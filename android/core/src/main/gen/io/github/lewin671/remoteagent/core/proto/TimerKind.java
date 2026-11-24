@@ -79,6 +79,18 @@ public enum TimerKind
    * <code>TIMER_KIND_SHARED_FILE_RECONNECT = 16;</code>
    */
   TIMER_KIND_SHARED_FILE_RECONNECT(16),
+  /**
+   * <code>TIMER_KIND_ATTACHMENT_UPLOAD_POLL = 17;</code>
+   */
+  TIMER_KIND_ATTACHMENT_UPLOAD_POLL(17),
+  /**
+   * <code>TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT = 18;</code>
+   */
+  TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT(18),
+  /**
+   * <code>TIMER_KIND_DRAFT_EXPIRY = 19;</code>
+   */
+  TIMER_KIND_DRAFT_EXPIRY(19),
   UNRECOGNIZED(-1),
   ;
 
@@ -150,6 +162,18 @@ public enum TimerKind
    * <code>TIMER_KIND_SHARED_FILE_RECONNECT = 16;</code>
    */
   public static final int TIMER_KIND_SHARED_FILE_RECONNECT_VALUE = 16;
+  /**
+   * <code>TIMER_KIND_ATTACHMENT_UPLOAD_POLL = 17;</code>
+   */
+  public static final int TIMER_KIND_ATTACHMENT_UPLOAD_POLL_VALUE = 17;
+  /**
+   * <code>TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT = 18;</code>
+   */
+  public static final int TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT_VALUE = 18;
+  /**
+   * <code>TIMER_KIND_DRAFT_EXPIRY = 19;</code>
+   */
+  public static final int TIMER_KIND_DRAFT_EXPIRY_VALUE = 19;
 
 
   @java.lang.Override
@@ -190,6 +214,9 @@ public enum TimerKind
       case 14: return TIMER_KIND_TERMINAL_REOPEN;
       case 15: return TIMER_KIND_SECURITY_POLL;
       case 16: return TIMER_KIND_SHARED_FILE_RECONNECT;
+      case 17: return TIMER_KIND_ATTACHMENT_UPLOAD_POLL;
+      case 18: return TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT;
+      case 19: return TIMER_KIND_DRAFT_EXPIRY;
       default: return null;
     }
   }

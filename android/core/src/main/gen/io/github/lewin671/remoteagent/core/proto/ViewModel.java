@@ -33,6 +33,7 @@ public  final class ViewModel extends
     USAGE(36),
     DIRECT_DIAGNOSTICS(37),
     ATTACHMENT_EVAL(38),
+    ATTACHMENT_DRAFT(39),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -67,6 +68,7 @@ public  final class ViewModel extends
         case 36: return USAGE;
         case 37: return DIRECT_DIAGNOSTICS;
         case 38: return ATTACHMENT_EVAL;
+        case 39: return ATTACHMENT_DRAFT;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -856,6 +858,58 @@ public  final class ViewModel extends
    */
   private void clearAttachmentEval() {
     if (viewCase_ == 38) {
+      viewCase_ = 0;
+      view_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_DRAFT_FIELD_NUMBER = 39;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentDraft() {
+    return viewCase_ == 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel getAttachmentDraft() {
+    if (viewCase_ == 39) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel) view_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    view_ = value;
+    viewCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel value) {
+    value.getClass();  // minimal bytecode null check
+    if (viewCase_ == 39 &&
+        view_ != io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.getDefaultInstance()) {
+      view_ = io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel) view_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      view_ = value;
+    }
+    viewCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  private void clearAttachmentDraft() {
+    if (viewCase_ == 39) {
       viewCase_ = 0;
       view_ = null;
     }
@@ -1951,6 +2005,54 @@ public  final class ViewModel extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentDraft() {
+      return instance.hasAttachmentDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel getAttachmentDraft() {
+      return instance.getAttachmentDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder setAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel value) {
+      copyOnWrite();
+      instance.setAttachmentDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder setAttachmentDraft(
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentDraft(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder mergeAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel value) {
+      copyOnWrite();
+      instance.mergeAttachmentDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder clearAttachmentDraft() {
+      copyOnWrite();
+      instance.clearAttachmentDraft();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2227,12 +2329,13 @@ public  final class ViewModel extends
             io.github.lewin671.remoteagent.core.proto.UsageViewModel.class,
             io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel.class,
           };
           java.lang.String info =
-              "\u0000\u0013\u0001\u0000\u0001&\u0013\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0014\u0001\u0000\u0001\'\u0014\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000";
+              "<\u0000%<\u0000&<\u0000\'<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

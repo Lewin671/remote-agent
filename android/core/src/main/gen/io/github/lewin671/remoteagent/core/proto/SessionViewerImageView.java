@@ -22,6 +22,7 @@ public  final class SessionViewerImageView extends
     displayPath_ = "";
     fileExtension_ = "";
     mimeType_ = "";
+    downloadName_ = "";
   }
   private int bitField0_;
   public static final int VIEWER_INDEX_FIELD_NUMBER = 1;
@@ -704,6 +705,74 @@ public  final class SessionViewerImageView extends
   private void clearInCollapsedGroup() {
 
     inCollapsedGroup_ = false;
+  }
+
+  public static final int DOWNLOAD_NAME_FIELD_NUMBER = 19;
+  private java.lang.String downloadName_;
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @return The downloadName.
+   */
+  @java.lang.Override
+  public java.lang.String getDownloadName() {
+    return downloadName_;
+  }
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @return The bytes for downloadName.
+   */
+  @java.lang.Override
+  public com.google.protobuf.ByteString
+      getDownloadNameBytes() {
+    return com.google.protobuf.ByteString.copyFromUtf8(downloadName_);
+  }
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @param value The downloadName to set.
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDownloadName(
+      java.lang.String value) {
+    value.getClass();  // minimal bytecode null check
+
+    downloadName_ = value;
+  }
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   */
+  private void clearDownloadName() {
+
+    downloadName_ = getDefaultInstance().getDownloadName();
+  }
+  /**
+   * <pre>
+   * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+   * </pre>
+   *
+   * <code>string download_name = 19 [json_name = "downloadName"];</code>
+   * @param value The bytes for downloadName to set.
+   */
+  private void setDownloadNameBytes(
+      com.google.protobuf.ByteString value) {
+    checkByteStringIsUtf8(value);
+    downloadName_ = value.toStringUtf8();
+
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionViewerImageView parseFrom(
@@ -1510,6 +1579,75 @@ public  final class SessionViewerImageView extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+     * </pre>
+     *
+     * <code>string download_name = 19 [json_name = "downloadName"];</code>
+     * @return The downloadName.
+     */
+    @java.lang.Override
+    public java.lang.String getDownloadName() {
+      return instance.getDownloadName();
+    }
+    /**
+     * <pre>
+     * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+     * </pre>
+     *
+     * <code>string download_name = 19 [json_name = "downloadName"];</code>
+     * @return The bytes for downloadName.
+     */
+    @java.lang.Override
+    public com.google.protobuf.ByteString
+        getDownloadNameBytes() {
+      return instance.getDownloadNameBytes();
+    }
+    /**
+     * <pre>
+     * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+     * </pre>
+     *
+     * <code>string download_name = 19 [json_name = "downloadName"];</code>
+     * @param value The downloadName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDownloadName(
+        java.lang.String value) {
+      copyOnWrite();
+      instance.setDownloadName(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+     * </pre>
+     *
+     * <code>string download_name = 19 [json_name = "downloadName"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearDownloadName() {
+      copyOnWrite();
+      instance.clearDownloadName();
+      return this;
+    }
+    /**
+     * <pre>
+     * Always non-empty sanitized filename for downloading/saving/sharing (falls back to "image-&lt;N&gt;.&lt;ext&gt;").
+     * </pre>
+     *
+     * <code>string download_name = 19 [json_name = "downloadName"];</code>
+     * @param value The bytes for downloadName to set.
+     * @return This builder for chaining.
+     */
+    public Builder setDownloadNameBytes(
+        com.google.protobuf.ByteString value) {
+      copyOnWrite();
+      instance.setDownloadNameBytes(value);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionViewerImageView)
   }
   @java.lang.Override
@@ -1545,12 +1683,13 @@ public  final class SessionViewerImageView extends
             "fileExtension_",
             "mimeType_",
             "inCollapsedGroup_",
+            "downloadName_",
           };
           java.lang.String info =
-              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
+              "\u0000\u0013\u0000\u0001\u0001\u0013\u0013\u0000\u0000\u0000\u0001\u0004\u0002\u0003" +
               "\u0003\u0004\u0004\u0002\u0005\f\u0006\u1009\u0000\u0007\u0208\b\u0208\t\u1009\u0001" +
               "\n\u0208\u000b\u0000\f\u0000\r\u0007\u000e\u0208\u000f\u0208\u0010\u0208\u0011\u0208" +
-              "\u0012\u0007";
+              "\u0012\u0007\u0013\u0208";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

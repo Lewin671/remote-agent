@@ -272,14 +272,16 @@ func (m *AttachmentCandidateDecision) AppendMarshal(b []byte) []byte {
 }
 
 type AttachmentEvalScreenRequest struct {
-	_             [0]func()
-	MachineId     string
-	SessionId     string
-	CurrentImages int32
-	CurrentFiles  int32
-	Candidates    []*AttachmentCandidateInput
-	Problems      []*ImageProblemInput
-	PutBack       bool
+	_                [0]func()
+	MachineId        string
+	SessionId        string
+	CurrentImages    int32
+	CurrentFiles     int32
+	Candidates       []*AttachmentCandidateInput
+	Problems         []*ImageProblemInput
+	PutBack          bool
+	TotalImageBytes  int64
+	DraftViewerIndex int32
 }
 
 func (m *AttachmentEvalScreenRequest) GetMachineId() string {
@@ -324,6 +326,18 @@ func (m *AttachmentEvalScreenRequest) GetPutBack() bool {
 	}
 	return false
 }
+func (m *AttachmentEvalScreenRequest) GetTotalImageBytes() int64 {
+	if m != nil {
+		return m.TotalImageBytes
+	}
+	return 0
+}
+func (m *AttachmentEvalScreenRequest) GetDraftViewerIndex() int32 {
+	if m != nil {
+		return m.DraftViewerIndex
+	}
+	return 0
+}
 
 var LitewireDesc_AttachmentEvalScreenRequest = litewire.MessageDesc{
 	New: func() unsafe.Pointer { return unsafe.Pointer(&AttachmentEvalScreenRequest{}) },
@@ -333,6 +347,8 @@ var LitewireDesc_AttachmentEvalScreenRequest = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.CurrentImages), Kind: litewire.KindInt32},
 		{Num: 4, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.CurrentFiles), Kind: litewire.KindInt32},
 		{Num: 7, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.PutBack), Kind: litewire.KindBool},
+		{Num: 8, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.TotalImageBytes), Kind: litewire.KindInt64},
+		{Num: 9, Offset: unsafe.Offsetof(AttachmentEvalScreenRequest{}.DraftViewerIndex), Kind: litewire.KindInt32},
 	},
 }
 
@@ -394,6 +410,8 @@ type AttachmentEvalViewModel struct {
 	FailureSummary           *Text
 	ImagesPickBlockedReason  *Text
 	FilesPickBlockedReason   *Text
+	OriginalTotalSizeText    *Text
+	DraftViewerPositionText  *Text
 }
 
 func (m *AttachmentEvalViewModel) GetCapabilitiesLoaded() bool {
@@ -552,6 +570,18 @@ func (m *AttachmentEvalViewModel) GetFilesPickBlockedReason() *Text {
 	}
 	return nil
 }
+func (m *AttachmentEvalViewModel) GetOriginalTotalSizeText() *Text {
+	if m != nil {
+		return m.OriginalTotalSizeText
+	}
+	return nil
+}
+func (m *AttachmentEvalViewModel) GetDraftViewerPositionText() *Text {
+	if m != nil {
+		return m.DraftViewerPositionText
+	}
+	return nil
+}
 
 var LitewireDesc_AttachmentEvalViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -581,6 +611,8 @@ var LitewireDesc_AttachmentEvalViewModel = litewire.MessageDesc{
 		{Num: 24, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.FailureSummary), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 25, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.ImagesPickBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 26, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.FilesPickBlockedReason), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 27, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.OriginalTotalSizeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 28, Offset: unsafe.Offsetof(AttachmentEvalViewModel{}.DraftViewerPositionText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

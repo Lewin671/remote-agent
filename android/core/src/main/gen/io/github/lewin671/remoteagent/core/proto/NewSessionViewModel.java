@@ -1743,6 +1743,54 @@ public  final class NewSessionViewModel extends
     bitField0_ = (bitField0_ & ~0x00000800);
   }
 
+  public static final int DRAFT_FIELD_NUMBER = 44;
+  private io.github.lewin671.remoteagent.core.proto.AttachmentDraftView draft_;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraft() {
+    return ((bitField0_ & 0x00001000) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentDraftView getDraft() {
+    return draft_ == null ? io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.getDefaultInstance() : draft_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+    value.getClass();  // minimal bytecode null check
+    draft_ = value;
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+    value.getClass();  // minimal bytecode null check
+    if (draft_ != null &&
+        draft_ != io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.getDefaultInstance()) {
+      draft_ =
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.newBuilder(draft_).mergeFrom(value).buildPartial();
+    } else {
+      draft_ = value;
+    }
+    bitField0_ |= 0x00001000;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   */
+  private void clearDraft() {
+    draft_ = null;
+    bitField0_ = (bitField0_ & ~0x00001000);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.NewSessionViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3606,6 +3654,53 @@ public  final class NewSessionViewModel extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraft() {
+      return instance.hasDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentDraftView getDraft() {
+      return instance.getDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    public Builder setDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+      copyOnWrite();
+      instance.setDraft(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    public Builder setDraft(
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraft(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    public Builder mergeDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+      copyOnWrite();
+      instance.mergeDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+     */
+    public Builder clearDraft() {  copyOnWrite();
+      instance.clearDraft();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.NewSessionViewModel)
   }
   @java.lang.Override
@@ -3668,15 +3763,16 @@ public  final class NewSessionViewModel extends
             "originalImageMaxBytes_",
             "originalImageHint_",
             "fileMetadataNotice_",
+            "draft_",
           };
           java.lang.String info =
-              "\u0000+\u0000\u0001\u0001++\u0000\u0002\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
+              "\u0000,\u0000\u0001\u0001,,\u0000\u0002\u0000\u0001\u0007\u0002\u0208\u0003\u1009" +
               "\u0000\u0004\u0208\u0005\u0007\u0006\u0208\u0007\u0007\b\u0007\t\u0007\n\u0007\u000b" +
               "\u1009\u0001\f\u0208\r\u0007\u000e\u0208\u000f\u001b\u0010\u1009\u0002\u0011\u0208" +
               "\u0012\u1009\u0003\u0013\u1009\u0004\u0014\u001b\u0015\u0007\u0016\u1009\u0005\u0017" +
               "\u1009\u0006\u0018\u0007\u0019\f\u001a\u0007\u001b\u1009\u0007\u001c\u0007\u001d" +
               "\u0007\u001e\u0007\u001f\u0004 \u0004!\u0002\"\u1009\b#\u0007$\u1009\t%\u0007&\u0208" +
-              "\'\u0004(\u0208)\u0002*\u1009\n+\u1009\u000b";
+              "\'\u0004(\u0208)\u0002*\u1009\n+\u1009\u000b,\u1009\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

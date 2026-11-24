@@ -1063,6 +1063,7 @@ type NewSessionViewModel struct {
 	OriginalImageMaxBytes    int64                     `protobuf:"varint,41,opt,name=original_image_max_bytes,json=originalImageMaxBytes,proto3" json:"original_image_max_bytes,omitempty"`
 	OriginalImageHint        *Text                     `protobuf:"bytes,42,opt,name=original_image_hint,json=originalImageHint,proto3" json:"original_image_hint,omitempty"`
 	FileMetadataNotice       *Text                     `protobuf:"bytes,43,opt,name=file_metadata_notice,json=fileMetadataNotice,proto3" json:"file_metadata_notice,omitempty"`
+	Draft                    *AttachmentDraftView      `protobuf:"bytes,44,opt,name=draft,proto3" json:"draft,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -1398,11 +1399,18 @@ func (x *NewSessionViewModel) GetFileMetadataNotice() *Text {
 	return nil
 }
 
+func (x *NewSessionViewModel) GetDraft() *AttachmentDraftView {
+	if x != nil {
+		return x.Draft
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_new_session_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\n" +
-	"*remoteagent/core/v1/new_session_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xa2\x01\n" +
+	"*remoteagent/core/v1/new_session_view.proto\x12\x13remoteagent.core.v1\x1a%remoteagent/core/v1/attachments.proto\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xa2\x01\n" +
 	"\x0fDefaultModeInfo\x120\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\x04mode\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x12\x16\n" +
@@ -1472,7 +1480,7 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\fcontext_note\x18\f \x01(\v2\x19.remoteagent.core.v1.TextR\vcontextNote\x12#\n" +
 	"\rpanel_enabled\x18\r \x01(\bR\fpanelEnabled\x12O\n" +
 	"\x0fmachine_choices\x18\x0e \x03(\v2&.remoteagent.core.v1.MachineChoiceViewR\x0emachineChoices\x12/\n" +
-	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\xdd\x10\n" +
+	"\x14can_select_auto_mode\x18\x0f \x01(\bR\x11canSelectAutoMode\"\x9d\x11\n" +
 	"\x13NewSessionViewModel\x12-\n" +
 	"\x12project_selectable\x18\x01 \x01(\bR\x11projectSelectable\x12\x1f\n" +
 	"\vproject_key\x18\x02 \x01(\tR\n" +
@@ -1524,7 +1532,8 @@ const file_remoteagent_core_v1_new_session_view_proto_rawDesc = "" +
 	"\x12max_file_size_text\x18( \x01(\tR\x0fmaxFileSizeText\x127\n" +
 	"\x18original_image_max_bytes\x18) \x01(\x03R\x15originalImageMaxBytes\x12I\n" +
 	"\x13original_image_hint\x18* \x01(\v2\x19.remoteagent.core.v1.TextR\x11originalImageHint\x12K\n" +
-	"\x14file_metadata_notice\x18+ \x01(\v2\x19.remoteagent.core.v1.TextR\x12fileMetadataNotice*\x82\x01\n" +
+	"\x14file_metadata_notice\x18+ \x01(\v2\x19.remoteagent.core.v1.TextR\x12fileMetadataNotice\x12>\n" +
+	"\x05draft\x18, \x01(\v2(.remoteagent.core.v1.AttachmentDraftViewR\x05draft*\x82\x01\n" +
 	"\rAutoIssueKind\x12\x1f\n" +
 	"\x1bAUTO_ISSUE_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AUTO_ISSUE_KIND_NONE\x10\x01\x12\x19\n" +
@@ -1601,6 +1610,7 @@ var file_remoteagent_core_v1_new_session_view_proto_goTypes = []any{
 	(v1.ApprovalMode)(0),             // 13: remoteagent.v1.ApprovalMode
 	(*Text)(nil),                     // 14: remoteagent.core.v1.Text
 	(v1.Agent)(0),                    // 15: remoteagent.v1.Agent
+	(*AttachmentDraftView)(nil),      // 16: remoteagent.core.v1.AttachmentDraftView
 }
 var file_remoteagent_core_v1_new_session_view_proto_depIdxs = []int32{
 	13, // 0: remoteagent.core.v1.DefaultModeInfo.mode:type_name -> remoteagent.v1.ApprovalMode
@@ -1643,11 +1653,12 @@ var file_remoteagent_core_v1_new_session_view_proto_depIdxs = []int32{
 	14, // 37: remoteagent.core.v1.NewSessionViewModel.file_upload_blocked_reason:type_name -> remoteagent.core.v1.Text
 	14, // 38: remoteagent.core.v1.NewSessionViewModel.original_image_hint:type_name -> remoteagent.core.v1.Text
 	14, // 39: remoteagent.core.v1.NewSessionViewModel.file_metadata_notice:type_name -> remoteagent.core.v1.Text
-	40, // [40:40] is the sub-list for method output_type
-	40, // [40:40] is the sub-list for method input_type
-	40, // [40:40] is the sub-list for extension type_name
-	40, // [40:40] is the sub-list for extension extendee
-	0,  // [0:40] is the sub-list for field type_name
+	16, // 40: remoteagent.core.v1.NewSessionViewModel.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
+	41, // [41:41] is the sub-list for method output_type
+	41, // [41:41] is the sub-list for method input_type
+	41, // [41:41] is the sub-list for extension type_name
+	41, // [41:41] is the sub-list for extension extendee
+	0,  // [0:41] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_new_session_view_proto_init() }
@@ -1655,6 +1666,7 @@ func file_remoteagent_core_v1_new_session_view_proto_init() {
 	if File_remoteagent_core_v1_new_session_view_proto != nil {
 		return
 	}
+	file_remoteagent_core_v1_attachments_proto_init()
 	file_remoteagent_core_v1_text_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

@@ -1,0 +1,501 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/attachments_view.proto";
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/event.proto";
+
+// ---- Scope, Item State, and Structured Platform I/O Error Enums ----
+
+// Identifies which composer owns a draft (existing session or new-session project).
+enum DraftScopeKind {
+  DRAFT_SCOPE_KIND_UNSPECIFIED = 0;
+  DRAFT_SCOPE_KIND_SESSION = 1;
+  DRAFT_SCOPE_KIND_NEW_SESSION = 2;
+}
+
+message DraftScope {
+  DraftScopeKind kind = 1;
+  // session_id when kind == SESSION; project_key when kind == NEW_SESSION.
+  string id = 2;
+}
+
+enum AttachmentItemKind {
+  ATTACHMENT_ITEM_KIND_UNSPECIFIED = 0;
+  ATTACHMENT_ITEM_KIND_IMAGE = 1;
+  ATTACHMENT_ITEM_KIND_FILE = 2;
+}
+
+enum AttachmentItemState {
+  ATTACHMENT_ITEM_STATE_UNSPECIFIED = 0;
+  ATTACHMENT_ITEM_STATE_PREPARING = 1;
+  ATTACHMENT_ITEM_STATE_UPLOADING = 2;
+  ATTACHMENT_ITEM_STATE_PAUSED = 3;
+  ATTACHMENT_ITEM_STATE_WAITING_RECONNECT = 4;
+  ATTACHMENT_ITEM_STATE_READY = 5;
+  ATTACHMENT_ITEM_STATE_FAILED = 6;
+}
+
+// Structured local I/O or image-preparation error reported by shell executors back to Core.
+// Core maps failures strictly by this enum (and daemon/sync error codes), never by matching
+// localized shell strings.
+enum AttachmentIOErrorKind {
+  ATTACHMENT_IO_ERROR_KIND_UNSPECIFIED = 0;
+  ATTACHMENT_IO_ERROR_KIND_STORAGE_FULL = 1;
+  ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING = 2;
+  ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED = 3;
+  ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE = 4;
+  ATTACHMENT_IO_ERROR_KIND_DIMENSIONS = 5;
+  ATTACHMENT_IO_ERROR_KIND_DECODE = 6;
+  ATTACHMENT_IO_ERROR_KIND_FILE_TOO_LARGE = 7;
+  ATTACHMENT_IO_ERROR_KIND_DIRECTORY = 8;
+  ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE = 9;
+  ATTACHMENT_IO_ERROR_KIND_OTHER = 10;
+}
+
+enum DraftStorageBucket {
+  DRAFT_STORAGE_BUCKET_UNSPECIFIED = 0;
+  DRAFT_STORAGE_BUCKET_DRAFT = 1;
+  DRAFT_STORAGE_BUCKET_OUTBOX = 2;
+}
+
+// ---- Core-Owned Opaque Persistence Schemas (schema_version = 1) ----
+// Shells encrypt/store/retrieve raw serialized bytes without interpreting fields.
+// Any legacy/corrupt bytes that fail strict Unmarshal or have schema_version != 1 are discarded.
+
+message PersistedAttachmentItem {
+  string item_id = 1;
+  AttachmentItemKind kind = 2;
+  bool is_video = 3;
+  string file_name = 4;
+  string mime_type = 5;
+  int64 size_bytes = 6;
+  bytes sha256 = 7;
+  remoteagent.v1.ImageFormat image_format = 8;
+  int32 width = 9;
+  int32 height = 10;
+  bool prepared_original = 11;
+  bool has_original_source = 12;
+  bool has_prepared = 13;
+  // Opaque shell-assigned local storage handles (IDB blob key, SAF URI, bookmark key, cache file ID).
+  string source_ref = 14;
+  string prepared_ref = 15;
+  string thumb_ref = 16;
+  string remote_id = 17;
+  string transfer_id = 18;
+  string machine_id = 19;
+  int64 expires_ms = 20;
+  bool has_duration = 21;
+  int64 duration_ms = 22;
+}
+
+message PersistedDraftRecord {
+  uint32 schema_version = 1;
+  DraftScope scope = 2;
+  string text = 3;
+  bool original = 4;
+  repeated PersistedAttachmentItem items = 5;
+  int64 updated_ms = 6;
+}
+
+message PersistedOutboxRecord {
+  uint32 schema_version = 1;
+  string session_id = 2;
+  string request_id = 3;
+  string machine_id = 4;
+  string text = 5;
+  remoteagent.v1.SendMode mode = 6;
+  bool original = 7;
+  repeated string image_ids = 8;
+  repeated string file_ids = 9;
+  repeated PersistedAttachmentItem items = 10;
+  int64 created_ms = 11;
+}
+
+// ---- ViewModel Types (Core -> Shell) ----
+
+message OutboxAttachmentSummary {
+  string item_id = 1;
+  AttachmentItemKind kind = 2;
+  bool is_video = 3;
+  string display_name = 4;
+  int64 size_bytes = 5;
+  Text size_text = 6;
+  int32 width = 7;
+  int32 height = 8;
+  string thumb_ref = 9;
+  string remote_id = 10;
+  bool has_local_copy = 11;
+}
+
+message AttachmentDraftItemView {
+  string item_id = 1;
+  AttachmentItemKind kind = 2;
+  bool is_video = 3;
+  AttachmentItemState state = 4;
+  double progress = 5;
+  int32 progress_percent = 6;
+  string display_name = 7;
+  string name_head = 8;
+  string name_tail = 9;
+  int64 size_bytes = 10;
+  Text size_text = 11;
+  string duration_text = 12;
+  int32 width = 13;
+  int32 height = 14;
+  string source_ref = 15;
+  string prepared_ref = 16;
+  string thumb_ref = 17;
+  Text status_text = 18;
+  ImageProblemView problem = 19;
+  Text file_error_text = 20;
+  bool can_retry = 21;
+  bool can_pause = 22;
+  bool can_resume = 23;
+  bool can_remove = 24;
+  int32 image_index = 25;
+  Text position_text = 26;
+  Text position_a11y = 27;
+  Text remove_a11y = 28;
+  bool remote_only = 29;
+}
+
+message DraftImageViewerView {
+  bool open = 1;
+  int32 current_index = 2;
+  int32 total_count = 3;
+  bool has_prev = 4;
+  bool has_next = 5;
+  Text position_text = 6;
+  Text position_a11y = 7;
+  AttachmentDraftItemView current_image = 8;
+  Text empty_text = 9;
+}
+
+message AttachmentDraftView {
+  DraftScope scope = 1;
+  string text = 2;
+  uint64 text_revision = 3;
+  bool restoring = 4;
+  bool sending = 5;
+  bool has_pending_picks = 6;
+  int32 reserved_images = 7;
+  int32 reserved_files = 8;
+  bool original = 9;
+  bool can_toggle_original = 10;
+  Text original_toggle_disabled_reason = 11;
+  int64 total_image_bytes = 12;
+  Text original_total_size_text = 13;
+  Text original_hint = 14;
+  Text file_metadata_notice = 15;
+  int32 image_count = 16;
+  int32 file_count = 17;
+  int32 max_images = 18;
+  int32 max_files = 19;
+  Text image_count_text = 20;
+  Text file_count_text = 21;
+  repeated AttachmentDraftItemView items = 22;
+  repeated AttachmentDraftItemView images = 23;
+  repeated AttachmentDraftItemView files = 24;
+  bool busy = 25;
+  bool ready = 26;
+  bool can_send = 27;
+  Text send_blocked_reason = 28;
+  bool has_unsaved_content = 29;
+  Text notice = 30;
+  Text failure_summary = 31;
+  Text storage_error = 32;
+  bool can_pick_images = 33;
+  bool can_pick_files = 34;
+  bool can_pick_gallery = 35;
+  int32 library_room = 36;
+  bool gallery_allows_video = 37;
+  string gallery_accept_mime = 38;
+  Text images_pick_blocked_reason = 39;
+  Text files_pick_blocked_reason = 40;
+  Text gallery_blocked_reason = 41;
+  DraftImageViewerView image_viewer = 42;
+}
+
+message AttachmentDraftScreenRequest {
+  DraftScope scope = 1;
+}
+
+message AttachmentDraftViewModel {
+  AttachmentDraftView draft = 1;
+}
+
+// ---- Configuration, Actions, and I/O Results (Shell -> Core) ----
+
+// Configures Core-managed upload, draft tray, outbox, and composer-draft persistence.
+// All platform differences are expressed strictly via this config; Core has no platform branches.
+message AttachmentConfigEvent {
+  bool persist_drafts = 1;
+  bool persist_outbox = 2;
+  // When true, Core immediately emits DraftStorageListEffect to recover persisted outbox
+  // records (and prune corrupt/legacy entries).
+  bool scan_storage = 3;
+  // Optional upper cap on upload chunk bytes (0 defaults to 768 KiB = 786432).
+  int32 max_chunk_bytes = 4;
+  // True when the shell persists prepared image bytes across restarts (mobile);
+  // false when only original source blobs are persisted (web).
+  bool has_persisted_prepared_images = 5;
+}
+
+message DraftStorageEntry {
+  DraftStorageBucket bucket = 1;
+  string key = 2;
+  bytes data = 3;
+  // True when the shell could not decrypt or read this stored entry (Core emits Delete).
+  bool corrupt = 4;
+}
+
+message DraftStorageListedEvent {
+  uint64 op_id = 1;
+  repeated DraftStorageEntry entries = 2;
+  AttachmentIOErrorKind error_kind = 3;
+  string error_detail = 4;
+}
+
+message DraftStorageReadResultEvent {
+  uint64 op_id = 1;
+  DraftStorageBucket bucket = 2;
+  string key = 3;
+  bool found = 4;
+  bytes data = 5;
+  AttachmentIOErrorKind error_kind = 6;
+  string error_detail = 7;
+}
+
+message DraftStorageWriteResultEvent {
+  uint64 op_id = 1;
+  DraftStorageBucket bucket = 2;
+  string key = 3;
+  bool ok = 4;
+  AttachmentIOErrorKind error_kind = 5;
+  string error_detail = 6;
+}
+
+message DraftOpenAction {
+  DraftScope scope = 1;
+  string machine_id = 2;
+}
+
+message DraftSetTextAction {
+  DraftScope scope = 1;
+  string text = 2;
+}
+
+message DraftSetTargetMachineAction {
+  DraftScope scope = 1;
+  string machine_id = 2;
+}
+
+message DraftReserveSlotsAction {
+  DraftScope scope = 1;
+  string reservation_id = 2;
+  int32 image_slots = 3;
+  int32 file_slots = 4;
+}
+
+message DraftReleaseSlotsAction {
+  DraftScope scope = 1;
+  string reservation_id = 2;
+}
+
+message DraftPickedItem {
+  AttachmentCandidateInput candidate = 1;
+  string source_ref = 2;
+  string thumb_ref = 3;
+  bool has_original_source = 4;
+  bool has_duration = 5;
+  int64 duration_ms = 6;
+}
+
+message DraftAddItemsAction {
+  DraftScope scope = 1;
+  // Optional reservation_id to atomically release when adding these picked candidates.
+  string reservation_id = 2;
+  repeated DraftPickedItem items = 3;
+}
+
+message DraftRemoveItemAction {
+  DraftScope scope = 1;
+  string item_id = 2;
+}
+
+message DraftRetryItemAction {
+  DraftScope scope = 1;
+  string item_id = 2;
+}
+
+message DraftSetOriginalAction {
+  DraftScope scope = 1;
+  bool original = 2;
+}
+
+message DraftClearAction {
+  DraftScope scope = 1;
+}
+
+message DraftForgetSessionAction {
+  string session_id = 1;
+}
+
+message DraftClearAllAction {}
+
+message DraftDismissNoticeAction {
+  DraftScope scope = 1;
+}
+
+message AttachmentPauseUploadAction {
+  DraftScope scope = 1;
+  string item_id = 2;
+}
+
+message AttachmentResumeUploadAction {
+  DraftScope scope = 1;
+  string item_id = 2;
+}
+
+message AttachmentPrepareImageResultEvent {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  bool ok = 5;
+  string prepared_ref = 6;
+  string thumb_ref = 7;
+  remoteagent.v1.ImageFormat format = 8;
+  int32 width = 9;
+  int32 height = 10;
+  int64 size_bytes = 11;
+  bytes sha256 = 12;
+  AttachmentIOErrorKind error_kind = 13;
+  string error_code = 14;
+  string error_detail = 15;
+  bool is_reading_source = 16;
+}
+
+message AttachmentHashFileResultEvent {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  bool ok = 5;
+  int64 size_bytes = 6;
+  bytes sha256 = 7;
+  // Optional refreshed handle (e.g., refreshed iOS security-scoped bookmark).
+  string updated_source_ref = 8;
+  bool has_duration = 9;
+  int64 duration_ms = 10;
+  AttachmentIOErrorKind error_kind = 11;
+  string error_detail = 12;
+}
+
+message AttachmentReadChunkResultEvent {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  bool ok = 5;
+  int64 offset = 6;
+  bytes data = 7;
+  AttachmentIOErrorKind error_kind = 8;
+  string error_detail = 9;
+}
+
+message DraftSendSessionAction {
+  string session_id = 1;
+  remoteagent.v1.SendMode mode = 2;
+}
+
+message DraftPutBackInputAction {
+  string session_id = 1;
+  string request_id = 2;
+}
+
+message DraftImageViewerOpenAction {
+  DraftScope scope = 1;
+  int32 index = 2;
+}
+
+message DraftImageViewerNavigateAction {
+  DraftScope scope = 1;
+  int32 delta = 2;
+  bool set_index = 3;
+  int32 index = 4;
+}
+
+message DraftImageViewerCloseAction {
+  DraftScope scope = 1;
+}
+
+// ---- Platform I/O Effects (Core -> Shell) ----
+
+message DraftStorageListEffect {
+  uint64 op_id = 1;
+}
+
+message DraftStorageReadEffect {
+  uint64 op_id = 1;
+  DraftStorageBucket bucket = 2;
+  string key = 3;
+}
+
+message DraftStorageWriteEffect {
+  uint64 op_id = 1;
+  DraftStorageBucket bucket = 2;
+  string key = 3;
+  bytes data = 4;
+  // Opaque local handles (source_ref/prepared_ref/thumb_ref) currently referenced by this record.
+  repeated string referenced_refs = 5;
+}
+
+message DraftStorageDeleteEffect {
+  DraftStorageBucket bucket = 1;
+  string key = 2;
+}
+
+message DraftStorageClearAllEffect {}
+
+message AttachmentPrepareImageEffect {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  string source_ref = 5;
+  bool original = 6;
+  int64 max_original_bytes = 7;
+}
+
+message AttachmentHashFileEffect {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  string source_ref = 5;
+  int64 max_bytes = 6;
+  bool is_video = 7;
+}
+
+message AttachmentReadChunkEffect {
+  uint64 op_id = 1;
+  DraftScope scope = 2;
+  string outbox_request_id = 3;
+  string item_id = 4;
+  AttachmentItemKind kind = 5;
+  string source_ref = 6;
+  string prepared_ref = 7;
+  int64 offset = 8;
+  int32 length = 9;
+  int64 expected_size_bytes = 10;
+  bytes expected_sha256 = 11;
+}
+
+// Fire-and-forget notification that the listed opaque local handles are no longer referenced
+// by any draft or outbox record and may be deleted or revoked from local storage.
+message AttachmentReleaseLocalEffect {
+  repeated string refs = 1;
+}

@@ -1115,6 +1115,142 @@ public  final class AttachmentEvalViewModel extends
     bitField0_ = (bitField0_ & ~0x00000100);
   }
 
+  public static final int ORIGINAL_TOTAL_SIZE_TEXT_FIELD_NUMBER = 27;
+  private io.github.lewin671.remoteagent.core.proto.Text originalTotalSizeText_;
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasOriginalTotalSizeText() {
+    return ((bitField0_ & 0x00000200) != 0);
+  }
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getOriginalTotalSizeText() {
+    return originalTotalSizeText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : originalTotalSizeText_;
+  }
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setOriginalTotalSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    originalTotalSizeText_ = value;
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeOriginalTotalSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (originalTotalSizeText_ != null &&
+        originalTotalSizeText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      originalTotalSizeText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(originalTotalSizeText_).mergeFrom(value).buildPartial();
+    } else {
+      originalTotalSizeText_ = value;
+    }
+    bitField0_ |= 0x00000200;
+  }
+  /**
+   * <pre>
+   * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+   */
+  private void clearOriginalTotalSizeText() {
+    originalTotalSizeText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000200);
+  }
+
+  public static final int DRAFT_VIEWER_POSITION_TEXT_FIELD_NUMBER = 28;
+  private io.github.lewin671.remoteagent.core.proto.Text draftViewerPositionText_;
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftViewerPositionText() {
+    return ((bitField0_ & 0x00000400) != 0);
+  }
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDraftViewerPositionText() {
+    return draftViewerPositionText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : draftViewerPositionText_;
+  }
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftViewerPositionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    draftViewerPositionText_ = value;
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDraftViewerPositionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (draftViewerPositionText_ != null &&
+        draftViewerPositionText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      draftViewerPositionText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(draftViewerPositionText_).mergeFrom(value).buildPartial();
+    } else {
+      draftViewerPositionText_ = value;
+    }
+    bitField0_ |= 0x00000400;
+  }
+  /**
+   * <pre>
+   * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+   * </pre>
+   *
+   * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+   */
+  private void clearDraftViewerPositionText() {
+    draftViewerPositionText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000400);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -2341,6 +2477,148 @@ public  final class AttachmentEvalViewModel extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasOriginalTotalSizeText() {
+      return instance.hasOriginalTotalSizeText();
+    }
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getOriginalTotalSizeText() {
+      return instance.getOriginalTotalSizeText();
+    }
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    public Builder setOriginalTotalSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setOriginalTotalSizeText(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    public Builder setOriginalTotalSizeText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setOriginalTotalSizeText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    public Builder mergeOriginalTotalSizeText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeOriginalTotalSizeText(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text original_total_size_text = 27 [json_name = "originalTotalSizeText"];</code>
+     */
+    public Builder clearOriginalTotalSizeText() {  copyOnWrite();
+      instance.clearOriginalTotalSizeText();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftViewerPositionText() {
+      return instance.hasDraftViewerPositionText();
+    }
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDraftViewerPositionText() {
+      return instance.getDraftViewerPositionText();
+    }
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    public Builder setDraftViewerPositionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDraftViewerPositionText(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    public Builder setDraftViewerPositionText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftViewerPositionText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    public Builder mergeDraftViewerPositionText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDraftViewerPositionText(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images &lt;= 0.
+     * </pre>
+     *
+     * <code>.remoteagent.core.v1.Text draft_viewer_position_text = 28 [json_name = "draftViewerPositionText"];</code>
+     */
+    public Builder clearDraftViewerPositionText() {  copyOnWrite();
+      instance.clearDraftViewerPositionText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.AttachmentEvalViewModel)
   }
   @java.lang.Override
@@ -2386,13 +2664,16 @@ public  final class AttachmentEvalViewModel extends
             "failureSummary_",
             "imagesPickBlockedReason_",
             "filesPickBlockedReason_",
+            "originalTotalSizeText_",
+            "draftViewerPositionText_",
           };
           java.lang.String info =
-              "\u0000\u001a\u0000\u0001\u0001\u001a\u001a\u0000\u0002\u0000\u0001\u0007\u0002\u0007" +
+              "\u0000\u001c\u0000\u0001\u0001\u001c\u001c\u0000\u0002\u0000\u0001\u0007\u0002\u0007" +
               "\u0003\u0007\u0004\u0004\u0005\u0004\u0006\u0002\u0007\u0004\b\u0208\t\u0002\n\u0007" +
               "\u000b\u0208\f\u0004\r\u0007\u000e\u0007\u000f\u0007\u0010\u1009\u0000\u0011\u1009" +
               "\u0001\u0012\u1009\u0002\u0013\u1009\u0003\u0014\u1009\u0004\u0015\u001b\u0016\u1009" +
-              "\u0005\u0017\u001b\u0018\u1009\u0006\u0019\u1009\u0007\u001a\u1009\b";
+              "\u0005\u0017\u001b\u0018\u1009\u0006\u0019\u1009\u0007\u001a\u1009\b\u001b\u1009" +
+              "\t\u001c\u1009\n";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

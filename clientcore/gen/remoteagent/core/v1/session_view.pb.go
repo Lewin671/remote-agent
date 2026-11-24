@@ -2679,6 +2679,8 @@ type SessionTrayItemView struct {
 	NetworkActionsDisabled bool
 	ServerBacked           bool
 	IsSkeleton             bool
+	LocalAttachments       []*OutboxAttachmentSummary
+	RestoredFromCrash      bool
 }
 
 func (m *SessionTrayItemView) GetRequestId() string {
@@ -2843,6 +2845,18 @@ func (m *SessionTrayItemView) GetIsSkeleton() bool {
 	}
 	return false
 }
+func (m *SessionTrayItemView) GetLocalAttachments() []*OutboxAttachmentSummary {
+	if m != nil {
+		return m.LocalAttachments
+	}
+	return nil
+}
+func (m *SessionTrayItemView) GetRestoredFromCrash() bool {
+	if m != nil {
+		return m.RestoredFromCrash
+	}
+	return false
+}
 
 var LitewireDesc_SessionTrayItemView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -2873,6 +2887,8 @@ var LitewireDesc_SessionTrayItemView = litewire.MessageDesc{
 		{Num: 25, Offset: unsafe.Offsetof(SessionTrayItemView{}.NetworkActionsDisabled), Kind: litewire.KindBool},
 		{Num: 26, Offset: unsafe.Offsetof(SessionTrayItemView{}.ServerBacked), Kind: litewire.KindBool},
 		{Num: 27, Offset: unsafe.Offsetof(SessionTrayItemView{}.IsSkeleton), Kind: litewire.KindBool},
+		{Num: 28, Offset: unsafe.Offsetof(SessionTrayItemView{}.LocalAttachments), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_OutboxAttachmentSummary},
+		{Num: 29, Offset: unsafe.Offsetof(SessionTrayItemView{}.RestoredFromCrash), Kind: litewire.KindBool},
 	},
 }
 
@@ -3090,6 +3106,7 @@ type SessionComposerView struct {
 	IsDefaultPlaceholder         bool
 	SlashWarningTitle            *Text
 	SlashWarningText             *Text
+	Draft                        *AttachmentDraftView
 }
 
 func (m *SessionComposerView) GetEnabled() bool {
@@ -3176,6 +3193,12 @@ func (m *SessionComposerView) GetSlashWarningText() *Text {
 	}
 	return nil
 }
+func (m *SessionComposerView) GetDraft() *AttachmentDraftView {
+	if m != nil {
+		return m.Draft
+	}
+	return nil
+}
 
 var LitewireDesc_SessionComposerView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -3193,6 +3216,7 @@ var LitewireDesc_SessionComposerView = litewire.MessageDesc{
 		{Num: 12, Offset: unsafe.Offsetof(SessionComposerView{}.IsDefaultPlaceholder), Kind: litewire.KindBool},
 		{Num: 13, Offset: unsafe.Offsetof(SessionComposerView{}.SlashWarningTitle), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 14, Offset: unsafe.Offsetof(SessionComposerView{}.SlashWarningText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 15, Offset: unsafe.Offsetof(SessionComposerView{}.Draft), Kind: litewire.KindMessage, Sub: &LitewireDesc_AttachmentDraftView},
 	},
 }
 
@@ -4790,6 +4814,7 @@ type SessionViewerImageView struct {
 	FileExtension      string
 	MimeType           string
 	InCollapsedGroup   bool
+	DownloadName       string
 }
 
 func (m *SessionViewerImageView) GetViewerIndex() int32 {
@@ -4900,6 +4925,12 @@ func (m *SessionViewerImageView) GetInCollapsedGroup() bool {
 	}
 	return false
 }
+func (m *SessionViewerImageView) GetDownloadName() string {
+	if m != nil {
+		return m.DownloadName
+	}
+	return ""
+}
 
 var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -4921,6 +4952,7 @@ var LitewireDesc_SessionViewerImageView = litewire.MessageDesc{
 		{Num: 16, Offset: unsafe.Offsetof(SessionViewerImageView{}.FileExtension), Kind: litewire.KindString},
 		{Num: 17, Offset: unsafe.Offsetof(SessionViewerImageView{}.MimeType), Kind: litewire.KindString},
 		{Num: 18, Offset: unsafe.Offsetof(SessionViewerImageView{}.InCollapsedGroup), Kind: litewire.KindBool},
+		{Num: 19, Offset: unsafe.Offsetof(SessionViewerImageView{}.DownloadName), Kind: litewire.KindString},
 	},
 }
 
@@ -5888,12 +5920,13 @@ func (m *SessionImageViewerCloseAction) Unmarshal(b []byte) error {
 }
 
 type SessionRestoreComposerEffect struct {
-	_         [0]func()
-	SessionId string
-	RequestId string
-	Text      string
-	ImageIds  []string
-	FileIds   []string
+	_             [0]func()
+	SessionId     string
+	RequestId     string
+	Text          string
+	ImageIds      []string
+	FileIds       []string
+	HandledByCore bool
 }
 
 func (m *SessionRestoreComposerEffect) GetSessionId() string {
@@ -5926,6 +5959,12 @@ func (m *SessionRestoreComposerEffect) GetFileIds() []string {
 	}
 	return nil
 }
+func (m *SessionRestoreComposerEffect) GetHandledByCore() bool {
+	if m != nil {
+		return m.HandledByCore
+	}
+	return false
+}
 
 var LitewireDesc_SessionRestoreComposerEffect = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -5934,6 +5973,7 @@ var LitewireDesc_SessionRestoreComposerEffect = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.Text), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.ImageIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 		{Num: 5, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.FileIds), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
+		{Num: 6, Offset: unsafe.Offsetof(SessionRestoreComposerEffect{}.HandledByCore), Kind: litewire.KindBool},
 	},
 }
 

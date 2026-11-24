@@ -33,6 +33,7 @@ public  final class Screen extends
     USAGE(36),
     DIRECT_DIAGNOSTICS(37),
     ATTACHMENT_EVAL(38),
+    ATTACHMENT_DRAFT(39),
     SESSION(10),
     SCHEDULES(20),
     SCHEDULE_DETAIL(21),
@@ -67,6 +68,7 @@ public  final class Screen extends
         case 36: return USAGE;
         case 37: return DIRECT_DIAGNOSTICS;
         case 38: return ATTACHMENT_EVAL;
+        case 39: return ATTACHMENT_DRAFT;
         case 10: return SESSION;
         case 20: return SCHEDULES;
         case 21: return SCHEDULE_DETAIL;
@@ -856,6 +858,58 @@ public  final class Screen extends
    */
   private void clearAttachmentEval() {
     if (screenCase_ == 38) {
+      screenCase_ = 0;
+      screen_ = null;
+    }
+  }
+
+  public static final int ATTACHMENT_DRAFT_FIELD_NUMBER = 39;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAttachmentDraft() {
+    return screenCase_ == 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest getAttachmentDraft() {
+    if (screenCase_ == 39) {
+       return (io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest) screen_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    screen_ = value;
+    screenCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest value) {
+    value.getClass();  // minimal bytecode null check
+    if (screenCase_ == 39 &&
+        screen_ != io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.getDefaultInstance()) {
+      screen_ = io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.newBuilder((io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest) screen_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      screen_ = value;
+    }
+    screenCase_ = 39;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   */
+  private void clearAttachmentDraft() {
+    if (screenCase_ == 39) {
       screenCase_ = 0;
       screen_ = null;
     }
@@ -1951,6 +2005,54 @@ public  final class Screen extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAttachmentDraft() {
+      return instance.hasAttachmentDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest getAttachmentDraft() {
+      return instance.getAttachmentDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder setAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest value) {
+      copyOnWrite();
+      instance.setAttachmentDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder setAttachmentDraft(
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAttachmentDraft(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder mergeAttachmentDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest value) {
+      copyOnWrite();
+      instance.mergeAttachmentDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftScreenRequest attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+     */
+    public Builder clearAttachmentDraft() {
+      copyOnWrite();
+      instance.clearAttachmentDraft();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.SessionScreenRequest session = 10 [json_name = "session"];</code>
      */
     @java.lang.Override
@@ -2227,12 +2329,13 @@ public  final class Screen extends
             io.github.lewin671.remoteagent.core.proto.UsageScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsScreenRequest.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest.class,
+            io.github.lewin671.remoteagent.core.proto.AttachmentDraftScreenRequest.class,
           };
           java.lang.String info =
-              "\u0000\u0013\u0001\u0000\u0001&\u0013\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
+              "\u0000\u0014\u0001\u0000\u0001\'\u0014\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000" +
               "\u0003<\u0000\u0004<\u0000\u0005<\u0000\n<\u0000\u0014<\u0000\u0015<\u0000\u0016" +
               "<\u0000\u0017<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$" +
-              "<\u0000%<\u0000&<\u0000";
+              "<\u0000%<\u0000&<\u0000\'<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -544,9 +544,13 @@ type AttachmentEvalScreenRequest struct {
 	// Putting a failed message's attachments back into the draft: judge only the machine's
 	// capabilities and the per-message limits, not whether it is online right now, so a
 	// message that failed while offline can still be restored.
-	PutBack       bool `protobuf:"varint,7,opt,name=put_back,json=putBack,proto3" json:"put_back,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PutBack bool `protobuf:"varint,7,opt,name=put_back,json=putBack,proto3" json:"put_back,omitempty"`
+	// Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+	TotalImageBytes int64 `protobuf:"varint,8,opt,name=total_image_bytes,json=totalImageBytes,proto3" json:"total_image_bytes,omitempty"`
+	// 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+	DraftViewerIndex int32 `protobuf:"varint,9,opt,name=draft_viewer_index,json=draftViewerIndex,proto3" json:"draft_viewer_index,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AttachmentEvalScreenRequest) Reset() {
@@ -628,6 +632,20 @@ func (x *AttachmentEvalScreenRequest) GetPutBack() bool {
 	return false
 }
 
+func (x *AttachmentEvalScreenRequest) GetTotalImageBytes() int64 {
+	if x != nil {
+		return x.TotalImageBytes
+	}
+	return 0
+}
+
+func (x *AttachmentEvalScreenRequest) GetDraftViewerIndex() int32 {
+	if x != nil {
+		return x.DraftViewerIndex
+	}
+	return 0
+}
+
 // Computed attachment limits, candidate decisions, and classified image problems.
 type AttachmentEvalViewModel struct {
 	state                    protoimpl.MessageState         `protogen:"open.v1"`
@@ -660,6 +678,10 @@ type AttachmentEvalViewModel struct {
 	// instead of composing their own limit text.
 	ImagesPickBlockedReason *Text `protobuf:"bytes,25,opt,name=images_pick_blocked_reason,json=imagesPickBlockedReason,proto3" json:"images_pick_blocked_reason,omitempty"`
 	FilesPickBlockedReason  *Text `protobuf:"bytes,26,opt,name=files_pick_blocked_reason,json=filesPickBlockedReason,proto3" json:"files_pick_blocked_reason,omitempty"`
+	// Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes <= 0.
+	OriginalTotalSizeText *Text `protobuf:"bytes,27,opt,name=original_total_size_text,json=originalTotalSizeText,proto3" json:"original_total_size_text,omitempty"`
+	// Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images <= 0.
+	DraftViewerPositionText *Text `protobuf:"bytes,28,opt,name=draft_viewer_position_text,json=draftViewerPositionText,proto3" json:"draft_viewer_position_text,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -876,6 +898,20 @@ func (x *AttachmentEvalViewModel) GetFilesPickBlockedReason() *Text {
 	return nil
 }
 
+func (x *AttachmentEvalViewModel) GetOriginalTotalSizeText() *Text {
+	if x != nil {
+		return x.OriginalTotalSizeText
+	}
+	return nil
+}
+
+func (x *AttachmentEvalViewModel) GetDraftViewerPositionText() *Text {
+	if x != nil {
+		return x.DraftViewerPositionText
+	}
+	return nil
+}
+
 var File_remoteagent_core_v1_attachments_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
@@ -908,7 +944,7 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\rreject_reason\x18\x04 \x01(\v2\x19.remoteagent.core.v1.TextR\frejectReason\x12!\n" +
 	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\x12%\n" +
 	"\x0eformatted_size\x18\x06 \x01(\tR\rformattedSize\x12\x19\n" +
-	"\bis_video\x18\a \x01(\bR\aisVideo\"\xd5\x02\n" +
+	"\bis_video\x18\a \x01(\bR\aisVideo\"\xaf\x03\n" +
 	"\x1bAttachmentEvalScreenRequest\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1d\n" +
@@ -920,7 +956,9 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"candidates\x18\x05 \x03(\v2-.remoteagent.core.v1.AttachmentCandidateInputR\n" +
 	"candidates\x12B\n" +
 	"\bproblems\x18\x06 \x03(\v2&.remoteagent.core.v1.ImageProblemInputR\bproblems\x12\x19\n" +
-	"\bput_back\x18\a \x01(\bR\aputBack\"\xe1\v\n" +
+	"\bput_back\x18\a \x01(\bR\aputBack\x12*\n" +
+	"\x11total_image_bytes\x18\b \x01(\x03R\x0ftotalImageBytes\x12,\n" +
+	"\x12draft_viewer_index\x18\t \x01(\x05R\x10draftViewerIndex\"\x8d\r\n" +
 	"\x17AttachmentEvalViewModel\x12/\n" +
 	"\x13capabilities_loaded\x18\x01 \x01(\bR\x12capabilitiesLoaded\x12'\n" +
 	"\x0fsupports_images\x18\x02 \x01(\bR\x0esupportsImages\x12%\n" +
@@ -949,7 +987,9 @@ const file_remoteagent_core_v1_attachments_view_proto_rawDesc = "" +
 	"\bproblems\x18\x17 \x03(\v2%.remoteagent.core.v1.ImageProblemViewR\bproblems\x12B\n" +
 	"\x0ffailure_summary\x18\x18 \x01(\v2\x19.remoteagent.core.v1.TextR\x0efailureSummary\x12V\n" +
 	"\x1aimages_pick_blocked_reason\x18\x19 \x01(\v2\x19.remoteagent.core.v1.TextR\x17imagesPickBlockedReason\x12T\n" +
-	"\x19files_pick_blocked_reason\x18\x1a \x01(\v2\x19.remoteagent.core.v1.TextR\x16filesPickBlockedReason*\xbf\x02\n" +
+	"\x19files_pick_blocked_reason\x18\x1a \x01(\v2\x19.remoteagent.core.v1.TextR\x16filesPickBlockedReason\x12R\n" +
+	"\x18original_total_size_text\x18\x1b \x01(\v2\x19.remoteagent.core.v1.TextR\x15originalTotalSizeText\x12V\n" +
+	"\x1adraft_viewer_position_text\x18\x1c \x01(\v2\x19.remoteagent.core.v1.TextR\x17draftViewerPositionText*\xbf\x02\n" +
 	"\x10ImageProblemKind\x12\"\n" +
 	"\x1eIMAGE_PROBLEM_KIND_UNSPECIFIED\x10\x00\x12)\n" +
 	"%IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE\x10\x01\x12!\n" +
@@ -1023,11 +1063,13 @@ var file_remoteagent_core_v1_attachments_view_proto_depIdxs = []int32{
 	9,  // 16: remoteagent.core.v1.AttachmentEvalViewModel.failure_summary:type_name -> remoteagent.core.v1.Text
 	9,  // 17: remoteagent.core.v1.AttachmentEvalViewModel.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
 	9,  // 18: remoteagent.core.v1.AttachmentEvalViewModel.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
-	19, // [19:19] is the sub-list for method output_type
-	19, // [19:19] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	9,  // 19: remoteagent.core.v1.AttachmentEvalViewModel.original_total_size_text:type_name -> remoteagent.core.v1.Text
+	9,  // 20: remoteagent.core.v1.AttachmentEvalViewModel.draft_viewer_position_text:type_name -> remoteagent.core.v1.Text
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_attachments_view_proto_init() }

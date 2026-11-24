@@ -328,6 +328,12 @@ public struct PBAttachmentEvalScreenRequest: Sendable {
   /// message that failed while offline can still be restored.
   public var putBack: Bool = false
 
+  /// Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+  public var totalImageBytes: Int64 = 0
+
+  /// 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+  public var draftViewerIndex: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -507,6 +513,26 @@ public struct PBAttachmentEvalViewModel: @unchecked Sendable {
   public var hasFilesPickBlockedReason: Bool {return _storage._filesPickBlockedReason != nil}
   /// Clears the value of `filesPickBlockedReason`. Subsequent reads from it will return its default value.
   public mutating func clearFilesPickBlockedReason() {_uniqueStorage()._filesPickBlockedReason = nil}
+
+  /// Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes <= 0.
+  public var originalTotalSizeText: PBCoreText {
+    get {return _storage._originalTotalSizeText ?? PBCoreText()}
+    set {_uniqueStorage()._originalTotalSizeText = newValue}
+  }
+  /// Returns true if `originalTotalSizeText` has been explicitly set.
+  public var hasOriginalTotalSizeText: Bool {return _storage._originalTotalSizeText != nil}
+  /// Clears the value of `originalTotalSizeText`. Subsequent reads from it will return its default value.
+  public mutating func clearOriginalTotalSizeText() {_uniqueStorage()._originalTotalSizeText = nil}
+
+  /// Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images <= 0.
+  public var draftViewerPositionText: PBCoreText {
+    get {return _storage._draftViewerPositionText ?? PBCoreText()}
+    set {_uniqueStorage()._draftViewerPositionText = newValue}
+  }
+  /// Returns true if `draftViewerPositionText` has been explicitly set.
+  public var hasDraftViewerPositionText: Bool {return _storage._draftViewerPositionText != nil}
+  /// Clears the value of `draftViewerPositionText`. Subsequent reads from it will return its default value.
+  public mutating func clearDraftViewerPositionText() {_uniqueStorage()._draftViewerPositionText = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -741,7 +767,7 @@ extension PBAttachmentCandidateDecision: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentEvalScreenRequest"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{3}current_images\0\u{3}current_files\0\u{1}candidates\0\u{1}problems\0\u{3}put_back\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}machine_id\0\u{3}session_id\0\u{3}current_images\0\u{3}current_files\0\u{1}candidates\0\u{1}problems\0\u{3}put_back\0\u{3}total_image_bytes\0\u{3}draft_viewer_index\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -756,6 +782,8 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.candidates) }()
       case 6: try { try decoder.decodeRepeatedMessageField(value: &self.problems) }()
       case 7: try { try decoder.decodeSingularBoolField(value: &self.putBack) }()
+      case 8: try { try decoder.decodeSingularInt64Field(value: &self.totalImageBytes) }()
+      case 9: try { try decoder.decodeSingularInt32Field(value: &self.draftViewerIndex) }()
       default: break
       }
     }
@@ -783,6 +811,12 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
     if self.putBack != false {
       try visitor.visitSingularBoolField(value: self.putBack, fieldNumber: 7)
     }
+    if self.totalImageBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.totalImageBytes, fieldNumber: 8)
+    }
+    if self.draftViewerIndex != 0 {
+      try visitor.visitSingularInt32Field(value: self.draftViewerIndex, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -794,6 +828,8 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
     if lhs.candidates != rhs.candidates {return false}
     if lhs.problems != rhs.problems {return false}
     if lhs.putBack != rhs.putBack {return false}
+    if lhs.totalImageBytes != rhs.totalImageBytes {return false}
+    if lhs.draftViewerIndex != rhs.draftViewerIndex {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -801,7 +837,7 @@ extension PBAttachmentEvalScreenRequest: SwiftProtobuf.Message, SwiftProtobuf._M
 
 extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".AttachmentEvalViewModel"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}library_room\0\u{3}can_pick_images\0\u{3}can_pick_files\0\u{3}can_pick_gallery\0\u{3}image_upload_blocked_reason\0\u{3}file_upload_blocked_reason\0\u{3}gallery_blocked_reason\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0\u{1}decisions\0\u{1}notice\0\u{1}problems\0\u{3}failure_summary\0\u{3}images_pick_blocked_reason\0\u{3}files_pick_blocked_reason\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}capabilities_loaded\0\u{3}supports_images\0\u{3}supports_files\0\u{3}max_images\0\u{3}max_files\0\u{3}max_file_bytes\0\u{3}max_file_name_bytes\0\u{3}max_file_size_text\0\u{3}original_image_max_bytes\0\u{3}gallery_allows_video\0\u{3}gallery_accept_mime\0\u{3}library_room\0\u{3}can_pick_images\0\u{3}can_pick_files\0\u{3}can_pick_gallery\0\u{3}image_upload_blocked_reason\0\u{3}file_upload_blocked_reason\0\u{3}gallery_blocked_reason\0\u{3}original_image_hint\0\u{3}file_metadata_notice\0\u{1}decisions\0\u{1}notice\0\u{1}problems\0\u{3}failure_summary\0\u{3}images_pick_blocked_reason\0\u{3}files_pick_blocked_reason\0\u{3}original_total_size_text\0\u{3}draft_viewer_position_text\0")
 
   fileprivate class _StorageClass {
     var _capabilitiesLoaded: Bool = false
@@ -830,6 +866,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
     var _failureSummary: PBCoreText? = nil
     var _imagesPickBlockedReason: PBCoreText? = nil
     var _filesPickBlockedReason: PBCoreText? = nil
+    var _originalTotalSizeText: PBCoreText? = nil
+    var _draftViewerPositionText: PBCoreText? = nil
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -866,6 +904,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       _failureSummary = source._failureSummary
       _imagesPickBlockedReason = source._imagesPickBlockedReason
       _filesPickBlockedReason = source._filesPickBlockedReason
+      _originalTotalSizeText = source._originalTotalSizeText
+      _draftViewerPositionText = source._draftViewerPositionText
     }
   }
 
@@ -910,6 +950,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         case 24: try { try decoder.decodeSingularMessageField(value: &_storage._failureSummary) }()
         case 25: try { try decoder.decodeSingularMessageField(value: &_storage._imagesPickBlockedReason) }()
         case 26: try { try decoder.decodeSingularMessageField(value: &_storage._filesPickBlockedReason) }()
+        case 27: try { try decoder.decodeSingularMessageField(value: &_storage._originalTotalSizeText) }()
+        case 28: try { try decoder.decodeSingularMessageField(value: &_storage._draftViewerPositionText) }()
         default: break
         }
       }
@@ -1000,6 +1042,12 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
       try { if let v = _storage._filesPickBlockedReason {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 26)
       } }()
+      try { if let v = _storage._originalTotalSizeText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 27)
+      } }()
+      try { if let v = _storage._draftViewerPositionText {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 28)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1035,6 +1083,8 @@ extension PBAttachmentEvalViewModel: SwiftProtobuf.Message, SwiftProtobuf._Messa
         if _storage._failureSummary != rhs_storage._failureSummary {return false}
         if _storage._imagesPickBlockedReason != rhs_storage._imagesPickBlockedReason {return false}
         if _storage._filesPickBlockedReason != rhs_storage._filesPickBlockedReason {return false}
+        if _storage._originalTotalSizeText != rhs_storage._originalTotalSizeText {return false}
+        if _storage._draftViewerPositionText != rhs_storage._draftViewerPositionText {return false}
         return true
       }
       if !storagesAreEqual {return false}

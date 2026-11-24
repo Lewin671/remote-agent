@@ -181,6 +181,17 @@ public interface ViewModelOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.AttachmentEvalViewModel getAttachmentEval();
 
   /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   * @return Whether the attachmentDraft field is set.
+   */
+  boolean hasAttachmentDraft();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftViewModel attachment_draft = 39 [json_name = "attachmentDraft"];</code>
+   * @return The attachmentDraft.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentDraftViewModel getAttachmentDraft();
+
+  /**
    * <code>.remoteagent.core.v1.SessionViewModel session = 10 [json_name = "session"];</code>
    * @return Whether the session field is set.
    */

@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package remoteagent.core.v1;
 
+import "remoteagent/core/v1/attachments.proto";
 import "remoteagent/core/v1/text.proto";
 import "remoteagent/v1/event.proto";
 
@@ -176,4 +177,5 @@ message NewSessionViewModel {
   int64 original_image_max_bytes = 41;
   Text original_image_hint = 42;
   Text file_metadata_notice = 43;
+  AttachmentDraftView draft = 44;
 }

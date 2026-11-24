@@ -1155,6 +1155,303 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SharedFileVerifyAndCommitResultEvent getSharedFileVerifyAndCommitResult();
 
   /**
+   * <code>.remoteagent.core.v1.AttachmentConfigEvent attachment_config = 240 [json_name = "attachmentConfig"];</code>
+   * @return Whether the attachmentConfig field is set.
+   */
+  boolean hasAttachmentConfig();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentConfigEvent attachment_config = 240 [json_name = "attachmentConfig"];</code>
+   * @return The attachmentConfig.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentConfigEvent getAttachmentConfig();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListedEvent draft_storage_listed = 241 [json_name = "draftStorageListed"];</code>
+   * @return Whether the draftStorageListed field is set.
+   */
+  boolean hasDraftStorageListed();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageListedEvent draft_storage_listed = 241 [json_name = "draftStorageListed"];</code>
+   * @return The draftStorageListed.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageListedEvent getDraftStorageListed();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadResultEvent draft_storage_read_result = 242 [json_name = "draftStorageReadResult"];</code>
+   * @return Whether the draftStorageReadResult field is set.
+   */
+  boolean hasDraftStorageReadResult();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageReadResultEvent draft_storage_read_result = 242 [json_name = "draftStorageReadResult"];</code>
+   * @return The draftStorageReadResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageReadResultEvent getDraftStorageReadResult();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteResultEvent draft_storage_write_result = 243 [json_name = "draftStorageWriteResult"];</code>
+   * @return Whether the draftStorageWriteResult field is set.
+   */
+  boolean hasDraftStorageWriteResult();
+  /**
+   * <code>.remoteagent.core.v1.DraftStorageWriteResultEvent draft_storage_write_result = 243 [json_name = "draftStorageWriteResult"];</code>
+   * @return The draftStorageWriteResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftStorageWriteResultEvent getDraftStorageWriteResult();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftOpenAction draft_open = 244 [json_name = "draftOpen"];</code>
+   * @return Whether the draftOpen field is set.
+   */
+  boolean hasDraftOpen();
+  /**
+   * <code>.remoteagent.core.v1.DraftOpenAction draft_open = 244 [json_name = "draftOpen"];</code>
+   * @return The draftOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftOpenAction getDraftOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftSetTextAction draft_set_text = 245 [json_name = "draftSetText"];</code>
+   * @return Whether the draftSetText field is set.
+   */
+  boolean hasDraftSetText();
+  /**
+   * <code>.remoteagent.core.v1.DraftSetTextAction draft_set_text = 245 [json_name = "draftSetText"];</code>
+   * @return The draftSetText.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftSetTextAction getDraftSetText();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftSetTargetMachineAction draft_set_target_machine = 246 [json_name = "draftSetTargetMachine"];</code>
+   * @return Whether the draftSetTargetMachine field is set.
+   */
+  boolean hasDraftSetTargetMachine();
+  /**
+   * <code>.remoteagent.core.v1.DraftSetTargetMachineAction draft_set_target_machine = 246 [json_name = "draftSetTargetMachine"];</code>
+   * @return The draftSetTargetMachine.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftSetTargetMachineAction getDraftSetTargetMachine();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftReserveSlotsAction draft_reserve_slots = 247 [json_name = "draftReserveSlots"];</code>
+   * @return Whether the draftReserveSlots field is set.
+   */
+  boolean hasDraftReserveSlots();
+  /**
+   * <code>.remoteagent.core.v1.DraftReserveSlotsAction draft_reserve_slots = 247 [json_name = "draftReserveSlots"];</code>
+   * @return The draftReserveSlots.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftReserveSlotsAction getDraftReserveSlots();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftReleaseSlotsAction draft_release_slots = 248 [json_name = "draftReleaseSlots"];</code>
+   * @return Whether the draftReleaseSlots field is set.
+   */
+  boolean hasDraftReleaseSlots();
+  /**
+   * <code>.remoteagent.core.v1.DraftReleaseSlotsAction draft_release_slots = 248 [json_name = "draftReleaseSlots"];</code>
+   * @return The draftReleaseSlots.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftReleaseSlotsAction getDraftReleaseSlots();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftAddItemsAction draft_add_items = 249 [json_name = "draftAddItems"];</code>
+   * @return Whether the draftAddItems field is set.
+   */
+  boolean hasDraftAddItems();
+  /**
+   * <code>.remoteagent.core.v1.DraftAddItemsAction draft_add_items = 249 [json_name = "draftAddItems"];</code>
+   * @return The draftAddItems.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftAddItemsAction getDraftAddItems();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftRemoveItemAction draft_remove_item = 250 [json_name = "draftRemoveItem"];</code>
+   * @return Whether the draftRemoveItem field is set.
+   */
+  boolean hasDraftRemoveItem();
+  /**
+   * <code>.remoteagent.core.v1.DraftRemoveItemAction draft_remove_item = 250 [json_name = "draftRemoveItem"];</code>
+   * @return The draftRemoveItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftRemoveItemAction getDraftRemoveItem();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftRetryItemAction draft_retry_item = 251 [json_name = "draftRetryItem"];</code>
+   * @return Whether the draftRetryItem field is set.
+   */
+  boolean hasDraftRetryItem();
+  /**
+   * <code>.remoteagent.core.v1.DraftRetryItemAction draft_retry_item = 251 [json_name = "draftRetryItem"];</code>
+   * @return The draftRetryItem.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftRetryItemAction getDraftRetryItem();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftSetOriginalAction draft_set_original = 252 [json_name = "draftSetOriginal"];</code>
+   * @return Whether the draftSetOriginal field is set.
+   */
+  boolean hasDraftSetOriginal();
+  /**
+   * <code>.remoteagent.core.v1.DraftSetOriginalAction draft_set_original = 252 [json_name = "draftSetOriginal"];</code>
+   * @return The draftSetOriginal.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftSetOriginalAction getDraftSetOriginal();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftClearAction draft_clear = 253 [json_name = "draftClear"];</code>
+   * @return Whether the draftClear field is set.
+   */
+  boolean hasDraftClear();
+  /**
+   * <code>.remoteagent.core.v1.DraftClearAction draft_clear = 253 [json_name = "draftClear"];</code>
+   * @return The draftClear.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftClearAction getDraftClear();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftForgetSessionAction draft_forget_session = 254 [json_name = "draftForgetSession"];</code>
+   * @return Whether the draftForgetSession field is set.
+   */
+  boolean hasDraftForgetSession();
+  /**
+   * <code>.remoteagent.core.v1.DraftForgetSessionAction draft_forget_session = 254 [json_name = "draftForgetSession"];</code>
+   * @return The draftForgetSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftForgetSessionAction getDraftForgetSession();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftClearAllAction draft_clear_all = 255 [json_name = "draftClearAll"];</code>
+   * @return Whether the draftClearAll field is set.
+   */
+  boolean hasDraftClearAll();
+  /**
+   * <code>.remoteagent.core.v1.DraftClearAllAction draft_clear_all = 255 [json_name = "draftClearAll"];</code>
+   * @return The draftClearAll.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftClearAllAction getDraftClearAll();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftDismissNoticeAction draft_dismiss_notice = 256 [json_name = "draftDismissNotice"];</code>
+   * @return Whether the draftDismissNotice field is set.
+   */
+  boolean hasDraftDismissNotice();
+  /**
+   * <code>.remoteagent.core.v1.DraftDismissNoticeAction draft_dismiss_notice = 256 [json_name = "draftDismissNotice"];</code>
+   * @return The draftDismissNotice.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftDismissNoticeAction getDraftDismissNotice();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPauseUploadAction attachment_pause_upload = 257 [json_name = "attachmentPauseUpload"];</code>
+   * @return Whether the attachmentPauseUpload field is set.
+   */
+  boolean hasAttachmentPauseUpload();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPauseUploadAction attachment_pause_upload = 257 [json_name = "attachmentPauseUpload"];</code>
+   * @return The attachmentPauseUpload.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentPauseUploadAction getAttachmentPauseUpload();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentResumeUploadAction attachment_resume_upload = 258 [json_name = "attachmentResumeUpload"];</code>
+   * @return Whether the attachmentResumeUpload field is set.
+   */
+  boolean hasAttachmentResumeUpload();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentResumeUploadAction attachment_resume_upload = 258 [json_name = "attachmentResumeUpload"];</code>
+   * @return The attachmentResumeUpload.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentResumeUploadAction getAttachmentResumeUpload();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageResultEvent attachment_prepare_image_result = 259 [json_name = "attachmentPrepareImageResult"];</code>
+   * @return Whether the attachmentPrepareImageResult field is set.
+   */
+  boolean hasAttachmentPrepareImageResult();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentPrepareImageResultEvent attachment_prepare_image_result = 259 [json_name = "attachmentPrepareImageResult"];</code>
+   * @return The attachmentPrepareImageResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentPrepareImageResultEvent getAttachmentPrepareImageResult();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileResultEvent attachment_hash_file_result = 260 [json_name = "attachmentHashFileResult"];</code>
+   * @return Whether the attachmentHashFileResult field is set.
+   */
+  boolean hasAttachmentHashFileResult();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentHashFileResultEvent attachment_hash_file_result = 260 [json_name = "attachmentHashFileResult"];</code>
+   * @return The attachmentHashFileResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentHashFileResultEvent getAttachmentHashFileResult();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkResultEvent attachment_read_chunk_result = 261 [json_name = "attachmentReadChunkResult"];</code>
+   * @return Whether the attachmentReadChunkResult field is set.
+   */
+  boolean hasAttachmentReadChunkResult();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentReadChunkResultEvent attachment_read_chunk_result = 261 [json_name = "attachmentReadChunkResult"];</code>
+   * @return The attachmentReadChunkResult.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkResultEvent getAttachmentReadChunkResult();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftSendSessionAction draft_send_session = 262 [json_name = "draftSendSession"];</code>
+   * @return Whether the draftSendSession field is set.
+   */
+  boolean hasDraftSendSession();
+  /**
+   * <code>.remoteagent.core.v1.DraftSendSessionAction draft_send_session = 262 [json_name = "draftSendSession"];</code>
+   * @return The draftSendSession.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftSendSessionAction getDraftSendSession();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftPutBackInputAction draft_put_back_input = 263 [json_name = "draftPutBackInput"];</code>
+   * @return Whether the draftPutBackInput field is set.
+   */
+  boolean hasDraftPutBackInput();
+  /**
+   * <code>.remoteagent.core.v1.DraftPutBackInputAction draft_put_back_input = 263 [json_name = "draftPutBackInput"];</code>
+   * @return The draftPutBackInput.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftPutBackInputAction getDraftPutBackInput();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerOpenAction draft_image_viewer_open = 264 [json_name = "draftImageViewerOpen"];</code>
+   * @return Whether the draftImageViewerOpen field is set.
+   */
+  boolean hasDraftImageViewerOpen();
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerOpenAction draft_image_viewer_open = 264 [json_name = "draftImageViewerOpen"];</code>
+   * @return The draftImageViewerOpen.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftImageViewerOpenAction getDraftImageViewerOpen();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerNavigateAction draft_image_viewer_navigate = 265 [json_name = "draftImageViewerNavigate"];</code>
+   * @return Whether the draftImageViewerNavigate field is set.
+   */
+  boolean hasDraftImageViewerNavigate();
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerNavigateAction draft_image_viewer_navigate = 265 [json_name = "draftImageViewerNavigate"];</code>
+   * @return The draftImageViewerNavigate.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftImageViewerNavigateAction getDraftImageViewerNavigate();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerCloseAction draft_image_viewer_close = 266 [json_name = "draftImageViewerClose"];</code>
+   * @return Whether the draftImageViewerClose field is set.
+   */
+  boolean hasDraftImageViewerClose();
+  /**
+   * <code>.remoteagent.core.v1.DraftImageViewerCloseAction draft_image_viewer_close = 266 [json_name = "draftImageViewerClose"];</code>
+   * @return The draftImageViewerClose.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftImageViewerCloseAction getDraftImageViewerClose();
+
+  /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
    * @return Whether the scheduleCacheLoaded field is set.
    */

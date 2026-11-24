@@ -396,4 +396,15 @@ public interface NewSessionViewModelOrBuilder extends
    * @return The fileMetadataNotice.
    */
   io.github.lewin671.remoteagent.core.proto.Text getFileMetadataNotice();
+
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   * @return Whether the draft field is set.
+   */
+  boolean hasDraft();
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 44 [json_name = "draft"];</code>
+   * @return The draft.
+   */
+  io.github.lewin671.remoteagent.core.proto.AttachmentDraftView getDraft();
 }

@@ -20,6 +20,8 @@
 in: remoteagent.core.v1.Screen
 in: remoteagent.core.v1.Event
 in: remoteagent.core.v1.EventBatch
+in: remoteagent.core.v1.PersistedDraftRecord
+in: remoteagent.core.v1.PersistedOutboxRecord
 in: remoteagent.v1.LiveSnapshot
 in: remoteagent.v1.GetSecurityStatesResponse
 in: remoteagent.v1.PutSecurityStateResponse
@@ -53,6 +55,8 @@ out: remoteagent.core.v1.ViewModel
 out: remoteagent.core.v1.EffectBatch
 out: remoteagent.core.v1.Effect
 out: remoteagent.core.v1.ProjectionState
+out: remoteagent.core.v1.PersistedDraftRecord
+out: remoteagent.core.v1.PersistedOutboxRecord
 out: remoteagent.v1.Command
 out: remoteagent.v1.Envelope
 out: remoteagent.v1.Header
@@ -103,6 +107,8 @@ strict: remoteagent.v1.MachineReplacementProof
 strict: remoteagent.v1.PairApproval
 strict: remoteagent.v1.PairingPayload
 strict: remoteagent.v1.DeviceRegistration
+strict: remoteagent.core.v1.PersistedDraftRecord
+strict: remoteagent.core.v1.PersistedOutboxRecord
 
 # Core internal .Clone() call sites (enforced by Go compiler)
 clone: remoteagent.v1.AgentDefaults

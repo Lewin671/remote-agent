@@ -7,7 +7,8 @@ package io.github.lewin671.remoteagent.core.proto;
 
 /**
  * <pre>
- * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
+ * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
+ * (or simply focus the composer when handled_by_core is true).
  * </pre>
  *
  * Protobuf type {@code remoteagent.core.v1.SessionRestoreComposerEffect}
@@ -359,6 +360,32 @@ public  final class SessionRestoreComposerEffect extends
     fileIds_.add(value.toStringUtf8());
   }
 
+  public static final int HANDLED_BY_CORE_FIELD_NUMBER = 6;
+  private boolean handledByCore_;
+  /**
+   * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+   * @return The handledByCore.
+   */
+  @java.lang.Override
+  public boolean getHandledByCore() {
+    return handledByCore_;
+  }
+  /**
+   * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+   * @param value The handledByCore to set.
+   */
+  private void setHandledByCore(boolean value) {
+    
+    handledByCore_ = value;
+  }
+  /**
+   * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+   */
+  private void clearHandledByCore() {
+
+    handledByCore_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -444,7 +471,8 @@ public  final class SessionRestoreComposerEffect extends
 
   /**
    * <pre>
-   * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer.
+   * SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
+   * (or simply focus the composer when handled_by_core is true).
    * </pre>
    *
    * Protobuf type {@code remoteagent.core.v1.SessionRestoreComposerEffect}
@@ -791,6 +819,34 @@ public  final class SessionRestoreComposerEffect extends
       return this;
     }
 
+    /**
+     * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+     * @return The handledByCore.
+     */
+    @java.lang.Override
+    public boolean getHandledByCore() {
+      return instance.getHandledByCore();
+    }
+    /**
+     * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+     * @param value The handledByCore to set.
+     * @return This builder for chaining.
+     */
+    public Builder setHandledByCore(boolean value) {
+      copyOnWrite();
+      instance.setHandledByCore(value);
+      return this;
+    }
+    /**
+     * <code>bool handled_by_core = 6 [json_name = "handledByCore"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearHandledByCore() {
+      copyOnWrite();
+      instance.clearHandledByCore();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionRestoreComposerEffect)
   }
   @java.lang.Override
@@ -812,10 +868,11 @@ public  final class SessionRestoreComposerEffect extends
             "text_",
             "imageIds_",
             "fileIds_",
+            "handledByCore_",
           };
           java.lang.String info =
-              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
-              "\u0003\u0208\u0004\u021a\u0005\u021a";
+              "\u0000\u0006\u0000\u0000\u0001\u0006\u0006\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u0208\u0004\u021a\u0005\u021a\u0006\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

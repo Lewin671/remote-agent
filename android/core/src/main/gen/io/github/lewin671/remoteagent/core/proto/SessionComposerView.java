@@ -577,6 +577,54 @@ public  final class SessionComposerView extends
     bitField0_ = (bitField0_ & ~0x00000010);
   }
 
+  public static final int DRAFT_FIELD_NUMBER = 15;
+  private io.github.lewin671.remoteagent.core.proto.AttachmentDraftView draft_;
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraft() {
+    return ((bitField0_ & 0x00000020) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.AttachmentDraftView getDraft() {
+    return draft_ == null ? io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.getDefaultInstance() : draft_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+    value.getClass();  // minimal bytecode null check
+    draft_ = value;
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+    value.getClass();  // minimal bytecode null check
+    if (draft_ != null &&
+        draft_ != io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.getDefaultInstance()) {
+      draft_ =
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.newBuilder(draft_).mergeFrom(value).buildPartial();
+    } else {
+      draft_ = value;
+    }
+    bitField0_ |= 0x00000020;
+  }
+  /**
+   * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+   */
+  private void clearDraft() {
+    draft_ = null;
+    bitField0_ = (bitField0_ & ~0x00000020);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionComposerView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1243,6 +1291,53 @@ public  final class SessionComposerView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraft() {
+      return instance.hasDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.AttachmentDraftView getDraft() {
+      return instance.getDraft();
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    public Builder setDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+      copyOnWrite();
+      instance.setDraft(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    public Builder setDraft(
+        io.github.lewin671.remoteagent.core.proto.AttachmentDraftView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraft(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    public Builder mergeDraft(io.github.lewin671.remoteagent.core.proto.AttachmentDraftView value) {
+      copyOnWrite();
+      instance.mergeDraft(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.AttachmentDraftView draft = 15 [json_name = "draft"];</code>
+     */
+    public Builder clearDraft() {  copyOnWrite();
+      instance.clearDraft();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionComposerView)
   }
   @java.lang.Override
@@ -1274,11 +1369,13 @@ public  final class SessionComposerView extends
             "isDefaultPlaceholder_",
             "slashWarningTitle_",
             "slashWarningText_",
+            "draft_",
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0001\u0000\u0001\u0007\u0002\u1009" +
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0001\u0000\u0001\u0007\u0002\u1009" +
               "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0007\u0006\u0007\u0007\u0007\b\u0007" +
-              "\t\u1009\u0002\n\u021a\u000b\f\f\u0007\r\u1009\u0003\u000e\u1009\u0004";
+              "\t\u1009\u0002\n\u021a\u000b\f\f\u0007\r\u1009\u0003\u000e\u1009\u0004\u000f\u1009" +
+              "\u0005";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

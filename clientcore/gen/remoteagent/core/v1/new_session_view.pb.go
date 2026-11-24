@@ -694,6 +694,7 @@ type NewSessionViewModel struct {
 	OriginalImageMaxBytes    int64
 	OriginalImageHint        *Text
 	FileMetadataNotice       *Text
+	Draft                    *AttachmentDraftView
 }
 
 func (m *NewSessionViewModel) GetProjectSelectable() bool {
@@ -954,6 +955,12 @@ func (m *NewSessionViewModel) GetFileMetadataNotice() *Text {
 	}
 	return nil
 }
+func (m *NewSessionViewModel) GetDraft() *AttachmentDraftView {
+	if m != nil {
+		return m.Draft
+	}
+	return nil
+}
 
 var LitewireDesc_NewSessionViewModel = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1000,6 +1007,7 @@ var LitewireDesc_NewSessionViewModel = litewire.MessageDesc{
 		{Num: 41, Offset: unsafe.Offsetof(NewSessionViewModel{}.OriginalImageMaxBytes), Kind: litewire.KindInt64},
 		{Num: 42, Offset: unsafe.Offsetof(NewSessionViewModel{}.OriginalImageHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 43, Offset: unsafe.Offsetof(NewSessionViewModel{}.FileMetadataNotice), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+		{Num: 44, Offset: unsafe.Offsetof(NewSessionViewModel{}.Draft), Kind: litewire.KindMessage, Sub: &LitewireDesc_AttachmentDraftView},
 	},
 }
 

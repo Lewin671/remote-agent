@@ -102,6 +102,10 @@ message AttachmentEvalScreenRequest {
   // capabilities and the per-message limits, not whether it is online right now, so a
   // message that failed while offline can still be restored.
   bool put_back = 7;
+  // Total byte size of draft images for formatting original-quality total size text (3A gap #1).
+  int64 total_image_bytes = 8;
+  // 0-based active index in DraftImageViewer for formatting position text (3A gap #2).
+  int32 draft_viewer_index = 9;
 }
 
 // Computed attachment limits, candidate decisions, and classified image problems.
@@ -140,4 +144,8 @@ message AttachmentEvalViewModel {
   // instead of composing their own limit text.
   Text images_pick_blocked_reason = 25;
   Text files_pick_blocked_reason = 26;
+  // Formatted original-image total size text (e.g. image.total_size("2.4 MB")); nil when total_image_bytes <= 0.
+  Text original_total_size_text = 27;
+  // Formatted DraftImageViewer position text (e.g. "1 / 3"); nil when current_images <= 0.
+  Text draft_viewer_position_text = 28;
 }

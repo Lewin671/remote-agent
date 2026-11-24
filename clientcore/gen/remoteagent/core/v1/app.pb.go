@@ -24,23 +24,26 @@ const (
 type TimerKind int32
 
 const (
-	TimerKind_TIMER_KIND_UNSPECIFIED           TimerKind = 0
-	TimerKind_TIMER_KIND_RECONNECT             TimerKind = 1
-	TimerKind_TIMER_KIND_STREAM_OPEN           TimerKind = 2
-	TimerKind_TIMER_KIND_LIVENESS              TimerKind = 3
-	TimerKind_TIMER_KIND_LINK_GRACE            TimerKind = 4
-	TimerKind_TIMER_KIND_LIST_RETRY            TimerKind = 5
-	TimerKind_TIMER_KIND_PREFS_RETRY           TimerKind = 6
-	TimerKind_TIMER_KIND_HISTORY_SWEEP         TimerKind = 7
-	TimerKind_TIMER_KIND_LIVE_POLL             TimerKind = 8
-	TimerKind_TIMER_KIND_COMMAND_RETRY         TimerKind = 9
-	TimerKind_TIMER_KIND_SESSION_UNDO          TimerKind = 10
-	TimerKind_TIMER_KIND_SESSION_STEER_GRACE   TimerKind = 11
-	TimerKind_TIMER_KIND_DIRECT_ENGINE         TimerKind = 12
-	TimerKind_TIMER_KIND_DIRECT_SESSION        TimerKind = 13
-	TimerKind_TIMER_KIND_TERMINAL_REOPEN       TimerKind = 14
-	TimerKind_TIMER_KIND_SECURITY_POLL         TimerKind = 15
-	TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT TimerKind = 16
+	TimerKind_TIMER_KIND_UNSPECIFIED                 TimerKind = 0
+	TimerKind_TIMER_KIND_RECONNECT                   TimerKind = 1
+	TimerKind_TIMER_KIND_STREAM_OPEN                 TimerKind = 2
+	TimerKind_TIMER_KIND_LIVENESS                    TimerKind = 3
+	TimerKind_TIMER_KIND_LINK_GRACE                  TimerKind = 4
+	TimerKind_TIMER_KIND_LIST_RETRY                  TimerKind = 5
+	TimerKind_TIMER_KIND_PREFS_RETRY                 TimerKind = 6
+	TimerKind_TIMER_KIND_HISTORY_SWEEP               TimerKind = 7
+	TimerKind_TIMER_KIND_LIVE_POLL                   TimerKind = 8
+	TimerKind_TIMER_KIND_COMMAND_RETRY               TimerKind = 9
+	TimerKind_TIMER_KIND_SESSION_UNDO                TimerKind = 10
+	TimerKind_TIMER_KIND_SESSION_STEER_GRACE         TimerKind = 11
+	TimerKind_TIMER_KIND_DIRECT_ENGINE               TimerKind = 12
+	TimerKind_TIMER_KIND_DIRECT_SESSION              TimerKind = 13
+	TimerKind_TIMER_KIND_TERMINAL_REOPEN             TimerKind = 14
+	TimerKind_TIMER_KIND_SECURITY_POLL               TimerKind = 15
+	TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT       TimerKind = 16
+	TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL      TimerKind = 17
+	TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT TimerKind = 18
+	TimerKind_TIMER_KIND_DRAFT_EXPIRY                TimerKind = 19
 )
 
 type OutcomeSource int32
@@ -70,6 +73,7 @@ const (
 	ScreenTarget_SCREEN_TARGET_CLIENT_DETAIL          ScreenTarget = 35
 	ScreenTarget_SCREEN_TARGET_USAGE                  ScreenTarget = 36
 	ScreenTarget_SCREEN_TARGET_DIRECT_DIAGNOSTICS     ScreenTarget = 37
+	ScreenTarget_SCREEN_TARGET_ATTACHMENT_DRAFT       ScreenTarget = 39
 	ScreenTarget_SCREEN_TARGET_SESSION                ScreenTarget = 10
 	ScreenTarget_SCREEN_TARGET_SCHEDULES              ScreenTarget = 20
 	ScreenTarget_SCREEN_TARGET_SCHEDULE_DETAIL        ScreenTarget = 21
@@ -335,6 +339,13 @@ type Screen_AttachmentEval struct {
 
 func (*Screen_AttachmentEval) isScreen_Screen() {}
 
+type Screen_AttachmentDraft struct {
+	_               [0]func()
+	AttachmentDraft *AttachmentDraftScreenRequest
+}
+
+func (*Screen_AttachmentDraft) isScreen_Screen() {}
+
 type Screen_Session struct {
 	_       [0]func()
 	Session *SessionScreenRequest
@@ -460,6 +471,12 @@ func (m *Screen) GetAttachmentEval() *AttachmentEvalScreenRequest {
 	}
 	return nil
 }
+func (m *Screen) GetAttachmentDraft() *AttachmentDraftScreenRequest {
+	if x, ok := m.GetScreen().(*Screen_AttachmentDraft); ok && x != nil {
+		return x.AttachmentDraft
+	}
+	return nil
+}
 func (m *Screen) GetSession() *SessionScreenRequest {
 	if x, ok := m.GetScreen().(*Screen_Session); ok && x != nil {
 		return x.Session
@@ -504,7 +521,7 @@ func extraUnmarshal_Screen(base unsafe.Pointer, num litewire.Number, wtyp litewi
 	switch {
 	case num <= 31:
 		return m.extraUnmarshalPart0(num, wtyp, bp)
-	case num <= 38:
+	case num <= 39:
 		return m.extraUnmarshalPart1(num, wtyp, bp)
 	}
 	return false, nil
@@ -667,6 +684,13 @@ func (m *Screen) extraUnmarshalPart1(num litewire.Number, wtyp litewire.Type, bp
 				m.Screen = w
 			}
 			sub = w.AttachmentEval
+		case 39:
+			w, _ := m.Screen.(*Screen_AttachmentDraft)
+			if w == nil || w.AttachmentDraft == nil {
+				w = &Screen_AttachmentDraft{AttachmentDraft: &AttachmentDraftScreenRequest{}}
+				m.Screen = w
+			}
+			sub = w.AttachmentDraft
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -782,6 +806,13 @@ type ViewModel_AttachmentEval struct {
 }
 
 func (*ViewModel_AttachmentEval) isViewModel_View() {}
+
+type ViewModel_AttachmentDraft struct {
+	_               [0]func()
+	AttachmentDraft *AttachmentDraftViewModel
+}
+
+func (*ViewModel_AttachmentDraft) isViewModel_View() {}
 
 type ViewModel_Session struct {
 	_       [0]func()
@@ -905,6 +936,12 @@ func (m *ViewModel) GetDirectDiagnostics() *DirectDiagnosticsViewModel {
 func (m *ViewModel) GetAttachmentEval() *AttachmentEvalViewModel {
 	if x, ok := m.GetView().(*ViewModel_AttachmentEval); ok && x != nil {
 		return x.AttachmentEval
+	}
+	return nil
+}
+func (m *ViewModel) GetAttachmentDraft() *AttachmentDraftViewModel {
+	if x, ok := m.GetView().(*ViewModel_AttachmentDraft); ok && x != nil {
+		return x.AttachmentDraft
 	}
 	return nil
 }
@@ -1039,6 +1076,10 @@ func (m *ViewModel) appendMarshalViewPart1(b []byte) ([]byte, bool) {
 	case *ViewModel_AttachmentEval:
 		if x != nil && x.AttachmentEval != nil {
 			onum, omsg = 38, x.AttachmentEval
+		}
+	case *ViewModel_AttachmentDraft:
+		if x != nil && x.AttachmentDraft != nil {
+			onum, omsg = 39, x.AttachmentDraft
 		}
 	case *ViewModel_Session:
 		if x != nil && x.Session != nil {
@@ -4725,6 +4766,195 @@ type Event_SharedFileVerifyAndCommitResult struct {
 
 func (*Event_SharedFileVerifyAndCommitResult) isEvent_Event() {}
 
+type Event_AttachmentConfig struct {
+	_                [0]func()
+	AttachmentConfig *AttachmentConfigEvent
+}
+
+func (*Event_AttachmentConfig) isEvent_Event() {}
+
+type Event_DraftStorageListed struct {
+	_                  [0]func()
+	DraftStorageListed *DraftStorageListedEvent
+}
+
+func (*Event_DraftStorageListed) isEvent_Event() {}
+
+type Event_DraftStorageReadResult struct {
+	_                      [0]func()
+	DraftStorageReadResult *DraftStorageReadResultEvent
+}
+
+func (*Event_DraftStorageReadResult) isEvent_Event() {}
+
+type Event_DraftStorageWriteResult struct {
+	_                       [0]func()
+	DraftStorageWriteResult *DraftStorageWriteResultEvent
+}
+
+func (*Event_DraftStorageWriteResult) isEvent_Event() {}
+
+type Event_DraftOpen struct {
+	_         [0]func()
+	DraftOpen *DraftOpenAction
+}
+
+func (*Event_DraftOpen) isEvent_Event() {}
+
+type Event_DraftSetText struct {
+	_            [0]func()
+	DraftSetText *DraftSetTextAction
+}
+
+func (*Event_DraftSetText) isEvent_Event() {}
+
+type Event_DraftSetTargetMachine struct {
+	_                     [0]func()
+	DraftSetTargetMachine *DraftSetTargetMachineAction
+}
+
+func (*Event_DraftSetTargetMachine) isEvent_Event() {}
+
+type Event_DraftReserveSlots struct {
+	_                 [0]func()
+	DraftReserveSlots *DraftReserveSlotsAction
+}
+
+func (*Event_DraftReserveSlots) isEvent_Event() {}
+
+type Event_DraftReleaseSlots struct {
+	_                 [0]func()
+	DraftReleaseSlots *DraftReleaseSlotsAction
+}
+
+func (*Event_DraftReleaseSlots) isEvent_Event() {}
+
+type Event_DraftAddItems struct {
+	_             [0]func()
+	DraftAddItems *DraftAddItemsAction
+}
+
+func (*Event_DraftAddItems) isEvent_Event() {}
+
+type Event_DraftRemoveItem struct {
+	_               [0]func()
+	DraftRemoveItem *DraftRemoveItemAction
+}
+
+func (*Event_DraftRemoveItem) isEvent_Event() {}
+
+type Event_DraftRetryItem struct {
+	_              [0]func()
+	DraftRetryItem *DraftRetryItemAction
+}
+
+func (*Event_DraftRetryItem) isEvent_Event() {}
+
+type Event_DraftSetOriginal struct {
+	_                [0]func()
+	DraftSetOriginal *DraftSetOriginalAction
+}
+
+func (*Event_DraftSetOriginal) isEvent_Event() {}
+
+type Event_DraftClear struct {
+	_          [0]func()
+	DraftClear *DraftClearAction
+}
+
+func (*Event_DraftClear) isEvent_Event() {}
+
+type Event_DraftForgetSession struct {
+	_                  [0]func()
+	DraftForgetSession *DraftForgetSessionAction
+}
+
+func (*Event_DraftForgetSession) isEvent_Event() {}
+
+type Event_DraftClearAll struct {
+	_             [0]func()
+	DraftClearAll *DraftClearAllAction
+}
+
+func (*Event_DraftClearAll) isEvent_Event() {}
+
+type Event_DraftDismissNotice struct {
+	_                  [0]func()
+	DraftDismissNotice *DraftDismissNoticeAction
+}
+
+func (*Event_DraftDismissNotice) isEvent_Event() {}
+
+type Event_AttachmentPauseUpload struct {
+	_                     [0]func()
+	AttachmentPauseUpload *AttachmentPauseUploadAction
+}
+
+func (*Event_AttachmentPauseUpload) isEvent_Event() {}
+
+type Event_AttachmentResumeUpload struct {
+	_                      [0]func()
+	AttachmentResumeUpload *AttachmentResumeUploadAction
+}
+
+func (*Event_AttachmentResumeUpload) isEvent_Event() {}
+
+type Event_AttachmentPrepareImageResult struct {
+	_                            [0]func()
+	AttachmentPrepareImageResult *AttachmentPrepareImageResultEvent
+}
+
+func (*Event_AttachmentPrepareImageResult) isEvent_Event() {}
+
+type Event_AttachmentHashFileResult struct {
+	_                        [0]func()
+	AttachmentHashFileResult *AttachmentHashFileResultEvent
+}
+
+func (*Event_AttachmentHashFileResult) isEvent_Event() {}
+
+type Event_AttachmentReadChunkResult struct {
+	_                         [0]func()
+	AttachmentReadChunkResult *AttachmentReadChunkResultEvent
+}
+
+func (*Event_AttachmentReadChunkResult) isEvent_Event() {}
+
+type Event_DraftSendSession struct {
+	_                [0]func()
+	DraftSendSession *DraftSendSessionAction
+}
+
+func (*Event_DraftSendSession) isEvent_Event() {}
+
+type Event_DraftPutBackInput struct {
+	_                 [0]func()
+	DraftPutBackInput *DraftPutBackInputAction
+}
+
+func (*Event_DraftPutBackInput) isEvent_Event() {}
+
+type Event_DraftImageViewerOpen struct {
+	_                    [0]func()
+	DraftImageViewerOpen *DraftImageViewerOpenAction
+}
+
+func (*Event_DraftImageViewerOpen) isEvent_Event() {}
+
+type Event_DraftImageViewerNavigate struct {
+	_                        [0]func()
+	DraftImageViewerNavigate *DraftImageViewerNavigateAction
+}
+
+func (*Event_DraftImageViewerNavigate) isEvent_Event() {}
+
+type Event_DraftImageViewerClose struct {
+	_                     [0]func()
+	DraftImageViewerClose *DraftImageViewerCloseAction
+}
+
+func (*Event_DraftImageViewerClose) isEvent_Event() {}
+
 type Event_ScheduleCacheLoaded struct {
 	_                   [0]func()
 	ScheduleCacheLoaded *ScheduleCacheLoadedEvent
@@ -5824,6 +6054,168 @@ func (m *Event) GetSharedFileVerifyAndCommitResult() *SharedFileVerifyAndCommitR
 	}
 	return nil
 }
+func (m *Event) GetAttachmentConfig() *AttachmentConfigEvent {
+	if x, ok := m.GetEvent().(*Event_AttachmentConfig); ok && x != nil {
+		return x.AttachmentConfig
+	}
+	return nil
+}
+func (m *Event) GetDraftStorageListed() *DraftStorageListedEvent {
+	if x, ok := m.GetEvent().(*Event_DraftStorageListed); ok && x != nil {
+		return x.DraftStorageListed
+	}
+	return nil
+}
+func (m *Event) GetDraftStorageReadResult() *DraftStorageReadResultEvent {
+	if x, ok := m.GetEvent().(*Event_DraftStorageReadResult); ok && x != nil {
+		return x.DraftStorageReadResult
+	}
+	return nil
+}
+func (m *Event) GetDraftStorageWriteResult() *DraftStorageWriteResultEvent {
+	if x, ok := m.GetEvent().(*Event_DraftStorageWriteResult); ok && x != nil {
+		return x.DraftStorageWriteResult
+	}
+	return nil
+}
+func (m *Event) GetDraftOpen() *DraftOpenAction {
+	if x, ok := m.GetEvent().(*Event_DraftOpen); ok && x != nil {
+		return x.DraftOpen
+	}
+	return nil
+}
+func (m *Event) GetDraftSetText() *DraftSetTextAction {
+	if x, ok := m.GetEvent().(*Event_DraftSetText); ok && x != nil {
+		return x.DraftSetText
+	}
+	return nil
+}
+func (m *Event) GetDraftSetTargetMachine() *DraftSetTargetMachineAction {
+	if x, ok := m.GetEvent().(*Event_DraftSetTargetMachine); ok && x != nil {
+		return x.DraftSetTargetMachine
+	}
+	return nil
+}
+func (m *Event) GetDraftReserveSlots() *DraftReserveSlotsAction {
+	if x, ok := m.GetEvent().(*Event_DraftReserveSlots); ok && x != nil {
+		return x.DraftReserveSlots
+	}
+	return nil
+}
+func (m *Event) GetDraftReleaseSlots() *DraftReleaseSlotsAction {
+	if x, ok := m.GetEvent().(*Event_DraftReleaseSlots); ok && x != nil {
+		return x.DraftReleaseSlots
+	}
+	return nil
+}
+func (m *Event) GetDraftAddItems() *DraftAddItemsAction {
+	if x, ok := m.GetEvent().(*Event_DraftAddItems); ok && x != nil {
+		return x.DraftAddItems
+	}
+	return nil
+}
+func (m *Event) GetDraftRemoveItem() *DraftRemoveItemAction {
+	if x, ok := m.GetEvent().(*Event_DraftRemoveItem); ok && x != nil {
+		return x.DraftRemoveItem
+	}
+	return nil
+}
+func (m *Event) GetDraftRetryItem() *DraftRetryItemAction {
+	if x, ok := m.GetEvent().(*Event_DraftRetryItem); ok && x != nil {
+		return x.DraftRetryItem
+	}
+	return nil
+}
+func (m *Event) GetDraftSetOriginal() *DraftSetOriginalAction {
+	if x, ok := m.GetEvent().(*Event_DraftSetOriginal); ok && x != nil {
+		return x.DraftSetOriginal
+	}
+	return nil
+}
+func (m *Event) GetDraftClear() *DraftClearAction {
+	if x, ok := m.GetEvent().(*Event_DraftClear); ok && x != nil {
+		return x.DraftClear
+	}
+	return nil
+}
+func (m *Event) GetDraftForgetSession() *DraftForgetSessionAction {
+	if x, ok := m.GetEvent().(*Event_DraftForgetSession); ok && x != nil {
+		return x.DraftForgetSession
+	}
+	return nil
+}
+func (m *Event) GetDraftClearAll() *DraftClearAllAction {
+	if x, ok := m.GetEvent().(*Event_DraftClearAll); ok && x != nil {
+		return x.DraftClearAll
+	}
+	return nil
+}
+func (m *Event) GetDraftDismissNotice() *DraftDismissNoticeAction {
+	if x, ok := m.GetEvent().(*Event_DraftDismissNotice); ok && x != nil {
+		return x.DraftDismissNotice
+	}
+	return nil
+}
+func (m *Event) GetAttachmentPauseUpload() *AttachmentPauseUploadAction {
+	if x, ok := m.GetEvent().(*Event_AttachmentPauseUpload); ok && x != nil {
+		return x.AttachmentPauseUpload
+	}
+	return nil
+}
+func (m *Event) GetAttachmentResumeUpload() *AttachmentResumeUploadAction {
+	if x, ok := m.GetEvent().(*Event_AttachmentResumeUpload); ok && x != nil {
+		return x.AttachmentResumeUpload
+	}
+	return nil
+}
+func (m *Event) GetAttachmentPrepareImageResult() *AttachmentPrepareImageResultEvent {
+	if x, ok := m.GetEvent().(*Event_AttachmentPrepareImageResult); ok && x != nil {
+		return x.AttachmentPrepareImageResult
+	}
+	return nil
+}
+func (m *Event) GetAttachmentHashFileResult() *AttachmentHashFileResultEvent {
+	if x, ok := m.GetEvent().(*Event_AttachmentHashFileResult); ok && x != nil {
+		return x.AttachmentHashFileResult
+	}
+	return nil
+}
+func (m *Event) GetAttachmentReadChunkResult() *AttachmentReadChunkResultEvent {
+	if x, ok := m.GetEvent().(*Event_AttachmentReadChunkResult); ok && x != nil {
+		return x.AttachmentReadChunkResult
+	}
+	return nil
+}
+func (m *Event) GetDraftSendSession() *DraftSendSessionAction {
+	if x, ok := m.GetEvent().(*Event_DraftSendSession); ok && x != nil {
+		return x.DraftSendSession
+	}
+	return nil
+}
+func (m *Event) GetDraftPutBackInput() *DraftPutBackInputAction {
+	if x, ok := m.GetEvent().(*Event_DraftPutBackInput); ok && x != nil {
+		return x.DraftPutBackInput
+	}
+	return nil
+}
+func (m *Event) GetDraftImageViewerOpen() *DraftImageViewerOpenAction {
+	if x, ok := m.GetEvent().(*Event_DraftImageViewerOpen); ok && x != nil {
+		return x.DraftImageViewerOpen
+	}
+	return nil
+}
+func (m *Event) GetDraftImageViewerNavigate() *DraftImageViewerNavigateAction {
+	if x, ok := m.GetEvent().(*Event_DraftImageViewerNavigate); ok && x != nil {
+		return x.DraftImageViewerNavigate
+	}
+	return nil
+}
+func (m *Event) GetDraftImageViewerClose() *DraftImageViewerCloseAction {
+	if x, ok := m.GetEvent().(*Event_DraftImageViewerClose); ok && x != nil {
+		return x.DraftImageViewerClose
+	}
+	return nil
+}
 func (m *Event) GetScheduleCacheLoaded() *ScheduleCacheLoadedEvent {
 	if x, ok := m.GetEvent().(*Event_ScheduleCacheLoaded); ok && x != nil {
 		return x.ScheduleCacheLoaded
@@ -6280,24 +6672,28 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart4(num, wtyp, bp)
 	case num <= 225:
 		return m.extraUnmarshalPart5(num, wtyp, bp)
-	case num <= 303:
+	case num <= 243:
 		return m.extraUnmarshalPart6(num, wtyp, bp)
-	case num <= 325:
+	case num <= 255:
 		return m.extraUnmarshalPart7(num, wtyp, bp)
-	case num <= 342:
+	case num <= 300:
 		return m.extraUnmarshalPart8(num, wtyp, bp)
-	case num <= 354:
+	case num <= 322:
 		return m.extraUnmarshalPart9(num, wtyp, bp)
-	case num <= 378:
+	case num <= 339:
 		return m.extraUnmarshalPart10(num, wtyp, bp)
-	case num <= 407:
+	case num <= 351:
 		return m.extraUnmarshalPart11(num, wtyp, bp)
-	case num <= 419:
+	case num <= 375:
 		return m.extraUnmarshalPart12(num, wtyp, bp)
-	case num <= 462:
+	case num <= 402:
 		return m.extraUnmarshalPart13(num, wtyp, bp)
-	case num <= 465:
+	case num <= 416:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
+	case num <= 459:
+		return m.extraUnmarshalPart15(num, wtyp, bp)
+	case num <= 465:
+		return m.extraUnmarshalPart16(num, wtyp, bp)
 	}
 	return false, nil
 }
@@ -6976,6 +7372,231 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.SharedFileVerifyAndCommitResult
+		case 240:
+			w, _ := m.Event.(*Event_AttachmentConfig)
+			if w == nil || w.AttachmentConfig == nil {
+				w = &Event_AttachmentConfig{AttachmentConfig: &AttachmentConfigEvent{}}
+				m.Event = w
+			}
+			sub = w.AttachmentConfig
+		case 241:
+			w, _ := m.Event.(*Event_DraftStorageListed)
+			if w == nil || w.DraftStorageListed == nil {
+				w = &Event_DraftStorageListed{DraftStorageListed: &DraftStorageListedEvent{}}
+				m.Event = w
+			}
+			sub = w.DraftStorageListed
+		case 242:
+			w, _ := m.Event.(*Event_DraftStorageReadResult)
+			if w == nil || w.DraftStorageReadResult == nil {
+				w = &Event_DraftStorageReadResult{DraftStorageReadResult: &DraftStorageReadResultEvent{}}
+				m.Event = w
+			}
+			sub = w.DraftStorageReadResult
+		case 243:
+			w, _ := m.Event.(*Event_DraftStorageWriteResult)
+			if w == nil || w.DraftStorageWriteResult == nil {
+				w = &Event_DraftStorageWriteResult{DraftStorageWriteResult: &DraftStorageWriteResultEvent{}}
+				m.Event = w
+			}
+			sub = w.DraftStorageWriteResult
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 244:
+			w, _ := m.Event.(*Event_DraftOpen)
+			if w == nil || w.DraftOpen == nil {
+				w = &Event_DraftOpen{DraftOpen: &DraftOpenAction{}}
+				m.Event = w
+			}
+			sub = w.DraftOpen
+		case 245:
+			w, _ := m.Event.(*Event_DraftSetText)
+			if w == nil || w.DraftSetText == nil {
+				w = &Event_DraftSetText{DraftSetText: &DraftSetTextAction{}}
+				m.Event = w
+			}
+			sub = w.DraftSetText
+		case 246:
+			w, _ := m.Event.(*Event_DraftSetTargetMachine)
+			if w == nil || w.DraftSetTargetMachine == nil {
+				w = &Event_DraftSetTargetMachine{DraftSetTargetMachine: &DraftSetTargetMachineAction{}}
+				m.Event = w
+			}
+			sub = w.DraftSetTargetMachine
+		case 247:
+			w, _ := m.Event.(*Event_DraftReserveSlots)
+			if w == nil || w.DraftReserveSlots == nil {
+				w = &Event_DraftReserveSlots{DraftReserveSlots: &DraftReserveSlotsAction{}}
+				m.Event = w
+			}
+			sub = w.DraftReserveSlots
+		case 248:
+			w, _ := m.Event.(*Event_DraftReleaseSlots)
+			if w == nil || w.DraftReleaseSlots == nil {
+				w = &Event_DraftReleaseSlots{DraftReleaseSlots: &DraftReleaseSlotsAction{}}
+				m.Event = w
+			}
+			sub = w.DraftReleaseSlots
+		case 249:
+			w, _ := m.Event.(*Event_DraftAddItems)
+			if w == nil || w.DraftAddItems == nil {
+				w = &Event_DraftAddItems{DraftAddItems: &DraftAddItemsAction{}}
+				m.Event = w
+			}
+			sub = w.DraftAddItems
+		case 250:
+			w, _ := m.Event.(*Event_DraftRemoveItem)
+			if w == nil || w.DraftRemoveItem == nil {
+				w = &Event_DraftRemoveItem{DraftRemoveItem: &DraftRemoveItemAction{}}
+				m.Event = w
+			}
+			sub = w.DraftRemoveItem
+		case 251:
+			w, _ := m.Event.(*Event_DraftRetryItem)
+			if w == nil || w.DraftRetryItem == nil {
+				w = &Event_DraftRetryItem{DraftRetryItem: &DraftRetryItemAction{}}
+				m.Event = w
+			}
+			sub = w.DraftRetryItem
+		case 252:
+			w, _ := m.Event.(*Event_DraftSetOriginal)
+			if w == nil || w.DraftSetOriginal == nil {
+				w = &Event_DraftSetOriginal{DraftSetOriginal: &DraftSetOriginalAction{}}
+				m.Event = w
+			}
+			sub = w.DraftSetOriginal
+		case 253:
+			w, _ := m.Event.(*Event_DraftClear)
+			if w == nil || w.DraftClear == nil {
+				w = &Event_DraftClear{DraftClear: &DraftClearAction{}}
+				m.Event = w
+			}
+			sub = w.DraftClear
+		case 254:
+			w, _ := m.Event.(*Event_DraftForgetSession)
+			if w == nil || w.DraftForgetSession == nil {
+				w = &Event_DraftForgetSession{DraftForgetSession: &DraftForgetSessionAction{}}
+				m.Event = w
+			}
+			sub = w.DraftForgetSession
+		case 255:
+			w, _ := m.Event.(*Event_DraftClearAll)
+			if w == nil || w.DraftClearAll == nil {
+				w = &Event_DraftClearAll{DraftClearAll: &DraftClearAllAction{}}
+				m.Event = w
+			}
+			sub = w.DraftClearAll
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
+		case 256:
+			w, _ := m.Event.(*Event_DraftDismissNotice)
+			if w == nil || w.DraftDismissNotice == nil {
+				w = &Event_DraftDismissNotice{DraftDismissNotice: &DraftDismissNoticeAction{}}
+				m.Event = w
+			}
+			sub = w.DraftDismissNotice
+		case 257:
+			w, _ := m.Event.(*Event_AttachmentPauseUpload)
+			if w == nil || w.AttachmentPauseUpload == nil {
+				w = &Event_AttachmentPauseUpload{AttachmentPauseUpload: &AttachmentPauseUploadAction{}}
+				m.Event = w
+			}
+			sub = w.AttachmentPauseUpload
+		case 258:
+			w, _ := m.Event.(*Event_AttachmentResumeUpload)
+			if w == nil || w.AttachmentResumeUpload == nil {
+				w = &Event_AttachmentResumeUpload{AttachmentResumeUpload: &AttachmentResumeUploadAction{}}
+				m.Event = w
+			}
+			sub = w.AttachmentResumeUpload
+		case 259:
+			w, _ := m.Event.(*Event_AttachmentPrepareImageResult)
+			if w == nil || w.AttachmentPrepareImageResult == nil {
+				w = &Event_AttachmentPrepareImageResult{AttachmentPrepareImageResult: &AttachmentPrepareImageResultEvent{}}
+				m.Event = w
+			}
+			sub = w.AttachmentPrepareImageResult
+		case 260:
+			w, _ := m.Event.(*Event_AttachmentHashFileResult)
+			if w == nil || w.AttachmentHashFileResult == nil {
+				w = &Event_AttachmentHashFileResult{AttachmentHashFileResult: &AttachmentHashFileResultEvent{}}
+				m.Event = w
+			}
+			sub = w.AttachmentHashFileResult
+		case 261:
+			w, _ := m.Event.(*Event_AttachmentReadChunkResult)
+			if w == nil || w.AttachmentReadChunkResult == nil {
+				w = &Event_AttachmentReadChunkResult{AttachmentReadChunkResult: &AttachmentReadChunkResultEvent{}}
+				m.Event = w
+			}
+			sub = w.AttachmentReadChunkResult
+		case 262:
+			w, _ := m.Event.(*Event_DraftSendSession)
+			if w == nil || w.DraftSendSession == nil {
+				w = &Event_DraftSendSession{DraftSendSession: &DraftSendSessionAction{}}
+				m.Event = w
+			}
+			sub = w.DraftSendSession
+		case 263:
+			w, _ := m.Event.(*Event_DraftPutBackInput)
+			if w == nil || w.DraftPutBackInput == nil {
+				w = &Event_DraftPutBackInput{DraftPutBackInput: &DraftPutBackInputAction{}}
+				m.Event = w
+			}
+			sub = w.DraftPutBackInput
+		case 264:
+			w, _ := m.Event.(*Event_DraftImageViewerOpen)
+			if w == nil || w.DraftImageViewerOpen == nil {
+				w = &Event_DraftImageViewerOpen{DraftImageViewerOpen: &DraftImageViewerOpenAction{}}
+				m.Event = w
+			}
+			sub = w.DraftImageViewerOpen
+		case 265:
+			w, _ := m.Event.(*Event_DraftImageViewerNavigate)
+			if w == nil || w.DraftImageViewerNavigate == nil {
+				w = &Event_DraftImageViewerNavigate{DraftImageViewerNavigate: &DraftImageViewerNavigateAction{}}
+				m.Event = w
+			}
+			sub = w.DraftImageViewerNavigate
+		case 266:
+			w, _ := m.Event.(*Event_DraftImageViewerClose)
+			if w == nil || w.DraftImageViewerClose == nil {
+				w = &Event_DraftImageViewerClose{DraftImageViewerClose: &DraftImageViewerCloseAction{}}
+				m.Event = w
+			}
+			sub = w.DraftImageViewerClose
 		case 300:
 			w, _ := m.Event.(*Event_ScheduleCacheLoaded)
 			if w == nil || w.ScheduleCacheLoaded == nil {
@@ -6983,6 +7604,24 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleCacheLoaded
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 301:
 			w, _ := m.Event.(*Event_ScheduleSeenLoaded)
 			if w == nil || w.ScheduleSeenLoaded == nil {
@@ -7004,24 +7643,6 @@ func (m *Event) extraUnmarshalPart6(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleRefresh
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 304:
 			w, _ := m.Event.(*Event_ScheduleSetVisibleSession)
 			if w == nil || w.ScheduleSetVisibleSession == nil {
@@ -7085,6 +7706,24 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleDetailClose
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 323:
 			w, _ := m.Event.(*Event_ScheduleDetailShowLatestResult)
 			if w == nil || w.ScheduleDetailShowLatestResult == nil {
@@ -7106,24 +7745,6 @@ func (m *Event) extraUnmarshalPart7(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleDetailShowAllRuns
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 326:
 			w, _ := m.Event.(*Event_ScheduleDetailOpenRun)
 			if w == nil || w.ScheduleDetailOpenRun == nil {
@@ -7187,6 +7808,24 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormClose
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 340:
 			w, _ := m.Event.(*Event_ScheduleFormSetMessage)
 			if w == nil || w.ScheduleFormSetMessage == nil {
@@ -7208,24 +7847,6 @@ func (m *Event) extraUnmarshalPart8(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.ScheduleFormSetNotify
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 343:
 			w, _ := m.Event.(*Event_ScheduleFormSelectProject)
 			if w == nil || w.ScheduleFormSelectProject == nil {
@@ -7289,6 +7910,24 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.MachineStatusRetry
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 352:
 			w, _ := m.Event.(*Event_MachineStatusTab)
 			if w == nil || w.MachineStatusTab == nil {
@@ -7310,24 +7949,6 @@ func (m *Event) extraUnmarshalPart9(num litewire.Number, wtyp litewire.Type, bp 
 				m.Event = w
 			}
 			sub = w.MachineStatusCleanup
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 355:
 			w, _ := m.Event.(*Event_MachineStatusPollTick)
 			if w == nil || w.MachineStatusPollTick == nil {
@@ -7391,6 +8012,24 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SetNotificationPref
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 376:
 			w, _ := m.Event.(*Event_SetAppearancePref)
 			if w == nil || w.SetAppearancePref == nil {
@@ -7412,24 +8051,6 @@ func (m *Event) extraUnmarshalPart10(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.ClientUpdateState
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 379:
 			w, _ := m.Event.(*Event_CheckForUpdates)
 			if w == nil || w.CheckForUpdates == nil {
@@ -7493,6 +8114,24 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectSignalReceived
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 403:
 			w, _ := m.Event.(*Event_DirectSignalDelivery)
 			if w == nil || w.DirectSignalDelivery == nil {
@@ -7514,24 +8153,6 @@ func (m *Event) extraUnmarshalPart11(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPcDescription
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 408:
 			w, _ := m.Event.(*Event_DirectPcRemoteSet)
 			if w == nil || w.DirectPcRemoteSet == nil {
@@ -7595,6 +8216,24 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectRetryNow
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 417:
 			w, _ := m.Event.(*Event_DirectRefreshDiagnostics)
 			if w == nil || w.DirectRefreshDiagnostics == nil {
@@ -7616,24 +8255,6 @@ func (m *Event) extraUnmarshalPart12(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectBulkTransferDone
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 420:
 			w, _ := m.Event.(*Event_TerminalStream)
 			if w == nil || w.TerminalStream == nil {
@@ -7697,6 +8318,24 @@ func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityKeyGenerated
+		}
+		if sub != nil {
+			if err := litewire.ReadMessage(&b, sub); err != nil {
+				return false, err
+			}
+			*bp = b
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+//go:noinline
+func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
+	b := *bp
+	var sub litewire.Unmarshaler
+	if wtyp == litewire.BytesType {
+		switch num {
 		case 460:
 			w, _ := m.Event.(*Event_SecurityKeyEncapsulated)
 			if w == nil || w.SecurityKeyEncapsulated == nil {
@@ -7718,24 +8357,6 @@ func (m *Event) extraUnmarshalPart13(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SecurityRpcResult
-		}
-		if sub != nil {
-			if err := litewire.ReadMessage(&b, sub); err != nil {
-				return false, err
-			}
-			*bp = b
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-//go:noinline
-func (m *Event) extraUnmarshalPart14(num litewire.Number, wtyp litewire.Type, bp *[]byte) (bool, error) {
-	b := *bp
-	var sub litewire.Unmarshaler
-	if wtyp == litewire.BytesType {
-		switch num {
 		case 463:
 			w, _ := m.Event.(*Event_SecurityForeground)
 			if w == nil || w.SecurityForeground == nil {
@@ -9342,6 +9963,69 @@ type Effect_UsageCacheWrite struct {
 
 func (*Effect_UsageCacheWrite) isEffect_Effect() {}
 
+type Effect_DraftStorageList struct {
+	_                [0]func()
+	DraftStorageList *DraftStorageListEffect
+}
+
+func (*Effect_DraftStorageList) isEffect_Effect() {}
+
+type Effect_DraftStorageRead struct {
+	_                [0]func()
+	DraftStorageRead *DraftStorageReadEffect
+}
+
+func (*Effect_DraftStorageRead) isEffect_Effect() {}
+
+type Effect_DraftStorageWrite struct {
+	_                 [0]func()
+	DraftStorageWrite *DraftStorageWriteEffect
+}
+
+func (*Effect_DraftStorageWrite) isEffect_Effect() {}
+
+type Effect_DraftStorageDelete struct {
+	_                  [0]func()
+	DraftStorageDelete *DraftStorageDeleteEffect
+}
+
+func (*Effect_DraftStorageDelete) isEffect_Effect() {}
+
+type Effect_DraftStorageClearAll struct {
+	_                    [0]func()
+	DraftStorageClearAll *DraftStorageClearAllEffect
+}
+
+func (*Effect_DraftStorageClearAll) isEffect_Effect() {}
+
+type Effect_AttachmentPrepareImage struct {
+	_                      [0]func()
+	AttachmentPrepareImage *AttachmentPrepareImageEffect
+}
+
+func (*Effect_AttachmentPrepareImage) isEffect_Effect() {}
+
+type Effect_AttachmentHashFile struct {
+	_                  [0]func()
+	AttachmentHashFile *AttachmentHashFileEffect
+}
+
+func (*Effect_AttachmentHashFile) isEffect_Effect() {}
+
+type Effect_AttachmentReadChunk struct {
+	_                   [0]func()
+	AttachmentReadChunk *AttachmentReadChunkEffect
+}
+
+func (*Effect_AttachmentReadChunk) isEffect_Effect() {}
+
+type Effect_AttachmentReleaseLocal struct {
+	_                      [0]func()
+	AttachmentReleaseLocal *AttachmentReleaseLocalEffect
+}
+
+func (*Effect_AttachmentReleaseLocal) isEffect_Effect() {}
+
 type Effect_SessionRestoreComposer struct {
 	_                      [0]func()
 	SessionRestoreComposer *SessionRestoreComposerEffect
@@ -9773,6 +10457,60 @@ func (m *Effect) GetUsageCacheWrite() *UsageCacheWriteEffect {
 	}
 	return nil
 }
+func (m *Effect) GetDraftStorageList() *DraftStorageListEffect {
+	if x, ok := m.GetEffect().(*Effect_DraftStorageList); ok && x != nil {
+		return x.DraftStorageList
+	}
+	return nil
+}
+func (m *Effect) GetDraftStorageRead() *DraftStorageReadEffect {
+	if x, ok := m.GetEffect().(*Effect_DraftStorageRead); ok && x != nil {
+		return x.DraftStorageRead
+	}
+	return nil
+}
+func (m *Effect) GetDraftStorageWrite() *DraftStorageWriteEffect {
+	if x, ok := m.GetEffect().(*Effect_DraftStorageWrite); ok && x != nil {
+		return x.DraftStorageWrite
+	}
+	return nil
+}
+func (m *Effect) GetDraftStorageDelete() *DraftStorageDeleteEffect {
+	if x, ok := m.GetEffect().(*Effect_DraftStorageDelete); ok && x != nil {
+		return x.DraftStorageDelete
+	}
+	return nil
+}
+func (m *Effect) GetDraftStorageClearAll() *DraftStorageClearAllEffect {
+	if x, ok := m.GetEffect().(*Effect_DraftStorageClearAll); ok && x != nil {
+		return x.DraftStorageClearAll
+	}
+	return nil
+}
+func (m *Effect) GetAttachmentPrepareImage() *AttachmentPrepareImageEffect {
+	if x, ok := m.GetEffect().(*Effect_AttachmentPrepareImage); ok && x != nil {
+		return x.AttachmentPrepareImage
+	}
+	return nil
+}
+func (m *Effect) GetAttachmentHashFile() *AttachmentHashFileEffect {
+	if x, ok := m.GetEffect().(*Effect_AttachmentHashFile); ok && x != nil {
+		return x.AttachmentHashFile
+	}
+	return nil
+}
+func (m *Effect) GetAttachmentReadChunk() *AttachmentReadChunkEffect {
+	if x, ok := m.GetEffect().(*Effect_AttachmentReadChunk); ok && x != nil {
+		return x.AttachmentReadChunk
+	}
+	return nil
+}
+func (m *Effect) GetAttachmentReleaseLocal() *AttachmentReleaseLocalEffect {
+	if x, ok := m.GetEffect().(*Effect_AttachmentReleaseLocal); ok && x != nil {
+		return x.AttachmentReleaseLocal
+	}
+	return nil
+}
 func (m *Effect) GetSessionRestoreComposer() *SessionRestoreComposerEffect {
 	if x, ok := m.GetEffect().(*Effect_SessionRestoreComposer); ok && x != nil {
 		return x.SessionRestoreComposer
@@ -10054,6 +10792,9 @@ func extraMarshal_Effect(base unsafe.Pointer, b []byte, idx litewire.Number) []b
 		if !ok {
 			b, ok = m.appendMarshalEffectPart5(b)
 		}
+		if !ok {
+			b, ok = m.appendMarshalEffectPart6(b)
+		}
 	}
 	return b
 }
@@ -10169,9 +10910,9 @@ func (m *Effect) appendMarshalEffectPart1(b []byte) ([]byte, bool) {
 		if x != nil && x.UsageCacheWrite != nil {
 			onum, omsg = 76, x.UsageCacheWrite
 		}
-	case *Effect_SessionRestoreComposer:
-		if x != nil && x.SessionRestoreComposer != nil {
-			onum, omsg = 40, x.SessionRestoreComposer
+	case *Effect_DraftStorageList:
+		if x != nil && x.DraftStorageList != nil {
+			onum, omsg = 80, x.DraftStorageList
 		}
 	default:
 		return b, false
@@ -10187,6 +10928,42 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_DraftStorageRead:
+		if x != nil && x.DraftStorageRead != nil {
+			onum, omsg = 81, x.DraftStorageRead
+		}
+	case *Effect_DraftStorageWrite:
+		if x != nil && x.DraftStorageWrite != nil {
+			onum, omsg = 82, x.DraftStorageWrite
+		}
+	case *Effect_DraftStorageDelete:
+		if x != nil && x.DraftStorageDelete != nil {
+			onum, omsg = 83, x.DraftStorageDelete
+		}
+	case *Effect_DraftStorageClearAll:
+		if x != nil && x.DraftStorageClearAll != nil {
+			onum, omsg = 84, x.DraftStorageClearAll
+		}
+	case *Effect_AttachmentPrepareImage:
+		if x != nil && x.AttachmentPrepareImage != nil {
+			onum, omsg = 85, x.AttachmentPrepareImage
+		}
+	case *Effect_AttachmentHashFile:
+		if x != nil && x.AttachmentHashFile != nil {
+			onum, omsg = 86, x.AttachmentHashFile
+		}
+	case *Effect_AttachmentReadChunk:
+		if x != nil && x.AttachmentReadChunk != nil {
+			onum, omsg = 87, x.AttachmentReadChunk
+		}
+	case *Effect_AttachmentReleaseLocal:
+		if x != nil && x.AttachmentReleaseLocal != nil {
+			onum, omsg = 88, x.AttachmentReleaseLocal
+		}
+	case *Effect_SessionRestoreComposer:
+		if x != nil && x.SessionRestoreComposer != nil {
+			onum, omsg = 40, x.SessionRestoreComposer
+		}
 	case *Effect_SessionResendAttachments:
 		if x != nil && x.SessionResendAttachments != nil {
 			onum, omsg = 41, x.SessionResendAttachments
@@ -10199,6 +10976,20 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.SharedFileInspectDisk != nil {
 			onum, omsg = 43, x.SharedFileInspectDisk
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SharedFileWriteChunk:
 		if x != nil && x.SharedFileWriteChunk != nil {
 			onum, omsg = 44, x.SharedFileWriteChunk
@@ -10235,20 +11026,6 @@ func (m *Effect) appendMarshalEffectPart2(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleDeleteCache != nil {
 			onum, omsg = 61, x.ScheduleDeleteCache
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_ScheduleLoadSeen:
 		if x != nil && x.ScheduleLoadSeen != nil {
 			onum, omsg = 62, x.ScheduleLoadSeen
@@ -10261,6 +11038,20 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.ScheduleDismissNotifications != nil {
 			onum, omsg = 64, x.ScheduleDismissNotifications
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_ScheduleNavigate:
 		if x != nil && x.ScheduleNavigate != nil {
 			onum, omsg = 65, x.ScheduleNavigate
@@ -10297,20 +11088,6 @@ func (m *Effect) appendMarshalEffectPart3(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectDcReadStats != nil {
 			onum, omsg = 109, x.DirectDcReadStats
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_DirectBulkRoute:
 		if x != nil && x.DirectBulkRoute != nil {
 			onum, omsg = 111, x.DirectBulkRoute
@@ -10323,6 +11100,20 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.DirectRetryNowResult != nil {
 			onum, omsg = 113, x.DirectRetryNowResult
 		}
+	default:
+		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
+	switch x := m.Effect.(type) {
 	case *Effect_SecurityKeySign:
 		if x != nil && x.SecurityKeySign != nil {
 			onum, omsg = 130, x.SecurityKeySign
@@ -10359,20 +11150,6 @@ func (m *Effect) appendMarshalEffectPart4(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityRpc != nil {
 			onum, omsg = 141, x.SecurityRpc
 		}
-	default:
-		return b, false
-	}
-	if omsg != nil {
-		b = litewire.AppendMessage(b, onum, omsg)
-	}
-	return b, true
-}
-
-//go:noinline
-func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
-	var onum litewire.Number
-	var omsg litewire.Marshaler
-	switch x := m.Effect.(type) {
 	case *Effect_SecurityWorkflowResult:
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
@@ -10385,15 +11162,27 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityNotifyOpened != nil {
 			onum, omsg = 144, x.SecurityNotifyOpened
 		}
-	case *Effect_SecurityTokenUpdated:
-		if x != nil && x.SecurityTokenUpdated != nil {
-			onum, omsg = 145, x.SecurityTokenUpdated
-		}
 	default:
 		return b, false
 	}
 	if omsg != nil {
 		b = litewire.AppendMessage(b, onum, omsg)
+	}
+	return b, true
+}
+
+//go:noinline
+func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
+	switch x := m.Effect.(type) {
+	case *Effect_SecurityTokenUpdated:
+		if x != nil {
+			if x.SecurityTokenUpdated != nil {
+				b = litewire.AppendMessage(b, 145, x.SecurityTokenUpdated)
+			}
+		}
+		return b, true
+	default:
+		return b, false
 	}
 	return b, true
 }

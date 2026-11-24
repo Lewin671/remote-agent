@@ -20,6 +20,7 @@ public  final class SessionTrayItemView extends
     text_ = "";
     imageIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
     fileIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
+    localAttachments_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int REQUEST_ID_FIELD_NUMBER = 1;
@@ -1034,6 +1035,129 @@ public  final class SessionTrayItemView extends
   private void clearIsSkeleton() {
 
     isSkeleton_ = false;
+  }
+
+  public static final int LOCAL_ATTACHMENTS_FIELD_NUMBER = 28;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> localAttachments_;
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> getLocalAttachmentsList() {
+    return localAttachments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummaryOrBuilder> 
+      getLocalAttachmentsOrBuilderList() {
+    return localAttachments_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.Override
+  public int getLocalAttachmentsCount() {
+    return localAttachments_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary getLocalAttachments(int index) {
+    return localAttachments_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummaryOrBuilder getLocalAttachmentsOrBuilder(
+      int index) {
+    return localAttachments_.get(index);
+  }
+  private void ensureLocalAttachmentsIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> tmp = localAttachments_;
+    if (!tmp.isModifiable()) {
+      localAttachments_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setLocalAttachments(
+      int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureLocalAttachmentsIsMutable();
+    localAttachments_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addLocalAttachments(io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureLocalAttachmentsIsMutable();
+    localAttachments_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addLocalAttachments(
+      int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+    value.getClass();  // minimal bytecode null check
+    ensureLocalAttachmentsIsMutable();
+    localAttachments_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  private void addAllLocalAttachments(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> values) {
+    ensureLocalAttachmentsIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, localAttachments_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  private void clearLocalAttachments() {
+    localAttachments_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+   */
+  private void removeLocalAttachments(int index) {
+    ensureLocalAttachmentsIsMutable();
+    localAttachments_.remove(index);
+  }
+
+  public static final int RESTORED_FROM_CRASH_FIELD_NUMBER = 29;
+  private boolean restoredFromCrash_;
+  /**
+   * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+   * @return The restoredFromCrash.
+   */
+  @java.lang.Override
+  public boolean getRestoredFromCrash() {
+    return restoredFromCrash_;
+  }
+  /**
+   * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+   * @param value The restoredFromCrash to set.
+   */
+  private void setRestoredFromCrash(boolean value) {
+    
+    restoredFromCrash_ = value;
+  }
+  /**
+   * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+   */
+  private void clearRestoredFromCrash() {
+
+    restoredFromCrash_ = false;
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SessionTrayItemView parseFrom(
@@ -2190,6 +2314,136 @@ public  final class SessionTrayItemView extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> getLocalAttachmentsList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getLocalAttachmentsList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    @java.lang.Override
+    public int getLocalAttachmentsCount() {
+      return instance.getLocalAttachmentsCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary getLocalAttachments(int index) {
+      return instance.getLocalAttachments(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder setLocalAttachments(
+        int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+      copyOnWrite();
+      instance.setLocalAttachments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder setLocalAttachments(
+        int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.setLocalAttachments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder addLocalAttachments(io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+      copyOnWrite();
+      instance.addLocalAttachments(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder addLocalAttachments(
+        int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary value) {
+      copyOnWrite();
+      instance.addLocalAttachments(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder addLocalAttachments(
+        io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.addLocalAttachments(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder addLocalAttachments(
+        int index, io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary.Builder builderForValue) {
+      copyOnWrite();
+      instance.addLocalAttachments(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder addAllLocalAttachments(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary> values) {
+      copyOnWrite();
+      instance.addAllLocalAttachments(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder clearLocalAttachments() {
+      copyOnWrite();
+      instance.clearLocalAttachments();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.OutboxAttachmentSummary local_attachments = 28 [json_name = "localAttachments"];</code>
+     */
+    public Builder removeLocalAttachments(int index) {
+      copyOnWrite();
+      instance.removeLocalAttachments(index);
+      return this;
+    }
+
+    /**
+     * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+     * @return The restoredFromCrash.
+     */
+    @java.lang.Override
+    public boolean getRestoredFromCrash() {
+      return instance.getRestoredFromCrash();
+    }
+    /**
+     * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+     * @param value The restoredFromCrash to set.
+     * @return This builder for chaining.
+     */
+    public Builder setRestoredFromCrash(boolean value) {
+      copyOnWrite();
+      instance.setRestoredFromCrash(value);
+      return this;
+    }
+    /**
+     * <code>bool restored_from_crash = 29 [json_name = "restoredFromCrash"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearRestoredFromCrash() {
+      copyOnWrite();
+      instance.clearRestoredFromCrash();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionTrayItemView)
   }
   @java.lang.Override
@@ -2234,13 +2488,16 @@ public  final class SessionTrayItemView extends
             "networkActionsDisabled_",
             "serverBacked_",
             "isSkeleton_",
+            "localAttachments_",
+            io.github.lewin671.remoteagent.core.proto.OutboxAttachmentSummary.class,
+            "restoredFromCrash_",
           };
           java.lang.String info =
-              "\u0000\u001b\u0000\u0001\u0001\u001b\u001b\u0000\u0002\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u001d\u0000\u0001\u0001\u001d\u001d\u0000\u0003\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\f\u0004\f\u0005\f\u0006\u0004\u0007\u0007\b\u0208\t\u1009\u0000\n\u0007\u000b" +
               "\u0004\f\u0004\r\u0004\u000e\u021a\u000f\u021a\u0010\f\u0011\u1009\u0001\u0012\u0007" +
               "\u0013\u0007\u0014\u0007\u0015\u0007\u0016\u0007\u0017\u0007\u0018\u0007\u0019\u0007" +
-              "\u001a\u0007\u001b\u0007";
+              "\u001a\u0007\u001b\u0007\u001c\u001b\u001d\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
