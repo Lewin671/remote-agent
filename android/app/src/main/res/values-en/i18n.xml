@@ -243,6 +243,7 @@
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
     <string name="errors_client_out_of_date" formatted="false">"This client version is out of date. Update and retry."</string>
+    <string name="errors_command_failed" formatted="false">"Command failed"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
     <string name="errors_connection_timed_out" formatted="false">"Connection timed out"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"Connection timed out. Reconnecting."</string>
@@ -253,6 +254,7 @@
     <string name="errors_history_has_a_gap_retry" formatted="false">"History has a gap. Retry."</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"History keys unavailable: records from before recovery cannot be decrypted"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"Invalid ciphertext: signature, key, or content verification failed"</string>
+    <string name="errors_invalid_command" formatted="false">"Invalid command arguments"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"It may have been deleted, or belong to a computer that was removed."</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin."</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"Names can only be changed on that device"</string>

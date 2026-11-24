@@ -232,6 +232,7 @@ export interface MessageArgs {
   "dock.waiting_confirmation": { [name: string]: never };
   "errors.cannot_connect_to_terminal": { [name: string]: never };
   "errors.client_out_of_date": { [name: string]: never };
+  "errors.command_failed": { [name: string]: never };
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
@@ -243,6 +244,7 @@ export interface MessageArgs {
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
+  "errors.invalid_command": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
@@ -2036,6 +2038,7 @@ export const messages = {
     "dock.waiting_confirmation": "Waiting for confirmation",
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
     "errors.client_out_of_date": "This client version is out of date. Update and retry.",
+    "errors.command_failed": "Command failed",
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
@@ -2047,6 +2050,7 @@ export const messages = {
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
+    "errors.invalid_command": "Invalid command arguments",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
@@ -4369,6 +4373,7 @@ export const messages = {
     "dock.waiting_confirmation": "等待确认",
     "errors.cannot_connect_to_terminal": "连不上终端",
     "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
+    "errors.command_failed": "指令执行失败",
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
@@ -4380,6 +4385,7 @@ export const messages = {
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
+    "errors.invalid_command": "指令参数无效",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",

@@ -2858,8 +2858,60 @@ func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
 			badRes = r
 		}
 	}
-	if badRes == nil || badRes.Ok || badRes.OpId != 1 || badRes.ErrorCode != "invalid_argument" {
-		t.Fatalf("expected immediate invalid_argument result, got %+v", badRes)
+	if badRes == nil || badRes.Ok || badRes.OpId != 1 || badRes.ErrorCode != "invalid_argument" || badRes.GetErrorText().GetKey() != text.KeyErrorsInvalidCommand {
+		t.Fatalf("expected immediate invalid_argument result with error_text, got %+v", badRes)
+	}
+
+	// 1b. Settled daemon error without error_message still populates fallback error_text.
+	runErrBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 5,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      11,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dcErr *corev1.DispatchCommandEffect
+	for _, ef := range runErrBatch.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcErr = d
+		}
+	}
+	if dcErr == nil {
+		t.Fatalf("expected DispatchCommandEffect for op 11")
+	}
+	errDoneBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 8,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dcErr.RequestId,
+				AttemptId:         dcErr.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "failed",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "failed",
+					ResultAvailable: true,
+					ErrorCode:       "failed",
+				},
+			},
+		},
+	})
+	var errRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range errDoneBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			errRes = r
+		}
+	}
+	if errRes == nil || errRes.Ok || errRes.OpId != 11 || errRes.GetErrorText() == nil {
+		t.Fatalf("expected non-nil error_text on daemon error without message, got %+v", errRes)
 	}
 
 	// 2. Valid one-shot command dispatches and settles with ok=true.

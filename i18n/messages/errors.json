@@ -1600,5 +1600,37 @@
       "zh-CN": "source"
     },
     "zh-CN": "中继协议版本已变化，请与中继和客户端协调升级"
+  },
+  {
+    "en": "Invalid command arguments",
+    "key": "errors.invalid_command",
+    "notes": "核心层在一次性机器指令缺少目标机器或指令体时返回的立即失败说明。简短明确，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "指令参数无效"
+  },
+  {
+    "en": "Command failed",
+    "key": "errors.command_failed",
+    "notes": "核心层在一次性机器指令未能提交或缺少具体错误说明时的兜底失败文案。简短明确，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": "指令执行失败"
   }
 ]

@@ -234,6 +234,7 @@
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
+    <string name="errors_command_failed" formatted="false">"指令执行失败"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
@@ -244,6 +245,7 @@
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
+    <string name="errors_invalid_command" formatted="false">"指令参数无效"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"成员链冲突，安全操作已停止；请核对设备后明确重新加入"</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>

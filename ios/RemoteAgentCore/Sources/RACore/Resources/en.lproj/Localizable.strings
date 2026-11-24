@@ -231,6 +231,7 @@
 "dock_waiting_confirmation" = "Waiting for confirmation";
 "errors_cannot_connect_to_terminal" = "Cannot connect to terminal";
 "errors_client_out_of_date" = "This client version is out of date. Update and retry.";
+"errors_command_failed" = "Command failed";
 "errors_connection_dropped_midway" = "Connection dropped midway";
 "errors_connection_timed_out" = "Connection timed out";
 "errors_connection_timed_out_reconnecting" = "Connection timed out. Reconnecting.";
@@ -241,6 +242,7 @@
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
+"errors_invalid_command" = "Invalid command arguments";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "Cannot open the computer’s reply. Command execution is unconfirmed.";

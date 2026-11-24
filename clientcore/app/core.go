@@ -12,6 +12,7 @@ import (
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 // Core wraps the unified sync Engine and screen ViewModel builders behind a single Dispatch/View API.
@@ -291,8 +292,14 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 			delete(c.m.oneShotReqByOp, meta.opID)
 			ok := sc.Category == outcome.Executed && sc.ErrorCode == ""
 			errCode := sc.ErrorCode
-			if !ok && errCode == "" {
-				errCode = "failed"
+			errText := sc.ErrorText
+			if !ok {
+				if errCode == "" {
+					errCode = "failed"
+				}
+				if errText == nil {
+					errText = text.Msg(text.KeyErrorsCommandFailed)
+				}
 			}
 			effects = append(effects, &corev1.Effect{
 				Effect: &corev1.Effect_RunMachineCommandResult{
@@ -300,7 +307,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 						OpId:      meta.opID,
 						Ok:        ok,
 						ErrorCode: errCode,
-						ErrorText: sc.ErrorText,
+						ErrorText: errText,
 						Result:    sc.Result,
 					},
 				},
@@ -970,6 +977,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 							OpId:      act.OpId,
 							Ok:        false,
 							ErrorCode: "invalid_argument",
+							ErrorText: text.Msg(text.KeyErrorsInvalidCommand),
 						},
 					},
 				})
@@ -987,6 +995,7 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 							OpId:      act.OpId,
 							Ok:        false,
 							ErrorCode: "failed",
+							ErrorText: text.Msg(text.KeyErrorsCommandFailed),
 						},
 					},
 				})
