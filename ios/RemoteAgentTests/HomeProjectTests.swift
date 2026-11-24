@@ -584,7 +584,11 @@ private actor NavRecorder {
             skipConnectivityPreflight: true
         )
         #expect(okRes.outcome == "executed")
-        #expect(okRes.hasGetSettings)
+        if case .getSettings = okRes.kind {
+            // expected
+        } else {
+            Issue.record("expected getSettings command result")
+        }
 
         // 2. Cancelling the caller task sends CancelMachineCommandAction and cancels the in-flight dispatch.
         let started = OSAllocatedUnfairLock(initialState: false)
