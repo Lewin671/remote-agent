@@ -433,15 +433,9 @@ func (lt *liveTerminal) sendOutput(f *pb.TerminalFrame) error {
 	lt.mu.Unlock()
 
 	var dp *directPeer
-	if dm := lt.ep.direct.Load(); dm != nil && (hasDirectLeg || lt.ownerPeer != "") {
-		if activePeer, ok := dm.activePeerFor(lt.ownerPeer); ok {
+	if dm := lt.ep.direct.Load(); dm != nil && hasDirectLeg {
+		if activePeer, ok := dm.activePeerFor(lt.ownerPeer); ok && activePeer.peerTerminalDirect.Load() {
 			dp = activePeer
-			if !hasDirectLeg {
-				lt.mu.Lock()
-				_ = lt.stream.AttachLeg("direct", "direct-auto", lt.hub.instance, 1)
-				lt.mu.Unlock()
-				hasDirectLeg = true
-			}
 		}
 	}
 

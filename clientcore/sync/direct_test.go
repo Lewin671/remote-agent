@@ -160,8 +160,9 @@ type directSyncHarness struct {
 	codec     *peerwire.Codec
 	daemonSec *linkcore.Session
 
-	wantSeed bool
-	readPCID uint64
+	wantSeed     bool
+	legacyDaemon bool
+	readPCID     uint64
 	bulkPCID uint64
 	termOpen []string
 	termWait bool
@@ -440,7 +441,7 @@ func (h *directSyncHarness) driveDirectHandshake() {
 			case linkcore.AddCandidatesPC:
 				handleDaemonEffs(h.daemonSec.Handle(linkcore.PCCandidatesAdded{ID: e.ID, OK: true}, uint64(h.now)))
 			case linkcore.HandleControl:
-				if e.Frame.Type == 15 {
+				if e.Frame.Type == 1 || e.Frame.Type == 15 {
 					handleDaemonEffs(h.daemonSec.Handle(linkcore.ControlHandled{Op: e.Op, Type: 4, Body: directAckPayload(e.Frame)}, uint64(h.now)))
 				} else {
 					handleDaemonEffs(h.daemonSec.Handle(linkcore.ControlHandled{Op: e.Op, Type: 0}, uint64(h.now)))
@@ -451,7 +452,15 @@ func (h *directSyncHarness) driveDirectHandshake() {
 					mc := peerwire.PB(peerwire.U(2, 1), peerwire.U(5, 65536), peerwire.U(13, 1))
 					cap14 := peerwire.PB(peerwire.B(1, make([]byte, 16)), peerwire.B(2, mc), peerwire.U(3, uint64(h.now+60_000)))
 					handleDaemonEffs(h.daemonSec.Handle(linkcore.QueueControl{Type: 14, Body: cap14}, uint64(h.now)))
-					cap1 := peerwire.PB(peerwire.B(1, make([]byte, 16)), peerwire.U(2, 15), peerwire.U(4, uint64(h.now+60_000)), peerwire.U(5, 1), peerwire.U(6, 1048576))
+					capFields := []peerwire.Field{peerwire.B(1, make([]byte, 16)), peerwire.U(2, 15)}
+					if !h.legacyDaemon {
+						capFields = append(capFields,
+							peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 5), peerwire.U(2, 6),
+							peerwire.U(2, 7), peerwire.U(2, 8), peerwire.U(2, 11), peerwire.U(2, 12),
+						)
+					}
+					capFields = append(capFields, peerwire.U(4, uint64(h.now+60_000)), peerwire.U(5, 1), peerwire.U(6, 1048576))
+					cap1 := peerwire.PB(capFields...)
 					handleDaemonEffs(h.daemonSec.Handle(linkcore.QueueControl{Type: 1, Body: cap1}, uint64(h.now)))
 				}
 			}
@@ -1094,5 +1103,66 @@ func TestSyncDirectCreateSessionDualSendAndBulkSingleLeg(t *testing.T) {
 	}
 	if dispatchCount != 1 {
 		t.Fatalf("bulk chunk command must stay single-leg (not dual-sent), got %d legs", dispatchCount)
+	}
+}
+
+func TestSyncDirectLegacyDaemonCreateSessionStaysRelayOnly(t *testing.T) {
+	h := newDirectSyncHarness(t)
+	h.legacyDaemon = true // Phase 1 daemon: advertises only Control 15, NOT Phase 2/3 controls
+	sid := "sess-legacy-1"
+	h.connectMainAndList(sid)
+	h.driveDirectHandshake()
+
+	// Against a legacy Phase 1 daemon, CreateSession MUST stay relay-only (never hitting path_unavailable on direct).
+	_, ok, effs := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-legacy-create",
+		MachineID: h.daemon.id,
+		Command: &v1.Command{
+			Kind: &v1.Command_CreateSession{
+				CreateSession: &v1.CreateSessionRequest{Cwd: "/tmp/legacy", Agent: v1.Agent_AGENT_CODEX},
+			},
+		},
+	})
+	if !ok {
+		t.Fatal("expected CreateSession to dispatch on legacy daemon")
+	}
+	var directCount, relayCount int
+	for _, eff := range effs {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+				directCount++
+			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
+				relayCount++
+			}
+		}
+	}
+	if directCount != 0 || relayCount != 1 {
+		t.Fatalf("expected legacy daemon CreateSession relay-only (direct=0, relay=1), got direct=%d relay=%d", directCount, relayCount)
+	}
+
+	// Legacy Phase 1 interactive command (Send) STILL dual-sends without regressing Phase 1 behavior.
+	_, ok, sendEffs := h.submitAndDrain(SubmitCommandParams{
+		SlotKey:   "slot-legacy-send",
+		MachineID: h.daemon.id,
+		SessionID: sid,
+		Command: &v1.Command{
+			Kind: &v1.Command_Send{Send: &v1.SendRequest{SessionId: sid, Text: "hi"}},
+		},
+	})
+	if !ok {
+		t.Fatal("expected Send to dispatch on legacy daemon")
+	}
+	directCount, relayCount = 0, 0
+	for _, eff := range sendEffs {
+		if dc := eff.GetDispatchCommand(); dc != nil {
+			if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_DIRECT {
+				directCount++
+			} else if dc.RouteLeg == corev1.CommandRouteLeg_COMMAND_ROUTE_LEG_RELAY {
+				relayCount++
+			}
+		}
+	}
+	if directCount != 1 || relayCount != 1 {
+		t.Fatalf("expected legacy daemon Send to dual-send (direct=1, relay=1), got direct=%d relay=%d", directCount, relayCount)
 	}
 }

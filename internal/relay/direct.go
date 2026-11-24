@@ -64,13 +64,15 @@ type directPeer struct {
 	subSeq           atomic.Uint64
 	subscribed       map[string]struct{} // guarded by directManager.mu
 
-	writeMu   sync.Mutex
-	writeWake chan struct{}
-	highQueue []peerWriteItem
-	termQueue []peerWriteItem
-	termBytes int
-	lowQueue  []peerWriteItem
-	lowBytes  int
+	writeMu            sync.Mutex
+	writeWake          chan struct{}
+	highQueue          []peerWriteItem
+	termQueue          []peerWriteItem
+	termBytes          int
+	lowQueue           []peerWriteItem
+	lowBytes           int
+	peerPhase2Direct   atomic.Bool
+	peerTerminalDirect atomic.Bool
 }
 type peerInput struct {
 	peer string
@@ -402,6 +404,22 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 			if o.Type == 1 || o.Type == 14 {
 				if _, err := peerwire.CapabilityExpiry(o, now); err != nil {
 					return 0, nil
+				}
+				if o.Type == 1 {
+					var caps pb.Capabilities
+					if proto.Unmarshal(o.Payload, &caps) == nil {
+						const wantTermMask uint32 = (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 11) | (1 << 12)
+						var mask uint32
+						for _, ct := range caps.ControlTypes {
+							if ct < 32 {
+								mask |= 1 << ct
+							}
+						}
+						if (mask & wantTermMask) == wantTermMask {
+							p.peerPhase2Direct.Store(true)
+							p.peerTerminalDirect.Store(true)
+						}
+					}
 				}
 				return 4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use))
 			}

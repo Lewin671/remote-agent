@@ -218,8 +218,10 @@ func TestCoordinatorLoopbackHandshakeControlAndDiagnostics(t *testing.T) {
 			case linkcore.AddCandidatesPC:
 				handleDaemonEffs(daemonSess.Handle(linkcore.PCCandidatesAdded{ID: e.ID, OK: true}, uint64(now)))
 			case linkcore.HandleControl:
-				if e.Frame.Type == 15 {
-					daemonSawSub = true
+				if e.Frame.Type == 1 || e.Frame.Type == 15 {
+					if e.Frame.Type == 15 {
+						daemonSawSub = true
+					}
 					handleDaemonEffs(daemonSess.Handle(linkcore.ControlHandled{Op: e.Op, Type: 4, Body: ackPayload(e.Frame)}, uint64(now)))
 				} else {
 					handleDaemonEffs(daemonSess.Handle(linkcore.ControlHandled{Op: e.Op, Type: 0}, uint64(now)))

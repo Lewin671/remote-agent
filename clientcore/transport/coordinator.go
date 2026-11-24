@@ -245,6 +245,7 @@ type coordRound struct {
 	roundUnsupp    bool
 	useUnsupp      [3]bool
 	attemptedUse   [3]bool
+	clientCapsSent bool
 	deadlineTicked bool
 	ended          bool
 }
@@ -1508,6 +1509,12 @@ func (c *Coordinator) FileRoute(now int64, machineID string) Route {
 func (c *Coordinator) Capabilities(now int64, machineID string) (Caps, bool) {
 	return c.engine.Capabilities(now, machineID)
 }
+func (c *Coordinator) Phase2CommandsReady(now int64, machineID string) bool {
+	return c.engine.Phase2CommandsReady(now, machineID)
+}
+func (c *Coordinator) TerminalReady(now int64, machineID string) bool {
+	return c.engine.TerminalReady(now, machineID)
+}
 func (c *Coordinator) Enabled(machineID string) bool { return c.engine.enabled(machineID) }
 func (c *Coordinator) Diagnostics(machineID string) ([]*RoundData, int64, bool) {
 	return c.engine.Diagnostics(machineID)
@@ -1862,6 +1869,7 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			c.emit(CoordPcConfirm{PCID: pcID, MachineID: r.machine, Use: u})
 			c.handleEngine(now, PathReady{Round: r.id, Use: u, Path: pcID})
 			if u == UseRead {
+				c.maybeSendClientCapabilities(now, r)
 				c.attachDirectTerminalsForMachine(now, r.machine)
 			}
 
@@ -1883,10 +1891,12 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 
 		case linkcore.PeerUnsupported:
 			c.handleEngine(now, DiagSignal{Round: r.id, Note: NoteUnsupported})
-			if eff.Use == 0 {
+			// Optional Class=2 control frames may legally receive Unsupported from older peers
+			// without tearing down the direct round; only Class=1 signaling Unsupported retires.
+			if eff.Class == 1 && eff.Use == 0 {
 				r.roundUnsupp = true
 				c.retireAndFailUnsupported(now, r)
-			} else if eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk) {
+			} else if eff.Class == 1 && (eff.Use == uint64(UseRead) || eff.Use == uint64(UseBulk)) {
 				r.useUnsupp[eff.Use] = true
 			}
 

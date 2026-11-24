@@ -466,13 +466,35 @@ func (h *phase3PionHarness) waitInputs(want []byte) {
 	h.t.Fatalf("tmux inputs mismatch: got %q want %q", h.backend.term.allInputs(), want)
 }
 
+func (h *phase3PionHarness) advertisePhase3ClientCapabilities() {
+	h.t.Helper()
+	var capID [16]byte
+	_, _ = rand.Read(capID[:])
+	body := peerwire.PB(
+		peerwire.B(1, capID[:]),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4), peerwire.U(2, 5),
+		peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8), peerwire.U(2, 9), peerwire.U(2, 10),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5),
+		peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9),
+		peerwire.U(4, uint64(time.Now().Add(55*time.Second).UnixMilli())),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+	if !h.link.SendControl(1, body) {
+		h.t.Fatal("failed to queue client Phase 3 Capabilities")
+	}
+	time.Sleep(80 * time.Millisecond)
+}
+
 func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
 	streamID := "0123456789abcdef0123456789abcdef"
 	termWS := h.openTerminal(streamID)
 	defer termWS.CloseNow()
 
-	// Initial snapshot arrives over relay WS (and mirrored on direct).
+	// Initial snapshot arrives over relay WS (direct leg not yet attached).
 	if _, raw, err := termWS.Read(h.ctx); err != nil {
 		t.Fatal(err)
 	} else {
@@ -483,7 +505,7 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	}
 
 	// Attach direct leg via Control 2 (AttachPath) — must NOT reopen tmux.
-	legDirect := "directleg0000001"
+	legDirect := "d:00000000000001"
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         streamID,
 		Session:        h.session,
@@ -581,6 +603,7 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 
 func TestPhase3PionTerminalControlsFailStopAndNonBypass(t *testing.T) {
 	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
 	streamID := "fedcba9876543210fedcba9876543210"
 	termWS := h.openTerminal(streamID)
 	defer termWS.CloseNow()
@@ -690,5 +713,37 @@ func TestPhase3PionTerminalControlsFailStopAndNonBypass(t *testing.T) {
 	}
 	if !barRep.Final || !barRep.Accepted || barRep.Stream != streamID {
 		t.Fatalf("unexpected BarrierReply: %+v", barRep)
+	}
+}
+
+// TestPhase3PionLegacyClientReceivesLargeTerminalOutputOverRelay verifies H4:
+// a Phase 1 client with an active direct read PC that does NOT declare Phase 3
+// capabilities and does NOT send AttachPath must still receive >4 KiB terminal
+// output over the relay WebSocket with zero dropped frames.
+func TestPhase3PionLegacyClientReceivesLargeTerminalOutputOverRelay(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	// Deliberately do NOT call advertisePhase3ClientCapabilities() or send AttachPath.
+	streamID := "11223344556677889900aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+
+	// Drain initial snapshot (seq=1).
+	if _, raw, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	} else if seq, tf := h.openTermOutput(raw, streamID); seq != 1 || tf.GetSnapshot() == nil {
+		t.Fatalf("expected seq 1 snapshot, got seq=%d", seq)
+	}
+
+	// Emit a 16 KiB output chunk (> 4 KiB hot-standby mirror threshold).
+	large := bytes.Repeat([]byte("Z"), 16*1024)
+	h.backend.term.outCh <- large
+
+	_, raw, err := termWS.Read(h.ctx)
+	if err != nil {
+		t.Fatalf("legacy client relay WS did not receive >4KiB terminal output: %v", err)
+	}
+	seq, tf := h.openTermOutput(raw, streamID)
+	if seq != 2 || !bytes.Equal(tf.GetOutput(), large) {
+		t.Fatalf("expected seq=2 16KiB output on relay WS, got seq=%d len=%d", seq, len(tf.GetOutput()))
 	}
 }

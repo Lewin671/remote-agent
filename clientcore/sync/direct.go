@@ -761,6 +761,25 @@ func (e *Engine) clearDirectTimerTracking() {
 	e.directTermAt = 0
 }
 
+// isLegacyInteractiveCommand matches the 7 interactive commands accepted on
+// Phase 1 daemons over direct use=1 before Phase 2 capability negotiation.
+func isLegacyInteractiveCommand(prep *PreparedCommand) bool {
+	if prep == nil || prep.Command == nil {
+		return false
+	}
+	switch prep.Command.Kind.(type) {
+	case *v1.Command_Send,
+		*v1.Command_Interrupt,
+		*v1.Command_ResolveApproval,
+		*v1.Command_AnswerQuestion,
+		*v1.Command_AnswerPlan,
+		*v1.Command_CancelInput,
+		*v1.Command_ResumeInput:
+		return true
+	}
+	return false
+}
+
 func isDualSendCommand(prep *PreparedCommand) bool {
 	if prep == nil || prep.Command == nil {
 		return false

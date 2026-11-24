@@ -56,6 +56,7 @@ type round struct {
 	downloadSeq       uint64
 	downloadUntil     int64
 	eventPush         bool
+	phase2Commands    bool
 	terminalDirect    bool
 	subscribed        uint64
 	subscribedPresent bool
@@ -701,11 +702,19 @@ func (e *Engine) capabilities(now int64, ev Capabilities) {
 	p.downloadSeq = ev.Seq
 	p.downloadUntil = ev.DownloadUntil
 	p.eventPush = ev.EventPush
+	p.phase2Commands = ev.Phase2Commands
 	p.terminalDirect = ev.Terminal
 	if p.eventPush {
 		e.sendSubscription(now, p, false)
 	}
 	e.markChanged()
+}
+
+// Phase2CommandsReady reports whether machine m has a live verified direct UseRead
+// path and has advertised Phase 2+ full side-effect command support (M3).
+func (e *Engine) Phase2CommandsReady(now int64, m string) bool {
+	p := e.peers[m]
+	return p != nil && e.active(p, now) && p.paths[UseRead].ready && p.phase2Commands
 }
 
 // TerminalReady reports whether machine m has a live verified direct UseRead
