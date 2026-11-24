@@ -176,15 +176,20 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 		ct.relayOpen = false
 		ct.stream.CloseLeg("relay", ct.relayGen)
 		if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok && ct.directAttached {
-			var newLeg [16]byte
-			if _, err := c.randPool.Read(newLeg[:]); err == nil {
+			var rawRand [7]byte
+			if _, err := c.randPool.Read(rawRand[:]); err == nil {
 				c.maybeLowWater()
+				newLeg := makeRelayAttachLegID(rawRand)
+				nextGen := ct.relayGen + 1
+				if nextGen == 0 {
+					nextGen = 1
+				}
 				body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 					Stream:         ct.streamID,
 					Session:        ct.sessionID,
 					Sender:         c.snap.SelfID,
-					LegID:          string(newLeg[:]),
-					PathGeneration: 0, // relay recovery leg
+					LegID:          string(newLeg),
+					PathGeneration: nextGen,
 					State: linkcore.TermFlowState{
 						ToDaemon: ct.stream.CurrentInputWatermark(),
 						ToClient: ct.stream.CurrentOutputWatermark(),
@@ -194,7 +199,7 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 				c.emit(CoordTerminalAttachRelay{
 					StreamID:  ct.streamID,
 					MachineID: ct.machineID,
-					LegID:     append([]byte(nil), newLeg[:]...),
+					LegID:     newLeg,
 				})
 				return c.take()
 			}
@@ -333,6 +338,18 @@ func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) [
 	return c.take()
 }
 
+func makeRelayAttachLegID(rand7 [7]byte) []byte {
+	const hexDigits = "0123456789abcdef"
+	out := make([]byte, 16)
+	out[0] = 'r'
+	out[1] = ':'
+	for i, b := range rand7 {
+		out[2+i*2] = hexDigits[b>>4]
+		out[2+i*2+1] = hexDigits[b&0x0f]
+	}
+	return out
+}
+
 func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream) {
 	r, pcID, gen, ok := c.activeTerminalRound(now, ct.machineID)
 	if !ok {
@@ -341,21 +358,29 @@ func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream)
 	if ct.directAttached && ct.directPCID == pcID && ct.directGen == gen {
 		return
 	}
-	var leg [16]byte
-	if _, err := c.randPool.Read(leg[:]); err != nil {
+	var rawRand [7]byte
+	if _, err := c.randPool.Read(rawRand[:]); err != nil {
 		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 		return
 	}
 	c.maybeLowWater()
+	leg := make([]byte, 16)
+	leg[0] = 'd'
+	leg[1] = ':'
+	const hexDigits = "0123456789abcdef"
+	for i, b := range rawRand {
+		leg[2+i*2] = hexDigits[b>>4]
+		leg[2+i*2+1] = hexDigits[b&0x0f]
+	}
 	ct.directAttached = true
 	ct.directPCID = pcID
 	ct.directGen = gen
-	_ = ct.stream.AttachLeg("direct", string(leg[:]), string(c.instance), gen)
+	_ = ct.stream.AttachLeg("direct", string(leg), string(c.instance), gen)
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
 		Session:        ct.sessionID,
 		Sender:         c.snap.SelfID,
-		LegID:          string(leg[:]),
+		LegID:          string(leg),
 		PathGeneration: gen,
 		State: linkcore.TermFlowState{
 			ToDaemon: ct.stream.CurrentInputWatermark(),
@@ -418,8 +443,8 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 						Stream:    ct.streamID,
 						Direction: linkcore.TermDirToClient,
 						FromSeq:   wantFrom,
-						MaxBytes:  linkcore.TermOutputReplayMaxBytes,
-						MaxFrames: linkcore.TermOutputReplayMaxFrames,
+						MaxBytes:  1 << 20,
+						MaxFrames: 128,
 					})
 					_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlReplay, Body: body})
 				}

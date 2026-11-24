@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -878,7 +879,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		if lt == nil || lt.ownerPeer != peerID || lt.sessionID != msg.Session {
 			return 0, nil
 		}
-		if msg.PathGeneration > 0 {
+		if !strings.HasPrefix(msg.LegID, "r:") {
 			lt.mu.Lock()
 			if msg.PathGeneration > lt.directGen {
 				lt.directGen = msg.PathGeneration
@@ -887,8 +888,8 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			lt.mu.Unlock()
 			return receipt()
 		}
-		// Relay leg recovery via AttachPath: dial /v1/term with leg_id as TermHello.StreamId
-		// without calling OpenTerminal or creating a new tmux handle.
+		// Relay leg recovery via AttachPath (leg_id prefixed with "r:"): dial /v1/term
+		// with leg_id as TermHello.StreamId without calling OpenTerminal or creating a new tmux handle.
 		legID := msg.LegID
 		c.link.Run(func(runCtx context.Context) {
 			dialCtx, dialCancel := context.WithTimeout(lt.ctx, 20*time.Second)
@@ -962,7 +963,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 				ready = true
 			}
 			if !ready {
-				return 0, nil
+				return receipt()
 			}
 			hub.storeSnapshot(qKey, msg.Stream, peerID, snap, now)
 		}
@@ -1048,7 +1049,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return linkcore.ControlBarrierReply, linkcore.EncodeBarrierReply(linkcore.BarrierReplyMsg{
 				Stream:    msg.Stream,
 				BarrierID: msg.BarrierID,
-				Final:     true,
+				Final:     false,
 				Accepted:  false,
 			})
 		}
@@ -1063,7 +1064,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			ready = true
 		}
 		if !ready {
-			return 0, nil
+			return receipt()
 		}
 		return linkcore.ControlBarrierReply, linkcore.EncodeBarrierReply(linkcore.BarrierReplyMsg{
 			Stream:    msg.Stream,
