@@ -33,8 +33,11 @@ struct TerminalPane: View {
     @State private var details = false
 
     /// The main connection is up: a terminal needs it for its opening command.
-    private var online: Bool { model.state.peer(model.state.sessions[sessionId]?.machineId).ready }
-    private var waitingReachability: Bool { model.state.reachabilityUnknown || model.state.displayGrace }
+    private var online: Bool { context.core.settings.online }
+    private var waitingReachability: Bool {
+        context.core.sessions[sessionId]?.header.computerReachability == .unknown
+            || context.core.settings.connCheck.displayGrace
+    }
     private var active: Bool { online && model.foreground }
 
     var body: some View {
@@ -91,12 +94,12 @@ struct TerminalPane: View {
     }
 
     private func start() {
-        let (remote, app, sid, host) = (context.remote, model, sessionId, context.coreHost)
+        let (remote, app, sid, core, host) = (context.remote, model, sessionId, context.core, context.coreHost)
         let historyQueue = SerialMainQueue()
         terminal.use(
             RemoteTerminal.Link(
                 open: { try await remote.openTerminal(sid, listener: $0) },
-                online: { app.state.peer(app.state.sessions[sessionId]?.machineId).ready && app.foreground },
+                online: { core.settings.online && app.foreground },
                 hold: { app.holdTerminal($0) },
                 release: { app.releaseTerminal($0) },
                 reportStream: { id, kind, opened in

@@ -1,5 +1,6 @@
 import Foundation
 import RACore
+import RAProto
 import SwiftUI
 import Testing
 import UIKit
@@ -38,10 +39,40 @@ import UIKit
     @MainActor @Test func sessionFileChipsInBothLanguages() throws {
         for locale in ["zh-CN", "en"] {
             try MessageLocale.$overrideForTesting.withValue(locale) {
+                let preparing = PBAttachmentDraftItemView.with {
+                    $0.itemID = "1"
+                    $0.kind = .file
+                    $0.displayName = "report.pdf"
+                    $0.sizeText = .with { $0.literal = "2.0 KB" }
+                    $0.state = .preparing
+                    $0.statusText = .with { $0.literal = L10n.imagePreparing(locale: locale) }
+                    $0.canRemove = true
+                }
+                let uploading = PBAttachmentDraftItemView.with {
+                    $0.itemID = "2"
+                    $0.kind = .file
+                    $0.displayName = "source.zip"
+                    $0.sizeText = .with { $0.literal = "4.0 KB" }
+                    $0.state = .uploading
+                    $0.progress = 0.42
+                    $0.statusText = .with { $0.literal = "42%" }
+                    $0.canPause = true
+                    $0.canRemove = true
+                }
+                let failed = PBAttachmentDraftItemView.with {
+                    $0.itemID = "3"
+                    $0.kind = .file
+                    $0.displayName = "notes.txt"
+                    $0.sizeText = .with { $0.literal = "256 B" }
+                    $0.state = .failed
+                    $0.fileErrorText = .with { $0.literal = "fixture detail" }
+                    $0.canRetry = true
+                    $0.canRemove = true
+                }
                 let content = VStack(alignment: .leading, spacing: 16) {
-                    FileChip(name: "report.pdf", sizeText: "2.0 KB", state: .processing, remove: {})
-                    FileChip(name: "source.zip", sizeText: "4.0 KB", state: .uploading(progress: 0.42), remove: {})
-                    FileChip(name: "notes.txt", sizeText: "256 B", state: .failed(error: AttachmentFailure(kind: .processingFailed, detail: LocalizedMessage(raw: "fixture detail"))), retry: {}, remove: {})
+                    FileChip(item: preparing, remove: {})
+                    FileChip(item: uploading, pause: {}, remove: {})
+                    FileChip(item: failed, retry: {}, remove: {})
                 }
                 .padding(16).frame(width: 375).background(Color.white)
                 .environment(\.locale, Locale(identifier: locale))

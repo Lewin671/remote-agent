@@ -80,8 +80,6 @@ export interface MessageArgs {
   "attachment.file_verify_failed": { [name: string]: never };
   "attachment.filename_limit": { [name: string]: never };
   "attachment.images_limit": { count: number; limit: number };
-  "attachment.ios_image_missing": { [name: string]: never };
-  "attachment.ios_missing": { [name: string]: never };
   "attachment.local_storage_full": { [name: string]: never };
   "attachment.max_files": { count: number };
   "attachment.max_images": { count: number };
@@ -1845,8 +1843,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "attachment.ios_image_missing": "Image is not on the computer",
-    "attachment.ios_missing": "Attachment is not on the computer",
     "attachment.local_storage_full": "Local storage for pending attachments is full. Send or remove older drafts.",
     "attachment.max_files": {
       "forms": {
@@ -4188,8 +4184,6 @@ export const messages = {
       },
       "plural": "count"
     },
-    "attachment.ios_image_missing": "图片不在电脑上",
-    "attachment.ios_missing": "附件不在电脑上",
     "attachment.local_storage_full": "本机待发附件空间不足，请发送或移除旧草稿",
     "attachment.max_files": {
       "forms": {

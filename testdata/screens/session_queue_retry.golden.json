@@ -1134,8 +1134,7 @@
           {
             "sessionRestoreComposer": {
               "sessionId": "s-qr",
-              "requestId": "msg-fail",
-              "text": "steer failed msg"
+              "requestId": "msg-fail"
             }
           },
           {
@@ -1145,7 +1144,8 @@
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
                 "SCREEN_TARGET_SYNC_STATE",
-                "SCREEN_TARGET_SESSION"
+                "SCREEN_TARGET_SESSION",
+                "SCREEN_TARGET_ATTACHMENT_DRAFT"
               ]
             }
           }

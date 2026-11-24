@@ -38,19 +38,4 @@ import Testing
             }
         }
     }
-
-    @Test func defaultNameCollisionIdentityDoesNotReadTranslatedFallbacks() {
-        let missing = DeviceView(id: "fixture1111", kind: .client, createdMs: 0, meta: .with { $0.platform = "web" })
-        let twin = DeviceView(id: "fixture2222", kind: .client, createdMs: 0, meta: .with { $0.platform = "web" })
-        for raw in ["浏览器", "Browser"] {
-            let described = DeviceView(id: "fixture3333", kind: .client, createdMs: 0, meta: .with { $0.platform = "web"; $0.description_p = raw })
-            for locale in ["zh-CN", "en"] {
-                MessageLocale.$overrideForTesting.withValue(locale) {
-                    #expect(defaultClientName(missing, id: missing.id, among: [described.id: described]) == L10n.securityBrowser())
-                    #expect(defaultClientName(missing, id: missing.id, among: [twin.id: twin]) == L10n.securityBrowser() + " · 1111")
-                    #expect(defaultClientName(described, id: described.id, among: [missing.id: missing]) == raw)
-                }
-            }
-        }
-    }
 }

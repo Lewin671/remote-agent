@@ -20,8 +20,8 @@ final class AccountContext {
     let account: Account
     let remote: Remote
     let preferenceDefaults: UserDefaults
-    let draftFiles: (any RACore.SealedFiles)?
-    /// What this run keeps in memory for the account: drafts and the like.
+    let pendingStore: PendingScope
+    /// What this run keeps in memory for the account: UI state and the like.
     let memory = AccountMemory()
     let core: CoreScreens
     let coreHost: CoreHost
@@ -35,7 +35,7 @@ final class AccountContext {
         account: Account,
         remote: Remote,
         preferenceDefaults: UserDefaults = .standard,
-        draftFiles: (any RACore.SealedFiles)? = nil,
+        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
         sharedFileRoot: URL = SharedFileCenter.defaultRoot,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
@@ -46,7 +46,7 @@ final class AccountContext {
         self.account = account
         self.remote = remote
         self.preferenceDefaults = preferenceDefaults
-        self.draftFiles = draftFiles
+        self.pendingStore = pendingStore
         let screens = core ?? CoreScreens()
         self.core = screens
         self.coreHost = coreHost ?? (try! CoreHost.live(
@@ -55,6 +55,7 @@ final class AccountContext {
             defaults: preferenceDefaults,
             screens: screens,
             sharedFileStore: SharedFileStore(root: sharedFileRoot),
+            pendingStore: pendingStore,
             demoDirectories: demoDirectories,
             demoModels: demoModels,
             demoMode: demoMode,
@@ -74,20 +75,12 @@ final class AccountContext {
 
     func submitNewSession(
         projectKey: String,
-        prompt: String,
-        attachmentCount: Int32,
-        attachmentsMoved: Bool,
-        autoModeSupported: Bool,
-        attachments: NewSessionAttachmentsSubmission?
+        autoModeSupported: Bool
     ) {
         Task {
             await coreHost.submitNewSession(
                 projectKey: projectKey,
-                prompt: prompt,
-                attachmentCount: attachmentCount,
-                attachmentsMoved: attachmentsMoved,
-                autoModeSupported: autoModeSupported,
-                attachments: attachments
+                autoModeSupported: autoModeSupported
             )
         }
     }
@@ -200,8 +193,8 @@ final class AppModel {
         var makeEngine:
             @MainActor (
                 _ account: Account, _ cache: (any CipherCache)?,
-                _ securityStore: any SecurityStoreV4
-            ) throws -> EngineParts = { account, cache, securityStore in
+                _ securityStore: any SecurityStoreV4, _ pending: PendingScope
+            ) throws -> EngineParts = { account, cache, securityStore, pending in
                 let log = Logger(subsystem: "io.github.lewin671.remoteagent", category: "sync")
                 // The engine hands over error texts only, never content or keys.
                 let remote = try Remote(
@@ -213,7 +206,7 @@ final class AppModel {
                 let screens = CoreScreens()
                 let host = try CoreHost.live(
                     remote: remote, account: account, defaults: .standard,
-                    screens: screens, onNavigate: { _ in })
+                    screens: screens, pendingStore: pending, onNavigate: { _ in })
                 return EngineParts(engine: host, remote: remote, coreHost: host, coreScreens: screens)
             }
         var bootstrapSecurity: @Sendable (_ vault: Vault) async throws -> PBSecurityWorkflowStatus = { vault in
@@ -233,10 +226,8 @@ final class AppModel {
         var wipeLegacyCaches: @Sendable (AccountStorage) -> Void = { storage in
             try? CipherStore.eraseAll(root: storage.cacheRoot)
         }
-        /// The pause between two copies of the engine's state to the main actor: a frame.
-        var frame: Sleeper = realSleep
         /// What this client says it runs on, as Android's "Android 16 · Pixel 9".
-        var deviceDescription: @MainActor () -> String = {
+        var deviceDescription: @MainActor @Sendable () -> String = {
             "iOS \(UIDevice.current.systemVersion) · \(UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone")"
         }
         /// Erases what is stored for the account: the keys, the cache and the pending images. Called off the main actor.
@@ -258,8 +249,6 @@ final class AppModel {
     private(set) var stage = Stage.loading
     /// The account in use and its engine; nil until one is, and after logout.
     private(set) var context: AccountContext?
-    /// The engine's lists and connection as last copied here. A fresh, empty state while no account is in use.
-    private(set) var state = RemoteState()
     /// The app is in front. Screens that tick or hold a terminal follow it:
     /// timers pause in the background and terminals are closed there.
     private(set) var foreground = false
@@ -294,7 +283,7 @@ final class AppModel {
     var remote: Remote? { context?.remote }
     func reconnectNow() { engine?.reconnectNow() }
     /// The server turned this device away (architecture §13 「移除设备」): only the notice is shown.
-    var removed: Bool { stage == .ready && state.removed }
+    var removed: Bool { stage == .ready && (context?.core.syncState.removed ?? false) }
 
     /// The account's cache of ciphertext, where viewed images are kept as sealed envelopes; nil while none is
     /// open (no account, sample data, or a cache that did not open).
@@ -307,7 +296,6 @@ final class AppModel {
     @ObservationIgnored private let parts: Parts
     @ObservationIgnored private var engine: (any SyncEngine)?
     @ObservationIgnored private var cache: CipherStore?
-    @ObservationIgnored private var follower: Task<Void, Never>?
     @ObservationIgnored private var loading = false
     @ObservationIgnored private var loadId: UUID?
     @ObservationIgnored private var loadTask: Task<Void, Never>?
@@ -321,14 +309,15 @@ final class AppModel {
     @ObservationIgnored private var hasObservedPath = false
     @ObservationIgnored private var watching = false
     @ObservationIgnored private var terminals: [UUID: TermConn] = [:]
-    /// The revision of this device's metadata a description was last sent for on this connection.
-    @ObservationIgnored private var described: String?
     @ObservationIgnored private let log = Logger(
         subsystem: "io.github.lewin671.remoteagent", category: "app")
 
     init(settings: SettingsStore, parts: Parts = Parts()) {
         self.settings = settings
         self.parts = parts
+        Task.detached(priority: .utility) {
+            LibraryVideos.discardAll()
+        }
     }
 
     // MARK: Lifecycle
@@ -511,41 +500,39 @@ final class AppModel {
             return
         }
         if store == nil { log.error("the cache does not open; going on without it") }
+        let pendingScope = parts.storage.pending.scoped()
         let made: EngineParts
         do {
-            made = try parts.makeEngine(account, store, parts.storage.vault)
+            made = try parts.makeEngine(account, store, parts.storage.vault, pendingScope)
         } catch {
             try? store?.close()
             stage = .failed(errorText(error))
             return
         }
-        await adopt(account: account, made: made, store: store)
+        await adopt(account: account, made: made, store: store, pending: pendingScope)
         if foreground { made.engine.start() }
     }
 
-    private func adopt(account: Account, made: EngineParts, store: CipherStore?) async {
+    private func adopt(account: Account, made: EngineParts, store: CipherStore?, pending: PendingScope) async {
         cache = store
         engine = made.engine
-        described = nil
-        state = made.remote.state.value
         let ctx = AccountContext(
             account: account,
             remote: made.remote,
             preferenceDefaults: parts.defaults,
-            draftFiles: parts.storage.pending.scoped(),
+            pendingStore: pending,
             core: made.coreScreens,
             coreHost: made.coreHost
         )
         context = ctx
+        await ctx.coreHost.setDeviceDescription(parts.deviceDescription)
         let cleanup: @Sendable (String) async -> Void = { [weak ctx] sid in
+            guard let ctx else { return }
+            await ctx.coreHost.forgetDraftSession(sid)
             await MainActor.run {
-                guard let ctx else { return }
-                ctx.sessionStore.forgetSession(sid)
-                ImageCenter.of(ctx.remote).forgetSession(sid)
                 SharedFileCenter.of(ctx.remote).forgetSession(sid)
             }
         }
-        await made.remote.onSessionRemoved(cleanup)
         await ctx.coreHost.setSessionRemovedHandler(cleanup)
         await ctx.coreHost.setPersistClientPrefsHandler { [weak self] eff in
             self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
@@ -553,7 +540,10 @@ final class AppModel {
         await ctx.coreHost.reportAppearancePref(settings.settings.theme.proto)
         await ctx.coreHost.reportNotificationPref(supported: false)
         // The account's own view of the store: what is still writing when the account is erased writes nothing.
-        ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, files: parts.storage.pending.scoped())
+        let imageCenter = ImageCenter.install(remote: made.remote, coreHost: ctx.coreHost, pending: pending)
+        await ctx.coreHost.setAttachmentHandlers(imageCenter.handlers())
+        // Configure Core attachments before any screen mounts (`stage = .ready`) so DraftStorageList runs first.
+        await ctx.coreHost.configureAttachments(persistDrafts: !isDemo, persistOutbox: !isDemo, scanStorage: !isDemo)
         // What the agent shared is kept in the cache, per session, and counts in 附件存储.
         let sharedCenter = SharedFileCenter.install(remote: made.remote, coreHost: ctx.coreHost, root: SharedFileCenter.defaultRoot)
         await ctx.coreHost.setSharedFileHandlers(sharedCenter.handlers())
@@ -564,66 +554,6 @@ final class AppModel {
             // The monitor has not supplied a real baseline yet.
             made.engine.setNetwork(path.available)
         }
-        follow(made.engine.state, gen: generation)
-    }
-
-    /// Copies the engine's snapshots to the main actor, the latest only.
-    private func follow(_ feed: Feed<RemoteState>, gen: Int) {
-        follower?.cancel()
-        let frame = parts.frame
-        follower = Task.detached { [weak self] in
-            for await snapshot in feed.updates() {
-                guard let self else { return }
-                await self.apply(snapshot, gen: gen)
-                if (try? await frame(16)) == nil { return }
-            }
-        }
-    }
-
-    private func apply(_ snapshot: RemoteState, gen: Int) {
-        guard gen == generation else { return }
-        if snapshot != state {
-            #if DEBUG
-                if snapshot.link != state.link || snapshot.machines.count != state.machines.count
-                    || snapshot.removed != state.removed
-                {
-                    // IDs and counts only (scope §4).
-                    log.info(
-                        """
-                        state link=\(String(describing: snapshot.link), privacy: .public) \
-                        machines=\(snapshot.machines.keys.sorted().joined(separator: ","), privacy: .public) \
-                        online=\(snapshot.machines.values.filter(\.online).count) sessions=\(snapshot.sessions.count) \
-                        devices=\(snapshot.devices.count) removed=\(snapshot.removed)
-                        """)
-                }
-            #endif
-            state = snapshot
-        }
-        describeSelf(snapshot)
-    }
-
-    /// Says what this client is, sealed, so other clients can tell it apart.
-    private func describeSelf(_ s: RemoteState) {
-        guard s.conn == .online else {
-            // A try made on the connection that is gone may not have arrived: the next one tries again.
-            described = nil
-            return
-        }
-        guard !isDemo, let engine, let me = s.devices[engine.account.deviceId] else { return }
-        let description = parts.deviceDescription()
-        guard me.meta?.platform != "ios" || me.meta?.description_p != description else { return }
-        // One try per revision and connection: a failure waits for the next change instead of spinning.
-        let key = "\(me.metaRev):\(s.leaseEndMs)"
-        guard described != key else { return }
-        described = key
-        Task {
-            do {
-                try await engine.describeSelf(platform: "ios", description: description)
-                log.info("described this client")
-            } catch {
-                log.info("describing this client failed: \(errorText(error), privacy: .public)")
-            }
-        }
     }
 
     /// Starts syncing with a newly joined or re-paired account (`SecurityClient` already persisted v4 state).
@@ -633,7 +563,6 @@ final class AppModel {
         if context != nil {
             // Re-pairing retains identity and history but replaces the active X key.
             generation += 1
-            follower?.cancel(); follower = nil
             closeTerminals(); engine?.close(); engine = nil
             if let remote { ImageCenter.remove(remote); SharedFileCenter.remove(remote) }
             context = nil
@@ -699,8 +628,6 @@ final class AppModel {
         loadTask = nil
         loadId = nil
         loading = false
-        follower?.cancel()
-        follower = nil
         closeTerminals()
         let leavingHost = context?.coreHost
         let leavingRemote = remote
@@ -713,8 +640,6 @@ final class AppModel {
         // SwiftUI unmounts screens (and cannot call ImageCenter.of) while async
         // shared-file cleanup drains on the shared FIFO queue.
         context = nil
-        state = RemoteState()
-        described = nil
         cache = nil
         stage = .loading
         if !isDemo {
@@ -722,6 +647,7 @@ final class AppModel {
         }
         if let leavingHost {
             await leavingHost.clearAllSharedFiles()
+            await leavingHost.clearAllDrafts()
             await leavingHost.closeAsync()
         }
         // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
@@ -778,31 +704,30 @@ final class AppModel {
 
     #if DEBUG
         func showDemo(
-            account: Account, remote: Remote, initial: RemoteState,
+            account: Account, remote: Remote, world: DemoWorld,
             events: [String: [PBEvent]] = [:],
             schedules: [String: Data] = [:],
-            scheduleSeen: [String: [PBScheduleSeenToken]] = [:],
-            load: @escaping @Sendable () async -> Void
+            scheduleSeen: [String: [PBScheduleSeenToken]] = [:]
         ) {
             isDemo = true
             generation += 1
-            let gen = generation
-            state = initial
             let models = Dictionary(
                 Demo.models.map { ("\($0.machineId)/\($0.agent.rawValue)", $0.models) },
                 uniquingKeysWith: { _, rhs in rhs }
             )
             let demoSharedRoot = FileManager.default.temporaryDirectory.appending(path: "shared-files-demo-\(ObjectIdentifier(remote).hashValue)", directoryHint: .isDirectory)
+            let demoPending = PendingStore.ephemeral().scoped()
             let ctx = AccountContext(
                 account: account,
                 remote: remote,
+                pendingStore: demoPending,
                 sharedFileRoot: demoSharedRoot,
                 demoDirectories: Demo.directories,
                 demoModels: models,
                 demoMode: true
             )
             context = ctx
-            ImageCenter.install(remote: remote, coreHost: ctx.coreHost, files: VolatileFiles(), live: false)
+            let imageCenter = ImageCenter.install(remote: remote, coreHost: ctx.coreHost, pending: demoPending, live: false)
             let sharedCenter = SharedFileCenter.install(
                 remote: remote,
                 coreHost: ctx.coreHost,
@@ -813,15 +738,19 @@ final class AppModel {
             let host = ctx.coreHost
             let initialTheme = settings.settings.theme.proto
             Task { [weak self] in
+                await host.setAttachmentHandlers(imageCenter.handlers())
                 await host.setSharedFileHandlers(sharedCenter.handlers())
                 await host.setPersistClientPrefsHandler { eff in
                     self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }
                 }
-                guard let self else { return }
-                await load()
-                if gen == self.generation { self.follow(remote.state, gen: gen) }
+                await host.configureAttachments(
+                    persistDrafts: true,
+                    persistOutbox: true,
+                    scanStorage: false
+                )
+                guard self != nil else { return }
                 await host.seedDemo(
-                    state: remote.current,
+                    world: world,
                     events: events,
                     schedules: schedules,
                     scheduleSeen: scheduleSeen
@@ -847,8 +776,6 @@ final class AppModel {
             loadTask = nil
             loadId = nil
             loading = false
-            follower?.cancel()
-            follower = nil
             closeTerminals()
             engine?.close()
             engine = nil

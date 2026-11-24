@@ -8,7 +8,6 @@ struct ApprovalScreen: View {
     let session: String
     let approval: String
 
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var denying = false
     @State private var chosen: Bool?
@@ -34,7 +33,7 @@ struct ApprovalScreen: View {
                         } else {
                             let target = ApprovalTarget(
                                 sessionId: session,
-                                machineId: header?.machineID ?? model.state.sessions[session]?.machineId ?? "",
+                                machineId: header?.machineID ?? "",
                                 dock: dock
                             )
                             let choice = context.sessionStore.approvalChoice(approval)

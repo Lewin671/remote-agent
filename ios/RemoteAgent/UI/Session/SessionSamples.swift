@@ -76,57 +76,137 @@ enum SessionSamples {
     private static var installed = false
     private static var demoEvents: [String: [PBEvent]] = [:]
 
-    /// Adds the sample sessions to what the sample `Remote` + `CoreHost` show, once.
-    static func install(_ remote: Remote, coreHost: CoreHost) async {
+    /// Adds the sample sessions to what the sample `CoreHost` shows, once.
+    static func install(_ coreHost: CoreHost) async {
         guard !installed else { return }
         installed = true
-        _ = await remote.state.first { $0.loaded }
+        for _ in 0..<100 where !(await coreHost.isDemoSeeded()) {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
         let now = nowMs()
-        var state = remote.current
-        for m in machines(now) { state.machines[m.id] = m }
-        for s in sessions(now) { state.sessions[s.id] = s }
-        state.devices[other] = DeviceView(
-            id: other, kind: .client, createdMs: now - 86_400_000,
-            meta: .with {
+        var world = await coreHost.currentDemoWorld()
+        for m in machines(now) { world.machines[m.machineID] = m }
+        for s in sessions(now) { world.sessions[s.sessionID] = s }
+        world.devices[other] = .with {
+            $0.deviceID = other
+            $0.kind = .client
+            $0.createdMs = now - 86_400_000
+            $0.meta = .with {
                 $0.name = "我的 iPad"
                 $0.platform = "ios"
-            }, metaRev: 1, lastSeenMs: now - 60_000)
+            }
+            $0.metaRev = 1
+            $0.lastSeenMs = now - 60_000
+        }
         var eventsMap = events(now)
         eventsMap["sample-start"] = Demo.events(now, [user("给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")])
         demoEvents = eventsMap
         let fakeFiles = SharedFileDebug.fake
             ? Dictionary(uniqueKeysWithValues: SharedFileDebug.fakes.map { ($0.id, $0.data) })
             : [:]
-        await coreHost.setDemoCommandResponder { eff, cmd in
-            if case .getSharedFileChunk(let req)? = cmd.kind, !fakeFiles.isEmpty {
-                return SharedFileDebug.demoChunkAction(effect: eff, request: req, files: fakeFiles)
+        final class DemoUploadTracker: @unchecked Sendable {
+            private let lock = NSLock()
+            private var persisted: [String: Int64] = [:]
+            func begin(_ id: String) { lock.withLock { persisted[id] = 0 } }
+            func put(_ id: String, end: Int64) -> Int64 {
+                lock.withLock {
+                    let next = max(persisted[id] ?? 0, end)
+                    persisted[id] = next
+                    return next
+                }
             }
-            guard case .send(let s)? = cmd.kind else { return nil }
-            switch s.requestID {
-            case "s1":
-                return .hold
-            case "s2":
-                return .respond(.with {
-                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
-                    $0.source = .transport; $0.notForwarded = true
-                    $0.transportCode = "unavailable"
-                    $0.transportDetail = "电脑不在线，指令没有发出"
+            func status(_ id: String) -> Int64 { lock.withLock { persisted[id] ?? 0 } }
+            func abort(_ id: String) { _ = lock.withLock { persisted.removeValue(forKey: id) } }
+        }
+        let uploads = DemoUploadTracker()
+        await coreHost.setDemoCommandResponder { eff, cmd in
+            switch cmd.kind {
+            case .getSharedFileChunk(let req)? where !fakeFiles.isEmpty:
+                return SharedFileDebug.demoChunkAction(effect: eff, request: req, files: fakeFiles)
+            case .beginImageUpload(let req)?:
+                uploads.begin(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.beginImageUpload = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = 0
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
                 })
-            case "s3":
-                return .respond(.with {
-                    $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
-                    $0.source = .transport; $0.notForwarded = false
-                    $0.transportCode = "network"
-                    $0.transportDetail = "不确定电脑有没有执行：连接中途断了"
+            case .putImageChunk(let req)?:
+                let persisted = uploads.put(req.transferID, end: req.offset + Int64(req.data.count))
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.putImageChunk = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
                 })
-            case "f1", "f2", "f3", "u1":
+            case .getImageUploadStatus(let req)?:
+                let persisted = uploads.status(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.getImageUploadStatus = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .receiving
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
+                })
+            case .completeImageUpload(let req)?:
+                let persisted = uploads.status(req.transferID)
+                return .respond(CoreHost.demoExecutedOutcome(for: eff) {
+                    $0.completeImageUpload = .with {
+                        $0.status = .with {
+                            $0.transferID = req.transferID
+                            $0.persistedBytes = persisted
+                            $0.maxChunkBytes = 262_144
+                            $0.state = .complete
+                            $0.imageID = "demo-img-\(req.transferID.prefix(8))"
+                            $0.expiresMs = nowMs() + 3_600_000
+                        }
+                    }
+                })
+            case .abortImageUpload(let req)?:
+                uploads.abort(req.transferID)
                 return .respond(CoreHost.demoExecutedOutcome(for: eff))
+            case .send(let s)?:
+                switch s.requestID {
+                case "s1":
+                    return .hold
+                case "s2":
+                    return .respond(.with {
+                        $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                        $0.source = .transport; $0.notForwarded = true
+                        $0.transportCode = "unavailable"
+                        $0.transportDetail = "电脑不在线，指令没有发出"
+                    })
+                case "s3":
+                    return .respond(.with {
+                        $0.requestID = eff.requestID; $0.attemptID = eff.attemptID
+                        $0.source = .transport; $0.notForwarded = false
+                        $0.transportCode = "network"
+                        $0.transportDetail = "不确定电脑有没有执行：连接中途断了"
+                    })
+                case "f1", "f2", "f3", "u1":
+                    return .respond(CoreHost.demoExecutedOutcome(for: eff))
+                default:
+                    return nil
+                }
             default:
                 return nil
             }
         }
-        await remote.showForTest(state: state)
-        await coreHost.appendDemoSessionData(state: state, events: eventsMap, modelLists: modelLists)
+        await coreHost.appendDemoSessionData(world: world, events: eventsMap, modelLists: modelLists)
         await local(coreHost)
     }
 
@@ -134,11 +214,13 @@ enum SessionSamples {
 
     nonisolated private static func ts(_ ms: Int64) -> Google_Protobuf_Timestamp { .with { $0.seconds = ms / 1000 } }
 
-    private static func machines(_ now: Int64) -> [MachineView] {
-        func make(_ id: String, _ name: String, version: UInt32, shares: Bool = false) -> MachineView {
-            MachineView(
-                id: id, online: true, lastSeenMs: now,
-                meta: .with {
+    private static func machines(_ now: Int64) -> [PBCorePlainMachine] {
+        func make(_ id: String, _ name: String, version: UInt32, shares: Bool = false) -> PBCorePlainMachine {
+            .with {
+                $0.machineID = id
+                $0.online = true
+                $0.lastSeenMs = now
+                $0.meta = .with {
                     $0.hostname = name
                     $0.home = "/Users/me"
                     $0.os = "darwin"
@@ -152,7 +234,9 @@ enum SessionSamples {
                         $0.maxSharedFileBytes = shares ? 104_857_600 : 0
                     }
                     $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in .with { $0.agent = agent } }
-                }, metaRev: 1)
+                }
+                $0.metaRev = 1
+            }
         }
         return [
             make(machine, "MacBook", version: peerProtocolVersion, shares: true), make(oldMachine, "旧 Mac mini", version: peerProtocolVersion - 1),
@@ -164,7 +248,7 @@ enum SessionSamples {
         _ id: String, _ title: String, now: Int64, machine: String = machine, status: PBSessionStatus = .idle,
         agent: PBAgent = .codex, mode: PBApprovalMode = .ask, approvals: Int32 = 0, context: Int64 = 0,
         edit: (inout PBSession) -> Void = { _ in }
-    ) -> SessionView {
+    ) -> PBCorePlainSession {
         var info = PBSession.with {
             $0.id = id
             $0.cwd = cwd
@@ -180,10 +264,16 @@ enum SessionSamples {
             $0.contextWindow = context > 0 ? (agent == .antigravity ? 1_048_000 : 400_000) : 0
         }
         edit(&info)
-        return SessionView(id: id, machineId: machine, info: info, metaRev: 1, updatedMs: now)
+        return .with {
+            $0.sessionID = id
+            $0.machineID = machine
+            $0.meta = info
+            $0.metaRev = 1
+            $0.updatedMs = now
+        }
     }
 
-    private static func sessions(_ now: Int64) -> [SessionView] {
+    private static func sessions(_ now: Int64) -> [PBCorePlainSession] {
         [
             session("sample-rows", "每一种行", now: now, context: 348_000),
             session("sample-queue", "排队和暂停的消息", now: now, status: .running, context: 120_000),
@@ -670,7 +760,7 @@ enum SessionSamples {
     }
 
     /// Appends to a session's history as a daemon would: a message, tools starting and ending, a reply in several parts.
-    static func stream(_ remote: Remote, _ coreHost: CoreHost, _ sid: String) {
+    static func stream(_ coreHost: CoreHost, _ sid: String) {
         streams[sid]?.cancel()
         streams[sid] = Task {
             let frames = Frames()
@@ -685,7 +775,7 @@ enum SessionSamples {
                     if let origin = kind.1 { $0.origin = origin }
                 })
                 demoEvents[sid] = list
-                await coreHost.appendDemoSessionData(state: remote.current, events: [sid: list])
+                await coreHost.appendDemoSessionData(events: [sid: list])
             }
             await add(turn)
             await add(user("再检查一遍并发的情况"))
@@ -705,7 +795,7 @@ enum SessionSamples {
     }
 
     /// Answers the session's first pending approval from another client.
-    static func resolve(_ remote: Remote, _ coreHost: CoreHost, _ sid: String) {
+    static func resolve(_ coreHost: CoreHost, _ sid: String) {
         Task {
             let list = demoEvents[sid] ?? []
             var resolved = Set<String>()
@@ -727,14 +817,12 @@ enum SessionSamples {
                 $0.origin = theirs
             })
             demoEvents[sid] = next
-            var state = remote.current
-            if var s = state.sessions[sid], var info = s.info {
-                info.pendingApprovals = 0
-                s.info = info
-                state.sessions[sid] = s
+            var world = await coreHost.currentDemoWorld()
+            if var s = world.sessions[sid], s.hasMeta {
+                s.meta.pendingApprovals = 0
+                world.sessions[sid] = s
             }
-            await remote.showForTest(state: state)
-            await coreHost.appendDemoSessionData(state: state, events: [sid: next])
+            await coreHost.appendDemoSessionData(world: world, events: [sid: next])
         }
     }
 }
@@ -748,11 +836,11 @@ private struct SessionSampleTask: ViewModifier {
         content
             .task {
                 if model.isDemo && sid.hasPrefix("sample-") {
-                    await SessionSamples.install(context.remote, coreHost: context.coreHost)
+                    await SessionSamples.install(context.coreHost)
                 }
             }
-            .debugSignal("session.stream") { if model.isDemo { SessionSamples.stream(context.remote, context.coreHost, sid) } }
-            .debugSignal("session.resolve") { if model.isDemo { SessionSamples.resolve(context.remote, context.coreHost, sid) } }
+            .debugSignal("session.stream") { if model.isDemo { SessionSamples.stream(context.coreHost, sid) } }
+            .debugSignal("session.resolve") { if model.isDemo { SessionSamples.resolve(context.coreHost, sid) } }
     }
 }
 

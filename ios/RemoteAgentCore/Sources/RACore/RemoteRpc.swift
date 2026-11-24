@@ -84,7 +84,6 @@ extension Remote {
         case .removeSessionID(let sid):
             await cache?.removeSession(id: sid)
             await onSessionRemoved?(sid)
-            await self.sessionRemovalHandler(sid)
         case .unlistSessionID(let sid):
             await cache?.unlistSession(id: sid)
         case .removeMachineID(let mid):

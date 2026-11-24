@@ -12,10 +12,11 @@ import UIKit
 private actor FakeCoreExecutor: CoreHostExecutor {
     nonisolated let account: Account
     nonisolated let machineID: String
-    nonisolated let state = Feed<RemoteState>(RemoteState())
 
     private var hooks: Remote.CoreHooks?
-    var publishedStates: [RemoteState] = []
+    var appliedSyncStates: [PBCoreSyncStateView] = []
+    var describedCalls: [String] = []
+    var describeFailure: (any Error)?
     var openedLegs: [UInt64] = []
     var closedLegs: [UInt64] = []
     var activeLeg: UInt64?
@@ -95,10 +96,18 @@ private actor FakeCoreExecutor: CoreHostExecutor {
         self.hooks = hooks
     }
 
-    var latestState: RemoteState { publishedStates.last ?? RemoteState() }
+    var latestSyncState: PBCoreSyncStateView { appliedSyncStates.last ?? PBCoreSyncStateView() }
 
-    func publishSyncState(_ snapshot: RemoteState) async {
-        publishedStates.append(snapshot)
+    func applyCoreSyncState(_ snapshot: PBCoreSyncStateView) async {
+        appliedSyncStates.append(snapshot)
+    }
+
+    func setDescribeFailure(_ err: (any Error)?) {
+        describeFailure = err
+    }
+
+    func clearDescribedCalls() {
+        describedCalls.removeAll()
     }
 
     func setNetworkGeneration(_ gen: UInt64) async {}
@@ -272,7 +281,10 @@ private actor FakeCoreExecutor: CoreHostExecutor {
     }
 
     func setWatchedSessions(_ sessionIds: [String]) async {}
-    func describeSelf(platform: String, description: String) async throws {}
+    func describeSelf(platform: String, description: String) async throws {
+        describedCalls.append("\(platform) \(description)")
+        if let describeFailure { throw describeFailure }
+    }
     func renameDevice(_ id: String, name: String) async throws {}
     func close() async {}
 }
@@ -300,6 +312,7 @@ private actor NavRecorder {
             screens: screens,
             defaults: ScopeDefaults(defaults),
             scopeHmacKey: key,
+            draftStorageQueue: DraftStorageQueue(),
             clock: { 1_791_000_000_000 },
             sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) },
             onNavigate: { eff in Task { await navRecorder.record(eff) } }
@@ -327,13 +340,15 @@ private actor NavRecorder {
         await waitUntil { !screens.newSession.modelPanel.models.isEmpty }
         #expect(screens.newSession.modelPanel.models.first?.slug == "gpt-5")
 
+        await host.setDraftText(scope: .newSession("/Users/me/Code/foo"), text: "Run checks")
+        await waitUntil {
+            screens.newSession.draft.text == "Run checks"
+                && screens.newSession.draft.canSend
+                && !screens.newSession.draft.restoring
+        }
         await host.submitNewSession(
             projectKey: "/Users/me/Code/foo",
-            prompt: "Run checks",
-            attachmentCount: 0,
-            attachmentsMoved: false,
-            autoModeSupported: false,
-            attachments: nil
+            autoModeSupported: false
         )
         await waitUntil { await executor.createdRequests.contains { $0.prompt == "Run checks" && $0.cwd == "/Users/me/Code/foo" } }
         await waitUntil { await navRecorder.navigated.contains { $0.route == .session && $0.sessionID == "sess-created" } }
@@ -364,9 +379,10 @@ private actor NavRecorder {
         await host.startAsync()
         await host.showHome()
         await waitUntil {
-            let conn = await executor.latestState.conn
+            let conn = await executor.latestSyncState.connection
             let fetches = await executor.fetchListsCount
-            return conn == .online
+            return conn == .connected
+                && screens.syncState.connection == .connected
                 && fetches >= 1
                 && screens.home.running.contains { $0.sessionID == "s1" }
         }
@@ -374,8 +390,8 @@ private actor NavRecorder {
         // 2. Disconnect (streamClosed) -> state reflects offline/reconnecting
         await executor.dropActiveStream(errorCode: "unavailable", reason: "server restarting")
         await waitUntil {
-            let conn = await executor.latestState.conn
-            return conn != .online
+            let conn = await executor.latestSyncState.connection
+            return conn != .connected && screens.syncState.connection != .connected
         }
 
         // 3. Reconnect -> catch-up fetchLists delivers newly added session on reconnect
@@ -394,14 +410,79 @@ private actor NavRecorder {
             }
         })
         await waitUntil {
-            let conn = await executor.latestState.conn
+            let conn = await executor.latestSyncState.connection
             let legs = await executor.openedLegs.count
             let fetches = await executor.fetchListsCount
-            return conn == .online
+            return conn == .connected
                 && legs >= 2
                 && fetches > initialFetches
                 && screens.home.running.contains { $0.sessionID == "s3" }
         }
+
+        await host.closeAsync()
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    @Test func coreHostDescribesSelfOnConnectReconnectAndLeaseRenewal() async throws {
+        let screens = CoreScreens()
+        let executor = FakeCoreExecutor()
+        let client = try CoreClient()
+        let suiteName = "corehost-describe-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let host = CoreHost(
+            client: client,
+            executor: executor,
+            screens: screens,
+            defaults: ScopeDefaults(defaults),
+            scopeHmacKey: scopeHmacKey(localKey: Demo.account.localKey),
+            clock: { 1_791_000_000_000 },
+            sleep: { _ in try? await Task.sleep(for: .milliseconds(5)) }
+        )
+        await host.setDeviceDescription { "iOS 26.0 · iPhone" }
+
+        let meID = executor.account.deviceId
+        var sync = PBCoreSyncStateView.with {
+            $0.connection = .offline
+            $0.leaseEndMs = 1
+            $0.devices = [.with { $0.deviceID = meID; $0.kind = .client; $0.trusted = true }]
+        }
+        // Offline: does not send.
+        await host.maybeDescribeSelf(sync)
+        #expect(await executor.describedCalls.isEmpty)
+
+        // Online with failure: sends once, does not spin on unchanged key.
+        await executor.setDescribeFailure(URLError(.networkConnectionLost))
+        sync.connection = .connected
+        await host.maybeDescribeSelf(sync)
+        await waitUntil { await executor.describedCalls.count == 1 }
+        await host.maybeDescribeSelf(sync)
+        #expect(await executor.describedCalls.count == 1)
+
+        // Disconnect + reconnect retries.
+        sync.connection = .offline
+        await host.maybeDescribeSelf(sync)
+        await executor.setDescribeFailure(SecurityFailure.lease)
+        sync.connection = .connected
+        await host.maybeDescribeSelf(sync)
+        await waitUntil { await executor.describedCalls.count == 2 }
+
+        // Lease renewal retries without disconnect or metaRev change.
+        await executor.setDescribeFailure(nil)
+        sync.leaseEndMs = 2
+        await host.maybeDescribeSelf(sync)
+        await waitUntil { await executor.describedCalls.count == 3 }
+
+        // Once server reflects matching metadata, no further calls.
+        await executor.clearDescribedCalls()
+        sync.devices[0].metaRev = 1
+        sync.devices[0].meta = .with {
+            $0.platform = "ios"
+            $0.description_p = "iOS 26.0 · iPhone"
+        }
+        await host.maybeDescribeSelf(sync)
+        #expect(await executor.describedCalls.isEmpty)
 
         await host.closeAsync()
         defaults.removePersistentDomain(forName: suiteName)
@@ -433,7 +514,6 @@ private actor NavRecorder {
         render(
             HomeContent(
                 home: home,
-                state: RemoteState(),
                 allAttention: Binding(get: { allAtt }, set: { allAtt = $0 }),
                 allRunning: Binding(get: { allRun }, set: { allRun = $0 }),
                 filterText: Binding(get: { filter }, set: { filter = $0 })
@@ -447,7 +527,6 @@ private actor NavRecorder {
         render(
             HomeContent(
                 home: emptyHome,
-                state: RemoteState(),
                 allAttention: .constant(false),
                 allRunning: .constant(false),
                 filterText: .constant("")
@@ -506,11 +585,9 @@ private actor NavRecorder {
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-dirpicker-\(UUID())")!)
         let model = AppModel(settings: settings)
         let remote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        let initial = Demo.world(.everyday)
         model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: remote, initial: initial) {
-            await remote.showForTest(state: initial)
-        }
+        model.showDemo(account: Demo.account, remote: remote, world: initial)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         let core = try #require(model.context?.core)

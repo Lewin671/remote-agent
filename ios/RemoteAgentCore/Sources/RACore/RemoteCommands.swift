@@ -35,9 +35,6 @@ extension Remote {
         ev.attemptID = effect.attemptID
 
         let cmd = try? PBCommand(serializedBytes: effect.commandBytes)
-        if let cmd {
-            trackTransfer(machineId: effect.machineID, command: cmd)
-        }
 
         let useDirect = effect.routeLeg == .direct && effect.directPcID > 0
         let handedOffLock = OSAllocatedUnfairLock(initialState: false)
@@ -52,9 +49,6 @@ extension Remote {
         }
 
         do {
-            if let cmd {
-                try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
-            }
             if let relayAttempt {
                 try await relayAttempt.prepare(prior: effect.retryOfUnknown)
             }
@@ -79,9 +73,6 @@ extension Remote {
                 payloadHash = auth.payloadHash
             }
             try Task.checkCancellation()
-            if let cmd {
-                try requireFileCapability(machineId: effect.machineID, hasFiles: requiresFileCapability(cmd))
-            }
 
             let res: PBForwardResponse
             if useDirect {
@@ -251,7 +242,6 @@ extension Remote {
     // MARK: - Transitional Step 4 Command & Helper APIs (delete after Step 4 migration)
 
     public nonisolated func prepare(machineId: String, sessionId: String, _ cmd: PBCommand) throws -> PreparedCommand {
-        try requireFileCapability(machineId: machineId, hasFiles: requiresFileCapability(cmd))
         let requestId = newRequestId()
         let deadline = clock() + commandTTLMs
         var versioned = cmd
@@ -313,11 +303,15 @@ extension Remote {
                 ? CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
                 : CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
-        if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
-            throw CommandError("failed_precondition", refusal, outcome: prior ? .unknown : .notSent)
+        if let mp = machineProtocols[p.machineId] {
+            if mp.version < peerProtocolVersion {
+                throw CommandError("failed_precondition", L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: mp.name), outcome: prior ? .unknown : .notSent)
+            }
+            if mp.version > peerProtocolVersion {
+                throw CommandError("failed_precondition", L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd(), outcome: prior ? .unknown : .notSent)
+            }
         }
-        trackTransfer(machineId: p.machineId, command: p.command)
-        let bulkHint = directBulkHint(p.machineId, p.command)
+        let bulkHint = directBulkHint(p.command)
         var forceRelay = false
         var attemptCount = 0
 
@@ -327,17 +321,13 @@ extension Remote {
             }
             let attemptId = newRequestId()
             let dec: PBCoreDirectBulkRouteEffect
-            if (bulkHint.routeHintValue != 0 || !bulkHint.uploadTransferID.isEmpty), let hooks = hostHooks {
+            if bulkHint.routeHintValue != 0, let hooks = hostHooks {
                 let beginEv = PBCoreDirectBulkTransferBeginEvent.with {
                     $0.machineID = p.machineId
                     $0.routeHint = bulkHint.routeHintValue
                     $0.bulkFileKey = bulkHint.bulkFileKey
-                    $0.bulkBytes = bulkHint.bulkBytes
-                    $0.bulkUpload = bulkHint.bulkUpload
                     $0.deadlineMs = p.deadlineMs
                     $0.forceRelay = forceRelay
-                    $0.uploadTransferID = bulkHint.uploadTransferID
-                    $0.uploadHasFilename = bulkHint.uploadHasFilename
                 }
                 dec = await hooks.onBeginDirectBulkTransfer(beginEv)
             } else {
@@ -347,27 +337,21 @@ extension Remote {
             let started = ContinuousClock.now
             let handoff: @Sendable () throws -> Void = { p.markMayHaveRun() }
             let relayAttempt = useDirect ? nil : deviceLink.delivery(attemptId: attemptId, handoff: handoff)
-            let initialBytes: Int64 = if case .putImageChunk(let c)? = p.command.kind {
-                Int64(c.data.count)
-            } else {
-                0
-            }
+            let initialBytes: Int64 = 0
             @Sendable func reportRoute(_ ok: Bool, _ obsBytes: Int64) async {
-                guard dec.ticketID != 0 || !bulkHint.finishTransferID.isEmpty else { return }
+                guard dec.ticketID != 0 else { return }
                 let done = PBCoreDirectBulkTransferDoneEvent.with {
                     $0.ticketID = dec.ticketID
                     $0.routeWasDirect = useDirect
                     $0.ok = ok
                     $0.elapsedMs = Double(max((ContinuousClock.now - started).milliseconds, 1))
                     $0.observedBytes = obsBytes
-                    $0.finishUploadTransferID = bulkHint.finishTransferID
                     $0.machineID = p.machineId
                 }
                 await hostHooks?.onFinishDirectBulkTransfer(done)
             }
             var routeReported = false
             do {
-                try requireFileCapability(machineId: p.machineId, hasFiles: requiresFileCapability(p.command))
                 if let relayAttempt {
                     try await relayAttempt.prepare(prior: p.mayHaveRun)
                 }

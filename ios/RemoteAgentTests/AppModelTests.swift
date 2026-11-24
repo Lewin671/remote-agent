@@ -21,7 +21,6 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     }
 
     var account: Account { remote.account }
-    var state: Feed<RemoteState> { remote.state }
     var calls: [String] { lock.withLock { log } }
     private func note(_ call: String) { lock.withLock { log.append(call) } }
     func forget() { lock.withLock { log.removeAll() } }
@@ -41,17 +40,6 @@ final class FakeEngine: SyncEngine, @unchecked Sendable {
     func reconnectNow() { note("reconnect") }
     func retryLogin() { note("retryLogin") }
     func close() { note("close") }
-
-    var describeFailure: (any Error)? {
-        get { lock.withLock { failure } }
-        set { lock.withLock { failure = newValue } }
-    }
-    private var failure: (any Error)?
-
-    func describeSelf(platform: String, description: String) async throws {
-        note("describe \(platform) \(description)")
-        if let describeFailure { throw describeFailure }
-    }
 }
 
 /// A network that says only what the test says.
@@ -98,12 +86,11 @@ final class Harness {
             return try await host.client.bootstrap()
         }
         parts.checkExitAdvice = { [unowned self] _ in await MainActor.run { self.exitAdvice } }
-        parts.makeEngine = { [unowned self] account, _, _ in
+        parts.makeEngine = { [unowned self] account, _, _, _ in
             let engine = try FakeEngine(account: account)
             self.engines.append(engine)
             return EngineParts(engine: engine, remote: engine.remote)
         }
-        parts.frame = { _ in }
         parts.deviceDescription = { "iOS 26.0 · iPhone" }
         parts.clearNotifications = { [unowned self] in self.cleared += 1 }
         if let erase { parts.erase = erase }
@@ -114,7 +101,7 @@ final class Harness {
         defaults = UserDefaults(suiteName: suite)!
         settings = SettingsStore(defaults: defaults)
         pending = PendingStore(
-            directory: root.appending(path: "pending"), vault: vault, defaults: defaults)
+            directory: root.appending(path: "pending"), vault: vault)
     }
 
     var engine: FakeEngine { engines.last! }
@@ -318,52 +305,15 @@ final class Harness {
         #expect(h.engine.calls == ["network false", "start"])
     }
 
-    @Test func theEnginesStateIsCopiedToTheModel() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        var s = RemoteState()
-        s.machines["m1"] = MachineView(id: "m1", online: true, lastSeenMs: 1)
-        s.conn = .online
-        s.link = .online
-        await h.engine.remote.showForTest(state: s)
-        await eventually("state") { h.model.state == s }
-        #expect(!h.model.removed)
-    }
-
     @Test func aDeviceTheServerTurnedAwayShowsOnlyTheNoticeAndCanTryAgain() async throws {
         defer { h.cleanUp() }
         try await h.ready()
-        var s = RemoteState()
-        s.removed = true
-        await h.engine.remote.showForTest(state: s)
-        await eventually("removed") { h.model.removed }
+        #expect(!h.model.removed)
+        h.model.context?.core.syncState.removed = true
+        #expect(h.model.removed)
         #expect(h.vault.hasPersistedState())
         h.model.retryLogin()
         #expect(h.engine.calls.last == "retryLogin")
-    }
-
-    @Test func thisClientIsDescribedOnceItIsListedAndOnline() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        var s = RemoteState()
-        s.devices[h.account.deviceId] = DeviceView(
-            id: h.account.deviceId, kind: .client, createdMs: 1)
-        await h.engine.remote.showForTest(state: s)
-        await eventually("state") { h.model.state == s }
-        #expect(!h.engine.calls.contains { $0.hasPrefix("describe") })
-        s.conn = .online
-        s.link = .online
-        await h.engine.remote.showForTest(state: s)
-        await eventually("described") { h.engine.calls.contains("describe ios iOS 26.0 · iPhone") }
-        h.engine.forget()
-        s.devices[h.account.deviceId]?.meta = .with {
-            $0.platform = "ios"
-            $0.description_p = "iOS 26.0 · iPhone"
-        }
-        s.devices[h.account.deviceId]?.metaRev = 1
-        await h.engine.remote.showForTest(state: s)
-        await eventually("state") { h.model.state == s }
-        #expect(h.engine.calls.isEmpty)
     }
 
     @Test func joiningStartsSyncingForTheJoinedAccount() async throws {
@@ -381,7 +331,7 @@ final class Harness {
         defer { h.cleanUp() }
         try await h.ready()
         try h.vault.writeRawKeychainItemForTest(account: "security-v4-notify", data: Data(repeating: 3, count: 32), afterFirstUnlock: true)
-        try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
         h.settings.update { $0.theme = .dark }
         h.defaults.set("x", forKey: AccountDefaults.key("home-scope"))
         h.defaults.set("kept", forKey: "other")
@@ -396,7 +346,6 @@ final class Harness {
         #expect(h.model.stage == .join)
         #expect(h.model.context == nil)
         #expect(h.model.account == nil)
-        #expect(h.model.state == RemoteState())
         #expect(h.model.lastServer == h.account.server)
         #expect(engine.calls.last == "close")
         #expect(!h.vault.hasPersistedState())
@@ -408,11 +357,6 @@ final class Harness {
         #expect(h.defaults.object(forKey: AccountDefaults.key("home-scope")) == nil)
         #expect(h.defaults.string(forKey: "other") == "kept")
         #expect(h.cleared == 1)
-        var late = RemoteState()
-        late.machines["m"] = MachineView(id: "m", online: true, lastSeenMs: 1)
-        await engine.remote.showForTest(state: late)
-        await Task.yield()
-        #expect(h.model.state == RemoteState())
         try await h.model.joined(h.account)
         let next = try #require(h.model.context)
         #expect(next !== context)
@@ -459,10 +403,10 @@ final class Harness {
                 vault: storage.vault, cacheRoot: storage.cacheRoot, pending: storage.pending)
         }
         try await h.ready()
-        try h.pending.put(folder: "s", name: "a", data: Data([1, 2, 3]))
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s", data: Data([1, 2, 3])).ok)
         await h.model.logout()
         #expect(h.model.stage == .failed("没能删除缓存"))
-        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "pending").path))
+        #expect(FileManager.default.fileExists(atPath: h.root.appending(path: "cache").path))
         h.bootstrapStatus = nil
         h.model.loadAccount()
         await h.model.waitForLoadForTest()
@@ -474,49 +418,6 @@ final class Harness {
         h.model.scenePhase(.active)
         await h.model.waitForLoadForTest()
         #expect(tries.withLock { $0 } == 2)
-    }
-
-    @Test func aDescriptionThatDidNotArriveIsSentAgainOnTheNextConnection() async throws {
-        defer { h.cleanUp() }
-        try await h.ready()
-        h.engine.describeFailure = URLError(.networkConnectionLost)
-        var s = RemoteState()
-        s.devices[h.account.deviceId] = DeviceView(
-            id: h.account.deviceId, kind: .client, createdMs: 1)
-        s.conn = .online
-        s.link = .online
-        await h.engine.remote.showForTest(state: s)
-        await eventually("tried") { h.engine.calls.contains { $0.hasPrefix("describe") } }
-        s.machines["m1"] = MachineView(id: "m1", online: true, lastSeenMs: 1)
-        await h.engine.remote.showForTest(state: s)
-        await eventually("state") { h.model.state == s }
-        #expect(h.engine.calls.filter { $0.hasPrefix("describe") }.count == 1)
-        var off = s
-        off.conn = .offline
-        off.link = .waiting
-        await h.engine.remote.showForTest(state: off)
-        await eventually("offline") { h.model.state == off }
-        h.engine.describeFailure = nil
-        await h.engine.remote.showForTest(state: s)
-        await eventually("tried again") {
-            h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2
-        }
-    }
-
-    @Test func aLeaseRenewalRetriesAnAutomaticDescriptionWithoutAConnectionOrRevisionChange() async throws {
-        let h = Harness()
-        defer { h.cleanUp() }
-        try await h.ready()
-        h.engine.describeFailure = SecurityFailure.lease
-        var s = RemoteState()
-        s.devices[h.account.deviceId] = DeviceView(id: h.account.deviceId, kind: .client, createdMs: 1)
-        s.conn = .online; s.link = .online; s.leaseEndMs = 1
-        await h.engine.remote.showForTest(state: s)
-        await eventually("first description") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 1 }
-        h.engine.describeFailure = nil
-        s.leaseEndMs = 2
-        await h.engine.remote.showForTest(state: s)
-        await eventually("description after renewal") { h.engine.calls.filter { $0.hasPrefix("describe") }.count == 2 }
     }
 
     @Test func legacyV3WipeClearsCipherCachePreservesPendingKeyAndPersistsRepairNoticeAcrossColdRestart() async throws {

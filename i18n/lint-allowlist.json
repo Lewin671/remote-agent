@@ -5838,5 +5838,15 @@
     "path": "web/src/imagecodec/metadata.ts",
     "literal": "unsupported",
     "reason": "Internal ImageErrorCode enum discriminator; localized user message comes from error.ts i18n lookup."
+  },
+  {
+    "path": "ios/RemoteAgent/App/CoreHost.swift",
+    "literal": "blob:",
+    "reason": "Internal opaque local blob reference prefix matched near AttachmentFileIOError; never rendered as user-facing text."
+  },
+  {
+    "path": "ios/RemoteAgent/Data/PendingStore.swift",
+    "literal": "\\(id).blob",
+    "reason": "Internal encrypted local blob filename matched near AttachmentFileIOError; never rendered as user-facing text."
   }
 ]

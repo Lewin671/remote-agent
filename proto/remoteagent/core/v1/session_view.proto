@@ -962,26 +962,12 @@ message SessionImageViewerCloseAction {
   string session_id = 1;
 }
 
-// SessionRestoreComposerEffect instructs the shell to restore a message draft into the composer
-// (or simply focus the composer when handled_by_core is true).
+// SessionRestoreComposerEffect instructs the shell to focus the composer
+// after Core puts a message's text and attachments back into the draft.
 message SessionRestoreComposerEffect {
+  reserved 3, 4, 5, 6;
+  reserved "text", "image_ids", "file_ids", "handled_by_core";
   string session_id = 1;
   string request_id = 2;
-  string text = 3;
-  repeated string image_ids = 4;
-  repeated string file_ids = 5;
-  bool handled_by_core = 6;
-}
-
-// SessionResendAttachmentsEffect instructs the shell to re-upload locally retained attachments and resend.
-message SessionResendAttachmentsEffect {
-  string session_id = 1;
-  string machine_id = 2;
-  string source_request_id = 3;
-  string new_request_id = 4;
-  string text = 5;
-  remoteagent.v1.SendMode mode = 6;
-  repeated string image_ids = 7;
-  repeated string file_ids = 8;
 }
 

@@ -164,6 +164,18 @@ func TestPersistenceStrictSchemaAndScopeHelpers(t *testing.T) {
 	if MergePutBackText("   ", "world") != "world" {
 		t.Fatalf("MergePutBackText blank existing = %q", MergePutBackText("   ", "world"))
 	}
+	if AppendDraftText("", "clean up") != "clean up" {
+		t.Fatalf("AppendDraftText empty = %q", AppendDraftText("", "clean up"))
+	}
+	if AppendDraftText("  keep this  \n", "clean up") != "  keep this\n\nclean up" {
+		t.Fatalf("AppendDraftText merge = %q", AppendDraftText("  keep this  \n", "clean up"))
+	}
+	if AppendDraftText("already has clean up here", "clean up") != "already has clean up here" {
+		t.Fatalf("AppendDraftText dedup = %q", AppendDraftText("already has clean up here", "clean up"))
+	}
+	if AppendDraftText("keep", "   ") != "keep" {
+		t.Fatalf("AppendDraftText blank addition = %q", AppendDraftText("keep", "   "))
+	}
 
 	rawDraft, err := EncodePersistedDraft(&corev1.PersistedDraftRecord{
 		Scope:    scope,

@@ -25,8 +25,10 @@ public struct Account: Equatable, Sendable, CustomStringConvertible, CustomDebug
 
 public typealias Sleeper = @Sendable (_ ms: Int64) async throws -> Void
 
-public let realSleep: Sleeper = {
-    try await Task.sleep(nanoseconds: UInt64(max($0, 0)) * 1_000_000)
+public let realSleep: Sleeper = { ms in
+    let clamped = max(ms, 0)
+    let (ns, overflow) = UInt64(clamped).multipliedReportingOverflow(by: 1_000_000)
+    try await Task.sleep(nanoseconds: overflow ? UInt64.max : ns)
 }
 
 public enum SecurityFailure: Error, Equatable, Sendable {

@@ -42,17 +42,4 @@ import Testing
         #expect(viewerOutcome(.failure(UserError("断了")), online: true).state == .failed(why: "断了"))
         #expect(viewerOutcome(.failure(UserError("断了")), online: true).payload == nil)
     }
-
-    @Test func aPictureLeavesUnderCoreDisplayNameAndExtension() {
-        #expect(
-            imageExtension(.png) == "png" && imageExtension(.webp) == "webp"
-                && imageExtension(.gif) == "gif")
-        #expect(imageExtension(.jpeg) == "jpg" && imageExtension(.unspecified) == "jpg")
-        #expect(
-            savedImageName(displayName: "empty-after.png", ext: "jpg", nowMs: 1700)
-                == "empty-after-1700.jpg")
-        #expect(savedImageName(displayName: "a.b.png", ext: "png", nowMs: 5) == "a.b-5.png")
-        #expect(savedImageName(displayName: "", ext: "png", nowMs: 5) == "\(L10n.imageTitle())-5.png")
-        #expect(savedImageName(displayName: ".png", ext: "png", nowMs: 5) == "remote-agent-5.png")
-    }
 }

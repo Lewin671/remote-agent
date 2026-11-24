@@ -23,31 +23,30 @@ struct NewSessionBox: View {
     var sheet: NewTaskChrome?
 
     @Environment(AccountContext.self) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @State private var text = ""
+    @State private var textRelay = DraftTextRelay()
+
+    private func updateText(scope: PBDraftScope, next: String) {
+        guard next != text else { return }
+        text = next
+        textRelay.send(scope: scope, text: next, host: context.coreHost)
+    }
 
     var body: some View {
         let vm = context.core.newSession
-        let machineId = vm.config.machineID.isEmpty ? nil : vm.config.machineID
-        let images = ComposerAttachments(
-            newSession: vm,
-            key: ImageCenter.projectKey(vm.projectKey.ifEmpty(key)),
-            remote: context.remote
-        )
+        let projectKey = vm.projectKey.ifEmpty(key)
+        let scope = PBDraftScope.newSession(projectKey)
+        let draft = vm.draft
+        let images = ComposerAttachments(context: context, scope: scope, draft: draft)
         NewSessionContent(
             vm: vm,
-            text: $text,
+            text: Binding(get: { text }, set: { updateText(scope: scope, next: $0) }),
             focus: focus,
             images: images,
             blockedReason: vm.prefsBlocked ? vm.prefsBlockedReason.rendered() : nil,
-            draftError: context.sessionStore.draftErrors["new:" + vm.projectKey.ifEmpty(key)],
             onPromptChanged: { prompt in
-                let count = Int32(images.draft.images.count)
-                context.dispatch {
-                    $0.newSessionSetPrompt = .with {
-                        $0.prompt = prompt
-                        $0.attachmentCount = count
-                    }
-                }
+                updateText(scope: scope, next: prompt)
             },
             onSelectAgent: { agent in
                 context.dispatch { $0.newSessionSelectAgent.agent = agent }
@@ -76,43 +75,17 @@ struct NewSessionBox: View {
                 }
             },
             onSubmit: {
-                images.refresh()
-                guard vm.canStart, images.ready else { return }
-                let projectKey = vm.projectKey.ifEmpty(key)
-                let draftKey = ImageCenter.projectKey(projectKey)
-                let attached = images.draft.images
+                guard vm.canStart, draft.canSend, !draft.sending, !draft.restoring else { return }
                 let promptText = text
                 let autoModeSupported = vm.modelPanel.canSelectAutoMode
-                let doSubmit: @MainActor () -> Void = {
-                    let submission = NewSessionAttachmentsSubmission(
-                        draftKey: draftKey,
-                        machineId: machineId,
-                        taken: attached,
-                        imageIds: attached.filter { !$0.isFile }.compactMap(\.imageId),
-                        fileIds: attached.filter(\.isFile).compactMap(\.imageId),
-                        center: images.center
-                    )
-                    Haptics.confirm()
-                    context.submitNewSession(
+                Haptics.confirm()
+                let host = context.coreHost
+                textRelay.flushAndRun {
+                    await host.setDraftText(scope: scope, text: promptText)
+                    await host.submitNewSession(
                         projectKey: projectKey,
-                        prompt: promptText,
-                        attachmentCount: Int32(attached.count),
-                        attachmentsMoved: false,
-                        autoModeSupported: autoModeSupported,
-                        attachments: submission
+                        autoModeSupported: autoModeSupported
                     )
-                }
-                if attached.isEmpty {
-                    doSubmit()
-                } else {
-                    Task {
-                        let check = await images.center.evaluateDraft(draftKey, machineId: machineId)
-                        guard check.allowed else {
-                            if !check.reason.isEmpty { images.center.say(draftKey, check.reason) }
-                            return
-                        }
-                        doSubmit()
-                    }
                 }
             },
             onMachine: onMachine,
@@ -122,17 +95,34 @@ struct NewSessionBox: View {
             onMachineStatus: onMachineStatus,
             sheet: sheet
         )
-        .onChange(of: vm.prompt, initial: true) { oldServerPrompt, serverPrompt in
-            if text != serverPrompt && (serverPrompt.isEmpty || text.isEmpty || (!oldServerPrompt.isEmpty && serverPrompt != oldServerPrompt && text == oldServerPrompt)) {
+        .task(id: "\(projectKey):\(vm.config.machineID):\(scenePhase == .active)") {
+            guard !projectKey.isEmpty, scenePhase == .active else { return }
+            await context.coreHost.openDraft(scope: scope, machineID: vm.config.machineID)
+        }
+        .onAppear {
+            let coreText = draft.text.isEmpty ? vm.prompt : draft.text
+            if textRelay.pendingCount == 0 && text != coreText {
+                text = coreText
+            }
+        }
+        .onChange(of: draft.textRevision) { _, _ in
+            if textRelay.pendingCount == 0 && text != draft.text {
+                text = draft.text
+            }
+        }
+        .onChange(of: draft.text) { _, coreText in
+            if textRelay.pendingCount == 0 && text != coreText {
+                text = coreText
+            }
+        }
+        .onChange(of: vm.prompt) { _, serverPrompt in
+            if textRelay.pendingCount == 0 && draft.text == serverPrompt && text != serverPrompt {
                 text = serverPrompt
             }
         }
-        .onChange(of: images.draft.images.count) { _, count in
-            context.dispatch {
-                $0.newSessionSetPrompt = .with {
-                    $0.prompt = text
-                    $0.attachmentCount = Int32(count)
-                }
+        .onChange(of: textRelay.pendingCount) { _, pending in
+            if pending == 0 && text != draft.text {
+                text = draft.text
             }
         }
     }
@@ -145,7 +135,6 @@ struct NewSessionContent: View {
     var focus = false
     var images: ComposerAttachments? = nil
     var blockedReason: String? = nil
-    var draftError: String? = nil
     var onPromptChanged: (String) -> Void = { _ in }
     var onSelectAgent: (PBAgent) -> Void = { _ in }
     var onSelectMachineChoice: (String) -> Void = { _ in }
@@ -167,18 +156,12 @@ struct NewSessionContent: View {
     @State private var modelPanelHeight: CGFloat = 0
 
     var body: some View {
-        let canSend = vm.canStart && (images?.ready ?? true)
+        let canSend = vm.canStart && (images?.canSend ?? true)
         Group {
             if let sheet {
                 taskPage(sheet, canSend: canSend)
             } else {
                 box(canSend: canSend)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if let draftError {
-                Notice(draftError, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
-                    .accessibilityIdentifier("new-session-draft-error")
             }
         }
         .onChange(of: text) { _, next in

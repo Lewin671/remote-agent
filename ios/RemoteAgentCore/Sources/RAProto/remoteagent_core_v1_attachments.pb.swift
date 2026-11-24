@@ -1291,6 +1291,33 @@ public struct PBDraftSetTextAction: Sendable {
   fileprivate var _scope: PBDraftScope? = nil
 }
 
+/// Appends text (e.g. a cleanup prompt) to a draft after any pending disk load finishes,
+/// deduplicating if the text is already present and preserving existing draft content.
+public struct PBDraftAppendTextAction: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var scope: PBDraftScope {
+    get {return _scope ?? PBDraftScope()}
+    set {_scope = newValue}
+  }
+  /// Returns true if `scope` has been explicitly set.
+  public var hasScope: Bool {return self._scope != nil}
+  /// Clears the value of `scope`. Subsequent reads from it will return its default value.
+  public mutating func clearScope() {self._scope = nil}
+
+  public var text: String = String()
+
+  public var machineID: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _scope: PBDraftScope? = nil
+}
+
 public struct PBDraftSetTargetMachineAction: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -3789,6 +3816,50 @@ extension PBDraftSetTextAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImp
   public static func ==(lhs: PBDraftSetTextAction, rhs: PBDraftSetTextAction) -> Bool {
     if lhs._scope != rhs._scope {return false}
     if lhs.text != rhs.text {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDraftAppendTextAction: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DraftAppendTextAction"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}scope\0\u{1}text\0\u{3}machine_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._scope) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.text) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.machineID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._scope {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    if !self.text.isEmpty {
+      try visitor.visitSingularStringField(value: self.text, fieldNumber: 2)
+    }
+    if !self.machineID.isEmpty {
+      try visitor.visitSingularStringField(value: self.machineID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDraftAppendTextAction, rhs: PBDraftAppendTextAction) -> Bool {
+    if lhs._scope != rhs._scope {return false}
+    if lhs.text != rhs.text {return false}
+    if lhs.machineID != rhs.machineID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

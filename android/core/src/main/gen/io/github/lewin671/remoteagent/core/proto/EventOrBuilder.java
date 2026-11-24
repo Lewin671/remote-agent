@@ -495,17 +495,6 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.NewSessionSelectModelAction getNewSessionSelectModel();
 
   /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   * @return Whether the newSessionSetPrompt field is set.
-   */
-  boolean hasNewSessionSetPrompt();
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   * @return The newSessionSetPrompt.
-   */
-  io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction getNewSessionSetPrompt();
-
-  /**
    * <code>.remoteagent.core.v1.NewSessionProjectAction new_session_retry_models = 56 [json_name = "newSessionRetryModels"];</code>
    * @return Whether the newSessionRetryModels field is set.
    */
@@ -1450,6 +1439,17 @@ public interface EventOrBuilder extends
    * @return The draftImageViewerClose.
    */
   io.github.lewin671.remoteagent.core.proto.DraftImageViewerCloseAction getDraftImageViewerClose();
+
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   * @return Whether the draftAppendText field is set.
+   */
+  boolean hasDraftAppendText();
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   * @return The draftAppendText.
+   */
+  io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction getDraftAppendText();
 
   /**
    * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>

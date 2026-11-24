@@ -65,7 +65,6 @@ public  final class Event extends
     NEW_SESSION_SELECT_MACHINE(52),
     NEW_SESSION_SELECT_AGENT(53),
     NEW_SESSION_SELECT_MODEL(54),
-    NEW_SESSION_SET_PROMPT(55),
     NEW_SESSION_RETRY_MODELS(56),
     NEW_SESSION_RETRY_SAVE_CONFIG(57),
     NEW_SESSION_SUBMIT(58),
@@ -152,6 +151,7 @@ public  final class Event extends
     DRAFT_IMAGE_VIEWER_OPEN(264),
     DRAFT_IMAGE_VIEWER_NAVIGATE(265),
     DRAFT_IMAGE_VIEWER_CLOSE(266),
+    DRAFT_APPEND_TEXT(267),
     SCHEDULE_CACHE_LOADED(300),
     SCHEDULE_SEEN_LOADED(301),
     SCHEDULE_LOCAL_CONTEXT(302),
@@ -279,7 +279,6 @@ public  final class Event extends
         case 52: return NEW_SESSION_SELECT_MACHINE;
         case 53: return NEW_SESSION_SELECT_AGENT;
         case 54: return NEW_SESSION_SELECT_MODEL;
-        case 55: return NEW_SESSION_SET_PROMPT;
         case 56: return NEW_SESSION_RETRY_MODELS;
         case 57: return NEW_SESSION_RETRY_SAVE_CONFIG;
         case 58: return NEW_SESSION_SUBMIT;
@@ -366,6 +365,7 @@ public  final class Event extends
         case 264: return DRAFT_IMAGE_VIEWER_OPEN;
         case 265: return DRAFT_IMAGE_VIEWER_NAVIGATE;
         case 266: return DRAFT_IMAGE_VIEWER_CLOSE;
+        case 267: return DRAFT_APPEND_TEXT;
         case 300: return SCHEDULE_CACHE_LOADED;
         case 301: return SCHEDULE_SEEN_LOADED;
         case 302: return SCHEDULE_LOCAL_CONTEXT;
@@ -2738,58 +2738,6 @@ public  final class Event extends
    */
   private void clearNewSessionSelectModel() {
     if (eventCase_ == 54) {
-      eventCase_ = 0;
-      event_ = null;
-    }
-  }
-
-  public static final int NEW_SESSION_SET_PROMPT_FIELD_NUMBER = 55;
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   */
-  @java.lang.Override
-  public boolean hasNewSessionSetPrompt() {
-    return eventCase_ == 55;
-  }
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   */
-  @java.lang.Override
-  public io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction getNewSessionSetPrompt() {
-    if (eventCase_ == 55) {
-       return (io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction) event_;
-    }
-    return io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction.getDefaultInstance();
-  }
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setNewSessionSetPrompt(io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction value) {
-    value.getClass();  // minimal bytecode null check
-    event_ = value;
-    eventCase_ = 55;
-  }
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void mergeNewSessionSetPrompt(io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction value) {
-    value.getClass();  // minimal bytecode null check
-    if (eventCase_ == 55 &&
-        event_ != io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction.getDefaultInstance()) {
-      event_ = io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction.newBuilder((io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction) event_)
-          .mergeFrom(value).buildPartial();
-    } else {
-      event_ = value;
-    }
-    eventCase_ = 55;
-  }
-  /**
-   * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-   */
-  private void clearNewSessionSetPrompt() {
-    if (eventCase_ == 55) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -7262,6 +7210,58 @@ public  final class Event extends
    */
   private void clearDraftImageViewerClose() {
     if (eventCase_ == 266) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int DRAFT_APPEND_TEXT_FIELD_NUMBER = 267;
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDraftAppendText() {
+    return eventCase_ == 267;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction getDraftAppendText() {
+    if (eventCase_ == 267) {
+       return (io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDraftAppendText(io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 267;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeDraftAppendText(io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 267 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.newBuilder((io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 267;
+  }
+  /**
+   * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+   */
+  private void clearDraftAppendText() {
+    if (eventCase_ == 267) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -13263,54 +13263,6 @@ public  final class Event extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    @java.lang.Override
-    public boolean hasNewSessionSetPrompt() {
-      return instance.hasNewSessionSetPrompt();
-    }
-    /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    @java.lang.Override
-    public io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction getNewSessionSetPrompt() {
-      return instance.getNewSessionSetPrompt();
-    }
-    /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    public Builder setNewSessionSetPrompt(io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction value) {
-      copyOnWrite();
-      instance.setNewSessionSetPrompt(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    public Builder setNewSessionSetPrompt(
-        io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction.Builder builderForValue) {
-      copyOnWrite();
-      instance.setNewSessionSetPrompt(builderForValue.build());
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    public Builder mergeNewSessionSetPrompt(io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction value) {
-      copyOnWrite();
-      instance.mergeNewSessionSetPrompt(value);
-      return this;
-    }
-    /**
-     * <code>.remoteagent.core.v1.NewSessionSetPromptAction new_session_set_prompt = 55 [json_name = "newSessionSetPrompt"];</code>
-     */
-    public Builder clearNewSessionSetPrompt() {
-      copyOnWrite();
-      instance.clearNewSessionSetPrompt();
-      return this;
-    }
-
-    /**
      * <code>.remoteagent.core.v1.NewSessionProjectAction new_session_retry_models = 56 [json_name = "newSessionRetryModels"];</code>
      */
     @java.lang.Override
@@ -17439,6 +17391,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDraftAppendText() {
+      return instance.hasDraftAppendText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction getDraftAppendText() {
+      return instance.getDraftAppendText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    public Builder setDraftAppendText(io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction value) {
+      copyOnWrite();
+      instance.setDraftAppendText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    public Builder setDraftAppendText(
+        io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDraftAppendText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    public Builder mergeDraftAppendText(io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction value) {
+      copyOnWrite();
+      instance.mergeDraftAppendText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.DraftAppendTextAction draft_append_text = 267 [json_name = "draftAppendText"];</code>
+     */
+    public Builder clearDraftAppendText() {
+      copyOnWrite();
+      instance.clearDraftAppendText();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleCacheLoadedEvent schedule_cache_loaded = 300 [json_name = "scheduleCacheLoaded"];</code>
      */
     @java.lang.Override
@@ -21005,7 +21005,6 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.NewSessionSelectMachineAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionSelectAgentAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionSelectModelAction.class,
-            io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionProjectAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionProjectAction.class,
             io.github.lewin671.remoteagent.core.proto.NewSessionSubmitAction.class,
@@ -21072,6 +21071,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DraftImageViewerOpenAction.class,
             io.github.lewin671.remoteagent.core.proto.DraftImageViewerNavigateAction.class,
             io.github.lewin671.remoteagent.core.proto.DraftImageViewerCloseAction.class,
+            io.github.lewin671.remoteagent.core.proto.DraftAppendTextAction.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleCacheLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleSeenLoadedEvent.class,
             io.github.lewin671.remoteagent.core.proto.ScheduleLocalContextEvent.class,
@@ -21172,31 +21172,31 @@ public  final class Event extends
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
               "\u0017<\u0000\u0018<\u0000\u001a<\u0000\u001b<\u0000\u001e<\u0000\u001f<\u0000 <" +
               "\u0000!<\u0000\"<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/" +
-              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00007<\u00008<\u00009<\u0000:<\u0000;" +
-              "<\u0000b\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000" +
-              "\u00ce<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4" +
-              "<\u0000\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u00d9<\u0000\u00da<\u0000\u00db<\u0000" +
-              "\u00dc<\u0000\u00dd<\u0000\u00de<\u0000\u00df<\u0000\u00e0<\u0000\u00e1<\u0000\u00e2" +
-              "<\u0000\u00e3<\u0000\u00e4<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7<\u0000\u00e8<\u0000" +
-              "\u00e9<\u0000\u00f0<\u0000\u00f1<\u0000\u00f2<\u0000\u00f3<\u0000\u00f4<\u0000\u00f5" +
-              "<\u0000\u00f6<\u0000\u00f7<\u0000\u00f8<\u0000\u00f9<\u0000\u00fa<\u0000\u00fb<\u0000" +
-              "\u00fc<\u0000\u00fd<\u0000\u00fe<\u0000\u00ff<\u0000\u0100<\u0000\u0101<\u0000\u0102" +
-              "<\u0000\u0103<\u0000\u0104<\u0000\u0105<\u0000\u0106<\u0000\u0107<\u0000\u0108<\u0000" +
-              "\u0109<\u0000\u010a<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000\u0130" +
-              "<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140<\u0000" +
-              "\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000\u014a" +
-              "<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152<\u0000" +
-              "\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000\u0159" +
-              "<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f<\u0000" +
-              "\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000\u016a" +
-              "<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178<\u0000" +
-              "\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000\u017f" +
-              "<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000" +
-              "\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d" +
-              "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
-              "\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8" +
-              "<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000" +
-              "\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
+              "<\u00002<\u00003<\u00004<\u00005<\u00006<\u00008<\u00009<\u0000:<\u0000;<\u0000b" +
+              "\u0002c\u0002d\u021ae#\u00c8<\u0000\u00c9<\u0000\u00ca<\u0000\u00cd<\u0000\u00ce" +
+              "<\u0000\u00cf<\u0000\u00d0<\u0000\u00d1<\u0000\u00d2<\u0000\u00d3<\u0000\u00d4<\u0000" +
+              "\u00d5<\u0000\u00d6<\u0000\u00d7<\u0000\u00d9<\u0000\u00da<\u0000\u00db<\u0000\u00dc" +
+              "<\u0000\u00dd<\u0000\u00de<\u0000\u00df<\u0000\u00e0<\u0000\u00e1<\u0000\u00e2<\u0000" +
+              "\u00e3<\u0000\u00e4<\u0000\u00e5<\u0000\u00e6<\u0000\u00e7<\u0000\u00e8<\u0000\u00e9" +
+              "<\u0000\u00f0<\u0000\u00f1<\u0000\u00f2<\u0000\u00f3<\u0000\u00f4<\u0000\u00f5<\u0000" +
+              "\u00f6<\u0000\u00f7<\u0000\u00f8<\u0000\u00f9<\u0000\u00fa<\u0000\u00fb<\u0000\u00fc" +
+              "<\u0000\u00fd<\u0000\u00fe<\u0000\u00ff<\u0000\u0100<\u0000\u0101<\u0000\u0102<\u0000" +
+              "\u0103<\u0000\u0104<\u0000\u0105<\u0000\u0106<\u0000\u0107<\u0000\u0108<\u0000\u0109" +
+              "<\u0000\u010a<\u0000\u010b<\u0000\u012c<\u0000\u012d<\u0000\u012e<\u0000\u012f<\u0000" +
+              "\u0130<\u0000\u0136<\u0000\u0137<\u0000\u0138<\u0000\u0139<\u0000\u013a<\u0000\u0140" +
+              "<\u0000\u0141<\u0000\u0142<\u0000\u0143<\u0000\u0144<\u0000\u0145<\u0000\u0146<\u0000" +
+              "\u014a<\u0000\u014b<\u0000\u014c<\u0000\u014d<\u0000\u014e<\u0000\u014f<\u0000\u0152" +
+              "<\u0000\u0153<\u0000\u0154<\u0000\u0155<\u0000\u0156<\u0000\u0157<\u0000\u0158<\u0000" +
+              "\u0159<\u0000\u015a<\u0000\u015b<\u0000\u015c<\u0000\u015d<\u0000\u015e<\u0000\u015f" +
+              "<\u0000\u0160<\u0000\u0161<\u0000\u0162<\u0000\u0163<\u0000\u0168<\u0000\u0169<\u0000" +
+              "\u016a<\u0000\u016b<\u0000\u016c<\u0000\u016e<\u0000\u0172<\u0000\u0177<\u0000\u0178" +
+              "<\u0000\u0179<\u0000\u017a<\u0000\u017b<\u0000\u017c<\u0000\u017d<\u0000\u017e<\u0000" +
+              "\u017f<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196" +
+              "<\u0000\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000" +
+              "\u019d<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3" +
+              "<\u0000\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000" +
+              "\u01c8<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce" +
+              "<\u0000\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

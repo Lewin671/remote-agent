@@ -85,15 +85,15 @@ struct ApprovalDecision: View {
     @Binding var chosen: Bool?
     /// The debug signals that press 允许 and 不允许 here.
     var signals = ("session.allow", "session.deny")
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @FocusState private var reasonFocus: Bool
 
     var body: some View {
-        let state = model.state
+        let sessionHeader = context.core.sessions[target.sessionId]?.header
+        let unlinked = sessionHeader?.computerUnlinked ?? context.core.settings.unlinked
         let truncated = target.truncated
-        let locked = target.locked || state.peer(target.machineId).unlinked || target.expired || target.isSkeleton
-        let always = target.canAlwaysAllow || capabilities(state.machines[target.machineId])?.approvalAlways == true
+        let locked = target.locked || unlinked || target.expired || target.isSkeleton
+        let always = target.canAlwaysAllow || (sessionHeader?.capabilities.supportsAlwaysAllow == true)
         VStack(alignment: .leading, spacing: 0) {
             if denying {
                 TextField(target.denyPlaceholder, text: reason, axis: .vertical)

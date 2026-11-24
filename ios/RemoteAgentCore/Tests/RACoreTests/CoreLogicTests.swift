@@ -105,25 +105,6 @@ import Testing
     }
 }
 
-/// The fixed state that layout tests and screenshots render, without a server.
-@Suite(.timeLimit(.minutes(2))) struct ShowForTestTests {
-    @Test func showsStateAndHistoryWithoutFetching() async throws {
-        let remote = try fixtureRemote(
-            account: Account(
-                server: "http://127.0.0.1:1",
-                deviceId: "2222222222222222"),
-            http: HTTP())
-        defer { remote.close() }
-        let m = MachineView(id: "m", online: true, lastSeenMs: 1)
-        var state = RemoteState()
-        state.machines = ["m": m]
-        state.loaded = true
-        await remote.showForTest(state: state)
-        #expect(remote.current.machines["m"] == m)
-        await #expect(throws: CommandError.self) { try await remote.machineCommand("m", PBCommand()) }
-    }
-}
-
 @Suite(.timeLimit(.minutes(2))) struct LoginDenialTests {
     @Test func translatesOnlyLoginDenialAndKeepsOfflineSeparate() {
         let denied = ConnectError(code: .permissionDenied, message: "login failed")

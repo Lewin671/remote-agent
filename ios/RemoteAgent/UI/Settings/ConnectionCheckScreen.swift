@@ -115,7 +115,7 @@ struct ConnectionCheckScreen: View {
     private var probes: ConnectionProbes {
         #if DEBUG
         // With the sample connection down (`-demoLink`), the sample server does not answer either.
-        if model.isDemo { return .demo(model.state.link == .online ? SettingsDemo.state : "serverDown") }
+        if model.isDemo { return .demo(context.core.settings.online ? SettingsDemo.state : "serverDown") }
         #endif
         let remote = context.remote
         let directByID = Dictionary(uniqueKeysWithValues: context.core.settings.machines.map { ($0.machineID, $0.directReady) })

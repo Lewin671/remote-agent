@@ -6,15 +6,15 @@ import SwiftUI
 /// from Computer Screen -> 附件存储, HomeDiskReminders, and MachineStatusScreen disk card.
 struct MachineStorageScreen: View {
     let id: String
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
 
     var body: some View {
         let host = context.coreHost
         let current = context.core.machineSettings
         let vm = current.machineID == id ? current : PBMachineSettingsViewModel()
-        let online = vm.machineID == id ? vm.online : (model.state.machines[id]?.pathState.reachable ?? false)
-        let settingsKey = "\(id):\(online):\(model.state.conn == .online)"
+        let fallbackOnline = context.core.settings.machines.first { $0.machineID == id }?.online ?? false
+        let online = vm.machineID == id ? vm.online : fallbackOnline
+        let settingsKey = "\(id):\(online):\(context.core.settings.online)"
         let refreshAction: (@MainActor @Sendable () async -> Void)? = if vm.editable {
             { @Sendable in await host.openMachineSettings(machineID: id) }
         } else {

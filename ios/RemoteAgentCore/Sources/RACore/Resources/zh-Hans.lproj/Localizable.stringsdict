@@ -30,20 +30,6 @@
 			<string>一条消息最多 %2$lld 张，多选的 %1$lld 张没有加入</string>
 		</dict>
 	</dict>
-	<key>attachment_ios_file_count</key>
-	<dict>
-		<key>NSStringLocalizedFormatKey</key>
-		<string>%1$#@count@</string>
-		<key>count</key>
-		<dict>
-			<key>NSStringFormatSpecTypeKey</key>
-			<string>NSStringPluralRuleType</string>
-			<key>NSStringFormatValueTypeKey</key>
-			<string>lld</string>
-			<key>other</key>
-			<string>%1$lld / %2$lld 个文件</string>
-		</dict>
-	</dict>
 	<key>attachment_max_files</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

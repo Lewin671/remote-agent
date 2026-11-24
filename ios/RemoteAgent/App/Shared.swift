@@ -5,14 +5,16 @@
 // ui/Common.kt (`ConnBanner`, `now`) and ui/Actions.kt (`Action`).
 import Observation
 import RACore
+import RAProto
 import SwiftUI
 
 /// The connection notice of a page, under its navigation bar, in from the page's sides.
 struct ConnectionBar: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context: AccountContext?
 
     var body: some View {
-        if (!model.state.displayGrace && model.state.link != .online) || !model.state.clockWarning.isEmpty {
+        if let sync = context?.core.syncState,
+           (!sync.displayGrace && sync.connection != .connected) || sync.accountClockSkewed {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
         }
     }
@@ -23,45 +25,55 @@ struct ConnectionBar: View {
 /// nothing when connected, otherwise the nearest stretch that is down, and
 /// 详情 when that is the server.
 struct ConnectionStrip: View {
-    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context: AccountContext?
     @State private var details = false
 
     var body: some View {
-        let state = model.state
-        Group {
-            if state.link == .online || state.displayGrace {
-                if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
-            } else {
-                switch state.link {
-                case .online:
-                    EmptyView()
-                case .noNetwork:
-                    GlassStrip(text: state.loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
-                case .waiting:
-                    GlassStrip(text: state.synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
-                case .noServer:
-                    // Nothing kept to show: the reason is the whole of what can be said, in red.
-                    if !state.loaded && !state.error.isEmpty {
-                        GlassStrip(text: L10n.connectionIosServerError(reason: state.error), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
-                    } else {
-                        GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+        if let context {
+            let sync = context.core.syncState
+            let clockWarning = context.core.settings.clockSkewBannerText.rendered()
+            let loaded = sync.sessionsListed || !sync.sessions.isEmpty || !sync.machines.isEmpty
+            let synced = sync.machinesListed && sync.sessionsListed
+            let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
+            Group {
+                if sync.connection == .connected || sync.displayGrace {
+                    if sync.accountClockSkewed && !clockWarning.isEmpty {
+                        GlassStrip(text: clockWarning, symbol: "clock", tone: .attention)
+                    }
+                } else {
+                    switch sync.connection {
+                    case .connected:
+                        EmptyView()
+                    case .noNetwork:
+                        GlassStrip(text: loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
+                    case .connecting, .reconnecting, .unspecified, .UNRECOGNIZED:
+                        GlassStrip(text: synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
+                    case .offline:
+                        // Nothing kept to show: the reason is the whole of what can be said, in red.
+                        if !loaded && !reason.isEmpty {
+                            GlassStrip(text: L10n.connectionIosServerError(reason: reason), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
+                        } else {
+                            GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+                        }
                     }
                 }
             }
-        }
-        .kitSheet(isPresented: $details) {
-            ServerDetails(state: state) { details = false }
+            .kitSheet(isPresented: $details) {
+                ServerDetails(sync: sync) { details = false }
+            }
         }
     }
 }
 
 /// Why the server is out of reach: the judgement first, the failure in the system's words last.
 struct ServerDetails: View {
-    let state: RemoteState
+    let sync: PBCoreSyncStateView
     let onClose: () -> Void
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        let synced = sync.machinesListed && sync.sessionsListed
+        let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
         SheetHead(L10n.connectionNoServer())
         Text(L10n.connectionIosExplanation())
             .font(.subheadline).ink(DS.ink2)
@@ -69,15 +81,12 @@ struct ServerDetails: View {
             Text(L10n.connectionIosHost(host: hostOf(server))).font(.subheadline).ink(DS.ink2).padding(.top, 10)
         }
         // Since start nothing was reached: when it was last is not known here.
-        if state.synced {
+        if synced {
             Ticking { now in
-                Text(L10n.connectionIosDisconnectedAt(time: whenText(state.offlineSinceMs, now: now))).font(.subheadline).ink(DS.ink2).padding(.top, 2)
+                Text(L10n.connectionIosDisconnectedAt(time: whenText(sync.disconnectedAtMs, now: now))).font(.subheadline).ink(DS.ink2).padding(.top, 2)
             }
         }
-        if !state.error.isEmpty { Text(L10n.connectionIosReason(reason: state.error)).font(.subheadline).ink(DS.ink2).padding(.top, 2) }
-        if !state.errorDetail.isEmpty && state.errorDetail != state.error {
-            Code(state.errorDetail, maxLines: 4).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
-        }
+        if !reason.isEmpty { Text(L10n.connectionIosReason(reason: reason)).font(.subheadline).ink(DS.ink2).padding(.top, 2) }
         Btn(L10n.connectionIosRetryNow()) {
             model.reconnectNow()
             onClose()

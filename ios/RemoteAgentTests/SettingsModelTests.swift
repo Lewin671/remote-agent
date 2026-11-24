@@ -59,11 +59,10 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
 
     @Test func aReachableIndependentPathIsProbedWhenTheServerFails() async {
         let asked = Mail<String>()
-        let peer: PeerState = { var peer = PeerState(); peer.relayRequired = false; peer.reachable = true; peer.ready = true; return peer }()
         let check = ConnectionCheckModel(probes: ConnectionProbes(
             server: { throw UserError("服务器没有回应") },
             machine: { id in asked.put(id); return 12 },
-            canProbe: { id, reached in id == "independent" ? peer.canProbe(reached) : reached }))
+            canProbe: { id, reached in id == "independent" || reached }))
         await check.measure(online: ["independent", "relay"])
         #expect(check.server == .fail(error: L10n.connectionNoResponse()))
         #expect(check.machines == ["independent": .ok(ms: 12), "relay": .skip])
@@ -148,8 +147,9 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
 
     private func pending() -> PendingStore {
         PendingStore(
-            directory: root.appending(path: "pending"), vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"),
-            defaults: UserDefaults(suiteName: "ra-settings-\(UUID().uuidString)")!)
+            directory: root.appending(path: "pending"),
+            vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
+        )
     }
 
     @Test func nothingStoredIsZeroNotAnError() async throws {
@@ -195,7 +195,8 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         await store.putImage(key: "s1/one", envelope: Data(count: 4096))
         let waiting = pending()
         defer { try? waiting.clearAll() }
-        try waiting.put(folder: "session:s1", name: "image", data: Data(count: 1234))
+        let written = waiting.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data(count: 1234))
+        #expect(written.ok)
         let model = ImageStorageModel(files: .stores(cache: store, pending: waiting))
         await model.load()
         #expect(model.cache == 4096)
@@ -204,24 +205,8 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         await model.clear()
         #expect(model.cache == 0)
         #expect(model.pending == pendingBefore)
-        #expect(try waiting.get(folder: "session:s1", name: "image")?.count == 1234)
+        #expect(waiting.read(opID: 2, bucket: .draft, key: "draft:session:s1").data.count == 1234)
         try store.close()
-    }
-
-    @Test func draftsLeftIdleTooLongAreGoneBeforeTheSpaceIsCounted() async throws {
-        defer { try? FileManager.default.removeItem(at: root) }
-        let clock = TestClock()
-        let waiting = PendingStore(
-            directory: root.appending(path: "pending"), vault: Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)"),
-            defaults: UserDefaults(suiteName: "ra-settings-\(UUID().uuidString)")!, now: { clock.now })
-        defer { try? waiting.clearAll() }
-        try waiting.put(folder: "project:/Users/me/Code/foo", name: "1.meta", data: Data(count: 1234))
-        // The app is opened again after more than a week, straight on this page: no draft was read or written since.
-        clock.advance(PendingPolicy.draftTTL + 60)
-        let model = ImageStorageModel(files: .stores(cache: nil, pending: waiting))
-        await model.load()
-        #expect(model.pending == 0)
-        #expect(waiting.expired == 1)
     }
 
     @Test func aClearThatFailsSaysSoAndReadsAgain() async {

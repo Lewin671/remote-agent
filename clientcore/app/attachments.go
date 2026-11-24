@@ -191,6 +191,7 @@ type attDraft struct {
 	loadState            draftLoadState
 	activated            bool
 	hasLocalTextEdit     bool
+	pendingAppends       []string
 	activeLoadOpID       uint64
 	loadStartTextRev     uint64
 	activeWriteOpID      uint64
@@ -451,6 +452,8 @@ func (c *Core) dispatchAttachmentEvent(ctx *sync.StepContext, ev *corev1.Event) 
 		return c.handleDraftOpen(ctx, k.DraftOpen), true
 	case *corev1.Event_DraftSetText:
 		return c.handleDraftSetText(ctx, k.DraftSetText), true
+	case *corev1.Event_DraftAppendText:
+		return c.handleDraftAppendText(ctx, k.DraftAppendText), true
 	case *corev1.Event_DraftSetTargetMachine:
 		return c.handleDraftSetTargetMachine(ctx, k.DraftSetTargetMachine), true
 	case *corev1.Event_DraftReserveSlots:
@@ -536,6 +539,7 @@ func (c *Core) handleAttachmentConfig(ctx *sync.StepContext, ev *corev1.Attachme
 				if !mgr.persistDrafts {
 					d.loadState = draftLoadLoaded
 					d.hasLocalTextEdit = false
+					c.flushPendingDraftAppends(d)
 					if d.activated {
 						c.startPendingDraftUploads(ctx, d, &effects)
 					}
@@ -619,12 +623,32 @@ func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftS
 				hadPreConfigEdit := d.hasLocalTextEdit
 				shouldWrite := hadPreConfigEdit || d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d)
 				c.hydrateDraftFromPersisted(ctx, d, rec, d.activated, &effects)
+				appended := c.flushPendingDraftAppends(d)
 				d.activeLoadOpID = 0
 				d.storageError = nil
 				d.hasLocalTextEdit = false
-				if shouldWrite {
+				if shouldWrite || appended {
 					targetSeq := c.enqueueDraftWrite(d, &effects)
 					c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
+				}
+				c.markDraftDirty(ctx, d.scope)
+			}
+		}
+	}
+	// Any unloaded drafts with queued appends whose key was not on disk are now known absent;
+	// mark loaded, apply queued appends, and persist them.
+	if len(mgr.drafts) > 0 {
+		keys := make([]string, 0, len(mgr.drafts))
+		for k := range mgr.drafts {
+			keys = append(keys, k)
+		}
+		sortutil.Strings(keys)
+		for _, k := range keys {
+			d := mgr.drafts[k]
+			if d != nil && d.loadState == draftLoadUnloaded && len(d.pendingAppends) > 0 {
+				d.loadState = draftLoadLoaded
+				if c.flushPendingDraftAppends(d) && mgr.persistDrafts {
+					c.enqueueDraftWrite(d, &effects)
 				}
 				c.markDraftDirty(ctx, d.scope)
 			}
@@ -707,8 +731,9 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 	if ev.ErrorKind != corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_UNSPECIFIED {
 		if ev.ErrorKind == corev1.AttachmentIOErrorKind_ATTACHMENT_IO_ERROR_KIND_CORRUPT_STORE {
 			d.loadState = draftLoadLoaded
+			appended := c.flushPendingDraftAppends(d)
 			effects = append(effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, d.key))
-			if d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d) {
+			if d.textRev != d.loadStartTextRev || appended || hasPendingLoadOutboxBarriers(d) {
 				targetSeq := c.enqueueDraftWrite(d, &effects)
 				c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
 			}
@@ -747,10 +772,13 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 		d.loadState = draftLoadLoaded
 	}
 
-	if d.loadState == draftLoadLoaded && (d.textRev != d.loadStartTextRev || d.hasLocalTextEdit || hasPendingLoadOutboxBarriers(d)) {
-		d.hasLocalTextEdit = false
-		targetSeq := c.enqueueDraftWrite(d, &effects)
-		c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
+	if d.loadState == draftLoadLoaded {
+		appended := c.flushPendingDraftAppends(d)
+		if d.textRev != d.loadStartTextRev || d.hasLocalTextEdit || appended || hasPendingLoadOutboxBarriers(d) {
+			d.hasLocalTextEdit = false
+			targetSeq := c.enqueueDraftWrite(d, &effects)
+			c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
+		}
 	}
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
@@ -865,6 +893,66 @@ func (c *Core) handleDraftSetText(ctx *sync.StepContext, act *corev1.DraftSetTex
 	}
 	c.markDraftDirty(ctx, d.scope)
 	return effects
+}
+
+func (c *Core) handleDraftAppendText(ctx *sync.StepContext, act *corev1.DraftAppendTextAction) []*corev1.Effect {
+	if act == nil || attachments.ScopeStorageKey(act.Scope) == "" || strings.TrimSpace(act.Text) == "" {
+		return nil
+	}
+	mgr := c.m.ensureAttachments()
+	if act.Scope.Kind == corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION && mgr.forgottenSessions[act.Scope.Id] {
+		return nil
+	}
+	d := c.ensureDraftState(act.Scope)
+	d.activated = true
+	var effects []*corev1.Effect
+	if act.MachineId != "" {
+		c.retargetDraftLocked(ctx, d, act.MachineId, &effects)
+	}
+	if !mgr.configured || (mgr.persistDrafts && d.loadState != draftLoadLoaded) {
+		if !slices.Contains(d.pendingAppends, act.Text) {
+			d.pendingAppends = append(d.pendingAppends, act.Text)
+		}
+		if mgr.configured && mgr.persistDrafts && (d.loadState == draftLoadUnloaded || d.loadState == draftLoadFailed) {
+			c.startDraftLoad(d, &effects)
+		}
+		c.pumpAttachmentQueues(ctx, &effects)
+		c.markDraftDirty(ctx, d.scope)
+		return effects
+	}
+	merged := attachments.AppendDraftText(d.text, act.Text)
+	if merged != d.text {
+		d.text = merged
+		d.textRev++
+		c.syncNewSessionPromptFromDraft(d)
+		if mgr.persistDrafts {
+			c.enqueueDraftWrite(d, &effects)
+		}
+		c.markDraftDirty(ctx, d.scope)
+	}
+	c.pumpAttachmentQueues(ctx, &effects)
+	return effects
+}
+
+func (c *Core) flushPendingDraftAppends(d *attDraft) bool {
+	if d == nil || len(d.pendingAppends) == 0 {
+		return false
+	}
+	pending := d.pendingAppends
+	d.pendingAppends = nil
+	changed := false
+	for _, addition := range pending {
+		merged := attachments.AppendDraftText(d.text, addition)
+		if merged != d.text {
+			d.text = merged
+			changed = true
+		}
+	}
+	if changed {
+		d.textRev++
+		c.syncNewSessionPromptFromDraft(d)
+	}
+	return changed
 }
 
 func (c *Core) syncNewSessionPromptFromDraft(d *attDraft) {
@@ -1272,6 +1360,7 @@ func (c *Core) handleDraftClear(ctx *sync.StepContext, act *corev1.DraftClearAct
 	}
 	d.items = nil
 	d.text = ""
+	d.pendingAppends = nil
 	d.textRev++
 	d.original = false
 	d.notice = nil

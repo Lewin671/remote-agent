@@ -17,7 +17,8 @@ import { renderText } from "../core/text";
 import { MachineMetaSchema, ProjectPrefsSchema, ProjectSettingsSchema, AgentSettingsSchema } from "../gen/remoteagent/v1/remote_pb";
 import { SessionDockKind, SessionPlanDockViewSchema, SessionTerminalPopupDockViewSchema, SessionDockViewSchema } from "../gen/remoteagent/core/v1/session_view_pb";
 import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
-import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSetPromptActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { AccountPrefsFetchedEventSchema, EventSchema as CoreEventSchema, EventsAppendedFrameSchema, HomeSetScopeActionSchema, ListsFetchedEventSchema, NewSessionOpenActionSchema, NewSessionSelectMachineActionSchema, NewSessionSelectModelActionSchema, NewSessionSubmitActionSchema, PlainAccountPrefsSchema, PlainEventSchema, SessionsPageFetchedEventSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { DraftScopeKind, DraftScopeSchema, DraftSetTextActionSchema } from "../gen/remoteagent/core/v1/attachments_pb";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
@@ -4144,7 +4145,7 @@ it("holds saved launch settings while a draft is written", async () => {
   core.dispatch(create(CoreEventSchema, { event: { case: "newSessionOpen", value: create(NewSessionOpenActionSchema, { projectKey: path }) } }));
   core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSelectMachine", value: create(NewSessionSelectMachineActionSchema, { machineId: "mac" }) } }));
   const before = core.viewNewSession(path).config;
-  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: "drafting" }) } }));
+  core.dispatch(create(CoreEventSchema, { event: { case: "draftSetText", value: create(DraftSetTextActionSchema, { scope: create(DraftScopeSchema, { kind: DraftScopeKind.NEW_SESSION, id: path }), text: "drafting" }) } }));
   const stored = (r as unknown as { stored: { revision: bigint; prefs: import("../gen/remoteagent/v1/remote_pb").ProjectPrefs } }).stored;
   stored.revision += 1n;
   const saved = stored.prefs.settings.find(s => s.path === path)!;
@@ -4741,7 +4742,7 @@ it("hands a new session to its chat with the first prompt before its listing arr
   const command = r.machineCommand.bind(r);
   vi.spyOn(r, "machineCommand").mockImplementation((m, cmd, ...rest) => cmd?.case === "createSession"
     ? Promise.resolve(create(CommandResultSchema, { kind: { case: "createSession", value: { session: info } } })) : command(m, cmd, ...rest));
-  core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: "第一句话" }) } }));
+  core.dispatch(create(CoreEventSchema, { event: { case: "draftSetText", value: create(DraftSetTextActionSchema, { scope: create(DraftScopeSchema, { kind: DraftScopeKind.NEW_SESSION, id: project }), text: "第一句话" }) } }));
   await act(async () => {
     core.dispatch(create(CoreEventSchema, { event: { case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey: project, autoModeSupported: true }) } }));
   });

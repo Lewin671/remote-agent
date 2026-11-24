@@ -41,15 +41,16 @@ struct HandoffScreen: View {
             draft = context.memory.value { HandoffDraft() }
             if app.isDemo {
                 #if DEBUG
-                candidates = app.state.devices.values
-                    .filter { $0.id != context.me && $0.kind == .client && $0.meta?.handoffRecoveryEd.count == 32 }
-                    .map { d in
+                if AuthorityDemo.mode == "outgoing" {
+                    let displayName = context.core.settings.recentClients.first { $0.deviceID == AuthorityDemo.other }?.displayName ?? ""
+                    candidates = [
                         PBSecurityHandoffCandidate.with {
-                            $0.deviceID = d.id
-                            $0.recoveryEd = d.meta?.handoffRecoveryEd ?? Data()
-                            $0.displayName = clientName(d, id: d.id, among: app.state.devices)
+                            $0.deviceID = AuthorityDemo.other
+                            $0.recoveryEd = Data(repeating: 4, count: 32)
+                            $0.displayName = displayName
                         }
-                    }
+                    ]
+                }
                 #endif
             } else if context.core.settings.security.isManager { loadCandidates() }
         }

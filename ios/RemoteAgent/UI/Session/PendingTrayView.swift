@@ -8,7 +8,6 @@ import SwiftUI
 
 struct PendingTrayView: View {
     let sessionID: String
-    let caps: AttachmentCapabilities
     let tray: PBSessionPendingTrayView
     let keyboardOpen: Bool
     var maxHeight: CGFloat = 340
@@ -261,9 +260,15 @@ struct PendingTrayView: View {
                 }
                 .buttonStyle(.plain)
 
+                if expanded && !item.localAttachments.isEmpty {
+                    OutboxAttachmentPreviews(
+                        center: ImageCenter.of(context.remote),
+                        attachments: item.localAttachments
+                    )
+                    .padding(.top, 6)
+                }
+
                 if expanded && (item.canPromote || item.canRestore) {
-                    let hasHeldLocal = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: item.requestID) != nil
-                    let restoreReady = (item.imageCount == 0 && item.fileCount == 0 && !item.foreignDimmed) || hasHeldLocal
                     HStack(spacing: 18) {
                         if item.canPromote {
                             Button {
@@ -280,14 +285,11 @@ struct PendingTrayView: View {
                             .disabled(actionsDisabled)
                             .opacity(actionsDisabled ? 0.35 : 1)
                         }
-                        if item.canRestore && restoreReady {
+                        if item.canRestore {
                             let restoreDisabled = item.serverBacked && actionsDisabled
                             Button {
                                 SessionHaptics.tap()
                                 Task {
-                                    guard await SessionImages.canPutBack(
-                                        requestId: item.requestID, files: [], session: sessionID, remote: context.remote
-                                    ) else { return }
                                     await context.coreHost.restoreTrayItem(sessionID: sessionID, requestID: item.requestID)
                                 }
                             } label: {

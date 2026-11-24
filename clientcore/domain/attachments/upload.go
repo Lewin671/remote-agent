@@ -390,6 +390,22 @@ func MergePutBackText(existing, restored string) string {
 	return strings.TrimRightFunc(existing, unicode.IsSpace) + "\n" + restored
 }
 
+// AppendDraftText appends non-empty prompt text (such as a cleanup prompt) to existing draft text
+// without overwriting what the user already wrote, deduplicating if already present.
+func AppendDraftText(existing, addition string) string {
+	if strings.TrimSpace(addition) == "" {
+		return existing
+	}
+	if strings.Contains(existing, addition) {
+		return existing
+	}
+	trimmed := strings.TrimSpace(existing)
+	if trimmed == "" {
+		return addition
+	}
+	return strings.TrimRightFunc(existing, unicode.IsSpace) + "\n\n" + addition
+}
+
 // EncodePersistedDraft serializes a draft record using Core's canonical schema_version = 1 format.
 func EncodePersistedDraft(rec *corev1.PersistedDraftRecord) ([]byte, error) {
 	if rec == nil {

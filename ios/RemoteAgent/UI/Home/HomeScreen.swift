@@ -9,7 +9,6 @@ private let runningMax = 5
 private let endedPage = 30
 
 struct HomeScreen: View {
-    @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
     @State private var menu = ["scope", "browse"].contains(HomeLaunch.value("-homeSheet"))
@@ -21,14 +20,14 @@ struct HomeScreen: View {
 
     var body: some View {
         let home = context.core.home
-        let state = model.state
-        let authority = AuthorityAccess(state: state, me: context.me).isAuthority
+        let settings = context.core.settings
+        let authorityHint = settings.authorityName.isEmpty ? "" : L10n.homeAddViaManager(name: settings.authorityName)
         HomeContent(
             home: home,
-            diskReminders: context.core.settings.diskReminders,
-            state: state,
-            isAuthority: authority,
-            authorityHint: AuthorityAccess(state: state, me: context.me).emptyHint,
+            settings: settings,
+            sync: context.core.syncState,
+            isAuthority: settings.isManager,
+            authorityHint: authorityHint,
             allAttention: $allAttention,
             allRunning: $allRunning,
             filterText: $filterText,
@@ -72,8 +71,8 @@ struct HomeScreen: View {
 /// Pure presentation body for `HomeScreen`, driven solely by `PBCoreHomeViewModel`.
 struct HomeContent: View {
     let home: PBCoreHomeViewModel
-    var diskReminders: [PBDiskReminderView] = []
-    let state: RemoteState
+    var settings: PBSettingsViewModel = PBSettingsViewModel()
+    var sync: PBCoreSyncStateView = PBCoreSyncStateView()
     var isAuthority: Bool = true
     var authorityHint: String = ""
     @Binding var allAttention: Bool
@@ -92,15 +91,14 @@ struct HomeContent: View {
         let timelineIDs = timelineAnimationIDs
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
-                HomeHeadlineView(headline: home.headline, state: state)
+                HomeHeadlineView(headline: home.headline, sync: sync)
                 HomeNotices(
-                    state: state,
-                    isAuthority: isAuthority,
+                    settings: settings,
                     onOpenSecurity: onOpenSecurity
                 )
                 .padding(.horizontal, DS.Space.card)
                 .padding(.top, 12)
-                HomeDiskReminders(reminders: diskReminders)
+                HomeDiskReminders(reminders: settings.diskReminders)
                 if home.canFilter {
                     FilterField(text: $filterText)
                         .padding(.horizontal, DS.Space.card)
@@ -320,7 +318,7 @@ private struct HomeTopBar: View {
 /// The sentence at the top (design-system §6 「大标题」).
 private struct HomeHeadlineView: View {
     let headline: PBCoreHomeHeadlineView
-    let state: RemoteState
+    let sync: PBCoreSyncStateView
     @State private var details = false
 
     var body: some View {
@@ -350,7 +348,7 @@ private struct HomeHeadlineView: View {
         .padding(.top, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .kitSheet(isPresented: $details) {
-            ServerDetails(state: state) { details = false }
+            ServerDetails(sync: sync) { details = false }
         }
     }
 
@@ -369,25 +367,27 @@ private struct HomeHeadlineView: View {
 
 /// Notices under the headline: device clock skew and recovery requests.
 private struct HomeNotices: View {
-    let state: RemoteState
-    let isAuthority: Bool
+    let settings: PBSettingsViewModel
     let onOpenSecurity: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
-            if !state.clockWarning.isEmpty {
-                Notice(state.clockWarning, tone: .attention, symbol: "clock")
+            if settings.clockSkewed {
+                let warning = settings.clockSkewBannerText.rendered()
+                if !warning.isEmpty {
+                    Notice(warning, tone: .attention, symbol: "clock")
+                }
             }
-            if isAuthority && state.recoveryPending {
+            if settings.isManager && settings.recoveryPending {
                 Notice(
                     L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(
-                        value: String(describing: securityTime(state.recoveryReadyMs))
+                        value: String(describing: securityTime(UInt64(max(0, settings.recoveryReadyMs))))
                     ),
                     tone: .attention,
                     action: L10n.dockHandle(),
                     onAction: onOpenSecurity
                 )
-            } else if isAuthority && state.recoveryStatusStale {
+            } else if settings.isManager && settings.security.recoveryStatusStale {
                 Notice(L10n.errorsIosRecoveryRequestStateMayBeOutOfDateConnect(), tone: .attention)
             }
         }
@@ -463,7 +463,6 @@ private struct HomeScopeSheet: View {
 #Preview("Home Timeline") {
     HomeContent(
         home: ScreenGoldens.home("home_timeline", index: 0),
-        state: RemoteState(),
         allAttention: .constant(false),
         allRunning: .constant(false),
         filterText: .constant("")

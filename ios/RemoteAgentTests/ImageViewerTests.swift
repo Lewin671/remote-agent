@@ -15,8 +15,15 @@ import UIKit
         http: AppModel.http)
 
     private func center() -> ImageCenter {
-        ImageCenter.install(remote: remote, coreHost: StubAttachmentEvaluator(), files: VolatileFiles())
-        return ImageCenter.of(remote)
+        let host = try! CoreHost.live(
+            remote: remote,
+            account: remote.account,
+            defaults: UserDefaults(suiteName: "ra-viewer-center-\(UUID().uuidString)")!,
+            screens: CoreScreens(),
+            demoMode: true,
+            onNavigate: { _ in }
+        )
+        return ImageCenter.install(remote: remote, coreHost: host, pending: PendingStore.ephemeral().scoped())
     }
 
     private func png(_ color: UIColor) -> Data {
@@ -35,6 +42,7 @@ import UIKit
             $0.ref = ref
             $0.displayName = "shot.png"
             $0.fileExtension = "png"
+            $0.downloadName = "shot-1.png"
             $0.hasDisplayCopy_p = true
         }
         final class Heard: @unchecked Sendable { var yes = false }
@@ -49,7 +57,7 @@ import UIKit
         #expect(heard.yes)
         let picture = ImageLeaving.picture(viewerImg, loader: loader)
         #expect(picture?.bytes == bytes && picture?.format == .png)
-        #expect(picture?.name.hasPrefix("shot-") == true && picture?.name.hasSuffix(".png") == true)
+        #expect(picture?.name == "shot-1.png")
     }
 
     /// A preview-only image can still leave via its embedded timeline preview ref when Core strips preview bytes from `viewer_images`.
@@ -108,7 +116,7 @@ import UIKit
         let settings = SettingsStore(defaults: UserDefaults(suiteName: "ra-viewer-\(UUID())")!)
         let model = AppModel(settings: settings)
         let demoRemote = Demo.remote()
-        let initial = Demo.state(.everyday)
+        var world = Demo.world(.everyday)
         let events: [String: [PBEvent]] = [
             "s-view": [
                 .with {
@@ -123,13 +131,14 @@ import UIKit
                 }
             ]
         ]
-        var stateWithSession = initial
-        stateWithSession.sessions["s-view"] = SessionView(id: "s-view", machineId: "mac", info: .with { $0.title = "Viewer" })
-        let snapshot = stateWithSession
-        model.setForeground(true)
-        model.showDemo(account: Demo.account, remote: demoRemote, initial: snapshot, events: events) {
-            await demoRemote.showForTest(state: snapshot)
+        world.sessions["s-view"] = .with {
+            $0.sessionID = "s-view"
+            $0.machineID = "mac"
+            $0.meta = .with { $0.id = "s-view"; $0.title = "Viewer" }
+            $0.metaRev = 1
         }
+        model.setForeground(true)
+        model.showDemo(account: Demo.account, remote: demoRemote, world: world, events: events)
         defer { model.closeSyncForTest() }
         let host = try #require(model.context?.coreHost)
         let token = await host.acquireSessionWatch("s-view")

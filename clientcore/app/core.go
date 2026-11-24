@@ -340,7 +340,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.StartErrorText = nil
 				d.DiskFull = false
 				d.ActiveStartRequestID = ""
-				hasCoreStart := c.m.attachments != nil && c.m.attachments.configured && c.m.attachments.newSessionStarts[meta.projectKey] != nil
+				hasCoreStart := c.m.attachments != nil && c.m.attachments.newSessionStarts[meta.projectKey] != nil
 				if !hasCoreStart {
 					d.Prompt = ""
 					d.AttachmentCount = 0
@@ -348,17 +348,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				}
 				d.ResetOnNextOpen = true
 
-				if c.m.attachments == nil || !c.m.attachments.configured {
-					effects = append(effects, &corev1.Effect{
-						Effect: &corev1.Effect_AttachmentsSettled{
-							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
-								ProjectKey: meta.projectKey,
-								RequestId:  sc.RequestID,
-								Consumed:   true,
-							},
-						},
-					})
-				}
 				savePrev, saveCtx := c.m.sync.BeginStep()
 				if sess != nil && sess.Id != "" {
 					c.m.sync.SeedSession(saveCtx, sc.MachineID, sess)
@@ -392,17 +381,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.DiskFull = false
 				d.StartErrorText = sc.ErrorText
 				d.StartError = sc.ErrorCode
-				if sc.Expired && (c.m.attachments == nil || !c.m.attachments.configured) {
-					effects = append(effects, &corev1.Effect{
-						Effect: &corev1.Effect_AttachmentsSettled{
-							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
-								ProjectKey: meta.projectKey,
-								RequestId:  sc.RequestID,
-								Consumed:   false,
-							},
-						},
-					})
-				}
 			} else {
 				d.Frozen = false
 				d.Expired = false
@@ -413,17 +391,6 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.StartError = sc.ErrorCode
 				if d.StartError == "" && d.StartErrorText == nil {
 					d.StartError = "failed"
-				}
-				if c.m.attachments == nil || !c.m.attachments.configured {
-					effects = append(effects, &corev1.Effect{
-						Effect: &corev1.Effect_AttachmentsSettled{
-							AttachmentsSettled: &corev1.AttachmentsSettledEffect{
-								ProjectKey: meta.projectKey,
-								RequestId:  sc.RequestID,
-								Consumed:   false,
-							},
-						},
-					})
 				}
 			}
 			c.onNewSessionCreateSettled(meta.projectKey, sc, &effects)
@@ -802,17 +769,6 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			}
 		}
 
-	case *corev1.Event_NewSessionSetPrompt:
-		if k.NewSessionSetPrompt != nil {
-			key := c.m.activeNewSessionKey("")
-			if d := c.m.ensureDraft(key); d != nil {
-				d.Prompt = k.NewSessionSetPrompt.Prompt
-				d.AttachmentCount = k.NewSessionSetPrompt.AttachmentCount
-				d.AttachmentsMoved = k.NewSessionSetPrompt.AttachmentsMoved
-				ctx.Dirty.Add(false, false, true)
-			}
-		}
-
 	case *corev1.Event_NewSessionRetryModels:
 		key := ""
 		if k.NewSessionRetryModels != nil {
@@ -853,20 +809,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 				if cfg.Cwd == "" {
 					cfg.Cwd = key
 				}
-				imgIDs := k.NewSessionSubmit.ImageIds
-				fileIDs := k.NewSessionSubmit.FileIds
-				coreImgs, coreFiles, blocked := c.prepareNewSessionAttachments(ctx, key, cfg.MachineID, "", &effects)
+				imgIDs, fileIDs, blocked := c.prepareNewSessionAttachments(ctx, key, cfg.MachineID, "", &effects)
 				if blocked {
 					ctx.Dirty.Add(false, false, true)
 					break
-				}
-				if c.m.attachments != nil && c.m.attachments.configured {
-					// Core-configured path exclusively uses Core draft attachments (never dual-path fallback).
-					imgIDs = coreImgs
-					fileIDs = coreFiles
-				} else if len(coreImgs) > 0 || len(coreFiles) > 0 {
-					imgIDs = coreImgs
-					fileIDs = coreFiles
 				}
 				cmd := &v1.Command{
 					Kind: &v1.Command_CreateSession{

@@ -563,7 +563,8 @@
             "render": {
               "screens": [
                 "SCREEN_TARGET_NEW_SESSION",
-                "SCREEN_TARGET_SYNC_STATE"
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_ATTACHMENT_DRAFT"
               ]
             }
           }
@@ -724,6 +725,58 @@
             },
             "fileMetadataNotice": {
               "key": "attachment.metadata"
+            },
+            "draft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
+                "id": "/Users/me/Code/app"
+              },
+              "text": "Ship M2 core",
+              "textRevision": "1",
+              "originalHint": {
+                "key": "image.original_hint"
+              },
+              "fileMetadataNotice": {
+                "key": "attachment.metadata"
+              },
+              "maxImages": 6,
+              "maxFiles": 6,
+              "imageCountText": {
+                "literal": "0 / 6"
+              },
+              "fileCountText": {
+                "literal": "0 / 6"
+              },
+              "ready": true,
+              "canSend": true,
+              "hasUnsavedContent": true,
+              "galleryAcceptMime": "image/*",
+              "imagesPickBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "filesPickBlockedReason": {
+                "key": "attachment.update_required"
+              },
+              "galleryBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "imageViewer": {
+                "emptyText": {
+                  "key": "image.viewer_empty"
+                }
+              }
             }
           }
         }
@@ -743,7 +796,7 @@
               "attemptId": "att-start-1",
               "machineId": "m-on",
               "deadlineMs": "1791078120120",
-              "commandBytes": "ogE8ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAFKBWltZy0xoAYR",
+              "commandBytes": "ogE1ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
@@ -949,6 +1002,58 @@
             },
             "fileMetadataNotice": {
               "key": "attachment.metadata"
+            },
+            "draft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
+                "id": "/Users/me/Code/app"
+              },
+              "text": "Ship M2 core",
+              "textRevision": "1",
+              "originalHint": {
+                "key": "image.original_hint"
+              },
+              "fileMetadataNotice": {
+                "key": "attachment.metadata"
+              },
+              "maxImages": 6,
+              "maxFiles": 6,
+              "imageCountText": {
+                "literal": "0 / 6"
+              },
+              "fileCountText": {
+                "literal": "0 / 6"
+              },
+              "ready": true,
+              "canSend": true,
+              "hasUnsavedContent": true,
+              "galleryAcceptMime": "image/*",
+              "imagesPickBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "filesPickBlockedReason": {
+                "key": "attachment.update_required"
+              },
+              "galleryBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "imageViewer": {
+                "emptyText": {
+                  "key": "image.viewer_empty"
+                }
+              }
             }
           }
         }
@@ -968,7 +1073,7 @@
               "attemptId": "att-start-2",
               "machineId": "m-on",
               "deadlineMs": "1791078120120",
-              "commandBytes": "ogE8ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAFKBWltZy0xoAYR",
+              "commandBytes": "ogE1ChIvVXNlcnMvbWUvQ29kZS9hcHAiDFNoaXAgTTIgY29yZSoHZ3B0LTUuNDIEaGlnaDgCQAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "retryOfUnknown": true,
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
@@ -991,13 +1096,6 @@
       "effects": {
         "effects": [
           {
-            "attachmentsSettled": {
-              "projectKey": "/Users/me/Code/app",
-              "requestId": "req-start-1",
-              "consumed": true
-            }
-          },
-          {
             "requestEntropy": {
               "minIds": 16
             }
@@ -1016,7 +1114,8 @@
                 "SCREEN_TARGET_HOME",
                 "SCREEN_TARGET_PROJECT",
                 "SCREEN_TARGET_NEW_SESSION",
-                "SCREEN_TARGET_SYNC_STATE"
+                "SCREEN_TARGET_SYNC_STATE",
+                "SCREEN_TARGET_ATTACHMENT_DRAFT"
               ]
             }
           }
@@ -1177,6 +1276,55 @@
             },
             "fileMetadataNotice": {
               "key": "attachment.metadata"
+            },
+            "draft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
+                "id": "/Users/me/Code/app"
+              },
+              "textRevision": "2",
+              "originalHint": {
+                "key": "image.original_hint"
+              },
+              "fileMetadataNotice": {
+                "key": "attachment.metadata"
+              },
+              "maxImages": 6,
+              "maxFiles": 6,
+              "imageCountText": {
+                "literal": "0 / 6"
+              },
+              "fileCountText": {
+                "literal": "0 / 6"
+              },
+              "ready": true,
+              "galleryAcceptMime": "image/*",
+              "imagesPickBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "filesPickBlockedReason": {
+                "key": "attachment.update_required"
+              },
+              "galleryBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "imageViewer": {
+                "emptyText": {
+                  "key": "image.viewer_empty"
+                }
+              }
             }
           }
         }
@@ -1369,6 +1517,55 @@
             },
             "fileMetadataNotice": {
               "key": "attachment.metadata"
+            },
+            "draft": {
+              "scope": {
+                "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
+                "id": "/Users/me/Code/app"
+              },
+              "textRevision": "2",
+              "originalHint": {
+                "key": "image.original_hint"
+              },
+              "fileMetadataNotice": {
+                "key": "attachment.metadata"
+              },
+              "maxImages": 6,
+              "maxFiles": 6,
+              "imageCountText": {
+                "literal": "0 / 6"
+              },
+              "fileCountText": {
+                "literal": "0 / 6"
+              },
+              "ready": true,
+              "galleryAcceptMime": "image/*",
+              "imagesPickBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "filesPickBlockedReason": {
+                "key": "attachment.update_required"
+              },
+              "galleryBlockedReason": {
+                "key": "attachment.path_spaces",
+                "args": [
+                  {
+                    "name": "name",
+                    "strValue": "Workstation"
+                  }
+                ]
+              },
+              "imageViewer": {
+                "emptyText": {
+                  "key": "image.viewer_empty"
+                }
+              }
             }
           }
         }

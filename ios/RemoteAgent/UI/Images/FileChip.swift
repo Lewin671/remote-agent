@@ -2,13 +2,18 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// The same file entry in an editable draft, an outgoing bubble and recorded history.
+/// The same file entry in an editable draft (driven by `PBAttachmentDraftItemView`),
+/// an expanded outbox row, and recorded history (`PBSessionFileRefView`).
 struct FileChip: View {
     let name: String
     let head: String
     let tail: String
-    let sizeText: String
-    var state: PendingImage.State? = nil
+    let subtitle: String
+    let errorText: String
+    let progress: Double?
+    let removeLabel: String
+    var pause: (() -> Void)? = nil
+    var resume: (() -> Void)? = nil
     var retry: (() -> Void)? = nil
     var remove: (() -> Void)? = nil
 
@@ -18,27 +23,43 @@ struct FileChip: View {
         name: String,
         head: String = "",
         tail: String = "",
-        sizeText: String,
-        state: PendingImage.State? = nil,
-        retry: (() -> Void)? = nil,
-        remove: (() -> Void)? = nil
+        sizeText: String
     ) {
         self.name = name
         self.head = head
         self.tail = tail
-        self.sizeText = sizeText
-        self.state = state
-        self.retry = retry
-        self.remove = remove
+        self.subtitle = sizeText
+        self.errorText = ""
+        self.progress = nil
+        self.removeLabel = L10n.attachmentRemoveFile(name: name)
     }
 
-    private var status: String {
-        switch state {
-        case .processing: return L10n.attachmentIosPreparing()
-        case .uploading(let progress): return L10n.attachmentIosUploadProgress(percent: Int(Int((progress * 100).rounded())))
-        case .failed: return L10n.attachmentIosUploadFailed()
-        default: return ""
+    init(
+        item: PBAttachmentDraftItemView,
+        pause: (() -> Void)? = nil,
+        resume: (() -> Void)? = nil,
+        retry: (() -> Void)? = nil,
+        remove: (() -> Void)? = nil
+    ) {
+        self.name = item.displayName
+        self.head = item.nameHead
+        self.tail = item.nameTail
+        let size = item.hasSizeText ? item.sizeText.rendered() : ""
+        let duration = item.durationText
+        let status = item.hasStatusText ? item.statusText.rendered() : ""
+        self.subtitle = [size, duration, status].filter { !$0.isEmpty }.joined(separator: " · ")
+        self.errorText = (item.state == .failed && item.hasFileErrorText) ? item.fileErrorText.rendered() : ""
+        switch item.state {
+        case .uploading, .paused, .waitingReconnect:
+            self.progress = min(max(item.progress, 0), 1)
+        default:
+            self.progress = nil
         }
+        self.removeLabel = item.hasRemoveA11Y ? item.removeA11Y.rendered() : ""
+        self.pause = pause
+        self.resume = resume
+        self.retry = retry
+        self.remove = remove
     }
 
     var body: some View {
@@ -53,22 +74,33 @@ struct FileChip: View {
                     Text(name).font(.subheadline).ink(DS.ink2).lineLimit(1).truncationMode(.middle)
                         .accessibilityLabel(name)
                 }
-                Text(sizeText + status).font(.footnote).ink(DS.ink2)
-                if case .uploading(let progress) = state {
-                    ProgressView(value: Double(progress)).tint(DS.blue)
+                if !subtitle.isEmpty {
+                    Text(subtitle).font(.footnote).ink(DS.ink2)
+                }
+                if let progress {
+                    ProgressView(value: progress).tint(DS.blue)
                         .accessibilityLabel(L10n.attachmentFileProgress())
                 }
-                if case .failed(let reason) = state {
-                    Text(reason.message).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
+                if !errorText.isEmpty {
+                    Text(errorText).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if case .failed = state, let retry {
-                Button(L10n.commonRetry(), action: retry).font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+            if let pause {
+                Button(L10n.sharedFileActionPause(), action: pause)
+                    .font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+            }
+            if let resume {
+                Button(L10n.sharedFileActionResume(), action: resume)
+                    .font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+            }
+            if let retry {
+                Button(L10n.commonRetry(), action: retry)
+                    .font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
             }
             if let remove {
                 Button(action: remove) { SymbolImage("xmark", size: 16, color: DS.ink2).hitTarget() }
-                    .accessibilityLabel(L10n.attachmentRemoveFile(name: name))
+                    .accessibilityLabel(removeLabel)
             }
         }
         .buttonStyle(PressStyle())

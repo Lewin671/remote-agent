@@ -297,9 +297,12 @@
     {
       "event": {
         "nowMs": "1791078060110",
-        "newSessionSetPrompt": {
-          "prompt": "Ship M2 core",
-          "attachmentCount": 1
+        "draftSetText": {
+          "scope": {
+            "kind": "DRAFT_SCOPE_KIND_NEW_SESSION",
+            "id": "/Users/me/Code/app"
+          },
+          "text": "Ship M2 core"
         }
       },
       "views": [
@@ -318,10 +321,7 @@
         "nowMs": "1791078060120",
         "newSessionSubmit": {
           "projectKey": "/Users/me/Code/app",
-          "autoModeSupported": true,
-          "imageIds": [
-            "img-1"
-          ]
+          "autoModeSupported": true
         }
       }
     },
@@ -353,10 +353,7 @@
         "nowMs": "1791078060200",
         "newSessionSubmit": {
           "projectKey": "/Users/me/Code/app",
-          "autoModeSupported": true,
-          "imageIds": [
-            "img-1"
-          ]
+          "autoModeSupported": true
         }
       }
     },

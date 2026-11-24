@@ -502,24 +502,20 @@ message NewSessionSelectModelAction {
   optional remoteagent.v1.ApprovalMode mode = 4;
 }
 
-message NewSessionSetPromptAction {
-  string prompt = 1;
-  int32 attachment_count = 2;
-  bool attachments_moved = 3;
-}
-
 message NewSessionProjectAction {
   string project_key = 1;
 }
 
 message NewSessionSubmitAction {
+  reserved 3, 4;
+  reserved "image_ids", "file_ids";
   string project_key = 1;
   bool auto_mode_supported = 2;
-  repeated string image_ids = 3;
-  repeated string file_ids = 4;
 }
 
 message Event {
+  reserved 55;
+  reserved "new_session_set_prompt";
   oneof event {
     LocalCalendar clock_updated = 1;
     EntropyProvided entropy_provided = 2;
@@ -565,7 +561,6 @@ message Event {
     NewSessionSelectMachineAction new_session_select_machine = 52;
     NewSessionSelectAgentAction new_session_select_agent = 53;
     NewSessionSelectModelAction new_session_select_model = 54;
-    NewSessionSetPromptAction new_session_set_prompt = 55;
     NewSessionProjectAction new_session_retry_models = 56;
     NewSessionProjectAction new_session_retry_save_config = 57;
     NewSessionSubmitAction new_session_submit = 58;
@@ -652,6 +647,7 @@ message Event {
     DraftImageViewerOpenAction draft_image_viewer_open = 264;
     DraftImageViewerNavigateAction draft_image_viewer_navigate = 265;
     DraftImageViewerCloseAction draft_image_viewer_close = 266;
+    DraftAppendTextAction draft_append_text = 267;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;
@@ -931,12 +927,6 @@ message NavigateEffect {
   string machine_id = 4;
 }
 
-message AttachmentsSettledEffect {
-  string project_key = 1;
-  string request_id = 2;
-  bool consumed = 3;
-}
-
 message RequestEntropyEffect {
   int32 min_ids = 1;
   int32 min_floats = 2;
@@ -944,6 +934,8 @@ message RequestEntropyEffect {
 }
 
 message Effect {
+  reserved 16, 41;
+  reserved "attachments_settled", "session_resend_attachments";
   oneof effect {
     RenderEffect render = 1;
     OpenStreamEffect open_stream = 2;
@@ -959,7 +951,6 @@ message Effect {
     DispatchCommandEffect dispatch_command = 13;
     SaveHomeScopeEffect save_home_scope = 14;
     NavigateEffect navigate = 15;
-    AttachmentsSettledEffect attachments_settled = 16;
     RequestEntropyEffect request_entropy = 17;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
@@ -978,7 +969,6 @@ message Effect {
     AttachmentReadChunkEffect attachment_read_chunk = 87;
     AttachmentReleaseLocalEffect attachment_release_local = 88;
     SessionRestoreComposerEffect session_restore_composer = 40;
-    SessionResendAttachmentsEffect session_resend_attachments = 41;
     SharedFileScanLocalEffect shared_file_scan_local = 42;
     SharedFileInspectDiskEffect shared_file_inspect_disk = 43;
     SharedFileWriteChunkEffect shared_file_write_chunk = 44;

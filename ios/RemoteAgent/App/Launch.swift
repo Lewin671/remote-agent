@@ -191,35 +191,27 @@ enum LaunchDriver {
             model.showJoinForDemo(lastServer: "https://ra.example.com")
         } else if let demo {
             let remote = Demo.remote()
-            var state = Demo.state(demo)
-            AuthorityDemo.apply(&state)
-            if args.contains("-demoRemoved") { state.removed = true }
+            var world = Demo.world(demo)
+            AuthorityDemo.apply(&world)
+            if args.contains("-demoRemoved") { world.removed = true }
             switch value("-demoLink") {
-            case "waiting": (state.conn, state.link) = (.connecting, .waiting)
-            case "noNetwork": (state.conn, state.link) = (.offline, .noNetwork)
+            case "waiting": world.connection = .connecting
+            case "noNetwork": world.connection = .noNetwork
             case "noServer":
-                (state.conn, state.link, state.error) = (.offline, .noServer, L10n.connectionNoServer())
-                state.errorDetail = "NSURLErrorDomain -1004: Could not connect to the server."
+                world.connection = .offline
+                world.error = L10n.connectionNoServer()
             default: break
             }
-            if state.link != .online {
-                state.synced = true
-                state.offlineSinceMs = nowMs() - 3 * 60_000
-            }
-            let shown = state
             let events = Demo.events(demo)
             let sampleSchedules = Demo.schedules(demo, now: nowMs())
-            // The first frame has the data; the feed is followed once the Remote shows it too.
             model.showDemo(
                 account: Demo.account,
                 remote: remote,
-                initial: shown,
+                world: world,
                 events: events,
                 schedules: sampleSchedules.schedules,
                 scheduleSeen: sampleSchedules.seen
-            ) {
-                await remote.showForTest(state: shown)
-            }
+            )
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }
     }

@@ -1,60 +1,123 @@
 // Preparing a picked image for the computer (architecture §17,
-// docs/session-images.md 「从客户端发图片」): Android's ui/ImageProcess.kt.
+// docs/session-images.md 「从客户端发图片」): pure platform decoder/encoder
+// driven by Core's `AttachmentPrepareImageEffect` parameters.
 //
 // Pixels are read and written with ImageIO and CoreGraphics, which the
 // phone and the Mac both have, so `swift test` holds this to its rules:
 //
 //   - a photo is never decoded at its full size unless it is sent at that
 //     size: ImageIO samples it down while decoding, to the long side asked
-//     for and never past the pixel budget (a 48 MP photo costs what a
-//     2048 px one costs);
+//     for by Core and never past the pixel budget;
 //   - the picture is turned upright by its orientation tag, since the tag
 //     goes with the rest of the metadata;
 //   - nothing of the source's metadata is written, and what ImageIO adds on
 //     its own is taken out again (`stripJpeg`, `stripPng`), so no location
 //     leaves the phone;
-//   - one image is prepared at a time: several large decodes at once are
-//     what runs a phone out of memory.
+//   - Core enforces concurrency 1 on the prepare queue; this module also
+//     serializes decodes on a private queue as a safety guard.
 import CoreGraphics
 import Foundation
 import ImageIO
 import RAProto
 import UniformTypeIdentifiers
 
+/// An image prepared on the phone from what was picked, ready for chunked upload.
+public struct PreparedImage: Equatable, Sendable {
+    public var bytes: Data
+    public var format: PBImageFormat
+    public var width: Int
+    public var height: Int
+
+    public init(bytes: Data, format: PBImageFormat, width: Int, height: Int) {
+        self.bytes = bytes
+        self.format = format
+        self.width = width
+        self.height = height
+    }
+}
+
 /// A picked image that is too large to read or to send.
 public struct ImageTooLarge: Error, LocalizedError, Equatable {
     let localized: LocalizedMessage
-    public let kind: PBImageProblemKind
+    public let ioKind: PBAttachmentIOErrorKind
     public var message: String { localized.resolve() }
-    public init(_ message: String, kind: PBImageProblemKind = .originalTooLarge) {
+    public init(_ message: String, ioKind: PBAttachmentIOErrorKind = .originalTooLarge) {
         localized = LocalizedMessage(raw: message)
-        self.kind = kind
+        self.ioKind = ioKind
     }
-    public init(_ message: LocalizedMessage, kind: PBImageProblemKind = .originalTooLarge) {
+    public init(_ message: LocalizedMessage, ioKind: PBAttachmentIOErrorKind = .originalTooLarge) {
         localized = message
-        self.kind = kind
+        self.ioKind = ioKind
     }
 
-    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.localized == rhs.localized && lhs.kind == rhs.kind }
+    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool {
+        lhs.localized == rhs.localized && lhs.ioKind == rhs.ioKind
+    }
     public var errorDescription: String? { message }
 }
 
-/// A compressed image aims at this size, so it goes in one command.
-public let compressedTargetBytes = 900 * 1024
+/// Maps platform/file/image preparation errors to Core's structured `PBAttachmentIOErrorKind`.
+public func attachmentIOErrorKind(for error: Error) -> PBAttachmentIOErrorKind {
+    if let e = error as? AttachmentFileIOError { return e.kind }
+    if let e = error as? ImageTooLarge { return e.ioKind }
+    if let e = error as? UserError, let kind = e.problemKind {
+        switch kind {
+        case .originalTooLarge: return .originalTooLarge
+        case .dimensions: return .dimensions
+        case .sourceMissing: return .sourceMissing
+        case .decode: return .decode
+        case .storageFull: return .storageFull
+        default: return .other
+        }
+    }
+    if isStorageFullError(error) { return .storageFull }
+    if isMissingFileError(error) { return .sourceMissing }
+    return .other
+}
+
+private func isStorageFullError(_ error: Error) -> Bool {
+    var stack: [NSError] = [error as NSError]
+    var seen = Set<ObjectIdentifier>()
+    while let ns = stack.popLast() {
+        guard seen.insert(ObjectIdentifier(ns)).inserted else { continue }
+        if ns.domain == NSCocoaErrorDomain && ns.code == NSFileWriteOutOfSpaceError { return true }
+        if ns.domain == NSPOSIXErrorDomain && ns.code == Int(ENOSPC) { return true }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError { stack.append(underlying) }
+        if let multiple = ns.userInfo[NSMultipleUnderlyingErrorsKey] as? [NSError] { stack.append(contentsOf: multiple) }
+    }
+    return false
+}
+
+private func isMissingFileError(_ error: Error) -> Bool {
+    var stack: [NSError] = [error as NSError]
+    var seen = Set<ObjectIdentifier>()
+    while let ns = stack.popLast() {
+        guard seen.insert(ObjectIdentifier(ns)).inserted else { continue }
+        if ns.domain == NSCocoaErrorDomain && (ns.code == NSFileReadNoSuchFileError || ns.code == NSFileNoSuchFileError) { return true }
+        if ns.domain == NSPOSIXErrorDomain && ns.code == Int(ENOENT) { return true }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError { stack.append(underlying) }
+        if let multiple = ns.userInfo[NSMultipleUnderlyingErrorsKey] as? [NSError] { stack.append(contentsOf: multiple) }
+    }
+    return false
+}
 
 /// The most bytes read of what was picked: three times an original's limit
 /// for an original (metadata may be most of it), 80 MB for one to compress.
-public func pickedReadLimit(original: Bool, originalMaxBytes: Int64) -> Int64 { original ? originalMaxBytes * 3 : 80 * 1024 * 1024 }
+public func pickedReadLimit(original: Bool, originalMaxBytes: Int64) -> Int64 {
+    original ? originalMaxBytes * 3 : 80 * 1024 * 1024
+}
 
 /// Refuses a picked file larger than what is read of one.
 public func checkPicked(bytes: Int64, original: Bool, originalMaxBytes: Int64) throws {
     let limit = pickedReadLimit(original: original, originalMaxBytes: originalMaxBytes)
-    if bytes > limit { throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024)), kind: .dimensions) }
+    if bytes > limit {
+        throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024)), ioKind: .dimensions)
+    }
 }
 
 /// Reads a picked file, unless it is larger than the most that is ever read
 /// of one: its size is asked for first, so that such a file never comes
-/// into memory (Android's `readUri` stops reading at the limit).
+/// into memory.
 public func readPicked(_ file: URL) throws -> Data {
     let size = try FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int64 ?? 0
     try checkPicked(bytes: size, original: false, originalMaxBytes: 0)
@@ -69,23 +132,17 @@ public enum CompressStep: Equatable, Sendable {
     case shrink
 }
 
-/// The next step towards `compressedTargetBytes`, or nil when the image is
+/// The next step towards `targetBytes`, or nil when the image is
 /// small enough or nothing more is to be tried: the quality goes down from
 /// 85 in tens while it is above 60, then the picture shrinks until its long
 /// side is 800. A PNG, which has no quality, only shrinks.
-public func nextCompressStep(bytes: Int, quality: Int, longSide: Int, png: Bool) -> CompressStep? {
-    guard bytes > compressedTargetBytes, quality > 60 || longSide > 800 else { return nil }
+public func nextCompressStep(bytes: Int, quality: Int, longSide: Int, png: Bool, targetBytes: Int) -> CompressStep? {
+    guard bytes > targetBytes, quality > 60 || longSide > 800 else { return nil }
     return !png && quality > 60 ? .quality(quality - 10) : .shrink
 }
 
 /// One side after shrinking to 80%, never under a pixel.
 public func shrunkSide(_ n: Int) -> Int { max(1, Int(Double(n) * 0.8)) }
-
-/// What 原图 says under the strip when the file could not go as it was.
-public func originalNote(turned: Bool, png: Bool, sample: Int) -> String {
-    let shrunk = sample > 1 ? L10n.imageIosPixelsExceedThisPhoneSLimitReducedTo1(value: String(describing: sample)) : ""
-    return (turned ? L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation() : L10n.imageIosConvertedToKeepingOriginalDimensions(value: String(describing: png ? "PNG" : "JPEG"))) + shrunk
-}
 
 /// Pixels this process may decode at once: the fixed cap, and a share of
 /// the memory that leaves room for a second copy and the encoded bytes.
@@ -135,8 +192,6 @@ func oriented(_ image: CGImage, orientation o: Int) throws -> CGImage {
     let b = to.bindMemory(to: UInt32.self, capacity: dstRow * dh / 4)
     for dy in 0..<dh {
         for dx in 0..<dw {
-            // Where the stored picture has this upright pixel: the tag says
-            // which sides of the scene its first row and column are.
             let (sx, sy): (Int, Int)
             switch o {
             case 2: (sx, sy) = (w - 1 - dx, dy)
@@ -155,9 +210,7 @@ func oriented(_ image: CGImage, orientation o: Int) throws -> CGImage {
 }
 
 /// A decoded picture, the sample size it was decoded at (1: full size), and
-/// whether the file has transparency. That is the file's word: a picture
-/// ImageIO sampled down may carry an alpha channel its source never had (a
-/// HEIC photo does), and would be taken for a PNG.
+/// whether the file has transparency.
 struct DecodedImage {
     var image: CGImage
     var sample: Int
@@ -179,10 +232,7 @@ public func imagePixelSize(_ data: Data) -> (w: Int, h: Int)? {
 }
 
 /// Decodes and turns the picture upright, at most `maxLong` on its long
-/// side (0: full size), never more than `budget` pixels: the size is read
-/// first and ImageIO samples the image down while it decodes, so the full
-/// picture is never in memory unless it is what was asked for. An animated
-/// image gives its first frame.
+/// side (0: full size), never more than `budget` pixels.
 func decodeUpright(_ data: Data, maxLong: Int, budget: Int64? = nil) throws -> DecodedImage {
     guard let (src, w, h, tagged, alpha) = source(data) else { throw undecodable }
     let sample = try decodeSample(w: w, h: h, minLong: 0, pixelBudget: budget ?? pixelBudget())
@@ -195,7 +245,6 @@ func decodeUpright(_ data: Data, maxLong: Int, budget: Int64? = nil) throws -> D
         kCGImageSourceShouldCacheImmediately: true,
     ]
     guard var image = CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary) else { throw undecodable }
-    // A tag this app reads and ImageIO did not act on.
     if tagged == 1, detectFormat(data) != nil {
         let own = orientationOf(data)
         if own != 1 { image = try oriented(image, orientation: own) }
@@ -212,58 +261,78 @@ func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
     let options: [CFString: Any] = png ? [:] : [kCGImageDestinationLossyCompressionQuality: Double(quality) / 100]
     CGImageDestinationAddImage(dest, image, options as CFDictionary)
     guard CGImageDestinationFinalize(dest) else { throw failed }
-    // ImageIO writes a little Exif of its own (the size, the color space): out it goes with the rest.
     return png ? try stripPng(out as Data) : try stripJpeg(out as Data)
 }
 
-/// Prepares one picked image, here and now. Compressed: upright, long side
-/// at most 2048, JPEG, or PNG when it has transparency; re-encoding leaves
-/// every bit of metadata behind. Original: the file as it is, its metadata
-/// taken out; a photo turned by its orientation tag, or a format the CLIs
-/// do not read (HEIC), is re-encoded at the highest quality instead, and
-/// `Processed.note` says so. `budget` is the most pixels to decode, the
-/// phone's own when nil.
-public func prepareImageNow(_ data: Data, original: Bool, originalMaxBytes: Int64, budget: Int64? = nil) throws -> Processed {
+/// Prepares one picked image using the exact limits supplied by Core's `AttachmentPrepareImageEffect`.
+public func prepareImageNow(
+    _ data: Data,
+    original: Bool,
+    originalMaxBytes: Int64,
+    maxDimensionPx: Int,
+    maxCompressedBytes: Int,
+    budget: Int64? = nil
+) throws -> PreparedImage {
     try checkPicked(bytes: Int64(data.count), original: original, originalMaxBytes: originalMaxBytes)
-    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(originalMaxBytes / 1024 / 1024)), kind: .originalTooLarge)
+    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(originalMaxBytes / 1024 / 1024)), ioKind: .originalTooLarge)
     if original {
         if let clean = try stripOriginal(data), let format = detectFormat(clean) {
             if Int64(clean.count) > originalMaxBytes { throw tooLarge }
             let size = imagePixelSize(clean)
-            return Processed(bytes: clean, format: format, width: size?.w ?? 0, height: size?.h ?? 0)
+            return PreparedImage(bytes: clean, format: format, width: size?.w ?? 0, height: size?.h ?? 0)
         }
         let turned = detectFormat(data) != nil
         let d = try decodeUpright(data, maxLong: 0, budget: budget)
         let png = d.alpha
         let out = try encodeImage(d.image, png: png, quality: turned ? 100 : 95)
         if Int64(out.count) > originalMaxBytes { throw tooLarge }
-        return Processed(
-            bytes: out, format: png ? .png : .jpeg, width: d.image.width, height: d.image.height,
-            note: originalNote(turned: turned, png: png, sample: d.sample))
+        return PreparedImage(bytes: out, format: png ? .png : .jpeg, width: d.image.width, height: d.image.height)
     }
-    let d = try decodeUpright(data, maxLong: compressedLongSide, budget: budget)
+    let d = try decodeUpright(data, maxLong: maxDimensionPx, budget: budget)
     var image = d.image
     let png = d.alpha
     var quality = 85
     var out = try encodeImage(image, png: png, quality: quality)
-    while let step = nextCompressStep(bytes: out.count, quality: quality, longSide: max(image.width, image.height), png: png) {
+    while let step = nextCompressStep(
+        bytes: out.count,
+        quality: quality,
+        longSide: max(image.width, image.height),
+        png: png,
+        targetBytes: maxCompressedBytes
+    ) {
         switch step {
         case .quality(let q): quality = q
         case .shrink: image = try scaled(image, width: shrunkSide(image.width), height: shrunkSide(image.height))
         }
         out = try encodeImage(image, png: png, quality: quality)
     }
-    return Processed(bytes: out, format: png ? .png : .jpeg, width: image.width, height: image.height)
+    return PreparedImage(bytes: out, format: png ? .png : .jpeg, width: image.width, height: image.height)
 }
 
 /// One image is prepared at a time, off whatever thread asked.
 private let preparing = DispatchQueue(label: "remote-agent.image-prepare", qos: .userInitiated)
 
 /// Prepares one picked image (`prepareImageNow`) after the ones asked for before it.
-public func prepareImage(_ data: Data, original: Bool, originalMaxBytes: Int64) async throws -> Processed {
+public func prepareImage(
+    _ data: Data,
+    original: Bool,
+    originalMaxBytes: Int64,
+    maxDimensionPx: Int,
+    maxCompressedBytes: Int
+) async throws -> PreparedImage {
     try await withCheckedThrowingContinuation { done in
         preparing.async {
-            done.resume(with: Result { try autoreleasepool { try prepareImageNow(data, original: original, originalMaxBytes: originalMaxBytes) } })
+            done.resume(with: Result {
+                try autoreleasepool {
+                    try prepareImageNow(
+                        data,
+                        original: original,
+                        originalMaxBytes: originalMaxBytes,
+                        maxDimensionPx: maxDimensionPx,
+                        maxCompressedBytes: maxCompressedBytes
+                    )
+                }
+            })
         }
     }
 }
@@ -278,4 +347,10 @@ public func thumbnailImage(_ data: Data, maxLong: Int = 256) -> CGImage? {
         kCGImageSourceShouldCacheImmediately: true,
     ]
     return CGImageSourceCreateThumbnailAtIndex(src, 0, options as CFDictionary)
+}
+
+/// Encodes a stripped upright thumbnail (JPEG) for compact persistence under `thumb_ref`.
+public func thumbnailData(_ data: Data, maxLong: Int = 256) -> Data? {
+    guard let cg = thumbnailImage(data, maxLong: maxLong) else { return nil }
+    return try? encodeImage(cg, png: false, quality: 80)
 }

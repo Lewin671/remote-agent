@@ -317,11 +317,11 @@ private struct SelectedText: Identifiable {
 struct ChatPane: View {
     let sessionID: String
     let vm: PBSessionViewModel?
+    var focusComposerTrigger: Int = 0
     let onTerminal: () -> Void
     let onLoadEarlier: () -> Void
     let onToggleGroup: @MainActor @Sendable (String) -> Void
 
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @State private var open = ChatOpen()
@@ -388,27 +388,7 @@ struct ChatPane: View {
         toEnd()
     }
 
-    private func settleAttachmentsAndTracking(_ vm: PBSessionViewModel) {
-        let retainedIDs = Set(vm.composer.retainedAttachmentRequestIds)
-        let trayIDs = Set(vm.composer.pendingTray.orderedItems.map(\.requestID))
-        var unsentIDs = Set<String>()
-        var settledIDs = Set<String>()
-        for item in vm.timeline.items {
-            if case .inputState(let st)? = item.kind {
-                if st.kind == .unsentOnExit { unsentIDs.insert(st.requestID) }
-                else if !st.requestID.isEmpty { settledIDs.insert(st.requestID) }
-            }
-        }
-        let activeIDs = retainedIDs.union(trayIDs).union(unsentIDs)
-        ImageCenter.of(context.remote).pruneSettled(
-            sessionID,
-            activeRequestIDs: activeIDs,
-            timelineSettledRequestIDs: settledIDs
-        )
-    }
-
     var body: some View {
-        let state = model.state
         let header = vm?.header ?? PBSessionHeaderView()
         let tl = vm?.timeline ?? PBSessionTimelineView()
         let composer = vm?.composer ?? PBSessionComposerView()
@@ -418,7 +398,7 @@ struct ChatPane: View {
         let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : defaultAgent,
-            frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
+            frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : context.core.syncState.disconnectedAtMs),
             session: sessionID
         )
         let jump = context.sessionStore.scheduledJump(sessionID)
@@ -452,13 +432,9 @@ struct ChatPane: View {
             }
             if newFirstSeq > 0 { lastWindowFirstSeq = newFirstSeq }
             lastRowIDs = newIDs
-            if let vm { settleAttachmentsAndTracking(vm) }
         }
-        .onChange(of: composer.pendingTray.orderedItems.map(\.requestID)) { _, _ in
-            if let vm { settleAttachmentsAndTracking(vm) }
-        }
-        .onChange(of: composer.retainedAttachmentRequestIds) { _, _ in
-            if let vm { settleAttachmentsAndTracking(vm) }
+        .onChange(of: focusComposerTrigger) { _, _ in
+            typing = true
         }
         .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: tl.loaded, jump: jump, anchorID: tl.anchorItemID) {
             applyScheduledJump(rows: rows, tl: tl, jump: jump)
@@ -498,16 +474,9 @@ struct ChatPane: View {
             ChatActions(
                 image: { seq, index in nav.open(.image(session: sessionID, seq: seq, index: index)) },
                 session: { nav.open(.session(id: $0)) },
-                putBack: { requestId, text, files in
+                putBack: { requestId, _, _ in
                     Task {
-                        if let o = ImageCenter.of(context.remote).heldOutgoing(sessionID, requestId: requestId) {
-                            await SessionImages.putBack(o, session: sessionID, remote: context.remote, store: context.sessionStore)
-                        } else {
-                            let pbFiles = files.map { ref in
-                                PBSentFile.with { $0.name = ref.name; $0.path = ref.path; $0.sizeBytes = ref.sizeBytes }
-                            }
-                            await ImageCenter.of(context.remote).putBack(sid: sessionID, text: text, files: pbFiles, store: context.sessionStore)
-                        }
+                        await context.coreHost.putBackInput(sessionID: sessionID, requestID: requestId)
                     }
                 },
                 toggleGroup: onToggleGroup,
@@ -563,13 +532,6 @@ struct ChatPane: View {
             items.append(ChatCollectionItem("chat-unavailable") {
                 Text(L10n.sessionHistoryUnavailable(count: Int(tl.unavailableCount)))
                     .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16)
-            })
-        }
-        if let message = ImageCenter.of(context.remote).outgoingRestoreErrors[sessionID] {
-            items.append(ChatCollectionItem("chat-outgoing-restore-error") {
-                Banner(message, tone: .error, action: L10n.commonRetry()) {
-                    ImageCenter.of(context.remote).restoreOutgoing(sessionID)
-                }.padding(.horizontal, chatMargin)
             })
         }
         items += rows.map { row in
@@ -635,14 +597,14 @@ struct ChatPane: View {
         composer: PBSessionComposerView,
         actions: PBSessionActionsView
     ) -> some View {
-        let taskOwned = model.state.sessions[sessionID]?.info?.taskOwned == true
+        let taskOwned = header.taskOwned
         if header.exited {
             VStack(spacing: 0) {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(sessionID: sessionID, header: header, actions: actions)
             }
         } else if header.computerUnlinked && header.computerReachability != .unknown {
-            let name = header.hasComputerName ? header.computerName.rendered() : machineLabel(model.state, id: header.machineID)
+            let name = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
             let offlineDesc = header.hasOfflineText ? header.offlineText.rendered() : L10n.projectsComputerOffline()
             SessionEndCard(
                 L10n.newSessionMachineOffline(name: name),
@@ -654,14 +616,10 @@ struct ChatPane: View {
                     let hide = { typing = false }
                     let store = context.sessionStore
                     let key = dockFoldKey(sessionID: sessionID, dock)
-                    let sid = sessionID
-                    let remote = context.remote
+                    let draftingNow = composer.draft.hasUnsavedContent_p
                     let openBinding = Binding(
                         get: {
-                            store.dockOpen(key) {
-                                !store.draft(sid).jvmTrim().isEmpty
-                                    || !ImageCenter.of(remote).draft(ImageCenter.sessionKey(sid)).images.isEmpty
-                            } && !SessionDebug.shows("fold")
+                            store.dockOpen(key) { draftingNow } && !SessionDebug.shows("fold")
                         },
                         set: { store.setDockOpen(key, $0) }
                     )

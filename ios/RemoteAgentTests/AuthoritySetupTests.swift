@@ -74,13 +74,13 @@ import Testing
         let old = h.engine
         let before = h.model.context
         h.defaults.set("project", forKey: AccountDefaults.key("home-scope"))
-        try h.pending.put(folder: "session", name: "draft", data: Data([1, 2, 3]))
+        #expect(h.pending.write(opID: 1, bucket: .draft, key: "draft:session:s1", data: Data([1, 2, 3])).ok)
         try await h.model.joined(h.account)
         #expect(old.calls.contains("close"))
         #expect(h.engines.count == 2 && h.engine !== old)
         #expect(h.model.context !== before && h.model.stage == .ready)
         #expect(h.model.account == h.account)
         #expect(h.defaults.string(forKey: AccountDefaults.key("home-scope")) == "project")
-        #expect(try h.pending.get(folder: "session", name: "draft") == Data([1, 2, 3]))
+        #expect(h.pending.read(opID: 2, bucket: .draft, key: "draft:session:s1").data == Data([1, 2, 3]))
     }
 }

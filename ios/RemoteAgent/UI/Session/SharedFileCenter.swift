@@ -73,8 +73,9 @@ final class SharedFileCenter {
     @ObservationIgnored let store: SharedFileStore
     @ObservationIgnored private weak var coreHost: CoreHost?
     @ObservationIgnored private let present: @MainActor (URL) -> Void
+    @ObservationIgnored private let readMedia: @Sendable (URL, PBSharedFileKind) async -> SharedFileMedia
     @ObservationIgnored private let allowMissingReports: Bool
-    @ObservationIgnored private var loading = Set<SharedFileKey>()
+    @ObservationIgnored private var loadingTasks: [SharedFileKey: (id: UUID, task: Task<Void, Never>)] = [:]
     @ObservationIgnored private var probedDurations = Set<SharedFileKey>()
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
 
@@ -87,12 +88,16 @@ final class SharedFileCenter {
         store: SharedFileStore,
         coreHost: CoreHost? = nil,
         allowMissingReports: Bool = true,
-        open: @escaping @MainActor (URL) -> Void = { QuickLook.present($0) }
+        open: @escaping @MainActor (URL) -> Void = { QuickLook.present($0) },
+        readMedia: @escaping @Sendable (URL, PBSharedFileKind) async -> SharedFileMedia = { url, kind in
+            await Task.detached(priority: .utility) { await SharedFileMedia.read(url, kind: kind) }.value
+        }
     ) {
         self.store = store
         self.coreHost = coreHost
         self.allowMissingReports = allowMissingReports
         self.present = open
+        self.readMedia = readMedia
     }
 
     func handlers() -> CoreHost.SharedFileHandlers {
@@ -109,8 +114,9 @@ final class SharedFileCenter {
     func close() {
         noticeTask?.cancel()
         noticeTask = nil
+        for entry in loadingTasks.values { entry.task.cancel() }
+        loadingTasks.removeAll()
         thumbnails.removeAll()
-        loading.removeAll()
         probedDurations.removeAll()
     }
 
@@ -144,11 +150,15 @@ final class SharedFileCenter {
     }
 
     func clearThumbnail(_ key: SharedFileKey) {
+        loadingTasks.removeValue(forKey: key)?.task.cancel()
         thumbnails.removeValue(forKey: key)
         probedDurations.remove(key)
     }
 
     func clearThumbnails(sessionID: String) {
+        for key in Array(loadingTasks.keys) where key.sessionId == sessionID {
+            loadingTasks.removeValue(forKey: key)?.task.cancel()
+        }
         for key in Array(thumbnails.keys) where key.sessionId == sessionID {
             thumbnails.removeValue(forKey: key)
         }
@@ -156,6 +166,8 @@ final class SharedFileCenter {
     }
 
     func clearAllThumbnails() {
+        for entry in loadingTasks.values { entry.task.cancel() }
+        loadingTasks.removeAll()
         thumbnails.removeAll()
         probedDurations.removeAll()
     }
@@ -206,8 +218,7 @@ final class SharedFileCenter {
     }
 
     func deleteLocal(_ key: SharedFileKey) {
-        thumbnails.removeValue(forKey: key)
-        probedDurations.remove(key)
+        clearThumbnail(key)
         guard let host = coreHost else { return }
         Task { await host.deleteSharedFileLocal(sessionID: key.sessionId, fileID: key.fileId) }
     }
@@ -242,8 +253,7 @@ final class SharedFileCenter {
     }
 
     private func reportMissingIfNeeded(_ key: SharedFileKey) {
-        thumbnails.removeValue(forKey: key)
-        probedDurations.remove(key)
+        clearThumbnail(key)
         guard allowMissingReports, let host = coreHost else { return }
         Task { await host.reportSharedFileLocalMissing(sessionID: key.sessionId, fileID: key.fileId) }
     }
@@ -301,24 +311,38 @@ final class SharedFileCenter {
         hasMediaDuration: Bool = false,
         hasDurationText: Bool = false
     ) async {
+        while let existing = loadingTasks[key] {
+            await existing.task.value
+            if Task.isCancelled { return }
+        }
         let needsThumbnail = (kind == .image || kind == .video) && thumbnails[key] == nil
         let needsDuration = hasMediaDuration && !hasDurationText && !probedDurations.contains(key)
-        guard (needsThumbnail || needsDuration), !loading.contains(key) else { return }
+        guard needsThumbnail || needsDuration else { return }
         #if DEBUG
         if SharedFileDebug.hasForcedStates { return }
         #endif
         guard let url = existingCopy(key, name: name) else { return }
-        loading.insert(key)
-        defer { loading.remove(key) }
-        let media = await Task.detached(priority: .utility) { await SharedFileMedia.read(url, kind: kind) }.value
-        guard store.existingLocalURL(key, name: name) != nil else { return }
-        if needsThumbnail, let image = media.thumbnail { thumbnails[key] = image }
-        if needsDuration {
-            probedDurations.insert(key)
-            if let ms = media.durationMs, ms > 0, let host = coreHost {
-                await host.recordSharedFileDuration(sessionID: key.sessionId, fileID: key.fileId, durationMs: ms)
+        let loadID = UUID()
+        let reader = self.readMedia
+        let task = Task { [weak self] in
+            defer {
+                if let self, self.loadingTasks[key]?.id == loadID {
+                    self.loadingTasks.removeValue(forKey: key)
+                }
+            }
+            let media = await reader(url, kind)
+            guard let self, !Task.isCancelled else { return }
+            guard self.store.existingLocalURL(key, name: name) != nil else { return }
+            if needsThumbnail, let image = media.thumbnail { self.thumbnails[key] = image }
+            if needsDuration {
+                self.probedDurations.insert(key)
+                if let ms = media.durationMs, ms > 0, let host = self.coreHost {
+                    await host.recordSharedFileDuration(sessionID: key.sessionId, fileID: key.fileId, durationMs: ms)
+                }
             }
         }
+        loadingTasks[key] = (loadID, task)
+        await task.value
     }
 
     func thumbnail(_ key: SharedFileKey) -> UIImage? { thumbnails[key] }

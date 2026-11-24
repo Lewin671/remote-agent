@@ -147,13 +147,13 @@ struct MachineStatusScreen: View {
     private var displayedViewModel: PBMachineStatusViewModel {
         let current = context.core.machineStatus
         if current.machineID == id { return current }
-        let m = model.state.machines[id]
+        let m = context.core.settings.machines.first { $0.machineID == id }
         return PBMachineStatusViewModel.with {
             $0.machineID = id
-            $0.machineName = machineLabel(model.state, id: id)
+            $0.machineName = (m?.name ?? "").or(String(id.prefix(8))).or(L10n.commonUnknownComputer())
             $0.found = m != nil
-            $0.supported = m?.pathState.capabilities?.machineStatus ?? true
-            $0.online = m?.pathState.reachable ?? false
+            $0.supported = true
+            $0.online = m?.online ?? false
             $0.pollState = .loading
         }
     }

@@ -51,19 +51,17 @@ import UIKit
         let model = AppModel(settings: SettingsStore(defaults: defaults))
         let remote = Demo.remote()
         let now: Int64 = 1_791_000_000_000
-        let state = Demo.state(.everyday, now: now)
+        let world = Demo.world(.everyday, now: now)
         let samples = Demo.schedules(.everyday, now: now)
 
         model.showDemo(
             account: Demo.account,
             remote: remote,
-            initial: state,
+            world: world,
             events: Demo.events(.everyday, now: now),
             schedules: samples.schedules,
             scheduleSeen: samples.seen
-        ) {
-            await remote.showForTest(state: state)
-        }
+        )
         defer { ImageCenter.remove(remote) }
         let context = try #require(model.context)
 

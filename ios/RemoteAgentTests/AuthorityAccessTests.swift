@@ -5,24 +5,6 @@ import Testing
 @testable import RemoteAgent
 
 @MainActor @Suite struct AuthorityAccessTests {
-    @Test func rolesFollowTheDirectoryRatherThanPlatformMetadata() {
-        for platform in ["ios", "web", "android", "", "unknown"] {
-            var state = RemoteState()
-            state.authorityDeviceId = "authority"
-            state.devices["authority"] = DeviceView(id: "authority", kind: .client, createdMs: 1,
-                meta: .with { $0.platform = platform; $0.name = "Studio" })
-            state.devices["member"] = DeviceView(id: "member", kind: .client, createdMs: 1)
-            #expect(AuthorityAccess(state: state, me: "authority").isAuthority)
-            #expect(!AuthorityAccess(state: state, me: "member").isAuthority)
-            #expect(AuthorityAccess(state: state, me: "member").addHint == "要添加电脑或客户端，在管理端（Studio）上打开「设置 › 添加设备」。")
-            #expect(AuthorityAccess(state: state, me: "member").emptyHint == L10n.homeAddViaManager(name: "Studio"))
-            state.devices["authority"]!.kind = .machine
-            #expect(!AuthorityAccess(state: state, me: "authority").isAuthority)
-            #expect(!AuthorityAccess(state: state, me: "authority").isClient)
-            state.devices["authority"]!.kind = .client; state.removed = true
-            #expect(!AuthorityAccess(state: state, me: "authority").isAuthority)
-        }
-    }
     @Test func logoutPrioritizesUnresolvedEvidenceAndWarnsTheOnlyAuthority() {
         #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: true) == L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts())
         #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: false).contains("唯一管理端"))

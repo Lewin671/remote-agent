@@ -18,7 +18,7 @@ import RAProto
               let listData = try? JSONSerialization.data(withJSONObject: ["tasks": tasks])
         else { return false }
 
-        var state = RemoteState(); state.conn = .online; state.link = .online; state.synced = true
+        var world = DemoWorld()
         let meta = PBMachineMeta.with {
             $0.hostname = machineName; $0.protocolVersion = peerProtocolVersion; $0.scheduleRevision = 1
             $0.capabilities.scheduledTasks = true
@@ -26,13 +26,16 @@ import RAProto
                 .with { $0.agent = agent; $0.defaultMode = .auto }
             }
         }
-        state.currentMachines = [machine]
-        state.machines[machine] = MachineView(id: machine, online: true, lastSeenMs: 0, meta: meta)
+        world.machines[machine] = .with {
+            $0.machineID = machine; $0.online = true; $0.lastSeenMs = 0; $0.meta = meta; $0.metaRev = 1
+        }
         let info = PBSession.with {
             $0.id = session; $0.title = sessionTitle; $0.cwd = "/example/project"
             $0.agent = .claude; $0.mode = .auto; $0.status = .idle
         }
-        state.sessions[session] = SessionView(id: session, machineId: machine, info: info, lastSeq: 2)
+        world.sessions[session] = .with {
+            $0.sessionID = session; $0.machineID = machine; $0.meta = info; $0.metaRev = 1; $0.lastSeq = 2
+        }
         var events: [PBEvent] = [
             .with { $0.seq = 1; $0.sessionID = session; $0.userMessage.text = "检查 PR 的回复。" },
             .with { $0.seq = 2; $0.sessionID = session; $0.agentMessage.text = "有变化时会通知你。" }
@@ -44,7 +47,7 @@ import RAProto
             events[0].userMessage.text = longMessage; events[0].origin.scheduledRunID = "sample-run"
             events[0].time.seconds = Int64(Date().timeIntervalSince1970)
         } else if scene == "chat-queue" {
-            state.sessions[session]?.info?.status = .running
+            world.sessions[session]?.meta.status = .running
             events.append(.with {
                 $0.seq = 3; $0.sessionID = session; $0.time.seconds = Int64(Date().timeIntervalSince1970)
                 $0.origin.scheduledRunID = "sample-queued-run"
@@ -61,18 +64,16 @@ import RAProto
                 ]
             }
         }
-        state.sessions[session]?.lastSeq = events.last?.seq ?? 0
-        if HomeLaunch.value("-scheduleOffline") == "yes" { state.machines[machine]?.online = false }
-        let remote = Demo.remote(), shown = state, sampleEvents = events
+        world.sessions[session]?.lastSeq = events.last?.seq ?? 0
+        if HomeLaunch.value("-scheduleOffline") == "yes" { world.machines[machine]?.online = false }
+        let remote = Demo.remote()
         model.showDemo(
             account: Demo.account,
             remote: remote,
-            initial: shown,
-            events: [session: sampleEvents],
+            world: world,
+            events: [session: events],
             schedules: [machine: listData]
-        ) {
-            await remote.showForTest(state: shown)
-        }
+        )
         return true
     }
 }

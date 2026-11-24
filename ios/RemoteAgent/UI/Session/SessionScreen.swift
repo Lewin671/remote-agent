@@ -85,6 +85,7 @@ struct SessionScreen: View {
     @State private var directPopoverOpen = false
     @State private var windowLimit: Int32 = 80
     @State private var expandedGroups: [String] = []
+    @State private var focusComposerTrigger = 0
 
     init(id: String, terminal: Bool) {
         self.id = id
@@ -121,12 +122,11 @@ struct SessionScreen: View {
     var body: some View {
         let vm = context.core.sessions[id]
         let header = vm?.header ?? PBSessionHeaderView()
-        let state = model.state
         Group {
             if let vm, header.found {
                 sessionBody(vm: vm, header: header)
             } else {
-                SessionAbsent(header: header, online: state.conn == .online) {
+                SessionAbsent(header: header, online: context.core.settings.online) {
                     Task {
                         await context.coreHost.retryLoadSession(id)
                     }
@@ -146,32 +146,19 @@ struct SessionScreen: View {
             }
         }
         .sessionSamples(id)
+        .task(id: "\(id):\(header.machineID):\(scenePhase == .active)") {
+            guard !id.isEmpty, scenePhase == .active else { return }
+            await context.coreHost.openDraft(scope: .session(id), machineID: header.machineID)
+        }
         .onChange(of: context.core.pendingComposerRestores, initial: true) { _, restores in
             let matching = restores.filter { $0.effect.sessionID == id }
             guard !matching.isEmpty else { return }
             context.core.consumeComposerRestores(Set(matching.map(\.id)))
-            Task {
-                for item in matching {
-                    await SessionImages.applyRestore(
-                        item.effect, session: id, remote: context.remote, store: context.sessionStore
-                    )
-                }
-            }
-        }
-        .onChange(of: context.core.pendingResendAttachments, initial: true) { _, resends in
-            let matching = resends.filter { $0.effect.sessionID == id }
-            guard !matching.isEmpty else { return }
-            for item in matching {
-                SessionImages.resendAttachments(item.effect, context: context) { message in
-                    ImageCenter.of(context.remote).say(ImageCenter.sessionKey(id), message)
-                }
-            }
-            context.core.consumeResendAttachments(Set(matching.map(\.id)))
+            focusComposerTrigger += 1
         }
     }
 
     @ViewBuilder private func sessionBody(vm: PBSessionViewModel, header: PBSessionHeaderView) -> some View {
-        let state = model.state
         let actions = vm.actions
         let hasTerminal = header.capabilities.terminalAvailable
         let wide = width == .regular
@@ -246,9 +233,6 @@ struct SessionScreen: View {
                   nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: machineID, id: header.scheduledTaskID)) else { return }
             nav.path.insert(.schedule(machine: machineID, id: header.scheduledTaskID), at: max(0, nav.path.count - 1))
         }
-        .task(id: id) {
-            SessionImages.restore(session: id, remote: context.remote)
-        }
         .animation(Motion.enter(), value: SharedFileCenter.of(context.remote).notice)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(titleText)
@@ -264,7 +248,7 @@ struct SessionScreen: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                let computer = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+                let computer = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
                 let demoChip: PBSessionDirectChipView? = {
                     #if DEBUG
                     if model.isDemo && SessionDebug.shows("direct") {
@@ -337,7 +321,7 @@ struct SessionScreen: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
         .menuSheet(isPresented: $menu, groups: groups(header: header, actions: actions, live: live)) {
-            let computerText = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+            let computerText = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
             let projectText = header.hasProjectName ? header.projectName.rendered() : projectName(header.projectKey)
             let parts = [header.agentName.isEmpty ? agentName(header.agent) : header.agentName, projectText]
                 + (header.multipleMachines ? [computerText] : [])
@@ -440,6 +424,7 @@ struct SessionScreen: View {
         ChatPane(
             sessionID: id,
             vm: vm,
+            focusComposerTrigger: focusComposerTrigger,
             onTerminal: { pick(1) },
             onLoadEarlier: {
                 windowLimit += 80

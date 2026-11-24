@@ -1772,6 +1772,45 @@ func (m *DraftSetTextAction) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DraftSetTextAction)
 }
 
+type DraftAppendTextAction struct {
+	_         [0]func()
+	Scope     *DraftScope
+	Text      string
+	MachineId string
+}
+
+func (m *DraftAppendTextAction) GetScope() *DraftScope {
+	if m != nil {
+		return m.Scope
+	}
+	return nil
+}
+func (m *DraftAppendTextAction) GetText() string {
+	if m != nil {
+		return m.Text
+	}
+	return ""
+}
+func (m *DraftAppendTextAction) GetMachineId() string {
+	if m != nil {
+		return m.MachineId
+	}
+	return ""
+}
+
+var LitewireDesc_DraftAppendTextAction = litewire.MessageDesc{
+	New: func() unsafe.Pointer { return unsafe.Pointer(&DraftAppendTextAction{}) },
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(DraftAppendTextAction{}.Scope), Kind: litewire.KindMessage, Sub: &LitewireDesc_DraftScope},
+		{Num: 2, Offset: unsafe.Offsetof(DraftAppendTextAction{}.Text), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(DraftAppendTextAction{}.MachineId), Kind: litewire.KindString},
+	},
+}
+
+func (m *DraftAppendTextAction) Unmarshal(b []byte) error {
+	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_DraftAppendTextAction)
+}
+
 type DraftSetTargetMachineAction struct {
 	_         [0]func()
 	Scope     *DraftScope
