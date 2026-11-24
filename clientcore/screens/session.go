@@ -113,6 +113,7 @@ type SessionOutgoingRecord struct {
 	ErrorText         *corev1.Text
 	Restored          bool
 	RestoredFromCrash bool
+	Resending         bool
 	LocalAttachments  []*corev1.OutboxAttachmentSummary
 	CreatedMs         int64
 	VisibleAfterMs    int64
@@ -1942,6 +1943,10 @@ func buildLocalOutgoingTrayItem(p trayBuildParams, og *SessionOutgoingRecord) (*
 		item.Tone = trayGroupTone(group)
 		item.Activity = corev1.SessionTrayRowActivity_SESSION_TRAY_ROW_ACTIVITY_SENDING
 		item.ShowSpinner = true
+		if og.State == OutgoingSending && og.Resending {
+			item.CanCancel = true
+			item.CanRestore = true
+		}
 		return item, true
 
 	case OutgoingFailed:

@@ -412,6 +412,7 @@ func (c *Core) submitSessionSendFromDraft(
 		for _, og := range ui.Outgoing {
 			if og != nil && og.RequestID == reqID {
 				og.LocalAttachments = summaries
+				og.Resending = false
 				break
 			}
 		}
@@ -617,6 +618,7 @@ func (c *Core) startOutboxResend(
 		Mode:             mode,
 		State:            screens.OutgoingSending,
 		LocalAttachments: summaries,
+		Resending:        true,
 		CreatedMs:        c.m.sync.NowMs(),
 	})
 	ui.LocalContents[newReqID] = &screens.LocalSentContent{
@@ -803,6 +805,64 @@ func (c *Core) finalizeResendJob(ctx *sync.StepContext, job *attResendJob, image
 		}
 	}
 	c.submitSessionSendFromDraft(ctx, outRec.sessionID, outRec.machineID, outRec.requestID, outRec.text, outRec.mode, outRec.imageIDs, outRec.fileIDs, makeOutboxSummaries(outRec.items))
+}
+
+// abortResendJob aborts an in-flight Core resend job (canceling commands/timers, emitting AbortImageUpload,
+// and preventing SendRequest submission). When preserveOutbox is true (cancel-with-undo or put-back),
+// items are preserved in memory under reqID so undo/put-back can reuse the local copies; once undo expires
+// or put-back completes, normal pruning releases unreferenced local refs.
+func (c *Core) abortResendJob(ctx *sync.StepContext, reqID string, preserveOutbox bool, effects *[]*corev1.Effect) bool {
+	if c.m.attachments == nil || reqID == "" {
+		return false
+	}
+	mgr := c.m.attachments
+	job := mgr.resendJobs[reqID]
+	if job == nil {
+		return false
+	}
+	job.aborted = true
+	delete(mgr.resendJobs, reqID)
+	var imgIDs, fileIDs []string
+	if src := mgr.outbox[job.sourceRequestID]; src != nil {
+		imgIDs = src.imageIDs
+		fileIDs = src.fileIDs
+	}
+	var refs []string
+	for _, it := range job.items {
+		if it != nil {
+			c.invalidateItem(ctx, attOwnerResend, reqID, it, true, effects)
+			refs = append(refs, it.localRefs()...)
+		}
+	}
+	if preserveOutbox {
+		if _, exists := mgr.outbox[reqID]; !exists {
+			snaps := make([]*attItem, 0, len(job.items))
+			for _, it := range job.items {
+				if it != nil {
+					snaps = append(snaps, it.cloneForSnapshot())
+				}
+			}
+			mgr.outbox[reqID] = &attOutboxRecord{
+				sessionID:  job.sessionID,
+				requestID:  reqID,
+				machineID:  job.machineID,
+				text:       job.text,
+				mode:       job.mode,
+				original:   job.original,
+				imageIDs:   slices.Clone(imgIDs),
+				fileIDs:    slices.Clone(fileIDs),
+				items:      snaps,
+				createdMs:  c.m.sync.NowMs(),
+				storageKey: job.outboxKey,
+				persisted:  false,
+			}
+			mgr.outboxBySession[job.sessionID] = append(mgr.outboxBySession[job.sessionID], reqID)
+		}
+	} else {
+		c.emitUnreferencedLocalReleases(refs, effects)
+	}
+	c.pumpAttachmentQueues(ctx, effects)
+	return true
 }
 
 func (c *Core) onResendItemFailed(ctx *sync.StepContext, newReqID string, problem *corev1.ImageProblemView, fileErr *corev1.Text, effects *[]*corev1.Effect) {

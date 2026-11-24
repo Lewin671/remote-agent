@@ -1799,3 +1799,64 @@ func TestAttachments_ResendFailure_RetainsOutboxForRetryAndPutBack(t *testing.T)
 		t.Fatalf("expected second retry to start BeginImageUpload directly in Core")
 	}
 }
+
+func TestAttachments_CancelInFlightResend_AbortsUploadAndNeverSends(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	// Send + fail to get a failed tray item backed by outbox.
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("cancel-resend.jpg", 4, "src-cr", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff, "prep-cr", "thumb-cr", 4, attTestHash(0xb2), "img-cr-1", h.nowMs+600_000)
+	sendEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSendSession{DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER}}})
+	sendCmd := findDispatchedCmds(sendEff)[0]
+	origReqID := sendCmd.cmd.GetSend().RequestId
+	h.settleCmdDaemonErr(sendCmd.dc, "failed")
+
+	// Start resend -> BeginImageUpload is in flight on daemon!
+	retryEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: origReqID}},
+	})
+	beginCmd := findDispatchedCmds(retryEff)[0]
+	resendTID := beginCmd.cmd.GetBeginImageUpload().TransferId
+	var resendReqID string
+	for _, it := range h.sessionView().GetComposer().GetPendingTray().GetOrderedItems() {
+		if it.RequestId != origReqID {
+			resendReqID = it.RequestId
+			if !it.CanCancel {
+				t.Fatalf("expected CanCancel=true on resending tray row")
+			}
+		}
+	}
+	if resendReqID == "" {
+		t.Fatalf("expected resending row in tray")
+	}
+
+	// Cancel the resending tray row -> MUST abort upload (AbortImageUpload) and drop late Begin outcome without submitting Send!
+	cancelEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SessionCancelTrayItem{SessionCancelTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: resendReqID}},
+	})
+	var sawAbort bool
+	for _, sc := range findDispatchedCmds(cancelEff) {
+		if ab := sc.cmd.GetAbortImageUpload(); ab != nil && ab.TransferId == resendTID {
+			sawAbort = true
+		}
+	}
+	if !sawAbort {
+		t.Fatalf("expected AbortImageUpload for canceled in-flight resend %s", resendTID)
+	}
+
+	// Late BeginImageUpload COMPLETE outcome arrives -> MUST NOT submit SendRequest!
+	lateEff := h.settleCmdOK(beginCmd.dc, beginCompleteOK(resendTID, "img-cr-late", "", h.nowMs+600_000))
+	for _, sc := range findDispatchedCmds(lateEff) {
+		if sc.cmd.GetSend() != nil {
+			t.Fatalf("canceled resend must NEVER submit SendRequest on late upload completion")
+		}
+	}
+}

@@ -796,15 +796,21 @@ func (c *Core) dispatchSessionUI(ctx *sync.StepContext, ev *corev1.Event) []*cor
 		}
 		if meta, ok := store.slotMeta[act.SlotKey]; ok {
 			if meta.kind == slotKindSend && meta.outgoingReqID != "" {
+				var abortEff []*corev1.Effect
+				c.abortResendJob(ctx, meta.outgoingReqID, false, &abortEff)
 				if ui := store.uiBySession[meta.sessionID]; ui != nil {
 					for _, og := range ui.Outgoing {
 						if og != nil && og.RequestID == meta.outgoingReqID {
 							og.Frozen = false
 							og.Expired = true
+							og.Resending = false
 							og.State = screens.OutgoingFailed
 						}
 					}
 				}
+				delete(store.slotMeta, act.SlotKey)
+				store.pendingDirty = true
+				return abortEff
 			}
 			delete(store.slotMeta, act.SlotKey)
 		}
@@ -1239,6 +1245,8 @@ func (c *Core) handleCancelTrayItem(ctx *sync.StepContext, store *sessionStore, 
 	}
 	hasLocal := !item.ForeignDimmed && (item.Text != "" || len(item.ImageIds) > 0 || len(item.FileIds) > 0)
 	if !item.ServerBacked {
+		var effects []*corev1.Effect
+		c.abortResendJob(ctx, reqID, hasLocal, &effects)
 		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
 		ui.DismissedInputIDs[reqID] = true
 		if hasLocal {
@@ -1253,7 +1261,7 @@ func (c *Core) handleCancelTrayItem(ctx *sync.StepContext, store *sessionStore, 
 		}
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
-		return nil
+		return effects
 	}
 	if item.NetworkActionsDisabled {
 		return nil
@@ -1278,11 +1286,13 @@ func (c *Core) handleIgnoreTrayItem(ctx *sync.StepContext, store *sessionStore, 
 	if item == nil || !item.CanIgnore {
 		return nil
 	}
+	var effects []*corev1.Effect
+	c.abortResendJob(ctx, reqID, false, &effects)
 	c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, false)
 	ui.DismissedInputIDs[reqID] = true
 	pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 	store.pendingDirty = true
-	return nil
+	return effects
 }
 
 func (c *Core) handlePromoteTrayItem(ctx *sync.StepContext, store *sessionStore, sid, reqID string) []*corev1.Effect {
@@ -1320,9 +1330,10 @@ func (c *Core) handleRestoreTrayItem(ctx *sync.StepContext, store *sessionStore,
 		}
 	}
 	if !item.ServerBacked {
+		var effects []*corev1.Effect
+		c.abortResendJob(ctx, reqID, true, &effects)
 		c.clearOutgoingAndSlot(ctx, store, ui, reqID, item.SlotKey, true)
 		ui.DismissedInputIDs[reqID] = true
-		var effects []*corev1.Effect
 		handled := c.applyPutBackToDraft(ctx, sid, reqID, item.Text, item.ImageIds, item.FileIds, &effects)
 		pruneSessionLocalContents(ui, map[string]bool{}, activeInputSetFromSnap(snap, ui))
 		store.pendingDirty = true
