@@ -503,3 +503,74 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 		t.Fatalf("expected MachineSettingsViewModel.AppOnline=true when connected")
 	}
 }
+
+func TestBuildSettingsHandoffCandidates(t *testing.T) {
+	st := NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	key := make([]byte, 32)
+	key[0] = 7
+	sv := &corev1.SyncStateView{
+		SelfDeviceId:      "self-1111",
+		AuthorityDeviceId: "self-1111",
+		IsManager:         true,
+		Devices: []*corev1.SyncDeviceView{
+			{
+				DeviceId:   "self-1111",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 300,
+				Meta:       &v1.DeviceMeta{Name: "Manager", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "machine-2222",
+				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
+				Trusted:    true,
+				LastSeenMs: 400,
+				Meta:       &v1.DeviceMeta{Name: "Box", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-no-offer",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 250,
+				Meta:       &v1.DeviceMeta{Name: "NoOffer"},
+			},
+			{
+				DeviceId:   "client-aaaa",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 200,
+				Meta:       &v1.DeviceMeta{Description: "Pixel 3", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-bbbb",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 100,
+				Meta:       &v1.DeviceMeta{Description: "Pixel 3", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-cccc",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 50,
+				Meta:       &v1.DeviceMeta{Name: "Work Phone", HandoffRecoveryEd: key},
+			},
+		},
+	}
+
+	vm := BuildSettings(st, sv, nil)
+	got := vm.GetSecurity().GetHandoffCandidates()
+	if len(got) != 3 {
+		t.Fatalf("expected 3 handoff candidates, got %+v", got)
+	}
+	if got[0].DeviceId != "client-aaaa" || got[0].DisplayName != "Pixel 3 · …aaaa" {
+		t.Fatalf("unexpected candidate[0]: %+v", got[0])
+	}
+	if got[1].DeviceId != "client-bbbb" || got[1].DisplayName != "Pixel 3 · …bbbb" {
+		t.Fatalf("unexpected candidate[1]: %+v", got[1])
+	}
+	if got[2].DeviceId != "client-cccc" || got[2].DisplayName != "Work Phone" {
+		t.Fatalf("unexpected candidate[2]: %+v", got[2])
+	}
+}

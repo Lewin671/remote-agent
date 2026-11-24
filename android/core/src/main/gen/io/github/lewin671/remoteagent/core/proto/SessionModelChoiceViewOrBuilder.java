@@ -99,4 +99,15 @@ public interface SessionModelChoiceViewOrBuilder extends
    * @return The supportsStandardContext.
    */
   boolean getSupportsStandardContext();
+
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   * @return Whether the maxEffortHint field is set.
+   */
+  boolean hasMaxEffortHint();
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   * @return The maxEffortHint.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getMaxEffortHint();
 }

@@ -35,6 +35,7 @@ public  final class Effect extends
     NAVIGATE(15),
     ATTACHMENTS_SETTLED(16),
     REQUEST_ENTROPY(17),
+    RUN_MACHINE_COMMAND_RESULT(18),
     SCHEDULE_MACHINE_POLL(70),
     DIRECT_PREFERENCE(71),
     RENAME_CLIENT(72),
@@ -123,6 +124,7 @@ public  final class Effect extends
         case 15: return NAVIGATE;
         case 16: return ATTACHMENTS_SETTLED;
         case 17: return REQUEST_ENTROPY;
+        case 18: return RUN_MACHINE_COMMAND_RESULT;
         case 70: return SCHEDULE_MACHINE_POLL;
         case 71: return DIRECT_PREFERENCE;
         case 72: return RENAME_CLIENT;
@@ -1028,6 +1030,58 @@ public  final class Effect extends
    */
   private void clearRequestEntropy() {
     if (effectCase_ == 17) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int RUN_MACHINE_COMMAND_RESULT_FIELD_NUMBER = 18;
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+   */
+  @java.lang.Override
+  public boolean hasRunMachineCommandResult() {
+    return effectCase_ == 18;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect getRunMachineCommandResult() {
+    if (effectCase_ == 18) {
+       return (io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setRunMachineCommandResult(io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 18;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeRunMachineCommandResult(io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 18 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 18;
+  }
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+   */
+  private void clearRunMachineCommandResult() {
+    if (effectCase_ == 18) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -4895,6 +4949,54 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    @java.lang.Override
+    public boolean hasRunMachineCommandResult() {
+      return instance.hasRunMachineCommandResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect getRunMachineCommandResult() {
+      return instance.getRunMachineCommandResult();
+    }
+    /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    public Builder setRunMachineCommandResult(io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect value) {
+      copyOnWrite();
+      instance.setRunMachineCommandResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    public Builder setRunMachineCommandResult(
+        io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setRunMachineCommandResult(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    public Builder mergeRunMachineCommandResult(io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect value) {
+      copyOnWrite();
+      instance.mergeRunMachineCommandResult(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.RunMachineCommandResultEffect run_machine_command_result = 18 [json_name = "runMachineCommandResult"];</code>
+     */
+    public Builder clearRunMachineCommandResult() {
+      copyOnWrite();
+      instance.clearRunMachineCommandResult();
+      return this;
+    }
+
+    /**
      * <code>.remoteagent.core.v1.ScheduleMachinePollEffect schedule_machine_poll = 70 [json_name = "scheduleMachinePoll"];</code>
      */
     @java.lang.Override
@@ -7688,6 +7790,7 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.NavigateEffect.class,
             io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect.class,
             io.github.lewin671.remoteagent.core.proto.RequestEntropyEffect.class,
+            io.github.lewin671.remoteagent.core.proto.RunMachineCommandResultEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionRestoreComposerEffect.class,
             io.github.lewin671.remoteagent.core.proto.SessionResendAttachmentsEffect.class,
             io.github.lewin671.remoteagent.core.proto.SharedFileScanLocalEffect.class,
@@ -7747,16 +7850,16 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000I\u0001\u0000\u0001\u0091I\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000J\u0001\u0000\u0001\u0091J\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
-              "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
-              ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000" +
-              "<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000" +
-              "J<\u0000K<\u0000L<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
-              "W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000" +
-              "o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089" +
-              "<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000" +
-              "\u0090<\u0000\u0091<\u0000";
+              "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000\u0012" +
+              "<\u0000(<\u0000)<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001" +
+              "<\u00002<\u0000<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H" +
+              "<\u0000I<\u0000J<\u0000K<\u0000L<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U" +
+              "<\u0000V<\u0000W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l" +
+              "<\u0000m<\u0000o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
+              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
+              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

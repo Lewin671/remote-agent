@@ -386,6 +386,54 @@ public  final class SessionModelChoiceView extends
     supportsStandardContext_ = false;
   }
 
+  public static final int MAX_EFFORT_HINT_FIELD_NUMBER = 9;
+  private io.github.lewin671.remoteagent.core.proto.Text maxEffortHint_;
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   */
+  @java.lang.Override
+  public boolean hasMaxEffortHint() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getMaxEffortHint() {
+    return maxEffortHint_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : maxEffortHint_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setMaxEffortHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    maxEffortHint_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMaxEffortHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (maxEffortHint_ != null &&
+        maxEffortHint_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      maxEffortHint_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(maxEffortHint_).mergeFrom(value).buildPartial();
+    } else {
+      maxEffortHint_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+   */
+  private void clearMaxEffortHint() {
+    maxEffortHint_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SessionModelChoiceView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -853,6 +901,53 @@ public  final class SessionModelChoiceView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    @java.lang.Override
+    public boolean hasMaxEffortHint() {
+      return instance.hasMaxEffortHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getMaxEffortHint() {
+      return instance.getMaxEffortHint();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    public Builder setMaxEffortHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setMaxEffortHint(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    public Builder setMaxEffortHint(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMaxEffortHint(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    public Builder mergeMaxEffortHint(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeMaxEffortHint(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text max_effort_hint = 9 [json_name = "maxEffortHint"];</code>
+     */
+    public Builder clearMaxEffortHint() {  copyOnWrite();
+      instance.clearMaxEffortHint();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SessionModelChoiceView)
   }
   @java.lang.Override
@@ -878,10 +973,11 @@ public  final class SessionModelChoiceView extends
             "isAuto_",
             "selected_",
             "supportsStandardContext_",
+            "maxEffortHint_",
           };
           java.lang.String info =
-              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
-              "\u0000\u0004\u021a\u0005\u0208\u0006\u0007\u0007\u0007\b\u0007";
+              "\u0000\t\u0000\u0001\u0001\t\t\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u1009" +
+              "\u0000\u0004\u021a\u0005\u0208\u0006\u0007\u0007\u0007\b\u0007\t\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

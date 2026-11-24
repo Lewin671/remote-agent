@@ -2788,3 +2788,179 @@ func TestAttachmentEvalPutBackIgnoresOffline(t *testing.T) {
 		t.Fatalf("put-back must ignore offline but keep the 6-image limit: %+v", back.Decisions)
 	}
 }
+
+func TestSessionModelChoiceMaxEffortHint(t *testing.T) {
+	st := screens.NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	st.World.Machines = []*lists.Machine{{
+		ID:     "m-1",
+		Online: true,
+		Meta:   &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}
+	st.MachineModels[screens.MachineAgentKey{MachineID: "m-1", Agent: v1.Agent_AGENT_CODEX}] = &screens.ModelsCacheEntry{
+		Loaded: true,
+		Response: &v1.ListModelsResponse{
+			Models: []*v1.ModelInfo{
+				{Slug: "gpt-5-mini", DisplayName: "Mini", Efforts: []string{"low", "medium", "high"}, DefaultEffort: "medium"},
+				{Slug: "gpt-5", DisplayName: "Full", Efforts: []string{"low", "medium", "max"}, DefaultEffort: "medium"},
+				{Slug: "gpt-fixed", DisplayName: "Fixed", Efforts: nil},
+			},
+		},
+	}
+	snap := world.SessionSnapshot{
+		Found:          true,
+		SessionsListed: true,
+		Session: &lists.Session{
+			ID:        "s-1",
+			MachineID: "m-1",
+			Info: &v1.Session{
+				Id:    "s-1",
+				Agent: v1.Agent_AGENT_CODEX,
+				Cwd:   "/work/app",
+				Model: "gpt-5-mini",
+			},
+		},
+	}
+	vm := screens.BuildSessionView(snap, st, &corev1.SessionScreenRequest{SessionId: "s-1"}, screens.NewSessionUIState())
+	choices := vm.GetActions().GetModelChoices()
+	if len(choices) != 3 {
+		t.Fatalf("expected 3 choices, got %d", len(choices))
+	}
+	if choices[0].GetMaxEffortHint().GetKey() != text.KeySessionMaxEffort {
+		t.Fatalf("expected max_effort_hint on high-capped Codex model, got %+v", choices[0].GetMaxEffortHint())
+	}
+	if choices[1].GetMaxEffortHint() != nil {
+		t.Fatalf("expected no max_effort_hint when max effort is available, got %+v", choices[1].GetMaxEffortHint())
+	}
+	if choices[2].GetMaxEffortHint() != nil {
+		t.Fatalf("expected no max_effort_hint when model has no efforts, got %+v", choices[2].GetMaxEffortHint())
+	}
+}
+
+func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
+		MachineId: "m-on",
+		Online:    true,
+		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}, nil)
+	now := int64(1_791_078_061_000)
+
+	// 1. Invalid argument (missing machine_id) settles immediately with ok=false.
+	badBatch := c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{OpId: 1},
+		},
+	})
+	var badRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range badBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			badRes = r
+		}
+	}
+	if badRes == nil || badRes.Ok || badRes.OpId != 1 || badRes.ErrorCode != "invalid_argument" {
+		t.Fatalf("expected immediate invalid_argument result, got %+v", badRes)
+	}
+
+	// 2. Valid one-shot command dispatches and settles with ok=true.
+	runBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      2,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, ef := range runBatch.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc = d
+		}
+	}
+	if dc == nil {
+		t.Fatalf("expected DispatchCommandEffect, got %+v", runBatch.GetEffects())
+	}
+	doneBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.RequestId,
+				AttemptId:         dc.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind:            &v1.CommandResult_GetSettings{GetSettings: &v1.GetSettingsResponse{}},
+				},
+			},
+		},
+	})
+	var okRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range doneBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			okRes = r
+		}
+	}
+	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
+		t.Fatalf("expected ok result for op 2, got %+v", okRes)
+	}
+
+	// 3. Canceled one-shot command suppresses late CommandOutcome.
+	runBatch2 := c.Dispatch(&corev1.Event{
+		NowMs: now + 100,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      3,
+				MachineId: "m-on",
+				SessionId: "s-1",
+				Command:   &v1.Command{Kind: &v1.Command_OpenTerminal{OpenTerminal: &v1.OpenTerminalRequest{SessionId: "s-1", StreamId: "st-1"}}},
+			},
+		},
+	})
+	var dc2 *corev1.DispatchCommandEffect
+	for _, ef := range runBatch2.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc2 = d
+		}
+	}
+	if dc2 == nil {
+		t.Fatalf("expected DispatchCommandEffect for op 3")
+	}
+	c.Dispatch(&corev1.Event{
+		NowMs: now + 110,
+		Event: &corev1.Event_CancelMachineCommand{
+			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 3},
+		},
+	})
+	lateBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 120,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc2.RequestId,
+				AttemptId:         dc2.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	for _, ef := range lateBatch.GetEffects() {
+		if ef.GetRunMachineCommandResult() != nil {
+			t.Fatalf("canceled one-shot command must not emit result effect: %+v", ef)
+		}
+	}
+}

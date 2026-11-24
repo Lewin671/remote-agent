@@ -23,6 +23,7 @@ const (
 	cmdKindScheduleUpdate
 	cmdKindToggleMachineAgent
 	cmdKindGetUsageStats
+	cmdKindMachineOneShot
 )
 
 type cmdMeta struct {
@@ -38,6 +39,7 @@ type cmdMeta struct {
 	usageKey      screens.UsageCacheKey
 	toggleEnabled bool
 	pickerKey     string
+	opID          uint64
 }
 
 type scheduleDirty struct {
@@ -59,6 +61,7 @@ type Model struct {
 	sync                  *sync.Engine
 	state                 *screens.State
 	pendingCmdMeta        map[string]cmdMeta
+	oneShotReqByOp        map[uint64]string
 	settings              *screens.SettingsExtra
 	settingsDirty         settingsDirtyFlags
 	sessions              *sessionStore
@@ -81,6 +84,7 @@ func newModel() *Model {
 		sync:               eng,
 		state:              screens.NewState(eng.World()),
 		pendingCmdMeta:     make(map[string]cmdMeta),
+		oneShotReqByOp:     make(map[uint64]string),
 		frozenSchedOps:     make(map[string]frozenSchedOp),
 		lastUsageFetchedMs: make(map[screens.UsageCacheKey]int64),
 		lastUsageParams:    make(map[string]*corev1.UsageScreenOpenEvent),

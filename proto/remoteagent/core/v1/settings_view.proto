@@ -130,6 +130,11 @@ message ClientRowView {
   remoteagent.v1.DeviceKind kind = 12;
 }
 
+message HandoffCandidateView {
+  string device_id = 1;
+  string display_name = 2;
+}
+
 message SecuritySummaryView {
   bool is_manager = 1;
   bool unlinked = 2;
@@ -142,6 +147,7 @@ message SecuritySummaryView {
   bool has_handoff_offer = 9;
   bool recovery_status_stale = 10;
   int64 lease_end_ms = 11;
+  repeated HandoffCandidateView handoff_candidates = 12;
 }
 
 message NotificationsView {

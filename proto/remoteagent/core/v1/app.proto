@@ -14,6 +14,7 @@ import "remoteagent/core/v1/shared_files.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/sync_view.proto";
+import "remoteagent/core/v1/text.proto";
 import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
 import "remoteagent/v1/envelope.proto";
@@ -595,6 +596,8 @@ message Event {
     SessionSubmitCommandAction session_submit_command = 200;
     SessionSlotAction session_abandon_command = 201;
     SessionOpenAction session_open = 202;
+    RunMachineCommandAction run_machine_command = 203;
+    CancelMachineCommandAction cancel_machine_command = 204;
     SessionQuestionStepAction session_set_question_index = 205;
     SessionRefreshHistoryAction session_load_earlier = 206;
     SessionTrayItemAction session_cancel_tray_item = 207;
@@ -940,6 +943,24 @@ message RequestEntropyEffect {
   int32 min_random_bytes = 3;
 }
 
+message RunMachineCommandAction {
+  uint64 op_id = 1;
+  string machine_id = 2;
+  string session_id = 3;
+  remoteagent.v1.Command command = 4;
+}
+
+message CancelMachineCommandAction {
+  uint64 op_id = 1;
+}
+
+message RunMachineCommandResultEffect {
+  uint64 op_id = 1;
+  bool ok = 2;
+  string error_code = 3;
+  Text error_text = 4;
+}
+
 message Effect {
   oneof effect {
     RenderEffect render = 1;
@@ -958,6 +979,7 @@ message Effect {
     NavigateEffect navigate = 15;
     AttachmentsSettledEffect attachments_settled = 16;
     RequestEntropyEffect request_entropy = 17;
+    RunMachineCommandResultEffect run_machine_command_result = 18;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

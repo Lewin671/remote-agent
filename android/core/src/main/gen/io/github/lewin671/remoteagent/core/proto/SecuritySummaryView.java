@@ -17,6 +17,7 @@ public  final class SecuritySummaryView extends
   private SecuritySummaryView() {
     authorityDeviceId_ = "";
     authorityName_ = "";
+    handoffCandidates_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int IS_MANAGER_FIELD_NUMBER = 1;
@@ -391,6 +392,103 @@ public  final class SecuritySummaryView extends
   private void clearLeaseEndMs() {
 
     leaseEndMs_ = 0L;
+  }
+
+  public static final int HANDOFF_CANDIDATES_FIELD_NUMBER = 12;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> handoffCandidates_;
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> getHandoffCandidatesList() {
+    return handoffCandidates_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.core.proto.HandoffCandidateViewOrBuilder> 
+      getHandoffCandidatesOrBuilderList() {
+    return handoffCandidates_;
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.Override
+  public int getHandoffCandidatesCount() {
+    return handoffCandidates_.size();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.HandoffCandidateView getHandoffCandidates(int index) {
+    return handoffCandidates_.get(index);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  public io.github.lewin671.remoteagent.core.proto.HandoffCandidateViewOrBuilder getHandoffCandidatesOrBuilder(
+      int index) {
+    return handoffCandidates_.get(index);
+  }
+  private void ensureHandoffCandidatesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> tmp = handoffCandidates_;
+    if (!tmp.isModifiable()) {
+      handoffCandidates_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setHandoffCandidates(
+      int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureHandoffCandidatesIsMutable();
+    handoffCandidates_.set(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addHandoffCandidates(io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureHandoffCandidatesIsMutable();
+    handoffCandidates_.add(value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addHandoffCandidates(
+      int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+    value.getClass();  // minimal bytecode null check
+    ensureHandoffCandidatesIsMutable();
+    handoffCandidates_.add(index, value);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  private void addAllHandoffCandidates(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> values) {
+    ensureHandoffCandidatesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, handoffCandidates_);
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  private void clearHandoffCandidates() {
+    handoffCandidates_ = emptyProtobufList();
+  }
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  private void removeHandoffCandidates(int index) {
+    ensureHandoffCandidatesIsMutable();
+    handoffCandidates_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecuritySummaryView parseFrom(
@@ -878,6 +976,108 @@ public  final class SecuritySummaryView extends
       return this;
     }
 
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> getHandoffCandidatesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getHandoffCandidatesList());
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    @java.lang.Override
+    public int getHandoffCandidatesCount() {
+      return instance.getHandoffCandidatesCount();
+    }/**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.HandoffCandidateView getHandoffCandidates(int index) {
+      return instance.getHandoffCandidates(index);
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder setHandoffCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+      copyOnWrite();
+      instance.setHandoffCandidates(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder setHandoffCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.Builder builderForValue) {
+      copyOnWrite();
+      instance.setHandoffCandidates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder addHandoffCandidates(io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+      copyOnWrite();
+      instance.addHandoffCandidates(value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder addHandoffCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView value) {
+      copyOnWrite();
+      instance.addHandoffCandidates(index, value);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder addHandoffCandidates(
+        io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addHandoffCandidates(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder addHandoffCandidates(
+        int index, io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.Builder builderForValue) {
+      copyOnWrite();
+      instance.addHandoffCandidates(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder addAllHandoffCandidates(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> values) {
+      copyOnWrite();
+      instance.addAllHandoffCandidates(values);
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder clearHandoffCandidates() {
+      copyOnWrite();
+      instance.clearHandoffCandidates();
+      return this;
+    }
+    /**
+     * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+     */
+    public Builder removeHandoffCandidates(int index) {
+      copyOnWrite();
+      instance.removeHandoffCandidates(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SecuritySummaryView)
   }
   @java.lang.Override
@@ -906,11 +1106,13 @@ public  final class SecuritySummaryView extends
             "hasHandoffOffer_",
             "recoveryStatusStale_",
             "leaseEndMs_",
+            "handoffCandidates_",
+            io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.class,
           };
           java.lang.String info =
-              "\u0000\u000b\u0000\u0001\u0001\u000b\u000b\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0208\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001" +
-              "\t\u0007\n\u0007\u000b\u0002";
+              "\u0000\f\u0000\u0001\u0001\f\f\u0000\u0001\u0000\u0001\u0007\u0002\u0007\u0003\u0208" +
+              "\u0004\u0208\u0005\u0007\u0006\u0002\u0007\u1009\u0000\b\u1009\u0001\t\u0007\n\u0007" +
+              "\u000b\u0002\f\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {
