@@ -3457,30 +3457,6 @@ actor CoreHost: SyncEngine {
             }
         }
 
-        #if DEBUG
-        if demoMode, !demoWorld.directMachineIds.isEmpty, var vm = settingsVM {
-            var onlineCount = 0
-            var directCount = 0
-            for idx in vm.machines.indices {
-                if vm.machines[idx].online && !vm.machines[idx].dimmed {
-                    onlineCount += 1
-                    if demoWorld.directMachineIds.contains(vm.machines[idx].machineID) {
-                        vm.machines[idx].directActive = true
-                        vm.machines[idx].directRow.stage = .direct
-                        vm.machines[idx].directRow.visible = true
-                        vm.machines[idx].directRow.statusText = .with { $0.key = "transport.status_direct" }
-                        directCount += 1
-                    }
-                }
-            }
-            if directCount > 0 {
-                vm.connCheck.footerText = .with {
-                    $0.key = directCount == onlineCount ? "connection.latency_footer_direct" : "connection.latency_footer_mixed"
-                }
-            }
-            settingsVM = vm
-        }
-        #endif
         let seq = nextRenderSeq()
 
         await MainActor.run { [
@@ -4011,7 +3987,28 @@ actor CoreHost: SyncEngine {
         scanPre(await stepDemo { $0.localeChanged = .with { $0.uiLocale = MessageLocale.current } })
         scanPre(await stepDemo { $0.networkChanged = .with { $0.signature = "demo-wifi"; $0.available = true } })
         let secSeed = demoSecuritySeed()
-        _ = await stepDemo { $0.seedDemoWorld.security = secSeed }
+        let directReports: [PBDemoDirectReport] = demoWorld.directMachineIds.sorted().map { id in
+            .with {
+                $0.machineID = id
+                $0.enabled = true
+                $0.report = .with {
+                    $0.enabled = true
+                    $0.capable = true
+                    $0.state = .connected
+                    $0.readRoute = .direct
+                    $0.fileRoute = .direct
+                    $0.hasActiveRttMs_p = true
+                    $0.activeRttMs = 12
+                }
+            }
+        }
+        _ = await stepDemo {
+            $0.seedDemoWorld = .with {
+                $0.security = secSeed
+                $0.clearDirectReports_p = true
+                $0.directReports = directReports
+            }
+        }
         var legID: UInt64 = 0
         if tokenOpID > 0 {
             let effs = await stepDemo {
@@ -4065,7 +4062,28 @@ actor CoreHost: SyncEngine {
         mergeDemo(world: shown, events: events)
         guard demoLegID > 0 else { return }
         let secSeed = demoSecuritySeed()
-        _ = await stepDemo { $0.seedDemoWorld.security = secSeed }
+        let directReports: [PBDemoDirectReport] = demoWorld.directMachineIds.sorted().map { id in
+            .with {
+                $0.machineID = id
+                $0.enabled = true
+                $0.report = .with {
+                    $0.enabled = true
+                    $0.capable = true
+                    $0.state = .connected
+                    $0.readRoute = .direct
+                    $0.fileRoute = .direct
+                    $0.hasActiveRttMs_p = true
+                    $0.activeRttMs = 12
+                }
+            }
+        }
+        _ = await stepDemo {
+            $0.seedDemoWorld = .with {
+                $0.security = secSeed
+                $0.clearDirectReports_p = true
+                $0.directReports = directReports
+            }
+        }
         for m in shown.machines.values {
             _ = await stepDemo {
                 $0.streamFrame = .with {

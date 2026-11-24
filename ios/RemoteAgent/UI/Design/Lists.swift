@@ -190,6 +190,8 @@ private struct RowSplit: Layout {
 /// to the right, instead of squeezing it (design-system §6).
 struct GRow: View {
     private let text: String
+    private let tag: String?
+    private let tagA11y: String?
     private let sub: String?
     private let value: String?
     private let chevron: Bool
@@ -208,10 +210,12 @@ struct GRow: View {
 
     /// `sub` is a second line under the text, 13 muted: what a client runs on, a computer's quota in short.
     init(
-        _ text: String, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
+        _ text: String, tag: String? = nil, tagA11y: String? = nil, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
         enabled: Bool = true, valueColor: Color? = nil, valueLines: Int? = 2, icon: String? = nil, onTap: (() -> Void)? = nil
     ) {
         self.text = text
+        self.tag = tag
+        self.tagA11y = tagA11y
         self.sub = sub
         self.value = value
         self.chevron = chevron
@@ -258,9 +262,13 @@ struct GRow: View {
         // At accessibility sizes nothing is cut: the row grows instead (design-system §6).
         let lines: Int? = typeSize.isAccessibilitySize ? nil : 2
         return VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
                 if let icon { SymbolImage(icon, style: .body, color: ink).padding(.trailing, 6) }
                 Text(text).font(.body).ink(ink).lineLimit(lines)
+                if let tag, !tag.isEmpty {
+                    DisambiguatorTag(code: tag, a11y: tagA11y)
+                        .padding(.leading, 6)
+                }
                 if chevron && isAction { Arrow(ink, style: .body).padding(.leading, 4) }
             }
             if let subView {

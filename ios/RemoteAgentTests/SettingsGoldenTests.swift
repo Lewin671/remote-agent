@@ -59,9 +59,16 @@ import UIKit
                 $0.machineID = "11223344556674c7"
                 $0.name = "MacBook"
                 $0.disambiguator = "74c7"
+                $0.disambiguatorA11Y = .with { $0.literal = "设备编号 74c7" }
                 $0.online = true
                 $0.member = true
                 $0.directActive = true
+                $0.appearance = .normal
+                $0.metaSeparator = "·"
+                $0.metaSegments = [
+                    .with { $0.text = .with { $0.literal = "在线" } },
+                    .with { $0.text = .with { $0.literal = "直连" }; $0.icon = .direct },
+                ]
                 $0.statusDot = .greenLive
                 $0.statusText = .with { $0.literal = "在线" }
                 $0.alerts = [
@@ -93,8 +100,14 @@ import UIKit
                 $0.machineID = "112233445566a91e"
                 $0.name = "MacBook"
                 $0.disambiguator = "a91e"
+                $0.disambiguatorA11Y = .with { $0.literal = "设备编号 a91e" }
                 $0.online = true
                 $0.member = true
+                $0.appearance = .normal
+                $0.metaSeparator = "·"
+                $0.metaSegments = [
+                    .with { $0.text = .with { $0.literal = "需更新" } },
+                ]
                 $0.statusDot = .orangeStatic
                 $0.statusText = .with { $0.literal = "需更新" }
                 $0.alerts = [
@@ -111,6 +124,12 @@ import UIKit
                 $0.online = false
                 $0.member = false
                 $0.dimmed = true
+                $0.appearance = .removed
+                $0.metaSeparator = "·"
+                $0.metaSegments = [
+                    .with { $0.text = .with { $0.literal = "已移除" } },
+                    .with { $0.text = .with { $0.literal = "保留历史会话记录" } },
+                ]
                 $0.statusDot = .unspecified
                 $0.statusText = .with { $0.literal = "已移除" }
                 $0.secondaryNote = .with { $0.literal = "保留历史会话记录" }
@@ -122,6 +141,12 @@ import UIKit
             }
             .padding(.horizontal, 16)
         })
+        render(SettingsPage {
+            VStack(spacing: 10) {
+                ForEach(edgeCards, id: \.machineID) { MachineCard(machine: $0) }
+            }
+            .padding(.horizontal, 16)
+        }.environment(\.dynamicTypeSize, .accessibility3))
         for d in devicesVMs {
             render(SettingsPage {
                 GroupCard {

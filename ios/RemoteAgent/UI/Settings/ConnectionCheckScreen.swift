@@ -26,9 +26,10 @@ struct ConnectionCheckScreen: View {
                 GRow(L10n.connectionLocalNetwork(), value: network ? L10n.connectionWorking() : L10n.connectionUnavailable()).valueLead { Dot(network ? DS.green : DS.ink3) }
                 result(L10n.securityServer(), sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
-                    let name = m.disambiguator.isEmpty ? m.name : "\(m.name) · \(m.disambiguator)"
+                    let tag = m.disambiguator.isEmpty ? nil : m.disambiguator
+                    let tagA11y = m.hasDisambiguatorA11Y ? m.disambiguatorA11Y.rendered() : nil
                     if m.online, m.member || model.isDemo {
-                        result(name, check?.machines[m.machineID] ?? .wait, slow: slowMachineMs)
+                        result(m.name, tag: tag, tagA11y: tagA11y, check?.machines[m.machineID] ?? .wait, slow: slowMachineMs)
                         if m.hasDirectRow, m.directRow.visible {
                             let row = m.directRow
                             let status = row.statusText.rendered()
@@ -40,17 +41,15 @@ struct ConnectionCheckScreen: View {
                         }
                     } else if !m.member {
                         // Whether it is there is not known from here; the server's row says why.
-                        GRow(name, value: L10n.connectionNotChecked())
+                        GRow(m.name, tag: tag, tagA11y: tagA11y, value: L10n.connectionNotChecked())
                     } else {
-                        GRow(name, value: L10n.commonIosOffline()).valueLead { Dot(DS.ink3) }
+                        GRow(m.name, tag: tag, tagA11y: tagA11y, value: L10n.commonIosOffline()).valueLead { Dot(DS.ink3) }
                     }
                 }
             }
             .padding(.top, 4)
-            let baseFoot = settingsVM.connCheck.footerText.rendered().or(L10n.connectionLatencyIsOneRoundTripTheServerRowMeasures())
-            let unsupported = machines.contains { $0.online && $0.member && $0.hasDirectRow && $0.directRow.stage == .unsupported }
-            let footSep = MessageLocale.current.hasPrefix("zh") ? "" : " "
-            GroupNote(unsupported ? baseFoot + footSep + L10n.transportConnFooterUnsupportedApp() : baseFoot)
+            let foot = settingsVM.connCheck.footerText.rendered().or(L10n.connectionLatencyIsOneRoundTripTheServerRowMeasures())
+            GroupNote(foot)
             Btn(L10n.connectionTestAgain(), enabled: check?.busy == false, background: DS.gbg) { run += 1 }
                 .padding(.horizontal, 16)
         }
@@ -98,18 +97,18 @@ struct ConnectionCheckScreen: View {
     }
 
     /// A row with what its stretch measured.
-    private func result(_ title: String, sub: String? = nil, _ ping: Ping, slow: Int64) -> GRow {
+    private func result(_ title: String, tag: String? = nil, tagA11y: String? = nil, sub: String? = nil, _ ping: Ping, slow: Int64) -> GRow {
         switch ping {
         case .wait:
-            return GRow(title, sub: sub, value: L10n.connectionChecking())
+            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: L10n.connectionChecking())
                 .valueLead { Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote) }
         case .skip:
-            return GRow(title, sub: sub, value: L10n.connectionNotChecked())
+            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: L10n.connectionNotChecked())
         case .fail(let error):
-            return GRow(title, sub: sub, value: error, valueColor: DS.red)
+            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: error, valueColor: DS.red)
         case .ok(let ms):
             let late = ms >= slow
-            return GRow(title, sub: sub, value: "\(ms) ms" + (late ? L10n.connectionSlow() : ""), valueColor: DS.ink2)
+            return GRow(title, tag: tag, tagA11y: tagA11y, sub: sub, value: "\(ms) ms" + (late ? L10n.connectionSlow() : ""), valueColor: DS.ink2)
                 // Slow asks nothing of you: a light grey dot, not orange (design-system §2).
                 .valueLead { Dot(late ? DS.faint : DS.green) }
         }
