@@ -87,10 +87,22 @@ public func translateSecurityKey(_ raw: String) -> String {
 }
 
 public func translateSecurityErrorMessage(_ res: PBSecurityWorkflowResultEffect) -> String {
+    if res.hasErrorText {
+        let rendered = renderCoreText(res.errorText)
+        if !rendered.isEmpty { return rendered }
+    }
     let raw = !res.error.isEmpty
         ? res.error
         : (res.structuredErrorCode != .unspecified ? String(describing: res.structuredErrorCode) : "security error")
     return translateSecurityKey(raw)
+}
+
+public func renderExitAdviceMessage(_ advice: PBSecurityExitAdvice) -> String {
+    if advice.hasMessageText {
+        let rendered = renderCoreText(advice.messageText)
+        if !rendered.isEmpty { return rendered }
+    }
+    return translateSecurityKey(advice.message)
 }
 
 public struct PreparedCreationResult: Equatable, Sendable {

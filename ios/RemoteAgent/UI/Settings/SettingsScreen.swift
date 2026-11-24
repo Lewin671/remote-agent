@@ -194,11 +194,7 @@ struct SettingsScreen: View {
             // It asks first, as every row that ends in an ellipsis does (design-system §8).
             GRow(L10n.settingsExitAndDeleteLocalKeys(), danger: true) {
                 Task {
-                    if let adv = await model.rejoinAdvice() {
-                        exitText = adv.text
-                    } else {
-                        exitText = AuthorityAccess.exitAdvice(authority: false, unresolved: false)
-                    }
+                    exitText = await model.exitAdviceText()
                     leaving = true
                 }
             }
