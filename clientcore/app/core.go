@@ -610,7 +610,10 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 					dp.ActiveRequestID = ""
 				}
 			}
-			if op := lists.PlanAddProject(&st.World, machID, k.ProjectAdd.Path); op != nil {
+			if lists.IsHidden(st.World.Prefs, k.ProjectAdd.Path) {
+				c.m.sync.EnqueuePrefsOp(ctx, &lists.FullPrefsOp{Kind: lists.PrefsOpUnhide, Path: k.ProjectAdd.Path}, false, "")
+			}
+			if op := lists.PlanAddProject(&st.World, machID, k.ProjectAdd.Path); op != nil && op.Kind != lists.PrefsOpUnhide {
 				c.m.sync.EnqueuePrefsOp(ctx, op, false, "")
 			}
 			if forNewTask {
