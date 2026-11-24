@@ -449,25 +449,22 @@ class LayoutTest {
         var dark by mutableStateOf(false)
         var online by mutableStateOf(true)
         fun cardVm(isOnline: Boolean): io.github.lewin671.remoteagent.core.proto.SettingsViewModel {
-            val row = io.github.lewin671.remoteagent.core.proto.QuotaRowView.newBuilder()
-                .setHasPercent(true)
-                .setRemainingPercent(38)
-                .setRemainingText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("剩 38%"))
-                .setResetText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("63 小时 5 分钟后重置"))
-                .build()
             val card = io.github.lewin671.remoteagent.core.proto.MachineListCardView.newBuilder()
                 .setMachineId(machineId)
                 .setName(name)
                 .setOnline(isOnline)
+                .setMember(true)
+                .setDimmed(!isOnline)
                 .setStatusText(
                     io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
                         .setLiteral(if (isOnline) "在线" else "2 小时前在线"),
                 )
-                .addQuotaSummaries(
-                    io.github.lewin671.remoteagent.core.proto.QuotaCliSection.newBuilder()
+                .addQuotaItems(
+                    io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem.newBuilder()
                         .setAgent(Agent.AGENT_CODEX)
                         .setAgentName("Codex")
-                        .setSummaryRow(row),
+                        .setRemainingPercent(38)
+                        .setValueText(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("剩 38%")),
                 )
                 .build()
             return io.github.lewin671.remoteagent.core.proto.SettingsViewModel.newBuilder()

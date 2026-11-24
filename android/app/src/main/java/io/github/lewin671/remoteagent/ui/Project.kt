@@ -270,6 +270,7 @@ fun NewSessionBox(
                     uiText(mc.note),
                     checked = mc.selected,
                     enabled = mc.online,
+                    small = mc.disambiguator.ifEmpty { null },
                     last = i == view.modelPanel.machineChoicesCount - 1,
                     onClick = {
                         remote.coreHost.selectNewSessionMachine(mc.machineId)
@@ -421,6 +422,7 @@ fun CoreProjectSettingsSheet(
                             uiText(mc.note),
                             checked = mc.selected,
                             enabled = mc.online && editable,
+                            small = mc.disambiguator.ifEmpty { null },
                             last = i == panel.machineChoicesCount - 1,
                             onClick = {
                                 remote.coreHost.selectNewSessionMachine(mc.machineId)

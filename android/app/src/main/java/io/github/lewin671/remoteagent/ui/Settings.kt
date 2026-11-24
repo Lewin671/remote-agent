@@ -13,6 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -81,6 +84,7 @@ import io.github.lewin671.remoteagent.core.proto.AttachmentStorageView
 import io.github.lewin671.remoteagent.core.proto.CliVersionView
 import io.github.lewin671.remoteagent.core.proto.ConnProbeState
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
+import io.github.lewin671.remoteagent.core.proto.MachineAlertKind
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachinePollMode
 import io.github.lewin671.remoteagent.core.proto.DirectDiagnosticsViewModel
@@ -545,8 +549,8 @@ internal fun NotificationsScreenContent(
 }
 
 /**
- * Settings Group 1 `电脑`: unified rounded card with 20 dp laptop icons (`46 dp` text/divider inset)
- * and optional inline `＋ 添加设备` row when [SettingsViewModel.canAddDevice] is true.
+ * Settings Group 1 `电脑` (Plan B): standalone device cards (R24 on phone, R14 2-column grid on wide screens)
+ * with full-width 4 dp CLI quota bars, orange-soft embedded alert strips, and a standalone `＋ 添加设备` row.
  */
 @Composable
 internal fun MachinesGroup(
@@ -556,6 +560,7 @@ internal fun MachinesGroup(
 ) {
     val copy = uiText()
     val p = pal
+    val wide = wideWindow()
     SectionLabel(copy(UiMessages.settingsSectionComputers()), trailing = uiText(vm.machineCountText))
     if (vm.machinesList.isEmpty()) {
         val emptyTitle = uiText(vm.emptyMachinesText).ifEmpty { copy(UiMessages.settingsEmptyComputersTitle()) }
@@ -563,16 +568,16 @@ internal fun MachinesGroup(
         Column(
             Modifier.fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                .clip(Radii.R18)
+                .clip(if (wide) RoundedCornerShape(14.dp) else Radii.R24)
                 .background(p.gbg)
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 18.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                     Ic(Lucide.Laptop, 20.dp, p.ink2)
                 }
-                Text(emptyTitle, style = T.s17m, color = p.ink)
+                Text(emptyTitle, style = T.s17b, color = p.ink)
             }
             if (emptyBody.isNotEmpty()) {
                 Text(emptyBody, style = T.s13, color = p.ink2)
@@ -583,104 +588,280 @@ internal fun MachinesGroup(
                 }
             }
             if (!vm.machinesLoading && vm.canAddDevice) {
-                PillButton(
-                    copy(UiMessages.settingsAddFirstComputer()),
-                    onPair,
-                    Modifier.fillMaxWidth().padding(top = 4.dp),
-                    ButtonKind.INK,
-                )
+                Row(
+                    Modifier.padding(top = 8.dp)
+                        .heightIn(min = if (wide) 36.dp else 44.dp)
+                        .clip(if (wide) RoundedCornerShape(8.dp) else Radii.R12)
+                        .background(p.btn)
+                        .clickable(role = Role.Button, onClick = onPair)
+                        .padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Ic(Lucide.Plus, 17.dp, p.btnFg)
+                    Text(
+                        copy(UiMessages.settingsAddFirstComputer()),
+                        style = if (wide) T.s15b else T.s15b,
+                        color = p.btnFg,
+                    )
+                }
             }
         }
         return
     }
 
-    val rows: List<@Composable () -> Unit> = buildList {
-        for (m in vm.machinesList) {
-            add { MachineCard(m) { onDevice(m.machineId) } }
-        }
-        if (vm.canAddDevice) {
-            add {
+    if (wide && vm.machinesList.size >= 2) {
+        Column(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            for (pair in vm.machinesList.chunked(2)) {
                 Row(
-                    Modifier.fillMaxWidth()
-                        .heightIn(min = 50.dp)
-                        .clickable(role = Role.Button, onClick = onPair)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                        Ic(Lucide.Plus, 18.dp, p.blue)
+                    MachineCard(
+                        m = pair[0],
+                        wide = true,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        onClick = { onDevice(pair[0].machineId) },
+                    )
+                    if (pair.size > 1) {
+                        MachineCard(
+                            m = pair[1],
+                            wide = true,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                            onClick = { onDevice(pair[1].machineId) },
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
                     }
-                    Text(copy(UiMessages.settingsAddDeviceItem()), style = T.s17, color = p.blue)
                 }
             }
         }
+    } else {
+        Column(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            for (m in vm.machinesList) {
+                MachineCard(m = m, wide = wide) { onDevice(m.machineId) }
+            }
+        }
     }
-    ClientsAlignedCard(rows = rows)
-    if (!vm.canAddDevice) {
+
+    if (vm.canAddDevice) {
+        Row(
+            Modifier.fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                .heightIn(min = if (wide) 44.dp else 50.dp)
+                .clip(if (wide) RoundedCornerShape(14.dp) else Radii.R18)
+                .background(p.gbg)
+                .clickable(role = Role.Button, onClick = onPair)
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Ic(Lucide.Plus, 18.dp, p.blue)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                copy(UiMessages.settingsAddDeviceItem()),
+                style = if (wide) T.s15b else T.s17b,
+                color = p.blue,
+            )
+        }
+    } else {
         val addHint = uiText(vm.addDeviceHint)
         if (addHint.isNotEmpty()) Hint(addHint, Modifier.padding(bottom = 8.dp), inset = 32.dp)
     }
 }
 
 @Composable
-private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
+internal fun DisambiguatorTag(code: String, modifier: Modifier = Modifier) {
+    if (code.isEmpty()) return
     val p = pal
-    val statusStr = uiText(m.statusText)
-    Row(
-        Modifier.fillMaxWidth()
-            .heightIn(min = 50.dp)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Box(
+        modifier
+            .clip(Radii.R6)
+            .background(p.fill)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
-        Box(Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-            Ic(Lucide.Laptop, 20.dp, p.ink2)
+        Text(code, style = T.mono12, color = p.ink2, maxLines = 1)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MachineCard(
+    m: MachineListCardView,
+    wide: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val copy = uiText()
+    val p = pal
+    val isRemoved = !m.member
+    val isDimmed = m.dimmed || isRemoved
+    val shape = if (wide) RoundedCornerShape(14.dp) else Radii.R24
+    val useOutline = !wide && isDimmed
+    val statusStr = uiText(m.statusText)
+    val secondaryStr = if (m.hasSecondaryNote()) uiText(m.secondaryNote) else ""
+    val nameStyle = when {
+        wide && isDimmed -> T.s15b
+        wide -> T.s17b
+        isDimmed -> T.s17b
+        else -> T.h20
+    }
+    val cardMod = modifier
+        .fillMaxWidth()
+        .then(if (isRemoved) Modifier.alpha(0.82f) else Modifier)
+        .clip(shape)
+        .then(
+            if (useOutline) Modifier.border(1.dp, p.sep, shape)
+            else Modifier.background(p.gbg),
+        )
+        .clickable(onClick = onClick)
+        .padding(
+            horizontal = if (wide) 16.dp else 18.dp,
+            vertical = if (wide || isDimmed) 14.dp else 16.dp,
+        )
+
+    Column(cardMod) {
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    m.name,
+                    style = nameStyle,
+                    color = if (isDimmed) p.ink2 else p.ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (m.disambiguator.isNotEmpty()) {
+                    DisambiguatorTag(m.disambiguator)
+                }
+            }
+            Ic(Lucide.ChevronRight, 16.dp, p.ink3)
         }
-        Column(Modifier.weight(1f)) {
-            Text(m.name, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (m.shortId.isNotEmpty() || m.subtitlePartsList.isNotEmpty()) {
-                val sub = buildAnnotatedString {
-                    var hasPrev = false
-                    if (m.shortId.isNotEmpty()) {
-                        withStyle(SpanStyle(color = p.ink2)) { append(m.shortId) }
-                        hasPrev = true
-                    }
-                    m.subtitlePartsList.forEach { seg ->
-                        if (hasPrev) {
-                            withStyle(SpanStyle(color = p.ink2)) { append(" · ") }
-                        }
-                        if (seg.warn) {
-                            withStyle(SpanStyle(color = p.orangeInk, fontWeight = FontWeight.SemiBold)) {
-                                append(uiText(seg.text))
-                            }
-                        } else {
-                            withStyle(SpanStyle(color = p.ink2)) { append(uiText(seg.text)) }
-                        }
-                        hasPrev = true
+
+        if (m.statusDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED || statusStr.isNotEmpty() || m.directActive || secondaryStr.isNotEmpty()) {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (m.statusDot != MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED) {
+                    StatusDotView(m.statusDot, size = 8.dp)
+                }
+                if (statusStr.isNotEmpty()) {
+                    Text(statusStr, style = T.s13, color = p.ink2, maxLines = 1)
+                }
+                if (m.directActive) {
+                    Text("·", style = T.s13, color = p.ink2)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Ic(Lucide.Zap, 12.dp, p.ink2)
+                        Text(copy(UiMessages.transportDirect()), style = T.s13, color = p.ink2, maxLines = 1)
                     }
                 }
-                Text(
-                    sub,
-                    style = T.s13,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
+                if (secondaryStr.isNotEmpty()) {
+                    if (statusStr.isNotEmpty()) {
+                        Text("·", style = T.s13, color = p.ink2)
+                    }
+                    Text(secondaryStr, style = T.s13, color = p.ink2)
+                }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StatusDotView(m.statusDot, size = 7.dp)
-            if (statusStr.isNotEmpty()) {
-                Text(
-                    statusStr,
-                    style = T.s15,
-                    color = if (m.statusWarn) p.orangeInk else p.ink2,
-                    maxLines = 1,
-                )
+
+        for (alert in m.alertsList) {
+            val alertText = uiText(alert.text)
+            if (alertText.isEmpty()) continue
+            Row(
+                Modifier.fillMaxWidth()
+                    .padding(top = 12.dp)
+                    .clip(if (wide) RoundedCornerShape(8.dp) else Radii.R12)
+                    .background(p.orangeSoft)
+                    .padding(
+                        horizontal = if (wide) 10.dp else 12.dp,
+                        vertical = if (wide) 7.dp else 8.dp,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (alert.kind == MachineAlertKind.MACHINE_ALERT_KIND_DISK_LOW) {
+                    Ic(Lucide.HardDrive, 14.dp, p.orangeInk)
+                }
+                Text(alertText, style = T.s13b, color = p.orangeInk)
             }
-            Arrow(p.ink3, T.s15)
+        }
+
+        if (m.quotaItemsList.isNotEmpty()) {
+            Column(
+                Modifier.fillMaxWidth().padding(top = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
+                val barNormal = p.ink.copy(alpha = if (p.dark) 0.32f else 0.30f)
+                val cliStyle = if (wide) ts(13.sp, FontWeight.Medium, 1.3f) else ts(14.sp, FontWeight.Medium, 1.3f)
+                for (q in m.quotaItemsList) {
+                    val valStr = uiText(q.valueText)
+                    val frac = q.remainingPercent.coerceIn(0, 100) / 100f
+                    Column(Modifier.fillMaxWidth()) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(
+                                Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                AgentMark(q.agent, style = T.s15, tint = p.ink, named = true, scale = 0.93f)
+                                Text(
+                                    q.agentName,
+                                    style = cliStyle,
+                                    color = p.ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Text(
+                                valStr,
+                                style = if (q.warn) T.s13b else T.s13,
+                                color = if (q.warn) p.orangeInk else p.ink2,
+                                maxLines = 1,
+                            )
+                        }
+                        Box(
+                            Modifier.fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(p.fill2),
+                        ) {
+                            if (frac > 0f) {
+                                Box(
+                                    Modifier.fillMaxWidth(frac)
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(if (q.warn) p.orange else barNormal),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

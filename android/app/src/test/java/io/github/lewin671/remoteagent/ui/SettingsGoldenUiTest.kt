@@ -75,8 +75,8 @@ class SettingsGoldenUiTest {
             }
         }
         ui.onNodeWithText("电脑").assertIsDisplayed()
-        ui.onNodeWithText("BuildBox").assertIsDisplayed()
-        ui.onNodeWithText("BackupMac").assertIsDisplayed()
+        ui.onNodeWithText("BuildBox").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("BackupMac").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("本机").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("本机缓存").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("12.0 MiB").performScrollTo().assertIsDisplayed()

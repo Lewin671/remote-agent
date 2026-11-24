@@ -32,6 +32,9 @@ import io.github.lewin671.remoteagent.core.proto.DiskReminderView
 import io.github.lewin671.remoteagent.core.proto.EffortChoiceView
 import io.github.lewin671.remoteagent.core.proto.IdleCloseChoiceView
 import io.github.lewin671.remoteagent.core.proto.MachineAgentDefaultsView
+import io.github.lewin671.remoteagent.core.proto.MachineAlertKind
+import io.github.lewin671.remoteagent.core.proto.MachineCardAlert
+import io.github.lewin671.remoteagent.core.proto.MachineCardQuotaItem
 import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.MachineManagementActionsView
 import io.github.lewin671.remoteagent.core.proto.MachineRingKind
@@ -52,7 +55,6 @@ import io.github.lewin671.remoteagent.core.proto.QuotaCliSection
 import io.github.lewin671.remoteagent.core.proto.QuotaSizeChoiceView
 import io.github.lewin671.remoteagent.core.proto.SecuritySummaryView
 import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
-import io.github.lewin671.remoteagent.core.proto.SubtitleSegment
 import io.github.lewin671.remoteagent.core.proto.Text
 import io.github.lewin671.remoteagent.core.proto.TimeoutChoiceView
 import io.github.lewin671.remoteagent.data.ThemeMode
@@ -94,10 +96,23 @@ class SettingsRedesignTest {
                     .setName("StudioBox")
                     .setOnline(true)
                     .setMember(true)
+                    .setDirectActive(true)
                     .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE)
                     .setStatusText(lit("在线"))
-                    .addSubtitleParts(SubtitleSegment.newBuilder().setText(lit("Codex 剩 8%")).setWarn(true))
-                    .addSubtitleParts(SubtitleSegment.newBuilder().setText(lit("5 小时窗口")).setWarn(false)),
+                    .addAlerts(
+                        MachineCardAlert.newBuilder()
+                            .setKind(MachineAlertKind.MACHINE_ALERT_KIND_DISK_LOW)
+                            .setText(lit("磁盘剩 4.2 GB"))
+                            .setWarn(true),
+                    )
+                    .addQuotaItems(
+                        MachineCardQuotaItem.newBuilder()
+                            .setAgent(Agent.AGENT_CODEX)
+                            .setAgentName("Codex")
+                            .setRemainingPercent(8)
+                            .setWarn(true)
+                            .setValueText(lit("剩 8%")),
+                    ),
             )
             .setNotifications(
                 NotificationsView.newBuilder()
@@ -131,11 +146,14 @@ class SettingsRedesignTest {
         ui.onNodeWithText("此客户端已解除配对").assertIsDisplayed()
         ui.onAllNodesWithText("系统通知权限已关闭", substring = true).assertCountEquals(0)
 
-        // Group 1: 电脑
+        // Group 1: 电脑 (Plan B standalone card + direct + alert + quota bar + standalone add row)
         ui.onNodeWithText("电脑").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("3 台").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("StudioBox").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Codex 剩 8% · 5 小时窗口").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("直连").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("磁盘剩 4.2 GB").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Codex").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("剩 8%").performScrollTo().assertIsDisplayed()
         ui.onNodeWithText("添加设备").performScrollTo().assertIsDisplayed()
 
         // Group 2: 本机 with unreachable push override
@@ -190,6 +208,78 @@ class SettingsRedesignTest {
         }
         val cardBounds = ui.onNodeWithText("还没有电脑").fetchSemanticsNode().boundsInRoot
         assertTrue("Expected readable centered card on 960dp tablet, got $cardBounds", cardBounds.left > 100f)
+    }
+
+    @Test
+    @Config(qualifiers = "w960dp-h720dp")
+    fun planBMachineCardsRenderTwoColumnsOnWideAndAllEdgeStates() {
+        val vm = SettingsViewModel.newBuilder()
+            .setOnline(true)
+            .setCanAddDevice(false)
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId("m1")
+                    .setName("MacBook")
+                    .setDisambiguator("74c7")
+                    .setOnline(true)
+                    .setMember(true)
+                    .setDirectActive(true)
+                    .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_GREEN_LIVE)
+                    .setStatusText(lit("在线"))
+                    .addQuotaItems(
+                        MachineCardQuotaItem.newBuilder()
+                            .setAgent(Agent.AGENT_CLAUDE)
+                            .setAgentName("Claude Code")
+                            .setRemainingPercent(0)
+                            .setExhausted(true)
+                            .setWarn(true)
+                            .setValueText(lit("已用尽")),
+                    ),
+            )
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId("m2")
+                    .setName("MacBook")
+                    .setDisambiguator("a91e")
+                    .setOnline(true)
+                    .setMember(true)
+                    .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_ORANGE_STATIC)
+                    .setStatusText(lit("需更新"))
+                    .addAlerts(
+                        MachineCardAlert.newBuilder()
+                            .setKind(MachineAlertKind.MACHINE_ALERT_KIND_PROTOCOL_MISMATCH)
+                            .setText(lit("协议版本不一致，需更新此应用"))
+                            .setWarn(true),
+                    ),
+            )
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId("m3")
+                    .setName("Old-iMac")
+                    .setOnline(false)
+                    .setMember(false)
+                    .setDimmed(true)
+                    .setStatusDot(MachineStatusDot.MACHINE_STATUS_DOT_UNSPECIFIED)
+                    .setStatusText(lit("已移除"))
+                    .setSecondaryNote(lit("保留历史会话记录")),
+            )
+            .build()
+
+        ui.setContent {
+            RaTheme(ThemeMode.LIGHT) {
+                CompositionLocalProvider(LocalChartFrozen provides true) {
+                    SettingsScreenContent(vm = vm, serverDisplay = "example.com")
+                }
+            }
+        }
+
+        val leftTag = ui.onNodeWithText("74c7").fetchSemanticsNode().boundsInRoot
+        val rightTag = ui.onNodeWithText("a91e").fetchSemanticsNode().boundsInRoot
+        assertTrue("Expected 2-column grid side-by-side on 960dp wide screen: left=$leftTag right=$rightTag", rightTag.left > leftTag.right)
+        ui.onNodeWithText("已用尽").assertIsDisplayed()
+        ui.onNodeWithText("协议版本不一致，需更新此应用").assertIsDisplayed()
+        ui.onNodeWithText("已移除").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("保留历史会话记录").performScrollTo().assertIsDisplayed()
     }
 
     @Test

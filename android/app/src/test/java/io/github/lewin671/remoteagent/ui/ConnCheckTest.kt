@@ -162,4 +162,31 @@ class ConnCheckTest {
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
         ui.onNodeWithText("earlier failure", substring = true).assertDoesNotExist()
     }
+
+    @Test fun rendersCoreProvidedFooterTextAndMachineDisambiguator() {
+        val directFooter = "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经直连往返电脑。"
+        val vm = SettingsViewModel.newBuilder()
+            .setOnline(true)
+            .setConnCheck(
+                ConnCheckSummaryView.newBuilder()
+                    .setConnState(CoreConnState.CONN_STATE_CONNECTED)
+                    .setNetworkAvailable(true)
+                    .setLivePushConnected(true)
+                    .setFooterText(lit(directFooter)),
+            )
+            .addMachines(
+                MachineListCardView.newBuilder()
+                    .setMachineId(machine)
+                    .setName("MacBook")
+                    .setDisambiguator("74c7")
+                    .setOnline(true)
+                    .setMember(true)
+                    .setDirectReady(true),
+            )
+            .build()
+        show { vm }
+        ui.onNodeWithText("MacBook").assertExists()
+        ui.onNodeWithText("74c7").assertExists()
+        ui.onNodeWithText(directFooter).performScrollTo().assertExists()
+    }
 }

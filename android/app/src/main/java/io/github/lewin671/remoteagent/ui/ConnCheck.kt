@@ -136,14 +136,17 @@ internal fun ConnCheckSheet(
         busy = false
     }
     @Composable
-    fun line(name: String, sub: String? = null, value: @Composable () -> Unit) {
+    fun line(name: String, sub: String? = null, tag: String = "", value: @Composable () -> Unit) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(Modifier.weight(1f)) {
-                Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    if (tag.isNotEmpty()) DisambiguatorTag(tag)
+                }
                 if (sub != null) Text(sub, style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             value()
@@ -191,7 +194,7 @@ internal fun ConnCheckSheet(
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                 val directRow: ConnCheckDirectRowView? = if (m.online && m.member && m.hasDirectRow()) m.directRow else null
-                line(m.name.ifEmpty { m.machineId }) {
+                line(m.name.ifEmpty { m.machineId }, tag = m.disambiguator) {
                     if (m.online) result(machines[m.machineId], SLOW_MACHINE_MS)
                     else dotted(p.faint, copy(UiMessages.settingsOffline()), p.ink2)
                 }
@@ -234,8 +237,10 @@ internal fun ConnCheckSheet(
             )
         }
         val locale = LocalMessageLocale.current
+        val baseFoot = (if (cc.hasFooterText()) uiText(cc.footerText) else "")
+            .ifEmpty { copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()) }
         val foot = buildList {
-            add(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
+            add(baseFoot)
             if (list.any {
                 it.online &&
                     it.member &&
