@@ -11,7 +11,7 @@ export function stageToMark(stage: ConnectionGroupStage): Mark {
   }
 }
 
-export function connFooter(unsupported: boolean): string {
-  const base = l10n.t("connection.latency_is_one_round_trip_the_server_row_measures");
+export function connFooter(baseText: string, unsupported: boolean): string {
+  const base = baseText || l10n.t("connection.latency_is_one_round_trip_the_server_row_measures");
   return unsupported ? `${base}${base.endsWith(".") ? " " : ""}${l10n.t("transport.conn_footer_unsupported_browser")}` : base;
 }

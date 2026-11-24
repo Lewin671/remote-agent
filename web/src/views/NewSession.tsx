@@ -380,7 +380,11 @@ export function NewBoxView(p: {
             {(vm.modelPanel?.machineChoices ?? []).map((m) => (
               <button key={m.machineId} className={"mi" + (m.online ? "" : " dis")} disabled={!m.online} onClick={() => { p.onSelectMachine(m.machineId); setConfig(""); }}>
                 <StateMark kind={m.online ? "online" : "off"} />
-                <div className="mt">{m.selected || !m.online ? m.name : <b>{t("new_session.use_machine", { name: m.name })}</b>}{m.note && <div className="md">{renderText(m.note)}</div>}</div>
+                <div className="mt">
+                  {m.selected || !m.online ? m.name : <b>{t("new_session.use_machine", { name: m.name })}</b>}
+                  {m.disambiguator && <span className="mc-tag mc-tag-inline">{m.disambiguator}</span>}
+                  {m.note && <div className="md">{renderText(m.note)}</div>}
+                </div>
                 {m.selected && <span className="ck"><Check /></span>}
               </button>
             ))}

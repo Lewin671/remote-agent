@@ -117,8 +117,7 @@ describe("Settings home redesign (4 groups + separated danger card)", () => {
       message("settings.machine_count", { count: 4 }),
     );
 
-    // No duplicate multi-bar cards or dual 全部设备/全部客户端 rows or push banner copy on Settings home
-    expect(host.querySelector(".mach-card")).toBeNull();
+    // No dual 全部设备/全部客户端 rows or push banner copy on Settings home
     expect(host.textContent).not.toContain("全部设备");
     expect(host.textContent).not.toContain("全部客户端");
     expect(host.textContent).not.toContain(message("settings.session_alerts_are_off_you_will_not_be_notified"));
@@ -128,15 +127,23 @@ describe("Settings home redesign (4 groups + separated danger card)", () => {
     const lastDanger = groups[groups.length - 1]!.querySelector("button.row.danger")!;
     expect(lastDanger.textContent).toContain(message("settings.exit_and_delete_local_keys"));
 
-    // Group 1 computer rows have 20px Laptop icon & subtitleParts with selective orange highlight
-    const macRow = [...host.querySelectorAll<HTMLButtonElement>(".grp .row.has-ic")].find(
-      (b) => b.querySelector(".row-name b")?.textContent === "MacBook",
+    // Group 1 Plan B standalone cards (.mc-grid.multi > button.mc) with CLI quota bars
+    const grid = host.querySelector(".mc-grid.multi")!;
+    expect(grid).toBeTruthy();
+    const macCard = [...grid.querySelectorAll<HTMLButtonElement>("button.mc")].find(
+      (b) => b.querySelector(".mc-name")?.textContent === "MacBook",
     )!;
-    expect(macRow.querySelector(".lead svg")).toBeTruthy();
-    expect(macRow.querySelector(".row-name small")).toBeTruthy();
-    // Same group ends with blue ＋ 添加设备 for authority
-    const addDeviceBtn = groups[0]!.querySelector<HTMLButtonElement>("button.row.has-ic.act")!;
-    expect(addDeviceBtn.textContent).toBe(message("settings.add_device_item"));
+    expect(macCard).toBeTruthy();
+    expect(macCard.querySelectorAll(".mc-qt").length).toBeGreaterThan(0);
+    expect(macCard.querySelector(".mc-bar i")).toBeTruthy();
+    // Offline machine card gets .is-off
+    const miniCard = [...grid.querySelectorAll<HTMLButtonElement>("button.mc")].find(
+      (b) => b.querySelector(".mc-name")?.textContent === "Mac mini",
+    )!;
+    expect(miniCard.classList.contains("is-off")).toBe(true);
+    // Standalone blue ＋ 添加设备 button below the card grid for authority
+    const addDeviceBtn = host.querySelector<HTMLButtonElement>("button.addrow")!;
+    expect(addDeviceBtn.textContent).toContain(message("settings.add_device_item"));
 
     // Navigate to Notifications, Clients, Security, Licenses, and Server & Connection sheet
     const findRow = (txt: string) =>
@@ -191,6 +198,51 @@ describe("Settings home redesign (4 groups + separated danger card)", () => {
     expect(memCard.textContent).toContain(
       message("settings.empty_computers_member_body", { name: "Android 16 · Pixel 9" }),
     );
+  });
+
+  it("renders Plan B machine cards with disambiguators, alerts, quota bars, direct badge, and calm status words", async () => {
+    const r = createDemo("role=authority&planb=main&direct=direct");
+    const go = vi.fn();
+    await mountAsync(<Settings remote={r} go={go} />);
+
+    expect(host.querySelector(".mc-grid.multi")).toBeTruthy();
+    const cards = [...host.querySelectorAll<HTMLButtonElement>(".mc-grid button.mc")];
+    expect(cards.length).toBe(3);
+    // Online direct machine
+    const wsCard = cards.find((c) => c.querySelector(".mc-name")?.textContent === "Workstation-M1")!;
+    expect(wsCard.querySelector(".mc-direct")?.textContent).toContain(message("transport.direct"));
+    expect(wsCard.querySelectorAll(".mc-qt").length).toBe(2);
+    // Disk alert + warn/exhausted quotas
+    const studioCard = cards.find((c) => c.querySelector(".mc-name")?.textContent === "MacBook Studio")!;
+    expect(studioCard.querySelector(".mc-alert")?.textContent).toContain("4.2");
+    expect(studioCard.querySelectorAll(".mc-qt .val.warn").length).toBe(2);
+    expect(studioCard.querySelector(".mc-qt .mc-bar.warn")).toBeTruthy();
+    expect(studioCard.textContent).toContain(message("quota.exhausted_quota"));
+    // Offline machine dimmed
+    const imacCard = cards.find((c) => c.querySelector(".mc-name")?.textContent === "iMac")!;
+    expect(imacCard.classList.contains("is-off")).toBe(true);
+    expect(imacCard.querySelector(".mc-quotas")).toBeNull();
+
+    // Edge cases: duplicate names get 4-char tag, mismatch keeps calm ink2 status word + orange-soft alert, removed shows secondary note
+    const rEdges = createDemo("role=member&planb=edges");
+    await mountAsync(<Settings remote={rEdges} go={go} />);
+    const edgeCards = [...host.querySelectorAll<HTMLButtonElement>(".mc-grid button.mc")];
+    const tags = edgeCards.map((c) => c.querySelector(".mc-tag")?.textContent).filter(Boolean);
+    expect(tags.sort()).toEqual(["74c7", "a91e"]);
+    const miniCard = edgeCards.find((c) => c.querySelector(".mc-name")?.textContent === "Mac mini")!;
+    expect(miniCard.querySelector(".mc-meta .warn-txt")).toBeNull();
+    expect(miniCard.querySelector(".mc-alert")?.textContent).toBe(message("settings.machine_sub_version_mismatch"));
+    const remCard = edgeCards.find((c) => c.querySelector(".mc-name")?.textContent === "Old-iMac")!;
+    expect(remCard.classList.contains("is-rem")).toBe(true);
+    expect(remCard.querySelector(".mc-meta .mark")).toBeNull();
+    expect(remCard.querySelector(".mc-meta")?.textContent).toContain(message("settings.status_removed"));
+    expect(remCard.querySelector(".mc-meta")?.textContent).toContain(message("settings.machine_sub_removed"));
+
+    // Single machine does not enable multi-column grid
+    const rOne = createDemo("role=authority&planb=one");
+    await mountAsync(<Settings remote={rOne} go={go} />);
+    expect(host.querySelector(".mc-grid")).toBeTruthy();
+    expect(host.querySelector(".mc-grid.multi")).toBeNull();
   });
 });
 

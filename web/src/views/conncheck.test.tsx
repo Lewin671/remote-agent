@@ -197,4 +197,17 @@ describe("direct path rows", () => {
     act(() => { setDemoDirect(r, "mac", "relay-faster"); });
     expect(directRows()["mac"]).toBe("正在用中继 · 直连较慢，暂时改用中继");
   });
+
+  it("switches footer copy based on whether online computers use direct, mixed, or relay", async () => {
+    // All online computers direct -> direct footer
+    open("one-machine=1&direct=direct", quiet);
+    await settle();
+    expect(footer()).toBe(message("connection.latency_footer_direct"));
+
+    // Mixed: mac direct, vps/imac relay -> mixed footer
+    act(() => root?.unmount()); host.remove();
+    open("", (r) => { quiet(r); setDemoDirect(r, "mac", "direct"); });
+    await settle();
+    expect(footer()).toBe(message("connection.latency_footer_mixed"));
+  });
 });

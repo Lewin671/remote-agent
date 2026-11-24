@@ -1648,7 +1648,7 @@ export class DemoRemote extends Remote {
       removed,
       selfDeviceId: ME,
       authorityDeviceId: this.authorityDeviceId || ANDROID,
-      trustedMachineIds: [...this.demoMachines.keys()],
+      trustedMachineIds: [...this.demoMachines.keys()].filter((id) => !this.archivedDemoMachines.has(id)),
       trustedClientIds: [ME, ANDROID, BROWSER].filter((id) => !this.removedDemoDevices.has(id)),
       archiveMachineIds: [...this.demoMachines.keys()],
       headEpoch: 1n,
@@ -2063,9 +2063,213 @@ export class DemoRemote extends Remote {
     if (q.has("shared-files")) r.seedSharedFiles();
     if (q.has("notify")) r.seedNotify();
     if (q.has("one-machine")) for (const id of [...r.demoMachines.keys()]) if (id !== "mac") r.demoMachines.delete(id);
+    if (q.has("dup")) r.seedDuplicateMachine();
+    if (q.has("planb")) r.seedPlanBShowcase(q.get("planb") || "main");
     void r.loadDevices();
     r.syncDemoToCore();
     return r;
+  }
+
+  /** Machines marked archived/removed in Plan B showcase demos. */
+  private archivedDemoMachines = new Set<string>();
+
+  /** Adds a second machine named "MacBook" for duplicate-name disambiguator verification (?demo&dup=1). */
+  private seedDuplicateMachine() {
+    const now = Date.now();
+    this.demoMachines.set("mbp-0000a91e", {
+      id: "mbp-0000a91e",
+      online: true,
+      lastSeenMs: BigInt(now),
+      metaRev: 1n,
+      meta: create(MachineMetaSchema, {
+        hostname: "MacBook",
+        home: "/Users/me",
+        protocolVersion: PEER_PROTOCOL_VERSION,
+      }),
+    });
+  }
+
+  /** Showcase datasets for Plan B settings machine card verification (?demo&planb=main|one|edges|empty). */
+  private seedPlanBShowcase(variant: string) {
+    const now = Date.now();
+    this.demoMachines.clear();
+    if (variant === "empty") return;
+    if (variant === "one") {
+      this.demoMachines.set("work-74c7", {
+        id: "work-74c7",
+        online: true,
+        lastSeenMs: BigInt(now),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "Workstation-M1",
+          home: "/Users/me",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+          quotas: [
+            {
+              agent: Agent.CLAUDE,
+              state: QuotaState.OK,
+              observedMs: BigInt(now - min),
+              windows: [{ name: "seven_day", usedPercent: 30, windowMinutes: 10080n, resetsAtMs: BigInt(now + 4 * 24 * 60 * min) }],
+            },
+            {
+              agent: Agent.ANTIGRAVITY,
+              state: QuotaState.OK,
+              observedMs: BigInt(now - min),
+              windows: [{ name: "gemini-5h", usedPercent: 23, windowMinutes: 300n, resetsAtMs: BigInt(now + 3 * 60 * min) }],
+            },
+          ],
+        }),
+      });
+      return;
+    }
+    if (variant === "edges") {
+      this.demoMachines.set("mb-000074c7", {
+        id: "mb-000074c7",
+        online: true,
+        lastSeenMs: BigInt(now),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "MacBook",
+          home: "/Users/me",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+          quotas: [
+            {
+              agent: Agent.CODEX,
+              state: QuotaState.OK,
+              observedMs: BigInt(now - min),
+              windows: [{ name: "primary", usedPercent: 62, windowMinutes: 300n, resetsAtMs: BigInt(now + 3 * 60 * min) }],
+            },
+          ],
+        }),
+      });
+      this.demoMachines.set("mb-0000a91e", {
+        id: "mb-0000a91e",
+        online: true,
+        lastSeenMs: BigInt(now),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "MacBook",
+          home: "/Users/me",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+        }),
+      });
+      this.demoMachines.set("ws-long1234", {
+        id: "ws-long1234",
+        online: true,
+        lastSeenMs: BigInt(now),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "Workstation-MacBook-Pro-16-M4-Max-Edition",
+          home: "/Users/me",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+        }),
+      });
+      this.demoMachines.set("vps-dev1111", {
+        id: "vps-dev1111",
+        online: false,
+        lastSeenMs: BigInt(now - 12 * 24 * 60 * min),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "VPS-dev",
+          home: "/home/dev",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+        }),
+      });
+      this.demoMachines.set("mini-old222", {
+        id: "mini-old222",
+        online: true,
+        lastSeenMs: BigInt(now),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "Mac mini",
+          home: "/Users/me",
+          protocolVersion: Math.max(1, PEER_PROTOCOL_VERSION - 1),
+        }),
+      });
+      this.archivedDemoMachines.add("old-imac333");
+      this.demoMachines.set("old-imac333", {
+        id: "old-imac333",
+        online: false,
+        lastSeenMs: BigInt(now - 20 * 24 * 60 * min),
+        metaRev: 1n,
+        meta: create(MachineMetaSchema, {
+          hostname: "Old-iMac",
+          home: "/Users/me",
+          protocolVersion: PEER_PROTOCOL_VERSION,
+        }),
+      });
+      return;
+    }
+    // Default planb=main: 3 machines (online direct, disk alert + low/exhausted quota, offline)
+    this.demoMachines.set("mac", {
+      id: "mac",
+      online: true,
+      lastSeenMs: BigInt(now),
+      metaRev: 1n,
+      meta: create(MachineMetaSchema, {
+        hostname: "Workstation-M1",
+        home: "/Users/me",
+        protocolVersion: PEER_PROTOCOL_VERSION,
+        quotas: [
+          {
+            agent: Agent.CLAUDE,
+            state: QuotaState.OK,
+            observedMs: BigInt(now - min),
+            windows: [{ name: "seven_day", usedPercent: 30, windowMinutes: 10080n, resetsAtMs: BigInt(now + 4 * 24 * 60 * min) }],
+          },
+          {
+            agent: Agent.ANTIGRAVITY,
+            state: QuotaState.OK,
+            observedMs: BigInt(now - min),
+            windows: [{ name: "gemini-5h", usedPercent: 23, windowMinutes: 300n, resetsAtMs: BigInt(now + 3 * 60 * min) }],
+          },
+        ],
+      }),
+    });
+    this.demoMachines.set("studio", {
+      id: "studio",
+      online: true,
+      lastSeenMs: BigInt(now),
+      metaRev: 1n,
+      meta: create(MachineMetaSchema, {
+        hostname: "MacBook Studio",
+        home: "/Users/me",
+        protocolVersion: PEER_PROTOCOL_VERSION,
+        capabilities: { machineStatus: true },
+        diskStatus: { availableBytes: 4_200_000_000n, totalBytes: 500_000_000_000n },
+        quotas: [
+          {
+            agent: Agent.CODEX,
+            state: QuotaState.OK,
+            observedMs: BigInt(now - min),
+            windows: [{ name: "primary", usedPercent: 88, windowMinutes: 300n, resetsAtMs: BigInt(now + 2 * 60 * min) }],
+          },
+          {
+            agent: Agent.CLAUDE,
+            state: QuotaState.OK,
+            observedMs: BigInt(now - min),
+            windows: [{ name: "five_hour", usedPercent: 100, windowMinutes: 300n, resetsAtMs: BigInt(now + 90 * min) }],
+          },
+          {
+            agent: Agent.ANTIGRAVITY,
+            state: QuotaState.OK,
+            observedMs: BigInt(now - min),
+            windows: [{ name: "gemini-5h", usedPercent: 40, windowMinutes: 300n, resetsAtMs: BigInt(now + 3 * 60 * min) }],
+          },
+        ],
+      }),
+    });
+    this.demoMachines.set("imac", {
+      id: "imac",
+      online: false,
+      lastSeenMs: BigInt(now - 2 * 60 * min),
+      metaRev: 1n,
+      meta: create(MachineMetaSchema, {
+        hostname: "iMac",
+        home: "/Users/me",
+        protocolVersion: PEER_PROTOCOL_VERSION,
+      }),
+    });
   }
 
   /** Receipts of scheduled pushes (design-system §7 「通知回执」). */

@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as l10n from "../i18n";
 import { t } from "../i18n";
+import { AgentMark } from "../agent-mark";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
 import {
   MachineStatusDot,
@@ -11,13 +12,14 @@ import {
   type QuotaRowView,
   type QuotaViewModel,
 } from "../gen/remoteagent/core/v1/machine_view_pb";
-import type {
-  ClientDetailViewModel,
-  ClientRowView,
-  DevicesViewModel,
-  MachineListCardView,
-  NotificationsView,
-  SettingsViewModel,
+import {
+  MachineAlertKind,
+  type ClientDetailViewModel,
+  type ClientRowView,
+  type DevicesViewModel,
+  type MachineListCardView,
+  type NotificationsView,
+  type SettingsViewModel,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import {
   ConnProbeState,
@@ -53,12 +55,14 @@ import { ConnCheck, connWord } from "./ConnCheck";
 import {
   ChevronLeft,
   ChevronRight,
+  DiskIcon,
   Globe,
   Laptop,
   LoaderCircle,
   Plus,
   Smartphone,
   Tablet,
+  Zap,
 } from "../icons";
 import { StatusDotMark } from "./MachineSettings";
 
@@ -119,31 +123,70 @@ function serverConnDotFor(vm: SettingsViewModel): MachineStatusDot {
   return MachineStatusDot.UNSPECIFIED;
 }
 
-function MachineRow({ m, go }: { m: MachineListCardView; go: Go }) {
+function MachineCard({ m, go }: { m: MachineListCardView; go: Go }) {
   const host = routeForMachineSettings(m.machineId);
+  const cardClass = !m.member ? "mc is-rem" : m.dimmed ? "mc is-off" : "mc";
   const status = renderText(m.statusText);
+  const secondary = renderText(m.secondaryNote);
   return (
-    <button type="button" className="row has-ic" onClick={() => go(host)}>
-      <span className="lead"><Laptop /></span>
-      <span className="row-name">
-        <b>{m.name}</b>
-        {(m.shortId || m.subtitleParts.length > 0) && (
-          <small>
-            {m.shortId && <span>{m.shortId}</span>}
-            {m.subtitleParts.map((part, idx) => (
-              <Fragment key={idx}>
-                {(m.shortId || idx > 0) && " · "}
-                <span className={part.warn ? "warn-txt" : undefined}>{renderText(part.text)}</span>
-              </Fragment>
-            ))}
-          </small>
+    <button type="button" className={cardClass} onClick={() => go(host)}>
+      <div className="mc-hd">
+        <span className="mc-title-wrap">
+          <span className="mc-name">{m.name}</span>
+          {m.disambiguator && <span className="mc-tag">{m.disambiguator}</span>}
+        </span>
+        <ChevronRight className="chev" />
+      </div>
+      <div className="mc-meta">
+        {m.statusDot !== MachineStatusDot.UNSPECIFIED && (
+          <StatusDotMark dot={m.statusDot} fallback="off" />
         )}
-      </span>
-      <span className="v">
-        <StatusDotMark dot={m.statusDot} fallback={m.online ? "online" : "off"} />
-        <span className={m.statusWarn ? "warn-txt" : undefined}>{status}</span>
-      </span>
-      <ChevronRight className="chev" />
+        {status && <span>{status}</span>}
+        {m.directActive && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span className="mc-direct">
+              <Zap />
+              <span>{l10n.t("transport.direct")}</span>
+            </span>
+          </>
+        )}
+        {secondary && (
+          <>
+            {status && <span aria-hidden="true">·</span>}
+            <span>{secondary}</span>
+          </>
+        )}
+      </div>
+      {m.alerts.map((alert, idx) => (
+        <div key={idx} className="mc-alert">
+          {alert.kind === MachineAlertKind.DISK_LOW && <DiskIcon />}
+          <span>{renderText(alert.text)}</span>
+        </div>
+      ))}
+      {m.quotaItems.length > 0 && (
+        <div className="mc-quotas">
+          {m.quotaItems.map((q) => {
+            const pct = Math.max(0, Math.min(100, q.remainingPercent));
+            const valCls = q.warn ? "val warn" : "val";
+            const barCls = q.warn ? "mc-bar warn" : "mc-bar";
+            return (
+              <div key={q.agent} className="mc-qt">
+                <div className="l">
+                  <span className="cli">
+                    <AgentMark agent={q.agent} named />
+                    <span>{q.agentName}</span>
+                  </span>
+                  <span className={valCls}>{renderText(q.valueText)}</span>
+                </div>
+                <div className={barCls}>
+                  <i style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </button>
   );
 }
@@ -234,7 +277,10 @@ export function SettingsScreenView({
       </div>
       {vm.machines.length === 0 ? (
         <div className="set-empty-card" data-late={vm.machinesLoading ? "1" : undefined}>
-          <b>{renderText(vm.emptyMachinesText) || l10n.t("settings.empty_computers_title")}</b>
+          <div className="empty-hd">
+            <Laptop />
+            <b>{renderText(vm.emptyMachinesText) || l10n.t("settings.empty_computers_title")}</b>
+          </div>
           {renderText(vm.emptyMachinesBody) ? (
             <p>{renderText(vm.emptyMachinesBody)}</p>
           ) : (
@@ -249,17 +295,17 @@ export function SettingsScreenView({
         </div>
       ) : (
         <>
-          <div className="grp">
+          <div className={"mc-grid" + (vm.machines.length >= 2 ? " multi" : "")}>
             {vm.machines.map((m) => (
-              <MachineRow key={m.machineId} m={m} go={go} />
+              <MachineCard key={m.machineId} m={m} go={go} />
             ))}
-            {vm.canAddDevice && (
-              <button type="button" className="row has-ic act" onClick={addClick}>
-                <span className="lead"><Plus /></span>
-                <span className="row-name">{l10n.t("settings.add_device_item")}</span>
-              </button>
-            )}
           </div>
+          {vm.canAddDevice && (
+            <button type="button" className="addrow" onClick={addClick}>
+              <Plus />
+              <span>{l10n.t("settings.add_device_item")}</span>
+            </button>
+          )}
           {!vm.canAddDevice && addHint && <div className="gf">{addHint}</div>}
         </>
       )}

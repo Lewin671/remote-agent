@@ -4491,17 +4491,16 @@ describe("client names", () => {
 });
 
 describe("devices in settings", () => {
-  it("renders unified 46px leading-icon computer rows and concise quota subtitles cleanly", async () => {
+  it("renders Plan B standalone computer cards with quota bars cleanly", async () => {
     const r = demo();
     await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
     const { Settings, ClientsPage } = await import("./Settings");
     mount(<Settings remote={r} go={() => undefined} />);
-    const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row.has-ic")];
-    const mac = rows.find((x) => x.querySelector(".row-name b")?.textContent === "MacBook")!;
-    expect(mac.querySelector(".lead svg")).toBeTruthy();
-    expect(mac.querySelector(".v")?.textContent).toBe(message("common.online"));
-    expect(mac.querySelector(".row-name small")?.textContent).toMatch(/Codex.*Antigravity/);
-    expect(host.querySelector(".mach-card")).toBeNull();
+    const cards = [...host.querySelectorAll<HTMLButtonElement>(".mc-grid button.mc")];
+    const mac = cards.find((x) => x.querySelector(".mc-name")?.textContent === "MacBook")!;
+    expect(mac.querySelector(".mc-meta")?.textContent).toContain(message("common.online"));
+    expect(mac.querySelector(".mc-quotas")?.textContent).toMatch(/Codex.*Antigravity/);
+    expect(mac.querySelectorAll(".mc-bar i").length).toBeGreaterThanOrEqual(2);
     // Clients are housed on the pure Clients secondary page, without repeating computers.
     act(() => root!.render(<ClientsPage remote={r} go={() => undefined} onBack={() => undefined} />));
     const clientRows = [...host.querySelectorAll<HTMLButtonElement>(".row.has-ic.client")];

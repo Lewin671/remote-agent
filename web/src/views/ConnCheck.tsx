@@ -188,7 +188,10 @@ export function ConnCheckScreenView({
           return (
             <Fragment key={m.machineId}>
               <div className="mi">
-                <span className="mt">{m.name}</span>
+                <span className="mt">
+                  {m.name}
+                  {m.disambiguator && <span className="mc-tag mc-tag-inline">{m.disambiguator}</span>}
+                </span>
                 {m.online ? <Result p={machines.get(m.machineId)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
               </div>
               {directRow?.visible && summary && (
@@ -200,7 +203,7 @@ export function ConnCheckScreenView({
           );
         })}
       </div>
-      <p className="gf">{connFooter(machineCards.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
+      <p className="gf">{connFooter(renderText(cc?.footerText), machineCards.some((x) => x.directRow?.stage === ConnectionGroupStage.UNSUPPORTED))}</p>
       <div className="btns conn-again">
         {down && <button className="btn pri" onClick={onReconnect}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>

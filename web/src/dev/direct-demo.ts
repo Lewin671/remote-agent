@@ -461,9 +461,34 @@ function installDemoDirectHost(
   const origViewSettings = host.viewSettings.bind(host);
   host.viewSettings = () => {
     const vm = origViewSettings();
+    let onlineCount = 0;
+    let directReadCount = 0;
     for (const m of vm.machines) {
       const s = specFor(m.machineId);
-      if (s) m.directRow = buildConnCheckRow(buildConnectionGroup({ speeds: speedsParam, ...s }));
+      if (s) {
+        m.directRow = buildConnCheckRow(buildConnectionGroup({ speeds: speedsParam, ...s }));
+        m.directActive =
+          m.online &&
+          m.member &&
+          m.protocolMismatch === 0 &&
+          m.directRow.stage === ConnectionGroupStage.DIRECT;
+      }
+      if (m.online && m.member) {
+        onlineCount++;
+        const readDirect = s
+          ? s.preset === "direct" || s.preset === "read" || s.preset === "file-fallback"
+          : m.directReady;
+        if (readDirect) directReadCount++;
+      }
+    }
+    if (vm.connCheck) {
+      if (onlineCount > 0 && directReadCount === onlineCount) {
+        vm.connCheck.footerText = tk("connection.latency_footer_direct");
+      } else if (directReadCount > 0) {
+        vm.connCheck.footerText = tk("connection.latency_footer_mixed");
+      } else {
+        vm.connCheck.footerText = tk("connection.latency_is_one_round_trip_the_server_row_measures");
+      }
     }
     return vm;
   };
