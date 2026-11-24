@@ -3592,6 +3592,8 @@ export class DemoRemote extends Remote {
     sid: string,
     onFrame: (f: TerminalFrame) => void,
     onClose: (reason: string) => void,
+    _signal?: AbortSignal,
+    _onStateChange?: Parameters<Remote["openTerminal"]>[4],
   ): Promise<TermConn> {
     await this.pause(400);
     let open = true;

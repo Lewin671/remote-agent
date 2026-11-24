@@ -474,3 +474,345 @@ func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 		}
 	}
 }
+
+// TestReview2Repro_HB_EarlyDirectAttachBufferedAndUnknownNonDirectRejected reproduces review2 H-B:
+// 1. Direct "d:" AttachPath arriving BEFORE openTerminal is buffered and consumed by openTerminal,
+//    so 16 KiB output flows over the direct hot-standby leg.
+// 2. Non-direct AttachPath for an unknown stream receives explicit Control 8 (Unsupported).
+func TestReview2Repro_HB_EarlyDirectAttachBufferedAndUnknownNonDirectRejected(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "hb112233445566778899aabbccddeeff"
+
+	// Send direct AttachPath BEFORE openTerminal creates the stream (exact review2 H-B repro).
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:earlyattach001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("failed to queue early direct AttachPath")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+
+	// Emit 16 KiB payload and assert it arrives on direct leg (h.readPath).
+	want := bytes.Repeat([]byte("HB16K"), (16<<10)/5+1)[:16<<10]
+	h.backend.term.outCh <- want
+	var directBuf []byte
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		for !bytes.Contains(directBuf, want) {
+			raw, err := h.readPath.Read(h.ctx)
+			if err != nil {
+				return
+			}
+			_, tf := h.openTermOutput(raw, streamID)
+			if out := tf.GetOutput(); len(out) > 0 {
+				directBuf = append(directBuf, out...)
+			}
+		}
+	}()
+	select {
+	case <-readDone:
+		if !bytes.Contains(directBuf, want) {
+			t.Fatalf("H-B: 16 KiB output did not arrive on direct leg after early AttachPath")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("H-B: timed out waiting for 16 KiB output on direct leg (got %d bytes)", len(directBuf))
+	}
+
+	// Unknown non-direct AttachPath is explicitly rejected via ControlUnsupported (type 10),
+	// which linkcore.Session settles cleanly without creating/leaking a stream; verify by
+	// querying InputStatus on the unknown stream -> Available=false.
+	unknownStream := "deadbeefdeadbeefdeadbeefdeadbeef"
+	unknownLeg := string(bytes.Repeat([]byte{0xab}, 16))
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         unknownStream,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          unknownLeg,
+		PathGeneration: 2,
+	})) {
+		t.Fatal("failed to queue unknown non-direct AttachPath")
+	}
+	qid := bytes.Repeat([]byte{0x71}, 16)
+	if !h.link.SendControl(linkcore.ControlInputStatus, linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
+		Stream:  unknownStream,
+		QueryID: qid,
+		FromSeq: 1,
+		Limit:   8,
+	})) {
+		t.Fatal("failed to queue InputStatus for unknown stream")
+	}
+	repCtrl := h.waitControl(linkcore.ControlInputStatusReply)
+	rep, err := linkcore.DecodeInputStatusReply(repCtrl.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Available {
+		t.Fatalf("H-B: unknown stream must remain unavailable after rejected AttachPath, got %+v", rep)
+	}
+}
+
+// TestReview2Repro_N3_DirectReattachSameGenAfterClose reproduces review2 N3:
+// Closing direct leg with gen=1 resets daemon directGen, so re-attaching a new direct leg
+// with gen=1 (e.g. after direct session rebuild) succeeds and delivers 16 KiB output on direct.
+func TestReview2Repro_N3_DirectReattachSameGenAfterClose(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "n3112233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Attach direct leg #1 with gen=1.
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:reattachleg001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath #1 failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Close direct leg #1 (Reason=0, path loss).
+	if !h.link.SendControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+		Stream:         streamID,
+		LegID:          "d:reattachleg001",
+		PathGeneration: 1,
+		Reason:         0,
+	})) {
+		t.Fatal("ClosePath #1 failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Re-attach direct leg #2 STILL with PathGeneration=1 (exact review2 N3 repro).
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:reattachleg002",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath #2 (gen=1) failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	want := bytes.Repeat([]byte("N316K"), (16<<10)/5+1)[:16<<10]
+	h.backend.term.outCh <- want
+	var directBuf []byte
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for !bytes.Contains(directBuf, want) {
+			raw, err := h.readPath.Read(h.ctx)
+			if err != nil {
+				return
+			}
+			_, tf := h.openTermOutput(raw, streamID)
+			if out := tf.GetOutput(); len(out) > 0 {
+				directBuf = append(directBuf, out...)
+			}
+		}
+	}()
+	select {
+	case <-done:
+		if !bytes.Contains(directBuf, want) {
+			t.Fatal("N3: 16 KiB output did not arrive over reattached gen=1 direct leg")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("N3: timed out waiting for output on reattached gen=1 direct leg (got %d bytes)", len(directBuf))
+	}
+}
+
+// TestReview2Repro_N4_DirectCloseBeforeRelayKeepsZeroLegWindow reproduces review2 N4:
+// Closing direct leg FIRST (Reason=0) and then closing relay WS SECOND on a Phase 3 stream
+// must keep tmux alive in the zero-leg TTL window (InputStatus returns Available=true).
+func TestReview2Repro_N4_DirectCloseBeforeRelayKeepsZeroLegWindow(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "n4112233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Attach direct leg first so stream is Phase 3.
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:n4directleg001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Step 1: Close direct leg FIRST (Reason=0, network drop).
+	if !h.link.SendControl(linkcore.ControlClosePath, linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+		Stream:         streamID,
+		LegID:          "d:n4directleg001",
+		PathGeneration: 1,
+		Reason:         0,
+	})) {
+		t.Fatal("ClosePath failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Step 2: Close relay WS SECOND -> zero legs active, MUST stay alive in TTL window!
+	termWS.CloseNow()
+	select {
+	case <-h.backend.term.Done():
+		t.Fatal("N4 regression: daemon canceled tmux immediately when direct closed before relay")
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	// Query Control 3 InputStatus -> daemon must report Available=true!
+	qid := bytes.Repeat([]byte{0x44}, 16)
+	if !h.link.SendControl(linkcore.ControlInputStatus, linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
+		Stream:  streamID,
+		QueryID: qid,
+		FromSeq: 1,
+		Limit:   32,
+	})) {
+		t.Fatal("InputStatus send failed")
+	}
+	repCtrl := h.waitControl(linkcore.ControlInputStatusReply)
+	rep, err := linkcore.DecodeInputStatusReply(repCtrl.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rep.Available {
+		t.Fatalf("N4: expected InputStatusReply Available=true during zero-leg window, got %+v", rep)
+	}
+}
+
+// TestReview2_N8_ReplayOverflowExplicitlyFailsWithHint verifies N8:
+// When daemon's 128-frame output replay buffer overflows without client output ACK,
+// triggering replay on direct failover explicitly fails/closes the stream with a user hint
+// rather than silently truncating output.
+func TestReview2_N8_ReplayOverflowExplicitlyFailsWithHint(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	h.advertisePhase3ClientCapabilities()
+	streamID := "n8112233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         streamID,
+		Session:        h.session,
+		Sender:         h.e.authority.Member.ID,
+		LegID:          "d:n8directleg001",
+		PathGeneration: 1,
+	})) {
+		t.Fatal("AttachPath failed")
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Emit >1 MiB of output (exceeding TermMaxReplayBytes = 1 MiB) without ACKing output.
+	const chunkSize = 32 << 10
+	const totalChunks = 40 // 1.28 MiB > 1 MiB replay buffer cap
+	chunk := bytes.Repeat([]byte("R"), chunkSize)
+	reached := make(chan struct{})
+	go func() {
+		var totalBytes int
+		for totalBytes < (1<<20)+(128<<10) {
+			raw, err := h.readPath.Read(h.ctx)
+			if err != nil {
+				return
+			}
+			_, tf := h.openTermOutput(raw, streamID)
+			totalBytes += len(tf.GetOutput())
+		}
+		close(reached)
+	}()
+	go func() {
+		for i := 0; i < totalChunks; i++ {
+			select {
+			case h.backend.term.outCh <- chunk:
+			case <-h.ctx.Done():
+				return
+			}
+		}
+	}()
+	select {
+	case <-reached:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out producing >1 MiB output frames")
+	}
+
+	// Request replay from seq=2 (already evicted because >1 MiB output was produced) -> replay overflow!
+	if !h.link.SendControl(linkcore.ControlReplay, linkcore.EncodeReplay(linkcore.ReplayMsg{
+		Stream:     streamID,
+		Direction:  linkcore.TermDirToClient,
+		FromSeq:    2,
+		ThroughSeq: 0,
+		MaxBytes:   1 << 20,
+		MaxFrames:  128,
+	})) {
+		t.Fatal("ControlReplay send failed")
+	}
+
+	// Daemon must explicitly signal ControlClosePath(Reason=2) and close the stream promptly.
+	cpCtrl := h.waitControl(linkcore.ControlClosePath)
+	cp, err := linkcore.DecodeClosePath(cpCtrl.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cp.Stream != streamID || cp.Reason != 2 {
+		t.Fatalf("N8: expected ControlClosePath(Reason=2), got %+v", cp)
+	}
+	select {
+	case <-h.backend.term.Done():
+	case <-time.After(3 * time.Second):
+		t.Fatal("N8: expected daemon to explicitly close stream on output replay overflow")
+	}
+}
+
+// TestReview2_N9_LegacyPeerDoesNotReceivePhase3Control verifies N9:
+// When a peer has NOT negotiated Phase 3 terminal direct capabilities, the daemon does not
+// emit Phase 3 Control 4 stream ACKs over the direct control channel.
+func TestReview2_N9_LegacyPeerDoesNotReceivePhase3Control(t *testing.T) {
+	h := startPhase3PionHarness(t)
+	// Intentionally DO NOT call h.advertisePhase3ClientCapabilities().
+	streamID := "n9112233445566778899aabbccddeeff"
+	termWS := h.openTerminal(streamID)
+	defer termWS.CloseNow()
+	if _, _, err := termWS.Read(h.ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	raw := h.sealTermFrame(streamID, 1, &pb.TerminalFrame{Kind: &pb.TerminalFrame_Input{Input: []byte("ls\n")}})
+	if err := termWS.Write(h.ctx, websocket.MessageBinary, raw); err != nil {
+		t.Fatal(err)
+	}
+	h.waitInputs([]byte("ls\n"))
+
+	// Ensure no Phase 3 ControlStreamAck (4) is emitted on the direct control channel.
+	deadline := time.After(250 * time.Millisecond)
+	for {
+		select {
+		case o := <-h.controls:
+			if o.Type == linkcore.ControlAck {
+				if _, isStreamAck, err := linkcore.DecodeTermAck(o.Payload); err == nil && isStreamAck {
+					t.Fatalf("N9: legacy peer must not receive Phase 3 stream ControlAck, got %+v", o)
+				}
+			}
+		case <-deadline:
+			return
+		}
+	}
+}

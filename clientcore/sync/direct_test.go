@@ -13,6 +13,7 @@ import (
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
+	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -1164,5 +1165,97 @@ func TestSyncDirectLegacyDaemonCreateSessionStaysRelayOnly(t *testing.T) {
 	}
 	if directCount != 1 || relayCount != 1 {
 		t.Fatalf("expected legacy daemon Send to dual-send (direct=1, relay=1), got direct=%d relay=%d", directCount, relayCount)
+	}
+}
+
+// TestSyncDirectTerminalConfirmationFlowM4 verifies M4 Core-driven confirmation UI wiring:
+// - Fail-stop sets TerminalDirectStateEffect.NeedsConfirmation=true with KeyTerminalConfirmRebuildInputBody
+// - Daemon restart (Available=false) sets NeedsConfirmation=true with KeyTerminalConfirmRebuildRestartBody
+// - TerminalDirectConfirmRebuildAction clears the gate and emits TermStateClosed("rebuild_confirmed")
+func TestSyncDirectTerminalConfirmationFlowM4(t *testing.T) {
+	h := newDirectSyncHarness(t)
+	sid := "sess-m4-ui"
+	h.connectMainAndList(sid)
+	h.driveDirectHandshake()
+
+	// Helper to convert CoordTerminalState through Engine.emitCoordEffects cleanly.
+	streamID := "m4ui0123456789abcdef0123456789ab"
+	h.step(&corev1.Event{
+		Event: &corev1.Event_TerminalDirectOpen{
+			TerminalDirectOpen: &corev1.TerminalDirectOpenEvent{
+				StreamId:   streamID,
+				MachineId:  h.daemon.id,
+				SessionId:  sid,
+				RelayLegId: []byte("relay00000000099"),
+			},
+		},
+	})
+	h.step(&corev1.Event{
+		Event: &corev1.Event_TerminalDirectLeg{
+			TerminalDirectLeg: &corev1.TerminalDirectLegEvent{
+				StreamId: streamID,
+				LegId:    []byte("relay00000000099"),
+				Direct:   false,
+				Open:     true,
+			},
+		},
+	})
+
+	// Emit CoordTerminalState(TermStateFailStop, NeedsConfirmation=true) through Engine.
+	res1 := h.eng.Run(func(ctx *StepContext) {
+		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{
+			transport.CoordTerminalState{
+				StreamID:          streamID,
+				State:             transport.TermStateFailStop,
+				Reason:            "stream_failed",
+				NeedsConfirmation: true,
+			},
+		})
+	})
+	var gotInputConfirm *corev1.TerminalDirectStateEffect
+	for _, eff := range res1.Effects {
+		if st := eff.GetTerminalDirectState(); st != nil {
+			gotInputConfirm = st
+		}
+	}
+	if gotInputConfirm == nil || !gotInputConfirm.NeedsConfirmation || gotInputConfirm.Reason != text.KeyTerminalConfirmRebuildInputBody {
+		t.Fatalf("expected input confirmation copy key %q, got %+v", text.KeyTerminalConfirmRebuildInputBody, gotInputConfirm)
+	}
+
+	// Emit CoordTerminalState(TermStateInstanceChange, NeedsConfirmation=true) through Engine.
+	res2 := h.eng.Run(func(ctx *StepContext) {
+		h.eng.emitCoordEffects(ctx, []transport.CoordEffect{
+			transport.CoordTerminalState{
+				StreamID:          streamID,
+				State:             transport.TermStateInstanceChange,
+				Reason:            "daemon_unavailable",
+				NeedsConfirmation: true,
+			},
+		})
+	})
+	var gotRestartConfirm *corev1.TerminalDirectStateEffect
+	for _, eff := range res2.Effects {
+		if st := eff.GetTerminalDirectState(); st != nil {
+			gotRestartConfirm = st
+		}
+	}
+	if gotRestartConfirm == nil || !gotRestartConfirm.NeedsConfirmation || gotRestartConfirm.Reason != text.KeyTerminalConfirmRebuildRestartBody {
+		t.Fatalf("expected restart confirmation copy key %q, got %+v", text.KeyTerminalConfirmRebuildRestartBody, gotRestartConfirm)
+	}
+
+	// Dispatch TerminalDirectConfirmRebuildAction -> emits TermStateClosed("rebuild_confirmed") without NeedsConfirmation.
+	res3 := h.step(&corev1.Event{
+		Event: &corev1.Event_TerminalDirectConfirmRebuild{
+			TerminalDirectConfirmRebuild: &corev1.TerminalDirectConfirmRebuildAction{StreamId: streamID},
+		},
+	})
+	var gotRebuild *corev1.TerminalDirectStateEffect
+	for _, eff := range res3.Effects {
+		if st := eff.GetTerminalDirectState(); st != nil {
+			gotRebuild = st
+		}
+	}
+	if gotRebuild == nil || gotRebuild.State != transport.TermStateClosed || gotRebuild.Reason != "rebuild_confirmed" || gotRebuild.NeedsConfirmation {
+		t.Fatalf("expected TermStateClosed(rebuild_confirmed), got %+v", gotRebuild)
 	}
 }

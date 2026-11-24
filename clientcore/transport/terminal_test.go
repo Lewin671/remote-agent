@@ -475,3 +475,282 @@ func TestCoordinatorFullDisconnectRecoveryViaInputStatus(t *testing.T) {
 		t.Fatalf("expected TermStateInstanceChange + NeedsConfirmation when Available=false, got %+v", effs2)
 	}
 }
+
+// TestReview2_HA_ResizeAndInFlightInputNoSeqHole reproduces H-A:
+// Resize (non-input) and Input frames sent while disconnected on a Phase 3 stream
+// must BOTH be cached and resent in sequence order on InputStatus reconciliation so
+// the daemon never sees a seq hole (seq=1 -> seq=3 skipping seq=2).
+func TestReview2_HA_ResizeAndInFlightInputNoSeqHole(t *testing.T) {
+	coord, _, daemon, now, _, rid, readPC := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	capBody := peerwire.PB(
+		peerwire.B(1, bytes.Repeat([]byte{0x41}, 16)),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4),
+		peerwire.U(2, 5), peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2),
+		peerwire.U(4, uint64(now+55_000)),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+	_, _ = coord.decodeControl(now, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 10, Issued: uint64(now), Deadline: uint64(now + 55_000)},
+			Type:    1,
+			Payload: capBody,
+			Hash:    bytes.Repeat([]byte{0xaa}, 32),
+		},
+	})
+	streamID := "ha0123456789abcdef0123456789abcd"
+	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-ha", []byte("relay00000000010"))
+
+	// In-flight input seq=1 sent BEFORE direct attaches (daemonReady=false) on a Phase 3 stream must still be cached.
+	h1 := sha256.Sum256([]byte("echo 1\n"))
+	_ = coord.TerminalDirectInput(now+1, streamID, 1, true, []byte("env-seq-1"), h1[:])
+
+	// Confirm daemon ready -> attaches direct leg.
+	_ = coord.TerminalDirectLeg(now+2, streamID, []byte("relay00000000010"), false, true, 0)
+
+	// Drop direct + relay -> full disconnect recovery window.
+	_ = coord.TerminalDirectLeg(now+10, streamID, nil, true, false, readPC)
+	_ = coord.TerminalDirectLeg(now+15, streamID, []byte("relay00000000010"), false, false, 0)
+
+	// Send Resize (seq=2, isInput=false) followed by Input (seq=3, isInput=true) while disconnected.
+	h2 := sha256.Sum256([]byte("resize-100x40"))
+	_ = coord.TerminalDirectInput(now+20, streamID, 2, false, []byte("env-seq-2-resize"), h2[:])
+	h3 := sha256.Sum256([]byte("echo 3\n"))
+	_ = coord.TerminalDirectInput(now+25, streamID, 3, true, []byte("env-seq-3-input"), h3[:])
+
+	// Reconnect direct -> InputStatus query fired; daemon reports Processed=1 (seq=1 done, seq=2&3 missing).
+	coord.attachDirectTerminalsForMachine(now+30, daemon.id)
+	ct := coord.termStreams[streamID]
+	if ct == nil || !ct.queryInFlight {
+		t.Fatalf("expected InputStatus query in flight")
+	}
+	repBody := linkcore.EncodeInputStatusReply(linkcore.InputStatusReplyMsg{
+		Stream:        streamID,
+		QueryID:       ct.queryID,
+		Available:     true,
+		Complete:      true,
+		SnapshotToken: bytes.Repeat([]byte{0x42}, 32),
+		State: linkcore.TermFlowState{
+			ToDaemon: linkcore.TermWatermark{
+				Processed:    1,
+				InputSuccess: 1,
+				Details: []linkcore.TermFrameStatus{
+					{Seq: 1, PayloadHash: h1, Outcome: linkcore.TermOutcomeApplied, DefinitelyInjected: 7, PossiblyInjected: 7, InputBytes: 7},
+				},
+			},
+		},
+	})
+	_, _ = coord.decodeControl(now+35, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 11},
+			Type:    linkcore.ControlInputStatusReply,
+			Payload: repBody,
+			Hash:    bytes.Repeat([]byte{0xbb}, 32),
+		},
+	})
+	effs := coord.take()
+	var resent [][]byte
+	for _, e := range effs {
+		if se, ok := e.(CoordTerminalSend); ok && se.DirectPCID == readPC {
+			resent = append(resent, se.SealedEnvelope)
+		}
+	}
+	if len(resent) != 2 || !bytes.Equal(resent[0], []byte("env-seq-2-resize")) || !bytes.Equal(resent[1], []byte("env-seq-3-input")) {
+		t.Fatalf("expected BOTH seq=2 (Resize) and seq=3 (Input) resent in order, got %q", resent)
+	}
+
+	// Verify daemon-side TerminalStream executes BOTH seq=2 and seq=3 sequentially with zero seq hole.
+	daemonTS := linkcore.NewTerminalStream(streamID, "sess-ha", daemon.id, "daemon-inst", uint64(now))
+	if act, _, _ := daemonTS.ReceiveInput(uint64(now+1), linkcore.TermFrame{Seq: 1, PayloadHash: h1, IsInput: true}); act != linkcore.TermInputRun {
+		t.Fatalf("daemon seq=1 expected Run, got %v", act)
+	}
+	_, _, _, _, _ = daemonTS.CompleteInput(uint64(now+2), 1, linkcore.TermOutcomeApplied, 1, 1, 0)
+	if act, _, _ := daemonTS.ReceiveInput(uint64(now+40), linkcore.TermFrame{Seq: 2, PayloadHash: h2, IsInput: false}); act != linkcore.TermInputRun {
+		t.Fatalf("daemon seq=2 (Resize) expected Run, got %v", act)
+	}
+	next, _, _, _, _ := daemonTS.CompleteInput(uint64(now+41), 2, linkcore.TermOutcomeApplied, 0, 0, 0)
+	if next != nil {
+		t.Fatalf("unexpected buffered next before seq=3")
+	}
+	if act, _, _ := daemonTS.ReceiveInput(uint64(now+42), linkcore.TermFrame{Seq: 3, PayloadHash: h3, IsInput: true}); act != linkcore.TermInputRun {
+		t.Fatalf("daemon seq=3 (Input) expected Run immediately after Resize (no seq hole), got %v", act)
+	}
+	_, _, _, _, _ = daemonTS.CompleteInput(uint64(now+43), 3, linkcore.TermOutcomeApplied, 1, 1, 0)
+	if got := daemonTS.CurrentInputWatermark().Processed; got != 3 {
+		t.Fatalf("expected daemon Processed=3 after seq 1,2,3, got %d", got)
+	}
+}
+
+// TestReview2_HB_DirectAttachWaitsForDaemonReady verifies H-B on ClientCore:
+// TerminalDirectOpen does not queue direct AttachPath until daemon confirms openTerminal
+// via TerminalDirectLeg(direct=false, open=true).
+func TestReview2_HB_DirectAttachWaitsForDaemonReady(t *testing.T) {
+	coord, _, daemon, now, _, rid, readPC := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	capBody := peerwire.PB(
+		peerwire.B(1, bytes.Repeat([]byte{0x43}, 16)),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4),
+		peerwire.U(2, 5), peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2),
+		peerwire.U(4, uint64(now+55_000)),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+	_, _ = coord.decodeControl(now, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 10, Issued: uint64(now), Deadline: uint64(now + 55_000)},
+			Type:    1,
+			Payload: capBody,
+			Hash:    bytes.Repeat([]byte{0xaa}, 32),
+		},
+	})
+	streamID := "hb0123456789abcdef0123456789abcd"
+	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-hb", []byte("relay00000000011"))
+	ct := coord.termStreams[streamID]
+	if ct == nil || ct.directAttached || ct.directAttachGen != 0 {
+		t.Fatalf("H-B violation: direct AttachPath must NOT fire before openTerminal confirms daemonReady, ct=%+v", ct)
+	}
+	// Confirm openTerminal succeeded -> direct AttachPath fires immediately.
+	_ = coord.TerminalDirectLeg(now+5, streamID, []byte("relay00000000011"), false, true, 0)
+	if !ct.directAttached || ct.directPCID != readPC || ct.directAttachGen != 1 {
+		t.Fatalf("expected direct AttachPath immediately after daemonReady, ct=%+v", ct)
+	}
+}
+
+// TestReview2_N3_N5_N7_N8_N9_ClientCore verifies:
+// - N3: monotonic directAttachGen across detach/reattach
+// - N5 & N7: failed relay recovery dial schedules bounded retry with strictly higher relayAttachGen and 32-char lowercase hex LegID
+// - N8: ControlClosePath(Reason=2) emits TermStateClosed(replay_overflow)
+// - N9: InputStatusReply rejects empty or mismatched QueryID
+func TestReview2_N3_N5_N7_N8_N9_ClientCore(t *testing.T) {
+	coord, _, daemon, now, _, rid, readPC := driveEstablishedCoordRound(t, "127.0.0.1", "")
+	r := coord.rounds[rid]
+	capBody := peerwire.PB(
+		peerwire.B(1, bytes.Repeat([]byte{0x44}, 16)),
+		peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4),
+		peerwire.U(2, 5), peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8),
+		peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 15),
+		peerwire.U(3, 1), peerwire.U(3, 2),
+		peerwire.U(4, uint64(now+55_000)),
+		peerwire.U(5, 1),
+		peerwire.U(6, 1<<20),
+	)
+	_, _ = coord.decodeControl(now, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 10, Issued: uint64(now), Deadline: uint64(now + 55_000)},
+			Type:    1,
+			Payload: capBody,
+			Hash:    bytes.Repeat([]byte{0xaa}, 32),
+		},
+	})
+	streamID := "n357890123456789abcdef0123456789"
+	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-n", []byte("relay00000000012"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relay00000000012"), false, true, 0)
+	ct := coord.termStreams[streamID]
+	if ct.directAttachGen != 1 {
+		t.Fatalf("expected initial directAttachGen=1, got %d", ct.directAttachGen)
+	}
+
+	// N3: detach direct and reattach -> directAttachGen advances to 2.
+	_ = coord.TerminalDirectLeg(now+5, streamID, nil, true, false, readPC)
+	coord.attachDirectTerminalsForMachine(now+10, daemon.id)
+	if ct.directAttachGen != 2 {
+		t.Fatalf("N3: expected monotonic directAttachGen=2 after reattach, got %d", ct.directAttachGen)
+	}
+
+	// N5 & N7: drop relay while direct is active -> triggers recovery with 32-char lowercase hex StreamId.
+	isHex32 := func(b []byte) bool {
+		if len(b) != 32 {
+			return false
+		}
+		for _, ch := range b {
+			if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+				return false
+			}
+		}
+		return true
+	}
+	dropEffs := coord.TerminalDirectLeg(now+20, streamID, []byte("relay00000000012"), false, false, 0)
+	var leg1 []byte
+	for _, e := range dropEffs {
+		if ar, ok := e.(CoordTerminalAttachRelay); ok {
+			leg1 = ar.LegID
+		}
+	}
+	if !isHex32(leg1) || ct.relayAttachGen != 2 {
+		t.Fatalf("N7/N5: expected 32-char hex leg and relayAttachGen=2, got leg=%q gen=%d", string(leg1), ct.relayAttachGen)
+	}
+
+	// Report dial failure for leg1 -> Core schedules retry at now+25+1000.
+	_ = coord.TerminalDirectLeg(now+25, streamID, leg1, false, false, 0)
+	_, _, sessAt, sessOK, _, _ := coord.NextTimers(now + 25)
+	if !sessOK || sessAt > now+1025 {
+		t.Fatalf("N5: expected retry timer <= %d, got ok=%v at=%d", now+1025, sessOK, sessAt)
+	}
+	retryEffs := coord.OnSessionTimer(now + 1025)
+	var leg2 []byte
+	for _, e := range retryEffs {
+		if ar, ok := e.(CoordTerminalAttachRelay); ok {
+			leg2 = ar.LegID
+		}
+	}
+	if !isHex32(leg2) || bytes.Equal(leg1, leg2) || ct.relayAttachGen != 3 {
+		t.Fatalf("N5/N7: expected retry with new 32-char hex leg and relayAttachGen=3, got leg2=%q gen=%d", string(leg2), ct.relayAttachGen)
+	}
+
+	// N9: trigger InputStatus query, then send empty and mismatched QueryID -> must be ignored!
+	_ = coord.TerminalDirectLeg(now+1030, streamID, nil, true, false, readPC)
+	coord.attachDirectTerminalsForMachine(now+1040, daemon.id)
+	if !ct.queryInFlight || len(ct.queryID) != 16 {
+		t.Fatalf("expected queryInFlight with 16B QueryID")
+	}
+	for _, badQID := range [][]byte{nil, bytes.Repeat([]byte{0xee}, 16)} {
+		badRep := linkcore.EncodeInputStatusReply(linkcore.InputStatusReplyMsg{
+			Stream:    streamID,
+			QueryID:   badQID,
+			Available: false,
+			Complete:  true,
+		})
+		_, _ = coord.decodeControl(now+1045, r, linkcore.HandleControl{
+			Frame: peerwire.Opened{
+				Context: peerwire.Context{Class: 2, Seq: 20},
+				Type:    linkcore.ControlInputStatusReply,
+				Payload: badRep,
+				Hash:    bytes.Repeat([]byte{0xcc}, 32),
+			},
+		})
+		if !ct.queryInFlight || ct.needsConfirm {
+			t.Fatalf("N9: InputStatusReply with bad QueryID %x must be ignored", badQID)
+		}
+	}
+
+	// N8: daemon sends ControlClosePath(Reason=2) -> immediate TermStateClosed(replay_overflow).
+	cpBody := linkcore.EncodeClosePath(linkcore.ClosePathMsg{
+		Stream:         streamID,
+		LegID:          "d:0123456789abcd",
+		PathGeneration: 2,
+		Reason:         2,
+	})
+	_, _ = coord.decodeControl(now+1050, r, linkcore.HandleControl{
+		Frame: peerwire.Opened{
+			Context: peerwire.Context{Class: 2, Seq: 21},
+			Type:    linkcore.ControlClosePath,
+			Payload: cpBody,
+			Hash:    bytes.Repeat([]byte{0xdd}, 32),
+		},
+	})
+	closeEffs := coord.take()
+	var sawOverflow bool
+	for _, e := range closeEffs {
+		if st, ok := e.(CoordTerminalState); ok && st.State == TermStateClosed && st.Reason == "replay_overflow" {
+			sawOverflow = true
+		}
+	}
+	if !sawOverflow || coord.termStreams[streamID] != nil {
+		t.Fatalf("N8: expected TermStateClosed(replay_overflow) and stream deletion, got %+v", closeEffs)
+	}
+}

@@ -59,9 +59,10 @@ async function mount() {
   const remote = track(DemoRemote.create(new URLSearchParams())); remote.start();
   let frame!: Parameters<Remote["openTerminal"]>[1];
   let end!: Parameters<Remote["openTerminal"]>[2];
-  const close = vi.fn(), send = vi.fn();
-  const open = vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive, onClose) => {
-    frame = receive; end = onClose; return { close, send } as never;
+  let onStateChange: Parameters<Remote["openTerminal"]>[4];
+  const close = vi.fn(), send = vi.fn(), confirmRebuild = vi.fn();
+  const open = vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive, onClose, _sig, onState) => {
+    frame = receive; end = onClose; onStateChange = onState; return { close, send, confirmRebuild } as never;
   });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
@@ -74,7 +75,7 @@ async function mount() {
       return { target: el, contentRect: { width, height }, borderBoxSize: [{ inlineSize: width, blockSize: height }] };
     }));
   };
-  return { remote, open, close, send, get frame() { return frame; }, get end() { return end; }, hide: (value: boolean) => { hidden = value; }, resize: layout, layout };
+  return { remote, open, close, send, confirmRebuild, get frame() { return frame; }, get end() { return end; }, get onStateChange() { return onStateChange; }, hide: (value: boolean) => { hidden = value; }, resize: layout, layout };
 }
 it("keeps the healthy independent terminal through hiding and main reconnects", async () => {
   const { remote, open, close, frame, hide } = await mount();
@@ -300,4 +301,41 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
     patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false });
   });
   expect(open2).toHaveBeenCalledTimes(1);
+});
+
+it("renders Core-driven rebuild confirmation without auto-closing and dispatches confirmRebuild or close (M4)", async () => {
+  const vm = await mount();
+  expect(vm.open).toHaveBeenCalledTimes(1);
+
+  // Core enters NeedsConfirmation -> shell MUST NOT auto-close terminal; renders rebuild & close buttons.
+  await act(async () => {
+    vm.onStateChange?.({ kind: "confirm", reasonKey: "terminal.confirm_rebuild_input_body" });
+  });
+  expect(vm.close).not.toHaveBeenCalled();
+  const card = host.querySelector(".tstate");
+  expect(card).not.toBeNull();
+  const rebuildBtn = card!.querySelector<HTMLButtonElement>("button.btn.pri");
+  const closeBtn = card!.querySelector<HTMLButtonElement>("button.btn:not(.pri)");
+  expect(rebuildBtn).not.toBeNull();
+  expect(closeBtn).not.toBeNull();
+
+  // Clicking primary rebuild button dispatches confirmRebuild to Core.
+  await act(async () => { rebuildBtn!.click(); });
+  expect(vm.confirmRebuild).toHaveBeenCalledTimes(1);
+  expect(vm.close).not.toHaveBeenCalled();
+
+  // Core confirms rebuild -> shell opens a fresh terminal stream.
+  await act(async () => { vm.onStateChange?.({ kind: "rebuild" }); });
+  expect(vm.open).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    await vm.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never);
+  });
+
+  // Choosing close in confirmation card closes the terminal instead of rebuilding.
+  await act(async () => {
+    vm.onStateChange?.({ kind: "confirm", reasonKey: "terminal.confirm_rebuild_restart_body" });
+  });
+  const closeBtn2 = host.querySelector<HTMLButtonElement>(".tstate button.btn:not(.pri)")!;
+  await act(async () => { closeBtn2.click(); });
+  expect(vm.close).toHaveBeenCalledTimes(1);
 });
