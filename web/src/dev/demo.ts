@@ -32,7 +32,7 @@
 //   ?demo&notify=1#/s/s-notify              scheduled pushes' receipts: the computer's copy, the agent's own, a stopped run's
 
 import { localeStore, t, type Locale } from "../i18n";
-import { MemoryAttachmentStore } from "../attachment-store";
+import { MemoryAttachmentStore, type AttachmentStore } from "../attachment-store";
 import { bytesToHex, MemorySharedFileStore, SHARED_FILE_META_VERSION } from "../shared-file-store";
 import { seedDirect } from "./direct-demo";
 import { buildDemoUsageResponse } from "./usage-demo";
@@ -1858,6 +1858,12 @@ export class DemoRemote extends Remote {
     try {
       const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
       const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000, undefined, false) : undefined;
+      const isMachineUpload =
+        cmd.case === "beginImageUpload" ||
+        cmd.case === "putImageChunk" ||
+        cmd.case === "getImageUploadStatus" ||
+        cmd.case === "completeImageUpload" ||
+        cmd.case === "abortImageUpload";
       const result = !eff.sessionId && cmd.case === "listModels" && this.listModels !== Remote.prototype.listModels
         ? create(CommandResultSchema, { kind: { case: "listModels", value: await this.listModels(eff.machineId, cmd.value.agent, true) } })
         : !eff.sessionId && cmd.case === "getSettings" && this.settings !== Remote.prototype.settings
@@ -1866,7 +1872,9 @@ export class DemoRemote extends Remote {
             ? this.liveSnapshotResult(eff.sessionId)
             : eff.sessionId && cmd.case === "getSharedFileChunk"
               ? create(CommandResultSchema, { kind: { case: "getSharedFileChunk", value: await this.getSharedFileChunk(eff.sessionId, cmd.value.fileId, cmd.value.offset) } })
-              : eff.sessionId ? await this.command(eff.sessionId, cmd, slot) : await this.machineCommand(eff.machineId, cmd, slot);
+              : isMachineUpload || !eff.sessionId
+                ? await this.machineCommand(eff.machineId, cmd, slot)
+                : await this.command(eff.sessionId, cmd, slot);
       const outcome = result.outcome || "executed";
       const reason = result.reason || "completed";
       const norm = create(CommandResultSchema, {
@@ -1890,7 +1898,7 @@ export class DemoRemote extends Remote {
     }
   }
 
-  static create(q: URLSearchParams, pause = sleep): DemoRemote {
+  static create(q: URLSearchParams, pause = sleep, attachmentStore?: AttachmentStore): DemoRemote {
     const r = new DemoRemote(
       {
         server: "https://ra.example.com",
@@ -1898,6 +1906,9 @@ export class DemoRemote extends Remote {
         accountId: ME,
       },
     );
+    if (attachmentStore) {
+      Object.defineProperty(r, "attachmentStore", { value: attachmentStore });
+    }
     r.opts = q;
     r.pause = pause;
     // ?lang=en shows the English copy, for looking at layouts.
@@ -3271,7 +3282,6 @@ export class DemoRemote extends Remote {
     switch (cmd.case) {
       case "beginImageUpload": {
         const req = cmd.value;
-        if (req.fileName?.includes("fail")) throw new CommandError("unavailable", "连接超时");
         const up = {
           fileName: req.fileName ?? "",
           totalBytes: req.totalBytes,

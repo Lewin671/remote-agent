@@ -54,7 +54,7 @@ export function FileChip({
     state === AttachmentItemState.UPLOADING ||
     state === AttachmentItemState.WAITING_RECONNECT;
   const failed = state === AttachmentItemState.FAILED;
-  const status = statusText ?? "";
+  const status = statusText || (failed ? i18n.t("attachment.upload_failed") : "");
   const meta = size && status ? `${size} · ${status}` : size || status;
   return (
     <span className={"file-chip" + (failed ? " failed" : "")} title={error || status || label}>

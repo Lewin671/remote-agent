@@ -736,6 +736,15 @@ export function SessionScreenView({
     }),
     [openSharedFile],
   );
+  const outboxAttachments = useMemo(() => {
+    const map = new Map<string, readonly OutboxAttachmentSummary[]>();
+    for (const it of composer?.pendingTray?.orderedItems ?? []) {
+      if (it.requestId && it.localAttachments.length > 0) {
+        map.set(it.requestId, it.localAttachments);
+      }
+    }
+    return map;
+  }, [composer?.pendingTray?.orderedItems]);
 
   const missing = !!header?.missing;
   if (missing) {
@@ -954,15 +963,6 @@ export function SessionScreenView({
   const forkUi = actions?.forkAction;
   const activeDraft = draftView ?? composer?.draft;
   const resolvedTrayView = trayView ?? (activeDraft ? <TrayView draft={activeDraft} attachments={attachments} /> : undefined);
-  const outboxAttachments = useMemo(() => {
-    const map = new Map<string, readonly OutboxAttachmentSummary[]>();
-    for (const it of composer?.pendingTray?.orderedItems ?? []) {
-      if (it.requestId && it.localAttachments.length > 0) {
-        map.set(it.requestId, it.localAttachments);
-      }
-    }
-    return map;
-  }, [composer?.pendingTray?.orderedItems]);
 
   const chatCol = (
     <div className="ccol" ref={setColRef}>

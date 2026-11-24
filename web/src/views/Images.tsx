@@ -543,9 +543,10 @@ export function ImageViewer({
   };
   const status = local ? "" : loadNote(load);
   const retryable = load.kind === "error";
+  const canDraftRetry = !!local?.canRetry && (!local.problem || local.problem.retryable);
   const draftActions = local && draftViewer && (
     <>
-      {local.canRetry && onDraftRetry && (
+      {canDraftRetry && onDraftRetry && (
         <button type="button" className="glass" onClick={() => onDraftRetry(local.itemId)}>
           {t("common.retry")}
         </button>
