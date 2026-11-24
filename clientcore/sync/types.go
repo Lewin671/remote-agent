@@ -421,6 +421,7 @@ type Engine struct {
 
 	buffers             map[string]*EventBuffer
 	sessionReplacements map[string][]*v1.MachineReplacementProof
+	machineReplacements map[string]string
 	watchedSessions     map[string]bool
 	pinnedSessions      map[string]bool
 	livePollInFlight    map[string]string // session_id -> active request_id
@@ -482,6 +483,7 @@ func NewEngine() *Engine {
 		secOps:              make(map[uint64]*pendingSecOp),
 		buffers:             make(map[string]*EventBuffer),
 		sessionReplacements: make(map[string][]*v1.MachineReplacementProof),
+		machineReplacements: make(map[string]string),
 		watchedSessions:     make(map[string]bool),
 		pinnedSessions:      make(map[string]bool),
 		livePollInFlight:    make(map[string]string),

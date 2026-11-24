@@ -1588,6 +1588,20 @@ func (e *Engine) emitSecurityOpErr(opID uint64, err error) {
 	})
 }
 
+// VerifiedMachineReplacementOrigins verifies authority-signed replacement proofs
+// for target against the currently verified membership chain and returns the set
+// of replaced ancestor machine IDs.
+func (e *Engine) VerifiedMachineReplacementOrigins(target string, proofs []*v1.MachineReplacementProof) map[string]bool {
+	if !e.loaded || target == "" || len(proofs) == 0 {
+		return nil
+	}
+	origins, err := MachineReplacementOrigins(e.pin.Account, target, e.states, proofs)
+	if err != nil || len(origins) == 0 {
+		return nil
+	}
+	return origins
+}
+
 // HandleSecurityOp executes stateful shell bridge operations (for remaining S6/file/terminal callers).
 func (e *Engine) HandleSecurityOp(nowMs int64, req *corev1.SecurityOpRequestEvent, replacements ...*v1.MachineReplacementProof) []*corev1.Effect {
 	e.touchNow(nowMs)

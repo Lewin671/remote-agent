@@ -252,8 +252,45 @@ func (e *Engine) syncSecurityStateFromEngine(ctx *StepContext, pushToTransport b
 			e.emitCoordEffects(ctx, c.OnSecurityRejected(e.nowMs))
 		}
 	}
+	e.recomputeMachineReplacements()
 	e.updateLivePollers(ctx)
 	ctx.Dirty.MarkAll()
+}
+
+func (e *Engine) recomputeMachineReplacements() {
+	if e.secEngine == nil {
+		return
+	}
+	next := make(map[string]string)
+	for sid, sess := range e.sessions {
+		if sess == nil || sess.MachineID == "" {
+			continue
+		}
+		repls := e.sessionReplacements[sid]
+		if len(repls) == 0 && sess.Info != nil {
+			repls = sess.Info.MachineReplacements
+		}
+		if len(repls) == 0 {
+			continue
+		}
+		origins := e.secEngine.VerifiedMachineReplacementOrigins(sess.MachineID, repls)
+		for oldID := range origins {
+			if oldID == "" || oldID == sess.MachineID {
+				continue
+			}
+			cur, exists := next[oldID]
+			if !exists {
+				next[oldID] = sess.MachineID
+				continue
+			}
+			_, curActive := e.machines[cur]
+			_, candActive := e.machines[sess.MachineID]
+			if !curActive && candActive {
+				next[oldID] = sess.MachineID
+			}
+		}
+	}
+	e.machineReplacements = next
 }
 
 func (e *Engine) handleSecurityConfig(ctx *StepContext, ev *corev1.SecurityConfigEvent) {
@@ -817,6 +854,16 @@ func (e *Engine) finishDirectoryBatch(stepCtx *StepContext, op *pendingSecOp, re
 						e.sessionReplacements = make(map[string][]*v1.MachineReplacementProof)
 					}
 					e.sessionReplacements[rs.SessionId] = append([]*v1.MachineReplacementProof(nil), meta.MachineReplacements...)
+					if e.secEngine != nil && rs.MachineId != "" {
+						for oldID := range e.secEngine.VerifiedMachineReplacementOrigins(rs.MachineId, meta.MachineReplacements) {
+							if oldID != "" && oldID != rs.MachineId {
+								if e.machineReplacements == nil {
+									e.machineReplacements = make(map[string]string)
+								}
+								e.machineReplacements[oldID] = rs.MachineId
+							}
+						}
+					}
 				}
 				ds.Checkpoint, ds.CheckpointInvalid = validateSessionCheckpoint(rs.SessionId, meta)
 			}

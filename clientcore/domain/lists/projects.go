@@ -67,12 +67,13 @@ type ProjectsViewResult struct {
 
 // PrefsSetSettingsOp updates per-project new-session configuration.
 type PrefsSetSettingsOp struct {
-	Path         string
-	MachineID    string
-	Moved        bool
-	Agent        *v1.Agent
-	Sets         []*v1.AgentSettings
-	KeepExisting bool
+	Path          string
+	MachineID     string
+	Moved         bool
+	UpdateMachine bool
+	Agent         *v1.Agent
+	Sets          []*v1.AgentSettings
+	KeepExisting  bool
 }
 
 // FullPrefsOp represents a typed mutation to ProjectPrefs.
@@ -246,7 +247,8 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 			if _, ok := sums[st.Path]; ok {
 				continue
 			}
-			if _, ok := machinesByID[st.MachineId]; !ok {
+			effectiveMachineID := ResolveMachineReplacement(w, st.MachineId)
+			if _, ok := machinesByID[effectiveMachineID]; !ok {
 				continue
 			}
 			addKey(st.Path)
@@ -314,7 +316,7 @@ func aggregateProjects(w *World) ([]*projectAgg, map[string]*Machine) {
 			}
 		}
 		if own != nil {
-			machineIDs = appendUniqueStr(machineIDs, seenMachines, own.MachineId)
+			machineIDs = appendUniqueStr(machineIDs, seenMachines, ResolveMachineReplacement(w, own.MachineId))
 			if own.UpdatedMs > updatedMs {
 				updatedMs = own.UpdatedMs
 			}
@@ -614,6 +616,8 @@ func ApplySettings(stored *v1.ProjectSettings, op *PrefsSetSettingsOp, nowMs int
 		for _, a := range SettingsAgents {
 			sets[a] = &v1.AgentSettings{Agent: a}
 		}
+	} else if op.UpdateMachine && op.MachineID != "" {
+		b.MachineId = op.MachineID
 	}
 	if op.Agent != nil {
 		b.Agent = *op.Agent

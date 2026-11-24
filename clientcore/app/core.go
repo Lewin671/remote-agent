@@ -368,7 +368,30 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 					cfg.Cwd = meta.projectKey
 				}
 				saved := lists.SavedSettings(c.m.state.World.Prefs, cfg.Cwd)
-				if op := lists.PlanStartSettings(cfg, &cfg, saved); op != nil {
+				op := lists.PlanStartSettings(cfg, &cfg, saved)
+				if saved != nil && saved.MachineId != "" && saved.MachineId != cfg.MachineID {
+					savedMac := c.m.findMachine(saved.MachineId)
+					if savedMac == nil || savedMac.Archived {
+						if op == nil {
+							agent := lists.EffectiveAgent(cfg.Agent)
+							op = &lists.FullPrefsOp{
+								Kind: lists.PrefsOpSetSettings,
+								Path: cfg.Cwd,
+								SetSettings: &lists.PrefsSetSettingsOp{
+									Path:          cfg.Cwd,
+									MachineID:     cfg.MachineID,
+									UpdateMachine: true,
+									Agent:         &agent,
+									KeepExisting:  true,
+								},
+							}
+						} else if op.SetSettings != nil {
+							op.SetSettings.MachineID = cfg.MachineID
+							op.SetSettings.UpdateMachine = true
+						}
+					}
+				}
+				if op != nil {
 					c.m.sync.EnqueuePrefsOp(saveCtx, op, true, meta.projectKey)
 				}
 				saveRes := c.m.sync.EndStep(savePrev, saveCtx)
