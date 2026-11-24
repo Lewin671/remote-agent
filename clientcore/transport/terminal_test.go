@@ -109,8 +109,8 @@ func TestCoordinatorPhase3TerminalContinuityAndFailover(t *testing.T) {
 			t.Fatal("relay drop while direct leg is live must not close stream")
 		}
 	}
-	if attachEff == nil || len(attachEff.LegID) != 16 {
-		t.Fatalf("expected 16-byte CoordTerminalAttachRelay leg, got %+v", attachEff)
+	if attachEff == nil || len(attachEff.LegID) != 32 {
+		t.Fatalf("expected 32-char hex CoordTerminalAttachRelay leg (N7), got %+v", attachEff)
 	}
 
 	// StreamFailed (Control 7) triggers non-bypassable fail-stop with NeedsConfirmation=true.
@@ -433,7 +433,7 @@ func TestCoordinatorFullDisconnectRecoveryViaInputStatus(t *testing.T) {
 				resent = true
 			}
 		case CoordTerminalAttachRelay:
-			if v.StreamID == streamID && len(v.LegID) == 16 {
+			if v.StreamID == streamID && len(v.LegID) == 32 {
 				attachedRelay = true
 			}
 		case CoordTerminalState:

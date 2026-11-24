@@ -541,26 +541,30 @@ func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) [
 	return c.take()
 }
 
-// makeRelayAttachLegID builds a pure 16-char lowercase hex leg ID for /v1/term
-// relay recovery so the relay server sees zero distinguishing prefix metadata (L2).
-func makeRelayAttachLegID(rand8 [8]byte) []byte {
+// makeRelayAttachLegID generates 16 raw random bytes for AttachPath.leg_id
+// (exact 16-byte wire schema) and its 32-char lowercase hex encoding for /v1/term
+// TermHello.StreamId, matching ordinary streams' 32-char hex length identically (N7).
+func makeRelayAttachLegID(rand16 [16]byte) (wireLeg16 string, streamID32 []byte) {
+	if rand16[0] == 'd' && rand16[1] == ':' {
+		rand16[0] ^= 0xff
+	}
 	const hexDigits = "0123456789abcdef"
-	out := make([]byte, 16)
-	for i, b := range rand8 {
+	out := make([]byte, 32)
+	for i, b := range rand16 {
 		out[i*2] = hexDigits[b>>4]
 		out[i*2+1] = hexDigits[b&0x0f]
 	}
-	return out
+	return string(rand16[:]), out
 }
 
 func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientTermStream) {
-	var rawRand [8]byte
+	var rawRand [16]byte
 	if _, err := c.randPool.Read(rawRand[:]); err != nil {
 		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 		return
 	}
 	c.maybeLowWater()
-	newLeg := makeRelayAttachLegID(rawRand)
+	wireLeg16, streamID32 := makeRelayAttachLegID(rawRand)
 	// N5: strictly advance relayAttachGen on every recovery attempt so retries are never rejected as stale.
 	if ct.relayAttachGen < ct.relayGen {
 		ct.relayAttachGen = ct.relayGen
@@ -568,13 +572,13 @@ func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientT
 	ct.relayAttachGen++
 	nextGen := ct.relayAttachGen
 	ct.relayRecoveryInFlight = true
-	ct.relayRecoveryLeg = string(newLeg)
+	ct.relayRecoveryLeg = string(streamID32)
 	ct.relayRetryAt = 0
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
 		Session:        ct.sessionID,
 		Sender:         c.snap.SelfID,
-		LegID:          string(newLeg),
+		LegID:          wireLeg16,
 		PathGeneration: nextGen,
 		State: linkcore.TermFlowState{
 			ToDaemon: ct.stream.CurrentInputWatermark(),
@@ -585,7 +589,7 @@ func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientT
 	c.emit(CoordTerminalAttachRelay{
 		StreamID:  ct.streamID,
 		MachineID: ct.machineID,
-		LegID:     newLeg,
+		LegID:     streamID32,
 	})
 }
 

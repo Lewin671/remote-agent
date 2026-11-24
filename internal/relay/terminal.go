@@ -1066,9 +1066,10 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			lt.mu.Unlock()
 			return receipt()
 		}
-		// Relay leg recovery via AttachPath (pure random 16-hex leg_id — zero relay-visible prefix, L2):
-		// enforce monotonic PathGeneration and per-stream concurrency cap=1 (M7), and replay missed outputs (M4).
-		legID := msg.LegID
+		// Relay leg recovery via AttachPath (N7): 16 raw random bytes in AttachPath.leg_id
+		// map to a 32-char lowercase hex /v1/term StreamId matching ordinary streams in length
+		// and alphabet, with monotonic PathGeneration and per-stream concurrency cap=1 (M7).
+		relayStreamID := hex.EncodeToString([]byte(msg.LegID))
 		reqGen := msg.PathGeneration
 		clientRendered := msg.State.ToClient.Processed
 		lt.mu.Lock()
@@ -1094,7 +1095,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			}()
 			dialCtx, dialCancel := context.WithTimeout(lt.ctx, 20*time.Second)
 			defer dialCancel()
-			newPath, err := c.link.Router.OpenStream(dialCtx, transport.StreamRoute{ID: legID})
+			newPath, err := c.link.Router.OpenStream(dialCtx, transport.StreamRoute{ID: relayStreamID})
 			if err != nil {
 				return
 			}
@@ -1113,10 +1114,10 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			oldPath := lt.relayPath
 			lt.relayGen = reqGen
 			lt.relayPath = newPath
-			lt.relayLegID = legID
+			lt.relayLegID = relayStreamID
 			legCtx, legCancel := context.WithCancel(lt.ctx)
 			lt.relayCancel = legCancel
-			_ = lt.stream.AttachLeg("relay", legID, hub.instance, reqGen)
+			_ = lt.stream.AttachLeg("relay", relayStreamID, hub.instance, reqGen)
 			lt.noteLegStateLocked(hub.now())
 			var replayFrames []linkcore.TermFrame
 			if clientRendered < lt.outSeq {
@@ -1319,7 +1320,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			}
 			return receipt()
 		}
-		if lt.relayLegID == msg.LegID {
+		if lt.relayLegID == msg.LegID || lt.relayLegID == hex.EncodeToString([]byte(msg.LegID)) {
 			rc := lt.relayCancel
 			rp := lt.relayPath
 			lt.relayPath = nil

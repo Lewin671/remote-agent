@@ -2,6 +2,7 @@ package relay_test
 
 import (
 	"bytes"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -435,17 +436,17 @@ func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 	}
 	h.waitInputs([]byte("valid-baseM8-OK"))
 
-	// M7: Send AttachPath gen=3 (pure 16-hex leg, L2) then stale AttachPath gen=2;
+	// M7 + N7: Send AttachPath gen=3 (16 raw bytes -> 32-char hex /v1/term StreamId) then stale AttachPath gen=2;
 	// stale gen=2 must be rejected and gen=3 must remain active.
-	leg3 := "3333333333333333"
-	leg2 := "2222222222222222"
-	ws3 := h.dialTermWS(leg3)
+	leg3Raw := bytes.Repeat([]byte{0x33}, 16)
+	leg2Raw := bytes.Repeat([]byte{0x22}, 16)
+	ws3 := h.dialTermWS(fmt.Sprintf("%x", leg3Raw))
 	defer ws3.CloseNow()
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         streamID,
 		Session:        h.session,
 		Sender:         h.e.authority.Member.ID,
-		LegID:          leg3,
+		LegID:          string(leg3Raw),
 		PathGeneration: 3,
 	})) {
 		t.Fatal("AttachPath gen=3 failed")
@@ -455,7 +456,7 @@ func TestPhase3TerminalAttachPathOutOfOrderAndBudgetDedupM8(t *testing.T) {
 		Stream:         streamID,
 		Session:        h.session,
 		Sender:         h.e.authority.Member.ID,
-		LegID:          leg2,
+		LegID:          string(leg2Raw),
 		PathGeneration: 2,
 	})) {
 		t.Fatal("AttachPath gen=2 send failed")

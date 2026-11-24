@@ -573,15 +573,16 @@ func TestPhase3PionTerminalDirectHotStandbyAndFailover(t *testing.T) {
 	}
 	h.waitInputs([]byte("echo hi\nHELLO-WORLD-DIRECT"))
 
-	// Re-attach replacement relay leg via Control 2 (pure 16-hex leg_id, zero relay prefix) without calling OpenTerminal!
-	newRelayLeg := "0011223344556677"
-	newTermWS := h.dialTermWS(newRelayLeg)
+	// Re-attach replacement relay leg via Control 2 (N7: 16 raw bytes -> 32-char hex /v1/term StreamId) without calling OpenTerminal!
+	newRelayRaw := []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff}
+	newRelayStreamID := hex.EncodeToString(newRelayRaw)
+	newTermWS := h.dialTermWS(newRelayStreamID)
 	defer newTermWS.CloseNow()
 	if !h.link.SendControl(linkcore.ControlAttachPath, linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         streamID,
 		Session:        h.session,
 		Sender:         h.e.authority.Member.ID,
-		LegID:          newRelayLeg,
+		LegID:          string(newRelayRaw),
 		PathGeneration: 2,
 	})) {
 		t.Fatal("failed to queue relay AttachPath")
