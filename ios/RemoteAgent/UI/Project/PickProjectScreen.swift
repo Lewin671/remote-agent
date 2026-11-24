@@ -19,7 +19,6 @@ struct CoreProjectPickList: View {
 
 /// 新会话 · 选项目 as a sheet from Home; 新项目… turns it into 新项目 · 选目录.
 struct PickProjectSheet: View {
-    let state: RemoteState
     @Binding var browsing: Bool
     let onClose: () -> Void
     let onPick: (NewTaskTarget) -> Void

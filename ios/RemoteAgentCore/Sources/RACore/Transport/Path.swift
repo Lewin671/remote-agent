@@ -43,7 +43,6 @@ protocol PathAttempt: Sendable {
     func prepare(prior: Bool) async throws
     func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse
     func refusal(_ error: ConnectError) -> PathRefusal?
-    func refreshAuth(prior: Bool) async throws
 }
 
 /// Paths carry routing and sealed bytes, never command bodies or keys.

@@ -17,7 +17,6 @@ struct ProjectSettingsRequest: Identifiable {
 struct CoreProjectSettingsSheet: View {
     let open: ProjectSettingsPage
     let onClose: () -> Void
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var page: ProjectSettingsPage
     @State private var allModels = false

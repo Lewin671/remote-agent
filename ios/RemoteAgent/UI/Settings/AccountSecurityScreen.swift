@@ -21,18 +21,6 @@ struct RecoveryPendingEntry: View {
     }
 }
 
-struct AccountSecurityGroup: View {
-    var summary: String? = nil
-    @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
-    var body: some View {
-        let sec = context.core.settings.security
-        GroupLabel(L10n.securityAccountSecurity())
-        RecoveryPendingEntry()
-        GroupCard { GRow(L10n.securityAccountSecurity(), value: summary ?? (sec.isManager ? L10n.securityThisDeviceManagesTheAccount() : sec.authorityName), chevron: true) { nav.open(.accountSecurity) } }
-    }
-}
-
 struct AccountSecurityDetails: View {
     var pending: Bool
     var onPending: () -> Void

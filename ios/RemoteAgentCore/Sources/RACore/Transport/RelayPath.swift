@@ -8,7 +8,6 @@ final class RelayPath: Path {
     private let sleep: Sleeper
     private let prepareToken: @Sendable (Bool) async throws -> Void
     private let readToken: @Sendable () async throws -> String
-    private let renewToken: @Sendable (Bool) async throws -> Void
     private struct Observation: Sendable {
         var peers: [String: PeerState] = [:]
         var fallback = PeerState()
@@ -17,11 +16,10 @@ final class RelayPath: Path {
 
     init(api: Api, sleep: @escaping Sleeper,
          prepare: @escaping @Sendable (Bool) async throws -> Void = { _ in },
-         token: @escaping @Sendable () async throws -> String = { "" },
-         renew: @escaping @Sendable (Bool) async throws -> Void = { _ in }) {
+         token: @escaping @Sendable () async throws -> String = { "" }) {
         self.api = api
         self.sleep = sleep
-        prepareToken = prepare; readToken = token; renewToken = renew
+        prepareToken = prepare; readToken = token
     }
     func observe(_ peers: [String: PeerState], fallback: PeerState) { observation.set(Observation(peers: peers, fallback: fallback)) }
     func status(_ machineId: String) -> PeerState {
@@ -71,7 +69,6 @@ final class RelayPath: Path {
             let proof = (error.unpackedDetails() as [PBNotForwarded]).first { $0.attemptID == attemptId && $0.relayEpoch == current && !current.isEmpty }
             return proof.map { PathRefusal(reason: $0.reason) }
         }
-        func refreshAuth(prior: Bool) async throws { try await path.renewToken(prior) }
     }
     func openStream(_ route: String, hello: Data) -> any FrameStream {
         Socket(http: api.http, url: api.socketURL(route), hello: hello, sleep: sleep)

@@ -209,11 +209,6 @@ public struct JvmKey: Hashable, Sendable, ExpressibleByStringLiteral {
     }
 }
 
-/// Kotlin's String.compareTo as a "comes before": by UTF-16 unit. Swift's <
-/// orders by Unicode scalar under canonical equivalence, which puts an emoji
-/// after U+FFxx where UTF-16 puts it before.
-func jvmLess(_ a: String, _ b: String) -> Bool { a.utf16.lexicographicallyPrecedes(b.utf16) }
-
 extension Sequence {
     /// A stable sort, as Kotlin's sortedWith is: elements that compare equal keep their order. Swift documents no such promise for sorted(by:).
     func stableSorted(by before: (Element, Element) -> Bool) -> [Element] {
@@ -388,8 +383,6 @@ struct LocalDay: Equatable {
     /// 9:05: the hour as it is, the minute in two digits.
     var hhmm: String { "\(hour):\(pad2(minute))" }
 }
-
-var weekdayNames: [String] { [L10n.timeWeekday(day: "mon"), L10n.timeWeekday(day: "tue"), L10n.timeWeekday(day: "wed"), L10n.timeWeekday(day: "thu"), L10n.timeWeekday(day: "fri"), L10n.timeWeekday(day: "sat"), L10n.timeWeekday(day: "sun")] }
 
 /// Kotlin's Double.toInt(): toward zero, the ends of Int32 for what lies past them, 0 for NaN. Swift's Int(_:) traps on those.
 func jvmInt(_ d: Double) -> Int {

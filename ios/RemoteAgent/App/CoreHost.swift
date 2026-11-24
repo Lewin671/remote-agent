@@ -380,7 +380,6 @@ actor CoreHost: SyncEngine {
     private var securityOpWaiters: [UInt64: CheckedContinuation<PBSecurityOpResultEffect, Never>] = [:]
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
     private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
-    private var syncStateRenderNeeded = false
     private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
     #if DEBUG
     enum DemoCommandAction: Sendable {
@@ -491,9 +490,6 @@ actor CoreHost: SyncEngine {
         guard !hooksInstalled else { return }
         hooksInstalled = true
         await executor.installCoreHooks(Remote.CoreHooks(
-            onFetchSession: { [weak self] sid in
-                await self?.dispatch { $0.sessionRetryLoad.sessionID = sid }
-            },
             onRefresh: { [weak self] in
                 await self?.reconnectNowAsync()
             },

@@ -541,7 +541,6 @@ final class AppModel {
                 SharedFileCenter.of(ctx.remote).forgetSession(sid)
             }
         }
-        await made.remote.onSessionRemoved(cleanup)
         await ctx.coreHost.setSessionRemovedHandler(cleanup)
         await ctx.coreHost.setPersistClientPrefsHandler { [weak self] eff in
             self?.settings.update { $0.theme = ThemeMode.from(eff.theme) }

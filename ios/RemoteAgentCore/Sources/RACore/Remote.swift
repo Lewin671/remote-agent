@@ -24,29 +24,6 @@ public final class PreparedCommand: @unchecked Sendable {
     private let payload: Result<Data, Error>
     public func commandBytes() throws -> Data { try payload.get() }
 
-    private struct Stored: Codable {
-        let machineId, sessionId, requestId: String
-        let deadlineMs: Int64
-        let payload: Data
-    }
-
-    public func recordBytes() throws -> Data {
-        try JSONEncoder().encode(Stored(
-            machineId: machineId, sessionId: sessionId, requestId: requestId,
-            deadlineMs: deadlineMs, payload: commandBytes()))
-    }
-
-    public init(recordBytes: Data, prior: Bool) throws {
-        self.mayHaveRunFlag = OSAllocatedUnfairLock(initialState: prior)
-        let record = try JSONDecoder().decode(Stored.self, from: recordBytes)
-        machineId = record.machineId
-        sessionId = record.sessionId
-        requestId = record.requestId
-        deadlineMs = record.deadlineMs
-        payload = .success(record.payload)
-        command = try PBCommand(serializedBytes: record.payload)
-    }
-
     private let mayHaveRunFlag: OSAllocatedUnfairLock<Bool>
     public var mayHaveRun: Bool { mayHaveRunFlag.withLock { $0 } }
     func markMayHaveRun() { mayHaveRunFlag.withLock { $0 = true } }
@@ -218,7 +195,6 @@ public final actor Remote {
     // Token / Auth executor state
     var token = ""
     var tokenExpires: Int64 = 0
-    private var onLogin: (@Sendable (SavedLogin?) -> Void)?
     private var loginGeneration = 0
     private var loginFlight: LoginFlight?
     private var signingIn = false
@@ -251,12 +227,10 @@ public final actor Remote {
 
     // Transitional Step 4 dumb state feed (populated strictly by CoreHost from SyncStateView)
     public nonisolated let state: Feed<RemoteState>
-    var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
 
     // Hooks installed by CoreHost so Core receives executor events and drives direct transport.
     var hostHooks: CoreHooks?
     public struct CoreHooks: Sendable {
-        public var onFetchSession: @Sendable (String) async -> Void
         public var onRefresh: @Sendable () async -> Void
         public var onRefreshDevices: @Sendable () async -> Void
         public var onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)?
@@ -265,7 +239,6 @@ public final actor Remote {
         public var onBeginDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect
         public var onFinishDirectBulkTransfer: @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void
         public init(
-            onFetchSession: @escaping @Sendable (String) async -> Void,
             onRefresh: @escaping @Sendable () async -> Void,
             onRefreshDevices: @escaping @Sendable () async -> Void,
             onQuerySyncState: (@Sendable () async -> PBCoreSyncStateView?)? = nil,
@@ -274,7 +247,6 @@ public final actor Remote {
             onBeginDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferBeginEvent) async -> PBCoreDirectBulkRouteEffect = { _ in PBCoreDirectBulkRouteEffect() },
             onFinishDirectBulkTransfer: @escaping @Sendable (PBCoreDirectBulkTransferDoneEvent) async -> Void = { _ in }
         ) {
-            self.onFetchSession = onFetchSession
             self.onRefresh = onRefresh
             self.onRefreshDevices = onRefreshDevices
             self.onQuerySyncState = onQuerySyncState
@@ -391,17 +363,12 @@ public final actor Remote {
             token: { [holder] in
                 guard let remote = holder.remote else { throw SecurityFailure.storage }
                 return await remote.relayToken()
-            },
-            renew: { [holder] prior in
-                guard let remote = holder.remote else { throw SecurityFailure.storage }
-                try await remote.renewRelayAttempt(prior)
             }
         ))
         holder.remote = self
     }
 
     public nonisolated var current: RemoteState { state.value }
-    public nonisolated func peer(_ machineId: String?) -> PeerState { state.value.peer(machineId) }
 
     // MARK: - Wiring with CoreHost
 
@@ -453,23 +420,11 @@ public final actor Remote {
 
     // MARK: - Login & Token Executor
 
-    public func keepLogin(_ saved: SavedLogin?, save: @escaping @Sendable (SavedLogin?) -> Void) {
-        self.onLogin = save
-        if let saved, token.isEmpty {
-            token = saved.token
-            tokenExpires = saved.expiresMs
-        }
-    }
-
     func prepareRelayAttempt(_ prior: Bool) async throws {
         if token.isEmpty { _ = try await relogin(prior) }
     }
 
     private func relayToken() -> String { token }
-
-    func renewRelayAttempt(_ prior: Bool) async throws {
-        _ = try await relogin(prior)
-    }
 
     public func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent {
         var ev = PBCoreTokenResultEvent()
@@ -593,7 +548,6 @@ public final actor Remote {
             tokenExpires = res.expiresMs
             let saved = SavedLogin(token: res.token, expiresMs: res.expiresMs)
             securityStore.saveLoginToken(saved, server: account.server, deviceId: account.deviceId)
-            onLogin?(saved)
         }
         return res.token
     }
@@ -606,7 +560,6 @@ public final actor Remote {
         token = ""
         tokenExpires = 0
         securityStore.clearLoginToken(server: account.server, deviceId: account.deviceId)
-        if !closed { onLogin?(nil) }
     }
 
     // MARK: - Stream Executor (OpenStreamEffect / CloseStreamEffect)
@@ -828,10 +781,6 @@ public final actor Remote {
 
     // MARK: - Transitional Step 3-4 Forwarding to Core
 
-    public func onSessionRemoved(_ action: @escaping @Sendable (String) async -> Void) {
-        sessionRemovalHandler = action
-    }
-
     @discardableResult
     public func refresh() async -> Bool {
         if let hooks = hostHooks {
@@ -843,14 +792,6 @@ public final actor Remote {
 
     public func refreshDevices() async {
         await hostHooks?.onRefreshDevices()
-    }
-
-    public func fetchSession(_ id: String) async throws -> Bool {
-        if state.value.sessions[id] != nil { return true }
-        if let hooks = hostHooks {
-            await hooks.onFetchSession(id)
-        }
-        return state.value.sessions[id] != nil
     }
 
     // MARK: - Demo / Layout Fixtures

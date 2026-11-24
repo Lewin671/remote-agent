@@ -57,7 +57,6 @@ final class Link: Sendable {
         }
         func prepare(prior: Bool) async throws { try await attempt.prepare(prior: prior) }
         func send(machineId: String, command: PBEnvelope) async throws -> PBForwardResponse { try await attempt.send(machineId: machineId, command: command) }
-        func refreshAuth(prior: Bool) async throws { try await attempt.refreshAuth(prior: prior) }
         func refusal(_ error: ConnectError) -> PathRefusal? { attempt.refusal(error) }
     }
 

@@ -222,14 +222,6 @@ extension Remote {
         try await withSecurity { try await $0.checkExitAdvice() }
     }
 
-    public func clearSecurity() async throws {
-        try await withSecurity { try await $0.clearSecurity() }
-    }
-
-    public func republishRecoveryObjects(flag: Bool = false) async throws {
-        try await withSecurity { try await $0.republishRecoveryObjects(flag: flag) }
-    }
-
     public func renameDevice(_ id: String, name: String) async throws {
         guard id == account.deviceId else {
             throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())

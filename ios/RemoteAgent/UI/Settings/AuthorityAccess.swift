@@ -18,20 +18,3 @@ struct AuthorityAccess {
         return L10n.securityExitingDeletesLocalKeysYouWillNeedToPair()
     }
 }
-
-struct AddDeviceEntry: View {
-    var grouped = true
-    @Environment(AppModel.self) private var app
-    @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
-    var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
-        if access.isAuthority {
-            if grouped { GroupCard { row } } else { row.padding(.horizontal, DS.Space.l).padding(.bottom, 8) }
-        } else { GroupNote(access.addHint) }
-    }
-    private var row: some View {
-        GRow(L10n.homeAddDevice(), action: true, icon: "plus") { nav.open(.addDevice()) }
-    }
-
-}

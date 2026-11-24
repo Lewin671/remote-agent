@@ -456,7 +456,6 @@ private struct FirstLevel: View {
 
     var body: some View {
         @Bindable var nav = nav
-        let state = model.state
         let home = context.core.home
         // What waits for the user, on the 会话 tab; it stays while the server is out of reach.
         let waiting = Int(home.waitingTotal)
@@ -493,7 +492,7 @@ private struct FirstLevel: View {
             if let chosen { newTask = chosen }
             chosen = nil
         }) {
-            PickProjectSheet(state: state, browsing: $pickBrowsing, onClose: { pick = false }) { target in
+            PickProjectSheet(browsing: $pickBrowsing, onClose: { pick = false }) { target in
                 chosen = target
                 pick = false
             }
