@@ -122,12 +122,11 @@ struct SessionScreen: View {
     var body: some View {
         let vm = context.core.sessions[id]
         let header = vm?.header ?? PBSessionHeaderView()
-        let state = model.state
         Group {
             if let vm, header.found {
                 sessionBody(vm: vm, header: header)
             } else {
-                SessionAbsent(header: header, online: state.conn == .online) {
+                SessionAbsent(header: header, online: context.core.settings.online) {
                     Task {
                         await context.coreHost.retryLoadSession(id)
                     }
@@ -160,7 +159,6 @@ struct SessionScreen: View {
     }
 
     @ViewBuilder private func sessionBody(vm: PBSessionViewModel, header: PBSessionHeaderView) -> some View {
-        let state = model.state
         let actions = vm.actions
         let hasTerminal = header.capabilities.terminalAvailable
         let wide = width == .regular
@@ -250,7 +248,7 @@ struct SessionScreen: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                let computer = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+                let computer = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
                 let demoChip: PBSessionDirectChipView? = {
                     #if DEBUG
                     if model.isDemo && SessionDebug.shows("direct") {
@@ -323,7 +321,7 @@ struct SessionScreen: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
         .menuSheet(isPresented: $menu, groups: groups(header: header, actions: actions, live: live)) {
-            let computerText = header.hasComputerName ? header.computerName.rendered() : machineLabel(state, id: machineID)
+            let computerText = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
             let projectText = header.hasProjectName ? header.projectName.rendered() : projectName(header.projectKey)
             let parts = [header.agentName.isEmpty ? agentName(header.agent) : header.agentName, projectText]
                 + (header.multipleMachines ? [computerText] : [])

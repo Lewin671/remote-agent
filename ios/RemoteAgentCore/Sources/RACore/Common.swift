@@ -2,8 +2,6 @@
 import Foundation
 import RAProto
 
-public func machineLabel(_ state: RemoteState, id: String) -> String { machineName(state.machines[id], id: id) }
-
 /// Width over height of an image as the event says, so its place is kept before anything loads.
 public func aspect(_ ref: PBImageRef) -> Double {
     let w: Int32, h: Int32

@@ -322,7 +322,6 @@ struct ChatPane: View {
     let onLoadEarlier: () -> Void
     let onToggleGroup: @MainActor @Sendable (String) -> Void
 
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @State private var open = ChatOpen()
@@ -390,7 +389,6 @@ struct ChatPane: View {
     }
 
     var body: some View {
-        let state = model.state
         let header = vm?.header ?? PBSessionHeaderView()
         let tl = vm?.timeline ?? PBSessionTimelineView()
         let composer = vm?.composer ?? PBSessionComposerView()
@@ -400,7 +398,7 @@ struct ChatPane: View {
         let online = (header.computerOnline && !header.computerUnlinked) || header.computerReachability == .unknown
         let env = ChatEnv(
             agent: header.agent != .unspecified ? header.agent : defaultAgent,
-            frozenAt: online ? 0 : (header.offlineSinceMs > 0 ? header.offlineSinceMs : state.offlineSinceMs),
+            frozenAt: online ? 0 : header.offlineSinceMs,
             session: sessionID
         )
         let jump = context.sessionStore.scheduledJump(sessionID)
@@ -599,14 +597,14 @@ struct ChatPane: View {
         composer: PBSessionComposerView,
         actions: PBSessionActionsView
     ) -> some View {
-        let taskOwned = model.state.sessions[sessionID]?.info?.taskOwned == true
+        let taskOwned = header.taskOwned
         if header.exited {
             VStack(spacing: 0) {
                 if taskOwned { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(sessionID: sessionID, header: header, actions: actions)
             }
         } else if header.computerUnlinked && header.computerReachability != .unknown {
-            let name = header.hasComputerName ? header.computerName.rendered() : machineLabel(model.state, id: header.machineID)
+            let name = header.hasComputerName ? header.computerName.rendered() : L10n.commonUnknownComputer()
             let offlineDesc = header.hasOfflineText ? header.offlineText.rendered() : L10n.projectsComputerOffline()
             SessionEndCard(
                 L10n.newSessionMachineOffline(name: name),

@@ -10,7 +10,6 @@ struct ImageViewerScreen: View {
     let seq: UInt64
     let index: Int
 
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -44,7 +43,6 @@ struct ImageViewerScreen: View {
     }
 
     var body: some View {
-        let state = model.state
         let vm = context.core.sessions[session]
         let header = vm?.header
         let tl = vm?.timeline
@@ -76,7 +74,7 @@ struct ImageViewerScreen: View {
                     loader: loader,
                     image: img,
                     previewRef: previews[ViewerPreviewKey(seq: img.seq, index: img.eventImageIndex)],
-                    online: state.conn == .online,
+                    online: header?.connState == .connected || context.core.settings.online,
                     current: i == localPage,
                     pokes: pokes,
                     onDrag: { drag.wrappedValue = $0 },
