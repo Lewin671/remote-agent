@@ -61,6 +61,39 @@ final class CoreScreens {
     var pendingComposerRestores: [RestoredComposer] = []
     var pendingCleanup: PendingCleanup?
 
+    enum RenderSlot: Hashable, Sendable {
+        case home
+        case syncState
+        case projectDetail
+        case manageProjects
+        case dirPicker(String)
+        case newSession
+        case schedules
+        case scheduleDetail
+        case scheduleForm
+        case settings
+        case machineStatus
+        case machineSettings
+        case quota
+        case usageView
+        case devices
+        case clientDetail
+        case directDiagnostics
+        case session(String)
+        case scheduleStrip(String)
+    }
+
+    @ObservationIgnored private var appliedRenderSeq: [RenderSlot: UInt64] = [:]
+
+    /// Rejects stale snapshots that resumed after a newer CoreHost render already published.
+    func acceptRender(_ slot: RenderSlot, seq: UInt64) -> Bool {
+        if let prev = appliedRenderSeq[slot], seq < prev {
+            return false
+        }
+        appliedRenderSeq[slot] = seq
+        return true
+    }
+
     func consumeComposerRestores(_ ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
         pendingComposerRestores.removeAll { ids.contains($0.id) }
@@ -419,6 +452,13 @@ actor CoreHost: SyncEngine {
     private var ioTasks: [UUID: Task<Void, Never>] = [:]
     private var cacheChain: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
+    private var renderSeq: UInt64 = 0
+    private var lastAppliedSyncStateSeq: UInt64 = 0
+
+    private func nextRenderSeq() -> UInt64 {
+        renderSeq &+= 1
+        return renderSeq
+    }
 
     nonisolated var account: Account { executor.account }
 
@@ -862,8 +902,11 @@ actor CoreHost: SyncEngine {
 
     func closeDirectDiagnostics() async {
         activeDirectDiagnosticsID = ""
-        await MainActor.run { [screens] in
-            screens.directDiagnostics = PBDirectDiagnosticsViewModel()
+        let seq = nextRenderSeq()
+        await MainActor.run { [screens, seq] in
+            if screens.acceptRender(.directDiagnostics, seq: seq) {
+                screens.directDiagnostics = PBDirectDiagnosticsViewModel()
+            }
         }
     }
 
@@ -1442,7 +1485,12 @@ actor CoreHost: SyncEngine {
         guard !closed else { return }
         if !activeDirPickers.values.contains(key) {
             let screens = self.screens
-            await MainActor.run { _ = screens.dirPickers.removeValue(forKey: key) }
+            let seq = nextRenderSeq()
+            await MainActor.run {
+                if screens.acceptRender(.dirPicker(key), seq: seq) {
+                    _ = screens.dirPickers.removeValue(forKey: key)
+                }
+            }
         }
     }
 
@@ -1899,8 +1947,11 @@ actor CoreHost: SyncEngine {
         guard let token, let sid = scheduleStripWatches.removeValue(forKey: token) else { return }
         guard !closed else { return }
         if !scheduleStripWatches.values.contains(sid) {
-            await MainActor.run { [screens] in
-                _ = screens.scheduleStrips.removeValue(forKey: sid)
+            let seq = nextRenderSeq()
+            await MainActor.run { [screens, seq] in
+                if screens.acceptRender(.scheduleStrip(sid), seq: seq) {
+                    _ = screens.scheduleStrips.removeValue(forKey: sid)
+                }
             }
         }
     }
@@ -3276,44 +3327,47 @@ actor CoreHost: SyncEngine {
             }
         }
 
-        if let syncStateVM {
-            await executor.applyCoreSyncState(syncStateVM)
-            await maybeDescribeSelf(syncStateVM)
-        }
+        let seq = nextRenderSeq()
 
         await MainActor.run { [
-            screens, homeVM, syncStateVM, projectVM, dirPickerVMs, newSessionVM,
+            screens, seq, homeVM, syncStateVM, projectVM, dirPickerVMs, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             directDiagnosticsVM, sessionVMs, scheduleStripVMs
         ] in
-            if let homeVM { screens.home = homeVM }
-            if let syncStateVM { screens.syncState = syncStateVM }
+            if let homeVM, screens.acceptRender(.home, seq: seq) { screens.home = homeVM }
+            if let syncStateVM, screens.acceptRender(.syncState, seq: seq) { screens.syncState = syncStateVM }
             if let projectVM {
-                if projectVM.hasDetail { screens.projectDetail = projectVM.detail }
-                if projectVM.hasManage { screens.manageProjects = projectVM.manage }
+                if projectVM.hasDetail, screens.acceptRender(.projectDetail, seq: seq) { screens.projectDetail = projectVM.detail }
+                if projectVM.hasManage, screens.acceptRender(.manageProjects, seq: seq) { screens.manageProjects = projectVM.manage }
             }
-            for (pk, vm) in dirPickerVMs {
+            for (pk, vm) in dirPickerVMs where screens.acceptRender(.dirPicker(pk), seq: seq) {
                 screens.dirPickers[pk] = vm
             }
-            if let newSessionVM { screens.newSession = newSessionVM }
-            if let schedulesVM { screens.schedules = schedulesVM }
-            if let scheduleDetailVM { screens.scheduleDetail = scheduleDetailVM }
-            if let scheduleFormVM { screens.scheduleForm = scheduleFormVM }
-            if let settingsVM { screens.settings = settingsVM }
-            if let machineStatusVM { screens.machineStatus = machineStatusVM }
-            if let machineSettingsVM { screens.machineSettings = machineSettingsVM }
-            if let quotaVM { screens.quota = quotaVM }
-            if let usageVM { screens.usageView = usageVM }
-            if let devicesVM { screens.devices = devicesVM }
-            if let clientDetailVM { screens.clientDetail = clientDetailVM }
-            if let directDiagnosticsVM { screens.directDiagnostics = directDiagnosticsVM }
-            for (sid, vm) in sessionVMs {
+            if let newSessionVM, screens.acceptRender(.newSession, seq: seq) { screens.newSession = newSessionVM }
+            if let schedulesVM, screens.acceptRender(.schedules, seq: seq) { screens.schedules = schedulesVM }
+            if let scheduleDetailVM, screens.acceptRender(.scheduleDetail, seq: seq) { screens.scheduleDetail = scheduleDetailVM }
+            if let scheduleFormVM, screens.acceptRender(.scheduleForm, seq: seq) { screens.scheduleForm = scheduleFormVM }
+            if let settingsVM, screens.acceptRender(.settings, seq: seq) { screens.settings = settingsVM }
+            if let machineStatusVM, screens.acceptRender(.machineStatus, seq: seq) { screens.machineStatus = machineStatusVM }
+            if let machineSettingsVM, screens.acceptRender(.machineSettings, seq: seq) { screens.machineSettings = machineSettingsVM }
+            if let quotaVM, screens.acceptRender(.quota, seq: seq) { screens.quota = quotaVM }
+            if let usageVM, screens.acceptRender(.usageView, seq: seq) { screens.usageView = usageVM }
+            if let devicesVM, screens.acceptRender(.devices, seq: seq) { screens.devices = devicesVM }
+            if let clientDetailVM, screens.acceptRender(.clientDetail, seq: seq) { screens.clientDetail = clientDetailVM }
+            if let directDiagnosticsVM, screens.acceptRender(.directDiagnostics, seq: seq) { screens.directDiagnostics = directDiagnosticsVM }
+            for (sid, vm) in sessionVMs where screens.acceptRender(.session(sid), seq: seq) {
                 screens.sessions[sid] = vm
             }
-            for (sid, vm) in scheduleStripVMs {
+            for (sid, vm) in scheduleStripVMs where screens.acceptRender(.scheduleStrip(sid), seq: seq) {
                 screens.scheduleStrips[sid] = vm
             }
+        }
+
+        if let syncStateVM, seq >= lastAppliedSyncStateSeq {
+            lastAppliedSyncStateSeq = seq
+            await executor.applyCoreSyncState(syncStateVM)
+            await maybeDescribeSelf(syncStateVM)
         }
     }
 
@@ -3355,8 +3409,9 @@ actor CoreHost: SyncEngine {
             }
         }
         guard !updates.isEmpty else { return }
-        await MainActor.run { [screens, updates] in
-            for (sid, vm) in updates {
+        let seq = nextRenderSeq()
+        await MainActor.run { [screens, seq, updates] in
+            for (sid, vm) in updates where screens.acceptRender(.session(sid), seq: seq) {
                 screens.sessions[sid] = vm
             }
         }

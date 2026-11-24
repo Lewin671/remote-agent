@@ -164,5 +164,14 @@ import UIKit
             model.context?.core.sessions["s-view"]?.imageViewer.open == false
         }
     }
+
+    @Test func staleRenderSequenceDoesNotOverwriteNewerSessionSnapshot() {
+        let screens = CoreScreens()
+        #expect(screens.acceptRender(.session("s-view"), seq: 2))
+        #expect(!screens.acceptRender(.session("s-view"), seq: 1))
+        #expect(screens.acceptRender(.session("s-view"), seq: 3))
+        // Other slots track their own high-water marks independently.
+        #expect(screens.acceptRender(.home, seq: 1))
+    }
     #endif
 }
