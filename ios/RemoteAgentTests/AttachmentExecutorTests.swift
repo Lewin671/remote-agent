@@ -570,6 +570,37 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(loaded == png)
     }
 
+    @Test func draftTextRelayDeliversEditsAndSubmitInStrictFIFOOrder() async {
+        final class Recorder: @unchecked Sendable {
+            private let lock = NSLock()
+            var events: [String] = []
+            func append(_ s: String) { lock.withLock { events.append(s) } }
+        }
+        let recorder = Recorder()
+        let firstStarted = AsyncStream<Void>.makeStream()
+        let releaseFirst = AsyncStream<Void>.makeStream()
+        let relay = DraftTextRelay()
+
+        relay.enqueue {
+            firstStarted.continuation.yield(())
+            var it = releaseFirst.stream.makeAsyncIterator()
+            _ = await it.next()
+            recorder.append("edit-1")
+        }
+        relay.enqueue { recorder.append("edit-2") }
+        relay.enqueue { recorder.append("edit-3") }
+        relay.flushAndRun { recorder.append("submit") }
+
+        #expect(relay.pendingCount == 3)
+        _ = await nextSignal(firstStarted.stream)
+        // Even while edit-1 is suspended, edit-2/edit-3/submit must not jump ahead.
+        #expect(recorder.events.isEmpty)
+        releaseFirst.continuation.yield(())
+        await relay.flush()
+        #expect(relay.pendingCount == 0)
+        #expect(recorder.events == ["edit-1", "edit-2", "edit-3", "submit"])
+    }
+
     @Test func oversizedLibraryVideoSkipsCopyAndIsRejectedByCore() async throws {
         let store = PendingStore.ephemeral()
         let h = try await makeHarness(store: store, persist: false)

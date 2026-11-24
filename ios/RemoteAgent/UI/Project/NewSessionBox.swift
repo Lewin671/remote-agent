@@ -25,19 +25,12 @@ struct NewSessionBox: View {
     @Environment(AccountContext.self) private var context
     @Environment(\.scenePhase) private var scenePhase
     @State private var text = ""
-    @State private var inFlightTextEdits = 0
+    @State private var textRelay = DraftTextRelay()
 
     private func updateText(scope: PBDraftScope, next: String) {
         guard next != text else { return }
         text = next
-        inFlightTextEdits += 1
-        let host = context.coreHost
-        Task {
-            await host.setDraftText(scope: scope, text: next)
-            await MainActor.run {
-                inFlightTextEdits = max(0, inFlightTextEdits - 1)
-            }
-        }
+        textRelay.send(scope: scope, text: next, host: context.coreHost)
     }
 
     var body: some View {
@@ -87,7 +80,7 @@ struct NewSessionBox: View {
                 let autoModeSupported = vm.modelPanel.canSelectAutoMode
                 Haptics.confirm()
                 let host = context.coreHost
-                Task {
+                textRelay.flushAndRun {
                     await host.setDraftText(scope: scope, text: promptText)
                     await host.submitNewSession(
                         projectKey: projectKey,
@@ -108,26 +101,26 @@ struct NewSessionBox: View {
         }
         .onAppear {
             let coreText = draft.text.isEmpty ? vm.prompt : draft.text
-            if inFlightTextEdits == 0 && text != coreText {
+            if textRelay.pendingCount == 0 && text != coreText {
                 text = coreText
             }
         }
         .onChange(of: draft.textRevision) { _, _ in
-            if inFlightTextEdits == 0 && text != draft.text {
+            if textRelay.pendingCount == 0 && text != draft.text {
                 text = draft.text
             }
         }
         .onChange(of: draft.text) { _, coreText in
-            if inFlightTextEdits == 0 && text != coreText {
+            if textRelay.pendingCount == 0 && text != coreText {
                 text = coreText
             }
         }
         .onChange(of: vm.prompt) { _, serverPrompt in
-            if inFlightTextEdits == 0 && draft.text == serverPrompt && text != serverPrompt {
+            if textRelay.pendingCount == 0 && draft.text == serverPrompt && text != serverPrompt {
                 text = serverPrompt
             }
         }
-        .onChange(of: inFlightTextEdits) { _, pending in
+        .onChange(of: textRelay.pendingCount) { _, pending in
             if pending == 0 && text != draft.text {
                 text = draft.text
             }

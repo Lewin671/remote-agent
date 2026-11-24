@@ -151,7 +151,7 @@ struct SessionComposer: View {
     var onSent: () -> Void = {}
     @Environment(AccountContext.self) private var context
     @State private var text = ""
-    @State private var inFlightTextEdits = 0
+    @State private var textRelay = DraftTextRelay()
 
     private var machineID: String { header.machineID }
     private var scope: PBDraftScope { .session(sessionID) }
@@ -164,15 +164,7 @@ struct SessionComposer: View {
     private func setDraftInput(_ next: String) {
         guard next != text else { return }
         text = next
-        inFlightTextEdits += 1
-        let host = context.coreHost
-        let scope = self.scope
-        Task {
-            await host.setDraftText(scope: scope, text: next)
-            await MainActor.run {
-                inFlightTextEdits = max(0, inFlightTextEdits - 1)
-            }
-        }
+        textRelay.send(scope: scope, text: next, host: context.coreHost)
     }
 
     private func send(_ mode: PBSendMode) {
@@ -185,7 +177,7 @@ struct SessionComposer: View {
         let host = context.coreHost
         let sid = sessionID
         let scope = self.scope
-        Task {
+        textRelay.flushAndRun {
             await host.setDraftText(scope: scope, text: currentText)
             await host.sendSessionDraft(sessionID: sid, mode: mode)
         }
@@ -270,21 +262,21 @@ struct SessionComposer: View {
             }
         }
         .onAppear {
-            if inFlightTextEdits == 0 && text != draft.text {
+            if textRelay.pendingCount == 0 && text != draft.text {
                 text = draft.text
             }
         }
         .onChange(of: draft.textRevision) { _, _ in
-            if inFlightTextEdits == 0 && text != draft.text {
+            if textRelay.pendingCount == 0 && text != draft.text {
                 text = draft.text
             }
         }
         .onChange(of: draft.text) { _, coreText in
-            if inFlightTextEdits == 0 && text != coreText {
+            if textRelay.pendingCount == 0 && text != coreText {
                 text = coreText
             }
         }
-        .onChange(of: inFlightTextEdits) { _, pending in
+        .onChange(of: textRelay.pendingCount) { _, pending in
             if pending == 0 && text != draft.text {
                 text = draft.text
             }
