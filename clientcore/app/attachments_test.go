@@ -2009,3 +2009,101 @@ func TestAttachments_ResendWithMissingLocalItem_FailsCleanlyInsteadOfHanging(t *
 		t.Fatalf("expected failed tray item after missing-local resend failure")
 	}
 }
+
+func TestAttachments_StopStartAndForeground_ResumesResendAndReschedulesExpiry(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	// 1. Upload 1 image to READY (so DRAFT_EXPIRY timer is scheduled), send & fail -> start resend (in PollDelay!).
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("stop1.jpg", 4, "src-stop1", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff, "prep-stop1", "thumb-stop1", 4, attTestHash(0xb5), "img-stop1", h.nowMs+600_000)
+	sendEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSendSession{DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER}}})
+	sendCmd := findDispatchedCmds(sendEff)[0]
+	origReqID := sendCmd.cmd.GetSend().RequestId
+	h.settleCmdDaemonErr(sendCmd.dc, "failed")
+
+	// Add another READY image to draft (so draft has an active DRAFT_EXPIRY timer).
+	addEff2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("stop2.jpg", 4, "src-stop2", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff2, "prep-stop2", "thumb-stop2", 4, attTestHash(0xb6), "img-stop2", h.nowMs+600_000)
+
+	// Start resend of origReqID and drive it to CompleteImageUpload RECEIVING (PollDelay)!
+	retryEff := h.dispatch(&corev1.Event{Event: &corev1.Event_SessionRetryTrayItem{SessionRetryTrayItem: &corev1.SessionTrayItemAction{SessionId: h.sessionID, RequestId: origReqID}}})
+	rBegin := findDispatchedCmds(retryEff)[0]
+	rTID := rBegin.cmd.GetBeginImageUpload().TransferId
+	rEff := h.settleCmdOK(rBegin.dc, beginOK(rTID, 4, 4, 0)) // persisted=4 -> immediately emits CompleteImageUpload!
+	rComp := findDispatchedCmds(rEff)[0]
+	h.settleCmdOK(rComp.dc, completeStatusOK(rTID, v1.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING, "", "", 4, 0))
+
+	// STOP -> must pause resend (without abort) AND clear draft expiryTimerTargetMs!
+	stopEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP}},
+	})
+	for _, sc := range findDispatchedCmds(stopEff) {
+		if sc.cmd.GetAbortImageUpload() != nil {
+			t.Fatalf("STOP must NOT abort resend transfer")
+		}
+	}
+	if h.core.m.attachments.drafts["session:"+h.sessionID].expiryTimerTargetMs != 0 {
+		t.Fatalf("STOP must clear expiryTimerTargetMs")
+	}
+
+	// START -> reconnect stream -> Core auto-resumes resend via GetImageUploadStatus(rTID) AND reschedules DRAFT_EXPIRY!
+	startEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START}},
+	})
+	var tokOp uint64
+	for _, ef := range startEff.GetEffects() {
+		if et := ef.GetEnsureToken(); et != nil {
+			tokOp = et.OpId
+		}
+	}
+	var legID uint64
+	if tokOp != 0 {
+		tEff := h.dispatch(&corev1.Event{Event: &corev1.Event_TokenResult{TokenResult: &corev1.TokenResultEvent{OpId: tokOp, Token: "tok-2", ExpiresMs: h.nowMs + 3_600_000}}})
+		for _, ef := range tEff.GetEffects() {
+			if os := ef.GetOpenStream(); os != nil {
+				legID = os.LegId
+			}
+		}
+	}
+	for _, ef := range startEff.GetEffects() {
+		if os := ef.GetOpenStream(); os != nil {
+			legID = os.LegId
+		}
+	}
+	readyEff := h.dispatch(&corev1.Event{Event: &corev1.Event_StreamReady{StreamReady: &corev1.StreamReadyEvent{LegId: legID, ServerTimeMs: h.nowMs}}})
+	var resumedResend bool
+	for _, sc := range findDispatchedCmds(readyEff) {
+		if st := sc.cmd.GetGetImageUploadStatus(); st != nil && st.TransferId == rTID {
+			resumedResend = true
+		}
+	}
+	if !resumedResend {
+		t.Fatalf("expected Core to auto-resume STOP-paused resend transfer %s via GetImageUploadStatus after START+StreamReady", rTID)
+	}
+	if len(findTimers(readyEff, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY)) != 1 {
+		t.Fatalf("expected DRAFT_EXPIRY timer rescheduled after STOP+START")
+	}
+
+	// FOREGROUND -> forces rescheduling of DRAFT_EXPIRY timer!
+	fgEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_SyncLifecycle{SyncLifecycle: &corev1.SyncLifecycleAction{Kind: corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND}},
+	})
+	if len(findTimers(fgEff, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY)) != 1 {
+		t.Fatalf("expected DRAFT_EXPIRY timer rescheduled on FOREGROUND")
+	}
+}

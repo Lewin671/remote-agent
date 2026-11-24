@@ -159,6 +159,7 @@ type attItem struct {
 	pendingChunkOff         int64
 	pendingChunkLen         int64
 	statusProbeForComplete  bool
+	pausedByStop            bool
 
 	activeOpID  uint64
 	activeReqID string
@@ -237,6 +238,7 @@ type attNewSessionStart struct {
 
 type attManager struct {
 	configured               bool
+	syncStopped              bool
 	persistDrafts            bool
 	persistOutbox            bool
 	hasPersistedPreparedImgs bool
@@ -1125,6 +1127,7 @@ func (c *Core) handleDraftClear(ctx *sync.StepContext, act *corev1.DraftClearAct
 	d.viewerOpen = false
 	d.viewerIndex = 0
 	clear(d.reservations)
+	d.expiryTimerTargetMs = 0
 	c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
 	c.syncNewSessionPromptFromDraft(d)
 	c.syncNewSessionAttachmentCount(d)
@@ -1339,8 +1342,7 @@ func (c *Core) scheduleDraftExpiryTimer(ctx *sync.StepContext, d *attDraft) {
 	}
 	nowMs := c.m.sync.NowMs()
 	machineID := c.resolveDraftMachineID(d)
-	_, onlineReady := c.resolveAttachmentCaps(machineID, false)
-	if !onlineReady || nowMs <= 0 {
+	if !c.uploadNetworkReady(machineID) || nowMs <= 0 {
 		if d.expiryTimerTargetMs != 0 {
 			d.expiryTimerTargetMs = 0
 			c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
@@ -1983,6 +1985,8 @@ func (c *Core) onAttachmentsSyncEvent(ev *corev1.Event, effects *[]*corev1.Effec
 		switch k.SyncLifecycle.Kind {
 		case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_STOP:
 			c.pauseAllActiveUploadsOnStop(effects)
+		case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_START:
+			c.resumeStoppedUploadsOnStart(effects)
 		case corev1.SyncLifecycleKind_SYNC_LIFECYCLE_KIND_FOREGROUND:
 			c.refreshAllExpiredDraftsOnForeground(effects)
 		}

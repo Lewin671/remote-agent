@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/attachments"
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
@@ -1211,6 +1212,7 @@ func (c *Core) handleAttachmentPauseUpload(ctx *sync.StepContext, act *corev1.At
 		return nil
 	}
 	var effects []*corev1.Effect
+	it.pausedByStop = false
 	c.pauseUploadItem(ctx, attOwnerDraft, d.key, it)
 	c.pumpAttachmentQueues(ctx, &effects)
 	c.markDraftDirty(ctx, d.scope)
@@ -1234,6 +1236,9 @@ func (c *Core) pauseUploadItem(ctx *sync.StepContext, ownerKind uint8, ownerKey 
 	}
 	if it.activeOpID != 0 {
 		delete(mgr.readOpToMeta, it.activeOpID)
+		if mgr.activePrepareOpID == it.activeOpID {
+			mgr.activePrepareOpID = 0
+		}
 		it.activeOpID = 0
 	}
 	if ctx != nil {
@@ -1265,6 +1270,7 @@ func (c *Core) handleAttachmentResumeUpload(ctx *sync.StepContext, act *corev1.A
 		return nil
 	}
 	var effects []*corev1.Effect
+	it.pausedByStop = false
 	machineID := c.resolveDraftMachineID(d)
 	if it.targetMachineID != "" && machineID != "" && it.targetMachineID != machineID {
 		// Target machine changed while paused -> invalidate and start fresh on new machine.
@@ -1326,12 +1332,35 @@ func (c *Core) handleUploadReconnectTimer(ctx *sync.StepContext, timerKey string
 	return effects
 }
 
+func isItemActiveForStop(it *attItem) bool {
+	if it == nil {
+		return false
+	}
+	if it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_READY ||
+		it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED ||
+		it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PAUSED {
+		return false
+	}
+	return it.phase != attPhaseIdle ||
+		it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_UPLOADING ||
+		it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT ||
+		it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_PREPARING
+}
+
 func (c *Core) pauseAllActiveUploadsOnStop(effects *[]*corev1.Effect) {
 	if c.m.attachments == nil {
 		return
 	}
 	mgr := c.m.attachments
+	mgr.syncStopped = true
 	stepPrev, ctx := c.m.sync.BeginStep()
+
+	// Clear queued prepare/file slots; pausedByStop items will re-enqueue cleanly on START.
+	mgr.activePrepareOpID = 0
+	mgr.prepareQueue = nil
+	mgr.activeFileUpload = nil
+	mgr.fileUploadQueue = nil
+
 	keys := make([]string, 0, len(mgr.drafts))
 	for k := range mgr.drafts {
 		keys = append(keys, k)
@@ -1342,17 +1371,113 @@ func (c *Core) pauseAllActiveUploadsOnStop(effects *[]*corev1.Effect) {
 		if d == nil {
 			continue
 		}
-		c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
+		if d.expiryTimerTargetMs != 0 {
+			d.expiryTimerTargetMs = 0
+			c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY, d.key)
+		}
 		for _, it := range d.items {
-			if it != nil && (it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_UPLOADING ||
-				it.state == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT) {
+			if isItemActiveForStop(it) {
+				it.pausedByStop = true
 				c.pauseUploadItem(ctx, attOwnerDraft, d.key, it)
 				c.markDraftDirty(ctx, d.scope)
 			}
 		}
 	}
+
+	// Also pause all in-flight outbox resend jobs without aborting daemon transfers.
+	resendKeys := make([]string, 0, len(mgr.resendJobs))
+	for k := range mgr.resendJobs {
+		resendKeys = append(resendKeys, k)
+	}
+	sortutil.Strings(resendKeys)
+	for _, rk := range resendKeys {
+		job := mgr.resendJobs[rk]
+		if job == nil || job.aborted {
+			continue
+		}
+		for _, it := range job.items {
+			if isItemActiveForStop(it) {
+				it.pausedByStop = true
+				c.pauseUploadItem(ctx, attOwnerResend, rk, it)
+			}
+		}
+	}
+
 	stepRes := c.m.sync.EndStep(stepPrev, ctx)
 	*effects = append(*effects, stepRes.Effects...)
+}
+
+func (c *Core) uploadNetworkReady(machineID string) bool {
+	if c.m.state.World.Connection != lists.ConnConnected {
+		return false
+	}
+	_, onlineReady := c.resolveAttachmentCaps(machineID, false)
+	return onlineReady
+}
+
+func (c *Core) resumeStoppedUploadsOnStart(effects *[]*corev1.Effect) {
+	if c.m.attachments == nil {
+		return
+	}
+	mgr := c.m.attachments
+	mgr.syncStopped = false
+	stepPrev, ctx := c.m.sync.BeginStep()
+	var localEffects []*corev1.Effect
+
+	keys := make([]string, 0, len(mgr.drafts))
+	for k := range mgr.drafts {
+		keys = append(keys, k)
+	}
+	sortutil.Strings(keys)
+	for _, k := range keys {
+		d := mgr.drafts[k]
+		if d == nil {
+			continue
+		}
+		machineID := c.resolveDraftMachineID(d)
+		netReady := c.uploadNetworkReady(machineID)
+		resumed := false
+		for _, it := range d.items {
+			if it != nil && it.pausedByStop && netReady {
+				it.pausedByStop = false
+				it.retriedReconnect = false
+				c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
+				resumed = true
+			}
+		}
+		if resumed {
+			c.markDraftDirty(ctx, d.scope)
+		}
+		c.scheduleDraftExpiryTimer(ctx, d)
+	}
+
+	resendKeys := make([]string, 0, len(mgr.resendJobs))
+	for k := range mgr.resendJobs {
+		resendKeys = append(resendKeys, k)
+	}
+	sortutil.Strings(resendKeys)
+	for _, rk := range resendKeys {
+		job := mgr.resendJobs[rk]
+		if job == nil || job.aborted {
+			continue
+		}
+		if !c.uploadNetworkReady(job.machineID) {
+			continue
+		}
+		scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: job.sessionID}
+		for _, it := range job.items {
+			if it != nil && it.pausedByStop {
+				it.pausedByStop = false
+				it.retriedReconnect = false
+				c.startItemPipeline(ctx, attOwnerResend, rk, scope, job.machineID, job.original, it, &localEffects)
+			}
+		}
+	}
+
+	c.pumpAttachmentQueues(ctx, &localEffects)
+	stepRes := c.m.sync.EndStep(stepPrev, ctx)
+	*effects = append(*effects, stepRes.Effects...)
+	*effects = append(*effects, localEffects...)
 }
 
 func (c *Core) refreshAllExpiredDraftsOnForeground(effects *[]*corev1.Effect) {
@@ -1372,6 +1497,8 @@ func (c *Core) refreshAllExpiredDraftsOnForeground(effects *[]*corev1.Effect) {
 		if d == nil {
 			continue
 		}
+		// Force timer rescheduling on foreground in case the OS cleared timers while backgrounded.
+		d.expiryTimerTargetMs = 0
 		if c.refreshDraftExpiredItems(ctx, d, &localEffects) {
 			c.markDraftDirty(ctx, d.scope)
 		}
@@ -1392,58 +1519,75 @@ func (c *Core) reconcileAttachments(effects *[]*corev1.Effect, dirty *sync.Dirty
 	var localEffects []*corev1.Effect
 	nowMono := c.m.sync.MonoMs()
 
-	// 1. Wake WAITING_RECONNECT draft uploads & refresh expiry timers when machines come online.
-	draftKeys := make([]string, 0, len(mgr.drafts))
-	for k := range mgr.drafts {
-		draftKeys = append(draftKeys, k)
-	}
-	sortutil.Strings(draftKeys)
-	for _, k := range draftKeys {
-		d := mgr.drafts[k]
-		if d == nil {
-			continue
+	if !mgr.syncStopped {
+		// 1. Wake WAITING_RECONNECT and STOP-paused draft uploads & refresh expiry timers when machines come online.
+		draftKeys := make([]string, 0, len(mgr.drafts))
+		for k := range mgr.drafts {
+			draftKeys = append(draftKeys, k)
 		}
-		machineID := c.resolveDraftMachineID(d)
-		_, onlineReady := c.resolveAttachmentCaps(machineID, false)
-		woke := false
-		for _, it := range d.items {
-			if it == nil {
+		sortutil.Strings(draftKeys)
+		for _, k := range draftKeys {
+			d := mgr.drafts[k]
+			if d == nil {
 				continue
 			}
-			if it.phase == attPhaseWaitingReconnect && onlineReady && nowMono >= it.reconnectNotBeforeMs && nowMono <= it.reconnectDeadlineMonoMs {
-				c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(attOwnerDraft, d.key, it.id))
-				it.phase = attPhaseIdle
-				c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
-				woke = true
+			machineID := c.resolveDraftMachineID(d)
+			netReady := c.uploadNetworkReady(machineID)
+			woke := false
+			for _, it := range d.items {
+				if it == nil {
+					continue
+				}
+				if it.pausedByStop && netReady {
+					it.pausedByStop = false
+					it.retriedReconnect = false
+					c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
+					woke = true
+					continue
+				}
+				if it.phase == attPhaseWaitingReconnect && netReady && nowMono >= it.reconnectNotBeforeMs && nowMono <= it.reconnectDeadlineMonoMs {
+					c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(attOwnerDraft, d.key, it.id))
+					it.phase = attPhaseIdle
+					c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
+					woke = true
+				}
 			}
+			if woke {
+				c.markDraftDirty(ctx, d.scope)
+			}
+			c.scheduleDraftExpiryTimer(ctx, d)
 		}
-		if woke {
-			c.markDraftDirty(ctx, d.scope)
-		}
-		c.scheduleDraftExpiryTimer(ctx, d)
-	}
 
-	// 2. Wake WAITING_RECONNECT outbox resend uploads.
-	resendKeys := make([]string, 0, len(mgr.resendJobs))
-	for k := range mgr.resendJobs {
-		resendKeys = append(resendKeys, k)
-	}
-	sortutil.Strings(resendKeys)
-	for _, rk := range resendKeys {
-		job := mgr.resendJobs[rk]
-		if job == nil || job.aborted {
-			continue
+		// 2. Wake WAITING_RECONNECT and STOP-paused outbox resend uploads.
+		resendKeys := make([]string, 0, len(mgr.resendJobs))
+		for k := range mgr.resendJobs {
+			resendKeys = append(resendKeys, k)
 		}
-		_, onlineReady := c.resolveAttachmentCaps(job.machineID, false)
-		if !onlineReady {
-			continue
-		}
-		scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: job.sessionID}
-		for _, it := range job.items {
-			if it != nil && it.phase == attPhaseWaitingReconnect && nowMono >= it.reconnectNotBeforeMs && nowMono <= it.reconnectDeadlineMonoMs {
-				c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(attOwnerResend, job.newRequestID, it.id))
-				it.phase = attPhaseIdle
-				c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, job.machineID, job.original, it, &localEffects)
+		sortutil.Strings(resendKeys)
+		for _, rk := range resendKeys {
+			job := mgr.resendJobs[rk]
+			if job == nil || job.aborted {
+				continue
+			}
+			if !c.uploadNetworkReady(job.machineID) {
+				continue
+			}
+			scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: job.sessionID}
+			for _, it := range job.items {
+				if it == nil {
+					continue
+				}
+				if it.pausedByStop {
+					it.pausedByStop = false
+					it.retriedReconnect = false
+					c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, job.machineID, job.original, it, &localEffects)
+					continue
+				}
+				if it.phase == attPhaseWaitingReconnect && nowMono >= it.reconnectNotBeforeMs && nowMono <= it.reconnectDeadlineMonoMs {
+					c.m.sync.CancelAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(attOwnerResend, job.newRequestID, it.id))
+					it.phase = attPhaseIdle
+					c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, job.machineID, job.original, it, &localEffects)
+				}
 			}
 		}
 	}
