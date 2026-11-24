@@ -622,7 +622,7 @@ func (t *removeDeviceTask) step(e *Engine, ev *secEvent) error {
 			if err := e.checkFG(t.fgGen); err != nil {
 				return err
 			}
-			if pending := wf.pendingOp; pending != nil && t.abandonPairDelivery && pending.Pair != nil && pending.Pair.CandidateID == t.id {
+			if pending := wf.pendingOp; pending != nil && pending.Pair != nil && pending.Pair.CandidateID == t.id {
 				t.stage = removeDevSyncOp
 				e.syncStates(false, "", parentTarget(t, 0))
 				return nil
