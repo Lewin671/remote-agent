@@ -18,7 +18,7 @@ struct AccountDeletionScreen: View {
                     Text(L10n.securityIosThisDeletesTheEntireAccountOnTheCurrentRelay())
                     Text(L10n.securityIosOriginalCliSessionsAndProjectFilesOnComputersAnd())
                         .foregroundStyle(.secondary)
-                    if !model.isDemo && AuthorityAccess(state: model.state, me: context.me).isAuthority {
+                    if !model.isDemo && context.core.settings.isManager {
                         TextField(L10n.securityIosEnterDeleteAccountToConfirm(), text: $confirmation)
                             .textFieldStyle(.roundedBorder)
                             .accessibilityLabel(L10n.securityIosEnterDeleteAccountToConfirm136())

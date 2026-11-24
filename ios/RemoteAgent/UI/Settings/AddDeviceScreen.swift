@@ -106,9 +106,10 @@ struct AddDeviceScreen: View {
     @State private var action = ActionRunner()
 
     var body: some View {
-        let access = AuthorityAccess(state: app.state, me: context.me)
+        let settings = context.core.settings
+        let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: settings.authorityName))
         SettingsPage {
-            if !access.isAuthority { GroupNote(access.addHint) }
+            if !settings.isManager { GroupNote(addHint) }
             else {
                 GroupNote(L10n.securityComputerRunRemoteAgentAccountJoinAndEnterThe())
                 #if DEBUG
@@ -187,6 +188,7 @@ struct AddDeviceScreen: View {
             #endif
         }
         .task {
+            await context.coreHost.openSettings()
             // Same in-memory SAS context when returning from another page.
             flow = context.memory.value { AuthorityPairingSessions() }.flow(replacing: replacing)
             guard !app.isDemo else { return }
