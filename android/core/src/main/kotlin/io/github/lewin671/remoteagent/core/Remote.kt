@@ -2573,6 +2573,18 @@ class Remote(
             )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
+            // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
+            coreHost.dispatch(
+                CoreEvent.newBuilder()
+                    .setTerminalDirectLeg(
+                        TerminalDirectLegEvent.newBuilder()
+                            .setStreamId(streamId)
+                            .setLegId(ByteString.copyFrom(activeLegId.get()))
+                            .setDirect(false)
+                            .setOpen(true),
+                    )
+                    .build(),
+            )
             var seq = 0L
             terminalScope.launch {
                 try {

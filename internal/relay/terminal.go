@@ -49,6 +49,10 @@ const (
 	// termZeroLegTimeout bounds how long a terminal stream with zero attached legs
 	// (both relay and direct closed) waits for AttachPath before automatic GC (M2).
 	termZeroLegTimeout = 30 * time.Second
+	// termPendingDirectTTL / termMaxPendingDirect bound early direct AttachPath
+	// arrivals before openTerminal finishes creating the stream (H-B).
+	termPendingDirectTTL = 5 * time.Second
+	termMaxPendingDirect = 16
 )
 
 type frozenStatusCache struct {
@@ -58,15 +62,24 @@ type frozenStatusCache struct {
 	expiresAt uint64
 }
 
+type pendingDirectAttach struct {
+	peerID    string
+	sessionID string
+	legID     string
+	gen       uint64
+	expiresAt time.Time
+}
+
 type terminalHub struct {
-	mu         sync.Mutex
-	registry   *linkcore.TerminalRegistry
-	dedup      *linkcore.CipherDedup
-	live       map[string]*liveTerminal
-	snapshots  map[string]frozenStatusCache
-	instance   string
-	nowFn      func() time.Time
-	zeroLegTTL time.Duration
+	mu            sync.Mutex
+	registry      *linkcore.TerminalRegistry
+	dedup         *linkcore.CipherDedup
+	live          map[string]*liveTerminal
+	pendingDirect map[string]pendingDirectAttach
+	snapshots     map[string]frozenStatusCache
+	instance      string
+	nowFn         func() time.Time
+	zeroLegTTL    time.Duration
 }
 
 func (h *terminalHub) now() time.Time {
@@ -90,17 +103,49 @@ func (c *endpoint) terminalHubOwner() *terminalHub {
 			inst = hex.EncodeToString(dm.self.Instance)
 		}
 		c.termHub = &terminalHub{
-			registry:   linkcore.NewTerminalRegistry(termMaxActiveStreams, termMaxRetiredStreams),
-			dedup:      linkcore.NewCipherDedup(),
-			live:       map[string]*liveTerminal{},
-			snapshots:  map[string]frozenStatusCache{},
-			instance:   inst,
-			nowFn:      c.r.termClock,
-			zeroLegTTL: c.r.termZeroLegTTL,
+			registry:      linkcore.NewTerminalRegistry(termMaxActiveStreams, termMaxRetiredStreams),
+			dedup:         linkcore.NewCipherDedup(),
+			live:          map[string]*liveTerminal{},
+			pendingDirect: map[string]pendingDirectAttach{},
+			snapshots:     map[string]frozenStatusCache{},
+			instance:      inst,
+			nowFn:         c.r.termClock,
+			zeroLegTTL:    c.r.termZeroLegTTL,
 		}
 		c.r.termHubRef.Store(c.termHub)
 	})
 	return c.termHub
+}
+
+func (h *terminalHub) storePendingDirect(streamID string, pd pendingDirectAttach, now time.Time) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for k, v := range h.pendingDirect {
+		if !now.Before(v.expiresAt) {
+			delete(h.pendingDirect, k)
+		}
+	}
+	if _, exists := h.pendingDirect[streamID]; !exists && len(h.pendingDirect) >= termMaxPendingDirect {
+		return false
+	}
+	h.pendingDirect[streamID] = pd
+	return true
+}
+
+func (h *terminalHub) takePendingDirectLocked(streamID, peerID, sessionID string, now time.Time) (pendingDirectAttach, bool) {
+	pd, ok := h.pendingDirect[streamID]
+	if !ok {
+		return pendingDirectAttach{}, false
+	}
+	if !now.Before(pd.expiresAt) {
+		delete(h.pendingDirect, streamID)
+		return pendingDirectAttach{}, false
+	}
+	if pd.peerID != peerID || pd.sessionID != sessionID {
+		return pendingDirectAttach{}, false
+	}
+	delete(h.pendingDirect, streamID)
+	return pd, true
 }
 
 func (h *terminalHub) getLive(streamID string) *liveTerminal {
@@ -271,6 +316,11 @@ func (c *endpoint) openTerminal(ctx context.Context, sessionID, streamID string)
 		return err
 	}
 	hub.live[streamID] = lt
+	if pd, ok := hub.takePendingDirectLocked(streamID, peer, sessionID, hub.now()); ok {
+		lt.directGen = pd.gen
+		_ = lt.stream.AttachLeg("direct", pd.legID, hub.instance, pd.gen)
+		lt.noteLegStateLocked(hub.now())
+	}
 	hub.mu.Unlock()
 
 	if !c.link.ServeStream(func() {
@@ -977,8 +1027,25 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 			return 0, nil
 		}
 		lt := hub.getLive(msg.Stream)
-		if lt == nil || lt.ownerPeer != peerID || lt.sessionID != msg.Session {
-			return 0, nil
+		if lt == nil {
+			if strings.HasPrefix(msg.LegID, "d:") {
+				// H-B: buffer direct AttachPath arriving slightly ahead of openTerminal for up to 5s.
+				nowT := hub.now()
+				if hub.storePendingDirect(msg.Stream, pendingDirectAttach{
+					peerID:    peerID,
+					sessionID: msg.Session,
+					legID:     msg.LegID,
+					gen:       msg.PathGeneration,
+					expiresAt: nowT.Add(termPendingDirectTTL),
+				}, nowT) {
+					return receipt()
+				}
+			}
+			// Explicitly reject unknown-stream AttachPath instead of silently dropping (H-B).
+			return 8, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, 0))
+		}
+		if lt.ownerPeer != peerID || lt.sessionID != msg.Session {
+			return 8, peerwire.PB(peerwire.U(1, o.Context.Class), peerwire.U(2, o.Type), peerwire.U(3, 0))
 		}
 		if strings.HasPrefix(msg.LegID, "d:") {
 			lt.mu.Lock()

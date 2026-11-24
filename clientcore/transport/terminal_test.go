@@ -43,6 +43,7 @@ func TestCoordinatorPhase3TerminalContinuityAndFailover(t *testing.T) {
 	streamID := "0123456789abcdef0123456789abcdef"
 	sessionID := "sess-term-phase3-01"
 	openEffs := coord.TerminalDirectOpen(now, streamID, daemon.id, sessionID, []byte("relayleg00000001"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relayleg00000001"), false, true, 0)
 	var sawLive bool
 	for _, e := range openEffs {
 		if ts, ok := e.(CoordTerminalState); ok && ts.State == TermStateLive {
@@ -273,6 +274,7 @@ func TestCoordinatorPhase3ResizeIdleDoesNotBlockInput(t *testing.T) {
 	})
 	streamID := "resz0123456789abcdef0123456789ab"
 	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-resz", []byte("relay00000000003"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relay00000000003"), false, true, 0)
 
 	rh := sha256.Sum256([]byte("resize-80x24"))
 	_ = coord.TerminalDirectInput(now+5, streamID, 1, false, []byte("sealed-resize"), rh[:])
@@ -372,6 +374,7 @@ func TestCoordinatorFullDisconnectRecoveryViaInputStatus(t *testing.T) {
 	})
 	streamID := "m4rc0123456789abcdef0123456789ab"
 	_ = coord.TerminalDirectOpen(now, streamID, daemon.id, "sess-m4", []byte("relay00000000005"))
+	_ = coord.TerminalDirectLeg(now+1, streamID, []byte("relay00000000005"), false, true, 0)
 
 	// Send unconfirmed Input seq=1.
 	h1 := sha256.Sum256([]byte("pwd\n"))

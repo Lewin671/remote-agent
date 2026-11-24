@@ -2168,6 +2168,18 @@ export class Remote implements CoreExecutor {
       throw e;
     }
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
+    // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
+    this.hostBridge?.dispatchEvent(create(CoreEventSchema, {
+      event: {
+        case: "terminalDirectLeg",
+        value: create(TerminalDirectLegEventSchema, {
+          streamId,
+          legId: activeLegId,
+          direct: false,
+          open: true,
+        }),
+      },
+    }));
     let seq = 0n;
     let sending = Promise.resolve();
     return {

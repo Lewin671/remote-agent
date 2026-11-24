@@ -365,6 +365,17 @@ extension Remote {
             stream.end()
             throw error
         }
+        // H-B: signal Core that daemon confirmed openTerminal so direct AttachPath fires now.
+        if !closed.withLock({ $0 }) {
+            var readyEv = PBCoreEvent()
+            readyEv.terminalDirectLeg = .with {
+                $0.streamID = streamId
+                $0.legID = activeLegBox.withLock { $0 }
+                $0.direct = false
+                $0.open = true
+            }
+            await emitCoreEvent(readyEv)
+        }
 
         let sealFn: @Sendable (PBTerminalFrame, UInt64, UInt64) async throws -> (Data, Data, Bool) = { [weak self] frame, seq, deadline in
             guard let self, !closed.withLock({ $0 }) else { throw SecurityFailure.storage }

@@ -79,6 +79,7 @@ type clientTermStream struct {
 	machineID       string
 	sessionID       string
 	stream          *linkcore.TerminalStream
+	daemonReady     bool
 	relayOpen       bool
 	relayLegID      string
 	relayGen        uint64
@@ -154,7 +155,8 @@ func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, session
 		phase3Used: c.engine.TerminalReady(now, machineID),
 	}
 	c.termStreams[streamID] = ct
-	c.maybeAttachDirectTerminal(now, ct)
+	// H-B: do NOT send direct AttachPath until daemon confirms openTerminal succeeded
+	// (via TerminalDirectLeg(direct=false, open=true) or first inbound TerminalDirectOutput).
 	c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive})
 	// Drain any pre-open buffered outputs (M6).
 	if early := c.takeEarlyOutputs(now, streamID); len(early) > 0 {
@@ -199,6 +201,13 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 	}
 	if !direct {
 		if open {
+			wasDaemonReady := ct.daemonReady
+			ct.daemonReady = true
+			if ct.relayOpen && !wasDaemonReady && (len(legID) == 0 || string(legID) == ct.relayLegID) {
+				// H-B: initial openTerminal RPC confirmed stream exists on daemon -> attach direct now.
+				c.maybeAttachDirectTerminal(now, ct)
+				return c.take()
+			}
 			ct.relayOpen = true
 			if len(legID) > 0 {
 				ct.relayLegID = string(legID)
@@ -207,6 +216,7 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 			_ = ct.stream.AttachLeg("relay", ct.relayLegID, string(c.instance), ct.relayGen)
 			ct.disconnectedAll = false
 			ct.stream.NetworkRecovery = false
+			c.maybeAttachDirectTerminal(now, ct)
 			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive})
 			return c.take()
 		}
@@ -360,6 +370,10 @@ func (c *Coordinator) TerminalDirectOutput(now int64, streamID string, seq uint6
 }
 
 func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq uint64, frameHash, payload []byte, fromDirect bool, pcID uint64) {
+	if !ct.daemonReady {
+		ct.daemonReady = true
+		c.maybeAttachDirectTerminal(now, ct)
+	}
 	var hash32 [32]byte
 	copy(hash32[:], frameHash)
 	action, ready, err := ct.stream.ReceiveOutput(uint64(now), linkcore.TermFrame{
@@ -605,6 +619,9 @@ func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, gen u
 }
 
 func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream) {
+	if !ct.daemonReady {
+		return
+	}
 	r, pcID, gen, ok := c.activeTerminalRound(now, ct.machineID)
 	if !ok {
 		return
