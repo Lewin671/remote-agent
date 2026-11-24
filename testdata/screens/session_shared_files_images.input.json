@@ -84,7 +84,7 @@
               "meta": {
                 "hostname": "Studio",
                 "home": "/Users/me",
-                "protocolVersion": 18,
+                "protocolVersion": 17,
                 "capabilities": {
                   "imageUpload": true,
                   "fileUpload": true,

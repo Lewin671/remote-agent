@@ -73,7 +73,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacPro",
-                "protocolVersion": 18,
+                "protocolVersion": 17,
                 "agents": [
                   {
                     "agent": "AGENT_CODEX",

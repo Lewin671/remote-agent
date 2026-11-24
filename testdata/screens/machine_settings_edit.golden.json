@@ -177,7 +177,7 @@
               "attemptId": "a1",
               "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
-              "commandBytes": "qgECCAGgBhI=",
+              "commandBytes": "qgECCAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "1"
@@ -189,7 +189,7 @@
               "attemptId": "a2",
               "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
-              "commandBytes": "ugEAoAYS",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "2"
@@ -201,7 +201,7 @@
               "attemptId": "a3",
               "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120050",
-              "commandBytes": "qgECCAKgBhI=",
+              "commandBytes": "qgECCAKgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "3"
@@ -1138,7 +1138,7 @@
               "attemptId": "a4",
               "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120110",
-              "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEg==",
+              "commandBytes": "wgFACjwI2AQSB2dwdC01LjQaBGhpZ2ggASoVChFjbGF1ZGUtc29ubmV0LTQtNRgCMICAgIAEQP///////////wEQAaAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
@@ -1974,7 +1974,7 @@
               "attemptId": "a5",
               "machineId": "85d2362959f254ac4ffeeba70d956154",
               "deadlineMs": "1791078120120",
-              "commandBytes": "ugEAoAYS",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "4"
@@ -2921,7 +2921,7 @@
             "securityKeySign": {
               "opId": "4",
               "keyKind": "SECURITY_KEY_KIND_DEVICE_ED",
-              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAMwAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIGWVrcq4msoIlDWB0ztJ9suWbMMLKZcZLMnb7DObAUCzAAAACAAAAAAAAAASAAAAWAogOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjcSIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0GAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABfBlXTntUxzpH5+5YE49mg77BgD1raVNMHWC8DlOhFzzV8ABbQ/qr21jcTIK7PbDkrnkcNdwppuYX8QRpHMwKmYCu5BKQuIErExoITd9raLA7puyX6rwDEhDG2nDLXJwxKJE/yzws9hVxJCgkYinoKjTIL2HyLMZFWnQlXJ2Qyv9JgVJOxD64d4GAoEMqRzW/ldM/lz2j3ulkIltBX1k7ff7YS6E6KXppiXFaCnFaF5AvlKhBFDkUTX08xaCRFsLeXvbCzl5x2DUJGyvxvKzwVXSdhx/X/z2RSb7EyzopE+tbiP0d+S6yXy+kk/iAhYmEZ/MW/NoDV1nynzV8Rgj48jrP2MGSI09EFyaN6udlnY2jcqxdwh+jNMeyCtOQ3rEPtlEvRaJeQ//WIv6MrTAtM24qpmjN1G0veiXSrcfHlJn30zQFX62e3plgolL5PiwlqbQUu9g2iOTL2q6ySc1Bho5Pq93s6Kql8o7CX66mXZAzfoDhLySCRgX3yRBTAAAADGNkZWYwMTIzNDU2NwAAAFwXb3vxN2ELn4LO95BXkcJc1183b60HRA8u/oNrZLRzO9388X0XtRldxNojzKAZt+gbyy3xoFfy0KsjuAgjGjGfy3RqerJ746vLwuqr3ii9PvrUy8RS9bWjXy7xCQ=="
+              "message": "AAAAHnJlbW90ZS1hZ2VudC9wZWVyLXNpZ25hdHVyZS92MQAAAMwAAAAYcmVtb3RlLWFnZW50L3BlZXItYWFkL3YxAAAAIDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxAAAAIGWVrcq4msoIlDWB0ztJ9suWbMMLKZcZLMnb7DObAUCzAAAACAAAAAAAAAARAAAAWAogOTliYzU0ZTZiZWM5OWY2YTA4ODU1YzI0Y2FkZTNhYjcSIDg1ZDIzNjI5NTlmMjU0YWM0ZmZlZWJhNzBkOTU2MTU0GAEiEDAxMjM0NTY3ODlhYmNkZWYAAAAMMDEyMzQ1Njc4OWFiAAABfBlXTntUxzpH5+5YE49mg77BgD1raVNMHWC8DlOhFzzV8ABbQ/qr21jcTIK7PbDkrnkcNdwppuYX8QRpHMwKmYCu5BKQuIErExoITd9raLA7puyX6rwDEhDG2nDLXJwxKJE/yzws9hVxJCgkYinoKjTIL2HyLMZFWnQlXJ2Qyv9JgVJOxD64d4GAoEMqRzW/ldM/lz2j3ulkIVtBX1k7ff7YS6E6KXppiXFaCnFaF5AvlKhBFDkUTX08xaCRFsLeXvbCzl5x2DUJGyvxvKzwVXSdhx/X/z2RSb7EyzopE+tbiP0d+S6yXy+kk/iAhYmEZ/MW/NoDV1nynzV8Rgj48jrP2MGSI09EFyaN6udlnY2jcqxdwh+jNMeyCtOQ3rEPtlEvRaJeQ//WIv6MrTAtM24qpmjN1G0veiXSrcfHlJn30zQFX62e3plgolL5PiwlqbQUu9g2iOTL2q6ySc1Bho5Pq93s6Kql8o7CX67zb038Y3O1XlljAktSgioKAAAADGNkZWYwMTIzNDU2NwAAAFwXb3vxN2ELn4LO95BXkcJc1183b60HRA8u/oNrZLRzO9388X0XtRldxNojzKAZt+gbyy3xoFfy0KsjuAgjGjGfy3RqerJ746vLwuqroYtX0iUAo+ylmWhTe10TMA=="
             }
           },
           {

@@ -182,7 +182,7 @@ func TestSettingsRedesignProjections(t *testing.T) {
 	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: now, TodayStartMs: now - 10_800_000}
 	st.World.Connection = lists.ConnConnected
-	st.World.ClientVersion = 18
+	st.World.ClientVersion = 17
 	st.World.MachinesListed = true
 	st.World.Machines = []*lists.Machine{
 		{
@@ -190,7 +190,7 @@ func TestSettingsRedesignProjections(t *testing.T) {
 			Online: true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "BuildBox",
-				ProtocolVersion: 18,
+				ProtocolVersion: 17,
 				Capabilities:    &v1.MachineCapabilities{MachineStatus: true, CliSwitches: true, UsageStats: true},
 				DiskStatus:      &v1.DiskStatus{AvailableBytes: 3_100_000_000, TotalBytes: 500_000_000_000},
 				Agents: []*v1.AgentInfo{
@@ -229,7 +229,7 @@ func TestSettingsRedesignProjections(t *testing.T) {
 			LastSeenMs: now - 7_200_000,
 			Meta: &v1.MachineMeta{
 				Hostname:        "SleepBox",
-				ProtocolVersion: 18,
+				ProtocolVersion: 17,
 				Quotas: []*v1.AgentQuota{
 					{
 						Agent: v1.Agent_AGENT_CODEX, State: v1.QuotaState_QUOTA_STATE_OK, ObservedMs: now - 60_000,
@@ -336,14 +336,14 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	st := NewState(nil)
 	st.Cal = lists.Calendar{NowMs: now}
 	st.World.Connection = lists.ConnConnected
-	st.World.ClientVersion = 18
+	st.World.ClientVersion = 17
 	st.World.Machines = []*lists.Machine{
 		{
 			ID:     "1234567890abcdef",
 			Online: true,
 			Meta: &v1.MachineMeta{
 				Hostname:        "Studio",
-				ProtocolVersion: 18,
+				ProtocolVersion: 17,
 				Capabilities:    &v1.MachineCapabilities{MachineStatus: true, CliSwitches: true, UsageStats: true},
 				DiskStatus:      &v1.DiskStatus{AvailableBytes: 3_000_000_000, TotalBytes: 100_000_000_000},
 				Agents: []*v1.AgentInfo{

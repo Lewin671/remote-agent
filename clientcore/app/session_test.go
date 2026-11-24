@@ -1709,8 +1709,8 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 	agySt := screens.NewState(nil)
 	agySt.World.Connection = lists.ConnConnected
 	agySt.World.Machines = []*lists.Machine{
-		{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", ProtocolVersion: 18, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true, MaxFilesPerMessage: 4, MaxFileUploadBytes: 50 * 1024 * 1024}}},
-		{ID: "m2", Online: false, Meta: &v1.MachineMeta{Hostname: "Linux", ProtocolVersion: 18}},
+		{ID: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true, MaxFilesPerMessage: 4, MaxFileUploadBytes: 50 * 1024 * 1024}}},
+		{ID: "m2", Online: false, Meta: &v1.MachineMeta{Hostname: "Linux", ProtocolVersion: 17}},
 	}
 	agySess := &lists.Session{
 		ID:        "s-agy",
@@ -1730,7 +1730,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 			SessionsListed:  true,
 			LiveLoaded:      true,
 			Conn:            lists.ConnConnected,
-			ProtocolVersion: 18,
+			ProtocolVersion: 17,
 			Session:         agySess,
 			Machine:         agySt.World.Machines[0],
 			Projection: &corev1.ProjectionState{
@@ -1779,7 +1779,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 			SessionsListed:  true,
 			LiveLoaded:      true,
 			Conn:            lists.ConnConnected,
-			ProtocolVersion: 18,
+			ProtocolVersion: 17,
 			Session:         claimedSess,
 			Machine:         agySt.World.Machines[0],
 		},
@@ -2038,7 +2038,7 @@ func TestSharedFileDisplayAndLocalLifecycle(t *testing.T) {
 						Meta: &v1.MachineMeta{
 							Hostname:        "Studio",
 							Home:            "/Users/me",
-							ProtocolVersion: 18,
+							ProtocolVersion: 17,
 							Capabilities: &v1.MachineCapabilities{
 								SharedFiles:          true,
 								SharedFileChunkBytes: chunkBytes,
@@ -2381,7 +2381,7 @@ func TestSessionImageViewerLifecycleAndPlaceholders(t *testing.T) {
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Machines: []*corev1.DemoMachine{
-					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 18}},
+					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
 				},
 				Sessions: []*corev1.DemoSession{
 					{SessionId: "s-img", MachineId: "m1", LastSeq: 3, Meta: &v1.Session{Id: "s-img", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},
@@ -2507,7 +2507,7 @@ func TestSessionImageViewerOutOfWindowAnchorAndNavigation(t *testing.T) {
 		Event: &corev1.Event_SeedDemoWorld{
 			SeedDemoWorld: &corev1.SeedDemoWorldEvent{
 				Machines: []*corev1.DemoMachine{
-					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 18}},
+					{MachineId: "m1", Online: true, Meta: &v1.MachineMeta{Hostname: "Mac", Home: "/Users/me", ProtocolVersion: 17}},
 				},
 				Sessions: []*corev1.DemoSession{
 					{SessionId: "s-win", MachineId: "m1", LastSeq: 6, Meta: &v1.Session{Id: "s-win", Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING}},

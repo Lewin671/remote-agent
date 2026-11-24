@@ -95,7 +95,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacBook",
-                "protocolVersion": 18,
+                "protocolVersion": 17,
                 "agents": [
                   {
                     "agent": "AGENT_CODEX",

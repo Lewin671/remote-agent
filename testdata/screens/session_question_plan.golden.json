@@ -194,7 +194,7 @@
               "attemptId": "r-2",
               "machineId": "m1",
               "deadlineMs": "1791078120060",
-              "commandBytes": "qgECCAGgBhI=",
+              "commandBytes": "qgECCAGgBhE=",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "1"
@@ -206,7 +206,7 @@
               "attemptId": "r-4",
               "machineId": "m1",
               "deadlineMs": "1791078120060",
-              "commandBytes": "ugEAoAYS",
+              "commandBytes": "ugEAoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "2"
@@ -249,7 +249,7 @@
               "machineId": "m1",
               "sessionId": "s-qp",
               "deadlineMs": "1791078120070",
-              "commandBytes": "+gEGCgRzLXFwoAYS",
+              "commandBytes": "+gEGCgRzLXFwoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "3"
@@ -296,8 +296,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 18,
-              "clientProtocolVersion": 18,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "endedAtMs": "1791075600000",
               "capabilities": {
                 "canSend": true,
@@ -583,7 +583,7 @@
               "machineId": "m1",
               "sessionId": "s-qp",
               "deadlineMs": "1791078120080",
-              "commandBytes": "IhEKBHMtcXASA3EtMRgBIAAwAqAGEg==",
+              "commandBytes": "IhEKBHMtcXASA3EtMRgBIAAwAqAGEQ==",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
@@ -644,8 +644,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 18,
-              "clientProtocolVersion": 18,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "endedAtMs": "1791075600000",
               "capabilities": {
                 "canSend": true,
@@ -995,8 +995,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 18,
-              "clientProtocolVersion": 18,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "capabilities": {
                 "canSend": true,
                 "supportsImages": true,
@@ -1302,7 +1302,7 @@
               "machineId": "m1",
               "sessionId": "s-qp",
               "deadlineMs": "1791078120120",
-              "commandBytes": "+gEGCgRzLXFwoAYS",
+              "commandBytes": "+gEGCgRzLXFwoAYR",
               "routeHint": "COMMAND_ROUTE_HINT_READ",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY",
               "directTicketId": "4"
@@ -1365,8 +1365,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 18,
-              "clientProtocolVersion": 18,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "capabilities": {
                 "canSend": true,
                 "supportsImages": true,
@@ -1717,8 +1717,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 18,
-              "clientProtocolVersion": 18,
+              "daemonProtocolVersion": 17,
+              "clientProtocolVersion": 17,
               "capabilities": {
                 "canSend": true,
                 "supportsImages": true,

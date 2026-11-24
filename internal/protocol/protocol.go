@@ -18,7 +18,7 @@ import (
 // peer would misread, in step with clientcore, web/src, android/core and
 // ios/RemoteAgentCore. Stored content uses devicesec.Version; pairing uses
 // e2e.Version; relay entry points use internal/relayproto.Version.
-const PeerVersion = 18
+const PeerVersion = 17
 
 // GenerationConflictError rejects completion of a replaced upload before commit.
 // Its diagnostic remains owned by the upload handler.

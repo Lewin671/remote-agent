@@ -78,7 +78,7 @@ func bootConnectedScheduleHost(t *testing.T, caps bool, rev uint64, defaultMode 
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:         "MacStudio",
-							ProtocolVersion:  18,
+							ProtocolVersion:  17,
 							ScheduleRevision: rev,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: caps},
 							Agents: []*v1.AgentInfo{
@@ -281,7 +281,7 @@ func TestScheduleDiscoveryCacheRevisionAndUnsupportedCleanup(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:         "MacStudio",
-							ProtocolVersion:  18,
+							ProtocolVersion:  17,
 							ScheduleRevision: 6,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
 						},
@@ -322,7 +322,7 @@ func TestScheduleDiscoveryCacheRevisionAndUnsupportedCleanup(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "MacStudio",
-							ProtocolVersion: 18,
+							ProtocolVersion: 17,
 							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: false},
 						},
 					},
@@ -768,7 +768,7 @@ func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:         "Mac-1",
-							ProtocolVersion:  18,
+							ProtocolVersion:  17,
 							ScheduleRevision: 1,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
 							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
@@ -779,7 +779,7 @@ func TestScheduleEditTargetSelectProjectKeepsLockedMachine(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:         "Mac-2",
-							ProtocolVersion:  18,
+							ProtocolVersion:  17,
 							ScheduleRevision: 1,
 							Capabilities:     &v1.MachineCapabilities{ScheduledTasks: true},
 							Agents:           []*v1.AgentInfo{{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK}},
@@ -853,7 +853,7 @@ func TestScheduleInitialLoadingBeforeListsAndCache(t *testing.T) {
 						Online:    false,
 						Meta: &v1.MachineMeta{
 							Hostname:        "Mac-1",
-							ProtocolVersion: 18,
+							ProtocolVersion: 17,
 							Capabilities:    &v1.MachineCapabilities{ScheduledTasks: true},
 						},
 					},

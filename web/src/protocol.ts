@@ -9,4 +9,4 @@ export const RELAY_PROTOCOL_VERSION = 17;
 // instead of falling back feature by feature. Keep it equal to PeerVersion in
 // Go's internal/protocol, clientcore, Android and iOS. It is not the envelope
 // version (VERSION in crypto.ts), which stored data keeps.
-export const PEER_PROTOCOL_VERSION = 18;
+export const PEER_PROTOCOL_VERSION = 17;
