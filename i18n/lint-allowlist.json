@@ -5803,5 +5803,55 @@
     "path": "web/src/views/Attach.tsx",
     "literal": "button",
     "reason": "HTML button type attribute near identifier ending in Text; never rendered as user-facing text."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "abort",
+    "reason": "DOM AbortSignal event name; not user-facing text."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "sessionRestoreComposer",
+    "reason": "Protobuf oneof case discriminant; not user-facing text."
+  },
+  {
+    "path": "web/src/sheets.tsx",
+    "literal": ") : ( m.maxEffortHint &&",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/ui.tsx",
+    "literal": "0; if (link === \"no-network\") return",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/ConnCheck.tsx",
+    "literal": "host.reconnectNow(), [host]); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Dock.tsx",
+    "literal": "; const note = renderText(plan.note); const title = renderText(dock.title); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Images.tsx",
+    "literal": "host.viewSyncState().connection === ConnState.CONNECTED : NOOP_ONLINE, ); const [state, setState] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Projects.tsx",
+    "literal": "x.machineId === fixedMachine) : undefined; return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "), [sid, online, remote, lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup], ); return (",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": "m.machineId === session.machineId); const online = Boolean((sync.connection === ConnState.CONNECTED && machine?.reachable) || machine?.directReady); const waitingPeer = !online && (sync.reachabilityUnknown || sync.displayGrace); const onlineRef = useRef(online); onlineRef.current = online; const waitingPeerRef = useRef(waitingPeer); waitingPeerRef.current = waitingPeer; const heldForWaitingRef = useRef(false); const fine = usePointerFine(); const box = useRef",
+    "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
   }
 ]

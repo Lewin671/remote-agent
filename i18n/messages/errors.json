@@ -14,20 +14,6 @@
     "zh-CN": "找不到服务器，检查一下网络"
   },
   {
-    "en": "Cannot open the computer's reply. Command outcome unknown",
-    "key": "errors.android_cannot_open_the_computer_s_reply_command_outcome_unknown",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
-  },
-  {
     "en": "Image content does not match its format",
     "key": "errors.android_image_content_does_not_match_its_format",
     "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -113,25 +99,6 @@
     "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；{value1}后重试。历史仍可查看"
   },
   {
-    "en": "Remote control paused: {value1} and retry",
-    "key": "errors.android_remote_control_paused_value1_and_retry",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "远程控制已暂停：{value1}后再试"
-  },
-  {
     "en": "Secure connection failed: {reason}",
     "key": "errors.android_secure_connection_failed",
     "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
@@ -149,20 +116,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "安全连接失败：{reason}"
-  },
-  {
-    "en": "Security authorization or the current request is unverified. Nothing was sent. Retry",
-    "key": "errors.android_security_authorization_or_the_current_request_is_unverified_nothing_was",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "安全授权或当前请求尚未核实，操作没有发出；请重试"
   },
   {
     "en": "Security state unavailable",
@@ -257,34 +210,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"
-  },
-  {
-    "en": "The phone clock is ahead of the server. Remote control is paused. Correct the system time",
-    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_remote_control",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "手机时钟比服务器快，远程控制暂停；请校准系统时间"
-  },
-  {
-    "en": "This command expired and was not sent",
-    "key": "errors.android_this_command_expired_and_was_not_sent",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这条指令已过期，没有发出"
   },
   {
     "en": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",
@@ -759,22 +684,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试"
-  },
-  {
-    "en": "This page is out of date. Refresh or update it and retry.",
-    "key": "errors.this_page_is_out_of_date_refresh_or_update",
-    "notes": "remote 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "这个网页版本较旧，请刷新或更新后再试"
   },
   {
     "en": "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.",

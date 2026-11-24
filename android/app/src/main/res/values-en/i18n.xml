@@ -229,23 +229,18 @@
     <string name="dock_trust_folder" formatted="false">"No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"Waiting for confirmation"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"Cannot find the server. Check your network"</string>
-    <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"Cannot open the computer\'s reply. Command outcome unknown"</string>
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
     <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
-    <string name="errors_android_remote_control_paused_value1_and_retry">"Remote control paused: %1$s and retry"</string>
     <string name="errors_android_secure_connection_failed">"Secure connection failed: %1$s"</string>
-    <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"Security authorization or the current request is unverified. Nothing was sent. Retry"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"Security state unavailable"</string>
     <string name="errors_android_server_unavailable_reason">"Cannot connect to the server: %1$s"</string>
     <string name="errors_android_terminal_connection_dropped_reason">"Terminal connection dropped: %1$s"</string>
     <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"Terminal input paused while waiting for authorization"</string>
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"Terminal output backlog. Reception stopped"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
-    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"The phone clock is ahead of the server. Remote control is paused. Correct the system time"</string>
-    <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"This command expired and was not sent"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
     <string name="errors_client_out_of_date" formatted="false">"This client version is out of date. Update and retry."</string>
     <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
@@ -299,7 +294,6 @@
     <string name="errors_this_device_s_clock_is_behind_the_account_state_remote" formatted="false">"This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent."</string>
     <string name="errors_this_device_s_security_state_could_not_be_verified" formatted="false">"This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage."</string>
     <string name="errors_this_history_uses_an_old_encryption_format_and_can" formatted="false">"This history uses an old encryption format and can no longer be viewed"</string>
-    <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"This page is out of date. Refresh or update it and retry."</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"This request has not been verified by the computer yet. Wait for sync."</string>
     <string name="errors_upload_made_no_progress" formatted="false">"Upload made no progress"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"Waiting for the owning computer to update the current state: this device lacks the content key from that time"</string>
@@ -775,7 +769,6 @@
         <item quantity="other">"%1$d in progress"</item>
     </plurals>
     <string name="projects_load_failed" formatted="false">"Could not load projects"</string>
-    <string name="projects_loading" formatted="false">"Loading projects…"</string>
     <string name="projects_manage" formatted="false">"Manage projects"</string>
     <string name="projects_manage_named">"Manage %1$s"</string>
     <string name="projects_new" formatted="false">"New project…"</string>
@@ -802,7 +795,6 @@
     <string name="projects_remove_note" formatted="false">"Removing a project only hides it from the list. Sessions and the folder on your computer stay in place."</string>
     <string name="projects_remove_title">"Remove %1$s?"</string>
     <string name="projects_removed" formatted="false">"This project was removed from the list"</string>
-    <string name="projects_save_failed">"Could not save. The list is unchanged: %1$s"</string>
     <string name="projects_save_failed_reason">"Could not save: %1$s"</string>
     <string name="projects_saving_settings" formatted="false">"Saving project settings…"</string>
     <string name="projects_search" formatted="false">"Search projects"</string>

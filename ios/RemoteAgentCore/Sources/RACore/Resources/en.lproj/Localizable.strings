@@ -308,7 +308,6 @@
 "errors_this_device_s_clock_is_behind_the_account_state_remote" = "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.";
 "errors_this_device_s_security_state_could_not_be_verified" = "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.";
 "errors_this_history_uses_an_old_encryption_format_and_can" = "This history uses an old encryption format and can no longer be viewed";
-"errors_this_page_is_out_of_date_refresh_or_update" = "This page is out of date. Refresh or update it and retry.";
 "errors_this_request_has_not_been_verified_by_the_computer" = "This request has not been verified by the computer yet. Wait for sync.";
 "errors_upload_made_no_progress" = "Upload made no progress";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "Waiting for the owning computer to update the current state: this device lacks the content key from that time";
@@ -678,7 +677,6 @@
 "projects_ios_syncing" = "Syncing…";
 "projects_ios_view_home" = "View this project on the home page";
 "projects_load_failed" = "Could not load projects";
-"projects_loading" = "Loading projects…";
 "projects_manage" = "Manage projects";
 "projects_manage_named" = "Manage %1$@";
 "projects_new" = "New project…";
@@ -697,7 +695,6 @@
 "projects_remove_note" = "Removing a project only hides it from the list. Sessions and the folder on your computer stay in place.";
 "projects_remove_title" = "Remove %1$@?";
 "projects_removed" = "This project was removed from the list";
-"projects_save_failed" = "Could not save. The list is unchanged: %1$@";
 "projects_save_failed_reason" = "Could not save: %1$@";
 "projects_saving_settings" = "Saving project settings…";
 "projects_search" = "Search projects";
