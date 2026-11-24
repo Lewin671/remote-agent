@@ -1,7 +1,6 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"os"
@@ -15,7 +14,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var updateGolden = flag.Bool("update", false, "update testdata/screens golden files")
+const updateGoldenCmd = "cd clientcore && CGO_ENABLED=0 go test ./app -run TestScreenGoldens -update"
+
+var updateGolden = flag.Bool("update", false, "update testdata/screens/*.golden.pb golden files")
 
 type screenProbe struct {
 	Name   string          `json:"name"`
@@ -29,15 +30,6 @@ type fixtureStep struct {
 
 type fixtureInput struct {
 	Steps []fixtureStep `json:"steps"`
-}
-
-type goldenStepOutput struct {
-	Effects json.RawMessage            `json:"effects"`
-	Views   map[string]json.RawMessage `json:"views,omitempty"`
-}
-
-type goldenFile struct {
-	Steps []goldenStepOutput `json:"steps"`
 }
 
 func stdJSONToLite[Std any, PStd interface {
@@ -81,20 +73,15 @@ func liteToStd[Lite interface {
 	return PStd(&std)
 }
 
-func stdToCompactJSON(t testing.TB, msg proto.Message) json.RawMessage {
-	t.Helper()
+func formatGoldenDiffJSON(msg proto.Message) string {
 	out, err := (protojson.MarshalOptions{
-		UseProtoNames: false,
-		Indent:        "  ",
+		Multiline: true,
+		Indent:    "  ",
 	}).Marshal(msg)
 	if err != nil {
-		t.Fatalf("protojson marshal %T: %v", msg, err)
+		return "<marshal error: " + err.Error() + ">"
 	}
-	var compact bytes.Buffer
-	if err := json.Compact(&compact, out); err != nil {
-		t.Fatalf("compact json: %v", err)
-	}
-	return compact.Bytes()
+	return string(out)
 }
 
 func TestScreenGoldens(t *testing.T) {
@@ -113,7 +100,6 @@ func TestScreenGoldens(t *testing.T) {
 	for _, inPath := range inputs {
 		base := filepath.Base(inPath)
 		name := base[:len(base)-len(".input.json")]
-		goldenPath := filepath.Join(dir, name+".golden.json")
 		goldenPBPath := filepath.Join(dir, name+".golden.pb")
 
 		t.Run(name, func(t *testing.T) {
@@ -129,7 +115,6 @@ func TestScreenGoldens(t *testing.T) {
 			c := New()
 			defer c.Close()
 
-			var actual goldenFile
 			actualPB := &stdcorev1.ScreenGoldenFile{
 				Steps: make([]*stdcorev1.ScreenGoldenStep, 0, len(in.Steps)),
 			}
@@ -138,14 +123,10 @@ func TestScreenGoldens(t *testing.T) {
 				ev := stdJSONToLite[stdcorev1.Event, *stdcorev1.Event, corev1.Event, *corev1.Event](t, step.Event)
 				effects := c.Dispatch(ev)
 				stdEffects := liteToStd[*corev1.EffectBatch, stdcorev1.EffectBatch](t, effects)
-				stepOut := goldenStepOutput{
-					Effects: stdToCompactJSON(t, stdEffects),
-				}
 				stepPB := &stdcorev1.ScreenGoldenStep{
 					Effects: stdEffects,
 				}
 				if len(step.Views) > 0 {
-					stepOut.Views = make(map[string]json.RawMessage, len(step.Views))
 					// Sort view probes by name within a step so binary slice order is
 					// deterministic and matches sorted-key iteration on all clients.
 					probes := append([]screenProbe(nil), step.Views...)
@@ -158,31 +139,19 @@ func TestScreenGoldens(t *testing.T) {
 							t.Fatalf("step %d view %s: %v", i, probe.Name, err)
 						}
 						stdVM := liteToStd[*corev1.ViewModel, stdcorev1.ViewModel](t, vm)
-						stepOut.Views[probe.Name] = stdToCompactJSON(t, stdVM)
 						stepPB.Views = append(stepPB.Views, &stdcorev1.ScreenGoldenView{
 							Name:      probe.Name,
 							ViewModel: stdVM,
 						})
 					}
 				}
-				actual.Steps = append(actual.Steps, stepOut)
 				actualPB.Steps = append(actualPB.Steps, stepPB)
 			}
 
-			gotBytes, err := json.MarshalIndent(actual, "", "  ")
-			if err != nil {
-				t.Fatalf("marshal actual golden: %v", err)
-			}
-			gotBytes = append(gotBytes, '\n')
-
-			gotPBBytes, err := detMarshal.Marshal(actualPB)
-			if err != nil {
-				t.Fatalf("marshal actual binary golden: %v", err)
-			}
-
 			if *updateGolden {
-				if err := os.WriteFile(goldenPath, gotBytes, 0o644); err != nil {
-					t.Fatalf("write golden json: %v", err)
+				gotPBBytes, err := detMarshal.Marshal(actualPB)
+				if err != nil {
+					t.Fatalf("marshal actual binary golden: %v", err)
 				}
 				if err := os.WriteFile(goldenPBPath, gotPBBytes, 0o644); err != nil {
 					t.Fatalf("write golden pb: %v", err)
@@ -190,29 +159,17 @@ func TestScreenGoldens(t *testing.T) {
 				return
 			}
 
-			wantBytes, err := os.ReadFile(goldenPath)
-			if err != nil {
-				t.Fatalf("read golden %s (run with -update to create): %v", goldenPath, err)
-			}
-			if !bytes.Equal(gotBytes, wantBytes) {
-				t.Fatalf("golden mismatch for %s:\n--- got ---\n%s\n--- want ---\n%s", goldenPath, string(gotBytes), string(wantBytes))
-			}
-
 			wantPBBytes, err := os.ReadFile(goldenPBPath)
 			if err != nil {
-				t.Fatalf("read binary golden %s (run with -update to create): %v", goldenPBPath, err)
+				t.Fatalf("read binary golden %s (run `%s` to generate): %v", goldenPBPath, updateGoldenCmd, err)
 			}
-			if !bytes.Equal(gotPBBytes, wantPBBytes) {
-				t.Fatalf("binary golden mismatch for %s (run `cd clientcore && go test ./app -run TestScreenGoldens -update`)", goldenPBPath)
+			var wantPB stdcorev1.ScreenGoldenFile
+			if err := proto.Unmarshal(wantPBBytes, &wantPB); err != nil {
+				t.Fatalf("unmarshal binary golden %s (run `%s` to regenerate): %v", goldenPBPath, updateGoldenCmd, err)
 			}
-
-			// Verify binary golden round-trips cleanly and matches the JSON views.
-			var decoded stdcorev1.ScreenGoldenFile
-			if err := proto.Unmarshal(wantPBBytes, &decoded); err != nil {
-				t.Fatalf("unmarshal binary golden %s: %v", goldenPBPath, err)
-			}
-			if !proto.Equal(&decoded, actualPB) {
-				t.Fatalf("binary golden %s decoded message differs from expected", goldenPBPath)
+			if !proto.Equal(&wantPB, actualPB) {
+				t.Fatalf("binary golden mismatch for %s (run `%s` to update):\n--- got ---\n%s\n--- want ---\n%s",
+					goldenPBPath, updateGoldenCmd, formatGoldenDiffJSON(actualPB), formatGoldenDiffJSON(&wantPB))
 			}
 		})
 	}
