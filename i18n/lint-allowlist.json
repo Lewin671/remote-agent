@@ -5828,5 +5828,15 @@
     "path": "clientcore/domain/imageparse/imageparse.go",
     "literal": "imageparse:plan_finished",
     "reason": "Developer sentinel error returned when Step is called after plan completion; never displayed as product copy."
+  },
+  {
+    "path": "web/src/core/projection.ts",
+    "literal": "WasmImagePlan:freed",
+    "reason": "Internal programmer-error sentinel when calling a freed WasmImagePlan handle; never displayed as product copy."
+  },
+  {
+    "path": "web/src/imagecodec/metadata.ts",
+    "literal": "unsupported",
+    "reason": "Internal ImageErrorCode enum discriminator; localized user message comes from error.ts i18n lookup."
   }
 ]
