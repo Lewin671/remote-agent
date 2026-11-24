@@ -25,6 +25,7 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -330,15 +331,8 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
                 for ((_, part) in expiredParts) {
                     options.budget.free(options.peer, 1, part.bytes, part.parts.size)
                 }
-                var tooManyMissed = false
-                for ((id, startNs) in probes.entries.toList()) {
-                    if (nowNs - startNs >= 1_000_000_000L && probes.remove(id, startNs)) {
-                        val missed = synchronized(stateLock) { ++missedProbes }
-                        if (missed >= 3) {
-                            tooManyMissed = true
-                            break
-                        }
-                    }
+                val tooManyMissed = expireStaleProbes(probes, nowNs) {
+                    synchronized(stateLock) { ++missedProbes }
                 }
                 if (tooManyMissed) {
                     close()
@@ -610,4 +604,19 @@ internal class DirectChannel(private val options: DirectChannelOptions) {
             options.budget.release(options.peer, options.use)
         }
     }
+}
+
+internal fun expireStaleProbes(
+    probes: ConcurrentMap<String, Long>,
+    nowNs: Long,
+    onMissed: () -> Int,
+): Boolean {
+    for ((id, startNs) in probes.entries) {
+        if (nowNs - startNs >= 1_000_000_000L && probes.remove(id, startNs)) {
+            if (onMissed() >= 3) {
+                return true
+            }
+        }
+    }
+    return false
 }
