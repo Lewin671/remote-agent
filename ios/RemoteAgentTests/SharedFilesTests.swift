@@ -543,6 +543,91 @@ private func nextEvent<T: Sendable>(_ events: AsyncStream<T>) async -> T? {
         #expect(h.center.usedBytes() == 0)
     }
 
+    @Test func concurrentLoadMediaNeverSpawnsOverlappingTasks() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("sf-conc-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = SharedFileStore(root: root)
+        let payload = Data("img".utf8)
+        let hash = Data(SHA256.hash(data: payload))
+        #expect(store.writeChunk(.with {
+            $0.opID = 1; $0.sessionID = "s1"; $0.fileID = "f1"; $0.displayName = "pic.png"
+            $0.offset = 0; $0.data = payload; $0.totalSizeBytes = Int64(payload.count)
+            $0.chunkBytes = 100; $0.committedOffset = Int64(payload.count)
+            $0.expectedSha256 = hash; $0.resetPartial = true
+        }).ok)
+        #expect(store.verifyAndCommit(.with {
+            $0.opID = 2; $0.sessionID = "s1"; $0.fileID = "f1"; $0.displayName = "pic.png"
+            $0.totalSizeBytes = Int64(payload.count); $0.expectedSha256 = hash
+        }).ok)
+
+        final class Gate: @unchecked Sendable {
+            private let lock = NSLock()
+            var active = 0
+            var maxConcurrent = 0
+            var calls = 0
+            let started1 = AsyncStream<Void>.makeStream()
+            let release1 = AsyncStream<Void>.makeStream()
+            let started2 = AsyncStream<Void>.makeStream()
+            let release2 = AsyncStream<Void>.makeStream()
+
+            func enter() -> Int {
+                lock.withLock {
+                    calls += 1
+                    active += 1
+                    maxConcurrent = max(maxConcurrent, active)
+                    return calls
+                }
+            }
+            func leave() { lock.withLock { active -= 1 } }
+        }
+        let gate = Gate()
+        let thumb = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4)).image { ctx in
+            UIColor.blue.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+        let center = SharedFileCenter(
+            store: store,
+            allowMissingReports: false,
+            readMedia: { _, _ in
+                let call = gate.enter()
+                defer { gate.leave() }
+                if call == 1 {
+                    gate.started1.continuation.yield(())
+                    var it = gate.release1.stream.makeAsyncIterator()
+                    _ = await it.next()
+                    // First attempt returns no thumbnail so waiting callers re-check and must serialize.
+                    return SharedFileMedia()
+                }
+                if call == 2 {
+                    gate.started2.continuation.yield(())
+                    var it = gate.release2.stream.makeAsyncIterator()
+                    _ = await it.next()
+                    return SharedFileMedia(thumbnail: thumb, durationMs: nil)
+                }
+                return SharedFileMedia(thumbnail: thumb, durationMs: nil)
+            }
+        )
+        defer { center.close() }
+
+        let t1 = Task { await center.loadMedia(key, name: "pic.png", kind: .image) }
+        _ = await nextEvent(gate.started1.stream)
+        let t2 = Task { await center.loadMedia(key, name: "pic.png", kind: .image) }
+        let t3 = Task { await center.loadMedia(key, name: "pic.png", kind: .image) }
+        // Yield so both t2 and t3 enter `while let existing = loadingTasks[key]`.
+        await Task.yield()
+        await Task.yield()
+
+        gate.release1.continuation.yield(())
+        _ = await nextEvent(gate.started2.stream)
+        gate.release2.continuation.yield(())
+
+        await t1.value
+        await t2.value
+        await t3.value
+        #expect(gate.maxConcurrent == 1)
+        #expect(gate.calls == 2)
+        #expect(center.thumbnail(key) != nil)
+    }
+
     // MARK: Drawing from Core ViewModel
 
     private func render<V: View>(_ view: V, size: DynamicTypeSize = .large, scheme: ColorScheme = .light) -> CGSize? {
