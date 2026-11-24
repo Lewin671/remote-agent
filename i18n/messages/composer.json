@@ -101,53 +101,6 @@
     "zh-CN": "连上服务器后才能发送"
   },
   {
-    "en": "Could not restore the draft. Reopen or edit it to retry.",
-    "key": "composer.ios_draft_restore_failed",
-    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "草稿没能恢复，下次打开或编辑时重试"
-  },
-  {
-    "en": "Could not save the draft on this device. Keep a copy before closing the app.",
-    "key": "composer.ios_draft_save_failed",
-    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "草稿没能保存到本机，关闭应用前请保留文字"
-  },
-  {
-    "en": "This message was not sent: {reason}",
-    "key": "composer.ios_not_sent",
-    "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "没发出去：{reason}"
-  },
-  {
     "en": "Message",
     "key": "composer.message",
     "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
