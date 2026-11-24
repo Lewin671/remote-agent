@@ -2541,3 +2541,56 @@ func TestAttachments_RemoveDuringInFlightDraftWrite_DefersLocalReleaseBehindCoal
 		t.Fatalf("expected AttachmentReleaseLocal([src-def-a]) right after coalesced write #2 succeeded, got %+v", rels)
 	}
 }
+
+func TestAttachments_PreSendMachineSwitchABA_RejectsStaleAbortedRemoteID(t *testing.T) {
+	h := newAttHarness(t, false, true)
+	scope := h.sessionScope()
+
+	// 1. Upload 1 image to READY on machineA (remoteID = "img-a-old").
+	addEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedImage("aba.jpg", 4, "src-aba", true)},
+			},
+		},
+	})
+	h.driveImageUploadReady(addEff, "prep-aba", "thumb-aba", 4, attTestHash(0xbc), "img-a-old", h.nowMs+600_000)
+
+	// 2. Start DraftSendSession -> emits async DraftStorageWrite(OUTBOX) capturing "img-a-old".
+	sendEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSendSession{DraftSendSession: &corev1.DraftSendSessionAction{SessionId: h.sessionID, Mode: v1.SendMode_SEND_MODE_STEER}},
+	})
+	outWrite := findDraftWriteEffects(sendEff)[0]
+
+	// 3. WHILE Outbox write is in flight, retarget A -> B -> A (aborting "img-a-old" and re-uploading "img-a-new" on machineA with gen=2)!
+	toB := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSetTargetMachine{DraftSetTargetMachine: &corev1.DraftSetTargetMachineAction{Scope: scope, MachineId: h.machineB}}})
+	backToA := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftSetTargetMachine{DraftSetTargetMachine: &corev1.DraftSetTargetMachineAction{Scope: scope, MachineId: h.machineA}}})
+	var beginA2 *attDispatchedCmd
+	for _, sc := range append(findDispatchedCmds(toB), findDispatchedCmds(backToA)...) {
+		if sc.cmd.GetBeginImageUpload() != nil && sc.dc.MachineId == h.machineA {
+			cp := sc
+			beginA2 = &cp
+		}
+	}
+	if beginA2 == nil {
+		t.Fatalf("expected fresh BeginImageUpload on machineA after A->B->A")
+	}
+	h.settleCmdOK(beginA2.dc, beginCompleteOK(beginA2.cmd.GetBeginImageUpload().TransferId, "img-a-new", "", h.nowMs+600_000))
+
+	// 4. Now the earlier Outbox write completes OK -> MUST NOT send stale "img-a-old", MUST delete orphan outbox!
+	postWrite := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageWriteResult{
+			DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: outWrite.OpId, Ok: true},
+		},
+	})
+	for _, sc := range findDispatchedCmds(postWrite) {
+		if sc.cmd.GetSend() != nil {
+			t.Fatalf("pre-send recheck MUST reject stale/aborted remoteID after A->B->A, but submitted SendRequest: %+v", sc.cmd.GetSend())
+		}
+	}
+	dels := findDraftDeleteEffects(postWrite)
+	if len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_OUTBOX {
+		t.Fatalf("expected orphan pre-send OUTBOX deleted on generation/remoteID mismatch, got %+v", dels)
+	}
+}

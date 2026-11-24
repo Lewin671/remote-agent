@@ -263,16 +263,26 @@ func (c *Core) onPreSendOutboxWriteResult(
 		return
 	}
 
-	// Re-check capability, online state, and item readiness/expiry AFTER async outbox write!
+	// Re-check capability, online state, target machine, and exact remoteID/generation/transferID AFTER async outbox write!
+	curMachineID := c.resolveDraftMachineID(d)
 	caps, onlineReady := c.resolveAttachmentCaps(pending.machineID, false)
 	nowMs := c.m.sync.NowMs()
 	recheckOK := onlineReady &&
+		curMachineID == pending.machineID &&
+		d.original == pending.original &&
 		(len(pending.fileIDs) == 0 || caps.SupportsFiles) &&
 		(len(pending.imageIDs) == 0 || caps.SupportsImages)
 	if recheckOK {
-		for _, id := range pending.itemIDs {
-			it := d.findItem(id)
-			if it == nil || !it.isReadyFor(pending.machineID, pending.original, nowMs) {
+		for _, snap := range pending.items {
+			if snap == nil {
+				continue
+			}
+			it := d.findItem(snap.id)
+			if it == nil ||
+				it.generation != snap.generation ||
+				it.remoteID != snap.remoteID ||
+				it.transferID != snap.transferID ||
+				!it.isReadyFor(pending.machineID, pending.original, nowMs) {
 				recheckOK = false
 				break
 			}
