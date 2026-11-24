@@ -378,8 +378,7 @@ public final actor Remote {
         for m in v.machines {
             let ver = m.protocolVersion > 0 ? m.protocolVersion : (m.hasMeta ? m.meta.protocolVersion : 0)
             if ver > 0 {
-                let host = m.hasMeta ? m.meta.hostname.removingSuffix(".local") : ""
-                let name = host.isEmpty ? m.machineID.jvmTake(8) : host
+                let name = m.displayName.isEmpty ? m.machineID.jvmTake(8) : m.displayName
                 nextProtocols[m.machineID] = (ver, name)
             }
         }

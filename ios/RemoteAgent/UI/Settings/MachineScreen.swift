@@ -571,7 +571,7 @@ struct MachineScreenContent<Management: View>: View {
         let countNum = vm.projectCount > 0 ? Int(vm.projectCount) : vm.projects.count
         let showProjects = countNum > 0 || !rawCount.isEmpty
         let projectCount = rawCount.or("\(countNum)")
-        let shortIdText = vm.shortID.or("…" + String(vm.machineID.suffix(8)))
+        let shortIdText = vm.shortID
 
         GroupLabel(L10n.settingsSectionManagement())
         GroupCard {

@@ -66,8 +66,12 @@ struct SettingsScreen: View {
     // MARK: Banners
 
     @ViewBuilder private func banners(_ vm: PBSettingsViewModel) -> some View {
-        if vm.clockSkewed {
-            GroupBanner(vm.clockSkewBannerText.rendered(), tone: .warn)
+        let sync = context.core.syncState
+        let clockMsg = sync.hasClockSkewBannerText
+            ? sync.clockSkewBannerText.rendered()
+            : (vm.clockSkewed ? vm.clockSkewBannerText.rendered() : "")
+        if !clockMsg.isEmpty {
+            GroupBanner(clockMsg, tone: .warn)
         }
         if vm.recoveryPending {
             let recMsg = vm.recoveryBannerText.rendered().or(L10n.settingsRecoveryWaitingBanner())

@@ -94,6 +94,7 @@ struct HomeContent: View {
                 HomeHeadlineView(headline: home.headline, sync: sync)
                 HomeNotices(
                     settings: settings,
+                    sync: sync,
                     onOpenSecurity: onOpenSecurity
                 )
                 .padding(.horizontal, DS.Space.card)
@@ -368,15 +369,16 @@ private struct HomeHeadlineView: View {
 /// Notices under the headline: device clock skew and recovery requests.
 private struct HomeNotices: View {
     let settings: PBSettingsViewModel
+    let sync: PBCoreSyncStateView
     let onOpenSecurity: () -> Void
 
     var body: some View {
+        let clockWarning = sync.hasClockSkewBannerText
+            ? sync.clockSkewBannerText.rendered()
+            : (settings.clockSkewed ? settings.clockSkewBannerText.rendered() : "")
         VStack(spacing: 8) {
-            if settings.clockSkewed {
-                let warning = settings.clockSkewBannerText.rendered()
-                if !warning.isEmpty {
-                    Notice(warning, tone: .attention, symbol: "clock")
-                }
+            if !clockWarning.isEmpty {
+                Notice(clockWarning, tone: .attention, symbol: "clock")
             }
             if settings.isManager && settings.recoveryPending {
                 Notice(

@@ -311,12 +311,12 @@ struct SessionModelSheet: View {
         let shown = shownModels(offered, picked: selectedChoice, all: all)
         let few = shown.count == offered.count
         ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
-            let top = m.efforts.last
+            let effortHint = m.hasMaxEffortHint ? m.maxEffortHint.rendered() : ""
             ListItem(
                 m.displayName.isEmpty ? m.slug : m.displayName,
                 checked: m.slug == (selectedChoice?.slug ?? picked),
                 enabled: !disabled,
-                small: m.efforts.isEmpty ? L10n.sessionNoEffort() : top.flatMap { $0 == "high" ? nil : L10n.sessionMaxEffort(effort: $0) },
+                small: effortHint.isEmpty ? nil : effortHint,
                 last: i == shown.count - 1 && few
             ) {
                 picked = m.slug

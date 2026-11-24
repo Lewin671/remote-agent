@@ -60,7 +60,13 @@ struct AccountSecurityDetails: View {
         }
         GroupNote(L10n.securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient())
         GroupNote(iosAuthorityNotice)
-        if !sec.isManager { GroupNote(L10n.securityOpenToRenew(value: String(describing: sec.authorityName))) }
+        if !sec.isManager {
+            let sync = context.core.syncState
+            let advice = sync.hasLeaseRenewalAdvice
+                ? sync.leaseRenewalAdvice.rendered()
+                : L10n.securityOpenToRenew(value: String(describing: sec.authorityName))
+            if !advice.isEmpty { GroupNote(advice) }
+        }
         GroupCard {
             if sec.isManager {
                 GRow(L10n.securityRecoveryCode(), chevron: true) { nav.open(.recoveryCode) }

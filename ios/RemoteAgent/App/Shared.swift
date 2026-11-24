@@ -8,13 +8,59 @@ import RACore
 import RAProto
 import SwiftUI
 
+/// Resolved banner presentation derived from Core's `sync.connBanner` and `sync.clockSkewBannerText`.
+struct ConnectionBannerPresentation: Equatable {
+    enum Tone: Equatable { case plain, attention, error }
+    let text: String
+    let symbol: String?
+    let spinning: Bool
+    let tone: Tone
+    let showDetails: Bool
+
+    static func resolve(sync: PBCoreSyncStateView, fallbackClockWarning: String = "") -> ConnectionBannerPresentation? {
+        if sync.hasConnBanner && sync.connBanner.visible {
+            let banner = sync.connBanner
+            switch banner.kind {
+            case .noNetwork:
+                return ConnectionBannerPresentation(
+                    text: banner.text.rendered(), symbol: "wifi.slash", spinning: false, tone: .plain, showDetails: false)
+            case .waiting:
+                return ConnectionBannerPresentation(
+                    text: banner.text.rendered(), symbol: nil, spinning: true, tone: .plain, showDetails: false)
+            case .noServer:
+                if banner.errorTone {
+                    let detail = banner.hasDetailText ? banner.detailText.rendered() : ""
+                    return ConnectionBannerPresentation(
+                        text: detail.or(banner.text.rendered()), symbol: "xmark", spinning: false, tone: .error, showDetails: true)
+                }
+                return ConnectionBannerPresentation(
+                    text: banner.text.rendered(), symbol: "icloud.slash", spinning: false, tone: .plain, showDetails: true)
+            case .none, .unspecified, .UNRECOGNIZED:
+                break
+            }
+        }
+        let clockText = sync.hasClockSkewBannerText
+            ? sync.clockSkewBannerText.rendered()
+            : (sync.accountClockSkewed ? fallbackClockWarning : "")
+        if !clockText.isEmpty {
+            return ConnectionBannerPresentation(
+                text: clockText, symbol: "clock", spinning: false, tone: .attention, showDetails: false)
+        }
+        return nil
+    }
+}
+
 /// The connection notice of a page, under its navigation bar, in from the page's sides.
 struct ConnectionBar: View {
     @Environment(AccountContext.self) private var context: AccountContext?
 
     var body: some View {
-        if let sync = context?.core.syncState,
-           (!sync.displayGrace && sync.connection != .connected) || sync.accountClockSkewed {
+        if let context,
+           ConnectionBannerPresentation.resolve(
+               sync: context.core.syncState,
+               fallbackClockWarning: context.core.settings.clockSkewBannerText.rendered()
+           ) != nil
+        {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
         }
     }
@@ -22,8 +68,7 @@ struct ConnectionBar: View {
 
 /// How the way to the server stands, as a strip of glass under a page's
 /// title (design-system §6 「连接状态」, architecture §9 「断线时显示什么」):
-/// nothing when connected, otherwise the nearest stretch that is down, and
-/// 详情 when that is the server.
+/// driven by Core's `sync.connBanner` and `sync.clockSkewBannerText`.
 struct ConnectionStrip: View {
     @Environment(AccountContext.self) private var context: AccountContext?
     @State private var details = false
@@ -31,30 +76,32 @@ struct ConnectionStrip: View {
     var body: some View {
         if let context {
             let sync = context.core.syncState
-            let clockWarning = context.core.settings.clockSkewBannerText.rendered()
-            let loaded = sync.sessionsListed || !sync.sessions.isEmpty || !sync.machines.isEmpty
-            let synced = sync.machinesListed && sync.sessionsListed
-            let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
+            let banner = ConnectionBannerPresentation.resolve(
+                sync: sync,
+                fallbackClockWarning: context.core.settings.clockSkewBannerText.rendered()
+            )
             Group {
-                if sync.connection == .connected || sync.displayGrace {
-                    if sync.accountClockSkewed && !clockWarning.isEmpty {
-                        GlassStrip(text: clockWarning, symbol: "clock", tone: .attention)
+                if let banner {
+                    let stripTone: NoticeTone = switch banner.tone {
+                    case .plain: .plain
+                    case .attention: .attention
+                    case .error: .error
                     }
-                } else {
-                    switch sync.connection {
-                    case .connected:
-                        EmptyView()
-                    case .noNetwork:
-                        GlassStrip(text: loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
-                    case .connecting, .reconnecting, .unspecified, .UNRECOGNIZED:
-                        GlassStrip(text: synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
-                    case .offline:
-                        // Nothing kept to show: the reason is the whole of what can be said, in red.
-                        if !loaded && !reason.isEmpty {
-                            GlassStrip(text: L10n.connectionIosServerError(reason: reason), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
-                        } else {
-                            GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
-                        }
+                    if banner.showDetails {
+                        GlassStrip(
+                            text: banner.text,
+                            symbol: banner.symbol,
+                            spinning: banner.spinning,
+                            tone: stripTone,
+                            action: L10n.commonDetails()
+                        ) { details = true }
+                    } else {
+                        GlassStrip(
+                            text: banner.text,
+                            symbol: banner.symbol,
+                            spinning: banner.spinning,
+                            tone: stripTone
+                        )
                     }
                 }
             }
