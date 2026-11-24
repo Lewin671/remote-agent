@@ -1,8 +1,8 @@
 // The reader's text: the styled runs of a history line drawn as plain
 // attributed text, in the colours and font the live terminal is showing
-// (architecture §11 「回看历史」). The runs come from RACore's
-// `terminalHistoryRuns`; what is here is colours and layout, which need
-// UIKit.
+// (architecture §11 「回看历史」). The runs come pre-parsed from clientcore
+// (`PBCoreTerminalHistoryParsedPage` / `PBCoreTerminalHistoryRun`); what is
+// here is colours and layout, which need UIKit.
 //
 // The sixteen basic colours are the ones the live SwiftTerm view was
 // installed with — its `Color.terminalAppColors`, which this client never
@@ -17,6 +17,7 @@
 // Mono with PingFang behind it, so each is followed by enough kern to make
 // it exactly two; that is what keeps columns under a ruler line lined up.
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
@@ -54,13 +55,15 @@ enum TerminalHistoryText {
     /// The tap target the 重试 link carries, so the delegate can tell it apart.
     static let retryURL = URL(string: "ra-retry://retry")!
 
-    private static func color(_ c: TerminalColor, dim: Bool) -> UIColor {
+    private static func color(_ kind: PBCoreTerminalSgrColorKind, value: UInt32, dim: Bool) -> UIColor? {
         let rgba: RGBA
-        switch c {
-        case .palette(let n):
-            rgba = palette[min(max(n, 0), palette.count - 1)]
-        case .rgb(let r, let g, let b):
-            rgba = RGBA(UInt32(r) << 16 | UInt32(g) << 8 | UInt32(b))
+        switch kind {
+        case .palette:
+            rgba = palette[min(max(Int(value), 0), palette.count - 1)]
+        case .rgb:
+            rgba = RGBA(value & 0xffffff)
+        case .default, .UNRECOGNIZED:
+            return nil
         }
         let factor = dim ? 0.5 : 1
         return UIColor(red: rgba.r * factor, green: rgba.g * factor, blue: rgba.b * factor, alpha: 1)
@@ -75,10 +78,10 @@ enum TerminalHistoryText {
     }
 
     /// The foreground and background of a run, the defaults filled in and inverse swapped.
-    private static func colors(_ style: TerminalStyle) -> (fg: UIColor, bg: UIColor?) {
-        var fg = style.fg.map { color($0, dim: style.dim) } ?? foreground
-        var bg = style.bg.map { color($0, dim: false) }
-        if style.inverse {
+    private static func colors(_ run: PBCoreTerminalHistoryRun) -> (fg: UIColor, bg: UIColor?) {
+        var fg = color(run.fgKind, value: run.fgValue, dim: run.dim) ?? foreground
+        var bg = color(run.bgKind, value: run.bgValue, dim: false)
+        if run.inverse {
             let swapped = (fg: bg ?? background, bg: fg)
             fg = swapped.fg
             bg = swapped.bg
@@ -86,26 +89,26 @@ enum TerminalHistoryText {
         return (fg, bg)
     }
 
-    /// The lines of a page, one paragraph each, at the terminal's line height.
-    static func page(_ lines: [String], points: CGFloat, cell: CGSize) -> NSAttributedString {
+    /// The lines of a Core-parsed page, one paragraph each, at the terminal's line height.
+    static func page(_ page: PBCoreTerminalHistoryParsedPage, points: CGFloat, cell: CGSize) -> NSAttributedString {
         let out = NSMutableAttributedString()
-        for (i, line) in lines.enumerated() {
+        for (i, line) in page.lines.enumerated() {
             if i > 0 { out.append(NSAttributedString(string: "\n", attributes: plain(points: points, cell: cell))) }
             out.append(self.line(line, points: points, cell: cell))
         }
         return out
     }
 
-    /// One history line as attributed text.
-    static func line(_ text: String, points: CGFloat, cell: CGSize) -> NSAttributedString {
+    /// One Core-parsed history line as attributed text.
+    static func line(_ line: PBCoreTerminalHistoryLine, points: CGFloat, cell: CGSize) -> NSAttributedString {
         let out = NSMutableAttributedString()
-        for run in terminalHistoryRuns(text) {
-            let font = font(points: points, bold: run.style.bold, italic: run.style.italic)
-            let (fg, bg) = colors(run.style)
+        for run in line.runs {
+            let font = font(points: points, bold: run.bold, italic: run.italic)
+            let (fg, bg) = colors(run)
             var attributes = plain(points: points, cell: cell, font: font)
             attributes[.foregroundColor] = fg
             if let bg { attributes[.backgroundColor] = bg }
-            if run.style.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+            if run.underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
             append(run.text, attributes: attributes, font: font, cellWidth: cell.width, to: out)
         }
         return out
@@ -113,7 +116,7 @@ enum TerminalHistoryText {
 
     /// The reader's one status line: the mockup's own small grey line, first in
     /// the flow, with 重试 beside it after a failure.
-    static func statusLine(_ status: TerminalHistory.Status, online: Bool) -> NSAttributedString {
+    static func statusLine(text: PBCoreText?, canRetry: Bool, online: Bool) -> NSAttributedString {
         let paragraph = NSMutableParagraphStyle()
         paragraph.minimumLineHeight = 18
         paragraph.maximumLineHeight = 18
@@ -121,8 +124,8 @@ enum TerminalHistoryText {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: UIFont.systemFont(ofSize: 12), .foregroundColor: self.status, .paragraphStyle: paragraph,
         ]
-        let out = NSMutableAttributedString(string: statusText(status), attributes: attributes)
-        guard status == .failed else { return out }
+        let out = NSMutableAttributedString(string: renderCoreText(text), attributes: attributes)
+        guard canRetry else { return out }
         out.append(NSAttributedString(string: " ", attributes: attributes))
         var linkAttributes = attributes
         linkAttributes[.foregroundColor] = online ? link : self.status
@@ -131,26 +134,20 @@ enum TerminalHistoryText {
         return out
     }
 
-    private static func statusText(_ status: TerminalHistory.Status) -> String {
-        switch status {
-        case .none: ""
-        case .earlier: L10n.terminalEarlier()
-        case .failed: L10n.terminalReadFailed()
-        case .expired: L10n.terminalHistoryExpired()
-        case .start: L10n.terminalHistoryStart()
-        case .disconnected: L10n.terminalHistoryClosed()
-        }
-    }
-
     /// The whole reader: the status line, then the pages from oldest to newest.
     static func document(
-        pages: [TerminalHistory.Page], status: TerminalHistory.Status, online: Bool, points: CGFloat, cell: CGSize
+        pages: [PBCoreTerminalHistoryParsedPage],
+        statusText: PBCoreText?,
+        canRetry: Bool,
+        online: Bool,
+        points: CGFloat,
+        cell: CGSize
     ) -> NSAttributedString {
         let out = NSMutableAttributedString()
-        out.append(statusLine(status, online: online))
+        out.append(statusLine(text: statusText, canRetry: canRetry, online: online))
         for page in pages {
             out.append(NSAttributedString(string: "\n", attributes: plain(points: points, cell: cell)))
-            out.append(self.page(page.lines, points: points, cell: cell))
+            out.append(self.page(page, points: points, cell: cell))
         }
         return out
     }

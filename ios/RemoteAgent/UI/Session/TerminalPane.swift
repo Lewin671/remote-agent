@@ -18,6 +18,7 @@
 // `TerminalHostView` the SwiftTerm view and what output may not do to the
 // phone, `TerminalKeyBar` the keys.
 import RACore
+import RAProto
 import SwiftUI
 
 struct TerminalPane: View {
@@ -52,7 +53,9 @@ struct TerminalPane: View {
                     }
                 if history.open {
                     TerminalHistoryReader(
-                        pages: history.pages, status: history.status, online: state == .live, entry: history.entryPull,
+                        pages: history.pages, status: history.status, statusText: history.statusText,
+                        canRetry: history.canRetry, canLoadEarlier: history.canLoadEarlier,
+                        online: state == .live, entry: terminal.entryPull,
                         metrics: { (terminal.host.shownPoints, terminal.host.shownCell) },
                         offset: { terminal.host.horizontalOffset },
                         gridWidth: { terminal.host.gridWidth },
@@ -60,9 +63,9 @@ struct TerminalPane: View {
                         leave: { terminal.leaveReading() }
                     )
                     .overlay(alignment: .bottomTrailing) { pill }
-                } else if let opening = history.opening {
+                } else if history.opening {
                     // Only the line: the live screen stays, and so does the live toolbar.
-                    openingLine(opening)
+                    openingLine(statusText: history.statusText, canRetry: history.canRetry)
                 }
             }
             TerminalKeyBar(enabled: state == .live, onKey: { terminal.send($0) }, onKeyboard: keyboard)
@@ -89,6 +92,7 @@ struct TerminalPane: View {
 
     private func start() {
         let (remote, app, sid, host) = (context.remote, model, sessionId, context.coreHost)
+        let historyQueue = SerialMainQueue()
         terminal.use(
             RemoteTerminal.Link(
                 open: { try await remote.openTerminal(sid, listener: $0) },
@@ -104,6 +108,23 @@ struct TerminalPane: View {
                     return {
                         task.cancel()
                         Task { await host.unregisterTerminalReopen(terminalID: id, token: token) }
+                    }
+                },
+                sendHistory: { id, kind, page in
+                    historyQueue.enqueue {
+                        await host.sendTerminalHistory(terminalID: id, kind: kind, page: page)
+                    }
+                },
+                subscribeHistory: { id, onRequest, onUpdated in
+                    let token = UUID()
+                    historyQueue.enqueue {
+                        await host.registerTerminalHistory(
+                            terminalID: id, token: token, onRequest: onRequest, onUpdated: onUpdated)
+                    }
+                    return {
+                        historyQueue.enqueue {
+                            await host.unregisterTerminalHistory(terminalID: id, token: token)
+                        }
                     }
                 }))
         if active { open() }
@@ -169,10 +190,10 @@ struct TerminalPane: View {
 
     /// The one line over the live screen while the first page is on its way, or that
     /// it could not be read, when 重试 asks for it again (or another pull up does).
-    private func openingLine(_ opening: TerminalHistory.Opening) -> some View {
+    private func openingLine(statusText: PBCoreText?, canRetry: Bool) -> some View {
         HStack(spacing: 8) {
-            if opening == .failed {
-                Text(L10n.terminalReadFailed()).font(.footnote).ink(TermColors.tool)
+            Text(renderCoreText(statusText)).font(.footnote).ink(TermColors.tool)
+            if canRetry {
                 Button {
                     terminal.retryHistory()
                 } label: {
@@ -182,8 +203,6 @@ struct TerminalPane: View {
                 }
                 .buttonStyle(PressStyle())
                 .accessibilityHint(L10n.terminalIosRetryHistory())
-            } else {
-                Text(L10n.terminalReading()).font(.footnote).ink(TermColors.tool)
             }
             Spacer(minLength: 0)
         }
@@ -200,7 +219,7 @@ struct TerminalPane: View {
             terminal.leaveReading()
         } label: {
             Group {
-                if terminal.history.hasNewOutput {
+                if terminal.hasNewOutput {
                     HStack(spacing: 6) {
                         Circle().fill(TermColors.link).frame(width: 7, height: 7)
                         Text(L10n.terminalFresh()).font(.subheadline.weight(.semibold)).ink(TermColors.fg)
@@ -219,7 +238,7 @@ struct TerminalPane: View {
         }
         .buttonStyle(PressStyle())
         .padding(12)
-        .accessibilityLabel(terminal.history.hasNewOutput ? L10n.terminalFreshLive() : L10n.terminalLive())
+        .accessibilityLabel(terminal.hasNewOutput ? L10n.terminalFreshLive() : L10n.terminalLive())
         .accessibilityHint(L10n.terminalIosLeaveHistory())
     }
 
@@ -295,5 +314,19 @@ struct TerminalPane: View {
         .background(TermColors.bar, in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous).strokeBorder(TermColors.line, lineWidth: 1))
         .padding(12)
+    }
+}
+
+/// Preserves FIFO order across fire-and-forget async actor calls from the main actor.
+@MainActor
+private final class SerialMainQueue {
+    private var tail: Task<Void, Never>?
+
+    func enqueue(_ operation: @escaping @Sendable () async -> Void) {
+        let prev = tail
+        tail = Task {
+            await prev?.value
+            await operation()
+        }
     }
 }

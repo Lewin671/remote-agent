@@ -16,12 +16,16 @@
 // The size is asked for again whenever the area is laid out: a rotation moves
 // the live screen to another size, and the reader moves with it.
 import RACore
+import RAProto
 import SwiftUI
 import UIKit
 
 struct TerminalHistoryReader: UIViewRepresentable {
-    let pages: [TerminalHistory.Page]
-    let status: TerminalHistory.Status
+    let pages: [PBCoreTerminalHistoryParsedPage]
+    let status: PBCoreTerminalHistoryStatus
+    let statusText: PBCoreText?
+    let canRetry: Bool
+    let canLoadEarlier: Bool
     let online: Bool
     /// How far the entry gesture had pulled: the reader opens this far above the newest line.
     let entry: CGFloat
@@ -43,7 +47,9 @@ struct TerminalHistoryReader: UIViewRepresentable {
 
     func updateUIView(_ view: TerminalHistoryTextView, context: Context) {
         configure(view)
-        view.content = TerminalHistoryTextView.Content(pages: pages, status: status, online: online, entry: entry)
+        view.content = TerminalHistoryTextView.Content(
+            pages: pages, status: status, statusText: statusText, canRetry: canRetry,
+            canLoadEarlier: canLoadEarlier, online: online, entry: entry)
         view.metrics = metrics
         view.liveOffsetX = offset()
         view.liveGridWidth = gridWidth()
@@ -60,8 +66,11 @@ struct TerminalHistoryReader: UIViewRepresentable {
 final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     /// What the reader is to show, kept so the size can be asked for again later.
     struct Content {
-        var pages: [TerminalHistory.Page]
-        var status: TerminalHistory.Status
+        var pages: [PBCoreTerminalHistoryParsedPage]
+        var status: PBCoreTerminalHistoryStatus
+        var statusText: PBCoreText?
+        var canRetry: Bool
+        var canLoadEarlier: Bool
         var online: Bool
         var entry: CGFloat
     }
@@ -70,7 +79,7 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     var onRetry: () -> Void = {}
     var onLeave: () -> Void = {}
 
-    var content = Content(pages: [], status: .none, online: true, entry: 0)
+    var content = Content(pages: [], status: .none, statusText: nil, canRetry: false, canLoadEarlier: false, online: true, entry: 0)
     var metrics: () -> (points: CGFloat, cell: CGSize) = { (14, CGSize(width: 8.4, height: 17)) }
     /// How far the live screen is panned sideways: the reader opens at the same offset.
     var liveOffsetX: CGFloat = 0
@@ -123,7 +132,9 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
     func show() {
         let (points, cell) = metrics()
         let pages = content.pages
-        let key = pages.map(\.id).joined(separator: "|") + "#\(content.status)#\(content.online)#\(points)/\(cell.height)/\(Int(bounds.width))x\(Int(bounds.height))/\(Int(liveGridWidth))"
+        let locale = MessageLocale.current
+        let key = pages.map(\.id).joined(separator: "|")
+            + "#\(content.status.rawValue)#\(content.canRetry)#\(content.online)#\(locale)#\(points)/\(cell.height)/\(Int(bounds.width))x\(Int(bounds.height))/\(Int(liveGridWidth))"
         guard key != shown else { return }
         // Not laid out yet: place nothing, and mark nothing done, so the first
         // real layout places the entry pull and the live offset.
@@ -131,7 +142,12 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
         lineHeight = max(1, cell.height)
         let anchor = placed ? topAnchor() : nil
         let text = TerminalHistoryText.document(
-            pages: pages, status: content.status, online: content.online, points: points, cell: cell)
+            pages: pages,
+            statusText: content.statusText,
+            canRetry: content.canRetry,
+            online: content.online,
+            points: points,
+            cell: cell)
         linkTextAttributes = [.foregroundColor: content.online ? TerminalHistoryText.link : TerminalHistoryText.status]
         updating = true
         // The container is sized before the text goes in, so the layout the text
@@ -234,7 +250,7 @@ final class TerminalHistoryTextView: UITextView, UITextViewDelegate {
             dragAxis = terminalDrag(dx: moved.x, dy: moved.y)
         }
         // Near the top: the page before, which keeps the line in sight in place.
-        if scrollView.contentOffset.y < 80 { onLoadEarlier() }
+        if content.canLoadEarlier && scrollView.contentOffset.y < 80 { onLoadEarlier() }
         // Carried on down past the very bottom: back to the live screen — which a
         // sideways pan is not, it only came here to look along a wide line.
         let bottom = max(0, scrollView.contentSize.height - scrollView.bounds.height)

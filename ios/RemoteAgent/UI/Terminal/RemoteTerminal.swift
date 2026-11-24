@@ -11,10 +11,40 @@
 // number moved on and changes nothing.
 //
 // Nothing of the stream is logged: not its bytes, not what is typed.
+import CoreGraphics
 import Foundation
 import Observation
 import RACore
 import RAProto
+
+/// Read-only history view state driven by clientcore (`PBCoreTerminalHistoryUpdatedEffect`).
+/// Pages arrive pre-parsed into styled runs once from Core and are prepended oldest-first.
+struct TerminalHistoryState: Equatable {
+    var phase: PBCoreTerminalHistoryPhase = .idle
+    var status: PBCoreTerminalHistoryStatus = .none
+    var statusText: PBCoreText? = nil
+    var canRetry: Bool = false
+    var canLoadEarlier: Bool = false
+    var pending: Bool = false
+    var maxCells: Int32 = 0
+    var pages: [PBCoreTerminalHistoryParsedPage] = []
+
+    var reading: Bool { phase != .idle }
+    var open: Bool { phase == .open }
+    var opening: Bool { phase == .opening || phase == .openingFailed }
+
+    mutating func apply(_ upd: PBCoreTerminalHistoryUpdatedEffect) {
+        if upd.resetPages { pages = [] }
+        if upd.hasAddedPage { pages.insert(upd.addedPage, at: 0) }
+        phase = upd.phase
+        status = upd.status
+        statusText = upd.hasStatusText ? upd.statusText : nil
+        canRetry = upd.canRetry
+        canLoadEarlier = upd.canLoadEarlier
+        pending = upd.pending
+        maxCells = upd.maxCells
+    }
+}
 
 @MainActor
 @Observable
@@ -41,12 +71,22 @@ final class RemoteTerminal {
         var release: @MainActor (UUID) -> Void
         var reportStream: @MainActor (String, PBCoreTerminalStreamEventKind, Bool) -> Void = { _, _, _ in }
         var subscribeReopen: @MainActor (String, @escaping @MainActor @Sendable () -> Void) -> () -> Void = { _, _ in {} }
+        var sendHistory: @MainActor (String, PBCoreTerminalHistoryEventKind, PBTerminalHistoryPage?) -> Void = { _, _, _ in }
+        var subscribeHistory: @MainActor (
+            String,
+            @escaping @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void,
+            @escaping @MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void
+        ) -> () -> Void = { _, _, _ in {} }
     }
 
     static var paused: String { L10n.terminalIosPaused() }
     private nonisolated static let frameInterval = 0.033
 
-    let history = TerminalHistory()
+    private(set) var history = TerminalHistoryState()
+    /// Output has arrived since reading began; kept local so live streaming never crosses into Core.
+    private(set) var hasNewOutput = false
+    /// How far the screen was pulled when reading was asked for: where the reader opens.
+    private(set) var entryPull: CGFloat = 0
     /// Reading the record: the reader is opening or on screen.
     var reading: Bool { history.reading }
 
@@ -58,35 +98,49 @@ final class RemoteTerminal {
     /// failed is retried by the same pull; anything else while one is on its way only
     /// moves the reader's opening.
     func readUp(_ distance: CGFloat) {
-        guard distance >= Self.readPull, state == .live, let conn else { return }
-        // A pull that carries on while the first page is on its way opens the reader further up.
-        history.pulled(distance)
+        guard distance >= Self.readPull, state == .live, conn != nil else { return }
+        if history.phase == .opening {
+            entryPull = max(entryPull, distance)
+            return
+        }
         if history.phase == .openingFailed {
-            history.retry { [self] id, cursor in historyRequest(id, cursor, conn) }
+            entryPull = max(0, distance)
+            hasNewOutput = false
+            link?.sendHistory(terminalId, .retry, nil)
             return
         }
         guard history.phase == .idle else { return }
         // The reader is read-only, so the keyboard has no business staying up.
         host.hideKeyboard()
-        history.begin(pull: distance) { [self] id, cursor in historyRequest(id, cursor, conn) }
+        entryPull = max(0, distance)
+        hasNewOutput = false
+        link?.sendHistory(terminalId, .open, nil)
     }
 
     /// The reader reached the top: read the page before the oldest held.
     func loadEarlier() {
-        guard state == .live, let conn else { return }
-        history.earlier { [self] id, cursor in historyRequest(id, cursor, conn) }
+        guard state == .live, conn != nil else { return }
+        link?.sendHistory(terminalId, .loadEarlier, nil)
     }
 
     /// The reader's 重试.
     func retryHistory() {
-        guard state == .live, let conn else { return }
-        history.retry { [self] id, cursor in historyRequest(id, cursor, conn) }
+        guard state == .live, conn != nil else { return }
+        link?.sendHistory(terminalId, .retry, nil)
     }
 
     /// Leaves reading, if reading; the live screen is what is left.
-    func leaveReading() { history.end() }
+    func leaveReading() {
+        hasNewOutput = false
+        entryPull = 0
+        if history.reading {
+            history = TerminalHistoryState()
+        }
+        link?.sendHistory(terminalId, .close, nil)
+    }
 
-    private func historyRequest(_ id: String, _ cursor: String, _ conn: TermConn) {
+    private func historyRequest(_ id: String, _ cursor: String) {
+        guard let conn else { return }
         var frame = PBTerminalFrame()
         frame.historyRequest.requestID = id
         frame.historyRequest.cursor = cursor
@@ -126,6 +180,7 @@ final class RemoteTerminal {
     @ObservationIgnored private var active = false
     @ObservationIgnored private var liveNotified = false
     @ObservationIgnored private var reopenCancel: (() -> Void)?
+    @ObservationIgnored private var historyCancel: (() -> Void)?
     /// This connection has yet to fit on its own; never again once 还原 was chosen here.
     @ObservationIgnored private var autoFit = false
     @ObservationIgnored private var released = false
@@ -135,11 +190,25 @@ final class RemoteTerminal {
 
     func use(_ link: Link) {
         reopenCancel?()
+        historyCancel?()
         self.link = link
         reopenCancel = link.subscribeReopen(terminalId) { [weak self] in
             guard let self, self.active else { return }
             self.openAttempt()
         }
+        historyCancel = link.subscribeHistory(
+            terminalId,
+            { [weak self] req in
+                self?.historyRequest(req.requestID, req.cursor)
+            },
+            { [weak self] upd in
+                guard let self else { return }
+                self.history.apply(upd)
+                if self.history.phase == .idle {
+                    self.entryPull = 0
+                    self.hasNewOutput = false
+                }
+            })
     }
 
     func connectIfNeeded() {
@@ -155,7 +224,7 @@ final class RemoteTerminal {
     }
 
     private func openAttempt() {
-        history.end()
+        leaveReading()
         guard let link else { return }
         guard link.online() else {
             close()
@@ -180,7 +249,7 @@ final class RemoteTerminal {
             case .overflow: onMain {
                 if let self, gen == self.generation {
                     let wasOpened = self.conn != nil || self.liveNotified
-                    self.history.disconnected()
+                    self.link?.sendHistory(self.terminalId, .disconnected, nil)
                     self.drop()
                     self.state = .closed(L10n.errorsTerminalConnectionDropped())
                     self.link?.reportStream(self.terminalId, .closed, wasOpened)
@@ -218,7 +287,7 @@ final class RemoteTerminal {
 
     private func apply(_ step: TerminalStep) {
         switch step {
-        case .history(let page): history.receive(page)
+        case .history(let page): link?.sendHistory(terminalId, .pageReceived, page)
         case .snapshot(let cols, let rows, let data):
             host.snapshot(cols: cols, rows: rows, data: data)
             size = TerminalSize(cols, rows)
@@ -228,10 +297,10 @@ final class RemoteTerminal {
             goLive()
         case .output(let data):
             // The live screen keeps being written to while reading; the reader never moves for it.
-            history.markOutput()
+            if history.reading { hasNewOutput = true }
             host.append(data)
         case .closed(let reason):
-            history.disconnected()
+            link?.sendHistory(terminalId, .disconnected, nil)
             // The daemon says why before it hangs up; the end of the connection that follows says less.
             if case .closed = state { return }
             let opened = conn != nil || liveNotified
@@ -330,7 +399,10 @@ final class RemoteTerminal {
     func close() {
         active = false
         liveNotified = false
-        history.end()
+        hasNewOutput = false
+        entryPull = 0
+        history = TerminalHistoryState()
+        link?.sendHistory(terminalId, .disposed, nil)
         generation += 1
         frames.close()
         state = .closed(Self.paused)
@@ -360,14 +432,56 @@ final class RemoteTerminal {
         self.state = state
     }
 
-    /// The reader over sample history, with no connection behind it.
+    /// The reader over sample history, parsed by clientcore with no connection behind it.
     func showHistory(_ lines: [String]) {
-        history.seed(lines)
+        hasNewOutput = false
+        entryPull = 60
+        history = TerminalHistoryState()
+        guard let core = try? CoreClient() else { return }
+        defer { core.close() }
+        let sampleID = "sample"
+        let openBatch = try? core.dispatch(
+            .with {
+                $0.randomIds = ["sample"]
+                $0.terminalHistory = .with {
+                    $0.terminalID = sampleID
+                    $0.kind = .open
+                }
+            })
+        let reqID = openBatch?.effects.compactMap { eff -> String? in
+            if case .terminalHistorySendRequest(let r)? = eff.effect { return r.requestID }
+            return nil
+        }.first ?? "sample"
+        let pageBatch = try? core.dispatch(
+            .with {
+                $0.terminalHistory = .with {
+                    $0.terminalID = sampleID
+                    $0.kind = .pageReceived
+                    $0.page = .with {
+                        $0.requestID = reqID
+                        $0.lines = lines
+                    }
+                }
+            })
+        for eff in pageBatch?.effects ?? [] {
+            if case .terminalHistoryUpdated(let upd)? = eff.effect {
+                history.apply(upd)
+            }
+        }
     }
 
     /// The live screen under the opening line, with no connection behind it.
     func showOpening(failed: Bool) {
-        history.seedOpening(failed: failed)
+        hasNewOutput = false
+        entryPull = 0
+        history = TerminalHistoryState(
+            phase: failed ? .openingFailed : .opening,
+            status: failed ? .openingFailed : .opening,
+            statusText: PBCoreText.with { $0.key = failed ? "terminal.read_failed" : "terminal.reading" },
+            canRetry: failed,
+            canLoadEarlier: false,
+            pending: !failed
+        )
     }
     #endif
 }

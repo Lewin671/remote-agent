@@ -95,6 +95,53 @@ import Testing
         }
     }
 
+    @MainActor
+    private final class CoreHistoryDriver {
+        private let core = try! CoreClient()
+        private var reqHandler: (@MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void)?
+        private var updHandler: (@MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void)?
+        private var seq = 0
+
+        func subscribe(
+            onRequest: @escaping @MainActor @Sendable (PBCoreTerminalHistorySendRequestEffect) -> Void,
+            onUpdated: @escaping @MainActor @Sendable (PBCoreTerminalHistoryUpdatedEffect) -> Void
+        ) -> () -> Void {
+            reqHandler = onRequest
+            updHandler = onUpdated
+            return { [weak self] in
+                self?.reqHandler = nil
+                self?.updHandler = nil
+            }
+        }
+
+        func send(terminalID: String, kind: PBCoreTerminalHistoryEventKind, page: PBTerminalHistoryPage?) {
+            seq += 1
+            let batch = try! core.dispatch(
+                .with {
+                    $0.randomIds = ["req-\(seq)", "req-\(seq)-b"]
+                    $0.terminalHistory = .with {
+                        $0.terminalID = terminalID
+                        $0.kind = kind
+                        if let page { $0.page = page }
+                    }
+                })
+            for eff in batch.effects {
+                switch eff.effect {
+                case .terminalHistorySendRequest(let req)?:
+                    reqHandler?(req)
+                case .terminalHistoryUpdated(let upd)?:
+                    updHandler?(upd)
+                default:
+                    break
+                }
+            }
+        }
+    }
+
+    private func plainLines(_ page: PBCoreTerminalHistoryParsedPage?) -> [String]? {
+        page?.lines.map { $0.runs.map(\.text).joined() }
+    }
+
     private func terminal(
         _ streams: Streams,
         online: Flag = Flag(),
@@ -105,6 +152,7 @@ import Testing
         -> RemoteTerminal
     {
         let terminal = RemoteTerminal()
+        let historyDriver = CoreHistoryDriver()
         terminal.host.frame = CGRect(x: 0, y: 0, width: 400, height: 500)
         terminal.host.layoutIfNeeded()
         terminal.use(
@@ -131,6 +179,12 @@ import Testing
                 subscribeReopen: { _, handler in
                     recorder.setReopen(handler)
                     return { recorder.clearReopen() }
+                },
+                sendHistory: { id, kind, page in
+                    historyDriver.send(terminalID: id, kind: kind, page: page)
+                },
+                subscribeHistory: { _, onRequest, onUpdated in
+                    historyDriver.subscribe(onRequest: onRequest, onUpdated: onUpdated)
                 }))
         return terminal
     }
@@ -184,7 +238,9 @@ import Testing
         await eventually { t.state == .live }
 
         t.readUp(40)
-        #expect(t.reading && t.history.phase == .opening && t.history.entryPull == 40)
+        #expect(t.reading && t.history.phase == .opening && t.entryPull == 40)
+        t.readUp(65)
+        #expect(t.entryPull == 65)
         await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let request = streams.sent.last!.historyRequest
         #expect(!request.requestID.isEmpty && request.cursor.isEmpty)
@@ -198,10 +254,12 @@ import Testing
                 }
             })
         streams.listener(0).onFrame(output(" output"))
-        await eventually { t.history.pending.isEmpty }
-        #expect(t.history.open && t.history.pages.first?.lines == ["older"])
+        await eventually { !t.history.pending }
+        #expect(t.history.open && plainLines(t.history.pages.first) == ["older"])
+        t.readUp(90)
+        #expect(t.entryPull == 65)
         // Output arrived while reading: the pill says so, and the live screen behind has it.
-        #expect(t.history.hasNewOutput)
+        #expect(t.hasNewOutput)
         #expect(t.host.screenText == "live output")
         #expect(t.state == .live)
 
@@ -265,14 +323,14 @@ import Testing
             })
         await eventually { t.history.phase == .openingFailed }
         #expect(
-            !t.history.open && t.history.opening == TerminalHistory.Opening.failed
+            !t.history.open && t.history.opening && t.history.canRetry
                 && t.state == .live)
         // The live screen behind the line is untouched.
         #expect(t.host.screenText == "live")
 
         // A key-bar key clears it first, and then goes as it always did.
         t.send(Data("x".utf8))
-        #expect(!t.reading && t.history.opening == nil)
+        #expect(!t.reading && !t.history.opening)
         await eventually { streams.sent.last?.input == Data("x".utf8) }
         #expect(streams.sent.last?.input == Data("x".utf8))
 
@@ -307,7 +365,7 @@ import Testing
                 }
             })
         await eventually { t.history.open }
-        #expect(t.history.pages.first?.lines == ["older"])
+        #expect(plainLines(t.history.pages.first) == ["older"])
         t.close()
     }
 

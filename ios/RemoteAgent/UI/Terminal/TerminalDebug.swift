@@ -134,7 +134,7 @@ enum TerminalDebug {
     static func dump(_ terminal: RemoteTerminal, font: Int) {
         let host = terminal.host
         let emulator = host.terminal.getTerminal()
-        let text = """
+        let dump = """
             state: \(terminal.state)
             remote: \(terminal.size.cols)x\(terminal.size.rows) fitted=\(terminal.fitted) resized=\(terminal.resizedElsewhere)
             emulator: \(emulator.cols)x\(emulator.rows)
@@ -142,12 +142,12 @@ enum TerminalDebug {
             pan: \(Int(host.horizontalOffset))/\(Int(host.maxHorizontalOffset))
             view: \(Int(host.bounds.width))x\(Int(host.bounds.height)) grid=\(host.terminal.frame.integral.debugDescription)
             keyboard: \(terminal.keyboard) responder=\(host.keyboardShown)
-            reading: \(terminal.history.phase) status=\(terminal.history.status) pages=\(terminal.history.pages.count) new=\(terminal.history.hasNewOutput)
+            reading: \(terminal.history.phase) status=\(terminal.history.status) pages=\(terminal.history.pages.count) new=\(terminal.hasNewOutput)
             ---
             \(host.screenText)
 
             """
-        try? text.write(to: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("term-dump"), atomically: true, encoding: .utf8)
+        try? dump.write(to: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("term-dump"), atomically: true, encoding: .utf8)
     }
 }
 
