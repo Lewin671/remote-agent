@@ -1860,3 +1860,72 @@ func TestAttachments_CancelInFlightResend_AbortsUploadAndNeverSends(t *testing.T
 		}
 	}
 }
+
+func TestAttachments_PutFailsStatusProbeNoAdvance_DoesNotLoopInfinitely(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	eff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedFile("loop.bin", "application/octet-stream", 8, "src-loop")},
+			},
+		},
+	})
+	hashOp := findHashEffects(eff)[0]
+	eff = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{OpId: hashOp.OpId, Ok: true, SizeBytes: 8, Sha256: attTestHash(0xb3)},
+		},
+	})
+	beginCmd := findDispatchedCmds(eff)[0]
+	tid := beginCmd.cmd.GetBeginImageUpload().TransferId
+	eff = h.settleCmdOK(beginCmd.dc, beginOK(tid, 0, 4, 0))
+
+	// Repeat: ReadChunk -> PutImageChunk transport drop -> GetImageUploadStatus succeeds with SAME persisted_bytes=0.
+	// Must NOT loop forever: after 3 retries -> WAITING_RECONNECT -> after 3 more retries -> FAILED!
+	failed := false
+	for iter := 0; iter < 15; iter++ {
+		dv := h.draftView(scope)
+		if dv.Files[0].State == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+			failed = true
+			break
+		}
+		if timers := findTimers(eff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT); len(timers) > 0 {
+			h.advance(timers[0].DelayMs)
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_TimerFired{
+					TimerFired: &corev1.TimerFiredEvent{
+						TimerId: timers[0].TimerId,
+						Kind:    corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT,
+						Key:     timers[0].Key,
+					},
+				},
+			})
+			// Reconnect fires GetImageUploadStatus -> reply with same persisted_bytes=0.
+			cmds := findDispatchedCmds(eff)
+			if len(cmds) == 1 && cmds[0].cmd.GetGetImageUploadStatus() != nil {
+				eff = h.settleCmdOK(cmds[0].dc, statusOK(tid, 0, 4))
+			}
+			continue
+		}
+		if reads := findReadChunkEffects(eff); len(reads) > 0 {
+			eff = h.dispatch(&corev1.Event{
+				Event: &corev1.Event_AttachmentReadChunkResult{
+					AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: reads[0].OpId, Ok: true, Offset: 0, Data: []byte("1234")},
+				},
+			})
+			putCmd := findDispatchedCmds(eff)[0]
+			eff = h.settleCmdTransportDrop(putCmd.dc, "timeout")
+			if cmds := findDispatchedCmds(eff); len(cmds) == 1 && cmds[0].cmd.GetGetImageUploadStatus() != nil {
+				eff = h.settleCmdOK(cmds[0].dc, statusOK(tid, 0, 4))
+			}
+			continue
+		}
+		t.Fatalf("iter=%d: unexpected stall in state %v", iter, dv.Files[0].State)
+	}
+	if !failed {
+		t.Fatalf("expected upload to terminate in FAILED instead of looping infinitely")
+	}
+}

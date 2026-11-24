@@ -953,19 +953,25 @@ func (c *Core) handleUploadStepSuccess(
 		}
 	}
 
+	wasBeginDone := it.beginDone
 	if meta.step == attPhaseBegin {
 		it.beginDone = true
 	}
 
-	// Advance persistedBytes & monotonic displayed progress; reset per-step retry budget on progress!
+	// Advance persistedBytes & monotonic displayed progress; ONLY reset per-step retry budget
+	// when persisted_bytes genuinely advances (or Begin transitions into the chunk/complete phase).
+	prevPersisted := it.persistedBytes
+	advanced := st.PersistedBytes > prevPersisted
 	it.persistedBytes = st.PersistedBytes
 	ratio, pct := attachments.UploadProgressRatio(it.persistedBytes, it.sizeBytes, false)
 	if ratio > it.progress {
 		it.progress = ratio
 		it.progressPct = pct
 	}
-	it.stepRetries = 0
-	it.retriedReconnect = false
+	if advanced || (meta.step == attPhaseBegin && !wasBeginDone) {
+		it.stepRetries = 0
+		it.retriedReconnect = false
+	}
 
 	// Handle RECEIVING after Complete (or StatusProbe following an uncertain Complete): poll with backoff!
 	if (meta.step == attPhaseCompleting || (meta.step == attPhaseStatusProbe && it.statusProbeForComplete)) &&
