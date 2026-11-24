@@ -22,6 +22,7 @@ type vectorCase struct {
 	Height                 *uint32  `json:"height"`
 	ExpectedStrippedBase64 string   `json:"expectedStrippedBase64"`
 	StripError             string   `json:"stripError"`
+	StripErrorCode         byte     `json:"stripErrorCode"`
 	ForbiddenSubstrings    []string `json:"forbiddenSubstrings"`
 }
 
@@ -258,9 +259,11 @@ func TestSharedImageVectors(t *testing.T) {
 				_, code, detail := runPlanWithWindow(t, input, ModeStrip, expectedFmt, maxWin)
 				if code == 0 {
 					t.Errorf("%s (win=%d): expected strip error %q, got success", tc.Name, maxWin, tc.StripError)
+				} else if tc.StripErrorCode != 0 && code != tc.StripErrorCode {
+					t.Errorf("%s (win=%d): stripErrorCode = %d, want %d (%s)", tc.Name, maxWin, code, tc.StripErrorCode, detail)
 				} else if tc.StripError == "unsupported" && code != ErrCodeUnsupported && expectedFmt != FormatUnknown {
 					t.Errorf("%s (win=%d): expected ErrCodeUnsupported, got %d (%s)", tc.Name, maxWin, code, detail)
-				} else if tc.StripError == "malformed" && code != ErrCodeMalformed {
+				} else if tc.StripError == "malformed" && tc.StripErrorCode == 0 && code != ErrCodeMalformed {
 					t.Errorf("%s (win=%d): expected ErrCodeMalformed, got %d (%s)", tc.Name, maxWin, code, detail)
 				}
 			} else if tc.ExpectedStrippedBase64 != "" {

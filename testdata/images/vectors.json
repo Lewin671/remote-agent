@@ -173,28 +173,32 @@
       "inputBase64": "AAAAGGZ0eXBoZWljAAAAAG1pZjFoZWljAAAAAAAAAAAAAAAAAAAAAA==",
       "format": "heic",
       "orientation": 1,
-      "stripError": "unsupported"
+      "stripError": "unsupported",
+      "stripErrorCode": 2
     },
     {
       "name": "heic_mif1_compat",
       "inputBase64": "AAAAFGZ0eXBtaWYxAAAAAGhlaWMAAAAAAAAAAAAAAAAAAAAA",
       "format": "heic",
       "orientation": 1,
-      "stripError": "unsupported"
+      "stripError": "unsupported",
+      "stripErrorCode": 2
     },
     {
       "name": "avif_major_brand",
       "inputBase64": "AAAAGGZ0eXBhdmlmAAAAAG1pZjFtaWFmAAAAAAAAAAAAAAAAAAAAAA==",
       "format": "avif",
       "orientation": 1,
-      "stripError": "unsupported"
+      "stripError": "unsupported",
+      "stripErrorCode": 2
     },
     {
       "name": "avif_mif1_compat",
       "inputBase64": "AAAAFGZ0eXBtaWYxAAAAAGF2aWYAAAAAAAAAAAAAAAAAAAAA",
       "format": "avif",
       "orientation": 1,
-      "stripError": "unsupported"
+      "stripError": "unsupported",
+      "stripErrorCode": 2
     },
     {
       "name": "mp4_isom_unknown",
@@ -222,28 +226,32 @@
       "inputBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAgADADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDwy300BGRSTnA69D/nFbNtpJfICErjg471v2GmqWxg4zz8vX/P8q6Cw0ktvBTd269T6/pVYGi8XY48JmvLrc5S30ferbg2wDkY5xn+taltoYJUsp2nviuohgAdVjiDnOckEcgYzjrV600eWdV84bxgcAdOmeMf59K1qywMG4UY+1n2Wi/8Ctb7r9tD6/BZpLRydjmodEjjBLsm7GMZBIB7+vSue8TaHbyxtKbySUKz5DRqF4H3VOBjlsE88gAncFB9YttLgRgCuSRuChCTz056c9f85rF8T6O1wkyKZZCWU+Wfm2EK7Bun3SPl4A6ZJ4IOWGxNKOIUeSCeulnN/Pl0T9bXO/OcwdTAOL1+dvPvr/w47T9KZUCbQTjGMZ6+9bE9gAViVNrMRuPXHoMZ78dqw9G8d6KWhMktvHGyo0gDuWhVgxGQFwWyYwVQsQXfPCEmfR/iLpd7famJHH7tytiJAUW4+8ACxXCA7VbcwXG/B+6WbjoYfGxwMYU4NSqafLr+a9E7n4pgsPjnJv2TtH+v+D6a7HTWmkiOJpiWBGDnA6/5/nWjBYvcIyxR7IzgAAZY8/4/yrndK+Imk6hpsbu4imUNmF8p5u0ktgZO1ioDAE4JYKHJDEWdJ+JdjdTzg2BtoYYlfcLhPNeTAJRFO3gYfnPOAMBmCnnqYbEezlGjF+yXuu1rze1l3j6abs+xwGFx+r9m/d/r5/L/ADOrttNiiLKI/NcDavHGfT2xWB4t0yQsRJlWMZIk24MkZ3b0wB8wX5W6fLjOQTy6T4lafZuI4tNMpkiMkMkFwjryAUV8fcbJYMOSu0Y3A5rM1j4jaZI0qu1vBcyBkgN1cbiQSVVXxGTFnDEsCVAwCxJAHPhsNjbpxh7vZP3V5aazfktPR3PQzzC46GWyqyg0u+n+ej7eenWz",
       "format": "jpeg",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_jpeg_zero_scans",
       "inputBase64": "/9j/2Q==",
       "format": "jpeg",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_jpeg_rst_outside_scan",
       "inputBase64": "/9j/0P/Z",
       "format": "jpeg",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_jpeg_seg_past_eof",
       "inputBase64": "/9j/4f///+AAEEpGSUYAAQEAAAEAAQAA/9sAQwAGBAUGBQQGBgUGBwcGCAoQCgoJCQoUDg8MEBcUGBgXFBYWGh0lHxobIxwWFiAsICMmJykqKRkfLTAtKDAlKCko/9sAQwEHBwcKCAoTCgoTKBoWGigoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo/8AAEQgAIAAwAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A8Mt9NARkUk5wOvQ/5xWzbaSXyAhK44OO9b9hpqlsYOM8/L1/z/KugsNJLbwU3duvU+v6VWBovF2OPCZry63OUt9H3q24NsA5GOcZ/rWpbaGCVLKdp74rqIYAHVY4g5znJBHIGM461etNHlnVfOG8YHAHTpnjH+fStassDBuFGPtZ9lov/ArW+6/bQ+vwWaS0cnY5qHRI4wS7JuxjGQSAe/r0rnvE2h28sbSm8klCs+Q0aheB91TgY5bBPPIAJ3BQfWLbS4EYArkkbgoQk89OenPX/OaxfE+jtcJMimWQllPln5thCuwbp90j5eAOmSeCDlhsTSjiFHkgnrpZzfz5dE/W1zvznMHUwDi9fnbz76/8OO0/SmVAm0E4xjGevvWxPYAFYlTazEbj1x6DGe/HasPRvHeiloTJLbxxsqNIA7loVYMRkBcFsmMFULEF3zwhJn0f4i6Xe32piRx+7crYiQFFuPvAAsVwgO1W3MFxvwfulm46GHxscDGFODUqmny6/mvRO5+KYLD45yb9k7R/r/g+mux01ppIjiaYlgRg5wOv+f51owWL3CMsUeyM4AAGWPP+P8q53SviJpOoabG7uIplDZhfKebtJLYGTtYqAwBOCWChyQxFnSfiXY3U84NgbaGGJX3C4TzXkwCURTt4GH5zzgDAZgp56mGxHs5Roxfsl7rta83tZd4+mm7PscBhcfq/Zv3f6+fy/wAzq7bTYoiyiPzXA2rxxn09sVgeLdMkLESZVjGSJNuDJGd29MAfMF+Vuny4zkE8uk+JWn2biOLTTKZIjJDJBcI68gFFfH3GyWDDkrtGNwOazNY+I2mSNKrtbwXMgZIDdXG4kElVV8RkxZwxLAlQMAsSQBz4bDY26cYe72T91eWms35LT0dz0M8wuOhlsqsoNLvp/no+3np1s//Z",
       "format": "jpeg",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_png_bad_sig_tail",
@@ -257,49 +265,56 @@
       "inputBase64": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAADklEQVR4nGP4z8AAQg0AD3oDfnfpf5c=",
       "format": "png",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_png_no_idat",
       "inputBase64": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAAElFTkSuQmCC",
       "format": "png",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_webp_riff_past_eof",
       "inputBase64": "UklGRjQAAABXRUJQVlA4TCgAAAAvAkAAAC8gEEjaH3qN+RcQFPk/2g==",
       "format": "webp",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_webp_short_vp8x",
       "inputBase64": "UklGRhIAAABXRUJQVlA4WAYAAAAAAAAAAAA=",
       "format": "webp",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 1
     },
     {
       "name": "corrupt_gif_gct_oob",
       "inputBase64": "R0lGODlhAQABAIcAAA==",
       "format": "gif",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 4
     },
     {
       "name": "corrupt_gif_no_frames",
       "inputBase64": "R0lGODlhAQABAIAAAP///wAAADs=",
       "format": "gif",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 4
     },
     {
       "name": "corrupt_gif_unknown_block",
       "inputBase64": "R0lGODlhAQABAAAAAJk=",
       "format": "gif",
       "orientation": 1,
-      "stripError": "malformed"
+      "stripError": "malformed",
+      "stripErrorCode": 5
     },
     {
       "name": "jpeg_exif_invalid_orient9",
@@ -318,6 +333,14 @@
       "width": 48,
       "height": 32,
       "expectedStrippedBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAgADADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDwy300BGRSTnA69D/nFbNtpJfICErjg471v2GmqWxg4zz8vX/P8q6Cw0ktvBTd269T6/pVYGi8XY48JmvLrc5S30ferbg2wDkY5xn+taltoYJUsp2nviuohgAdVjiDnOckEcgYzjrV600eWdV84bxgcAdOmeMf59K1qywMG4UY+1n2Wi/8Ctb7r9tD6/BZpLRydjmodEjjBLsm7GMZBIB7+vSue8TaHbyxtKbySUKz5DRqF4H3VOBjlsE88gAncFB9YttLgRgCuSRuChCTz056c9f85rF8T6O1wkyKZZCWU+Wfm2EK7Bun3SPl4A6ZJ4IOWGxNKOIUeSCeulnN/Pl0T9bXO/OcwdTAOL1+dvPvr/w47T9KZUCbQTjGMZ6+9bE9gAViVNrMRuPXHoMZ78dqw9G8d6KWhMktvHGyo0gDuWhVgxGQFwWyYwVQsQXfPCEmfR/iLpd7famJHH7tytiJAUW4+8ACxXCA7VbcwXG/B+6WbjoYfGxwMYU4NSqafLr+a9E7n4pgsPjnJv2TtH+v+D6a7HTWmkiOJpiWBGDnA6/5/nWjBYvcIyxR7IzgAAZY8/4/yrndK+Imk6hpsbu4imUNmF8p5u0ktgZO1ioDAE4JYKHJDEWdJ+JdjdTzg2BtoYYlfcLhPNeTAJRFO3gYfnPOAMBmCnnqYbEezlGjF+yXuu1rze1l3j6abs+xwGFx+r9m/d/r5/L/ADOrttNiiLKI/NcDavHGfT2xWB4t0yQsRJlWMZIk24MkZ3b0wB8wX5W6fLjOQTy6T4lafZuI4tNMpkiMkMkFwjryAUV8fcbJYMOSu0Y3A5rM1j4jaZI0qu1vBcyBkgN1cbiQSVVXxGTFnDEsCVAwCxJAHPhsNjbpxh7vZP3V5aazfktPR3PQzzC46GWyqyg0u+n+ej7eenWz/9k="
+    },
+    {
+      "name": "corrupt_gif_short_header",
+      "inputBase64": "R0lGODlhAQABAA==",
+      "format": "gif",
+      "orientation": 1,
+      "stripError": "malformed",
+      "stripErrorCode": 3
     }
   ]
 }

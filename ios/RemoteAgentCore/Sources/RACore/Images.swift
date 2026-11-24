@@ -26,6 +26,13 @@ private let imgStatusNeedScanJpegEntropy: UInt8 = 2
 private let imgStatusNeedSkipGifSubBlocks: UInt8 = 3
 private let imgStatusError: UInt8 = 4
 
+private let imgErrMalformed: UInt8 = 1
+private let imgErrUnsupported: UInt8 = 2
+private let imgErrGifUnreadable: UInt8 = 3
+private let imgErrGifTruncated: UInt8 = 4
+private let imgErrGifUnknownBlock: UInt8 = 5
+private let imgErrTooComplex: UInt8 = 6
+
 private let imgSniffHeaderBytes = 256
 private let imgInitialHeaderBytes = 64 * 1024
 
@@ -114,24 +121,24 @@ private func skipGifSubBlocks(_ data: Data, _ pos: Int) -> Int {
 }
 
 private enum ImagePlanFailure: Error {
-    case rejected(String)
+    case rejected(UInt8)
 }
 
 private func runImagePlan(_ data: Data, mode: Int32, expectedFormat: Int32) throws -> Data {
     let maxSteps = CorebindImagePlanMaxSteps(Int64(data.count))
     guard let plan = CorebindNewImagePlan(mode, expectedFormat, Int64(data.count)) else {
-        throw ImagePlanFailure.rejected("unavailable")
+        throw ImagePlanFailure.rejected(imgErrMalformed)
     }
     var offset: Int64 = 0
     var slice = subdataCopy(data, 0, min(imgInitialHeaderBytes, data.count))
     for _ in 0..<maxSteps {
         let res = try plan.step(offset, buf: slice)
-        guard !res.isEmpty else { throw ImagePlanFailure.rejected("empty response") }
+        guard !res.isEmpty else { throw ImagePlanFailure.rejected(imgErrMalformed) }
         let status = res[res.startIndex]
         if status == imgStatusDone { return res }
         if status == imgStatusError {
-            let detail = res.count > 2 ? String(decoding: res[(res.startIndex + 2)...], as: UTF8.self) : ""
-            throw ImagePlanFailure.rejected(detail)
+            let code = res.count >= 2 ? res[res.startIndex + 1] : imgErrMalformed
+            throw ImagePlanFailure.rejected(code)
         }
         switch status {
         case imgStatusNeedRead:
@@ -151,10 +158,10 @@ private func runImagePlan(_ data: Data, mode: Int32, expectedFormat: Int32) thro
             offset = Int64(end)
             slice = end >= 0 ? subdataCopy(data, end, min(end + imgInitialHeaderBytes, data.count)) : Data()
         default:
-            throw ImagePlanFailure.rejected("unexpected plan status \(status)")
+            throw ImagePlanFailure.rejected(imgErrMalformed)
         }
     }
-    throw ImagePlanFailure.rejected("plan step limit exceeded")
+    throw ImagePlanFailure.rejected(imgErrTooComplex)
 }
 
 private func spliceImagePlan(_ src: Data, _ done: Data) -> Data {
@@ -251,14 +258,15 @@ public func stripGif(_ data: Data) throws -> Data {
     do {
         let done = try runImagePlan(data, mode: imgModeStrip, expectedFormat: imgFmtGif)
         return spliceImagePlan(data, done)
-    } catch let ImagePlanFailure.rejected(detail) {
-        if detail.contains("unknown block") {
+    } catch let ImagePlanFailure.rejected(code) {
+        switch code {
+        case imgErrGifUnknownBlock:
             throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock(), problemKind: .decode)
-        }
-        if detail.contains("not a GIF") || detail.contains("empty") || detail.contains("does not match") {
+        case imgErrGifTruncated:
+            throw UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
+        default:
             throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode)
         }
-        throw UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
     } catch {
         throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode)
     }

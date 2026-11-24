@@ -26,6 +26,13 @@ private const val IMG_STATUS_NEED_SCAN_JPEG_ENTROPY = 2
 private const val IMG_STATUS_NEED_SKIP_GIF_SUB_BLOCKS = 3
 private const val IMG_STATUS_ERROR = 4
 
+private const val IMG_ERR_MALFORMED = 1
+private const val IMG_ERR_UNSUPPORTED = 2
+private const val IMG_ERR_GIF_UNREADABLE = 3
+private const val IMG_ERR_GIF_TRUNCATED = 4
+private const val IMG_ERR_GIF_UNKNOWN_BLOCK = 5
+private const val IMG_ERR_TOO_COMPLEX = 6
+
 private const val IMG_SNIFF_HEADER_BYTES = 256
 private const val IMG_INITIAL_HEADER_BYTES = 64 * 1024
 
@@ -93,7 +100,7 @@ private fun runImagePlan(
     b: ByteArray,
     mode: Int,
     expectedFormat: Int,
-    onError: (String) -> Nothing,
+    onError: (Int) -> Nothing,
 ): ByteArray {
     val maxSteps = Corebind.imagePlanMaxSteps(b.size.toLong())
     val plan = Corebind.newImagePlan(mode, expectedFormat, b.size.toLong())
@@ -106,8 +113,8 @@ private fun runImagePlan(
         val status = res[0].toInt() and 0xff
         if (status == IMG_STATUS_DONE) return res
         if (status == IMG_STATUS_ERROR) {
-            val detail = String(res, 2, res.size - 2, Charsets.UTF_8)
-            onError(detail)
+            val errCode = if (res.size >= 2) res[1].toInt() and 0xff else IMG_ERR_MALFORMED
+            onError(errCode)
         }
         val bb = ByteBuffer.wrap(res).order(ByteOrder.LITTLE_ENDIAN)
         when (status) {
@@ -138,10 +145,10 @@ private fun runImagePlan(
                     ByteArray(0)
                 }
             }
-            else -> onError("unexpected_plan_status")
+            else -> onError(IMG_ERR_MALFORMED)
         }
     }
-    onError("unexpected_plan_status")
+    onError(IMG_ERR_TOO_COMPLEX)
 }
 
 private fun spliceImagePlan(src: ByteArray, done: ByteArray): ByteArray {
@@ -186,7 +193,7 @@ private fun spliceImagePlan(src: ByteArray, done: ByteArray): ByteArray {
 
 private fun inspectOrientation(b: ByteArray, expectedFormat: Int): Int {
     return try {
-        val done = runImagePlan(b, IMG_MODE_INSPECT, expectedFormat) { throw IllegalStateException(it) }
+        val done = runImagePlan(b, IMG_MODE_INSPECT, expectedFormat) { throw IllegalStateException() }
         val o = done[2].toInt() and 0xff
         if (o in 1..8) o else 1
     } catch (_: Throwable) {
@@ -232,11 +239,11 @@ fun stripWebp(b: ByteArray): ByteArray {
 
 /** A GIF without comments and non-loop application blocks; frames are not touched. */
 fun stripGif(b: ByteArray): ByteArray {
-    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_GIF) { detail ->
-        val msg = when {
-            detail.contains("unknown block") -> UiMessages.imageAndroidGifContainsAnUnrecognizedBlock()
-            detail.contains("not a GIF") || detail.contains("empty") || detail.contains("does not match") -> UiMessages.imageAndroidUnreadableGif()
-            else -> UiMessages.imageAndroidGifIsTruncated()
+    val done = runImagePlan(b, IMG_MODE_STRIP, IMG_FMT_GIF) { errCode ->
+        val msg = when (errCode) {
+            IMG_ERR_GIF_UNKNOWN_BLOCK -> UiMessages.imageAndroidGifContainsAnUnrecognizedBlock()
+            IMG_ERR_GIF_TRUNCATED -> UiMessages.imageAndroidGifIsTruncated()
+            else -> UiMessages.imageAndroidUnreadableGif()
         }
         throw MessageException(msg.messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
     }

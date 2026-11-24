@@ -30,6 +30,7 @@ import Testing
             let wantFmt = try #require(tc["format"] as? String)
             let wantOrient = try #require(tc["orientation"] as? Int)
             let stripError = tc["stripError"] as? String
+            let stripErrorCode = tc["stripErrorCode"] as? Int ?? 0
             let wantStrippedB64 = tc["expectedStrippedBase64"] as? String
             let forbidden = tc["forbiddenSubstrings"] as? [String] ?? []
 
@@ -51,7 +52,17 @@ import Testing
                 case "jpeg": #expect(throws: UserError.self, "\(name)") { _ = try stripJpeg(input) }
                 case "png": #expect(throws: UserError.self, "\(name)") { _ = try stripPng(input) }
                 case "webp": #expect(throws: UserError.self, "\(name)") { _ = try stripWebp(input) }
-                case "gif": #expect(throws: UserError.self, "\(name)") { _ = try stripGif(input) }
+                case "gif":
+                    switch stripErrorCode {
+                    case 5:
+                        #expect(throws: UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock()), "\(name)") { _ = try stripGif(input) }
+                    case 4:
+                        #expect(throws: UserError(L10nMessage.imageIosGifIsTruncated()), "\(name)") { _ = try stripGif(input) }
+                    case 3:
+                        #expect(throws: UserError(L10nMessage.imageIosNotAReadableGif()), "\(name)") { _ = try stripGif(input) }
+                    default:
+                        #expect(throws: UserError.self, "\(name)") { _ = try stripGif(input) }
+                    }
                 default: #expect(try stripOriginal(input) == nil, "\(name): stripOriginal unsupported")
                 }
             } else if let wantStrippedB64 {

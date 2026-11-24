@@ -40,9 +40,14 @@ const (
 )
 
 // Plan error codes encoded at byte 1 when status == StatusError.
+// Shells classify errors strictly by these numeric codes (never by detail text).
 const (
-	ErrCodeMalformed   byte = 1
-	ErrCodeUnsupported byte = 2
+	ErrCodeMalformed       byte = 1
+	ErrCodeUnsupported     byte = 2
+	ErrCodeGifUnreadable   byte = 3
+	ErrCodeGifTruncated    byte = 4
+	ErrCodeGifUnknownBlock byte = 5
+	ErrCodeTooComplex      byte = 6
 )
 
 // Splice operation kinds in ModeStrip Done payloads.
@@ -308,6 +313,9 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 			p.format = FormatUnknown
 			return p.finish(), nil
 		}
+		if p.expectedFormat == FormatGIF {
+			return p.fail(ErrCodeGifUnreadable, "empty image"), nil
+		}
 		return p.fail(ErrCodeMalformed, "empty image"), nil
 	}
 	// Ensure we have enough header bytes for sniffing (at least 64 bytes or whole file).
@@ -332,6 +340,9 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 
 	p.format = SniffFormat(buf)
 	if p.expectedFormat != FormatUnknown && p.format != p.expectedFormat {
+		if p.expectedFormat == FormatGIF {
+			return p.fail(ErrCodeGifUnreadable, "image signature does not match expected format"), nil
+		}
 		return p.fail(ErrCodeMalformed, "image signature does not match expected format"), nil
 	}
 
@@ -379,7 +390,7 @@ func (p *Plan) stepInit(offset int64, buf []byte) ([]byte, error) {
 			hdr := make([]byte, 12)
 			copy(hdr, buf[:12])
 			if !p.addLiteral(hdr) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 			p.webpOutBodyLen = 4 // "WEBP"
 		}
@@ -405,7 +416,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 		dataEnd := uint64(offset)
 		if p.mode == ModeStrip {
 			if !p.addKeep(p.pendingSegStart, dataEnd) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		} else if p.mode == ModeJpegSegments {
 			if !p.addJpegSeg(jpegSeg{
@@ -415,7 +426,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 				end:     p.pendingSegEnd,
 				dataEnd: dataEnd,
 			}) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		}
 		p.pos = dataEnd
@@ -465,7 +476,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 			}
 			if p.mode == ModeStrip {
 				if !p.addKeep(start, start+2) {
-					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 				}
 				return p.finish(), nil
 			}
@@ -476,7 +487,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 				end:     start + 2,
 				dataEnd: start + 2,
 			}) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 			return p.finish(), nil
 		}
@@ -559,7 +570,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 
 		if p.mode == ModeStrip && keep {
 			if !p.addKeep(start, end) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		} else if p.mode == ModeJpegSegments {
 			if !p.addJpegSeg(jpegSeg{
@@ -569,7 +580,7 @@ func (p *Plan) stepJpeg(offset int64, buf []byte) ([]byte, error) {
 				end:     end,
 				dataEnd: end,
 			}) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		}
 
@@ -658,7 +669,7 @@ func (p *Plan) stepPng(offset int64, buf []byte) ([]byte, error) {
 
 		if p.mode == ModeStrip && !isPngDropChunk(t0, t1, t2, t3) {
 			if !p.addKeep(p.pos, end) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		}
 
@@ -785,23 +796,23 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 				if !p.addKeep(p.pos, p.pos+8) ||
 					!p.addLiteral([]byte{patchedFlags}) ||
 					!p.addKeep(p.pos+9, dataEnd) {
-					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 				}
 				p.webpOutBodyLen += dataEnd - p.pos
 				if size&1 != 0 {
 					if !p.addLiteral([]byte{0}) {
-						return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+						return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 					}
 					p.webpOutBodyLen++
 				}
 			} else {
 				if !p.addKeep(p.pos, dataEnd) {
-					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 				}
 				p.webpOutBodyLen += dataEnd - p.pos
 				if size&1 != 0 {
 					if !p.addLiteral([]byte{0}) {
-						return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+						return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 					}
 					p.webpOutBodyLen++
 				}
@@ -817,7 +828,7 @@ func (p *Plan) stepWebp(offset int64, buf []byte) ([]byte, error) {
 func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 	if p.stage == stageGifHeader {
 		if p.totalLen < 13 {
-			return p.fail(ErrCodeMalformed, "not a GIF"), nil
+			return p.fail(ErrCodeGifUnreadable, "not a GIF"), nil
 		}
 		if offset != 0 || len(buf) < 13 {
 			return p.needRead(0, minU32(p.totalLen, defaultReadWindow)), nil
@@ -831,7 +842,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			pos += uint64(3) << ((flags & 7) + 1)
 		}
 		if pos > p.totalLen {
-			return p.fail(ErrCodeMalformed, "GIF color table runs past the end"), nil
+			return p.fail(ErrCodeGifTruncated, "GIF color table runs past the end"), nil
 		}
 		if p.mode == ModeStrip {
 			p.addKeep(0, pos)
@@ -842,12 +853,12 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 
 	if p.stage == stageGifAfterSubBlocks {
 		if offset < 0 || uint64(offset) > p.totalLen {
-			return p.fail(ErrCodeMalformed, "GIF data runs past the end"), nil
+			return p.fail(ErrCodeGifTruncated, "GIF data runs past the end"), nil
 		}
 		end := uint64(offset)
 		if p.mode == ModeStrip && p.pendingGifKeep {
 			if !p.addKeep(p.pendingGifStart, end) {
-				return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+				return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 			}
 		}
 		if p.pendingGifIsImg {
@@ -865,7 +876,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 
 	for {
 		if p.pos >= p.totalLen {
-			return p.fail(ErrCodeMalformed, "GIF ends before the trailer"), nil
+			return p.fail(ErrCodeGifTruncated, "GIF ends before the trailer"), nil
 		}
 		if p.pos < base || p.pos >= bufEnd {
 			return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
@@ -875,17 +886,17 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 		switch intro {
 		case 0x3b: // Trailer
 			if p.gifFrames == 0 {
-				return p.fail(ErrCodeMalformed, "GIF has no image"), nil
+				return p.fail(ErrCodeGifTruncated, "GIF has no image"), nil
 			}
 			if p.mode == ModeStrip {
 				if !p.addKeep(p.pos, p.pos+1) {
-					return p.fail(ErrCodeMalformed, "done_frame_limit"), nil
+					return p.fail(ErrCodeTooComplex, "done_frame_limit"), nil
 				}
 			}
 			return p.finish(), nil
 		case 0x21: // Extension
 			if p.pos+2 > p.totalLen {
-				return p.fail(ErrCodeMalformed, "GIF extension runs past the end"), nil
+				return p.fail(ErrCodeGifTruncated, "GIF extension runs past the end"), nil
 			}
 			need := uint64(2)
 			if p.pos+2 > bufEnd {
@@ -910,7 +921,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			return p.needSkipGifSubBlocks(p.pos + 2), nil
 		case 0x2c: // Image descriptor
 			if p.pos+11 > p.totalLen {
-				return p.fail(ErrCodeMalformed, "GIF image descriptor runs past the end"), nil
+				return p.fail(ErrCodeGifTruncated, "GIF image descriptor runs past the end"), nil
 			}
 			if p.pos+10 > bufEnd {
 				return p.needRead(p.pos, minU32(p.totalLen-p.pos, defaultReadWindow)), nil
@@ -921,7 +932,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 				lzw += uint64(3) << ((f & 7) + 1)
 			}
 			if lzw+1 > p.totalLen {
-				return p.fail(ErrCodeMalformed, "GIF image descriptor runs past the end"), nil
+				return p.fail(ErrCodeGifTruncated, "GIF image descriptor runs past the end"), nil
 			}
 			p.pendingGifStart = p.pos
 			p.pendingGifKeep = true
@@ -929,7 +940,7 @@ func (p *Plan) stepGif(offset int64, buf []byte) ([]byte, error) {
 			p.stage = stageGifAfterSubBlocks
 			return p.needSkipGifSubBlocks(lzw + 1), nil
 		default:
-			return p.fail(ErrCodeMalformed, "GIF unknown block"), nil
+			return p.fail(ErrCodeGifUnknownBlock, "GIF unknown block"), nil
 		}
 	}
 }
@@ -974,7 +985,7 @@ func (p *Plan) needRead(offset uint64, length uint32) []byte {
 	if p.hasLastRead && offset <= p.lastReadPos {
 		p.stalledReads++
 		if p.stalledReads > maxStalledReads {
-			return p.fail(ErrCodeMalformed, "stalled_read")
+			return p.fail(ErrCodeTooComplex, "stalled_read")
 		}
 	} else {
 		p.hasLastRead = true

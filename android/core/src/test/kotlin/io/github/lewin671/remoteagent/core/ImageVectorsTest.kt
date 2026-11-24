@@ -46,6 +46,7 @@ class ImageVectorsTest {
             val wantFmt = obj.getValue("format").jsonPrimitive.content
             val wantOrient = obj.getValue("orientation").jsonPrimitive.int
             val stripError = obj["stripError"]?.jsonPrimitive?.content
+            val stripErrorCode = obj["stripErrorCode"]?.jsonPrimitive?.int ?: 0
             val wantStrippedB64 = obj["expectedStrippedBase64"]?.jsonPrimitive?.content
             val forbidden = obj["forbiddenSubstrings"]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty()
 
@@ -67,7 +68,18 @@ class ImageVectorsTest {
                     "jpeg" -> try { stripJpeg(input); fail("$name: expected error") } catch (_: MessageException) {}
                     "png" -> try { stripPng(input); fail("$name: expected error") } catch (_: MessageException) {}
                     "webp" -> try { stripWebp(input); fail("$name: expected error") } catch (_: MessageException) {}
-                    "gif" -> try { stripGif(input); fail("$name: expected error") } catch (_: MessageException) {}
+                    "gif" -> try {
+                        stripGif(input)
+                        fail("$name: expected error")
+                    } catch (e: MessageException) {
+                        val wantMsg = when (stripErrorCode) {
+                            5 -> messageTextForTest(UiMessages.imageAndroidGifContainsAnUnrecognizedBlock())
+                            4 -> messageTextForTest(UiMessages.imageAndroidGifIsTruncated())
+                            3 -> messageTextForTest(UiMessages.imageAndroidUnreadableGif())
+                            else -> null
+                        }
+                        if (wantMsg != null) assertEquals("$name: gif error message", wantMsg, e.display.testText())
+                    }
                     else -> assertNull("$name: stripOriginal unsupported", stripOriginal(input))
                 }
             } else if (wantStrippedB64 != null) {

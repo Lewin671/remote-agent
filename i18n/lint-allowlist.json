@@ -5820,11 +5820,6 @@
     "reason": "HTML button type attribute near identifier ending in Text; never rendered as user-facing text."
   },
   {
-    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
-    "literal": "unexpected_plan_status",
-    "reason": "Internal diagnostic code mapped to localized UiMessages error on FFI protocol mismatch; never displayed as product copy."
-  },
-  {
     "path": "clientcore/corebind/image.go",
     "literal": "corebind:nil_image_plan",
     "reason": "Developer sentinel error returned for nil ImagePlan handle over FFI/WASM contract; never displayed as product copy."
