@@ -165,36 +165,35 @@ public interface SecurityWorkflowStatusOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary getPendingOp();
 
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+   * @return Whether the errorText field is set.
    */
-  java.lang.String getError();
+  boolean hasErrorText();
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The bytes for error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+   * @return The errorText.
    */
-  com.google.protobuf.ByteString
-      getErrorBytes();
+  io.github.lewin671.remoteagent.core.proto.Text getErrorText();
 
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @return A list containing the pendingRemoveDeviceIds.
    */
   java.util.List<java.lang.String>
       getPendingRemoveDeviceIdsList();
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @return The count of pendingRemoveDeviceIds.
    */
   int getPendingRemoveDeviceIdsCount();
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param index The index of the element to return.
    * @return The pendingRemoveDeviceIds at the given index.
    */
   java.lang.String getPendingRemoveDeviceIds(int index);
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param index The index of the element to return.
    * @return The pendingRemoveDeviceIds at the given index.
    */
@@ -202,12 +201,12 @@ public interface SecurityWorkflowStatusOrBuilder extends
       getPendingRemoveDeviceIdsBytes(int index);
 
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    * @return Whether the pendingRemoveNotice field is set.
    */
   boolean hasPendingRemoveNotice();
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    * @return The pendingRemoveNotice.
    */
   io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice();

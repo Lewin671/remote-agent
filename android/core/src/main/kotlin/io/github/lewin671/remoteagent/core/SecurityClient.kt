@@ -141,26 +141,29 @@ class SecurityWorkflowError(
     override val display: MessageText = message.messageText()
 }
 
-fun translateSecurityKey(raw: String, resolver: MessageResolver): String {
-    if (raw.contains('.') && !raw.contains(' ')) {
-        val resolved = resolver(uiMessage(raw))
-        if (resolved.isNotEmpty() && resolved != raw) return resolved
-    }
-    return raw
-}
-
 fun translateSecurityErrorMessage(
     res: SecurityWorkflowResultEffect,
     resolver: MessageResolver,
 ): String {
-    val raw = res.error.ifEmpty {
-        if (res.structuredErrorCode != SecurityErrorCode.SECURITY_ERROR_CODE_UNSPECIFIED) {
-            securityErrorCodeKey(res.structuredErrorCode)
-        } else {
-            "security error"
-        }
+    if (res.hasErrorText()) {
+        val rendered = coreTextToMessageText(res.errorText).resolve(resolver)
+        if (rendered.isNotEmpty()) return rendered
     }
-    return translateSecurityKey(raw, resolver)
+    return if (res.structuredErrorCode != SecurityErrorCode.SECURITY_ERROR_CODE_UNSPECIFIED) {
+        securityErrorCodeKey(res.structuredErrorCode)
+    } else {
+        ""
+    }
+}
+
+fun renderExitAdviceMessage(
+    advice: SecurityExitAdvice,
+    resolver: MessageResolver,
+): String {
+    if (advice.hasMessageText()) {
+        return coreTextToMessageText(advice.messageText).resolve(resolver)
+    }
+    return ""
 }
 
 data class PreparedCreationResult(

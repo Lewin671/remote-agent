@@ -6,7 +6,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -114,7 +113,7 @@ func (t *opCASTask) step(e *Engine, ev *secEvent) error {
 				}
 				switch ent.Bucket {
 				case bktOp:
-					return newWfError("pending", text.KeySecurityASecurityOperationIsUnfinishedContinueItFirst)
+					return newWfError("pending", WorkflowReasonUnfinishedOpContinueFirst)
 				case bktIntent:
 					return devicesec.ErrStale
 				case bktRec:
@@ -149,7 +148,7 @@ func (t *opCASTask) step(e *Engine, ev *secEvent) error {
 	}
 	if storageConflict(ev) {
 		if t.stage == opCASClaimWrite {
-			return newWfError("pending", text.KeySecurityASecurityOperationIsUnfinishedContinueItFirst)
+			return newWfError("pending", WorkflowReasonUnfinishedOpContinueFirst)
 		}
 		return devicesec.ErrStale
 	}
@@ -265,7 +264,7 @@ func (t *resumePendingTask) step(e *Engine, ev *secEvent) error {
 		return devicesec.ErrStale
 	}
 	if op.Kind == "create" || op.Kind == "recovery" {
-		return newWfError("conflict", text.KeySecurityReturnToAccountCreationOrRecoveryToContinueThe)
+		return newWfError("conflict", WorkflowReasonReturnToCreationOrRecovery)
 	}
 	nextTarget := t.target
 	if t.includePendingRemovals && op.Kind != "lease" {
@@ -456,7 +455,7 @@ func (t *resumeOfferTask) step(e *Engine, ev *secEvent) error {
 		dm, ok := ev.opened[0].Body.(*v1.DeviceMeta)
 		return t.finishOffer(e, ok && dm != nil && sameBytes(dm.HandoffRecoveryEd, t.op.RecoveryEd))
 	case offerSaveRejected:
-		return newWfError("conflict", text.KeySecurityDeviceInformationChangedTheOriginalTransferRequestWasNot)
+		return newWfError("conflict", WorkflowReasonDeviceInfoChangedTransferAborted)
 	case offerSaveDelivered:
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err
@@ -742,7 +741,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 				return devicesec.ErrUntrusted
 			}
 			if uint64(t.op.Pair.ExpiresMs) <= e.effectiveNow(e.lastNowMs) {
-				return newWfError("expired", text.KeySecurityTheUnpublishedPairingDraftExpiredYouCanExplicitlyAbandon)
+				return newWfError("expired", WorkflowReasonUnpublishedPairingDraftExpired)
 			}
 			t.stage = draftGetPairing
 			e.callAuthedProtoRPC(corev1.SecurityRpcMethod_SECURITY_RPC_METHOD_GET_PAIRING, t.op.Server, t.fgGen, &v1.GetPairingRequest{PairingId: t.op.Pair.PairingID}, parentTarget(t, 0))
@@ -757,7 +756,7 @@ func (t *signStateDraftTask) step(e *Engine, ev *secEvent) error {
 		if st.State != v1.PairingState_PAIRING_STATE_REVEALED || uint32(st.JoinerKind) != t.op.Pair.CandidateKind ||
 			(t.op.Pair.ReplacesDeviceID != "" && st.JoinerKind != v1.DeviceKind_DEVICE_KIND_MACHINE) ||
 			!sameBytes(st.DevicePublicKey, t.op.Pair.CandidateEd) || !sameBytes(st.DeviceHpkePublicKey, t.op.Pair.CandidateX) {
-			return newWfError("canceled", text.KeySecurityTheUnpublishedPairingDraftWasCanceledOrItsCandidate)
+			return newWfError("canceled", WorkflowReasonUnpublishedPairingDraftCanceled)
 		}
 		return t.beginDraftEntropy(e)
 	case draftEntropy:
@@ -896,7 +895,7 @@ func (e *Engine) startBuildPairDelivery(op *PersistedOperation, nextStateBytes, 
 		acctPub = prof.AccountPublicKey[:]
 	}
 	if len(acctPub) != 32 {
-		e.failTarget(target, newWfError("invalid", text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA))
+		e.failTarget(target, newWfError("invalid", WorkflowReasonAccountPubKeyMissing))
 		return
 	}
 	authMem, ok := e.head.Core.Member(e.selfDeviceID)
@@ -1227,7 +1226,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 		case v1.PairingState_PAIRING_STATE_DELIVERED:
 			t.finishDeliveryAndClear(e, t.op)
 		case v1.PairingState_PAIRING_STATE_CANCELED:
-			return fatalWfError("pairing_delivery", text.KeySecurityPairingWasCanceledExplicitlyRemoveTheUnfinishedCandidateBefore, "pairing_delivery")
+			return fatalWfError("pairing_delivery", WorkflowReasonPairingCanceledRemoveCandidate, "pairing_delivery")
 		default:
 			e.okTarget(t.target, nil)
 		}
@@ -1244,7 +1243,7 @@ func (t *continueStateOpTask) step(e *Engine, ev *secEvent) error {
 			t.finishDeliveryAndClear(e, t.op)
 			return nil
 		}
-		return fatalWfError("pairing_delivery", text.KeySecurityPairingDeliveryExpiredExplicitlyRemoveTheUnfinishedCandidateBefore, "pairing_delivery")
+		return fatalWfError("pairing_delivery", WorkflowReasonPairingDeliveryExpiredRemoveCandidate, "pairing_delivery")
 	case contStateSaveDelivered:
 		if err := e.checkFG(t.fgGen); err != nil {
 			return err

@@ -314,7 +314,7 @@ func (c *Core) processSessionSettled(
 			rec.Frozen = false
 			rec.Expired = false
 			rec.ErrorCode = sc.ErrorCode
-			rec.ErrorText = sc.ErrorText
+			rec.ErrorText = screens.ReasonText(sc.ErrorReason)
 		} else {
 			delete(ui.Commands, slotKey)
 			delete(store.slotMeta, slotKey)
@@ -346,13 +346,13 @@ func (c *Core) processSessionSettled(
 		rec.Frozen = false
 		rec.Expired = false
 		rec.ErrorCode = sc.ErrorCode
-		rec.ErrorText = sc.ErrorText
+		rec.ErrorText = screens.ReasonText(sc.ErrorReason)
 	case outcome.Unknown:
 		rec.Status = corev1.SessionCommandStatus_SESSION_COMMAND_STATUS_UNKNOWN
 		rec.Frozen = sc.Frozen
 		rec.Expired = sc.Expired
 		rec.ErrorCode = sc.ErrorCode
-		rec.ErrorText = sc.ErrorText
+		rec.ErrorText = screens.ReasonText(sc.ErrorReason)
 	}
 
 	if meta.kind == slotKindSend && meta.outgoingReqID != "" {
@@ -530,11 +530,12 @@ func (c *Core) settlePlanPreflight(
 		fresh = sc.Result.GetLiveSnapshot()
 	}
 	if fresh == nil {
+		errTxt := screens.ReasonText(sc.ErrorReason)
 		code := sc.ErrorCode
-		if code == "" && sc.ErrorText == nil {
+		if code == "" && errTxt == nil {
 			code = "failed_precondition"
 		}
-		setPlanPreflightFailed(rec, code, sc.ErrorText)
+		setPlanPreflightFailed(rec, code, errTxt)
 		store.pendingDirty = true
 		ctx.Dirty.Add(true, true, false)
 		ctx.Dirty.MarkSessionData()
@@ -586,7 +587,7 @@ func (s *sessionStore) settleOutgoing(ui *screens.SessionUIState, reqID string, 
 				og.Frozen = false
 				og.Expired = false
 				og.ErrorCode = sc.ErrorCode
-				og.ErrorText = sc.ErrorText
+				og.ErrorText = screens.ReasonText(sc.ErrorReason)
 			} else {
 				og.State = screens.OutgoingSent
 				og.Frozen = false
@@ -599,13 +600,13 @@ func (s *sessionStore) settleOutgoing(ui *screens.SessionUIState, reqID string, 
 			og.Frozen = false
 			og.Expired = false
 			og.ErrorCode = sc.ErrorCode
-			og.ErrorText = sc.ErrorText
+			og.ErrorText = screens.ReasonText(sc.ErrorReason)
 		case outcome.Unknown:
 			og.State = screens.OutgoingUnknown
 			og.Frozen = sc.Frozen
 			og.Expired = sc.Expired
 			og.ErrorCode = sc.ErrorCode
-			og.ErrorText = sc.ErrorText
+			og.ErrorText = screens.ReasonText(sc.ErrorReason)
 		}
 		return
 	}

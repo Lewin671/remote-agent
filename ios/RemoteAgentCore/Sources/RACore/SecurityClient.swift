@@ -76,21 +76,17 @@ public struct SecurityWorkflowError: Error, LocalizedError, Equatable, Sendable 
     public var errorDescription: String? { message }
 }
 
-private let resolvableI18nPrefixes = ["security.", "errors.", "common.", "settings.", "connection.", "home."]
-
-public func translateSecurityKey(_ raw: String) -> String {
-    guard !raw.isEmpty, !raw.contains(" "),
-          resolvableI18nPrefixes.contains(where: { raw.hasPrefix($0) }),
-          raw.range(of: #"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$"#, options: .regularExpression) != nil
-    else { return raw }
-    return L10nText.resolve(key: raw)
+public func translateSecurityErrorMessage(_ res: PBSecurityWorkflowResultEffect) -> String {
+    if res.hasErrorText {
+        let rendered = renderCoreText(res.errorText)
+        if !rendered.isEmpty { return rendered }
+    }
+    return res.structuredErrorCode != .unspecified ? String(describing: res.structuredErrorCode) : ""
 }
 
-public func translateSecurityErrorMessage(_ res: PBSecurityWorkflowResultEffect) -> String {
-    let raw = !res.error.isEmpty
-        ? res.error
-        : (res.structuredErrorCode != .unspecified ? String(describing: res.structuredErrorCode) : "security error")
-    return translateSecurityKey(raw)
+public func renderExitAdviceMessage(_ advice: PBSecurityExitAdvice) -> String {
+    guard advice.hasMessageText else { return "" }
+    return renderCoreText(advice.messageText)
 }
 
 public struct PreparedCreationResult: Equatable, Sendable {

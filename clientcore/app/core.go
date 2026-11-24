@@ -86,7 +86,7 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	case *corev1.Screen_SyncState:
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_SyncState{
-				SyncState: c.m.sync.BuildSyncStateView(),
+				SyncState: c.buildSyncStateView(),
 			},
 		}, nil
 
@@ -95,9 +95,10 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 		if s.SessionData != nil {
 			sid = s.SessionData.SessionId
 		}
+		errReason, fetchErrReason := c.m.sync.SessionErrorReasons(sid)
 		return &corev1.ViewModel{
 			View: &corev1.ViewModel_SessionData{
-				SessionData: c.m.sync.BuildSessionDataView(sid),
+				SessionData: screens.ApplySessionDataTexts(c.m.sync.BuildSessionDataView(sid), errReason, fetchErrReason),
 			},
 		}, nil
 
@@ -128,6 +129,17 @@ func (c *Core) View(screen *corev1.Screen) (*corev1.ViewModel, error) {
 	}
 }
 
+// buildSyncStateView builds the transitional SyncStateView with localized Text
+// fields populated by screens from structured sync reasons.
+func (c *Core) buildSyncStateView() *corev1.SyncStateView {
+	return screens.ApplySyncStateTexts(
+		c.m.sync.BuildSyncStateView(),
+		c.m.sync.World(),
+		c.m.sync.ConnectionStep(),
+		c.m.sync.DevicesError(),
+	)
+}
+
 // Dispatch advances sync and UI state for ev and returns ordered side effects for the shell.
 func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	if ev == nil {
@@ -148,6 +160,11 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 		}
 		effects := append(syncRes.Effects, hookEffects...)
 		effects = append(effects, extra...)
+		nowMs := ev.GetNowMs()
+		if nowMs <= 0 {
+			nowMs = c.m.sync.NowMs()
+		}
+		screens.DecorateSecurityEffects(effects, syncRes.SecurityWorkflowMeta, syncRes.SecurityNotifyOutcomes, syncRes.SecurityBootstrapError, nowMs)
 		if r := renderEffect(syncRes.Dirty); r != nil {
 			effects = append(effects, r)
 		}
@@ -172,6 +189,11 @@ func (c *Core) Dispatch(ev *corev1.Event) *corev1.EffectBatch {
 	effects = append(effects, stepRes.Effects...)
 	effects = append(effects, uiEffects...)
 	effects = append(effects, extra...)
+	nowMs := ev.GetNowMs()
+	if nowMs <= 0 {
+		nowMs = c.m.sync.NowMs()
+	}
+	screens.DecorateSecurityEffects(effects, stepRes.SecurityWorkflowMeta, stepRes.SecurityNotifyOutcomes, stepRes.SecurityBootstrapError, nowMs)
 	if r := renderEffect(stepRes.Dirty); r != nil {
 		effects = append(effects, r)
 	}
@@ -237,7 +259,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				me.Error = ""
 				me.ErrorText = nil
 			} else {
-				me.ErrorText = sc.ErrorText
+				me.ErrorText = screens.ReasonText(sc.ErrorReason)
 				me.Error = sc.ErrorCode
 				if me.Error == "" && me.ErrorText == nil {
 					me.Error = "failed"
@@ -269,7 +291,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 					}
 				}
 			} else {
-				se.ErrorText = sc.ErrorText
+				se.ErrorText = screens.ReasonText(sc.ErrorReason)
 				se.Error = sc.ErrorCode
 				if se.Error == "" && se.ErrorText == nil {
 					se.Error = "failed"
@@ -313,7 +335,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				dp.Error = ""
 				dp.ErrorText = nil
 			} else {
-				dp.ErrorText = sc.ErrorText
+				dp.ErrorText = screens.ReasonText(sc.ErrorReason)
 				dp.Error = sc.ErrorCode
 				if dp.Error == "" && dp.ErrorText == nil {
 					dp.Error = "failed"
@@ -402,7 +424,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.Expired = sc.Expired
 				d.UnknownStart = true
 				d.DiskFull = false
-				d.StartErrorText = sc.ErrorText
+				d.StartErrorText = screens.ReasonText(sc.ErrorReason)
 				d.StartError = sc.ErrorCode
 			} else {
 				d.Frozen = false
@@ -410,7 +432,7 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.UnknownStart = false
 				d.ActiveStartRequestID = ""
 				d.DiskFull = sc.ErrorCode == "disk_full"
-				d.StartErrorText = sc.ErrorText
+				d.StartErrorText = screens.ReasonText(sc.ErrorReason)
 				d.StartError = sc.ErrorCode
 				if d.StartError == "" && d.StartErrorText == nil {
 					d.StartError = "failed"

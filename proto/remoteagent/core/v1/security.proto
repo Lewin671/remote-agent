@@ -487,9 +487,11 @@ message SecurityWorkflowStatus {
   bool has_handoff_offer = 19;
   bool taking_over = 20;
   SecurityPendingOpSummary pending_op = 21;
-  string error = 22;
-  repeated string pending_remove_device_ids = 23;
-  Text pending_remove_notice = 24;
+  reserved 22;
+  reserved "error";
+  Text error_text = 23;
+  repeated string pending_remove_device_ids = 24;
+  Text pending_remove_notice = 25;
 }
 
 message SecurityPairingReplacementCandidate {
@@ -536,9 +538,11 @@ message SecurityHandoffCandidate {
 }
 
 message SecurityExitAdvice {
+  reserved 3;
+  reserved "message";
   bool authority = 1;
   bool unresolved = 2;
-  string message = 3;
+  Text message_text = 4;
 }
 
 message SecurityAccountAdopted {
@@ -657,11 +661,10 @@ message SecurityWorkflowActionEvent {
 }
 
 message SecurityWorkflowResultEffect {
-  reserved 4;
-  reserved "error_code";
+  reserved 3, 4;
+  reserved "error", "error_code";
   uint64 action_id = 1;
   bool ok = 2;
-  string error = 3;
   bool retryable = 5;
   bool uncertain = 6;
   string error_action = 7;
@@ -677,6 +680,7 @@ message SecurityWorkflowResultEffect {
   SecurityAccountAdopted account_adopted = 17;
   bool flag = 18;
   SecurityErrorCode structured_error_code = 19;
+  Text error_text = 20;
 }
 
 message SecurityStatusChangedEffect {

@@ -8,7 +8,6 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/entropy"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -50,7 +49,8 @@ type DeviceOfferInfo struct {
 }
 
 type wfError struct {
-	msg       string
+	reason    WorkflowReason
+	raw       string
 	code      string
 	retryable bool
 	uncertain bool
@@ -61,21 +61,28 @@ func (e *wfError) Error() string {
 	if e == nil {
 		return ""
 	}
-	return e.msg
+	if e.raw != "" {
+		return e.raw
+	}
+	if e.code != "" {
+		return "security: " + e.code
+	}
+	return "security error"
 }
 
 //go:noinline
-func newWfError(code, msg string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: true}
+func newWfError(code string, reason WorkflowReason) *wfError {
+	return &wfError{code: code, reason: reason, retryable: true}
 }
 
 //go:noinline
-func fatalWfError(code, msg, action string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: false, action: action}
+func newRawWfError(code, raw string) *wfError {
+	return &wfError{code: code, raw: raw, retryable: true}
 }
 
-func uncertainWfError(code, msg string) *wfError {
-	return &wfError{code: code, msg: msg, retryable: true, uncertain: true, action: "retry"}
+//go:noinline
+func fatalWfError(code string, reason WorkflowReason, action string) *wfError {
+	return &wfError{code: code, reason: reason, retryable: false, action: action}
 }
 
 type rpcError struct {
@@ -189,6 +196,7 @@ type workflowState struct {
 	fgGen              uint64
 	bootstrapped       bool
 	bootstrapInvalid   bool
+	bootstrapErrReason WorkflowReason
 	bootstrapError     string
 	legacyRepairNotice bool
 
@@ -387,7 +395,7 @@ func (e *Engine) HandleStorageResult(nowMs int64, ev *corev1.SecurityStorageResu
 	if w, ok := e.takeTask(ev.OpId); ok && w.task != nil {
 		var err error
 		if ev.Error != "" {
-			err = newWfError("storage", ev.Error)
+			err = newRawWfError("storage", ev.Error)
 		} else if ev.Conflict {
 			err = devicesec.ErrStale
 		}
@@ -423,7 +431,7 @@ func (e *Engine) HandleRpcResult(nowMs int64, ev *corev1.SecurityRpcResultEvent)
 func (e *Engine) checkFG(capturedGen uint64) error {
 	wf := e.ensureWF()
 	if !wf.foreground || wf.fgGen != capturedGen {
-		return fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, "")
+		return fatalWfError("foreground", WorkflowReasonPagePaused, "")
 	}
 	return nil
 }
@@ -449,11 +457,23 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 		res = &corev1.SecurityWorkflowResultEffect{}
 	}
 	res.ActionId, res.Status, res.Ok = actionID, e.BuildWorkflowStatus(), err == nil
+	var meta WorkflowMeta
+	if res.ExitAdvice != nil {
+		switch {
+		case res.ExitAdvice.Unresolved:
+			meta.ExitReason = ExitAdviceUnresolvedOp
+		case res.ExitAdvice.Authority:
+			meta.ExitReason = ExitAdviceOnlyManagingClient
+		default:
+			meta.ExitReason = ExitAdviceDefault
+		}
+	}
 	if err != nil {
-		res.Error = err.Error()
+		meta.ErrRaw = err.Error()
 		if we := asWfError(err); we != nil {
 			res.Retryable, res.Uncertain, res.ErrorAction = we.retryable, we.uncertain, we.action
 			res.StructuredErrorCode = StructuredErrorCodeFromString(we.code)
+			meta.ErrReason = we.reason
 		} else {
 			res.StructuredErrorCode = StructuredErrorCode(err)
 			if re := asRpcError(err); re != nil {
@@ -477,6 +497,7 @@ func (e *Engine) emitActionResult(actionID uint64, res *corev1.SecurityWorkflowR
 			}
 		}
 	}
+	e.recordWorkflowMeta(actionID, meta)
 	e.out = append(e.out, &corev1.Effect{Effect: &corev1.Effect_SecurityWorkflowResult{SecurityWorkflowResult: res}})
 }
 
@@ -488,10 +509,18 @@ func (e *Engine) emitStatusChanged() {
 }
 
 // BuildWorkflowStatus returns the unified security workflow & identity status for shell UIs.
+// BootstrapError returns the structured error metadata from the latest security bootstrap.
+func (e *Engine) BootstrapError() BootstrapErrorMeta {
+	if e == nil || e.wf == nil {
+		return BootstrapErrorMeta{}
+	}
+	return BootstrapErrorMeta{Reason: e.wf.bootstrapErrReason, Raw: e.wf.bootstrapError}
+}
+
 func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 	wf := e.ensureWF()
 	st := &corev1.SecurityWorkflowStatus{
-		LegacyRepairNotice: wf.legacyRepairNotice, Server: wf.server, DeviceId: e.selfDeviceID, AccountId: e.account, Error: wf.bootstrapError,
+		LegacyRepairNotice: wf.legacyRepairNotice, Server: wf.server, DeviceId: e.selfDeviceID, AccountId: e.account,
 	}
 	switch {
 	case !wf.bootstrapped:
@@ -554,7 +583,6 @@ func (e *Engine) BuildWorkflowStatus() *corev1.SecurityWorkflowStatus {
 	}
 	if pendingRem := e.pendingRemoveDeviceIDs(); len(pendingRem) > 0 {
 		st.PendingRemoveDeviceIds = pendingRem
-		st.PendingRemoveNotice = text.Msg(text.KeySecurityOldDevicesRemovalIncomplete, text.Int("count", int64(len(pendingRem))))
 	}
 	return st
 }
@@ -741,6 +769,11 @@ func (t *bootstrapTask) finish(e *Engine, wf *workflowState, err error) error {
 			wf.bootstrapInvalid = false
 		}
 		wf.bootstrapError = err.Error()
+		if we := asWfError(err); we != nil {
+			wf.bootstrapErrReason = we.reason
+		} else {
+			wf.bootstrapErrReason = WorkflowReasonNone
+		}
 	}
 	e.emitActionResult(t.actionID, nil, err)
 	e.emitStatusChanged()
@@ -752,7 +785,7 @@ func (t *bootstrapTask) step(e *Engine, ev *secEvent) error {
 	if ev.kind == evChildDone {
 		return t.finish(e, wf, ev.err)
 	}
-	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapError = true, false, ""
+	wf.bootstrapped, wf.bootstrapInvalid, wf.bootstrapErrReason, wf.bootstrapError = true, false, WorkflowReasonNone, ""
 	if ev.storage != nil && ev.storage.legacyCleared {
 		wf.legacyRepairNotice = true
 	}

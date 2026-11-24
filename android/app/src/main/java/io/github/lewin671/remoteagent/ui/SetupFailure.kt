@@ -2,7 +2,7 @@ package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
-import io.github.lewin671.remoteagent.core.translateSecurityKey
+import io.github.lewin671.remoteagent.core.renderExitAdviceMessage
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
@@ -48,8 +48,8 @@ fun DiscardSetupAction(
             } else {
                 scope.launch {
                     val adv = runCatching { checkAdvice() }.getOrNull()
-                    val resolved = adv?.takeIf { it.authority || it.unresolved }?.message
-                        ?.let { translateSecurityKey(it, copy) }
+                    val resolved = adv?.takeIf { it.authority || it.unresolved }
+                        ?.let { renderExitAdviceMessage(it, copy) }
                         ?.takeIf { it.isNotEmpty() }
                     adviceText = resolved
                         ?: copy(UiMessages.securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill())

@@ -109,7 +109,6 @@ type ConnectionStatusView struct {
 	BadgeText         *Text
 	DetailText        *Text
 	LivePushConnected bool
-	Reason            string
 	DisconnectedAtMs  int64
 }
 
@@ -137,12 +136,6 @@ func (m *ConnectionStatusView) GetLivePushConnected() bool {
 	}
 	return false
 }
-func (m *ConnectionStatusView) GetReason() string {
-	if m != nil {
-		return m.Reason
-	}
-	return ""
-}
 func (m *ConnectionStatusView) GetDisconnectedAtMs() int64 {
 	if m != nil {
 		return m.DisconnectedAtMs
@@ -156,7 +149,6 @@ var LitewireDesc_ConnectionStatusView = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(ConnectionStatusView{}.BadgeText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 3, Offset: unsafe.Offsetof(ConnectionStatusView{}.DetailText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 		{Num: 4, Offset: unsafe.Offsetof(ConnectionStatusView{}.LivePushConnected), Kind: litewire.KindBool},
-		{Num: 5, Offset: unsafe.Offsetof(ConnectionStatusView{}.Reason), Kind: litewire.KindString},
 		{Num: 6, Offset: unsafe.Offsetof(ConnectionStatusView{}.DisconnectedAtMs), Kind: litewire.KindInt64},
 	},
 }

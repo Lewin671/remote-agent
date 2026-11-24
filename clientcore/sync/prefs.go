@@ -4,9 +4,9 @@ import (
 	"slices"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 type prefsPhase uint8
@@ -36,7 +36,7 @@ type SettledPrefs struct {
 	DraftKey    string
 	ForSettings bool
 	OK          bool
-	ErrorText   *corev1.Text
+	ErrorReason world.Reason
 }
 
 func (e *Engine) startLoadPrefs(ctx *StepContext) {
@@ -69,19 +69,19 @@ func (e *Engine) enqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSett
 	if op == nil {
 		return false
 	}
-	e.w.PrefsGlobalErrorText = nil
+	e.w.PrefsGlobalError = world.Reason{}
 	if forSettings {
-		delete(e.w.PrefsSettingsErrorText, op.Path)
+		delete(e.w.PrefsSettingsError, op.Path)
 	} else {
-		delete(e.w.PrefsSaveErrorTextByPath, op.Path)
+		delete(e.w.PrefsSaveErrorByPath, op.Path)
 	}
 
-	if errText := e.prefsMutationGuardError(); errText != nil {
+	if errReason := e.prefsMutationGuardError(); !errReason.IsZero() {
 		if forSettings {
-			e.w.PrefsSettingsErrorText[op.Path] = errText
+			e.w.PrefsSettingsError[op.Path] = errReason
 		} else {
-			e.w.PrefsSaveErrorTextByPath[op.Path] = errText
-			e.w.PrefsGlobalErrorText = errText
+			e.w.PrefsSaveErrorByPath[op.Path] = errReason
+			e.w.PrefsGlobalError = errReason
 		}
 		ctx.Dirty.Add(true, true, true)
 		return false
@@ -108,20 +108,20 @@ func (e *Engine) enqueuePrefsOp(ctx *StepContext, op *lists.FullPrefsOp, forSett
 	return true
 }
 
-func (e *Engine) prefsMutationGuardError() *corev1.Text {
+func (e *Engine) prefsMutationGuardError() world.Reason {
 	if e.accountClockSkewed() {
-		return text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
+		return world.Reason{Kind: world.ReasonClockBehind}
 	}
 	if e.accountControlLost() {
-		return text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+		return world.Reason{Kind: world.ReasonRemoteControlExpired}
 	}
 	if !e.networkAvailable {
-		return text.Msg(text.KeyConnectionNoNetwork)
+		return world.Reason{Kind: world.ReasonNoNetwork}
 	}
 	if e.w.World.Connection != lists.ConnConnected {
-		return text.Msg(text.KeyErrorsNotConnected)
+		return world.Reason{Kind: world.ReasonNotConnected}
 	}
-	return nil
+	return world.Reason{}
 }
 
 func (e *Engine) startNextPrefsOp(ctx *StepContext) {
@@ -189,7 +189,7 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 	head := &e.prefsQueue[0]
 	head.ActiveOpID = 0
 	if ev.Error != "" {
-		e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.Error)))
+		e.finishPrefsOp(ctx, world.Reason{Kind: world.ReasonServerReturned, Param: ev.Error})
 		return
 	}
 	if ev.WirePrefs != nil || (e.secEngine != nil && e.secEngine.Locked() && ev.Prefs == nil) {
@@ -216,7 +216,7 @@ func (e *Engine) handlePrefsCASGetResult(ctx *StepContext, ev *corev1.AccountPre
 
 	if basePrefs != nil && slices.Contains(basePrefs.RecentOps, head.OpID) {
 		e.applyAccountPrefs(ev.Prefs, true)
-		e.finishPrefsOp(ctx, nil)
+		e.finishPrefsOp(ctx, world.Reason{})
 		return
 	}
 
@@ -253,14 +253,14 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 	}
 	head.ActiveOpID = 0
 	if ev.Error != "" {
-		e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsServerReturned, text.Str("value", ev.Error)))
+		e.finishPrefsOp(ctx, world.Reason{Kind: world.ReasonServerReturned, Param: ev.Error})
 		return
 	}
 	if !ev.Applied || ev.SealConflict {
 		head.Attempt++
 		e.w.ProjectChangedElsewhere = true
 		if head.Attempt >= PrefsCASMaxAttempts {
-			e.finishPrefsOp(ctx, text.Msg(text.KeyErrorsOtherClientsKeptChangingTheProjectListChangesCould))
+			e.finishPrefsOp(ctx, world.Reason{Kind: world.ReasonPrefsConflict})
 			return
 		}
 		e.startNextPrefsOp(ctx)
@@ -275,10 +275,10 @@ func (e *Engine) handleAccountPrefsPutResult(ctx *StepContext, ev *corev1.Accoun
 	if ev.Current != nil {
 		e.applyAccountPrefs(ev.Current, true)
 	}
-	e.finishPrefsOp(ctx, nil)
+	e.finishPrefsOp(ctx, world.Reason{})
 }
 
-func (e *Engine) finishPrefsOp(ctx *StepContext, errText *corev1.Text) {
+func (e *Engine) finishPrefsOp(ctx *StepContext, errReason world.Reason) {
 	if len(e.prefsQueue) == 0 {
 		return
 	}
@@ -287,19 +287,19 @@ func (e *Engine) finishPrefsOp(ctx *StepContext, errText *corev1.Text) {
 
 	if done.ForSettings {
 		delete(e.w.PrefsSavingSettings, done.Path)
-		if errText != nil {
-			e.w.PrefsSettingsErrorText[done.Path] = errText
+		if !errReason.IsZero() {
+			e.w.PrefsSettingsError[done.Path] = errReason
 		} else {
-			delete(e.w.PrefsSettingsErrorText, done.Path)
+			delete(e.w.PrefsSettingsError, done.Path)
 		}
 	} else {
 		delete(e.w.PrefsPendingPath, done.Path)
-		if errText != nil {
-			e.w.PrefsSaveErrorTextByPath[done.Path] = errText
-			e.w.PrefsGlobalErrorText = errText
+		if !errReason.IsZero() {
+			e.w.PrefsSaveErrorByPath[done.Path] = errReason
+			e.w.PrefsGlobalError = errReason
 		} else {
-			delete(e.w.PrefsSaveErrorTextByPath, done.Path)
-			e.w.PrefsGlobalErrorText = nil
+			delete(e.w.PrefsSaveErrorByPath, done.Path)
+			e.w.PrefsGlobalError = world.Reason{}
 		}
 	}
 

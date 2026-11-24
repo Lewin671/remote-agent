@@ -23,14 +23,13 @@ public interface SecurityExitAdviceOrBuilder extends
   boolean getUnresolved();
 
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The message.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   * @return Whether the messageText field is set.
    */
-  java.lang.String getMessage();
+  boolean hasMessageText();
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The bytes for message.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+   * @return The messageText.
    */
-  com.google.protobuf.ByteString
-      getMessageBytes();
+  io.github.lewin671.remoteagent.core.proto.Text getMessageText();
 }

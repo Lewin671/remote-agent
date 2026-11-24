@@ -4,10 +4,10 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -31,8 +31,8 @@ type EventBuffer struct {
 	approxBytes      int64
 	usedAtMs         int64
 
-	errorText            *corev1.Text
-	fetchErrorText       *corev1.Text
+	errorReason          world.Reason
+	fetchErrorReason     world.Reason
 	retired              bool
 	tailRequested        bool
 	awaitingCache        bool
@@ -76,8 +76,8 @@ func (b *EventBuffer) resetContent(agent v1.Agent) {
 	clear(b.approxBytesBySeq)
 	b.approxBytes = 0
 	b.tailRequested = false
-	b.errorText = nil
-	b.fetchErrorText = nil
+	b.errorReason = world.Reason{}
+	b.fetchErrorReason = world.Reason{}
 	b.loaded = false
 	b.reducer = projection.NewReducer(agent)
 	b.cachedSnap = nil
@@ -247,9 +247,9 @@ func (e *Engine) retryEvents(ctx *StepContext, sid string) {
 		e.startLoadEvents(ctx, sid)
 		return
 	}
-	b.fetchErrorText = nil
+	b.fetchErrorReason = world.Reason{}
 	if !b.retired {
-		b.errorText = nil
+		b.errorReason = world.Reason{}
 	}
 	e.startFetchEvents(ctx, sid)
 	ctx.Dirty.MarkSessionData()
@@ -268,7 +268,7 @@ func (e *Engine) markSessionRetired(sid string) {
 		return
 	}
 	b.retired = true
-	b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+	b.errorReason = world.Reason{Kind: world.ReasonHistoryKeysUnavailable}
 	e.bumpRev(b)
 }
 
@@ -288,7 +288,7 @@ func (e *Engine) startLoadEvents(ctx *StepContext, sid string) {
 	e.bumpRev(b)
 	if s.RetiredHistory {
 		b.retired = true
-		b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+		b.errorReason = world.Reason{Kind: world.ReasonHistoryKeysUnavailable}
 		e.buffers[sid] = b
 		ctx.Dirty.MarkSessionData()
 		return
@@ -333,7 +333,7 @@ func (e *Engine) handleCacheEventsLoaded(ctx *StepContext, ev *corev1.CacheEvent
 		b.retired = true
 		b.awaitingCache = false
 		b.backfilling = false
-		b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+		b.errorReason = world.Reason{Kind: world.ReasonHistoryKeysUnavailable}
 		e.bumpRev(b)
 		if s != nil {
 			s.RetiredHistory = true
@@ -506,7 +506,7 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 	b.refetch = false
 	b.fetchGen = e.lifecycleGen
 	b.endSeq = nil
-	b.fetchErrorText = nil
+	b.fetchErrorReason = world.Reason{}
 
 	if b.backfilling {
 		latest := s.ServerLastSeq
@@ -528,7 +528,7 @@ func (e *Engine) startFetchEvents(ctx *StepContext, sid string) {
 
 	latest := s.ServerLastSeq
 	prefix := uint64(len(b.prefix))
-	if latest > prefix+uint64(EventsPageLimit) && b.errorText == nil {
+	if latest > prefix+uint64(EventsPageLimit) && b.errorReason.IsZero() {
 		after := latest - uint64(EventsPageLimit)
 		if !allTailHeld(b, after, uint64(EventsPageLimit)) {
 			b.tailRequested = true
@@ -593,7 +593,7 @@ func (e *Engine) handleEventsPageFetched(ctx *StepContext, ev *corev1.EventsPage
 	if ev.Error != "" {
 		b.fetching = false
 		b.retryingCorruptCache = false
-		b.fetchErrorText = text.Msg(text.KeyErrorsHistoryCouldNotContinueLoadingRetry)
+		b.fetchErrorReason = world.Reason{Kind: world.ReasonHistoryLoadFailed}
 		if b.refetch {
 			e.startFetchEvents(ctx, ev.SessionId)
 		}
@@ -632,7 +632,7 @@ func (e *Engine) finishEventsPageFetched(
 	wasTailPrefix := b.fetchPhase == eventFetchPrefix && b.tailRequested
 	prevPrefix := len(b.prefix)
 	e.ingestDecodedEvents(ctx, sid, b, items, false, true, true, !wasTailPrefix)
-	if !wasTailPrefix || !b.tailRequested || b.errorText != nil {
+	if !wasTailPrefix || !b.tailRequested || !b.errorReason.IsZero() {
 		if wasTailPrefix {
 			e.refreshSessionPending(s)
 			ctx.Dirty.Add(true, true, false)
@@ -649,7 +649,7 @@ func (e *Engine) finishEventsPageFetched(
 
 	switch b.fetchPhase {
 	case eventFetchNewer:
-		if more && b.errorText == nil && lastSeq > b.fetchCursor {
+		if more && b.errorReason.IsZero() && lastSeq > b.fetchCursor {
 			b.fetchCursor = lastSeq
 			e.emitGetEvents(ctx, sid, b, lastSeq)
 			return
@@ -661,7 +661,7 @@ func (e *Engine) finishEventsPageFetched(
 		return
 
 	case eventFetchTail:
-		if more && b.errorText == nil && lastSeq > b.fetchCursor {
+		if more && b.errorReason.IsZero() && lastSeq > b.fetchCursor {
 			b.fetchCursor = lastSeq
 			e.emitGetEvents(ctx, sid, b, lastSeq)
 			return
@@ -694,11 +694,11 @@ func (e *Engine) finishFetchCycle(ctx *StepContext, sid string, b *EventBuffer, 
 	b.fetchPhase = eventFetchNone
 	b.retryingCorruptCache = false
 	missing := b.hasServerGap(s.ServerLastSeq)
-	b.loaded = !missing && b.errorText == nil
-	if missing && b.errorText == nil {
-		b.fetchErrorText = text.Msg(text.KeyErrorsHistoryHasAGapRetry)
+	b.loaded = !missing && b.errorReason.IsZero()
+	if missing && b.errorReason.IsZero() {
+		b.fetchErrorReason = world.Reason{Kind: world.ReasonHistoryGap}
 	} else if !missing {
-		b.fetchErrorText = nil
+		b.fetchErrorReason = world.Reason{}
 	}
 	ctx.Dirty.MarkSessionData()
 	if b.refetch && e.running && e.w.World.Connection == lists.ConnConnected {
@@ -849,7 +849,7 @@ func (e *Engine) ingestDecodedEvents(
 			}
 			b.retired = true
 			s.RetiredHistory = true
-			b.errorText = text.Msg(text.KeyErrorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe)
+			b.errorReason = world.Reason{Kind: world.ReasonHistoryKeysUnavailable}
 			changedEvents = true
 			ok = false
 			break
@@ -858,7 +858,7 @@ func (e *Engine) ingestDecodedEvents(
 			if pe.Seq > maxSeq {
 				maxSeq = pe.Seq
 			}
-			b.errorText = text.Msg(text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed)
+			b.errorReason = world.Reason{Kind: world.ReasonInvalidCiphertext}
 			changedEvents = true
 			ok = false
 			break
@@ -953,9 +953,9 @@ func (e *Engine) ingestDecodedEvents(
 	if maxSeq > s.LastSeq {
 		s.LastSeq = maxSeq
 	}
-	if b.fetchErrorText != nil && !b.fetching && !b.awaitingCache && !b.backfilling && !b.hasServerGap(s.ServerLastSeq) {
-		b.fetchErrorText = nil
-		if b.errorText == nil {
+	if !b.fetchErrorReason.IsZero() && !b.fetching && !b.awaitingCache && !b.backfilling && !b.hasServerGap(s.ServerLastSeq) {
+		b.fetchErrorReason = world.Reason{}
+		if b.errorReason.IsZero() {
 			b.loaded = true
 		}
 	}

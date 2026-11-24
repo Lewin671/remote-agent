@@ -276,9 +276,9 @@ Android 和 iOS 解锁后私钥字节在内存里，可以交给核心直接用�
 #### 测试
 
 - `domain`：共享向量（`testdata/projection/`、`testdata/lists/` 等），只在 Go 跑
-- `screens` 和 `app`：一套 Go 金样测试——一串 Event 进去，核对 Effect 和 ViewModel（JSON 金样）。同一批金样导出给壳当界面测试的输入
+- `screens` 和 `app`：一套 Go 金样测试（`clientcore/app/golden_test.go`）——按 `testdata/screens/*.input.json` 喂入一串 Event，用 `proto.Equal` 核对 `EffectBatch` 和各步 `ViewModel`，并将同一批二进制 protobuf 金样（`testdata/screens/*.golden.pb`）导出给三端壳当界面测试输入；更新金样运行 `cd clientcore && CGO_ENABLED=0 go test ./app -run TestScreenGoldens -update`
 - 壳：界面测试从金样 ViewModel 渲染，只验布局和交互，不验规则；执行器各自测与平台 API 的对接；每端一个绑定冒烟测试
-- 金样的输入必须与真实 daemon 的返回一致：响应夹具由 `internal/daemon` 的真实 handler 产出或由契约测试核对，不手写 daemon 不会产出的形状（曾因手写的目录列表把文件夹名写成完整路径而漏掉 bug）。金样同时导出二进制 protobuf，三端直接解析，不各写一个 JSON 加载器
+- 金样的输入必须与真实 daemon 的返回一致：响应夹具由 `internal/daemon` 的真实 handler 产出或由契约测试核对（`internal/daemon/screen_fixtures_test.go`），不手写 daemon 不会产出的形状（曾因手写的目录列表把文件夹名写成完整路径而漏掉 bug）。三端直接解析二进制 protobuf 金样（`*.golden.pb`），不再维护 JSON 副本或手写 JSON 加载器
 - 依赖方向由测试守住：`clientcore` 非测试包不得反向依赖上层（如 `sync` 引用 `screens`），不得引入主 module 的 `internal`、`net`、`os`、`time` 和反射
 - 端到端：真实 server、daemon 和 CLI 的链路，按 AGENTS.md 执行
 - 迁移的验收看产品代码净减少，不只看删了多少：壳里不应出现「把旧类型组装成请求、再把结果转回旧类型」的转换层

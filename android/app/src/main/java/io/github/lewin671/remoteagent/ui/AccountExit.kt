@@ -5,7 +5,7 @@ import io.github.lewin671.remoteagent.core.UiMessages
 import androidx.compose.runtime.*
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
-import io.github.lewin671.remoteagent.core.translateSecurityKey
+import io.github.lewin671.remoteagent.core.renderExitAdviceMessage
 import io.github.lewin671.remoteagent.ui.displayError
 import kotlinx.coroutines.launch
 
@@ -41,7 +41,7 @@ internal fun AccountExitAction(
 
     fun toPair(a: SecurityExitAdvice): Pair<ExitRisk, String> {
         val risk = authorityExitRisk(a.authority, a.unresolved)
-        val msg = if (a.message.isNotEmpty()) translateSecurityKey(a.message, copy) else authorityExitAdvice(risk, copy)
+        val msg = renderExitAdviceMessage(a, copy).ifEmpty { authorityExitAdvice(risk, copy) }
         return risk to msg
     }
 

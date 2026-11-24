@@ -70,7 +70,7 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 
 	var tail *corev1.TailRowView
 	if page.Tail != nil {
-		tail = buildTailRow(page.Tail, st.SessionListErrorText)
+		tail = buildTailRow(page.Tail, ReasonText(st.SessionListError))
 	} else if page.EndedTotal > int32(len(page.Ended)) {
 		tail = &corev1.TailRowView{
 			Kind: corev1.TailKind_TAIL_KIND_MORE_ENDED,
@@ -85,8 +85,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 
 	pendingPath := st.PrefsPendingPath[key]
 	var noticeErr *corev1.Text
-	if !text.IsEmpty(st.PrefsSaveErrorTextByPath[key]) {
-		noticeErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", st.PrefsSaveErrorTextByPath[key]))
+	if errTxt := ReasonText(st.PrefsSaveErrorByPath[key]); !text.IsEmpty(errTxt) {
+		noticeErr = text.Msg(text.KeyCommonSaveFailed, text.ArgText("reason", errTxt))
 	}
 	noticeText := text.Msg(text.KeyProjectsRemoved)
 	if page.IsHidden && pendingPath {
@@ -101,8 +101,8 @@ func buildProjectDetailView(st *State, key string, endedLimit int) *corev1.Proje
 	}
 
 	var settingsErr *corev1.Text
-	if !text.IsEmpty(st.PrefsSettingsErrorText[key]) {
-		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, text.ArgText("reason", st.PrefsSettingsErrorText[key]))
+	if errTxt := ReasonText(st.PrefsSettingsError[key]); !text.IsEmpty(errTxt) {
+		settingsErr = text.Msg(text.KeyProjectsSettingsFailed, text.ArgText("reason", errTxt))
 	} else if st.PrefsSavingSettings[key] {
 		settingsErr = text.Msg(text.KeyProjectsSavingSettings)
 	}
@@ -182,8 +182,8 @@ func buildManageProjectsView(st *State, filterMachineID, pickerKey string) *core
 		blocked = text.Msg(text.KeyProjectsConnectToEdit)
 	}
 	var saveErr *corev1.Text
-	if !text.IsEmpty(st.PrefsGlobalErrorText) {
-		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, text.ArgText("reason", st.PrefsGlobalErrorText))
+	if errTxt := ReasonText(st.PrefsGlobalError); !text.IsEmpty(errTxt) {
+		saveErr = text.Msg(text.KeyProjectsSaveFailedReason, text.ArgText("reason", errTxt))
 	}
 	var filterMachineName string
 	if filterMachineID != "" {

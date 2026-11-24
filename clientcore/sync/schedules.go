@@ -26,7 +26,7 @@ func (e *Engine) EnsureSessionEventsLoaded(ctx *StepContext, sid string) {
 		e.startLoadEvents(ctx, sid)
 		return
 	}
-	if !b.loaded && !b.awaitingCache && !b.fetching && !b.retired && b.errorText == nil && b.fetchErrorText == nil && len(b.unavailableSeqs) == 0 && e.running && e.w.World.Connection == lists.ConnConnected {
+	if !b.loaded && !b.awaitingCache && !b.fetching && !b.retired && b.errorReason.IsZero() && b.fetchErrorReason.IsZero() && len(b.unavailableSeqs) == 0 && e.running && e.w.World.Connection == lists.ConnConnected {
 		e.startFetchEvents(ctx, sid)
 	}
 }
@@ -44,7 +44,7 @@ func (e *Engine) SessionEventsSettled(sid string) bool {
 	if b == nil {
 		return false
 	}
-	if b.errorText != nil || b.fetchErrorText != nil || b.retired || len(b.unavailableSeqs) > 0 {
+	if !b.errorReason.IsZero() || !b.fetchErrorReason.IsZero() || b.retired || len(b.unavailableSeqs) > 0 {
 		return true
 	}
 	s := e.sessions[sid]

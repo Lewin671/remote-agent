@@ -44,7 +44,7 @@ import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.proto.SecurityBootstrapKind
 import io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
-import io.github.lewin671.remoteagent.core.translateSecurityKey
+import io.github.lewin671.remoteagent.core.renderExitAdviceMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -717,7 +717,7 @@ private fun RejoinButton(
     PillButton(title, { leave(false) }, Modifier.fillMaxWidth(), ButtonKind.INK, enabled = !busy)
     if (error.isNotEmpty()) Hint(error)
     advice?.let { risk ->
-        val body = translateSecurityKey(risk.message, copy).ifEmpty {
+        val body = renderExitAdviceMessage(risk, copy).ifEmpty {
             copy(UiMessages.securityAndroidThisDeletesTheAccountKeysAndCacheOnThisPhone())
         }
         Confirm(

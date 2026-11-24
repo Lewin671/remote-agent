@@ -95,7 +95,10 @@ class AccountExitTest {
                         {
                             io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
                                 .setAuthority(true)
-                                .setMessage("security.this_device_is_the_only_managing_client_transfer_management")
+                                .setMessageText(
+                                    io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                                        .setKey("security.this_device_is_the_only_managing_client_transfer_management"),
+                                )
                                 .build()
                         },
                         {},

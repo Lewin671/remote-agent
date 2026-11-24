@@ -1,7 +1,7 @@
 import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
-import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { createStandaloneSecurityClient, renderExitAdviceMessage } from "./core/security-client";
 import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
 
 /** The retry path retains uncertain work; only this explicit confirmation discards it. */
@@ -28,7 +28,7 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
               try {
                 const a = await standalone.client.checkExitAdvice();
                 if (a.authority || a.unresolved || !bootErr) {
-                  nextAdvice = translateSecurityKey(a.message);
+                  nextAdvice = renderExitAdviceMessage(a);
                 }
               } catch {
                 // Fall back to the generic reset warning when exit advice cannot be read.

@@ -56,7 +56,7 @@ func (m *Model) ensureUsageUI(machineID string) *screens.UsageUIState {
 }
 
 func (c *Core) viewUsage(req *corev1.UsageScreenRequest) (*corev1.ViewModel, error) {
-	sv := c.m.sync.BuildSyncStateView()
+	sv := c.buildSyncStateView()
 	vm := screens.BuildUsageView(c.m.state, sv, req)
 	return &corev1.ViewModel{
 		View: &corev1.ViewModel_Usage{
@@ -340,7 +340,7 @@ func (c *Core) onUsageStatsSettled(sc sync.SettledCommand, meta cmdMeta, dirty *
 			out = append(out, res.Effects...)
 		}
 	} else {
-		entry.ErrorText = sc.ErrorText
+		entry.ErrorText = screens.ReasonText(sc.ErrorReason)
 		entry.Error = sc.ErrorCode
 		if entry.Error == "" && entry.ErrorText == nil {
 			entry.Error = "failed"

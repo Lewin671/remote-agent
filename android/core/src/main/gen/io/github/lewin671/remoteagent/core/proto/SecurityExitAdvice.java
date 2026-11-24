@@ -15,8 +15,8 @@ public  final class SecurityExitAdvice extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.SecurityExitAdvice)
     SecurityExitAdviceOrBuilder {
   private SecurityExitAdvice() {
-    message_ = "";
   }
+  private int bitField0_;
   public static final int AUTHORITY_FIELD_NUMBER = 1;
   private boolean authority_;
   /**
@@ -69,52 +69,52 @@ public  final class SecurityExitAdvice extends
     unresolved_ = false;
   }
 
-  public static final int MESSAGE_FIELD_NUMBER = 3;
-  private java.lang.String message_;
+  public static final int MESSAGE_TEXT_FIELD_NUMBER = 4;
+  private io.github.lewin671.remoteagent.core.proto.Text messageText_;
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The message.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
    */
   @java.lang.Override
-  public java.lang.String getMessage() {
-    return message_;
+  public boolean hasMessageText() {
+    return ((bitField0_ & 0x00000001) != 0);
   }
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @return The bytes for message.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getMessageBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(message_);
+  public io.github.lewin671.remoteagent.core.proto.Text getMessageText() {
+    return messageText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : messageText_;
   }
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @param value The message to set.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setMessage(
-      java.lang.String value) {
+  private void setMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
-
-    message_ = value;
+    messageText_ = value;
+    bitField0_ |= 0x00000001;
   }
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
    */
-  private void clearMessage() {
-
-    message_ = getDefaultInstance().getMessage();
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (messageText_ != null &&
+        messageText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      messageText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(messageText_).mergeFrom(value).buildPartial();
+    } else {
+      messageText_ = value;
+    }
+    bitField0_ |= 0x00000001;
   }
   /**
-   * <code>string message = 3 [json_name = "message"];</code>
-   * @param value The bytes for message to set.
+   * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
    */
-  private void setMessageBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    message_ = value.toStringUtf8();
-
+  private void clearMessageText() {
+    messageText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice parseFrom(
@@ -271,51 +271,49 @@ public  final class SecurityExitAdvice extends
     }
 
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return The message.
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
     @java.lang.Override
-    public java.lang.String getMessage() {
-      return instance.getMessage();
+    public boolean hasMessageText() {
+      return instance.hasMessageText();
     }
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return The bytes for message.
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString
-        getMessageBytes() {
-      return instance.getMessageBytes();
+    public io.github.lewin671.remoteagent.core.proto.Text getMessageText() {
+      return instance.getMessageText();
     }
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @param value The message to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
-    public Builder setMessage(
-        java.lang.String value) {
+    public Builder setMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.setMessage(value);
+      instance.setMessageText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
+     */
+    public Builder setMessageText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setMessageText(builderForValue.build());
       return this;
     }
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
-    public Builder clearMessage() {
+    public Builder mergeMessageText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.clearMessage();
+      instance.mergeMessageText(value);
       return this;
     }
     /**
-     * <code>string message = 3 [json_name = "message"];</code>
-     * @param value The bytes for message to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text message_text = 4 [json_name = "messageText"];</code>
      */
-    public Builder setMessageBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setMessageBytes(value);
+    public Builder clearMessageText() {  copyOnWrite();
+      instance.clearMessageText();
       return this;
     }
 
@@ -335,13 +333,14 @@ public  final class SecurityExitAdvice extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "authority_",
             "unresolved_",
-            "message_",
+            "messageText_",
           };
           java.lang.String info =
-              "\u0000\u0003\u0000\u0000\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
-              "\u0003\u0208";
+              "\u0000\u0003\u0000\u0001\u0001\u0004\u0003\u0000\u0000\u0000\u0001\u0007\u0002\u0007" +
+              "\u0004\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

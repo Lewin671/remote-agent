@@ -18,7 +18,6 @@ public  final class SecurityWorkflowStatus extends
     server_ = "";
     deviceId_ = "";
     accountId_ = "";
-    error_ = "";
     pendingRemoveDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   private int bitField0_;
@@ -672,58 +671,58 @@ public  final class SecurityWorkflowStatus extends
     bitField0_ = (bitField0_ & ~0x00000001);
   }
 
-  public static final int ERROR_FIELD_NUMBER = 22;
-  private java.lang.String error_;
+  public static final int ERROR_TEXT_FIELD_NUMBER = 23;
+  private io.github.lewin671.remoteagent.core.proto.Text errorText_;
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.Override
-  public java.lang.String getError() {
-    return error_;
+  public boolean hasErrorText() {
+    return ((bitField0_ & 0x00000002) != 0);
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @return The bytes for error.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.Override
-  public com.google.protobuf.ByteString
-      getErrorBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(error_);
+  public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+    return errorText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : errorText_;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @param value The error to set.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setError(
-      java.lang.String value) {
+  private void setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
-
-    error_ = value;
+    errorText_ = value;
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
-  private void clearError() {
-
-    error_ = getDefaultInstance().getError();
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (errorText_ != null &&
+        errorText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      errorText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(errorText_).mergeFrom(value).buildPartial();
+    } else {
+      errorText_ = value;
+    }
+    bitField0_ |= 0x00000002;
   }
   /**
-   * <code>string error = 22 [json_name = "error"];</code>
-   * @param value The bytes for error to set.
+   * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
    */
-  private void setErrorBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    error_ = value.toStringUtf8();
-
+  private void clearErrorText() {
+    errorText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
   }
 
-  public static final int PENDING_REMOVE_DEVICE_IDS_FIELD_NUMBER = 23;
+  public static final int PENDING_REMOVE_DEVICE_IDS_FIELD_NUMBER = 24;
   private com.google.protobuf.Internal.ProtobufList<java.lang.String> pendingRemoveDeviceIds_;
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @return A list containing the pendingRemoveDeviceIds.
    */
   @java.lang.Override
@@ -731,7 +730,7 @@ public  final class SecurityWorkflowStatus extends
     return pendingRemoveDeviceIds_;
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @return The count of pendingRemoveDeviceIds.
    */
   @java.lang.Override
@@ -739,7 +738,7 @@ public  final class SecurityWorkflowStatus extends
     return pendingRemoveDeviceIds_.size();
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param index The index of the element to return.
    * @return The pendingRemoveDeviceIds at the given index.
    */
@@ -748,7 +747,7 @@ public  final class SecurityWorkflowStatus extends
     return pendingRemoveDeviceIds_.get(index);
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param index The index of the value to return.
    * @return The bytes of the pendingRemoveDeviceIds at the given index.
    */
@@ -766,7 +765,7 @@ public  final class SecurityWorkflowStatus extends
      }
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param index The index to set the value at.
    * @param value The pendingRemoveDeviceIds to set.
    */
@@ -778,7 +777,7 @@ public  final class SecurityWorkflowStatus extends
     pendingRemoveDeviceIds_.set(index, value);
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param value The pendingRemoveDeviceIds to add.
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
@@ -789,7 +788,7 @@ public  final class SecurityWorkflowStatus extends
     pendingRemoveDeviceIds_.add(value);
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param values The pendingRemoveDeviceIds to add.
    */
   private void addAllPendingRemoveDeviceIds(
@@ -799,13 +798,13 @@ public  final class SecurityWorkflowStatus extends
         values, pendingRemoveDeviceIds_);
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    */
   private void clearPendingRemoveDeviceIds() {
     pendingRemoveDeviceIds_ = com.google.protobuf.GeneratedMessageLite.emptyProtobufList();
   }
   /**
-   * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+   * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
    * @param value The bytes of the pendingRemoveDeviceIds to add.
    */
   private void addPendingRemoveDeviceIdsBytes(
@@ -815,33 +814,33 @@ public  final class SecurityWorkflowStatus extends
     pendingRemoveDeviceIds_.add(value.toStringUtf8());
   }
 
-  public static final int PENDING_REMOVE_NOTICE_FIELD_NUMBER = 24;
+  public static final int PENDING_REMOVE_NOTICE_FIELD_NUMBER = 25;
   private io.github.lewin671.remoteagent.core.proto.Text pendingRemoveNotice_;
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    */
   @java.lang.Override
   public boolean hasPendingRemoveNotice() {
-    return ((bitField0_ & 0x00000002) != 0);
+    return ((bitField0_ & 0x00000004) != 0);
   }
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    */
   @java.lang.Override
   public io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice() {
     return pendingRemoveNotice_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : pendingRemoveNotice_;
   }
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    */
   @java.lang.SuppressWarnings("ReturnValueIgnored")
   private void setPendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
     value.getClass();  // minimal bytecode null check
     pendingRemoveNotice_ = value;
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000004;
   }
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    */
   @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
   private void mergePendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
@@ -853,14 +852,14 @@ public  final class SecurityWorkflowStatus extends
     } else {
       pendingRemoveNotice_ = value;
     }
-    bitField0_ |= 0x00000002;
+    bitField0_ |= 0x00000004;
   }
   /**
-   * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+   * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
    */
   private void clearPendingRemoveNotice() {
     pendingRemoveNotice_ = null;
-    bitField0_ = (bitField0_ & ~0x00000002);
+    bitField0_ = (bitField0_ & ~0x00000004);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus parseFrom(
@@ -1649,56 +1648,54 @@ public  final class SecurityWorkflowStatus extends
     }
 
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return The error.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
     @java.lang.Override
-    public java.lang.String getError() {
-      return instance.getError();
+    public boolean hasErrorText() {
+      return instance.hasErrorText();
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return The bytes for error.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
     @java.lang.Override
-    public com.google.protobuf.ByteString
-        getErrorBytes() {
-      return instance.getErrorBytes();
+    public io.github.lewin671.remoteagent.core.proto.Text getErrorText() {
+      return instance.getErrorText();
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @param value The error to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder setError(
-        java.lang.String value) {
+    public Builder setErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.setError(value);
+      instance.setErrorText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
+     */
+    public Builder setErrorText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setErrorText(builderForValue.build());
       return this;
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder clearError() {
+    public Builder mergeErrorText(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
-      instance.clearError();
+      instance.mergeErrorText(value);
       return this;
     }
     /**
-     * <code>string error = 22 [json_name = "error"];</code>
-     * @param value The bytes for error to set.
-     * @return This builder for chaining.
+     * <code>.remoteagent.core.v1.Text error_text = 23 [json_name = "errorText"];</code>
      */
-    public Builder setErrorBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setErrorBytes(value);
+    public Builder clearErrorText() {  copyOnWrite();
+      instance.clearErrorText();
       return this;
     }
 
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @return A list containing the pendingRemoveDeviceIds.
      */
     @java.lang.Override
@@ -1708,7 +1705,7 @@ public  final class SecurityWorkflowStatus extends
           instance.getPendingRemoveDeviceIdsList());
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @return The count of pendingRemoveDeviceIds.
      */
     @java.lang.Override
@@ -1716,7 +1713,7 @@ public  final class SecurityWorkflowStatus extends
       return instance.getPendingRemoveDeviceIdsCount();
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param index The index of the element to return.
      * @return The pendingRemoveDeviceIds at the given index.
      */
@@ -1725,7 +1722,7 @@ public  final class SecurityWorkflowStatus extends
       return instance.getPendingRemoveDeviceIds(index);
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param index The index of the value to return.
      * @return The bytes of the pendingRemoveDeviceIds at the given index.
      */
@@ -1735,7 +1732,7 @@ public  final class SecurityWorkflowStatus extends
       return instance.getPendingRemoveDeviceIdsBytes(index);
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param index The index to set the value at.
      * @param value The pendingRemoveDeviceIds to set.
      * @return This builder for chaining.
@@ -1747,7 +1744,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param value The pendingRemoveDeviceIds to add.
      * @return This builder for chaining.
      */
@@ -1758,7 +1755,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param values The pendingRemoveDeviceIds to add.
      * @return This builder for chaining.
      */
@@ -1769,7 +1766,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @return This builder for chaining.
      */
     public Builder clearPendingRemoveDeviceIds() {
@@ -1778,7 +1775,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>repeated string pending_remove_device_ids = 23 [json_name = "pendingRemoveDeviceIds"];</code>
+     * <code>repeated string pending_remove_device_ids = 24 [json_name = "pendingRemoveDeviceIds"];</code>
      * @param value The bytes of the pendingRemoveDeviceIds to add.
      * @return This builder for chaining.
      */
@@ -1790,21 +1787,21 @@ public  final class SecurityWorkflowStatus extends
     }
 
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     @java.lang.Override
     public boolean hasPendingRemoveNotice() {
       return instance.hasPendingRemoveNotice();
     }
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     @java.lang.Override
     public io.github.lewin671.remoteagent.core.proto.Text getPendingRemoveNotice() {
       return instance.getPendingRemoveNotice();
     }
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     public Builder setPendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -1812,7 +1809,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
       }
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     public Builder setPendingRemoveNotice(
         io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
@@ -1821,7 +1818,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     public Builder mergePendingRemoveNotice(io.github.lewin671.remoteagent.core.proto.Text value) {
       copyOnWrite();
@@ -1829,7 +1826,7 @@ public  final class SecurityWorkflowStatus extends
       return this;
     }
     /**
-     * <code>.remoteagent.core.v1.Text pending_remove_notice = 24 [json_name = "pendingRemoveNotice"];</code>
+     * <code>.remoteagent.core.v1.Text pending_remove_notice = 25 [json_name = "pendingRemoveNotice"];</code>
      */
     public Builder clearPendingRemoveNotice() {  copyOnWrite();
       instance.clearPendingRemoveNotice();
@@ -1874,16 +1871,16 @@ public  final class SecurityWorkflowStatus extends
             "hasHandoffOffer_",
             "takingOver_",
             "pendingOp_",
-            "error_",
+            "errorText_",
             "pendingRemoveDeviceIds_",
             "pendingRemoveNotice_",
           };
           java.lang.String info =
-              "\u0000\u0018\u0000\u0001\u0001\u0018\u0018\u0000\u0001\u0000\u0001\f\u0002\u0007" +
+              "\u0000\u0018\u0000\u0001\u0001\u0019\u0018\u0000\u0001\u0000\u0001\f\u0002\u0007" +
               "\u0003\u0007\u0004\u0007\u0005\u0007\u0006\u0208\u0007\u0208\b\u0208\t\u0003\n\u0002" +
               "\u000b\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0007\u0010\u0007\u0011\u0007\u0012" +
-              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0016\u0208\u0017\u021a\u0018\u1009" +
-              "\u0001";
+              "\u0007\u0013\u0007\u0014\u0007\u0015\u1009\u0000\u0017\u1009\u0001\u0018\u021a\u0019" +
+              "\u1009\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

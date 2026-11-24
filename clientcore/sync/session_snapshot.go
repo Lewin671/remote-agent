@@ -29,8 +29,8 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 	}
 	if !out.LookingUp && e.sessionByIDFailed[sessionID] {
 		out.LookupFailed = true
-		if errTxt := e.sessionByIDErrors[sessionID]; errTxt != nil {
-			out.LookupErrorText = errTxt
+		if errReason := e.sessionByIDErrors[sessionID]; !errReason.IsZero() {
+			out.LookupError = errReason
 		}
 	}
 
@@ -73,8 +73,8 @@ func (e *Engine) SessionSnapshot(sessionID string) world.SessionSnapshot {
 		out.TailRequested = buf.tailRequested
 		out.Retired = out.Retired || buf.retired
 		out.RetryingCorruptCache = buf.retryingCorruptCache
-		out.Error = buf.errorText
-		out.FetchError = buf.fetchErrorText
+		out.Error = buf.errorReason
+		out.FetchError = buf.fetchErrorReason
 		out.PrefixLen = uint64(len(buf.prefix))
 		out.PendingCount = int32(len(buf.pending))
 		out.UnavailableCount = uint32(len(buf.unavailableSeqs))

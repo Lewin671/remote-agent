@@ -6,7 +6,6 @@ import (
 
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
@@ -462,7 +461,7 @@ func (e *Engine) runOpTask(actionID uint64, requireFG bool, task secTask) {
 func (e *Engine) startQueuedOp(item queuedOp) {
 	wf, target := e.ensureWF(), serializedTarget(item.actionID)
 	if item.requireFG && !wf.foreground {
-		e.failTarget(target, fatalWfError("foreground", text.KeySecurityThePageIsPausedReturnToTheForegroundTo, ""))
+		e.failTarget(target, fatalWfError("foreground", WorkflowReasonPagePaused, ""))
 		return
 	}
 	e.stepTask(item.task, &secEvent{kind: evStart, fgGen: wf.fgGen, target: target})

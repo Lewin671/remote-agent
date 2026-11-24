@@ -3,7 +3,7 @@ import Foundation
 import RAProto
 import SwiftProtobuf
 
-/// Loads ViewModel snapshots from `testdata/screens/*.golden.json` for SwiftUI `#Preview`s
+/// Loads ViewModel snapshots from `testdata/screens/*.golden.pb` for SwiftUI `#Preview`s
 /// and UI rendering tests.
 enum ScreenGoldens {
     private static let repoRoot: URL = URL(fileURLWithPath: #filePath)
@@ -13,27 +13,41 @@ enum ScreenGoldens {
         .deletingLastPathComponent() // repo root
 
     static func viewModels(named name: String) -> [PBCoreViewModel] {
-        let url = repoRoot.appendingPathComponent("testdata/screens/\(name).golden.json")
-        guard let data = try? Data(contentsOf: url),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let steps = root["steps"] as? [[String: Any]]
-        else { return [] }
-
-        var options = JSONDecodingOptions()
-        options.ignoreUnknownFields = true
+        let url = repoRoot.appendingPathComponent("testdata/screens/\(name).golden.pb")
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            fatalError("Failed to read screen golden \(url.path): \(error)")
+        }
+        let golden: PBScreenGoldenFile
+        do {
+            golden = try PBScreenGoldenFile(serializedBytes: data)
+        } catch {
+            fatalError("Failed to decode screen golden \(url.path): \(error)")
+        }
 
         var out: [PBCoreViewModel] = []
-        for step in steps {
-            guard let views = step["views"] as? [String: Any] else { continue }
-            for key in views.keys.sorted() {
-                guard let obj = views[key],
-                      let json = try? JSONSerialization.data(withJSONObject: obj),
-                      let vm = try? PBCoreViewModel(jsonUTF8Data: json, options: options)
-                else { continue }
-                out.append(vm)
+        var seen = Set<String>()
+        for step in golden.steps {
+            for view in step.views where view.hasViewModel {
+                precondition(seen.insert(view.name).inserted, "Duplicate golden view '\(view.name)' in \(name).golden.pb")
+                out.append(view.viewModel)
             }
         }
+        precondition(!out.isEmpty, "Screen golden \(name).golden.pb contained no view models")
         return out
+    }
+
+    private static func pick<T>(_ all: [T], index: Int?, kind: String, name: String) -> T {
+        if let index {
+            precondition(all.indices.contains(index), "Screen golden \(name).golden.pb missing \(kind) at index \(index) (count=\(all.count))")
+            return all[index]
+        }
+        guard let last = all.last else {
+            fatalError("Screen golden \(name).golden.pb contained no \(kind) views")
+        }
+        return last
     }
 
     static func home(_ name: String, index: Int? = nil) -> PBCoreHomeViewModel {
@@ -41,8 +55,7 @@ enum ScreenGoldens {
             guard case .home(let h)? = vm.view else { return nil }
             return h
         }
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBCoreHomeViewModel()
+        return pick(all, index: index, kind: "home", name: name)
     }
 
     static func projectDetail(_ name: String) -> PBCoreProjectDetailView {
@@ -50,7 +63,7 @@ enum ScreenGoldens {
             guard case .project(let p)? = vm.view, p.kind == .detail else { return nil }
             return p
         }
-        return all.last?.detail ?? PBCoreProjectDetailView()
+        return pick(all, index: nil, kind: "projectDetail", name: name).detail
     }
 
     static func manageProjects(_ name: String) -> PBCoreManageProjectsView {
@@ -58,7 +71,7 @@ enum ScreenGoldens {
             guard case .project(let p)? = vm.view, p.kind == .manage else { return nil }
             return p
         }
-        return all.last?.manage ?? PBCoreManageProjectsView()
+        return pick(all, index: nil, kind: "manageProjects", name: name).manage
     }
 
     static func newSession(_ name: String, index: Int? = nil) -> PBCoreNewSessionViewModel {
@@ -66,8 +79,7 @@ enum ScreenGoldens {
             guard case .newSession(let ns)? = vm.view else { return nil }
             return ns
         }
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBCoreNewSessionViewModel()
+        return pick(all, index: index, kind: "newSession", name: name)
     }
 
     static func sessions(_ name: String) -> [PBSessionViewModel] {
@@ -78,9 +90,7 @@ enum ScreenGoldens {
     }
 
     static func session(_ name: String, index: Int? = nil) -> PBSessionViewModel {
-        let all = sessions(name)
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBSessionViewModel()
+        pick(sessions(name), index: index, kind: "session", name: name)
     }
 
     static func schedulesList(_ name: String) -> [PBSchedulesViewModel] {
@@ -91,9 +101,7 @@ enum ScreenGoldens {
     }
 
     static func schedules(_ name: String, index: Int? = nil) -> PBSchedulesViewModel {
-        let all = schedulesList(name)
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBSchedulesViewModel()
+        pick(schedulesList(name), index: index, kind: "schedules", name: name)
     }
 
     static func scheduleDetails(_ name: String) -> [PBScheduleDetailViewModel] {
@@ -104,9 +112,7 @@ enum ScreenGoldens {
     }
 
     static func scheduleDetail(_ name: String, index: Int? = nil) -> PBScheduleDetailViewModel {
-        let all = scheduleDetails(name)
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBScheduleDetailViewModel()
+        pick(scheduleDetails(name), index: index, kind: "scheduleDetail", name: name)
     }
 
     static func scheduleForms(_ name: String) -> [PBScheduleFormViewModel] {
@@ -117,9 +123,7 @@ enum ScreenGoldens {
     }
 
     static func scheduleForm(_ name: String, index: Int? = nil) -> PBScheduleFormViewModel {
-        let all = scheduleForms(name)
-        if let index, all.indices.contains(index) { return all[index] }
-        return all.last ?? PBScheduleFormViewModel()
+        pick(scheduleForms(name), index: index, kind: "scheduleForm", name: name)
     }
 
     static func scheduleStrips(_ name: String) -> [PBScheduleSessionStripViewModel] {

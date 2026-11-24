@@ -532,16 +532,15 @@ final class AppModel {
                     stage = .join
                 case .pendingRegistration:
                     if !status.server.isEmpty { lastServer = status.server }
-                    if !status.error.isEmpty {
-                        stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(
-                            value: translateSecurityKey(status.error)))
+                    let regErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
+                    if !regErr.isEmpty {
+                        stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: regErr))
                     } else {
                         stage = .join
                     }
                 case .invalid, .clockSkewed:
-                    let msg = status.error.isEmpty
-                        ? VaultError.unreadable.localizedDescription
-                        : translateSecurityKey(status.error)
+                    let statusErr = status.hasErrorText ? renderCoreText(status.errorText) : ""
+                    let msg = statusErr.isEmpty ? VaultError.unreadable.localizedDescription : statusErr
                     stage = .failed(msg)
                 case .empty, .unspecified, .UNRECOGNIZED:
                     retainedIdentityDenied = false
@@ -646,39 +645,64 @@ final class AppModel {
 
     /// The confirmation captures security facts, independently of its displayed language.
     enum RejoinAdvice: Equatable {
-        case sensitive(authority: Bool, unresolved: Bool, message: String = "")
+        case sensitive(authority: Bool, unresolved: Bool, messageText: PBCoreText? = nil)
         case unreadable
-        var text: String {
-            switch self {
-            case .sensitive(let authority, let unresolved, let message):
-                let coreText = translateSecurityKey(message)
-                let lead = coreText.isEmpty
-                    ? AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved)
-                    : coreText
-                return lead + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
-            case .unreadable:
-                return L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            switch (lhs, rhs) {
+            case (.unreadable, .unreadable): true
+            case (.sensitive(let la, let lu, _), .sensitive(let ra, let ru, _)): la == ra && lu == ru
+            default: false
             }
         }
+        var text: String {
+            switch self {
+            case .sensitive(let authority, let unresolved, let messageText):
+                let base = renderCoreText(messageText)
+                let body = base.isEmpty ? AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) : base
+                return body + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            case .unreadable: return L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
+            }
+        }
+    }
+
+    private func fetchExitAdvice() async throws -> PBSecurityExitAdvice {
+        if let remote = context?.remote {
+            return try await remote.checkExitAdvice()
+        }
+        return try await parts.checkExitAdvice(parts.storage.vault)
     }
 
     /// Confirmation is needed only for management keys or unfinished work.
     func rejoinAdvice() async -> RejoinAdvice? {
         do {
-            let adv: PBSecurityExitAdvice
-            if let remote = context?.remote {
-                adv = try await remote.checkExitAdvice()
-            } else {
-                adv = try await parts.checkExitAdvice(parts.storage.vault)
-            }
+            let adv = try await fetchExitAdvice()
             if adv.authority || adv.unresolved {
-                return .sensitive(authority: adv.authority, unresolved: adv.unresolved, message: adv.message)
+                return .sensitive(
+                    authority: adv.authority,
+                    unresolved: adv.unresolved,
+                    messageText: adv.hasMessageText ? adv.messageText : nil
+                )
             }
             return nil
         } catch {
             // An unreadable vault is not proof that there is no management key
             // or unfinished work. Keep an explicit, warned way to erase it.
             return .unreadable
+        }
+    }
+
+    /// Full localized exit confirmation copy derived from Core's `SecurityExitAdvice.messageText`.
+    func exitAdviceText() async -> String {
+        do {
+            let adv = try await fetchExitAdvice()
+            let rendered = renderExitAdviceMessage(adv)
+            let body = rendered.isEmpty ? AuthorityAccess.exitAdvice(authority: adv.authority, unresolved: adv.unresolved) : rendered
+            if adv.authority || adv.unresolved {
+                return body + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            }
+            return body
+        } catch {
+            return RejoinAdvice.unreadable.text
         }
     }
 

@@ -1689,7 +1689,7 @@ func TestCreateSessionSeedsSessionBeforeStreamUpdatedAndLoadingHidesMissingText(
 
 	// Lookup failure with error must surface LookupFailed + LookupErrorText instead of spinning on Loading.
 	lookupErrVM := screens.BuildSessionView(
-		world.SessionSnapshot{Found: false, SessionsListed: false, LookingUp: false, LookupFailed: true, LookupErrorText: text.Plain("rpc timeout")},
+		world.SessionSnapshot{Found: false, SessionsListed: false, LookingUp: false, LookupFailed: true, LookupError: world.PlainReason("rpc timeout")},
 		screens.NewState(nil),
 		&corev1.SessionScreenRequest{SessionId: "s-err"},
 		screens.NewSessionUIState(),

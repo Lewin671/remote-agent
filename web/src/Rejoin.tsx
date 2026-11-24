@@ -1,7 +1,7 @@
 import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
-import { createStandaloneSecurityClient, translateSecurityKey } from "./core/security-client";
+import { createStandaloneSecurityClient, renderExitAdviceMessage } from "./core/security-client";
 import { SecurityBootstrapKind } from "./gen/remoteagent/core/v1/security_pb";
 import { createStandalonePushUnsubscriber, unregisterPushOnExit } from "./push";
 import { errorText, type Remote } from "./remote";
@@ -26,7 +26,7 @@ export function RejoinButton({ server, remote, children, onDone }: {
       const st = await standalone.client.bootstrap();
       const status = await standalone.client.checkExitAdvice();
       const pending = st.bootstrap === SecurityBootstrapKind.PENDING_REGISTRATION;
-      const msg = translateSecurityKey(status.message);
+      const msg = renderExitAdviceMessage(status);
       const warning = status.authority || status.unresolved || pending
         ? (pending ? l10n.t("security.this_device_has_an_unfinished_join_request_deleting_it") : msg)
           + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;

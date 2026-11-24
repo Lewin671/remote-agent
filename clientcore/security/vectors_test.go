@@ -485,8 +485,10 @@ func TestDevicesecBuildersNotifyAndSeedSigningRoundTrip(t *testing.T) {
 			opened = no
 		}
 	}
-	if opened == nil || opened.Error != "" || !opened.GetDisplay().GetValid() || opened.GetDisplay().GetTitle().GetLiteral() != "done" {
-		t.Fatalf("HandleOpenNotify failed: %+v", opened)
+	outcomes := eng.DrainNotifyOutcomes()
+	out := outcomes[9]
+	if opened == nil || opened.Error != "" || !out.Valid || out.Title != "done" {
+		t.Fatalf("HandleOpenNotify failed: eff=%+v outcome=%+v", opened, out)
 	}
 
 	// Verify ed25519 seed signing helpers.

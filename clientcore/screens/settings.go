@@ -434,10 +434,10 @@ func buildConnCheckSummary(st *State, syncView *corev1.SyncStateView, cc ConnChe
 		DisplayGrace:      st.DisplayGrace || syncView.GetDisplayGrace(),
 		IsConnecting:      isConnecting,
 	}
-	if st != nil && st.ConnectionReasonText != nil {
-		out.LastFailureText = st.ConnectionReasonText
+	if st != nil && !st.ConnectionReason.IsZero() {
+		out.LastFailureText = ReasonText(st.ConnectionReason)
 	} else if cc.LastFailure != "" {
-		out.LastFailureText = text.Msg(text.KeyConnectionLastFailure, text.Str("value", cc.LastFailure))
+		out.LastFailureText = text.Plain(cc.LastFailure)
 	}
 
 	switch st.World.Connection {

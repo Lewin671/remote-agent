@@ -502,9 +502,22 @@ final class Harness {
         h.model.setForeground(true)
         await h.model.waitForLoadForTest()
         #expect(h.model.securityStatus?.bootstrap == .pendingCreate)
-        h.exitAdvice = .with { $0.authority = true; $0.unresolved = true }
+        h.exitAdvice = .with {
+            $0.authority = true
+            $0.unresolved = true
+            $0.messageText = PBCoreText.with { $0.key = "security.the_security_operation_s_outcome_is_unverified_continue_the" }
+        }
         let adv = await h.model.rejoinAdvice()
-        #expect(adv?.text.contains(L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts()) == true)
+        #expect(adv?.text.contains(L10n.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()) == true)
+        h.exitAdvice = .with {
+            $0.authority = true
+            $0.unresolved = false
+            $0.messageText = PBCoreText.with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
+        }
+        let authorityExit = await h.model.exitAdviceText()
+        #expect(authorityExit.contains(L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement()))
+        #expect(!authorityExit.contains("浏览器"))
+        #expect(!authorityExit.lowercased().contains("browser"))
         await h.model.logout()
         #expect(h.model.securityStatus == nil)
         #expect(!h.vault.hasPersistedState())

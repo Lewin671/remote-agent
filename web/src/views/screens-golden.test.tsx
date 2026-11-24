@@ -1,30 +1,15 @@
 // @vitest-environment happy-dom
 // Golden ViewModel layout and interaction tests rendered directly from
-// testdata/screens/*.golden.json without TS rules or Remote.
+// testdata/screens/*.golden.pb binary protobuf goldens without TS rules or Remote.
 
-import { fromJson } from "@bufbuild/protobuf";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fromBinary } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import homeTimelineGolden from "../../../testdata/screens/home_timeline.golden.json";
-import homeEmptyGolden from "../../../testdata/screens/home_empty_errors.golden.json";
-import projectManageGolden from "../../../testdata/screens/project_manage_detail.golden.json";
-import newSessionGolden from "../../../testdata/screens/new_session_lifecycle.golden.json";
-import sessionApprovalGolden from "../../../testdata/screens/session_approval_flow.golden.json";
-import sessionCliErrorGolden from "../../../testdata/screens/session_cli_error_turn.golden.json";
-import sessionLongWindowGolden from "../../../testdata/screens/session_long_window.golden.json";
-import sessionQuestionPlanGolden from "../../../testdata/screens/session_question_plan.golden.json";
-import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
-import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
-import sessionSharedFilesImagesGolden from "../../../testdata/screens/session_shared_files_images.golden.json";
-import sessionAttachmentsDraftGolden from "../../../testdata/screens/session_attachments_draft.golden.json";
-import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
-import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
-import settingsOverviewGolden from "../../../testdata/screens/settings_overview.golden.json";
-import machineSettingsEditGolden from "../../../testdata/screens/machine_settings_edit.golden.json";
-import machineStatusLifecycleGolden from "../../../testdata/screens/machine_status_lifecycle.golden.json";
-import machineQuotaGolden from "../../../testdata/screens/machine_quota.golden.json";
-import { ViewModelSchema } from "../gen/remoteagent/core/v1/app_pb";
+import { type ScreenGoldenFile, ScreenGoldenFileSchema } from "../gen/remoteagent/core/v1/golden_pb";
+import type { ViewModel } from "../gen/remoteagent/core/v1/app_pb";
 import { ScheduleFormMode, ScheduleOperationKind } from "../gen/remoteagent/core/v1/schedules_view_pb";
 import type { SessionViewModel } from "../gen/remoteagent/core/v1/session_view_pb";
 import { MachinePollState, MachineUsageTab } from "../gen/remoteagent/core/v1/machine_view_pb";
@@ -54,21 +39,56 @@ import { MachineStatusScreenView } from "./MachineStatus";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-interface GoldenStep {
-  views?: Record<string, unknown>;
-}
-interface GoldenDoc {
-  steps: GoldenStep[];
-}
+type GoldenDoc = ScreenGoldenFile;
 
-function goldenView(doc: GoldenDoc, viewName: string) {
+const GOLDENS_DIR = resolve(__dirname, "../../../testdata/screens");
+
+function loadGolden(name: string): GoldenDoc {
+  const bytes = readFileSync(resolve(GOLDENS_DIR, `${name}.golden.pb`));
+  const doc = fromBinary(ScreenGoldenFileSchema, new Uint8Array(bytes));
+  const seen = new Set<string>();
   for (const step of doc.steps) {
-    const raw = step.views?.[viewName];
-    if (raw) {
-      return fromJson(ViewModelSchema, raw as never);
+    for (const v of step.views) {
+      if (seen.has(v.name)) {
+        throw new Error(`Duplicate golden view '${v.name}' in ${name}.golden.pb`);
+      }
+      seen.add(v.name);
     }
   }
-  throw new Error(`Missing golden view: ${viewName}`);
+  return doc;
+}
+
+const homeTimelineGolden = loadGolden("home_timeline");
+const homeEmptyGolden = loadGolden("home_empty_errors");
+const projectManageGolden = loadGolden("project_manage_detail");
+const newSessionGolden = loadGolden("new_session_lifecycle");
+const sessionApprovalGolden = loadGolden("session_approval_flow");
+const sessionCliErrorGolden = loadGolden("session_cli_error_turn");
+const sessionLongWindowGolden = loadGolden("session_long_window");
+const sessionQuestionPlanGolden = loadGolden("session_question_plan");
+const sessionQueueRetryGolden = loadGolden("session_queue_retry");
+const sessionScheduledFoldGolden = loadGolden("session_scheduled_fold");
+const sessionSharedFilesImagesGolden = loadGolden("session_shared_files_images");
+const sessionAttachmentsDraftGolden = loadGolden("session_attachments_draft");
+const schedulesInboxDetailGolden = loadGolden("schedules_inbox_detail");
+const schedulesFormLifecycleGolden = loadGolden("schedules_form_lifecycle");
+const settingsOverviewGolden = loadGolden("settings_overview");
+const machineSettingsEditGolden = loadGolden("machine_settings_edit");
+const machineStatusLifecycleGolden = loadGolden("machine_status_lifecycle");
+const machineQuotaGolden = loadGolden("machine_quota");
+
+function goldenView(doc: GoldenDoc, viewName: string): ViewModel {
+  let matched: ViewModel | undefined;
+  for (const step of doc.steps) {
+    for (const v of step.views) {
+      if (v.name === viewName && v.viewModel) {
+        if (matched) throw new Error(`Duplicate golden view: ${viewName}`);
+        matched = v.viewModel;
+      }
+    }
+  }
+  if (!matched) throw new Error(`Missing golden view: ${viewName}`);
+  return matched;
 }
 
 let root: Root | undefined;
@@ -93,7 +113,7 @@ afterEach(() => {
 });
 
 describe("golden ViewModel layout and interaction", () => {
-  it("renders HomeView and SidebarView from home_timeline.golden.json and dispatches interactions", () => {
+  it("renders HomeView and SidebarView from home_timeline.golden.pb and dispatches interactions", () => {
     const initial = goldenView(homeTimelineGolden as GoldenDoc, "homeInitial");
     expect(initial.view.case).toBe("home");
     if (initial.view.case !== "home") return;
@@ -165,16 +185,12 @@ describe("golden ViewModel layout and interaction", () => {
     expect(host.querySelectorAll(".side .sess").length).toBeGreaterThanOrEqual(3);
   });
 
-  it("renders empty and error Home states from home_empty_errors.golden.json", () => {
-    const firstHomeStep = (homeEmptyGolden as GoldenDoc).steps.find((s) =>
-      Object.values(s.views ?? {}).some((v) => (v as { home?: unknown }).home),
-    );
-    expect(firstHomeStep?.views).toBeTruthy();
-    const viewName = Object.keys(firstHomeStep!.views!).find(
-      (k) => (firstHomeStep!.views![k] as { home?: unknown }).home,
-    )!;
-    const decoded = fromJson(ViewModelSchema, firstHomeStep!.views![viewName] as never);
-    if (decoded.view.case !== "home") throw new Error("expected home view");
+  it("renders empty and error Home states from home_empty_errors.golden.pb", () => {
+    const decoded = homeEmptyGolden.steps
+      .flatMap((s) => s.views)
+      .find((v) => v.viewModel?.view.case === "home")?.viewModel;
+    expect(decoded).toBeTruthy();
+    if (!decoded || decoded.view.case !== "home") throw new Error("expected home view");
 
     mount(
       <HomeView
@@ -194,7 +210,7 @@ describe("golden ViewModel layout and interaction", () => {
     expect(host.querySelector(".hl")?.textContent).toBeTruthy();
   });
 
-  it("renders ManageProjectsScreen & RemovedNotice from project_manage_detail.golden.json", () => {
+  it("renders ManageProjectsScreen & RemovedNotice from project_manage_detail.golden.pb", () => {
     const manage = goldenView(projectManageGolden as GoldenDoc, "managePinning");
     if (manage.view.case !== "project" || !manage.view.value.manage) {
       throw new Error("expected project manage view");
@@ -246,7 +262,7 @@ describe("golden ViewModel layout and interaction", () => {
     expect(onReadd).toHaveBeenCalled();
   });
 
-  it("renders NewBoxView from new_session_lifecycle.golden.json and dispatches actions", () => {
+  it("renders NewBoxView from new_session_lifecycle.golden.pb and dispatches actions", () => {
     const vmWrap = goldenView(newSessionGolden as GoldenDoc, "offlineWithDraftChoices");
     if (vmWrap.view.case !== "newSession") throw new Error("expected newSession view");
     const vm = vmWrap.view.value;
@@ -331,7 +347,7 @@ function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScr
 }
 
 describe("golden SessionScreenView layout and interaction", () => {
-  it("renders approval flow states and dispatches approval command from session_approval_flow.golden.json", () => {
+  it("renders approval flow states and dispatches approval command from session_approval_flow.golden.pb", () => {
     const onSubmitCommand = vi.fn();
     const pendingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "pendingApprovalDock");
     renderSessionGolden(pendingVm, { onSubmitCommand });
@@ -363,7 +379,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("session.origin_elsewhere"));
   });
 
-  it("renders CLI error turns and interrupted markers from session_cli_error_turn.golden.json", () => {
+  it("renders CLI error turns and interrupted markers from session_cli_error_turn.golden.pb", () => {
     const vm = sessionGoldenView(sessionCliErrorGolden as GoldenDoc, "cliErrorTurns");
     renderSessionGolden(vm);
 
@@ -375,7 +391,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelectorAll(".sysline.fail").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders windowed history slices and triggers onLoadEarlier from session_long_window.golden.json", () => {
+  it("renders windowed history slices and triggers onLoadEarlier from session_long_window.golden.pb", () => {
     const onLoadEarlier = vi.fn();
     const tailVm = sessionGoldenView(sessionLongWindowGolden as GoldenDoc, "tail10");
     renderSessionGolden(tailVm, { onLoadEarlier });
@@ -393,7 +409,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("schedule.earlier"));
   });
 
-  it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.json", () => {
+  it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.pb", () => {
     const onSubmitCommand = vi.fn();
     const onAbandonCommand = vi.fn();
 
@@ -436,7 +452,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("dock.plan_implement_record"));
   });
 
-  it("renders failed/unsure tray rows and pending queue from session_queue_retry.golden.json", () => {
+  it("renders failed/unsure tray rows and pending queue from session_queue_retry.golden.pb", () => {
     const onCancelTrayItem = vi.fn();
     const onIgnoreTrayItem = vi.fn();
     const onRestoreTrayItem = vi.fn();
@@ -485,7 +501,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onCancelTrayItem).toHaveBeenCalledWith("msg-q");
   });
 
-  it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.json", () => {
+  it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.pb", () => {
     const onExpandGroup = vi.fn();
     const foldedVm = sessionGoldenView(sessionScheduledFoldGolden as GoldenDoc, "foldedQuietRuns");
     renderSessionGolden(foldedVm, { onExpandGroup });
@@ -504,7 +520,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("Check health"))).toHaveLength(4);
   });
 
-  it("renders schedules list, detail, and session strip from schedules_inbox_detail.golden.json", () => {
+  it("renders schedules list, detail, and session strip from schedules_inbox_detail.golden.pb", () => {
     const listVm = goldenView(schedulesInboxDetailGolden as GoldenDoc, "schedules_1");
     expect(listVm.view.case).toBe("schedules");
     if (listVm.view.case !== "schedules") return;
@@ -600,7 +616,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onStripSelect).toHaveBeenCalledTimes(1);
   });
 
-  it("renders schedule form, timing draft, and detail from schedules_form_lifecycle.golden.json", () => {
+  it("renders schedule form, timing draft, and detail from schedules_form_lifecycle.golden.pb", () => {
     const form2 = goldenView(schedulesFormLifecycleGolden as GoldenDoc, "scheduleForm_2");
     expect(form2.view.case).toBe("scheduleForm");
     if (form2.view.case !== "scheduleForm") return;
@@ -672,7 +688,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".navbar .title b")?.textContent).toBe("Weekly audit");
   });
 
-  it("renders settings_overview.golden.json screens (Settings, Devices, ClientDetail) and dispatches actions", () => {
+  it("renders settings_overview.golden.pb screens (Settings, Devices, ClientDetail) and dispatches actions", () => {
     const settingsVm = goldenView(settingsOverviewGolden as GoldenDoc, "settings");
     expect(settingsVm.view.case).toBe("settings");
     if (settingsVm.view.case !== "settings") return;
@@ -712,6 +728,13 @@ describe("golden SessionScreenView layout and interaction", () => {
     const checkingVm = goldenView(settingsOverviewGolden as GoldenDoc, "checkingUpdate");
     expect(checkingVm.view.case).toBe("settings");
     if (checkingVm.view.case !== "settings") return;
+
+    const connFailedVm = goldenView(settingsOverviewGolden as GoldenDoc, "connCheckFailed");
+    expect(connFailedVm.view.case).toBe("settings");
+    if (connFailedVm.view.case === "settings") {
+      expect(connFailedVm.view.value.connCheck?.lastFailureText?.key).toBe("");
+      expect(connFailedVm.view.value.connCheck?.lastFailureText?.literal).toBe("dial tcp: timeout");
+    }
     const baseCheck = {
       ...checkingVm.view.value,
       update: checkingVm.view.value.update ? { ...checkingVm.view.value.update, hasUpdate: false, checking: false } : undefined,
@@ -800,7 +823,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onRename).toHaveBeenCalledTimes(1);
   });
 
-  it("renders machine_settings_edit.golden.json lifecycle and dispatches agent/daemon updates", () => {
+  it("renders machine_settings_edit.golden.pb lifecycle and dispatches agent/daemon updates", () => {
     const initVm = goldenView(machineSettingsEditGolden as GoldenDoc, "initialLoaded");
     expect(initVm.view.case).toBe("machineSettings");
     if (initVm.view.case !== "machineSettings") return;
@@ -870,7 +893,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(failedView.name);
   });
 
-  it("renders machine_status_lifecycle.golden.json states and dispatches tab/cleanup/retry", () => {
+  it("renders machine_status_lifecycle.golden.pb states and dispatches tab/cleanup/retry", () => {
     const loadVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "loading");
     expect(loadVm.view.case).toBe("machineStatus");
     if (loadVm.view.case !== "machineStatus") return;
@@ -934,7 +957,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".ms-page.is-stale")).toBeNull();
   });
 
-  it("renders machine_quota.golden.json sections cleanly", () => {
+  it("renders machine_quota.golden.pb sections cleanly", () => {
     const allVm = goldenView(machineQuotaGolden as GoldenDoc, "allQuotas");
     expect(allVm.view.case).toBe("quota");
     if (allVm.view.case !== "quota") return;
@@ -952,7 +975,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect([...host.querySelectorAll(".label")].map((e) => e.textContent)).not.toContain("Claude Code");
   });
 
-  it("renders session_shared_files_images.golden.json shared files, image chips, and viewer navigation", () => {
+  it("renders session_shared_files_images.golden.pb shared files, image chips, and viewer navigation", () => {
     const initialVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_initial");
     expect(initialVm.view.case).toBe("session");
     if (initialVm.view.case !== "session") return;
@@ -1010,7 +1033,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".viewer")).toBeNull();
   });
 
-  it("renders session_attachments_draft.golden.json draft preparing, ready, viewer, and post-send session", () => {
+  it("renders session_attachments_draft.golden.pb draft preparing, ready, viewer, and post-send session", () => {
     const preparingVm = goldenView(sessionAttachmentsDraftGolden as GoldenDoc, "draft_preparing");
     expect(preparingVm.view.case).toBe("attachmentDraft");
     if (preparingVm.view.case !== "attachmentDraft") return;

@@ -32,7 +32,8 @@ vi.mock("./core/security-client", () => ({
     },
     dispose: mockClient.dispose,
   }),
-  translateSecurityKey: (k: string) => k,
+  renderExitAdviceMessage: (a: { messageText?: { key?: string; literal?: string } }) =>
+    a.messageText?.key ?? a.messageText?.literal ?? "",
 }));
 
 import { SetupReset } from "./SetupReset";
@@ -50,7 +51,7 @@ afterEach(() => {
 
 it("opens confirmation and clears corrupt local security storage even when bootstrap fails", async () => {
   mockClient.bootstrap.mockRejectedValue(new Error("corrupt record"));
-  mockClient.checkExitAdvice.mockResolvedValue({ authority: false, unresolved: false, message: "generic" });
+  mockClient.checkExitAdvice.mockResolvedValue({ authority: false, unresolved: false, messageText: { literal: "generic" } });
   mockClient.clearSecurity.mockResolvedValue(undefined);
   const onDone = vi.fn();
 
@@ -88,7 +89,7 @@ it("preserves sole-authority exit warning when bootstrap fails but record still 
   mockClient.checkExitAdvice.mockResolvedValue({
     authority: true,
     unresolved: false,
-    message: authMsg,
+    messageText: { key: authMsg },
   });
 
   host = document.createElement("div");
@@ -109,7 +110,7 @@ it("preserves sole-authority exit warning when bootstrap fails but record still 
 
 it("passes standalone relay push unsubscriber when SetupReset knows the server", async () => {
   mockClient.bootstrap.mockResolvedValue({ server: "https://relay.example.com" });
-  mockClient.checkExitAdvice.mockResolvedValue({ authority: false, unresolved: false, message: "ok" });
+  mockClient.checkExitAdvice.mockResolvedValue({ authority: false, unresolved: false, messageText: { literal: "ok" } });
   mockClient.clearSecurity.mockResolvedValue(undefined);
 
   host = document.createElement("div");

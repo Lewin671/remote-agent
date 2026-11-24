@@ -22,6 +22,7 @@ import {
   SecurityWorkflowStatusSchema,
   type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
+import { TextSchema } from "../gen/remoteagent/core/v1/text_pb";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 const remotes: DemoRemote[] = [];
@@ -262,7 +263,7 @@ it("gives authority-specific exit advice and unregisters push before erasing key
         checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
           authority: true,
           unresolved: false,
-          message: "security.this_device_is_the_only_managing_client_transfer_management",
+          messageText: create(TextSchema, { key: "security.this_device_is_the_only_managing_client_transfer_management" }),
         })),
         clearSecurity,
       } as unknown as securityClient.SecurityClient,

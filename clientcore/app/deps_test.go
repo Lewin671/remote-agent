@@ -154,9 +154,9 @@ func TestTransportImports(t *testing.T) {
 func TestCoreLayerDependencies(t *testing.T) {
 	const core = "github.com/Lewin671/remote-agent/clientcore/"
 	forbidden := map[string][]string{
-		"sync":      {"screens", "app"},
-		"transport": {"sync", "screens", "app"},
-		"security":  {"sync", "transport", "screens", "app"},
+		"sync":      {"screens", "app", "text"},
+		"transport": {"sync", "screens", "app", "text"},
+		"security":  {"sync", "transport", "screens", "app", "text"},
 		"domain":    {"security", "sync", "transport", "screens", "app"},
 		"screens":   {"app"},
 	}

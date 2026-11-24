@@ -210,27 +210,33 @@ type SettledCommand struct {
 	SlotKey    string
 	MachineID  string
 	SessionID  string
-	Category   outcome.Category
-	Result     *v1.CommandResult
-	ErrorCode  string
-	ErrorText  *corev1.Text
-	FromDaemon bool
-	Expired    bool
-	Frozen     bool
+	Category    outcome.Category
+	Result      *v1.CommandResult
+	ErrorCode   string
+	ErrorReason world.Reason
+	FromDaemon  bool
+	Expired     bool
+	Frozen      bool
 }
 
 // StepContext accumulates side effects, dirty flags, and settled command notifications for one Step call.
 type StepContext struct {
-	Raw     []*corev1.Effect
-	Dirty   DirtyFlags
-	Settled []SettledCommand
+	Raw                    []*corev1.Effect
+	Dirty                  DirtyFlags
+	Settled                []SettledCommand
+	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
+	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
+	SecurityBootstrapError security.BootstrapErrorMeta
 }
 
 // StepResult summarizes the outputs of Engine.Step or direct Engine calls.
 type StepResult struct {
-	Effects []*corev1.Effect
-	Dirty   DirtyFlags
-	Settled []SettledCommand
+	Effects                []*corev1.Effect
+	Dirty                  DirtyFlags
+	Settled                []SettledCommand
+	SecurityWorkflowMeta   map[uint64]security.WorkflowMeta
+	SecurityNotifyOutcomes map[uint64]security.NotifyOutcome
+	SecurityBootstrapError security.BootstrapErrorMeta
 }
 
 // StepContext intentionally omits generic reflection; helper keeps Emit concise.
@@ -382,10 +388,10 @@ type Engine struct {
 	cachedToken       string
 	tokenExpiresMs    int64
 	forceLogin        bool
-	legID             uint64
-	connStartedAtMs   int64
-	connStepText      *corev1.Text
-	serverAhead       bool
+	legID           uint64
+	connStartedAtMs int64
+	connStep        world.ConnectStep
+	serverAhead     bool
 	listBackoffMs     int64
 	prefsBackoffMs    int64
 
@@ -409,11 +415,11 @@ type Engine struct {
 	lastDevicesPushSeq uint64
 	devicesSnapshotR   map[string]uint64
 	devicesSnapshotD   map[string]uint64
-	devicesLoadFailed  bool
-	devicesErrorText   *corev1.Text
-	sessionByIDOps     map[uint64]string
-	sessionByIDFailed  map[string]bool
-	sessionByIDErrors  map[string]*corev1.Text
+	devicesLoadFailed bool
+	devicesError      world.Reason
+	sessionByIDOps    map[uint64]string
+	sessionByIDFailed map[string]bool
+	sessionByIDErrors map[string]world.Reason
 	machinePushes      map[string]uint64
 	sessionPushes      map[string]uint64
 	removedPushes      map[string]uint64
@@ -474,7 +480,7 @@ func NewEngine() *Engine {
 		listed:              make(map[string]bool),
 		sessionByIDOps:      make(map[uint64]string),
 		sessionByIDFailed:   make(map[string]bool),
-		sessionByIDErrors:   make(map[string]*corev1.Text),
+		sessionByIDErrors:   make(map[string]world.Reason),
 		machinePushes:       make(map[string]uint64),
 		sessionPushes:       make(map[string]uint64),
 		removedPushes:       make(map[string]uint64),
@@ -738,9 +744,12 @@ func (e *Engine) handleEvent(ev *corev1.Event) (consumed bool, res StepResult) {
 
 func finalizeResult(ctx *StepContext) StepResult {
 	return StepResult{
-		Effects: ctx.Raw,
-		Dirty:   ctx.Dirty,
-		Settled: ctx.Settled,
+		Effects:                ctx.Raw,
+		Dirty:                  ctx.Dirty,
+		Settled:                ctx.Settled,
+		SecurityWorkflowMeta:   ctx.SecurityWorkflowMeta,
+		SecurityNotifyOutcomes: ctx.SecurityNotifyOutcomes,
+		SecurityBootstrapError: ctx.SecurityBootstrapError,
 	}
 }
 

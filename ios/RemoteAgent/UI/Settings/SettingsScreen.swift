@@ -212,7 +212,7 @@ struct SettingsScreen: View {
                     if let adv {
                         exitText = adv.text
                     } else {
-                        exitText = AuthorityAccess.exitAdvice(authority: false, unresolved: false)
+                        exitText = await model.exitAdviceText()
                     }
                     leaving = true
                 }

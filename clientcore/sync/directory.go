@@ -5,9 +5,9 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/projection"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
 func pushedSince(current, snapshot map[string]uint64, id string) bool {
@@ -128,13 +128,13 @@ func (e *Engine) RequestMoreSessions(ctx *StepContext) {
 	}
 	if e.pageOpID != 0 || e.w.World.SessionsNext == nil || !e.running || e.w.World.Connection != lists.ConnConnected {
 		if e.w.World.Connection != lists.ConnConnected && e.w.World.SessionsNext != nil {
-			e.w.SessionListErrorText = text.Msg(text.KeyConnectionNoServer)
+			e.w.SessionListError = world.Reason{Kind: world.ReasonNoServer}
 			ctx.Dirty.Add(true, true, false)
 		}
 		return
 	}
 	e.w.World.LoadingMoreSessions = true
-	e.w.SessionListErrorText = nil
+	e.w.SessionListError = world.Reason{}
 	e.w.World.SessionListError = ""
 	e.pageOpID = e.allocOpID()
 	e.pageListingGen = e.listingGen
@@ -197,9 +197,9 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.refreshOpID = 0
 	if ev.Error != "" {
 		if ev.UnresolvedHost {
-			e.w.SessionListErrorText = text.Msg(text.KeyConnectionNoServer)
+			e.w.SessionListError = world.Reason{Kind: world.ReasonNoServer}
 		} else {
-			e.w.SessionListErrorText = text.Plain(ev.Error)
+			e.w.SessionListError = world.PlainReason(ev.Error)
 		}
 		e.w.World.SessionListError = ev.Error
 		wait := e.listBackoffMs
@@ -232,7 +232,7 @@ func (e *Engine) handleListsFetched(ctx *StepContext, ev *corev1.ListsFetchedEve
 	e.w.World.LiveLoaded = true
 	e.coldStartGraceExpired = true
 	e.clearColdStartGrace(ctx)
-	e.w.SessionListErrorText = nil
+	e.w.SessionListError = world.Reason{}
 	e.w.World.SessionListError = ""
 
 	mp := e.refreshSnapshotM
@@ -365,7 +365,7 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		return
 	}
 	if ev.Error != "" {
-		e.w.SessionListErrorText = text.Plain(ev.Error)
+		e.w.SessionListError = world.PlainReason(ev.Error)
 		e.w.World.SessionListError = ev.Error
 		ctx.Dirty.Add(true, true, false)
 		return
@@ -376,7 +376,7 @@ func (e *Engine) handleSessionsPageFetched(ctx *StepContext, ev *corev1.Sessions
 		})
 		return
 	}
-	e.w.SessionListErrorText = nil
+	e.w.SessionListError = world.Reason{}
 	e.w.World.SessionListError = ""
 	for _, s := range ev.Sessions {
 		if s != nil && s.SessionId != "" {
@@ -415,7 +415,7 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 			if sid != "" {
 				e.sessionByIDFailed[sid] = true
 				if ev.Error != "" {
-					e.sessionByIDErrors[sid] = text.Plain(ev.Error)
+					e.sessionByIDErrors[sid] = world.PlainReason(ev.Error)
 				} else {
 					delete(e.sessionByIDErrors, sid)
 				}
@@ -433,7 +433,7 @@ func (e *Engine) handleSessionByIDFetched(ctx *StepContext, ev *corev1.SessionBy
 		if sid != "" {
 			e.sessionByIDFailed[sid] = true
 			if ev.Error != "" {
-				e.sessionByIDErrors[sid] = text.Plain(ev.Error)
+				e.sessionByIDErrors[sid] = world.PlainReason(ev.Error)
 			} else {
 				delete(e.sessionByIDErrors, sid)
 			}
@@ -474,7 +474,7 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 	}
 	if ev.Error != "" {
 		e.devicesLoadFailed = true
-		e.devicesErrorText = text.Plain(ev.Error)
+		e.devicesError = world.PlainReason(ev.Error)
 		ctx.Dirty.MarkSyncState()
 		return
 	}
@@ -486,7 +486,7 @@ func (e *Engine) handleDevicesFetched(ctx *StepContext, ev *corev1.DevicesFetche
 		return
 	}
 	e.devicesLoadFailed = false
-	e.devicesErrorText = nil
+	e.devicesError = world.Reason{}
 	e.reconcileDevices(ev.Devices, removedSnapshot, deviceSnapshot, true)
 	ctx.Dirty.MarkAll()
 }
@@ -502,8 +502,8 @@ func (e *Engine) handleStreamFrame(ctx *StepContext, ev *corev1.StreamFrameEvent
 	if e.w.World.Connection == lists.ConnConnecting {
 		e.w.World.Connection = lists.ConnConnected
 		e.w.DisconnectedAtMs = 0
-		e.connStepText = nil
-		e.w.ConnectionReasonText = nil
+		e.connStep = world.ConnectStepNone
+		e.w.ConnectionReason = world.Reason{}
 		ctx.Dirty.MarkAll()
 	}
 

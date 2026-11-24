@@ -83,7 +83,7 @@ extension ServerTests {
         @Test func rawServerErrorsTranslateToUserSafeLocalizedMessages() {
             let fx = PBSecurityWorkflowResultEffect.with {
                 $0.ok = false
-                $0.error = "security.pairing_expired_or_was_canceled"
+                $0.errorText = PBCoreText.with { $0.key = "security.pairing_expired_or_was_canceled" }
                 $0.structuredErrorCode = .notFound
                 $0.retryable = false
                 $0.uncertain = false
@@ -91,6 +91,15 @@ extension ServerTests {
             let msg = translateSecurityErrorMessage(fx)
             #expect(msg == L10n.securityPairingExpiredOrWasCanceled())
             #expect(!msg.contains("security."))
+
+            let adv = PBSecurityExitAdvice.with {
+                $0.authority = true
+                $0.messageText = PBCoreText.with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
+            }
+            let rendered = renderExitAdviceMessage(adv)
+            #expect(rendered == L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement())
+            #expect(!rendered.contains("浏览器"))
+            #expect(!rendered.lowercased().contains("browser"))
         }
     }
 }

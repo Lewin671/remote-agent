@@ -15,7 +15,7 @@ import UIKit
         let fromCore = AppModel.RejoinAdvice.sensitive(
             authority: true,
             unresolved: false,
-            message: "security.this_device_is_the_only_managing_client_transfer_management"
+            messageText: .with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
         )
         #expect(fromCore.text.contains(L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement()))
     }

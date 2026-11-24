@@ -13,11 +13,11 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	"github.com/Lewin671/remote-agent/clientcore/gen/litewire"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/security"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/clientcore/transport"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 	"github.com/Lewin671/remote-agent/shared/linkcore"
@@ -1453,8 +1453,8 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 		Event: &corev1.Event_SessionByIdFetched{SessionByIdFetched: &corev1.SessionByIdFetchedEvent{OpId: opEmpty}},
 	})
 	snapMissing := e.SessionSnapshot("s-missing")
-	if !snapMissing.LookupFailed || snapMissing.LookupErrorText != nil || snapMissing.Found {
-		t.Fatalf("expected missing snapshot (LookupFailed=true, LookupErrorText=nil), got %+v", snapMissing)
+	if !snapMissing.LookupFailed || !snapMissing.LookupError.IsZero() || snapMissing.Found {
+		t.Fatalf("expected missing snapshot (LookupFailed=true, LookupError=zero), got %+v", snapMissing)
 	}
 
 	// 2. Server returns a WireSession whose encrypted metadata is tampered -> read failure with error reason, NOT missing.
@@ -1479,9 +1479,9 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 	pumpSecurityEffects(t, e, phone, nowMs+60, stepBad)
 
 	snapBad := e.SessionSnapshot("s-bad")
-	if !snapBad.LookupFailed || snapBad.Found || snapBad.LookupErrorText == nil || snapBad.LookupErrorText.GetKey() != text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed {
-		t.Fatalf("expected decrypt failure to report LookupErrorText reason (retryable, not missing), got found=%v failed=%v err=%+v",
-			snapBad.Found, snapBad.LookupFailed, snapBad.LookupErrorText)
+	if !snapBad.LookupFailed || snapBad.Found || snapBad.LookupError.Kind != world.ReasonInvalidCiphertext {
+		t.Fatalf("expected decrypt failure to report ReasonInvalidCiphertext (retryable, not missing), got found=%v failed=%v err=%+v",
+			snapBad.Found, snapBad.LookupFailed, snapBad.LookupError)
 	}
 
 	// 3. Retrying FetchSessionAction clears the prior error and issues a fresh FetchSessionById RPC.
@@ -1490,7 +1490,7 @@ func TestSessionByIDDecryptFailureIsRetryableNotMissing(t *testing.T) {
 		t.Fatalf("expected new retry FetchSessionById opID, got %d", opRetry)
 	}
 	snapRetrying := e.SessionSnapshot("s-bad")
-	if !snapRetrying.LookingUp || snapRetrying.LookupFailed || snapRetrying.LookupErrorText != nil {
+	if !snapRetrying.LookingUp || snapRetrying.LookupFailed || !snapRetrying.LookupError.IsZero() {
 		t.Fatalf("expected retrying snapshot to clear previous failure, got %+v", snapRetrying)
 	}
 }
@@ -1653,8 +1653,8 @@ func TestProjectPrefsRecoveryHistoryUnavailableAllowsRebuild(t *testing.T) {
 			t.Fatal("tampered ProjectPrefs must not be overwritten by CAS")
 		}
 	}
-	if e.w.PrefsGlobalErrorText == nil || e.w.PrefsGlobalErrorText.GetKey() != text.KeyErrorsInvalidCiphertextSignatureKeyOrContentVerificationFailed {
-		t.Fatalf("expected verification error on tampered prefs, got %+v", e.w.PrefsGlobalErrorText)
+	if e.w.PrefsGlobalError.Kind != world.ReasonInvalidCiphertext {
+		t.Fatalf("expected verification error on tampered prefs, got %+v", e.w.PrefsGlobalError)
 	}
 }
 

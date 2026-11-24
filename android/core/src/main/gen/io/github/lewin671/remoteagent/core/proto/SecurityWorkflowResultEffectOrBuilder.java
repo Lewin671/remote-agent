@@ -23,18 +23,6 @@ public interface SecurityWorkflowResultEffectOrBuilder extends
   boolean getOk();
 
   /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The error.
-   */
-  java.lang.String getError();
-  /**
-   * <code>string error = 3 [json_name = "error"];</code>
-   * @return The bytes for error.
-   */
-  com.google.protobuf.ByteString
-      getErrorBytes();
-
-  /**
    * <code>bool retryable = 5 [json_name = "retryable"];</code>
    * @return The retryable.
    */
@@ -173,4 +161,15 @@ public interface SecurityWorkflowResultEffectOrBuilder extends
    * @return The structuredErrorCode.
    */
   io.github.lewin671.remoteagent.core.proto.SecurityErrorCode getStructuredErrorCode();
+
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   * @return Whether the errorText field is set.
+   */
+  boolean hasErrorText();
+  /**
+   * <code>.remoteagent.core.v1.Text error_text = 20 [json_name = "errorText"];</code>
+   * @return The errorText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getErrorText();
 }

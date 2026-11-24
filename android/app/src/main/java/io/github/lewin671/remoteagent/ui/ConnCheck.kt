@@ -214,16 +214,11 @@ internal fun ConnCheckSheet(
         }
         if (!isConnected) {
             val rawFailure = if (cc.hasLastFailureText()) uiText(cc.lastFailureText) else ""
-            val isAlreadyPrefixed = cc.hasLastFailureText() && cc.lastFailureText.key == UiMessages.connectionLastFailure("").key
             Hint(
                 when {
                     stepText.isNotEmpty() && startedAt != null -> {
                         val seconds = ((tick - startedAt) / 1000).coerceAtLeast(0)
-                        val failureClause = when {
-                            rawFailure.isEmpty() -> ""
-                            isAlreadyPrefixed -> rawFailure
-                            else -> copy(UiMessages.connectionLastFailure(rawFailure))
-                        }
+                        val failureClause = if (rawFailure.isEmpty()) "" else copy(UiMessages.connectionLastFailure(rawFailure))
                         copy(
                             UiMessages.connectionSecElapsed(
                                 seconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),

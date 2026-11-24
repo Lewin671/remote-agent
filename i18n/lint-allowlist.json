@@ -5898,5 +5898,45 @@
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Recovery.kt",
     "literal": "pending",
     "reason": "Internal subpage route state discriminator near error assignment; never rendered as user-facing text."
+  },
+  {
+    "path": "clientcore/app/schedules.go",
+    "literal": "failed",
+    "reason": "Internal machine error code assigned to ScheduleSnapshot.Error near text.IsEmpty(snap.ErrorText); never rendered directly as UI text."
+  },
+  {
+    "path": "clientcore/app/session.go",
+    "literal": "failed_precondition",
+    "reason": "Internal ConnectRPC error code near screens.ReasonText(...); never rendered directly as UI text."
+  },
+  {
+    "path": "clientcore/security/recovery_code.go",
+    "literal": "invalid",
+    "reason": "Internal workflow error code passed to newWfError; display copy is translated from WorkflowReason in clientcore/screens."
+  },
+  {
+    "path": "clientcore/security/workflow.go",
+    "literal": "security: ",
+    "reason": "Internal Go error.Error() diagnostic prefix for wfError; UI messages are rendered from WorkflowReason via clientcore/screens."
+  },
+  {
+    "path": "clientcore/security/workflow_op.go",
+    "literal": "offer",
+    "reason": "Internal persisted security operation kind discriminator in switch case; flagged only because newWfError(...) precedes it within the scanner window."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Failed to read screen golden \\(url.path): \\(error)",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Failed to decode screen golden \\(url.path): \\(error)",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Screen golden \\(name).golden.pb contained no \\(kind) views",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
   }
 ]

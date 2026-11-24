@@ -6,8 +6,8 @@ import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
 import {
   BROWSER_AUTHORITY_NOTICE,
   createStandaloneSecurityClient,
+  renderExitAdviceMessage,
   requestAuthorityPersistence,
-  translateSecurityKey,
 } from "../core/security-client";
 import type {
   SecurityHandoffCandidate,
@@ -35,7 +35,7 @@ export function LeaveAlert({ remote, onCancel }: { remote?: Remote; onCancel: ()
     void (async () => {
       await standalone.client.bootstrap();
       const a = await standalone.client.checkExitAdvice();
-      setAdvice(translateSecurityKey(a.message));
+      setAdvice(renderExitAdviceMessage(a));
     })()
       .catch((e) => setError(errorText(e)))
       .finally(() => standalone.dispose());
@@ -54,7 +54,7 @@ export function LeaveAlert({ remote, onCancel }: { remote?: Remote; onCancel: ()
         void (async () => {
           await standalone.client.bootstrap();
           const current = await standalone.client.checkExitAdvice();
-          const currentMsg = translateSecurityKey(current.message);
+          const currentMsg = renderExitAdviceMessage(current);
           if (currentMsg !== advice) {
             setAdvice(currentMsg);
             setBusy(false);

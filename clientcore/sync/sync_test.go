@@ -11,6 +11,7 @@ import (
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/outcome"
+	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/gen/timestamppb"
@@ -2264,7 +2265,7 @@ func TestDirectEventsDedupAndCacheWriteOnRelay(t *testing.T) {
 			},
 		},
 	})
-	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 || buf.errorText != nil || buf.IsRetired() {
+	if buf := e.Buffer("s1"); buf.PrefixLen() != 3 || !buf.errorReason.IsZero() || buf.IsRetired() {
 		t.Fatalf("broken/retired direct items must be discarded without tainting buffer")
 	}
 }
@@ -2770,8 +2771,8 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 		t.Fatalf("expected prefix=2 pending=0, got prefix=%d pending=%d", buf.PrefixLen(), buf.PendingCount())
 	}
 
-	// Relay EventsAppended([2]) clears fetchErrorText when ServerLastSeq=2 and !hasServerGap(2).
-	buf.fetchErrorText = &corev1.Text{Literal: "fetch error"}
+	// Relay EventsAppended([2]) clears fetchErrorReason when ServerLastSeq=2 and !hasServerGap(2).
+	buf.fetchErrorReason = world.PlainReason("fetch error")
 	_, appRes := e.HandleEvent(&corev1.Event{
 		NowMs: now + 90,
 		Event: &corev1.Event_StreamFrame{
@@ -2786,8 +2787,8 @@ func TestDirectStrictNextAndServerGapErrorClear(t *testing.T) {
 			},
 		},
 	})
-	if buf.fetchErrorText != nil {
-		t.Fatalf("expected fetchErrorText cleared when !hasServerGap")
+	if !buf.fetchErrorReason.IsZero() {
+		t.Fatalf("expected fetchErrorReason cleared when !hasServerGap")
 	}
 	for _, eff := range appRes.Effects {
 		if eff.GetRpc().GetGetEvents() != nil {

@@ -15,7 +15,6 @@ public  final class ConnectionStatusView extends
     // @@protoc_insertion_point(message_implements:remoteagent.core.v1.ConnectionStatusView)
     ConnectionStatusViewOrBuilder {
   private ConnectionStatusView() {
-    reason_ = "";
   }
   private int bitField0_;
   public static final int STATE_FIELD_NUMBER = 1;
@@ -180,54 +179,6 @@ public  final class ConnectionStatusView extends
   private void clearLivePushConnected() {
 
     livePushConnected_ = false;
-  }
-
-  public static final int REASON_FIELD_NUMBER = 5;
-  private java.lang.String reason_;
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @return The reason.
-   */
-  @java.lang.Override
-  public java.lang.String getReason() {
-    return reason_;
-  }
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @return The bytes for reason.
-   */
-  @java.lang.Override
-  public com.google.protobuf.ByteString
-      getReasonBytes() {
-    return com.google.protobuf.ByteString.copyFromUtf8(reason_);
-  }
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @param value The reason to set.
-   */
-  @java.lang.SuppressWarnings("ReturnValueIgnored")
-  private void setReason(
-      java.lang.String value) {
-    value.getClass();  // minimal bytecode null check
-
-    reason_ = value;
-  }
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   */
-  private void clearReason() {
-
-    reason_ = getDefaultInstance().getReason();
-  }
-  /**
-   * <code>string reason = 5 [json_name = "reason"];</code>
-   * @param value The bytes for reason to set.
-   */
-  private void setReasonBytes(
-      com.google.protobuf.ByteString value) {
-    checkByteStringIsUtf8(value);
-    reason_ = value.toStringUtf8();
-
   }
 
   public static final int DISCONNECTED_AT_MS_FIELD_NUMBER = 6;
@@ -522,55 +473,6 @@ public  final class ConnectionStatusView extends
     }
 
     /**
-     * <code>string reason = 5 [json_name = "reason"];</code>
-     * @return The reason.
-     */
-    @java.lang.Override
-    public java.lang.String getReason() {
-      return instance.getReason();
-    }
-    /**
-     * <code>string reason = 5 [json_name = "reason"];</code>
-     * @return The bytes for reason.
-     */
-    @java.lang.Override
-    public com.google.protobuf.ByteString
-        getReasonBytes() {
-      return instance.getReasonBytes();
-    }
-    /**
-     * <code>string reason = 5 [json_name = "reason"];</code>
-     * @param value The reason to set.
-     * @return This builder for chaining.
-     */
-    public Builder setReason(
-        java.lang.String value) {
-      copyOnWrite();
-      instance.setReason(value);
-      return this;
-    }
-    /**
-     * <code>string reason = 5 [json_name = "reason"];</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearReason() {
-      copyOnWrite();
-      instance.clearReason();
-      return this;
-    }
-    /**
-     * <code>string reason = 5 [json_name = "reason"];</code>
-     * @param value The bytes for reason to set.
-     * @return This builder for chaining.
-     */
-    public Builder setReasonBytes(
-        com.google.protobuf.ByteString value) {
-      copyOnWrite();
-      instance.setReasonBytes(value);
-      return this;
-    }
-
-    /**
      * <code>int64 disconnected_at_ms = 6 [json_name = "disconnectedAtMs"];</code>
      * @return The disconnectedAtMs.
      */
@@ -619,12 +521,11 @@ public  final class ConnectionStatusView extends
             "badgeText_",
             "detailText_",
             "livePushConnected_",
-            "reason_",
             "disconnectedAtMs_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\f\u0002\u1009" +
-              "\u0000\u0003\u1009\u0001\u0004\u0007\u0005\u0208\u0006\u0002";
+              "\u0000\u0005\u0000\u0001\u0001\u0006\u0005\u0000\u0000\u0000\u0001\f\u0002\u1009" +
+              "\u0000\u0003\u1009\u0001\u0004\u0007\u0006\u0002";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/clientcore/screens"
 	"github.com/Lewin671/remote-agent/clientcore/sync"
 )
 
@@ -746,8 +747,8 @@ func (c *Core) settleSharedFileChunk(
 				}
 			}
 		} else {
-			if sc.ErrorText != nil {
-				errText = sc.ErrorText
+			if errTxt := screens.ReasonText(sc.ErrorReason); errTxt != nil {
+				errText = errTxt
 			} else {
 				detail = strings.TrimSpace(sc.ErrorCode)
 			}

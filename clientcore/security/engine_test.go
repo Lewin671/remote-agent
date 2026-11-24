@@ -1025,8 +1025,10 @@ func TestEngineOverrideSessionSeedAndNotifyOpening(t *testing.T) {
 			openedNotify = no
 		}
 	}
-	if openedNotify == nil || openedNotify.Error != "" || !openedNotify.GetDisplay().GetValid() || openedNotify.GetDisplay().GetTitle().GetLiteral() != "done" || openedNotify.GetDisplay().GetBody().GetLiteral() != "body" {
-		t.Fatalf("HandleOpenNotify with PurposeKey failed: %+v", openedNotify)
+	outcomes := eng.DrainNotifyOutcomes()
+	out := outcomes[88]
+	if openedNotify == nil || openedNotify.Error != "" || !out.Valid || out.Title != "done" || out.Text != "body" {
+		t.Fatalf("HandleOpenNotify with PurposeKey failed: eff=%+v outcome=%+v", openedNotify, out)
 	}
 }
 

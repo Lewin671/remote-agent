@@ -6,20 +6,18 @@ import (
 	"crypto/cipher"
 	"crypto/hkdf"
 	"crypto/sha256"
-	"errors"
 	"slices"
 	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
-	"github.com/Lewin671/remote-agent/clientcore/text"
 	"github.com/Lewin671/remote-agent/shared/devicesec"
 )
 
 const crockfordAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 var (
-	errInvalidServer       = errors.New(text.KeyErrorsTheServerMustUseHttps)
-	errInvalidRecoveryCode = errors.New(text.KeySecurityInvalidRecoveryCode)
+	errInvalidServer       = fatalWfError("invalid", WorkflowReasonServerMustUseHTTPS, "")
+	errInvalidRecoveryCode = newWfError("invalid", WorkflowReasonInvalidRecoveryCode)
 )
 
 // EncodeRecoveryCode encodes 10 bytes of genesis prefix + 32-byte Ed25519 seed in Crockford Base32.
