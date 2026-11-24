@@ -251,4 +251,15 @@ class AttachmentManagerTest {
             reader.close()
         }
     }
+
+    @Test
+    fun boundedInputStreamStopsImmediatelyPastCap() {
+        val huge = ByteArray(10_000) { 0x42 }
+        val bounded = BoundedInputStream(ByteArrayInputStream(huge), maxBytes = 1024L)
+        val buf = ByteArray(512)
+        assertEquals(512, bounded.read(buf))
+        assertEquals(512, bounded.read(buf))
+        val err = runCatching { bounded.read(buf) }.exceptionOrNull()
+        assertTrue("Expected ViewerSourceTooLargeException, got $err", err is ViewerSourceTooLargeException)
+    }
 }

@@ -133,11 +133,21 @@ internal fun dispatchPickedUris(
 ) {
     if (uris.isEmpty()) return
     val reservationId = newRequestId()
+    val (imageSlots, fileSlots) = if (forceFile) {
+        0 to uris.size
+    } else {
+        var videos = 0
+        for (uri in uris) {
+            val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull().orEmpty()
+            if (mime.startsWith("video/", ignoreCase = true)) videos++
+        }
+        (uris.size - videos) to videos
+    }
     remote.reserveDraftSlots(
         scope = scope,
         reservationId = reservationId,
-        imageSlots = if (forceFile) 0 else uris.size,
-        fileSlots = if (forceFile) uris.size else 0,
+        imageSlots = imageSlots,
+        fileSlots = fileSlots,
     )
     val appScope = RaApp.scopeOrNull()
     val work: suspend () -> Unit = {
@@ -193,10 +203,7 @@ internal fun rememberImagePicker(
     val copy = uiText()
     val context = LocalContext.current
     val scopeKey = draftScopeStorageKey(scope)
-    val contractCap = remember {
-        maxOf(2, (draft.maxImages.takeIf { it > 0 } ?: 10) + (draft.maxFiles.takeIf { it > 0 } ?: 10))
-    }
-    val many = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(contractCap)) { uris ->
+    val many = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) dispatchPickedUris(context, remote, scope, uris, forceFile = false)
     }
     val one = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -213,8 +220,15 @@ internal fun rememberImagePicker(
                     draft.galleryAllowsVideo && draft.canPickFiles -> ActivityResultContracts.PickVisualMedia.ImageAndVideo
                     else -> ActivityResultContracts.PickVisualMedia.ImageOnly
                 }
-                val req = PickVisualMediaRequest(type)
-                if (draft.libraryRoom == 1) one.launch(req) else many.launch(req)
+                if (draft.libraryRoom >= 2) {
+                    val req = PickVisualMediaRequest.Builder()
+                        .setMediaType(type)
+                        .setMaxItems(draft.libraryRoom)
+                        .build()
+                    many.launch(req)
+                } else {
+                    one.launch(PickVisualMediaRequest(type))
+                }
             }
         }
     }
@@ -394,6 +408,11 @@ internal fun AttachmentDraftStrip(
     }
 }
 
+internal fun draftThumbBadgeText(
+    item: AttachmentDraftItemView,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String,
+): String = if (item.hasBadgeText()) coreTextToMessageText(item.badgeText).resolve(copy) else ""
+
 @Composable
 private fun DraftThumbCell(
     item: AttachmentDraftItemView,
@@ -461,30 +480,21 @@ private fun DraftThumbCell(
                         }
                     }
                 }
-                AttachmentItemState.ATTACHMENT_ITEM_STATE_PAUSED -> {
-                    Box(
-                        Modifier.fillMaxSize().background(Color(0x99000000)),
-                        contentAlignment = Alignment.BottomCenter,
-                    ) {
-                        Text(
-                            if (item.canResume) copy(UiMessages.scheduleResume()) else copy(UiMessages.attachmentUploadPaused()),
-                            color = Color.White,
-                            style = T.s12b,
-                            modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {},
-                        )
-                    }
-                }
+                AttachmentItemState.ATTACHMENT_ITEM_STATE_PAUSED,
                 AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED -> {
+                    val badge = draftThumbBadgeText(item, copy)
                     Box(
                         Modifier.fillMaxSize().background(Color(0x99000000)),
                         contentAlignment = Alignment.BottomCenter,
                     ) {
-                        Text(
-                            if (!isImage && item.canRetry) copy(UiMessages.commonRetry()) else copy(UiMessages.attachmentFailed()),
-                            color = Color.White,
-                            style = T.s12b,
-                            modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {},
-                        )
+                        if (badge.isNotEmpty()) {
+                            Text(
+                                badge,
+                                color = Color.White,
+                                style = T.s12b,
+                                modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {},
+                            )
+                        }
                     }
                 }
                 else -> {}
@@ -539,7 +549,7 @@ private fun DraftImageThumb(thumbRef: String, preparedRef: String) {
 @Composable
 private fun BoxScope.VideoFrame(item: AttachmentDraftItemView) {
     val context = LocalContext.current
-    val frame by produceState(VideoFrames.cache[item.sourceRef], item.sourceRef) {
+    val frame by produceState(VideoFrames.get(item.sourceRef), item.sourceRef) {
         if (value == null && item.sourceRef.isNotEmpty()) {
             value = withContext(Dispatchers.IO) { VideoFrames.read(context, item.sourceRef) }
         }
@@ -572,12 +582,24 @@ private fun BoxScope.VideoFrame(item: AttachmentDraftItemView) {
     }
 }
 
-/** First frames of picked videos, cached in memory for this run. */
-private object VideoFrames {
-    val cache = java.util.concurrent.ConcurrentHashMap<String, ImageBitmap>()
+/** First frames of picked videos, bounded in memory and evicted on attachment release/clear. */
+internal object VideoFrames {
+    private const val MAX_ENTRIES = 32
+    private val cache = android.util.LruCache<String, ImageBitmap>(MAX_ENTRIES)
+
+    fun get(sourceRef: String): ImageBitmap? = if (sourceRef.isEmpty()) null else cache.get(sourceRef)
+
+    fun remove(sourceRef: String) {
+        if (sourceRef.isNotEmpty()) cache.remove(sourceRef)
+    }
+
+    fun clear() {
+        cache.evictAll()
+    }
 
     fun read(context: Context, sourceRef: String): ImageBitmap? {
-        cache[sourceRef]?.let { return it }
+        if (sourceRef.isEmpty()) return null
+        cache.get(sourceRef)?.let { return it }
         val r = android.media.MediaMetadataRetriever()
         val bitmap = try {
             r.setDataSource(context, Uri.parse(sourceRef))
@@ -596,6 +618,6 @@ private object VideoFrames {
         } finally {
             runCatching { r.release() }
         }
-        return bitmap?.asImageBitmap()?.also { cache[sourceRef] = it }
+        return bitmap?.asImageBitmap()?.also { cache.put(sourceRef, it) }
     }
 }

@@ -33,6 +33,7 @@ import io.github.lewin671.remoteagent.core.proto.AttachmentReadChunkEffect
 import io.github.lewin671.remoteagent.core.randomBytes
 import io.github.lewin671.remoteagent.core.sha256
 import io.github.lewin671.remoteagent.ui.PrepareImageException
+import io.github.lewin671.remoteagent.ui.VideoFrames
 import io.github.lewin671.remoteagent.ui.encodeThumbnailBytes
 import io.github.lewin671.remoteagent.ui.prepareImageFromSource
 import java.io.Closeable
@@ -243,6 +244,7 @@ class AttachmentManager(
 
             override fun releaseExternalRef(ref: String) {
                 chunkReader.closeRef(ref)
+                VideoFrames.remove(ref)
                 if (ref.startsWith("content://")) {
                     runCatching {
                         context.contentResolver.releasePersistableUriPermission(
@@ -255,6 +257,7 @@ class AttachmentManager(
 
             override fun releaseAllExternalRefs() {
                 chunkReader.closeAll()
+                VideoFrames.clear()
                 runCatching {
                     context.contentResolver.persistedUriPermissions.forEach { perm ->
                         runCatching {
@@ -272,11 +275,13 @@ class AttachmentManager(
 
             override fun onLocalBlobDeleted(ref: String) {
                 chunkReader.closeRef(ref)
+                VideoFrames.remove(ref)
                 thumbCache.remove(ref)
             }
 
             override fun onAllCleared() {
                 chunkReader.closeAll()
+                VideoFrames.clear()
                 thumbCache.evictAll()
             }
         },
@@ -304,11 +309,13 @@ class AttachmentManager(
     fun clearAllOnDiskAsync() {
         executor.enqueueClearAll()
         thumbCache.evictAll()
+        VideoFrames.clear()
     }
 
     suspend fun clearAllOnDisk() {
         executor.clearAllAndWait()
         thumbCache.evictAll()
+        VideoFrames.clear()
     }
 
     fun usedBytes(): Long = executor.usedBytes()
@@ -320,6 +327,7 @@ class AttachmentManager(
     fun close() {
         chunkReader.close()
         executor.close()
+        VideoFrames.clear()
     }
 
     /** Decodes and caches a small thumbnail for a draft or outbox image item. */
@@ -342,15 +350,27 @@ class AttachmentManager(
     /** Decodes a full-resolution (<= 2048px) preview bitmap for `DraftImageViewer`. */
     suspend fun loadViewerImage(preparedRef: String, sourceRef: String): ImageBitmap? =
         withContext(Dispatchers.IO) {
-            val bytes = when {
-                preparedRef.startsWith(LOCAL_BLOB_REF_PREFIX) -> executor.readEncryptedBlobFull(preparedRef)
-                sourceRef.startsWith(LOCAL_BLOB_REF_PREFIX) -> executor.readEncryptedBlobFull(sourceRef)
-                sourceRef.isNotEmpty() -> runCatching {
-                    context.contentResolver.openInputStream(Uri.parse(sourceRef))?.use { it.readBytes() }
-                }.getOrNull()
+            when {
+                preparedRef.startsWith(LOCAL_BLOB_REF_PREFIX) -> {
+                    val bytes = executor.readEncryptedBlobFull(preparedRef) ?: return@withContext null
+                    decodeDownsampled(bytes, maxLongSide = 2048)
+                }
+                sourceRef.startsWith(LOCAL_BLOB_REF_PREFIX) -> {
+                    val bytes = executor.readEncryptedBlobFull(sourceRef) ?: return@withContext null
+                    decodeDownsampled(bytes, maxLongSide = 2048)
+                }
+                sourceRef.isNotEmpty() -> {
+                    val uri = Uri.parse(sourceRef)
+                    val knownSize = probeSourceSizeBytes(uri)
+                    decodeDownsampledStream(
+                        openStream = { runCatching { openSourceStream(uri) }.getOrNull() },
+                        maxLongSide = 2048,
+                        maxSourceBytes = MAX_VIEWER_SOURCE_BYTES,
+                        knownSizeBytes = knownSize,
+                    )
+                }
                 else -> null
-            } ?: return@withContext null
-            decodeDownsampled(bytes, maxLongSide = 2048)
+            }
         }
 
     private fun decodeDownsampled(bytes: ByteArray, maxLongSide: Int): ImageBitmap? = runCatching {
@@ -528,6 +548,16 @@ class AttachmentManager(
             FileInputStream(f)
         } else {
             context.contentResolver.openInputStream(uri)
+        }
+
+    private fun probeSourceSizeBytes(uri: Uri): Long =
+        if (uri.scheme == ContentResolver.SCHEME_FILE && uri.path != null) {
+            val f = File(uri.path!!)
+            if (f.isFile) f.length() else -1L
+        } else {
+            runCatching {
+                context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+            }.getOrNull() ?: -1L
         }
 
     private fun isDirectoryUri(uri: Uri): Boolean {
@@ -858,4 +888,88 @@ internal class SourceChunkReader(
         closed = true
         closeAll()
     }
+}
+
+internal const val MAX_VIEWER_SOURCE_BYTES: Long = 20L * 1024L * 1024L
+
+internal class ViewerSourceTooLargeException : IOException("viewer_source_too_large")
+
+/** InputStream wrapper that hard-caps the number of bytes read to prevent OOM on giant viewer sources. */
+internal class BoundedInputStream(
+    input: InputStream,
+    private val maxBytes: Long,
+) : FilterInputStream(input) {
+    private var totalRead = 0L
+    @Volatile var exceeded: Boolean = false
+        private set
+
+    override fun read(): Int {
+        val b = super.read()
+        if (b >= 0) {
+            totalRead++
+            if (totalRead > maxBytes) {
+                exceeded = true
+                throw ViewerSourceTooLargeException()
+            }
+        }
+        return b
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (len <= 0) return 0
+        val remaining = (maxBytes - totalRead) + 1L
+        if (remaining <= 0L) {
+            exceeded = true
+            throw ViewerSourceTooLargeException()
+        }
+        val cappedLen = minOf(len.toLong(), remaining).toInt()
+        val n = super.read(b, off, cappedLen)
+        if (n > 0) {
+            totalRead += n
+            if (totalRead > maxBytes) {
+                exceeded = true
+                throw ViewerSourceTooLargeException()
+            }
+        }
+        return n
+    }
+}
+
+/**
+ * Two-pass bounded stream image decode: first reads bounds (`inJustDecodeBounds`), then decodes
+ * with an appropriate `inSampleSize`, rejecting any stream exceeding [maxSourceBytes] without
+ * buffering the whole source file into a heap `ByteArray`.
+ */
+internal fun decodeDownsampledStream(
+    openStream: () -> InputStream?,
+    maxLongSide: Int,
+    maxSourceBytes: Long = MAX_VIEWER_SOURCE_BYTES,
+    knownSizeBytes: Long = -1L,
+): ImageBitmap? {
+    if (knownSizeBytes > maxSourceBytes) return null
+    return runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        val first = openStream() ?: return null
+        val bounded1 = BoundedInputStream(first, maxSourceBytes)
+        bounded1.use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounded1.exceeded || bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxLongSide) {
+            sample *= 2
+        }
+        val second = openStream() ?: return null
+        val bounded2 = BoundedInputStream(second, maxSourceBytes)
+        val bmp = bounded2.use {
+            BitmapFactory.decodeStream(
+                it,
+                null,
+                BitmapFactory.Options().apply { inSampleSize = sample },
+            )
+        }
+        if (bounded2.exceeded) {
+            bmp?.recycle()
+            return null
+        }
+        bmp?.asImageBitmap()
+    }.getOrNull()
 }

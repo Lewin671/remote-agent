@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.lewin671.remoteagent.core.Account
@@ -19,8 +20,11 @@ import io.github.lewin671.remoteagent.core.proto.DraftImageViewerView
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
 import io.github.lewin671.remoteagent.core.sessionDraftScope
 import io.github.lewin671.remoteagent.data.ThemeMode
+import io.github.lewin671.remoteagent.data.decodeDownsampledStream
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -28,6 +32,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.file.Files
@@ -140,5 +145,82 @@ class AttachmentShellTest {
         ui.onNodeWithText("Paused at 42%").assertIsDisplayed()
         ui.onNodeWithText("恢复").assertIsDisplayed()
         ui.onNodeWithText("重试").assertIsDisplayed()
+    }
+
+    @Test fun draftStripRendersCoreBadgeTextVerbatimForPausedAndFailedItems() {
+        val scope = sessionDraftScope("s3")
+        val paused = AttachmentDraftItemView.newBuilder()
+            .setItemId("vid-1")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_FILE)
+            .setIsVideo(true)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_PAUSED)
+            .setDisplayName("clip.mp4")
+            .setPositionA11Y(CoreText.newBuilder().setLiteral("Video 1"))
+            .setBadgeText(CoreText.newBuilder().setLiteral("CORE-PAUSED-BADGE"))
+            .setCanResume(true)
+            .setCanRemove(true)
+            .build()
+        val failed = AttachmentDraftItemView.newBuilder()
+            .setItemId("img-2")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED)
+            .setImageIndex(0)
+            .setDisplayName("bad.jpg")
+            .setPositionA11Y(CoreText.newBuilder().setLiteral("Image 1"))
+            .setBadgeText(CoreText.newBuilder().setLiteral("CORE-FAILED-BADGE"))
+            .setCanRemove(true)
+            .build()
+        val noBadge = AttachmentDraftItemView.newBuilder()
+            .setItemId("img-3")
+            .setKind(AttachmentItemKind.ATTACHMENT_ITEM_KIND_IMAGE)
+            .setState(AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED)
+            .build()
+
+        // Shell uses Core's badge_text verbatim without state-based text fallbacks.
+        assertEquals("CORE-PAUSED-BADGE", draftThumbBadgeText(paused) { it.key })
+        assertEquals("CORE-FAILED-BADGE", draftThumbBadgeText(failed) { it.key })
+        assertEquals("", draftThumbBadgeText(noBadge) { it.key })
+
+        val draft = AttachmentDraftView.newBuilder()
+            .setScope(scope)
+            .addItems(paused)
+            .addItems(failed)
+            .addImages(failed)
+            .build()
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { AttachmentDraftStrip(draft, scope, remote) } }
+        ui.onNodeWithContentDescription("Video 1").assertIsDisplayed()
+        ui.onNodeWithContentDescription("Image 1").assertIsDisplayed()
+    }
+
+    @Test fun decodeDownsampledStreamDecodesUnderCapAndRejectsOversizedSource() {
+        val bmp = Bitmap.createBitmap(240, 120, Bitmap.Config.ARGB_8888).apply {
+            eraseColor(android.graphics.Color.rgb(10, 180, 90))
+        }
+        val raw = ByteArrayOutputStream().apply { bmp.compress(Bitmap.CompressFormat.PNG, 100, this) }.toByteArray()
+
+        val ok = decodeDownsampledStream(
+            openStream = { ByteArrayInputStream(raw) },
+            maxLongSide = 120,
+            maxSourceBytes = raw.size.toLong() + 1024L,
+        )
+        assertNotNull(ok)
+        assertTrue(maxOf(ok!!.width, ok.height) <= 120)
+
+        // Rejected upfront when knownSizeBytes exceeds cap.
+        val rejectedByKnownSize = decodeDownsampledStream(
+            openStream = { ByteArrayInputStream(raw) },
+            maxLongSide = 120,
+            maxSourceBytes = 1024L,
+            knownSizeBytes = 1025L,
+        )
+        assertNull("Oversized known size must be rejected upfront", rejectedByKnownSize)
+
+        // Rejected mid-stream when BoundedInputStream cap is exceeded even without knownSizeBytes.
+        val rejectedByStreamCap = decodeDownsampledStream(
+            openStream = { ByteArrayInputStream(raw) },
+            maxLongSide = 120,
+            maxSourceBytes = 16L,
+        )
+        assertNull("Oversized stream must be rejected cleanly via BoundedInputStream", rejectedByStreamCap)
     }
 }
