@@ -1,12 +1,24 @@
 import * as i18n from "../i18n";
-import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
-import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
+import {
+  applyTerminalHistoryUpdate,
+  BackToLive,
+  EMPTY_TERMINAL_HISTORY,
+  TerminalReader,
+  TERM_FONT,
+  type TerminalHistoryViewState,
+} from "./TerminalHistory";
 import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { TerminalStreamEventKind, useCoreHost } from "../core/host";
+import {
+  TerminalHistoryEventKind,
+  TerminalHistoryPhase,
+  TerminalStreamEventKind,
+  useCoreHost,
+} from "../core/host";
+import { renderText } from "../core/text";
 import { errorText, type Remote, type SessionView, type TermConn } from "../remote";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CornerDownLeft, Keyboard, Maximize2 } from "../icons";
 
@@ -76,28 +88,32 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   };
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState(false);
-  const [, refreshHistory] = useState(0);
-  const historyRef = useRef<TerminalHistory>(null);
-  if (!historyRef.current) historyRef.current = new TerminalHistory(() => refreshHistory(n => n + 1));
-  const history = historyRef.current;
-  const loadHistory = (fresh = false) => history.request((requestId, cursor) => conn.current?.send({ kind: { case: "historyRequest", value: { requestId, cursor } } }), fresh);
+  const hostBridge = useCoreHost(remote);
+  const terminalIdRef = useRef("");
+  if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
+  const terminalId = terminalIdRef.current;
+  const [history, setHistory] = useState<TerminalHistoryViewState>(EMPTY_TERMINAL_HISTORY);
+  const historyRef = useRef<TerminalHistoryViewState>(EMPTY_TERMINAL_HISTORY);
+  const loadEarlierHistory = () => hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.LOAD_EARLIER);
+  const retryHistory = () => hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.RETRY);
   // How the reader shows text, and how far up the first page opens: taken
   // from the live terminal at the moment the gesture opened it.
   const [reader, setReader] = useState<{ font: number; height: number; offset: number; left: number; grid: number }>();
   const [newOutput, setNewOutput] = useState(false);
   const beginReading = (distance: number) => {
     const t = term.current;
-    if (history.phase === "reading" || history.pending || !conn.current || !t) return;
+    const h = historyRef.current;
+    if (h.phase === TerminalHistoryPhase.OPEN || h.pending || !conn.current || !t) return;
     setNewOutput(false);
     setReader({ font: t.options.fontSize ?? 12, height: cellHeight(t), offset: distance, left: pan.current?.scrollLeft ?? 0, grid: host.current?.offsetWidth ?? 0 });
     // Reading is passive: any open keyboard goes away.
     t.blur();
-    loadHistory(true);
+    hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.OPEN);
   };
   const beginRef = useRef(beginReading);
   beginRef.current = beginReading;
   const leaveReading = () => {
-    history.close();
+    hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.CLOSE);
     setNewOutput(false);
   };
   const [fitted, setFitted] = useState(false);
@@ -152,7 +168,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     // come from layout notifications, not reads after changing font size.
     viewport.current = { width: box.current!.clientWidth, height: box.current!.clientHeight };
     t.open(host.current!);
-    const typed = t.onData((d) => !history.visible && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
+    const typed = t.onData((d) => historyRef.current.phase !== TerminalHistoryPhase.OPEN && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
     // A fitted window follows the width of its pane: the browser window, or
     // the switch between the terminal alone and side by side. Height is left
     // alone, so a phone's keyboard never resizes the remote window.
@@ -223,14 +239,14 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         e.stopPropagation();
         return;
       }
-      if (history.phase === "reading") return;
+      if (historyRef.current.phase === TerminalHistoryPhase.OPEN) return;
       if (axis === "y" && e.deltaY < 0) {
         e.preventDefault();
         beginRef.current(-e.deltaY);
       }
     };
     const onStart = (e: TouchEvent) => {
-      if (history.phase === "reading" || e.touches.length !== 1) return;
+      if (historyRef.current.phase === TerminalHistoryPhase.OPEN || e.touches.length !== 1) return;
       tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
@@ -263,10 +279,6 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hostBridge = useCoreHost(remote);
-  const terminalIdRef = useRef("");
-  if (!terminalIdRef.current) terminalIdRef.current = `term-${++nextTerminalStreamId}`;
-  const terminalId = terminalIdRef.current;
   const nextAttemptRef = useRef(0);
   const allowedAttemptRef = useRef(0);
   useEffect(() => {
@@ -275,9 +287,20 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       allowedAttemptRef.current = next;
       setAttempt(next);
     });
+    const offHistReq = hostBridge.onTerminalHistorySendRequest(terminalId, (req) => {
+      conn.current?.send({ kind: { case: "historyRequest", value: { requestId: req.requestId, cursor: req.cursor } } });
+    });
+    const offHistUpd = hostBridge.onTerminalHistoryUpdated(terminalId, (upd) => {
+      const next = applyTerminalHistoryUpdate(historyRef.current, upd);
+      historyRef.current = next;
+      setHistory(next);
+    });
     return () => {
       offReopen();
+      offHistReq();
+      offHistUpd();
       allowedAttemptRef.current = 0;
+      hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.DISPOSED);
       hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.DISPOSED, false);
     };
   }, [hostBridge, terminalId, session.id]);
@@ -319,7 +342,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     heldForWaitingRef.current = false;
     let alive = true, opened = false, ended = false;
     const opening = new AbortController();
-    history.close();
+    hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.CLOSE);
     setTerminalState("connecting");
     setReason("");
     setDetails(false);
@@ -340,10 +363,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           if (!t) return;
           switch (f.kind.case) {
             case "historyPage":
-              history.receive(f.kind.value);
+              hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.PAGE_RECEIVED, f.kind.value);
               return;
             case "snapshot": {
-              if (history.visible) setNewOutput(true);
+              if (historyRef.current.phase === TerminalHistoryPhase.OPEN) setNewOutput(true);
               const next = { cols: f.kind.value.cols, rows: f.kind.value.rows };
               const was = size.current;
               const target = fittedTo.current;
@@ -373,7 +396,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
               return written;
             }
             case "output": {
-              if (history.visible) setNewOutput(true);
+              if (historyRef.current.phase === TerminalHistoryPhase.OPEN) setNewOutput(true);
               const data = f.kind.value;
               return new Promise<void>((resolve) => t.write(data, resolve));
             }
@@ -386,7 +409,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           if (!alive || ended) return;
           ended = true;
           conn.current = null;
-          history.disconnected();
+          hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.DISCONNECTED);
           setTerminalState("closed");
           setReason((r) => r || why);
           hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, opened);
@@ -409,7 +432,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           if (!alive || ended) return;
           ended = true;
           conn.current = null;
-          history.disconnected();
+          hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.DISCONNECTED);
           setTerminalState("closed");
           setReason(errorText(e));
           hostBridge.sendTerminalStream(terminalId, TerminalStreamEventKind.CLOSED, opened);
@@ -420,7 +443,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       opening.abort();
       conn.current?.close();
       conn.current = null;
-      history.close();
+      hostBridge.sendTerminalHistory(terminalId, TerminalHistoryEventKind.CLOSE);
     };
   }, [remote, session.id, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -435,11 +458,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
   // Any key leaves the reader first, then goes to the session as before.
   const press = (s: string) => {
-    if (history.phase !== "idle") leaveReading();
+    if (historyRef.current.phase !== TerminalHistoryPhase.IDLE) leaveReading();
     send(s);
   };
   const openKeyboard = () => {
-    if (history.phase !== "idle") leaveReading();
+    if (historyRef.current.phase !== TerminalHistoryPhase.IDLE) leaveReading();
     term.current?.focus();
   };
 
@@ -481,7 +504,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   }, [state, linked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const live = state === "live";
-  const reading = history.phase === "reading";
+  const reading = history.phase === TerminalHistoryPhase.OPEN;
+  const openingHistory = history.phase === TerminalHistoryPhase.OPENING || history.phase === TerminalHistoryPhase.OPENING_FAILED;
   return (
     <div className={"termview" + (compact ? " compact" : "")}>
       {/* The size capsule, dark glass over the terminal in either theme. */}
@@ -497,8 +521,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         <div className={"tpan" + (shown || state === "closed" ? "" : " unfit")} ref={pan}>
           <div ref={host} className={state === "closed" ? "stale" : ""} />
         </div>
-        {history.phase === "loading" && <div className="thint">{history.error ? <>{i18n.t("terminal.read_failed")}<button onClick={() => beginRef.current(0)}>{i18n.t("common.retry")}</button></> : i18n.t("terminal.reading")}</div>}
-        {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
+        {openingHistory && <div className="thint">{renderText(history.statusText)}{history.canRetry && <button onClick={() => beginRef.current(0)}>{i18n.t("common.retry")}</button>}</div>}
+        {reading && reader && <TerminalReader history={history} load={loadEarlierHistory} retry={retryHistory} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
         {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
         {changed && state === "live" && !reading && (
           <div className="tstate glass">

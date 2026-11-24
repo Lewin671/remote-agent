@@ -322,6 +322,18 @@ import {
   type UsageViewModel,
 } from "../gen/remoteagent/core/v1/usage_view_pb";
 import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
+import {
+  TerminalHistoryEventKind,
+  TerminalHistoryEventSchema,
+  TerminalHistoryPhase,
+  TerminalHistoryStatus,
+  TerminalSgrColorKind,
+  type TerminalHistoryParsedPage,
+  type TerminalHistoryRun,
+  type TerminalHistorySendRequestEffect,
+  type TerminalHistoryUpdatedEffect,
+} from "../gen/remoteagent/core/v1/terminal_history_pb";
+import type { TerminalHistoryPage } from "../gen/remoteagent/v1/remote_pb";
 import type { Remote } from "../remote";
 import type { WasmAppCore } from "./projection";
 import { getCore } from "./runtime";
@@ -869,6 +881,8 @@ export class CoreHost {
   private bulkRouteWaiters = new Map<bigint, (eff: DirectBulkRouteEffect) => void>();
   private retryNowWaiters = new Map<string, Array<(started: boolean) => void>>();
   private terminalReopenListeners = new Map<string, () => void>();
+  private terminalHistoryRequestListeners = new Map<string, (req: TerminalHistorySendRequestEffect) => void>();
+  private terminalHistoryUpdatedListeners = new Map<string, (upd: TerminalHistoryUpdatedEffect) => void>();
 
   private started = false;
   private startGen = 0;
@@ -2245,6 +2259,33 @@ export class CoreHost {
     };
   }
 
+  sendTerminalHistory(terminalId: string, kind: TerminalHistoryEventKind, page?: TerminalHistoryPage) {
+    if (terminalId && !this.closed) {
+      this.emit({
+        case: "terminalHistory",
+        value: create(TerminalHistoryEventSchema, { terminalId, kind, page }),
+      });
+    }
+  }
+
+  onTerminalHistorySendRequest(terminalId: string, fn: (req: TerminalHistorySendRequestEffect) => void): () => void {
+    this.terminalHistoryRequestListeners.set(terminalId, fn);
+    return () => {
+      if (this.terminalHistoryRequestListeners.get(terminalId) === fn) {
+        this.terminalHistoryRequestListeners.delete(terminalId);
+      }
+    };
+  }
+
+  onTerminalHistoryUpdated(terminalId: string, fn: (upd: TerminalHistoryUpdatedEffect) => void): () => void {
+    this.terminalHistoryUpdatedListeners.set(terminalId, fn);
+    return () => {
+      if (this.terminalHistoryUpdatedListeners.get(terminalId) === fn) {
+        this.terminalHistoryUpdatedListeners.delete(terminalId);
+      }
+    };
+  }
+
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect> {
     if (this.closed) return Promise.reject(makeSecErr("unavailable"));
     this.ensureSecurityConfigured();
@@ -3214,6 +3255,16 @@ export class CoreHost {
         break;
       }
 
+      case "terminalHistorySendRequest": {
+        this.terminalHistoryRequestListeners.get(val.value.terminalId)?.(val.value);
+        break;
+      }
+
+      case "terminalHistoryUpdated": {
+        this.terminalHistoryUpdatedListeners.get(val.value.terminalId)?.(val.value);
+        break;
+      }
+
       case "directRetryNowResult": {
         const list = this.retryNowWaiters.get(val.value.machineId);
         if (list && list.length > 0) {
@@ -3456,6 +3507,8 @@ export class CoreHost {
     this.machineWatchCounts.clear();
     this.machineWatchActive.clear();
     this.terminalReopenListeners.clear();
+    this.terminalHistoryRequestListeners.clear();
+    this.terminalHistoryUpdatedListeners.clear();
     for (const w of this.bulkRouteWaiters.values()) {
       w({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
     }
@@ -3693,6 +3746,10 @@ export function useAttachmentDraftView(host: CoreHost, scope: DraftScope): Attac
 export {
   CommandRouteLeg,
   ConnProbeState,
+  TerminalHistoryEventKind,
+  TerminalHistoryPhase,
+  TerminalHistoryStatus,
+  TerminalSgrColorKind,
   TerminalStreamEventKind,
   ConnState,
   MachineChartKind,
@@ -3703,4 +3760,10 @@ export {
   ThemePreference,
   UsageRangePreset,
   UsageSortColumn,
+};
+export type {
+  TerminalHistoryParsedPage,
+  TerminalHistoryRun,
+  TerminalHistorySendRequestEffect,
+  TerminalHistoryUpdatedEffect,
 };
