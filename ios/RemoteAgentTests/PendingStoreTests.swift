@@ -328,6 +328,27 @@ import Testing
         }
     }
 
+    @Test func forgedBlobHeaderPlainSizeRejectedBeforeAllocation() throws {
+        defer { cleanUp() }
+        let s = store()
+        let blobRef = try s.storeBlob(Data("small".utf8), prefix: "prep")
+        let blobID = String(blobRef.dropFirst("blob:".count))
+        let file = dir.appending(path: "v1/blobs/\(blobID).blob")
+
+        // Forge plainSize = Int64.max - 1 to ensure readBlobHeader rejects before reserveCapacity or chunk overflow.
+        var forged = try Data(contentsOf: file)
+        var huge = UInt64(Int64.max - 1).bigEndian
+        withUnsafeBytes(of: &huge) { forged.replaceSubrange(8..<16, with: $0) }
+        try forged.write(to: file)
+
+        #expect(throws: AttachmentFileIOError(.corruptStore)) {
+            _ = try s.readBlob(blobRef)
+        }
+        #expect(throws: AttachmentFileIOError(.corruptStore)) {
+            _ = try s.hashBlob(blobRef, maxBytes: 100 * 1024 * 1024)
+        }
+    }
+
     @Test func staleScopeCannotTouchNextAccountAfterClearAll() throws {
         defer { cleanUp() }
         let s = store()

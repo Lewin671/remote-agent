@@ -599,14 +599,16 @@ final class PendingStore: @unchecked Sendable {
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
         defer { try? handle.close() }
-        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        let fileSize = Int64(try handle.seekToEnd())
+        try handle.seek(toOffset: 0)
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle, fileSize: fileSize, maxPlainBytes: limit)
         if plainSize == 0 {
             try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
             return Data()
         }
         var out = Data()
         out.reserveCapacity(Int(plainSize))
-        let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let totalChunks = Int(((plainSize - 1) / Int64(chunkSize)) + 1)
         for idx in 0..<totalChunks {
             let plainLen = idx == totalChunks - 1
                 ? Int(plainSize - Int64(idx) * Int64(chunkSize))
@@ -658,7 +660,9 @@ final class PendingStore: @unchecked Sendable {
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
         defer { try? handle.close() }
-        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        let fileSize = Int64(try handle.seekToEnd())
+        try handle.seek(toOffset: 0)
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle, fileSize: fileSize, maxPlainBytes: limit)
         guard plainSize == expectedSizeBytes else {
             throw AttachmentFileIOError(.sourceChanged)
         }
@@ -667,7 +671,7 @@ final class PendingStore: @unchecked Sendable {
             return Data()
         }
 
-        let totalChunks = Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let totalChunks = Int(((plainSize - 1) / Int64(chunkSize)) + 1)
         let firstChunk = Int(offset / Int64(chunkSize))
         let lastChunk = Int((offset + Int64(length) - 1) / Int64(chunkSize))
         let sealedStride = Int64(chunkSize) + Int64(Self.gcmOverhead)
@@ -725,10 +729,12 @@ final class PendingStore: @unchecked Sendable {
             return (try FileHandle(forReadingFrom: file), key, epoch)
         }
         defer { try? handle.close() }
-        let (plainSize, chunkSize) = try Self.readBlobHeader(handle)
+        let fileSize = Int64(try handle.seekToEnd())
+        try handle.seek(toOffset: 0)
+        let (plainSize, chunkSize) = try Self.readBlobHeader(handle, fileSize: fileSize, maxPlainBytes: limit)
         if maxBytes > 0 && plainSize > maxBytes { throw AttachmentFileIOError(.fileTooLarge) }
         var hasher = SHA256()
-        let totalChunks = plainSize == 0 ? 0 : Int((plainSize + Int64(chunkSize) - 1) / Int64(chunkSize))
+        let totalChunks = plainSize == 0 ? 0 : Int(((plainSize - 1) / Int64(chunkSize)) + 1)
         for idx in 0..<totalChunks {
             let plainLen = idx == totalChunks - 1
                 ? Int(plainSize - Int64(idx) * Int64(chunkSize))
@@ -920,8 +926,9 @@ final class PendingStore: @unchecked Sendable {
         return (key, Data(plain[end...]))
     }
 
-    private static func readBlobHeader(_ handle: FileHandle) throws -> (plainSize: Int64, chunkSize: Int) {
-        guard let header = try handle.read(upToCount: blobHeaderSize),
+    private static func readBlobHeader(_ handle: FileHandle, fileSize: Int64, maxPlainBytes: Int64) throws -> (plainSize: Int64, chunkSize: Int) {
+        guard fileSize >= Int64(blobHeaderSize),
+              let header = try handle.read(upToCount: blobHeaderSize),
               header.count == blobHeaderSize,
               header.prefix(8) == blobMagic
         else {
@@ -929,10 +936,23 @@ final class PendingStore: @unchecked Sendable {
         }
         let plainSizeU64 = header[8..<16].withUnsafeBytes { UInt64(bigEndian: $0.loadUnaligned(as: UInt64.self)) }
         let chunkSizeU32 = header[16..<20].withUnsafeBytes { UInt32(bigEndian: $0.loadUnaligned(as: UInt32.self)) }
-        guard plainSizeU64 <= UInt64(Int64.max), chunkSizeU32 > 0 else {
+        let bodyBytes = fileSize - Int64(blobHeaderSize)
+        let bound = max(Int64(0), min(maxPlainBytes, bodyBytes))
+        guard chunkSizeU32 > 0,
+              chunkSizeU32 <= UInt32(blobChunkSize * 4),
+              plainSizeU64 <= UInt64(bound)
+        else {
             throw AttachmentFileIOError(.corruptStore)
         }
-        return (Int64(plainSizeU64), Int(chunkSizeU32))
+        let plainSize = Int64(plainSizeU64)
+        let chunkSize = Int(chunkSizeU32)
+        let chunkCount: Int64 = plainSize == 0 ? 0 : ((plainSize - 1) / Int64(chunkSize)) + 1
+        let (overhead, ov1) = chunkCount.multipliedReportingOverflow(by: Int64(gcmOverhead))
+        let (expectedBody, ov2) = plainSize.addingReportingOverflow(overhead)
+        guard !ov1, !ov2, expectedBody == bodyBytes else {
+            throw AttachmentFileIOError(.corruptStore)
+        }
+        return (plainSize, chunkSize)
     }
 
     private static func recordAAD(bucket: PBDraftStorageBucket) -> Data {
