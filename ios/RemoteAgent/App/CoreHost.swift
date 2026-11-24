@@ -1,6 +1,8 @@
 // Pure M2 Executor & bridge between SwiftUI screens (`CoreScreens`) and Go `CoreClient`.
 // Owns CoreClient, host clock/calendar, entropy, single-shot timers, stream & RPC
 // task execution, and sequential CipherCache persistence. Zero sync rules live here.
+import AVFoundation
+import CryptoKit
 import Foundation
 import Observation
 import RACore
@@ -14,11 +16,6 @@ final class CoreScreens {
     struct RestoredComposer: Identifiable, Equatable, Sendable {
         let id = UUID()
         let effect: PBSessionRestoreComposerEffect
-    }
-
-    struct ResendAttachments: Identifiable, Equatable, Sendable {
-        let id = UUID()
-        let effect: PBSessionResendAttachmentsEffect
     }
 
     struct PendingCleanup: Identifiable, Equatable, Sendable {
@@ -45,7 +42,6 @@ final class CoreScreens {
     var clientDetail = PBClientDetailViewModel()
     var directDiagnostics = PBDirectDiagnosticsViewModel()
     var pendingComposerRestores: [RestoredComposer] = []
-    var pendingResendAttachments: [ResendAttachments] = []
     var pendingCleanup: PendingCleanup?
 
     func consumeComposerRestores(_ ids: Set<UUID>) {
@@ -53,44 +49,10 @@ final class CoreScreens {
         pendingComposerRestores.removeAll { ids.contains($0.id) }
     }
 
-    func consumeResendAttachments(_ ids: Set<UUID>) {
-        guard !ids.isEmpty else { return }
-        pendingResendAttachments.removeAll { ids.contains($0.id) }
-    }
-
     func consumeCleanup(_ id: UUID) {
         if pendingCleanup?.id == id {
             pendingCleanup = nil
         }
-    }
-}
-
-/// Captures MainActor-owned attachment references when a new-session start is submitted.
-@MainActor
-struct NewSessionAttachmentsSubmission {
-    var draftKey: String
-    var machineId: String?
-    var taken: [PendingImage]
-    var imageIds: [String]
-    var fileIds: [String]
-    var center: ImageCenter?
-
-    func protect(requestId: String) {
-        guard let machineId else { return }
-        for img in taken {
-            img.protectUpload(machineId: machineId, transferId: img.transferId, requestId: requestId)
-        }
-    }
-
-    func release(requestId: String) {
-        for img in taken {
-            img.releaseUploadProtection(requestId: requestId)
-        }
-    }
-
-    func markUsed() {
-        guard !taken.isEmpty else { return }
-        center?.used(draftKey, taken, machineId: machineId)
     }
 }
 
@@ -276,10 +238,45 @@ final class SharedFileStorageQueue: Sendable {
     }
 }
 
+/// Process-wide single FIFO queue serializing all draft/outbox storage and local-ref
+/// release operations across CoreHost lifetimes (e.g., logout ClearAll followed by a
+/// new account's startup DraftStorageList).
+final class DraftStorageQueue: Sendable {
+    static let shared = DraftStorageQueue()
+
+    private let continuation: AsyncStream<@Sendable () async -> Void>.Continuation
+
+    init() {
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: (@Sendable () async -> Void).self,
+            bufferingPolicy: .unbounded
+        )
+        self.continuation = continuation
+        Task.detached(priority: .utility) {
+            for await op in stream {
+                await op()
+            }
+        }
+    }
+
+    func enqueue(_ op: @escaping @Sendable () async -> Void) {
+        continuation.yield(op)
+    }
+
+    func drain() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let yielded = continuation.yield { c.resume() }
+            if case .terminated = yielded {
+                c.resume()
+            }
+        }
+    }
+}
+
 /// Owns `CoreClient`, feeds system/UI/transport events into Core, and executes every
 /// `Effect` emitted by Core (`OpenStream`, `EnsureToken`, `SyncSecurity`, `ScheduleTimer`,
-/// `CacheRead/Write/Delete`, `Rpc`, `DispatchCommand`, `Render`, `Navigate`, `AttachmentsSettled`,
-/// `SaveHomeScope`, `RequestEntropy`).
+/// `CacheRead/Write/Delete`, `Rpc`, `DispatchCommand`, `Render`, `Navigate`,
+/// `SaveHomeScope`, `RequestEntropy`, and draft/attachment storage & I/O Effects).
 actor CoreHost: SyncEngine {
     private struct TimerKey: Hashable {
         let kind: PBCoreTimerKind
@@ -298,6 +295,11 @@ actor CoreHost: SyncEngine {
         var onClearAllThumbnails: @MainActor @Sendable () -> Void = {}
     }
 
+    struct AttachmentHandlers: Sendable {
+        var onReleaseLocalRefs: @MainActor @Sendable ([String]) -> Void = { _ in }
+        var onClearAllLocal: @MainActor @Sendable () -> Void = {}
+    }
+
     private let client: CoreClient
     private let executor: any CoreHostExecutor
     private let screens: CoreScreens
@@ -306,6 +308,10 @@ actor CoreHost: SyncEngine {
     private let sharedFileStore: SharedFileStore
     private let sharedFileQueue: SharedFileStorageQueue
     private var sharedFileHandlers: SharedFileHandlers?
+    private let pendingStore: PendingScope
+    private let draftStorageQueue: DraftStorageQueue
+    private var attachmentHandlers: AttachmentHandlers?
+    private var attachmentConfigured = false
     private var visibleSessions: [(token: UUID, sessionID: String)] = []
     private var currentVisibleSessionID = ""
     private let clock: @Sendable () -> Int64
@@ -394,9 +400,6 @@ actor CoreHost: SyncEngine {
     private var cacheChain: Task<Void, Never>?
     private var clockTask: Task<Void, Never>?
 
-    private var queuedAttachments: [String: NewSessionAttachmentsSubmission] = [:]
-    private var protectedStarts: [String: NewSessionAttachmentsSubmission] = [:]
-
     nonisolated var account: Account { executor.account }
     nonisolated var state: Feed<RemoteState> { executor.state }
 
@@ -407,6 +410,8 @@ actor CoreHost: SyncEngine {
         screens: CoreScreens,
         sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
         sharedFileQueue: SharedFileStorageQueue = .shared,
+        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
+        draftStorageQueue: DraftStorageQueue = .shared,
         demoDirectories: DirectorySource? = nil,
         demoModels: [String: PBListModelsResponse] = [:],
         demoMode: Bool = false,
@@ -424,6 +429,8 @@ actor CoreHost: SyncEngine {
             scopeHmacKey: RACore.scopeHmacKey(localKey: account.localKey),
             sharedFileStore: sharedFileStore,
             sharedFileQueue: sharedFileQueue,
+            pendingStore: pendingStore,
+            draftStorageQueue: draftStorageQueue,
             clock: clock,
             monoClock: hostMonoMs,
             sleep: sleep,
@@ -447,6 +454,8 @@ actor CoreHost: SyncEngine {
         scopeHmacKey: Data = Data(),
         sharedFileStore: SharedFileStore = SharedFileStore(root: SharedFileCenter.defaultRoot),
         sharedFileQueue: SharedFileStorageQueue = .shared,
+        pendingStore: PendingScope = PendingStore.ephemeral().scoped(),
+        draftStorageQueue: DraftStorageQueue = .shared,
         clock: @escaping @Sendable () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
         monoClock: @escaping @Sendable () -> Int64 = hostMonoMs,
         sleep: @escaping Sleeper = realSleep,
@@ -463,6 +472,8 @@ actor CoreHost: SyncEngine {
         self.scopeHmacKey = scopeHmacKey
         self.sharedFileStore = sharedFileStore
         self.sharedFileQueue = sharedFileQueue
+        self.pendingStore = pendingStore
+        self.draftStorageQueue = draftStorageQueue
         self.clock = clock
         self.monoClock = monoClock
         self.sleep = sleep
@@ -619,6 +630,7 @@ actor CoreHost: SyncEngine {
             }
         }
         if !demoMode {
+            await configureAttachments(persistDrafts: true, persistOutbox: true, scanStorage: true)
             await dispatch {
                 $0.sharedFileConfig = .with {
                     $0.localCacheMaxBytes = 0
@@ -629,6 +641,28 @@ actor CoreHost: SyncEngine {
         }
         await setUILocale(MessageLocale.current)
         await dispatchClockUpdated()
+    }
+
+    /// Sends `AttachmentConfigEvent` once per host lifetime before any `Draft*`/`Attachment*` event.
+    func configureAttachments(
+        persistDrafts: Bool? = nil,
+        persistOutbox: Bool? = nil,
+        scanStorage: Bool? = nil
+    ) async {
+        guard !closed, !attachmentConfigured else { return }
+        attachmentConfigured = true
+        let pd = persistDrafts ?? !demoMode
+        let po = persistOutbox ?? !demoMode
+        let scan = scanStorage ?? !demoMode
+        await dispatch {
+            $0.attachmentConfig = .with {
+                $0.persistDrafts = pd
+                $0.persistOutbox = po
+                $0.scanStorage = scan
+                $0.maxChunkBytes = 0
+                $0.hasPersistedPreparedImages_p = true
+            }
+        }
     }
 
     func setUILocale(_ uiLocale: String) async {
@@ -745,6 +779,7 @@ actor CoreHost: SyncEngine {
         cacheChain?.cancel()
         cacheChain = nil
         sharedFileHandlers = nil
+        attachmentHandlers = nil
         visibleSessions.removeAll()
         currentVisibleSessionID = ""
         let pendingBulk = bulkRouteWaiters
@@ -1286,6 +1321,8 @@ actor CoreHost: SyncEngine {
                 remaining.append(eff)
             }
         }
+        enqueueSharedFileStorageEffects(remaining)
+        enqueueDraftStorageEffects(remaining)
         await handleEffects(remaining)
         if let r = renameEffect {
             try await executor.renameDevice(r.deviceID, name: r.name)
@@ -1772,31 +1809,220 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    func submitNewSession(
-        projectKey: String,
-        prompt: String,
-        attachmentCount: Int32,
-        attachmentsMoved: Bool,
-        autoModeSupported: Bool,
-        attachments: NewSessionAttachmentsSubmission?
-    ) async {
+    // MARK: - Attachment & Draft Actions
+
+    func setAttachmentHandlers(_ handlers: AttachmentHandlers) {
+        attachmentHandlers = handlers
+    }
+
+    func drainDraftStorageQueue() async {
+        await draftStorageQueue.drain()
+    }
+
+    private func enqueueDraftStorageOp(_ op: @escaping @Sendable () async -> Void) {
+        draftStorageQueue.enqueue(op)
+    }
+
+    func openDraft(scope: PBDraftScope, machineID: String = "") async {
         guard !closed else { return }
-        if let attachments {
-            queuedAttachments[projectKey] = attachments
-        }
         await dispatch {
-            $0.newSessionSetPrompt = .with {
-                $0.prompt = prompt
-                $0.attachmentCount = attachmentCount
-                $0.attachmentsMoved = attachmentsMoved
+            $0.draftOpen = .with {
+                $0.scope = scope
+                $0.machineID = machineID
             }
         }
+    }
+
+    func setDraftText(scope: PBDraftScope, text: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftSetText = .with {
+                $0.scope = scope
+                $0.text = text
+            }
+        }
+    }
+
+    func setDraftTargetMachine(scope: PBDraftScope, machineID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftSetTargetMachine = .with {
+                $0.scope = scope
+                $0.machineID = machineID
+            }
+        }
+    }
+
+    func reserveDraftSlots(scope: PBDraftScope, reservationID: String, imageSlots: Int32, fileSlots: Int32) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftReserveSlots = .with {
+                $0.scope = scope
+                $0.reservationID = reservationID
+                $0.imageSlots = imageSlots
+                $0.fileSlots = fileSlots
+            }
+        }
+    }
+
+    func releaseDraftSlots(scope: PBDraftScope, reservationID: String) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftReleaseSlots = .with {
+                $0.scope = scope
+                $0.reservationID = reservationID
+            }
+        }
+    }
+
+    func addDraftItems(scope: PBDraftScope, reservationID: String = "", items: [PBDraftPickedItem]) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftAddItems = .with {
+                $0.scope = scope
+                $0.reservationID = reservationID
+                $0.items = items
+            }
+        }
+    }
+
+    func removeDraftItem(scope: PBDraftScope, itemID: String) async {
+        guard !closed, !itemID.isEmpty else { return }
+        await dispatch {
+            $0.draftRemoveItem = .with {
+                $0.scope = scope
+                $0.itemID = itemID
+            }
+        }
+    }
+
+    func retryDraftItem(scope: PBDraftScope, itemID: String) async {
+        guard !closed, !itemID.isEmpty else { return }
+        await dispatch {
+            $0.draftRetryItem = .with {
+                $0.scope = scope
+                $0.itemID = itemID
+            }
+        }
+    }
+
+    func setDraftOriginal(scope: PBDraftScope, original: Bool) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftSetOriginal = .with {
+                $0.scope = scope
+                $0.original = original
+            }
+        }
+    }
+
+    func clearDraft(scope: PBDraftScope) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftClear = .with { $0.scope = scope }
+        }
+    }
+
+    func forgetDraftSession(_ sessionID: String) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.draftForgetSession = .with { $0.sessionID = sessionID }
+        }
+    }
+
+    func clearAllDrafts() async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftClearAll = PBDraftClearAllAction()
+        }
+        await drainDraftStorageQueue()
+    }
+
+    func dismissDraftNotice(scope: PBDraftScope) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftDismissNotice = .with { $0.scope = scope }
+        }
+    }
+
+    func pauseAttachmentUpload(scope: PBDraftScope, itemID: String) async {
+        guard !closed, !itemID.isEmpty else { return }
+        await dispatch {
+            $0.attachmentPauseUpload = .with {
+                $0.scope = scope
+                $0.itemID = itemID
+            }
+        }
+    }
+
+    func resumeAttachmentUpload(scope: PBDraftScope, itemID: String) async {
+        guard !closed, !itemID.isEmpty else { return }
+        await dispatch {
+            $0.attachmentResumeUpload = .with {
+                $0.scope = scope
+                $0.itemID = itemID
+            }
+        }
+    }
+
+    func sendSessionDraft(sessionID: String, mode: PBSendMode) async {
+        guard !closed, !sessionID.isEmpty else { return }
+        await dispatch {
+            $0.draftSendSession = .with {
+                $0.sessionID = sessionID
+                $0.mode = mode
+            }
+        }
+    }
+
+    func putBackInput(sessionID: String, requestID: String) async {
+        guard !closed, !sessionID.isEmpty, !requestID.isEmpty else { return }
+        await dispatch {
+            $0.draftPutBackInput = .with {
+                $0.sessionID = sessionID
+                $0.requestID = requestID
+            }
+        }
+    }
+
+    func openDraftImageViewer(scope: PBDraftScope, index: Int32) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftImageViewerOpen = .with {
+                $0.scope = scope
+                $0.index = index
+            }
+        }
+    }
+
+    func navigateDraftImageViewer(scope: PBDraftScope, delta: Int32 = 0, setIndex: Bool = false, index: Int32 = 0) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftImageViewerNavigate = .with {
+                $0.scope = scope
+                $0.delta = delta
+                $0.setIndex = setIndex
+                $0.index = index
+            }
+        }
+    }
+
+    func closeDraftImageViewer(scope: PBDraftScope) async {
+        guard !closed else { return }
+        await dispatch {
+            $0.draftImageViewerClose = .with { $0.scope = scope }
+        }
+    }
+
+    func submitNewSession(
+        projectKey: String,
+        autoModeSupported: Bool
+    ) async {
+        guard !closed else { return }
         await dispatch {
             $0.newSessionSubmit = .with {
                 $0.projectKey = projectKey
                 $0.autoModeSupported = autoModeSupported
-                $0.imageIds = attachments?.imageIds ?? []
-                $0.fileIds = attachments?.fileIds ?? []
             }
         }
     }
@@ -1826,6 +2052,7 @@ actor CoreHost: SyncEngine {
         do {
             let batch = try client.dispatch(envelope)
             enqueueSharedFileStorageEffects(batch.effects)
+            enqueueDraftStorageEffects(batch.effects)
             await handleEffects(batch.effects)
         } catch {
             // Core rejects malformed events; keep host loop alive.
@@ -1842,9 +2069,71 @@ actor CoreHost: SyncEngine {
     func processEffectBatchForTesting(_ effects: [PBCoreEffect]) async {
         guard !closed else { return }
         enqueueSharedFileStorageEffects(effects)
+        enqueueDraftStorageEffects(effects)
         await handleEffects(effects)
     }
     #endif
+
+    /// Synchronously enqueues every draft/outbox storage and local-ref release Effect in `effects`
+    /// onto the process-wide single FIFO queue before any `await` in `handleEffects` can allow
+    /// Swift actor reentrancy to reorder a later dispatch ahead of this batch.
+    private func enqueueDraftStorageEffects(_ effects: [PBCoreEffect]) {
+        guard !closed else { return }
+        for eff in effects {
+            switch eff.effect {
+            case .draftStorageList(let eff):
+                let store = self.pendingStore
+                enqueueDraftStorageOp { [weak self] in
+                    let result = store.list(opID: eff.opID)
+                    await self?.dispatch { $0.draftStorageListed = result }
+                }
+
+            case .draftStorageRead(let eff):
+                let store = self.pendingStore
+                enqueueDraftStorageOp { [weak self] in
+                    let result = store.read(opID: eff.opID, bucket: eff.bucket, key: eff.key)
+                    await self?.dispatch { $0.draftStorageReadResult = result }
+                }
+
+            case .draftStorageWrite(let eff):
+                let store = self.pendingStore
+                enqueueDraftStorageOp { [weak self] in
+                    let result = store.write(opID: eff.opID, bucket: eff.bucket, key: eff.key, data: eff.data)
+                    await self?.dispatch { $0.draftStorageWriteResult = result }
+                }
+
+            case .draftStorageDelete(let eff):
+                let store = self.pendingStore
+                enqueueDraftStorageOp {
+                    store.delete(bucket: eff.bucket, key: eff.key)
+                }
+
+            case .draftStorageClearAll:
+                let store = self.pendingStore
+                let clearAll = self.attachmentHandlers?.onClearAllLocal
+                enqueueDraftStorageOp {
+                    store.clearAll()
+                    if let clearAll {
+                        await MainActor.run { clearAll() }
+                    }
+                }
+
+            case .attachmentReleaseLocal(let eff):
+                let store = self.pendingStore
+                let refs = eff.refs
+                let onRelease = self.attachmentHandlers?.onReleaseLocalRefs
+                enqueueDraftStorageOp {
+                    store.releaseLocal(refs: refs)
+                    if let onRelease, !refs.isEmpty {
+                        await MainActor.run { onRelease(refs) }
+                    }
+                }
+
+            default:
+                break
+            }
+        }
+    }
 
     /// Synchronously enqueues every shared-file storage Effect in `effects` onto the single
     /// global FIFO queue before any `await` in `handleEffects` can allow actor reentrancy to
@@ -1927,7 +2216,6 @@ actor CoreHost: SyncEngine {
     private func handleEffects(_ effects: [PBCoreEffect]) async {
         var renderTargets: Set<PBCoreScreenTarget> = []
         var restoredComposers: [PBSessionRestoreComposerEffect] = []
-        var resendAttachments: [PBSessionResendAttachmentsEffect] = []
         var completedSharedFiles: [PBSharedFileCompletedEffect] = []
         var demoReplies: [PBCoreEvent] = []
         for eff in effects {
@@ -1987,11 +2275,11 @@ actor CoreHost: SyncEngine {
                 break
 
             case .scheduleTimer(let t):
-                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
+                guard !demoMode || Self.isDemoAllowedTimer(t.kind) else { continue }
                 scheduleTimer(timerId: t.timerID, kind: t.kind, key: t.key, delayMs: t.delayMs)
 
             case .cancelTimer(let t):
-                guard !demoMode || t.kind == .sharedFileReconnect else { continue }
+                guard !demoMode || Self.isDemoAllowedTimer(t.kind) else { continue }
                 cancelTimer(timerId: t.timerID, kind: t.kind, key: t.key)
 
             case .cacheRead(let r):
@@ -2043,8 +2331,8 @@ actor CoreHost: SyncEngine {
                 }
                 #endif
 
-            case .attachmentsSettled(let a):
-                await handleAttachmentsSettled(a)
+            case .attachmentsSettled:
+                break
 
             case .requestEntropy(let req):
                 replenishEntropy(
@@ -2067,8 +2355,8 @@ actor CoreHost: SyncEngine {
             case .sessionRestoreComposer(let r):
                 restoredComposers.append(r)
 
-            case .sessionResendAttachments(let r):
-                resendAttachments.append(r)
+            case .sessionResendAttachments:
+                break
 
             case .scheduleReadCache(let r):
                 if demoMode {
@@ -2260,24 +2548,38 @@ actor CoreHost: SyncEngine {
             case .sharedFileCompleted(let eff):
                 completedSharedFiles.append(eff)
 
-            case .attachmentHashFile, .attachmentPrepareImage, .attachmentReadChunk,
-                 .attachmentReleaseLocal, .draftStorageList, .draftStorageRead,
-                 .draftStorageWrite, .draftStorageDelete, .draftStorageClearAll:
-                // iOS still uses the pre-Core attachment path and never sends
-                // AttachmentConfig, so Core does not emit these effects here.
+            case .draftStorageList,
+                 .draftStorageRead,
+                 .draftStorageWrite,
+                 .draftStorageDelete,
+                 .draftStorageClearAll,
+                 .attachmentReleaseLocal:
+                // Already enqueued synchronously in batch order before any await.
                 break
+
+            case .attachmentPrepareImage(let eff):
+                spawnIO { host in
+                    await host.executePrepareImage(eff)
+                }
+
+            case .attachmentHashFile(let eff):
+                spawnIO { host in
+                    await host.executeHashFile(eff)
+                }
+
+            case .attachmentReadChunk(let eff):
+                spawnIO { host in
+                    await host.executeReadChunk(eff)
+                }
 
             case nil:
                 break
             }
         }
-        if !restoredComposers.isEmpty || !resendAttachments.isEmpty {
-            await MainActor.run { [screens, restoredComposers, resendAttachments] in
+        if !restoredComposers.isEmpty {
+            await MainActor.run { [screens, restoredComposers] in
                 for r in restoredComposers {
                     screens.pendingComposerRestores.append(CoreScreens.RestoredComposer(effect: r))
-                }
-                for r in resendAttachments {
-                    screens.pendingResendAttachments.append(CoreScreens.ResendAttachments(effect: r))
                 }
             }
         }
@@ -2298,19 +2600,210 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private func handleDispatchCommand(_ c: PBCoreDispatchCommandEffect) async {
-        // Track attachment upload protection when Core emits CreateSession.
-        if let cmd = try? PBCommand(serializedBytes: c.commandBytes),
-           case .createSession? = cmd.kind,
-           let submission = queuedAttachments.removeValue(forKey: activeNewSessionProjectKey)
-            ?? queuedAttachments.values.first
-        {
-            protectedStarts[c.requestID] = submission
-            await MainActor.run {
-                submission.protect(requestId: c.requestID)
-            }
+    private static func isDemoAllowedTimer(_ kind: PBCoreTimerKind) -> Bool {
+        switch kind {
+        case .sharedFileReconnect,
+             .attachmentUploadPoll,
+             .attachmentUploadReconnect,
+             .draftExpiry:
+            return true
+        default:
+            return false
         }
+    }
 
+    // MARK: - Attachment I/O Executors (guaranteed op_id replies)
+
+    private func executePrepareImage(_ eff: PBAttachmentPrepareImageEffect) async {
+        let store = self.pendingStore
+        let result: PBAttachmentPrepareImageResultEvent = await Task.detached(priority: .userInitiated) {
+            var ev = PBAttachmentPrepareImageResultEvent.with {
+                $0.opID = eff.opID
+                $0.scope = eff.scope
+                $0.outboxRequestID = eff.outboxRequestID
+                $0.itemID = eff.itemID
+            }
+            var readingSource = true
+            var storedPreparedRef: String?
+            var storedThumbRef: String?
+            do {
+                try Task.checkCancellation()
+                let raw = try store.readBlob(eff.sourceRef)
+                readingSource = false
+                try Task.checkCancellation()
+                let prepared = try await prepareImage(
+                    raw,
+                    original: eff.original,
+                    originalMaxBytes: eff.maxOriginalBytes,
+                    maxDimensionPx: Int(eff.maxDimensionPx),
+                    maxCompressedBytes: Int(eff.maxCompressedBytes)
+                )
+                try Task.checkCancellation()
+                let digest = Data(SHA256.hash(data: prepared.bytes))
+                let prepRef = try store.storeBlob(prepared.bytes, prefix: "prep")
+                storedPreparedRef = prepRef
+                var thumbRef = ""
+                if let thumbBytes = thumbnailData(prepared.bytes, maxLong: 256) {
+                    thumbRef = try store.storeBlob(thumbBytes, prefix: "thumb")
+                    storedThumbRef = thumbRef
+                }
+                ev.ok = true
+                ev.preparedRef = prepRef
+                ev.thumbRef = thumbRef
+                ev.format = prepared.format
+                ev.width = Int32(prepared.width)
+                ev.height = Int32(prepared.height)
+                ev.sizeBytes = Int64(prepared.bytes.count)
+                ev.sha256 = digest
+            } catch {
+                var toClean: [String] = []
+                if let r = storedPreparedRef { toClean.append(r) }
+                if let r = storedThumbRef { toClean.append(r) }
+                if !toClean.isEmpty { store.releaseLocal(refs: toClean) }
+                ev.ok = false
+                ev.isReadingSource = readingSource
+                if error is CancellationError {
+                    ev.errorKind = .other
+                    ev.errorDetail = "cancelled"
+                } else {
+                    ev.errorKind = attachmentIOErrorKind(for: error)
+                    ev.errorDetail = error.localizedDescription
+                }
+            }
+            return ev
+        }.value
+        await dispatch { $0.attachmentPrepareImageResult = result }
+    }
+
+    private func executeHashFile(_ eff: PBAttachmentHashFileEffect) async {
+        let store = self.pendingStore
+        let result: PBAttachmentHashFileResultEvent = await Task.detached(priority: .userInitiated) {
+            var ev = PBAttachmentHashFileResultEvent.with {
+                $0.opID = eff.opID
+                $0.scope = eff.scope
+                $0.outboxRequestID = eff.outboxRequestID
+                $0.itemID = eff.itemID
+            }
+            do {
+                try Task.checkCancellation()
+                let ref = eff.sourceRef
+                if ref.hasPrefix("bmk:") {
+                    let bmk = try store.readBookmark(ref)
+                    let hashed = try PickedFile.hashBookmark(bmk, maxBytes: eff.maxBytes)
+                    if let refreshed = hashed.refreshedBookmark {
+                        try? store.updateBookmark(ref, bookmark: refreshed)
+                    }
+                    ev.ok = true
+                    ev.sizeBytes = hashed.sizeBytes
+                    ev.sha256 = hashed.sha256
+                    if eff.isVideo {
+                        ev.durationMs = await Self.probeVideoDurationMs(at: hashed.url, securityScoped: true)
+                    }
+                } else if ref.hasPrefix("vid:") {
+                    let url = try store.videoURL(ref)
+                    let hashed = try PickedFile.hashFile(at: url, maxBytes: eff.maxBytes)
+                    ev.ok = true
+                    ev.sizeBytes = hashed.sizeBytes
+                    ev.sha256 = hashed.sha256
+                    if eff.isVideo {
+                        ev.durationMs = await Self.probeVideoDurationMs(at: url, securityScoped: false)
+                    }
+                } else if ref.hasPrefix("blob:") {
+                    let hashed = try store.hashBlob(ref, maxBytes: eff.maxBytes)
+                    ev.ok = true
+                    ev.sizeBytes = hashed.sizeBytes
+                    ev.sha256 = hashed.sha256
+                } else {
+                    throw AttachmentFileIOError(.sourceMissing)
+                }
+            } catch {
+                ev.ok = false
+                if error is CancellationError {
+                    ev.errorKind = .other
+                    ev.errorDetail = "cancelled"
+                } else {
+                    ev.errorKind = attachmentIOErrorKind(for: error)
+                    ev.errorDetail = error.localizedDescription
+                }
+            }
+            return ev
+        }.value
+        await dispatch { $0.attachmentHashFileResult = result }
+    }
+
+    private func executeReadChunk(_ eff: PBAttachmentReadChunkEffect) async {
+        let store = self.pendingStore
+        let result: PBAttachmentReadChunkResultEvent = await Task.detached(priority: .userInitiated) {
+            var ev = PBAttachmentReadChunkResultEvent.with {
+                $0.opID = eff.opID
+                $0.scope = eff.scope
+                $0.outboxRequestID = eff.outboxRequestID
+                $0.itemID = eff.itemID
+                $0.offset = eff.offset
+            }
+            do {
+                try Task.checkCancellation()
+                let ref: String = {
+                    if eff.kind == .image {
+                        return eff.preparedRef.isEmpty ? eff.sourceRef : eff.preparedRef
+                    }
+                    return eff.sourceRef.isEmpty ? eff.preparedRef : eff.sourceRef
+                }()
+                let data: Data
+                if ref.hasPrefix("blob:") {
+                    data = try store.readBlobChunk(
+                        ref,
+                        offset: eff.offset,
+                        length: Int(eff.length),
+                        expectedSizeBytes: eff.expectedSizeBytes
+                    )
+                } else if ref.hasPrefix("bmk:") {
+                    let bmk = try store.readBookmark(ref)
+                    data = try PickedFile.readBookmarkChunk(
+                        bmk,
+                        offset: eff.offset,
+                        length: Int(eff.length),
+                        expectedSizeBytes: eff.expectedSizeBytes
+                    )
+                } else if ref.hasPrefix("vid:") {
+                    let url = try store.videoURL(ref)
+                    data = try PickedFile.readChunk(
+                        at: url,
+                        offset: eff.offset,
+                        length: Int(eff.length),
+                        expectedSizeBytes: eff.expectedSizeBytes
+                    )
+                } else {
+                    throw AttachmentFileIOError(.sourceMissing)
+                }
+                ev.ok = true
+                ev.data = data
+            } catch {
+                ev.ok = false
+                if error is CancellationError {
+                    ev.errorKind = .other
+                    ev.errorDetail = "cancelled"
+                } else {
+                    ev.errorKind = attachmentIOErrorKind(for: error)
+                    ev.errorDetail = error.localizedDescription
+                }
+            }
+            return ev
+        }.value
+        await dispatch { $0.attachmentReadChunkResult = result }
+    }
+
+    private static func probeVideoDurationMs(at url: URL, securityScoped: Bool) async -> Int64 {
+        let scoped = securityScoped ? url.startAccessingSecurityScopedResource() : false
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let asset = AVURLAsset(url: url)
+        guard let duration = try? await asset.load(.duration) else { return 0 }
+        let seconds = CMTimeGetSeconds(duration)
+        guard seconds.isFinite && seconds > 0 else { return 0 }
+        return Int64((seconds * 1000).rounded())
+    }
+
+    private func handleDispatchCommand(_ c: PBCoreDispatchCommandEffect) async {
         if let cmd = try? PBCommand(serializedBytes: c.commandBytes) {
             #if DEBUG
             if demoMode, let action = demoCommandResponder?(c, cmd) {
@@ -2472,20 +2965,6 @@ actor CoreHost: SyncEngine {
         }
     }
 
-    private func handleAttachmentsSettled(_ a: PBCoreAttachmentsSettledEffect) async {
-        let submission = protectedStarts.removeValue(forKey: a.requestID)
-            ?? queuedAttachments.removeValue(forKey: a.projectKey)
-        guard let submission else { return }
-        let consumed = a.consumed
-        let reqId = a.requestID
-        await MainActor.run {
-            if consumed {
-                submission.markUsed()
-            }
-            submission.release(requestId: reqId)
-        }
-    }
-
     // MARK: - Render & Screen View Fetching
 
     private func renderTargets(_ targets: Set<PBCoreScreenTarget>) async {
@@ -2540,7 +3019,7 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        if targets.contains(.newSession) {
+        if targets.contains(.newSession) || (targets.contains(.attachmentDraft) && !activeNewSessionProjectKey.isEmpty) {
             newSessionVM = try? client.view(PBCoreScreen.with {
                 $0.newSession = .with { $0.projectKey = activeNewSessionProjectKey }
             }).newSession
@@ -2632,6 +3111,7 @@ actor CoreHost: SyncEngine {
         }
         let refreshSessions = targets.contains(.session)
             || targets.contains(.sessionData)
+            || (targets.contains(.attachmentDraft) && !sessionWatches.isEmpty)
             || (targets.contains(.home) && !sessionWatches.isEmpty)
         if refreshSessions {
             let watchedIDs = Set(sessionWatches.values.map(\.sessionID))
@@ -3099,6 +3579,8 @@ actor CoreHost: SyncEngine {
         }
         replenishEntropy(minIds: 8, minFloats: 8)
         guard let batch = try? client.dispatch(envelope) else { return [] }
+        enqueueSharedFileStorageEffects(batch.effects)
+        enqueueDraftStorageEffects(batch.effects)
         await handleEffects(batch.effects)
         return batch.effects
     }
@@ -3154,6 +3636,18 @@ actor CoreHost: SyncEngine {
             }
         })
         scanPre(await stepDemo { $0.syncLifecycle = .with { $0.kind = .start; $0.scopeHmacKey = self.scopeHmacKey } })
+        if !attachmentConfigured {
+            attachmentConfigured = true
+            scanPre(await stepDemo {
+                $0.attachmentConfig = .with {
+                    $0.persistDrafts = false
+                    $0.persistOutbox = false
+                    $0.scanStorage = false
+                    $0.maxChunkBytes = 0
+                    $0.hasPersistedPreparedImages_p = true
+                }
+            })
+        }
         scanPre(await stepDemo {
             $0.sharedFileConfig = .with {
                 $0.localCacheMaxBytes = 0
