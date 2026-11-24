@@ -3236,7 +3236,7 @@ export class DemoRemote extends Remote {
   }
 
   // 连接检测: ?demo&ping=slow|fail
-  override async pingServer(): Promise<number> {
+  override async pingServer(_timeoutMs?: number, _signal?: AbortSignal): Promise<number> {
     await this.pause(300);
     if (this.opts.get("ping") === "fail") throw new Error("没有回应");
     return this.opts.get("ping") === "slow"
@@ -3244,7 +3244,7 @@ export class DemoRemote extends Remote {
       : 70 + Math.round(Math.random() * 30);
   }
 
-  override async pingMachine(machineId: string): Promise<number> {
+  override async pingMachine(machineId: string, _timeoutMs?: number, _signal?: AbortSignal): Promise<number> {
     await this.pause(machineId === "vps" ? 1800 : 600);
     if (machineId === "vps") return 2140;
     return 150 + Math.round(Math.random() * 60);

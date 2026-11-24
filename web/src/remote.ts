@@ -2015,9 +2015,13 @@ export class Remote implements CoreExecutor {
     await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
   }
 
-  async pingServer(timeoutMs = 8000): Promise<number> {
+  async pingServer(timeoutMs = 8000, signal?: AbortSignal): Promise<number> {
     const stop = new AbortController();
-    const timer = setTimeout(() => stop.abort(), timeoutMs);
+    let timedOut = false;
+    const onExternalAbort = () => stop.abort();
+    if (signal?.aborted) stop.abort();
+    else signal?.addEventListener("abort", onExternalAbort, { once: true });
+    const timer = setTimeout(() => { timedOut = true; stop.abort(); }, timeoutMs);
     const started = performance.now();
     try {
       const res = await relayFetch(apiBase(this.account.server) + "/healthz", { cache: "no-store", signal: stop.signal });
@@ -2025,23 +2029,29 @@ export class Remote implements CoreExecutor {
       if (!res.ok) throw new Error(l10n.t("errors.server_returned", { value: String(res.status) }));
       return Math.round(performance.now() - started);
     } catch (e) {
-      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
+      throw timedOut ? new Error(l10n.t("connection.no_response")) : e;
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onExternalAbort);
     }
   }
 
-  async pingMachine(machineId: string, timeoutMs = 15_000): Promise<number> {
+  async pingMachine(machineId: string, timeoutMs = 15_000, signal?: AbortSignal): Promise<number> {
     const stop = new AbortController();
-    const timer = setTimeout(() => stop.abort(), timeoutMs);
+    let timedOut = false;
+    const onExternalAbort = () => stop.abort();
+    if (signal?.aborted) stop.abort();
+    else signal?.addEventListener("abort", onExternalAbort, { once: true });
+    const timer = setTimeout(() => { timedOut = true; stop.abort(); }, timeoutMs);
     const started = performance.now();
     try {
       await this.ensureHost().runMachineCommand(machineId, "", { case: "getSettings", value: {} }, stop.signal, true);
       return Math.round(performance.now() - started);
     } catch (e) {
-      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
+      throw timedOut ? new Error(l10n.t("connection.no_response")) : e;
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onExternalAbort);
     }
   }
 

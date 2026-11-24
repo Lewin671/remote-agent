@@ -53,6 +53,36 @@ it("routes pingMachine through CoreHost runMachineCommand and cancels on timeout
   expect(sent!.signature.length).toBe(64);
 });
 
+it("cancels in-flight pingMachine immediately when external AbortSignal aborts", async () => {
+  const r = await probe();
+  let forwardSignal: AbortSignal | undefined;
+  (r as unknown as { token: string; tokenExpires: number; openStreamLeg: unknown }).token = "tok";
+  (r as unknown as { tokenExpires: number }).tokenExpires = Date.now() + 7 * 86_400_000;
+  (r as unknown as { openStreamLeg: (id: bigint, t: string, cb: { onReady: (id: bigint, ms: bigint) => void }) => void }).openStreamLeg = (legId, _t, cb) =>
+    cb.onReady(legId, BigInt(Date.now()));
+  (r as unknown as { api: object }).api = {
+    listMachines: async () => ({ machines: [{ id: r.machine, online: true, lastSeenMs: 0n }] }),
+    listRemoteSessions: async () => ({ sessions: [] }),
+    listDevices: async () => ({ devices: [] }),
+    getAccountPrefs: async () => ({}),
+    forward: async (_req: { command: Envelope }, opts?: { signal?: AbortSignal }) => {
+      forwardSignal = opts?.signal;
+      return await new Promise((_, reject) => {
+        opts?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+      });
+    },
+  };
+  r.start();
+  await vi.waitFor(() => expect(r.conn).toBe("online"));
+  const ctrl = new AbortController();
+  const pending = r.pingMachine(r.machine, 15_000, ctrl.signal);
+  await vi.waitFor(() => expect(forwardSignal).toBeDefined());
+  expect(forwardSignal!.aborted).toBe(false);
+  ctrl.abort();
+  await expect(pending).rejects.toThrow();
+  await vi.waitFor(() => expect(forwardSignal!.aborted).toBe(true));
+});
+
 it("preserves concurrent project edits through server CAS", async () => {
   const a = await probe();
   const b = await a.addClient();

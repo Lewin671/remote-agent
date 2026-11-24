@@ -72,8 +72,8 @@ export function ConnCheckScreenView({
   cc?: ConnCheckSummaryView;
   machines: MachineListCardView[];
   serverHost: string;
-  pingServer: () => Promise<number>;
-  pingMachine: (id: string) => Promise<number>;
+  pingServer: (signal?: AbortSignal) => Promise<number>;
+  pingMachine: (id: string, signal?: AbortSignal) => Promise<number>;
   onReportProbe?: (state: ConnProbeState, latencyMs?: number, lastFailure?: string) => void;
   onReconnect: () => void;
   onClose: () => void;
@@ -97,10 +97,14 @@ export function ConnCheckScreenView({
   }, [connecting, startedAt]);
   const stream = connWord(cc, true);
   const run = useRef(0);
+  const activeAbort = useRef<AbortController | null>(null);
   const cardsRef = useRef(machineCards);
   cardsRef.current = machineCards;
   const list = [...machineCards].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   const check = useCallback(async () => {
+    activeAbort.current?.abort();
+    const ctrl = new AbortController();
+    activeAbort.current = ctrl;
     const mine = ++run.current;
     const onlineCards = cardsRef.current.filter((m) => m.online);
     const online = onlineCards.map((m) => m.machineId);
@@ -112,7 +116,7 @@ export function ConnCheckScreenView({
     let reached = true;
     try {
       const samples: number[] = [];
-      for (let i = 0; i < 3; i++) samples.push(await pingServer());
+      for (let i = 0; i < 3; i++) samples.push(await pingServer(ctrl.signal));
       if (mine !== run.current) return;
       const ms = median(samples);
       setServer({ state: "ok", ms });
@@ -127,7 +131,7 @@ export function ConnCheckScreenView({
     }
     await Promise.all(
       online.filter((id) => reached || directReadyById.get(id)).map(async (id) => {
-        const p: Ping = await pingMachine(id).then(
+        const p: Ping = await pingMachine(id, ctrl.signal).then(
           (ms) => ({ state: "ok", ms }),
           (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
         );
@@ -138,7 +142,11 @@ export function ConnCheckScreenView({
   }, [pingServer, pingMachine, onReportProbe]);
   useEffect(() => {
     void check();
-    return () => void run.current++;
+    return () => {
+      run.current++;
+      activeAbort.current?.abort();
+      activeAbort.current = null;
+    };
   }, [check]);
   return (
     <Sheet onClose={onClose} title={l10n.t("settings.server_and_connection")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
@@ -205,8 +213,8 @@ export function ConnCheckScreenView({
 export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => void }) {
   const host = useCoreHost(remote);
   const settingsVm = useSettingsView(host);
-  const pingServer = useCallback(() => remote.pingServer(), [remote]);
-  const pingMachine = useCallback((id: string) => remote.pingMachine(id), [remote]);
+  const pingServer = useCallback((signal?: AbortSignal) => remote.pingServer(undefined, signal), [remote]);
+  const pingMachine = useCallback((id: string, signal?: AbortSignal) => remote.pingMachine(id, undefined, signal), [remote]);
   const onReportProbe = useCallback(
     (state: ConnProbeState, latencyMs?: number, lastFailure?: string) =>
       host.reportConnCheckStatus(state, latencyMs, lastFailure),

@@ -114,7 +114,7 @@ it("probes directReady machines even when server ping fails", async () => {
         onClose={() => {}}
       />,
     ));
-    expect(machine).toHaveBeenCalledExactlyOnceWith("mac");
+    expect(machine).toHaveBeenCalledExactlyOnceWith("mac", expect.any(AbortSignal));
     expect(host.textContent).toContain("22 ms");
     expect(host.textContent).toContain(message("connection.not_checked"));
   } finally {

@@ -238,11 +238,11 @@ export class SyntheticRemote extends Remote {
       get: () => ({
         ...this.defaults,
         ...this.custom,
-        forward: async (req: unknown) => {
-          const forward = this.custom.forward as ((req: unknown) => Promise<unknown>) | undefined;
+        forward: async (req: unknown, opts?: unknown) => {
+          const forward = this.custom.forward as ((req: unknown, opts?: unknown) => Promise<unknown>) | undefined;
           if (forward) {
             const request = req as { command: Envelope; attemptId: string };
-            const res = (await forward(req)) as {
+            const res = (await forward(req, opts)) as {
               result?: Envelope;
               outcome?: string;
               reason?: string;

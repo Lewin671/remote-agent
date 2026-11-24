@@ -76,6 +76,24 @@ describe("connection check", () => {
     expect(rows()["MacBook"]).toBe(message("connection.not_checked"));
     expect(asked).toBe(0);
   });
+
+  it("aborts in-flight pingMachine signal immediately when unmounted", async () => {
+    const signals: AbortSignal[] = [];
+    open("", (r) => {
+      r.pingServer = async () => 25;
+      r.pingMachine = async (_id, _timeout, signal) => {
+        if (signal) signals.push(signal);
+        return await new Promise<number>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+        });
+      };
+    });
+    await vi.waitFor(() => expect(signals.length).toBeGreaterThan(0));
+    expect(signals.every((s) => !s.aborted)).toBe(true);
+    act(() => root?.unmount());
+    root = undefined;
+    expect(signals.every((s) => s.aborted)).toBe(true);
+  });
 });
 
 describe("direct path rows", () => {
