@@ -19,6 +19,7 @@ import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.proto.SecurityPendingOpSummary
 import io.github.lewin671.remoteagent.core.proto.SecurityWorkflowStatus
 import io.github.lewin671.remoteagent.data.ThemeMode
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -311,5 +312,40 @@ class UnauthenticatedScreensTest {
         } finally {
             remote.close()
         }
+    }
+
+    @Test
+    fun pendingSecurityOperationPageAllowsDiscardingUnsignedPairingDraft() {
+        var discardedWith: Boolean? = null
+        val unsignedPairDraft = SecurityPendingOpSummary.newBuilder()
+            .setKind("state")
+            .setPhase("PREPARED")
+            .setAction("pair")
+            .setSigned(false)
+            .build()
+        show {
+            PendingSecurityOperationPage(
+                pendingOp = unsignedPairDraft,
+                onDiscard = { discardedWith = it },
+            )
+        }
+        ui.onNodeWithText("继续原操作").assertExists()
+        ui.onNodeWithText("放弃未签名的操作").assertExists().performClick()
+        assertEquals(false, discardedWith)
+    }
+
+    @Test
+    fun pendingSecurityOperationPageHidesDiscardForSignedStateOp() {
+        val signedStateOp = SecurityPendingOpSummary.newBuilder()
+            .setKind("state")
+            .setPhase("PREPARED")
+            .setAction("pair")
+            .setSigned(true)
+            .build()
+        show {
+            PendingSecurityOperationPage(pendingOp = signedStateOp)
+        }
+        ui.onNodeWithText("继续原操作").assertExists()
+        ui.onNodeWithText("放弃未签名的操作").assertDoesNotExist()
     }
 }

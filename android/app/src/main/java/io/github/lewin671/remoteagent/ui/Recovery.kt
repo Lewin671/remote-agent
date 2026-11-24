@@ -36,6 +36,77 @@ import kotlinx.coroutines.withContext
 internal fun activePendingOp(status: SecurityWorkflowStatus?): SecurityPendingOpSummary? =
     status?.takeIf { it.hasPendingOp() }?.pendingOp
 
+internal fun canDiscardUnsignedPendingOp(op: SecurityPendingOpSummary?): Boolean =
+    op != null &&
+        op.phase == "PREPARED" &&
+        !op.signed &&
+        ((op.kind == "state" && !(op.action == "recovery" && op.codeSaved)) ||
+            op.kind == "recovery" ||
+            (op.kind == "create" && !op.codeSaved))
+
+@Composable
+internal fun PendingSecurityOperationPage(
+    pendingOp: SecurityPendingOpSummary?,
+    busy: Boolean = false,
+    error: String = "",
+    onBack: () -> Unit = {},
+    onContinue: () -> Unit = {},
+    onDiscard: (abandonHandoff: Boolean) -> Unit = {},
+) {
+    val copy = uiText()
+    var confirmAbandonOffer by remember { mutableStateOf(false) }
+    PageScaffold(copy(UiMessages.securityUnfinishedSecurityOperation()), onBack = onBack) {
+        FormColumn(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+            Hint(copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()))
+            PillButton(
+                copy(UiMessages.securityAndroidContinueOriginalOperation()),
+                onContinue,
+                Modifier.fillMaxWidth(),
+                ButtonKind.INK,
+                enabled = !busy,
+            )
+            if (pendingOp != null && pendingOp.kind == "offer" && pendingOp.phase == "PREPARED") {
+                PillButton(
+                    copy(UiMessages.securityAbandonThisSuccessionPreparationSecurity()),
+                    {
+                        if (pendingOp.codeSaved && pendingOp.signed) confirmAbandonOffer = true
+                        else onDiscard(false)
+                    },
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    ButtonKind.SECONDARY,
+                    enabled = !busy,
+                )
+            } else if (canDiscardUnsignedPendingOp(pendingOp)) {
+                val label = if (pendingOp!!.kind == "recovery" || (pendingOp.kind == "state" && pendingOp.action == "recovery")) {
+                    copy(UiMessages.securityAbandonUnpublishedRecoveryCode())
+                } else {
+                    copy(UiMessages.securityAbandonUnsignedOperation())
+                }
+                PillButton(
+                    label,
+                    { onDiscard(false) },
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    ButtonKind.SECONDARY,
+                    enabled = !busy,
+                )
+            }
+            if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 12.dp), tone = NoticeTone.ERROR)
+        }
+    }
+    if (confirmAbandonOffer) {
+        Confirm(
+            copy(UiMessages.securityAbandonThisSuccessionPreparationSecurity()),
+            copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()),
+            copy(UiMessages.securityAbandonThisSuccessionPreparation()),
+            danger = true,
+            onDismiss = { confirmAbandonOffer = false },
+        ) {
+            confirmAbandonOffer = false
+            onDiscard(true)
+        }
+    }
+}
+
 /**
  * 管理端 · 恢复: a pending recovery can be vetoed here. The new code is shown and saved first; the
  * rotated state is published only after the user confirms.
@@ -66,31 +137,49 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         "handoff" -> if (!syncView.isManager) HandoffPreparation { page = "overview" } else PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { page = "overview" }) {
             FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) { HandoffControls() }
         }
-        "pending" -> PageScaffold(copy(UiMessages.securityUnfinishedSecurityOperation()), onBack = { page = "overview" }) {
-            FormColumn(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-                Hint(copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()))
-                PillButton(copy(UiMessages.securityAndroidContinueOriginalOperation()), {
-                    busy = true
-                    scope.launch {
-                        try {
-                            remote.resumeSecurityOperation()
-                            val curPending = activePendingOp(remote.securityStatus.value)
-                            if (curPending != null && curPending.hasDelivery && curPending.deliveryPairingId.isNotEmpty()) {
-                                val res = remote.finishPairingDelivery(curPending.deliveryPairingId)
-                                if (!res.delivered) error = copy(UiMessages.securityTheOriginalOperationIsUnfinishedContinueVerifying())
-                            }
-                            val latest = remote.getSecurityStatus()
-                            if (!latest.hasPendingOp()) page = "overview"
-                        } catch (e: Exception) {
-                            error = displayError(e, syncView)
-                        } finally {
-                            busy = false
+        "pending" -> PendingSecurityOperationPage(
+            pendingOp = pendingOp,
+            busy = busy,
+            error = error,
+            onBack = { page = "overview" },
+            onContinue = {
+                busy = true
+                scope.launch {
+                    try {
+                        remote.resumeSecurityOperation()
+                        val curPending = activePendingOp(remote.securityStatus.value)
+                        if (curPending != null && curPending.hasDelivery && curPending.deliveryPairingId.isNotEmpty()) {
+                            val res = remote.finishPairingDelivery(curPending.deliveryPairingId)
+                            if (!res.delivered) error = copy(UiMessages.securityTheOriginalOperationIsUnfinishedContinueVerifying())
                         }
+                        val latest = remote.getSecurityStatus()
+                        if (!latest.hasPendingOp()) {
+                            error = ""
+                            page = "overview"
+                        }
+                    } catch (e: Exception) {
+                        error = displayError(e, syncView)
+                    } finally {
+                        busy = false
                     }
-                }, enabled = !busy)
-                if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
-            }
-        }
+                }
+            },
+            onDiscard = { abandonHandoff ->
+                busy = true
+                error = ""
+                scope.launch {
+                    try {
+                        remote.discardPendingOp(abandonHandoff)
+                        val latest = remote.getSecurityStatus()
+                        if (!latest.hasPendingOp()) page = "overview"
+                    } catch (e: Exception) {
+                        error = displayError(e, syncView)
+                    } finally {
+                        busy = false
+                    }
+                }
+            },
+        )
         else -> AccountSecurityContent(
             syncView = syncView,
             pending = pendingOp != null,
