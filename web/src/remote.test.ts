@@ -235,6 +235,7 @@ it("preserves concurrent project edits through server CAS", async () => {
         }),
       ),
     );
+    await vi.waitFor(() => expect(r.prefs.snap?.revision).toBe(3n));
     const prefs = r.projectPrefs();
     expect(prefs.pinned.map((p) => p.path)).toEqual([
       "/synthetic/foo",
