@@ -2689,3 +2689,85 @@ func TestAttachments_DraftEventBeforeConfig_HoldsEditUntilConfigAndNeverOverwrit
 		t.Fatalf("expected merged draft flushed to disk after load, got %+v", findDraftWriteEffects(readEff))
 	}
 }
+
+func TestAttachments_StaleReadChunkPutAndHashAfterPauseCancelRestart(t *testing.T) {
+	h := newAttHarness(t, false, false)
+	scope := h.sessionScope()
+
+	// 1. Late HashFileResult after item removed -> ignored without starting upload.
+	eff1 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedFile("stale-hash.bin", "application/octet-stream", 8, "src-sh")},
+			},
+		},
+	})
+	hashOp := findHashEffects(eff1)[0].OpId
+	item1ID := h.draftView(scope).Files[0].ItemId
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftRemoveItem{DraftRemoveItem: &corev1.DraftRemoveItemAction{Scope: scope, ItemId: item1ID}}})
+	lateHash := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{OpId: hashOp, Ok: true, SizeBytes: 8, Sha256: attTestHash(0xc1)},
+		},
+	})
+	if len(findDispatchedCmds(lateHash)) != 0 {
+		t.Fatalf("stale HashFileResult after cancel/remove must NOT start upload")
+	}
+
+	// 2. Late ReadChunkResult after Pause -> ignored without emitting PutImageChunk!
+	eff2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAddItems{
+			DraftAddItems: &corev1.DraftAddItemsAction{
+				Scope: scope,
+				Items: []*corev1.DraftPickedItem{pickedFile("stale-chunk.bin", "application/octet-stream", 8, "src-sc")},
+			},
+		},
+	})
+	hOp2 := findHashEffects(eff2)[0].OpId
+	eff2 = h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentHashFileResult{
+			AttachmentHashFileResult: &corev1.AttachmentHashFileResultEvent{OpId: hOp2, Ok: true, SizeBytes: 8, Sha256: attTestHash(0xc2)},
+		},
+	})
+	bCmd := findDispatchedCmds(eff2)[0]
+	tid := bCmd.cmd.GetBeginImageUpload().TransferId
+	eff2 = h.settleCmdOK(bCmd.dc, beginOK(tid, 0, 4, 0))
+	staleReadOp := findReadChunkEffects(eff2)[0].OpId
+	item2ID := h.draftView(scope).Files[0].ItemId
+
+	// Pause BEFORE ReadChunkResult arrives.
+	h.dispatch(&corev1.Event{Event: &corev1.Event_AttachmentPauseUpload{AttachmentPauseUpload: &corev1.AttachmentPauseUploadAction{Scope: scope, ItemId: item2ID}}})
+	lateRead := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: staleReadOp, Ok: true, Offset: 0, Data: []byte("1234")},
+		},
+	})
+	if len(findDispatchedCmds(lateRead)) != 0 {
+		t.Fatalf("stale ReadChunkResult after pause must NOT emit PutImageChunk")
+	}
+
+	// 3. Resume -> ReadChunk -> PutImageChunk in flight -> manual Retry (restarts with fresh transfer_id) ->
+	// late PutImageChunk outcome from OLD transfer_id arrives -> MUST be ignored without corrupting new upload!
+	resEff := h.dispatch(&corev1.Event{Event: &corev1.Event_AttachmentResumeUpload{AttachmentResumeUpload: &corev1.AttachmentResumeUploadAction{Scope: scope, ItemId: item2ID}}})
+	stCmd := findDispatchedCmds(resEff)[0]
+	resEff = h.settleCmdOK(stCmd.dc, statusOK(tid, 0, 4))
+	rOp := findReadChunkEffects(resEff)[0].OpId
+	putEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_AttachmentReadChunkResult{
+			AttachmentReadChunkResult: &corev1.AttachmentReadChunkResultEvent{OpId: rOp, Ok: true, Offset: 0, Data: []byte("1234")},
+		},
+	})
+	oldPutCmd := findDispatchedCmds(putEff)[0]
+
+	// Force restart via DraftRetryItem (recomputes hash, bumps generation).
+	h.dispatch(&corev1.Event{Event: &corev1.Event_DraftRetryItem{DraftRetryItem: &corev1.DraftRetryItemAction{Scope: scope, ItemId: item2ID}}})
+	// Late PutImageChunk from old generation arrives -> must NOT advance progress or read next chunk!
+	latePut := h.settleCmdOK(oldPutCmd.dc, putOK(tid, 4))
+	if len(findReadChunkEffects(latePut)) != 0 || len(findDispatchedCmds(latePut)) != 0 {
+		t.Fatalf("stale PutImageChunk outcome after restart must be ignored, got reads=%d cmds=%d", len(findReadChunkEffects(latePut)), len(findDispatchedCmds(latePut)))
+	}
+	if h.draftView(scope).Files[0].ProgressPercent != 0 {
+		t.Fatalf("stale PutImageChunk must NOT pollute restarted upload progress, got %d%%", h.draftView(scope).Files[0].ProgressPercent)
+	}
+}
