@@ -322,9 +322,11 @@ type Coordinator struct {
 	transfers     map[string]Upload
 	transferOrder []string
 
-	termBudget  linkcore.Budget
-	terms       map[string]*termState
-	termStreams map[string]*clientTermStream
+	termBudget       linkcore.Budget
+	terms            map[string]*termState
+	termStreams      map[string]*clientTermStream
+	earlyOutputs     map[string][]earlyTermOutput
+	earlyOutputBytes int
 
 	out []CoordEffect
 }
@@ -1482,6 +1484,13 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 		}
 		if due, ok := ct.stream.NextDue(); ok {
 			d := int64(due)
+			if d < now {
+				d = now
+			}
+			addSess(d)
+		}
+		if ct.disconnectedAll {
+			d := ct.disconnectedAt + termDisconnectTimeoutMs
 			if d < now {
 				d = now
 			}

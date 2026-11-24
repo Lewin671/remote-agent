@@ -1,6 +1,8 @@
 package transport
 
 import (
+	"bytes"
+
 	"github.com/Lewin671/remote-agent/shared/linkcore"
 	"github.com/Lewin671/remote-agent/shared/peerwire"
 )
@@ -13,6 +15,15 @@ const (
 	TermStateFailStop       uint32 = 3
 	TermStateInstanceChange uint32 = 4
 	TermStateClosed         uint32 = 5
+)
+
+const (
+	termDisconnectTimeoutMs = 15_000
+	earlyOutputMaxFrames    = 16
+	earlyOutputMaxBytes     = 256 << 10
+	earlyOutputTTLMs        = 5_000
+	inputStatusPageLimit    = 128
+	inputStatusMaxDetails   = 256
 )
 
 // CoordTerminalSend instructs the shell to transmit the identical sealed
@@ -41,6 +52,7 @@ type CoordTerminalAttachRelay struct {
 
 // CoordTerminalState notifies the shell of logical terminal continuity state
 // (reconnecting, non-bypassable Input fail-stop, daemon restart confirmation gate, or closed).
+// Unified shell close policy (M5): close iff State == TermStateClosed || NeedsConfirmation.
 type CoordTerminalState struct {
 	StreamID          string
 	State             uint32
@@ -53,19 +65,34 @@ func (CoordTerminalDeliver) coordEffect()     {}
 func (CoordTerminalAttachRelay) coordEffect() {}
 func (CoordTerminalState) coordEffect()       {}
 
+type earlyTermOutput struct {
+	seq        uint64
+	frameHash  []byte
+	payload    []byte
+	fromDirect bool
+	pcID       uint64
+	receivedAt int64
+}
+
 type clientTermStream struct {
-	streamID       string
-	machineID      string
-	sessionID      string
-	stream         *linkcore.TerminalStream
-	relayOpen      bool
-	relayLegID     string
-	relayGen       uint64
-	directAttached bool
-	directPCID     uint64
-	directGen      uint64
-	needsConfirm   bool
-	replaySentSeq  uint64
+	streamID        string
+	machineID       string
+	sessionID       string
+	stream          *linkcore.TerminalStream
+	relayOpen       bool
+	relayLegID      string
+	relayGen        uint64
+	directAttached  bool
+	directPCID      uint64
+	directGen       uint64
+	phase3Used      bool
+	disconnectedAll bool
+	disconnectedAt  int64
+	queryInFlight   bool
+	queryID         []byte
+	pendingDetails  []linkcore.TermFrameStatus
+	needsConfirm    bool
+	replaySentSeq   uint64
 }
 
 func (c *Coordinator) ensureTermStreams() {
@@ -98,13 +125,15 @@ func (c *Coordinator) activeTerminalRound(now int64, machineID string) (*coordRo
 }
 
 // TerminalDirectOpen registers a logical terminal stream in Core and attaches
-// direct use=1 hot standby when available.
+// direct use=1 hot standby when available. Any early outputs buffered before
+// open (M6) are drained immediately after registration.
 func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, sessionID string, relayLegID []byte) []CoordEffect {
 	if streamID == "" || machineID == "" || sessionID == "" {
 		return nil
 	}
 	c.ensureTermStreams()
 	if _, exists := c.termStreams[streamID]; !exists && len(c.termStreams) >= linkcore.TermMaxClientStreams {
+		c.dropEarlyOutputs(streamID)
 		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "capacity"})
 		return c.take()
 	}
@@ -126,11 +155,21 @@ func (c *Coordinator) TerminalDirectOpen(now int64, streamID, machineID, session
 	c.termStreams[streamID] = ct
 	c.maybeAttachDirectTerminal(now, ct)
 	c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive})
+	// Drain any pre-open buffered outputs (M6).
+	if early := c.takeEarlyOutputs(now, streamID); len(early) > 0 {
+		for _, item := range early {
+			if c.termStreams[streamID] != ct {
+				break
+			}
+			c.processTerminalOutput(now, ct, item.seq, item.frameHash, item.payload, item.fromDirect, item.pcID)
+		}
+	}
 	return c.take()
 }
 
 // TerminalDirectClose detaches and removes a logical terminal stream.
 func (c *Coordinator) TerminalDirectClose(now int64, streamID string) []CoordEffect {
+	c.dropEarlyOutputs(streamID)
 	ct := c.termStreams[streamID]
 	if ct == nil {
 		return nil
@@ -165,67 +204,57 @@ func (c *Coordinator) TerminalDirectLeg(now int64, streamID string, legID []byte
 			}
 			ct.relayGen++
 			_ = ct.stream.AttachLeg("relay", ct.relayLegID, string(c.instance), ct.relayGen)
+			ct.disconnectedAll = false
+			ct.stream.NetworkRecovery = false
 			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive})
 			return c.take()
 		}
-		// Relay leg dropped: if direct leg is live, stay alive and trigger AttachPath relay recovery.
+		// Relay leg dropped: ignore stale leg closes.
 		if len(legID) > 0 && ct.relayLegID != "" && string(legID) != ct.relayLegID {
-			// Stale old relay leg closed: ignore.
 			return nil
 		}
 		ct.relayOpen = false
 		ct.stream.CloseLeg("relay", ct.relayGen)
 		if r, _, _, ok := c.activeTerminalRound(now, ct.machineID); ok && ct.directAttached {
-			var rawRand [8]byte
-			if _, err := c.randPool.Read(rawRand[:]); err == nil {
-				c.maybeLowWater()
-				newLeg := makeRelayAttachLegID(rawRand)
-				nextGen := ct.relayGen + 1
-				if nextGen == 0 {
-					nextGen = 1
-				}
-				body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
-					Stream:         ct.streamID,
-					Session:        ct.sessionID,
-					Sender:         c.snap.SelfID,
-					LegID:          string(newLeg),
-					PathGeneration: nextGen,
-					State: linkcore.TermFlowState{
-						ToDaemon: ct.stream.CurrentInputWatermark(),
-						ToClient: ct.stream.CurrentOutputWatermark(),
-					},
-				})
-				_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlAttachPath, Body: body})
-				c.emit(CoordTerminalAttachRelay{
-					StreamID:  ct.streamID,
-					MachineID: ct.machineID,
-					LegID:     newLeg,
-				})
-				return c.take()
-			}
-			c.maybeNeedEntropy(CoordEntropyRefillBytes)
+			c.triggerRelayRecovery(now, r, ct)
 			return c.take()
 		}
-		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "relay_closed"})
+		if ct.phase3Used {
+			// Full disconnect on a Phase 3 stream: enter bounded recovery window (M4).
+			ct.disconnectedAll = true
+			ct.disconnectedAt = now
+			ct.stream.NetworkRecovery = true
+			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "relay_closed"})
+			return c.take()
+		}
+		// Pure-relay / legacy daemon: relay close ends the stream cleanly (M5).
+		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "relay_closed"})
+		delete(c.termStreams, streamID)
 		return c.take()
 	}
 	// Direct leg state change.
 	if open && pcID != 0 {
 		ct.directAttached = true
 		ct.directPCID = pcID
+		ct.phase3Used = true
 	} else if !open && (pcID == 0 || ct.directPCID == pcID) {
 		ct.directAttached = false
 		ct.directPCID = 0
+		ct.queryInFlight = false
+		ct.queryID = nil
 		ct.stream.CloseLeg("direct", ct.directGen)
 		if !ct.relayOpen {
+			ct.disconnectedAll = true
+			ct.disconnectedAt = now
+			ct.stream.NetworkRecovery = true
 			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "direct_closed"})
 		}
 	}
 	return c.take()
 }
 
-// TerminalDirectInput caches an outbound sealed terminal frame and emits
-// hot-standby dual-send (relay + direct use=1 when ready).
+// TerminalDirectInput gates input caching on active negotiated Phase 3 direct
+// legs (H1/H2) and emits hot-standby dual-send when direct use=1 is ready.
 func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64, isInput bool, sealedEnvelope, frameHash []byte) []CoordEffect {
 	ct := c.termStreams[streamID]
 	if ct == nil || seq == 0 || len(sealedEnvelope) == 0 {
@@ -240,30 +269,63 @@ func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64
 		})
 		return c.take()
 	}
-	var hash32 [32]byte
-	copy(hash32[:], frameHash)
-	if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
-		Seq:         seq,
-		PayloadHash: hash32,
-		RawBytes:    len(sealedEnvelope),
-		IsInput:     isInput,
-		RawEnvelope: append([]byte(nil), sealedEnvelope...),
-	}); err != nil {
-		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "input_cache_full"})
-		return c.take()
-	}
 
 	var directPC uint64
 	if _, pcID, _, ok := c.activeTerminalRound(now, ct.machineID); ok {
 		if !ct.directAttached || ct.directPCID != pcID {
 			c.maybeAttachDirectTerminal(now, ct)
 		}
-		directPC = pcID
+		if ct.directAttached && ct.directPCID == pcID {
+			directPC = pcID
+		}
 	}
+
 	if !ct.relayOpen && directPC == 0 {
+		if !ct.phase3Used {
+			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "no_leg"})
+			delete(c.termStreams, streamID)
+			return c.take()
+		}
+		if isInput {
+			var hash32 [32]byte
+			copy(hash32[:], frameHash)
+			if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
+				Seq:         seq,
+				PayloadHash: hash32,
+				RawBytes:    len(sealedEnvelope),
+				IsInput:     true,
+				RawEnvelope: append([]byte(nil), sealedEnvelope...),
+			}); err != nil {
+				c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "input_cache_full"})
+				delete(c.termStreams, streamID)
+				return c.take()
+			}
+		}
 		c.emit(CoordTerminalState{StreamID: streamID, State: TermStateReconnecting, Reason: "no_leg"})
 		return c.take()
 	}
+
+	// H1/H2: Only cache Input frames when sending over a negotiated Phase 3 direct leg.
+	// Pure-relay / legacy-daemon streams and non-input frames (Resize/History) never
+	// depend on direct Control 2 ACKs to release the cache.
+	if directPC != 0 && isInput {
+		var hash32 [32]byte
+		copy(hash32[:], frameHash)
+		if err := ct.stream.CacheInput(uint64(now), linkcore.TermFrame{
+			Seq:         seq,
+			PayloadHash: hash32,
+			RawBytes:    len(sealedEnvelope),
+			IsInput:     true,
+			RawEnvelope: append([]byte(nil), sealedEnvelope...),
+		}); err != nil {
+			// Never silently drop a frame while keeping the stream open (H1):
+			// fail/close explicitly so no unrecoverable seq hole is created on the daemon.
+			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "input_cache_full"})
+			delete(c.termStreams, streamID)
+			return c.take()
+		}
+	}
+
 	c.emit(CoordTerminalSend{
 		StreamID:       streamID,
 		SendRelay:      ct.relayOpen,
@@ -275,11 +337,21 @@ func (c *Coordinator) TerminalDirectInput(now int64, streamID string, seq uint64
 
 // TerminalDirectOutput reorders and deduplicates verified inbound terminal output
 // frames from either relay WS or direct DC, replacing seq <= last close-on-duplicate.
+// Frames arriving slightly before TerminalDirectOpen are boundedly buffered (M6).
 func (c *Coordinator) TerminalDirectOutput(now int64, streamID string, seq uint64, frameHash, payload []byte, fromDirect bool, pcID uint64) []CoordEffect {
-	ct := c.termStreams[streamID]
-	if ct == nil || seq == 0 {
+	if streamID == "" || seq == 0 {
 		return nil
 	}
+	ct := c.termStreams[streamID]
+	if ct == nil {
+		c.bufferEarlyOutput(now, streamID, seq, frameHash, payload, fromDirect, pcID)
+		return nil
+	}
+	c.processTerminalOutput(now, ct, seq, frameHash, payload, fromDirect, pcID)
+	return c.take()
+}
+
+func (c *Coordinator) processTerminalOutput(now int64, ct *clientTermStream, seq uint64, frameHash, payload []byte, fromDirect bool, pcID uint64) {
 	var hash32 [32]byte
 	copy(hash32[:], frameHash)
 	action, ready, err := ct.stream.ReceiveOutput(uint64(now), linkcore.TermFrame{
@@ -294,8 +366,8 @@ func (c *Coordinator) TerminalDirectOutput(now int64, streamID string, seq uint6
 		c.sendClientOutputAck(now, ct)
 	case linkcore.TermOutputReject:
 		if err == linkcore.ErrTermConflict {
-			c.emit(CoordTerminalState{StreamID: streamID, State: TermStateClosed, Reason: "conflict"})
-			delete(c.termStreams, streamID)
+			c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "conflict"})
+			delete(c.termStreams, ct.streamID)
 		}
 	case linkcore.TermOutputReady:
 		var payloads [][]byte
@@ -312,7 +384,7 @@ func (c *Coordinator) TerminalDirectOutput(now int64, streamID string, seq uint6
 			cur = next
 		}
 		if len(payloads) > 0 {
-			c.emit(CoordTerminalDeliver{StreamID: streamID, Payloads: payloads})
+			c.emit(CoordTerminalDeliver{StreamID: ct.streamID, Payloads: payloads})
 		}
 		if needAck {
 			c.sendClientOutputAck(now, ct)
@@ -322,7 +394,90 @@ func (c *Coordinator) TerminalDirectOutput(now int64, streamID string, seq uint6
 	}
 	_ = fromDirect
 	_ = pcID
-	return c.take()
+}
+
+func (c *Coordinator) bufferEarlyOutput(now int64, streamID string, seq uint64, frameHash, payload []byte, fromDirect bool, pcID uint64) {
+	c.pruneEarlyOutputs(now)
+	if len(payload) > earlyOutputMaxBytes {
+		return
+	}
+	if c.earlyOutputs == nil {
+		c.earlyOutputs = map[string][]earlyTermOutput{}
+	}
+	list := c.earlyOutputs[streamID]
+	if len(list) >= earlyOutputMaxFrames {
+		return
+	}
+	if c.earlyOutputBytes+len(payload) > earlyOutputMaxBytes {
+		return
+	}
+	c.earlyOutputs[streamID] = append(list, earlyTermOutput{
+		seq:        seq,
+		frameHash:  append([]byte(nil), frameHash...),
+		payload:    append([]byte(nil), payload...),
+		fromDirect: fromDirect,
+		pcID:       pcID,
+		receivedAt: now,
+	})
+	c.earlyOutputBytes += len(payload)
+}
+
+func (c *Coordinator) takeEarlyOutputs(now int64, streamID string) []earlyTermOutput {
+	if len(c.earlyOutputs) == 0 {
+		return nil
+	}
+	list := c.earlyOutputs[streamID]
+	if len(list) == 0 {
+		return nil
+	}
+	delete(c.earlyOutputs, streamID)
+	valid := list[:0]
+	for _, item := range list {
+		c.earlyOutputBytes -= len(item.payload)
+		if now-item.receivedAt <= earlyOutputTTLMs {
+			valid = append(valid, item)
+		}
+	}
+	if c.earlyOutputBytes < 0 {
+		c.earlyOutputBytes = 0
+	}
+	return valid
+}
+
+func (c *Coordinator) dropEarlyOutputs(streamID string) {
+	if len(c.earlyOutputs) == 0 {
+		return
+	}
+	if list, ok := c.earlyOutputs[streamID]; ok {
+		for _, item := range list {
+			c.earlyOutputBytes -= len(item.payload)
+		}
+		if c.earlyOutputBytes < 0 {
+			c.earlyOutputBytes = 0
+		}
+		delete(c.earlyOutputs, streamID)
+	}
+}
+
+func (c *Coordinator) pruneEarlyOutputs(now int64) {
+	for id, list := range c.earlyOutputs {
+		keep := list[:0]
+		for _, item := range list {
+			if now-item.receivedAt <= earlyOutputTTLMs {
+				keep = append(keep, item)
+			} else {
+				c.earlyOutputBytes -= len(item.payload)
+			}
+		}
+		if len(keep) == 0 {
+			delete(c.earlyOutputs, id)
+		} else {
+			c.earlyOutputs[id] = keep
+		}
+	}
+	if c.earlyOutputBytes < 0 {
+		c.earlyOutputBytes = 0
+	}
 }
 
 // TerminalDirectConfirmRebuild clears the user confirmation gate after fail-stop
@@ -334,6 +489,7 @@ func (c *Coordinator) TerminalDirectConfirmRebuild(now int64, streamID string) [
 	}
 	_ = ct.stream.ConfirmRebuild(nil)
 	ct.needsConfirm = false
+	ct.disconnectedAll = false
 	c.emit(CoordTerminalState{StreamID: streamID, State: TermStateLive, Reason: "confirmed"})
 	return c.take()
 }
@@ -350,11 +506,60 @@ func makeRelayAttachLegID(rand8 [8]byte) []byte {
 	return out
 }
 
-func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream) {
-	r, pcID, gen, ok := c.activeTerminalRound(now, ct.machineID)
-	if !ok {
+func (c *Coordinator) triggerRelayRecovery(now int64, r *coordRound, ct *clientTermStream) {
+	var rawRand [8]byte
+	if _, err := c.randPool.Read(rawRand[:]); err != nil {
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
 		return
 	}
+	c.maybeLowWater()
+	newLeg := makeRelayAttachLegID(rawRand)
+	nextGen := ct.relayGen + 1
+	if nextGen == 0 {
+		nextGen = 1
+	}
+	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
+		Stream:         ct.streamID,
+		Session:        ct.sessionID,
+		Sender:         c.snap.SelfID,
+		LegID:          string(newLeg),
+		PathGeneration: nextGen,
+		State: linkcore.TermFlowState{
+			ToDaemon: ct.stream.CurrentInputWatermark(),
+			ToClient: ct.stream.CurrentOutputWatermark(),
+		},
+	})
+	_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlAttachPath, Body: body})
+	c.emit(CoordTerminalAttachRelay{
+		StreamID:  ct.streamID,
+		MachineID: ct.machineID,
+		LegID:     newLeg,
+	})
+}
+
+func (c *Coordinator) sendInputStatusQuery(now int64, r *coordRound, ct *clientTermStream, fromSeq uint64, snapshotToken []byte) {
+	var qid [16]byte
+	if _, err := c.randPool.Read(qid[:]); err != nil {
+		c.maybeNeedEntropy(CoordEntropyRefillBytes)
+		return
+	}
+	c.maybeLowWater()
+	ct.queryInFlight = true
+	ct.queryID = append([]byte(nil), qid[:]...)
+	if fromSeq <= 1 {
+		ct.pendingDetails = nil
+	}
+	body := linkcore.EncodeInputStatus(linkcore.InputStatusMsg{
+		Stream:        ct.streamID,
+		QueryID:       ct.queryID,
+		FromSeq:       fromSeq,
+		Limit:         inputStatusPageLimit,
+		SnapshotToken: snapshotToken,
+	})
+	_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlInputStatus, Body: body})
+}
+
+func (c *Coordinator) sendAttachDirectPath(now int64, r *coordRound, pcID, gen uint64, ct *clientTermStream) {
 	if ct.directAttached && ct.directPCID == pcID && ct.directGen == gen {
 		return
 	}
@@ -375,6 +580,7 @@ func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream)
 	ct.directAttached = true
 	ct.directPCID = pcID
 	ct.directGen = gen
+	ct.phase3Used = true
 	_ = ct.stream.AttachLeg("direct", string(leg), string(c.instance), gen)
 	body := linkcore.EncodeAttachPath(linkcore.AttachPathMsg{
 		Stream:         ct.streamID,
@@ -390,6 +596,25 @@ func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream)
 	_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlAttachPath, Body: body})
 }
 
+func (c *Coordinator) maybeAttachDirectTerminal(now int64, ct *clientTermStream) {
+	r, pcID, gen, ok := c.activeTerminalRound(now, ct.machineID)
+	if !ok {
+		return
+	}
+	if ct.directAttached && ct.directPCID == pcID && ct.directGen == gen {
+		return
+	}
+	// M4: after full disconnect or with unconfirmed inputs on a new direct round,
+	// query daemon InputStatus first instead of blindly attaching/resending.
+	if ct.disconnectedAll || ct.stream.NetworkRecovery || ct.stream.HasUnconfirmedInputs() {
+		if !ct.queryInFlight {
+			c.sendInputStatusQuery(now, r, ct, 1, nil)
+		}
+		return
+	}
+	c.sendAttachDirectPath(now, r, pcID, gen, ct)
+}
+
 func (c *Coordinator) attachDirectTerminalsForMachine(now int64, machineID string) {
 	for _, ct := range c.termStreams {
 		if ct != nil && ct.machineID == machineID {
@@ -403,8 +628,13 @@ func (c *Coordinator) detachDirectTerminalsForPC(now int64, pcID uint64) {
 		if ct != nil && ct.directAttached && ct.directPCID == pcID {
 			ct.directAttached = false
 			ct.directPCID = 0
+			ct.queryInFlight = false
+			ct.queryID = nil
 			ct.stream.CloseLeg("direct", ct.directGen)
 			if !ct.relayOpen {
+				ct.disconnectedAll = true
+				ct.disconnectedAt = now
+				ct.stream.NetworkRecovery = true
 				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateReconnecting, Reason: "direct_closed"})
 			}
 		}
@@ -425,8 +655,16 @@ func (c *Coordinator) sendClientOutputAck(now int64, ct *clientTermStream) {
 }
 
 func (c *Coordinator) stepClientTerminals(now int64) {
-	for _, ct := range c.termStreams {
+	c.pruneEarlyOutputs(now)
+	var expiredIDs []string
+	for id, ct := range c.termStreams {
 		if ct == nil {
+			continue
+		}
+		if ct.disconnectedAll && now-ct.disconnectedAt >= termDisconnectTimeoutMs {
+			ct.disconnectedAll = false
+			c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "reconnect_timeout"})
+			expiredIDs = append(expiredIDs, id)
 			continue
 		}
 		emitAck := ct.stream.Advance(uint64(now))
@@ -450,9 +688,14 @@ func (c *Coordinator) stepClientTerminals(now int64) {
 				}
 			}
 			if uint64(now) >= gapDue {
-				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateReconnecting, Reason: "output_gap_timeout"})
+				// M4/M5: an unrecovered 10s output gap must close/rebuild instead of freezing forever.
+				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateClosed, Reason: "output_gap_timeout"})
+				expiredIDs = append(expiredIDs, id)
 			}
 		}
+	}
+	for _, id := range expiredIDs {
+		delete(c.termStreams, id)
 	}
 }
 
@@ -508,7 +751,14 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 		if ct == nil || ct.machineID != r.machine {
 			return 0, nil
 		}
+		if len(ct.queryID) > 0 && len(rep.QueryID) > 0 && !bytes.Equal(ct.queryID, rep.QueryID) {
+			return 0, nil
+		}
 		if !rep.Available {
+			ct.queryInFlight = false
+			ct.queryID = nil
+			ct.pendingDetails = nil
+			ct.disconnectedAll = false
 			ct.stream.OnInstanceChanged()
 			ct.needsConfirm = true
 			c.emit(CoordTerminalState{
@@ -518,6 +768,22 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 				NeedsConfirmation: true,
 			})
 			return 0, nil
+		}
+		if !rep.Complete && rep.NextSeq > 0 {
+			for _, d := range rep.State.ToDaemon.Details {
+				if len(ct.pendingDetails) < inputStatusMaxDetails {
+					ct.pendingDetails = append(ct.pendingDetails, d)
+				}
+			}
+			c.sendInputStatusQuery(now, r, ct, rep.NextSeq, rep.SnapshotToken)
+			return 0, nil
+		}
+		ct.queryInFlight = false
+		ct.queryID = nil
+		if len(ct.pendingDetails) > 0 {
+			merged := append(ct.pendingDetails, rep.State.ToDaemon.Details...)
+			rep.State.ToDaemon.Details = merged
+			ct.pendingDetails = nil
 		}
 		var tok [32]byte
 		copy(tok[:], rep.SnapshotToken)
@@ -529,6 +795,7 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 		toResend, needBarrier, needConfirm := ct.stream.ReconcileStatus(uint64(now), snap)
 		if needConfirm {
 			ct.needsConfirm = true
+			ct.disconnectedAll = false
 			c.emit(CoordTerminalState{
 				StreamID:          ct.streamID,
 				State:             TermStateFailStop,
@@ -548,7 +815,16 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 				_ = c.stepSession(now, r, linkcore.QueueControl{Type: linkcore.ControlBarrier, Body: body})
 			}
 		} else {
-			_, pcID, _, hasDirect := c.activeTerminalRound(now, ct.machineID)
+			wasDisconnected := ct.disconnectedAll || ct.stream.NetworkRecovery
+			ct.disconnectedAll = false
+			ct.stream.NetworkRecovery = false
+			r2, pcID, gen, hasDirect := c.activeTerminalRound(now, ct.machineID)
+			if hasDirect {
+				c.sendAttachDirectPath(now, r2, pcID, gen, ct)
+				if !ct.relayOpen {
+					c.triggerRelayRecovery(now, r2, ct)
+				}
+			}
 			for _, f := range toResend {
 				if len(f.RawEnvelope) == 0 {
 					continue
@@ -564,6 +840,9 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 					SealedEnvelope: f.RawEnvelope,
 				})
 			}
+			if wasDisconnected {
+				c.emit(CoordTerminalState{StreamID: ct.streamID, State: TermStateLive, Reason: "reconciled"})
+			}
 		}
 		return 0, nil
 
@@ -577,11 +856,13 @@ func (c *Coordinator) handleInboundTerminalControl(now int64, r *coordRound, o p
 			return 0, nil
 		}
 		if rep.Final {
+			ct.needsConfirm = true
+			ct.disconnectedAll = false
 			c.emit(CoordTerminalState{
 				StreamID:          ct.streamID,
 				State:             TermStateInstanceChange,
 				Reason:            "barrier_final",
-				NeedsConfirmation: ct.needsConfirm,
+				NeedsConfirmation: true,
 			})
 		}
 		return 0, nil
