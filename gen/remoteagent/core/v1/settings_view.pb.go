@@ -694,6 +694,7 @@ type MachineListCardView struct {
 	SubtitleParts     []*SubtitleSegment      `protobuf:"bytes,12,rep,name=subtitle_parts,json=subtitleParts,proto3" json:"subtitle_parts,omitempty"`
 	InDeviceDirectory bool                    `protobuf:"varint,13,opt,name=in_device_directory,json=inDeviceDirectory,proto3" json:"in_device_directory,omitempty"`
 	DirectReady       bool                    `protobuf:"varint,14,opt,name=direct_ready,json=directReady,proto3" json:"direct_ready,omitempty"`
+	ShortId           string                  `protobuf:"bytes,15,opt,name=short_id,json=shortId,proto3" json:"short_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -824,6 +825,13 @@ func (x *MachineListCardView) GetDirectReady() bool {
 		return x.DirectReady
 	}
 	return false
+}
+
+func (x *MachineListCardView) GetShortId() string {
+	if x != nil {
+		return x.ShortId
+	}
+	return ""
 }
 
 type ClientRowView struct {
@@ -5734,7 +5742,7 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	"\x15SettingsScreenRequest\"T\n" +
 	"\x0fSubtitleSegment\x12-\n" +
 	"\x04text\x18\x01 \x01(\v2\x19.remoteagent.core.v1.TextR\x04text\x12\x12\n" +
-	"\x04warn\x18\x02 \x01(\bR\x04warn\"\xa5\x05\n" +
+	"\x04warn\x18\x02 \x01(\bR\x04warn\"\xc0\x05\n" +
 	"\x13MachineListCardView\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x12\n" +
@@ -5756,7 +5764,8 @@ const file_remoteagent_core_v1_settings_view_proto_rawDesc = "" +
 	"statusWarn\x12K\n" +
 	"\x0esubtitle_parts\x18\f \x03(\v2$.remoteagent.core.v1.SubtitleSegmentR\rsubtitleParts\x12.\n" +
 	"\x13in_device_directory\x18\r \x01(\bR\x11inDeviceDirectory\x12!\n" +
-	"\fdirect_ready\x18\x0e \x01(\bR\vdirectReady\"\xf4\x03\n" +
+	"\fdirect_ready\x18\x0e \x01(\bR\vdirectReady\x12\x19\n" +
+	"\bshort_id\x18\x0f \x01(\tR\ashortId\"\xf4\x03\n" +
 	"\rClientRowView\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12 \n" +

@@ -647,10 +647,15 @@ private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
         }
         Column(Modifier.weight(1f)) {
             Text(m.name, style = T.s17m, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (m.subtitlePartsList.isNotEmpty()) {
+            if (m.shortId.isNotEmpty() || m.subtitlePartsList.isNotEmpty()) {
                 val sub = buildAnnotatedString {
-                    m.subtitlePartsList.forEachIndexed { idx, seg ->
-                        if (idx > 0) {
+                    var hasPrev = false
+                    if (m.shortId.isNotEmpty()) {
+                        withStyle(SpanStyle(color = p.ink2)) { append(m.shortId) }
+                        hasPrev = true
+                    }
+                    m.subtitlePartsList.forEach { seg ->
+                        if (hasPrev) {
                             withStyle(SpanStyle(color = p.ink2)) { append(" · ") }
                         }
                         if (seg.warn) {
@@ -660,6 +665,7 @@ private fun MachineCard(m: MachineListCardView, onClick: () -> Unit) {
                         } else {
                             withStyle(SpanStyle(color = p.ink2)) { append(uiText(seg.text)) }
                         }
+                        hasPrev = true
                     }
                 }
                 Text(

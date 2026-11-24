@@ -127,11 +127,12 @@ function MachineRow({ m, go }: { m: MachineListCardView; go: Go }) {
       <span className="lead"><Laptop /></span>
       <span className="row-name">
         <b>{m.name}</b>
-        {m.subtitleParts.length > 0 && (
+        {(m.shortId || m.subtitleParts.length > 0) && (
           <small>
+            {m.shortId && <span>{m.shortId}</span>}
             {m.subtitleParts.map((part, idx) => (
               <Fragment key={idx}>
-                {idx > 0 && " · "}
+                {(m.shortId || idx > 0) && " · "}
                 <span className={part.warn ? "warn-txt" : undefined}>{renderText(part.text)}</span>
               </Fragment>
             ))}

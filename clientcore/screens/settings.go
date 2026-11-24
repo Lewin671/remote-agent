@@ -249,6 +249,7 @@ func buildMachineListCards(st *State, syncView *corev1.SyncStateView, machines [
 		card := &corev1.MachineListCardView{
 			MachineId:         m.ID,
 			Name:              lists.MachineName(m, m.ID),
+			ShortId:           machine.ShortMachineID(m.ID),
 			Online:            online,
 			Member:            !unlinked,
 			ProtocolMismatch:  mismatch,

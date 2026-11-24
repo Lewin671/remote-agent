@@ -500,8 +500,8 @@ func TestMachineSettingsRedesignProjections(t *testing.T) {
 	if !setVM.ConnCheck.NetworkAvailable || !setVM.ConnCheck.EverOnline || setVM.ConnCheck.Failures != 2 || setVM.ConnCheck.ConnStartedAtMs != now-5_000 {
 		t.Fatalf("unexpected ConnCheckSummaryView fields: %+v", setVM.ConnCheck)
 	}
-	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady {
-		t.Fatalf("expected InDeviceDirectory & DirectReady on machine card, got %+v", setVM.Machines)
+	if len(setVM.Machines) == 0 || !setVM.Machines[0].InDeviceDirectory || !setVM.Machines[0].DirectReady || setVM.Machines[0].ShortId != "…90abcdef" {
+		t.Fatalf("expected InDeviceDirectory, DirectReady, and ShortId on machine card, got %+v", setVM.Machines)
 	}
 	devVM := BuildDevices(st, sv, nil)
 	if !devVM.LoadFailed || devVM.GetErrorText().GetLiteral() != "devices rpc failed" || devVM.LeaseEndMs != now+600_000 {
