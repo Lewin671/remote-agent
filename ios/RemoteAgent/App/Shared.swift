@@ -10,11 +10,11 @@ import SwiftUI
 
 /// The connection notice of a page, under its navigation bar, in from the page's sides.
 struct ConnectionBar: View {
-    @Environment(AccountContext.self) private var context
+    @Environment(AccountContext.self) private var context: AccountContext?
 
     var body: some View {
-        let sync = context.core.syncState
-        if (!sync.displayGrace && sync.connection != .connected) || sync.accountClockSkewed {
+        if let sync = context?.core.syncState,
+           (!sync.displayGrace && sync.connection != .connected) || sync.accountClockSkewed {
             ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
         }
     }
@@ -25,40 +25,42 @@ struct ConnectionBar: View {
 /// nothing when connected, otherwise the nearest stretch that is down, and
 /// 详情 when that is the server.
 struct ConnectionStrip: View {
-    @Environment(AccountContext.self) private var context
+    @Environment(AccountContext.self) private var context: AccountContext?
     @State private var details = false
 
     var body: some View {
-        let sync = context.core.syncState
-        let clockWarning = context.core.settings.clockSkewBannerText.rendered()
-        let loaded = sync.sessionsListed || !sync.sessions.isEmpty || !sync.machines.isEmpty
-        let synced = sync.machinesListed && sync.sessionsListed
-        let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
-        Group {
-            if sync.connection == .connected || sync.displayGrace {
-                if sync.accountClockSkewed && !clockWarning.isEmpty {
-                    GlassStrip(text: clockWarning, symbol: "clock", tone: .attention)
-                }
-            } else {
-                switch sync.connection {
-                case .connected:
-                    EmptyView()
-                case .noNetwork:
-                    GlassStrip(text: loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
-                case .connecting, .reconnecting, .unspecified, .UNRECOGNIZED:
-                    GlassStrip(text: synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
-                case .offline:
-                    // Nothing kept to show: the reason is the whole of what can be said, in red.
-                    if !loaded && !reason.isEmpty {
-                        GlassStrip(text: L10n.connectionIosServerError(reason: reason), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
-                    } else {
-                        GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+        if let context {
+            let sync = context.core.syncState
+            let clockWarning = context.core.settings.clockSkewBannerText.rendered()
+            let loaded = sync.sessionsListed || !sync.sessions.isEmpty || !sync.machines.isEmpty
+            let synced = sync.machinesListed && sync.sessionsListed
+            let reason = sync.hasConnectionReason ? sync.connectionReason.rendered() : ""
+            Group {
+                if sync.connection == .connected || sync.displayGrace {
+                    if sync.accountClockSkewed && !clockWarning.isEmpty {
+                        GlassStrip(text: clockWarning, symbol: "clock", tone: .attention)
+                    }
+                } else {
+                    switch sync.connection {
+                    case .connected:
+                        EmptyView()
+                    case .noNetwork:
+                        GlassStrip(text: loaded ? L10n.connectionNoNetworkPrevious() : L10n.connectionNoNetworkEmpty(), symbol: "wifi.slash")
+                    case .connecting, .reconnecting, .unspecified, .UNRECOGNIZED:
+                        GlassStrip(text: synced ? L10n.connectionReconnecting() : L10n.connectionConnecting(), spinning: true)
+                    case .offline:
+                        // Nothing kept to show: the reason is the whole of what can be said, in red.
+                        if !loaded && !reason.isEmpty {
+                            GlassStrip(text: L10n.connectionIosServerError(reason: reason), symbol: "xmark", tone: .error, action: L10n.commonDetails()) { details = true }
+                        } else {
+                            GlassStrip(text: L10n.connectionServerRetrying(), symbol: "icloud.slash", action: L10n.commonDetails()) { details = true }
+                        }
                     }
                 }
             }
-        }
-        .kitSheet(isPresented: $details) {
-            ServerDetails(sync: sync) { details = false }
+            .kitSheet(isPresented: $details) {
+                ServerDetails(sync: sync) { details = false }
+            }
         }
     }
 }
