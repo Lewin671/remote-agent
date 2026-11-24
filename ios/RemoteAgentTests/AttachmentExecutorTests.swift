@@ -588,6 +588,33 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         }
         let loaded = try await ImageCenter.loadBoundedImageData(from: smallProvider)
         #expect(loaded == png)
+
+        // Concrete UTI registered only as data representation (as UIPasteboard does for JPEG/PNG):
+        // must succeed without failing on abstract `public.image`.
+        let concreteDataProvider = NSItemProvider()
+        concreteDataProvider.registerDataRepresentation(forTypeIdentifier: UTType.png.identifier, visibility: .all) { handler in
+            handler(png, nil)
+            return nil
+        }
+        let concreteLoaded = try await ImageCenter.loadBoundedImageData(from: concreteDataProvider)
+        #expect(concreteLoaded == png)
+
+        // Real UIPasteboard item with concrete JPEG data (as copied from Photos/Safari/pbcopy).
+        let pb = UIPasteboard.withUniqueName()
+        pb.setData(png, forPasteboardType: UTType.png.identifier)
+        let pbProvider = try #require(pb.itemProviders.first)
+        let pbLoaded = try await ImageCenter.loadBoundedImageData(from: pbProvider)
+        #expect(pbLoaded == png)
+
+        // Concrete UTI oversized file must still throw ImageTooLarge without falling back to data load.
+        let concreteHuge = NSItemProvider()
+        concreteHuge.registerFileRepresentation(forTypeIdentifier: UTType.jpeg.identifier, fileOptions: [], visibility: .all) { handler in
+            handler(hugeURL, false, nil)
+            return nil
+        }
+        await #expect(throws: ImageTooLarge.self) {
+            _ = try await ImageCenter.loadBoundedImageData(from: concreteHuge)
+        }
     }
 
     @Test func draftTextRelayDeliversEditsAndSubmitInStrictFIFOOrder() async {
