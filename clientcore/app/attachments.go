@@ -29,6 +29,7 @@ const (
 	attPhaseCompleting
 	attPhasePollDelay
 	attPhaseWaitingReconnect
+	attPhaseWaitingOnline
 )
 
 const (
@@ -182,6 +183,7 @@ type attDraft struct {
 	storageError    *corev1.Text
 
 	loadState            draftLoadState
+	activated            bool
 	activeLoadOpID       uint64
 	loadStartTextRev     uint64
 	activeWriteOpID      uint64
@@ -526,6 +528,7 @@ func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftS
 		return nil
 	}
 
+	nowMs := c.m.sync.NowMs()
 	var effects []*corev1.Effect
 	for _, entry := range ev.Entries {
 		if entry == nil || entry.Key == "" {
@@ -558,11 +561,21 @@ func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftS
 				effects = append(effects, makeDraftStorageDeleteEffect(entry.Bucket, entry.Key))
 				continue
 			}
+			if nowMs > 0 && rec.UpdatedMs > 0 && nowMs-rec.UpdatedMs >= attachments.DraftIdleExpiryMs {
+				// 7-day idle draft expiry (docs/session-images.md).
+				effects = append(effects, makeDraftStorageDeleteEffect(entry.Bucket, entry.Key))
+				continue
+			}
 			d := c.ensureDraftState(rec.Scope)
 			if d != nil && d.loadState != draftLoadLoaded {
-				c.hydrateDraftFromPersisted(ctx, d, rec, &effects)
+				// Only hydrate on startup scan; do NOT eagerly prepare/upload unopened sessions!
+				c.hydrateDraftFromPersisted(ctx, d, rec, d.activated, &effects)
 			}
 		}
+	}
+	// Garbage-collect orphaned local files only after a clean storage scan (docs/session-images.md:55).
+	if len(ev.LocalRefs) > 0 {
+		c.emitUnreferencedLocalReleases(ev.LocalRefs, &effects)
 	}
 	c.pumpAttachmentQueues(ctx, &effects)
 	return effects
@@ -577,6 +590,7 @@ func (c *Core) handleDraftOpen(ctx *sync.StepContext, act *corev1.DraftOpenActio
 		return nil
 	}
 	d := c.ensureDraftState(act.Scope)
+	d.activated = true
 	var effects []*corev1.Effect
 	if act.MachineId != "" {
 		c.retargetDraftLocked(ctx, d, act.MachineId, &effects)
@@ -650,14 +664,26 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 	}
 
 	d.storageError = nil
+	nowMs := c.m.sync.NowMs()
 	if ev.Found && len(ev.Data) > 0 {
 		rec, ok := attachments.DecodePersistedDraft(ev.Data)
 		if !ok {
 			// Legacy or corrupt payload: discard without migration.
 			d.loadState = draftLoadLoaded
 			effects = append(effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, d.key))
+		} else if nowMs > 0 && rec.UpdatedMs > 0 && nowMs-rec.UpdatedMs >= attachments.DraftIdleExpiryMs {
+			// 7-day idle draft expiry.
+			d.loadState = draftLoadLoaded
+			effects = append(effects, makeDraftStorageDeleteEffect(corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, d.key))
+			var staleRefs []string
+			for _, pi := range rec.Items {
+				if pi != nil {
+					staleRefs = append(staleRefs, pi.SourceRef, pi.PreparedRef, pi.ThumbRef)
+				}
+			}
+			c.emitUnreferencedLocalReleases(staleRefs, &effects)
 		} else {
-			c.hydrateDraftFromPersisted(ctx, d, rec, &effects)
+			c.hydrateDraftFromPersisted(ctx, d, rec, d.activated, &effects)
 		}
 	} else {
 		d.loadState = draftLoadLoaded
@@ -671,7 +697,7 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 	return effects
 }
 
-func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec *corev1.PersistedDraftRecord, effects *[]*corev1.Effect) {
+func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec *corev1.PersistedDraftRecord, startUploads bool, effects *[]*corev1.Effect) {
 	if d == nil || rec == nil {
 		return
 	}
@@ -704,7 +730,9 @@ func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec
 	}
 	d.loadState = draftLoadLoaded
 	c.syncNewSessionAttachmentCount(d)
-	c.startPendingDraftUploads(ctx, d, effects)
+	if startUploads {
+		c.startPendingDraftUploads(ctx, d, effects)
+	}
 }
 
 func (c *Core) handleDraftSetText(ctx *sync.StepContext, act *corev1.DraftSetTextAction) []*corev1.Effect {
@@ -716,6 +744,7 @@ func (c *Core) handleDraftSetText(ctx *sync.StepContext, act *corev1.DraftSetTex
 		return nil
 	}
 	d := c.ensureDraftState(act.Scope)
+	d.activated = true
 	var effects []*corev1.Effect
 	if d.text == act.Text {
 		if mgr.persistDrafts && d.loadState == draftLoadFailed {
@@ -895,6 +924,7 @@ func (c *Core) handleDraftAddItems(ctx *sync.StepContext, act *corev1.DraftAddIt
 		return nil
 	}
 	d := c.ensureDraftState(act.Scope)
+	d.activated = true
 	if act.ReservationId != "" {
 		delete(d.reservations, act.ReservationId)
 	}

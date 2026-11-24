@@ -2107,3 +2107,135 @@ func TestAttachments_StopStartAndForeground_ResumesResendAndReschedulesExpiry(t 
 		t.Fatalf("expected DRAFT_EXPIRY timer rescheduled on FOREGROUND")
 	}
 }
+
+func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	// Take machineA offline before startup scan.
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA, Online: false, MetaRev: 2,
+						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
+					},
+				},
+			},
+		},
+	})
+
+	freshDraft := &corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         h.sessionScope(),
+		Text:          "offline draft",
+		UpdatedMs:     h.nowMs - 60_000,
+		Items: []*corev1.PersistedAttachmentItem{
+			{
+				ItemId:            "saved-1",
+				Kind:              corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_IMAGE,
+				FileName:          "saved.jpg",
+				MimeType:          "image/jpeg",
+				SizeBytes:         4,
+				Sha256:            attTestHash(0xb7),
+				ImageFormat:       v1.ImageFormat_IMAGE_FORMAT_JPEG,
+				HasOriginalSource: true,
+				HasPrepared:       true,
+				SourceRef:         "src-saved-1",
+				PreparedRef:       "prep-saved-1",
+			},
+		},
+	}
+	stale7DayDraft := &corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: "s-stale-7d"},
+		Text:          "ancient draft",
+		UpdatedMs:     h.nowMs - attachments.DraftIdleExpiryMs - 1000,
+	}
+	rawFresh, _ := attachments.EncodePersistedDraft(freshDraft)
+	rawStale, _ := attachments.EncodePersistedDraft(stale7DayDraft)
+
+	cfgEff := h.dispatch(&corev1.Event{Event: &corev1.Event_AttachmentConfig{AttachmentConfig: &corev1.AttachmentConfigEvent{PersistDrafts: true, PersistOutbox: true, ScanStorage: true}}})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	scanEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, Key: "session:" + h.sessionID, Data: rawFresh},
+					{Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, Key: "session:s-stale-7d", Data: rawStale},
+				},
+				LocalRefs: []string{"src-saved-1", "prep-saved-1", "orphan-disk-ref"},
+			},
+		},
+	})
+
+	// 1. Unopened session MUST NOT emit PrepareImage, BeginImageUpload, or a 30s reconnect timer on scan!
+	if len(findPrepareEffects(scanEff)) != 0 || len(findDispatchedCmds(scanEff)) != 0 || len(findTimers(scanEff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT)) != 0 {
+		t.Fatalf("unopened session must only hydrate on scan without preparing/uploading/timing out")
+	}
+	// 2. 7-day idle draft deleted on scan!
+	var deletedStale bool
+	for _, d := range findDraftDeleteEffects(scanEff) {
+		if d.Key == "session:s-stale-7d" {
+			deletedStale = true
+		}
+	}
+	if !deletedStale {
+		t.Fatalf("expected 7-day idle draft deleted on scan")
+	}
+	// 3. Orphan local ref released via AttachmentReleaseLocalEffect, while referenced refs are kept!
+	var releasedOrphan, releasedLive bool
+	for _, rel := range findReleaseLocalEffects(scanEff) {
+		for _, r := range rel.Refs {
+			if r == "orphan-disk-ref" {
+				releasedOrphan = true
+			}
+			if r == "src-saved-1" || r == "prep-saved-1" {
+				releasedLive = true
+			}
+		}
+	}
+	if !releasedOrphan || releasedLive {
+		t.Fatalf("expected only orphan-disk-ref released; releasedOrphan=%v releasedLive=%v", releasedOrphan, releasedLive)
+	}
+
+	// 4. Open draft while offline -> item parks waiting online with NO 30s timeout timer; stays non-FAILED even after 60s!
+	openEff := h.dispatch(&corev1.Event{Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: h.sessionScope()}}})
+	if len(findTimers(openEff, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT)) != 0 {
+		t.Fatalf("not-yet-started upload while offline must NOT schedule 30s reconnect failure timer")
+	}
+	h.advance(60_000)
+	if st := h.draftView(h.sessionScope()).Images[0].State; st == corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_FAILED {
+		t.Fatalf("cold-start offline draft item must NOT turn FAILED after 60s")
+	}
+
+	// 5. Machine comes online -> item immediately begins uploading!
+	onlineEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_StreamFrame{
+			StreamFrame: &corev1.StreamFrameEvent{
+				LegId: 1,
+				Frame: &corev1.StreamFrameEvent_MachineUpdated{
+					MachineUpdated: &corev1.PlainMachine{
+						MachineId: h.machineA, Online: true, MetaRev: 3,
+						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
+					},
+				},
+			},
+		},
+	})
+	var sawBegin bool
+	for _, sc := range findDispatchedCmds(onlineEff) {
+		if sc.cmd.GetBeginImageUpload() != nil {
+			sawBegin = true
+		}
+	}
+	if !sawBegin {
+		t.Fatalf("expected offline-parked draft item to start BeginImageUpload when machine comes online")
+	}
+}

@@ -220,23 +220,15 @@ func (c *Core) startItemPipeline(
 
 	// Validate capability for files up front if machine is known.
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_FILE && machineID != "" {
-		caps, onlineReady := c.resolveAttachmentCaps(machineID, false)
+		caps, _ := c.resolveAttachmentCaps(machineID, false)
 		if caps.CapabilitiesLoaded && !caps.SupportsFiles {
 			c.failItem(ctx, ownerKind, ownerKey, it, nil, text.Msg(text.KeyAttachmentUpdateRequired), effects)
 			return
 		}
-		if !onlineReady {
-			// Wait until machine comes online; keep in PREPARING/WAITING_RECONNECT if already hashed.
-			if len(it.sha256) == 32 {
-				it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT
-				it.phase = attPhaseWaitingReconnect
-				it.reconnectDeadlineMonoMs = c.m.sync.MonoMs() + attachments.UploadReconnectWindowMs
-				it.reconnectNotBeforeMs = c.m.sync.MonoMs()
-				if ctx != nil {
-					c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(ownerKind, ownerKey, it.id), attachments.UploadReconnectWindowMs)
-				}
-				return
-			}
+		if !c.uploadNetworkReady(machineID) && len(it.sha256) == 32 {
+			// Offline before upload started: wait indefinitely until machine comes online (no 30s timeout!).
+			c.parkItemWaitingOnline(ctx, ownerKind, ownerKey, machineID, it)
+			return
 		}
 	}
 
@@ -293,7 +285,7 @@ func (c *Core) enqueueOrStartUpload(
 	if machineID == "" {
 		return
 	}
-	caps, onlineReady := c.resolveAttachmentCaps(machineID, false)
+	caps, _ := c.resolveAttachmentCaps(machineID, false)
 	if it.kind == corev1.AttachmentItemKind_ATTACHMENT_ITEM_KIND_FILE && caps.CapabilitiesLoaded && !caps.SupportsFiles {
 		c.failItem(ctx, ownerKind, ownerKey, it, nil, text.Msg(text.KeyAttachmentUpdateRequired), effects)
 		return
@@ -302,16 +294,8 @@ func (c *Core) enqueueOrStartUpload(
 		c.failItem(ctx, ownerKind, ownerKey, it, attachments.BuildImageProblem(corev1.ImageProblemKind_IMAGE_PROBLEM_KIND_PROCESSING_FAILED), nil, effects)
 		return
 	}
-	if !onlineReady {
-		it.targetMachineID = machineID
-		it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT
-		it.phase = attPhaseWaitingReconnect
-		nowMono := c.m.sync.MonoMs()
-		it.reconnectDeadlineMonoMs = nowMono + attachments.UploadReconnectWindowMs
-		it.reconnectNotBeforeMs = nowMono
-		if ctx != nil {
-			c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(ownerKind, ownerKey, it.id), attachments.UploadReconnectWindowMs)
-		}
+	if !c.uploadNetworkReady(machineID) {
+		c.parkItemWaitingOnline(ctx, ownerKind, ownerKey, machineID, it)
 		return
 	}
 
@@ -331,6 +315,29 @@ func (c *Core) enqueueOrStartUpload(
 	}
 	// Images upload concurrently.
 	c.beginOrResumeItemUpload(ctx, ownerKind, ownerKey, it, effects)
+}
+
+func (c *Core) parkItemWaitingOnline(ctx *sync.StepContext, ownerKind uint8, ownerKey, machineID string, it *attItem) {
+	if it == nil {
+		return
+	}
+	it.targetMachineID = machineID
+	it.state = corev1.AttachmentItemState_ATTACHMENT_ITEM_STATE_WAITING_RECONNECT
+	// Only an already-started upload uses the 30s reconnect deadline; an upload that has not
+	// started yet waits passively until the computer comes online with no failure timeout.
+	if it.beginDone {
+		it.phase = attPhaseWaitingReconnect
+		nowMono := c.m.sync.MonoMs()
+		it.reconnectDeadlineMonoMs = nowMono + attachments.UploadReconnectWindowMs
+		it.reconnectNotBeforeMs = nowMono
+		if ctx != nil {
+			c.m.sync.ScheduleAppTimer(ctx, corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT, uploadTimerKey(ownerKind, ownerKey, it.id), attachments.UploadReconnectWindowMs)
+		}
+		return
+	}
+	it.phase = attPhaseWaitingOnline
+	it.reconnectDeadlineMonoMs = 0
+	it.reconnectNotBeforeMs = 0
 }
 
 func (c *Core) pumpAttachmentQueues(ctx *sync.StepContext, effects *[]*corev1.Effect) {
@@ -1538,9 +1545,15 @@ func (c *Core) reconcileAttachments(effects *[]*corev1.Effect, dirty *sync.Dirty
 				if it == nil {
 					continue
 				}
-				if it.pausedByStop && netReady {
+				if it.pausedByStop && netReady && d.activated {
 					it.pausedByStop = false
 					it.retriedReconnect = false
+					c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
+					woke = true
+					continue
+				}
+				if it.phase == attPhaseWaitingOnline && netReady && d.activated {
+					it.phase = attPhaseIdle
 					c.startItemPipeline(ctx, attOwnerDraft, d.key, d.scope, machineID, d.original, it, &localEffects)
 					woke = true
 					continue
@@ -1580,6 +1593,11 @@ func (c *Core) reconcileAttachments(effects *[]*corev1.Effect, dirty *sync.Dirty
 				if it.pausedByStop {
 					it.pausedByStop = false
 					it.retriedReconnect = false
+					c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, job.machineID, job.original, it, &localEffects)
+					continue
+				}
+				if it.phase == attPhaseWaitingOnline {
+					it.phase = attPhaseIdle
 					c.startItemPipeline(ctx, attOwnerResend, job.newRequestID, scope, job.machineID, job.original, it, &localEffects)
 					continue
 				}
