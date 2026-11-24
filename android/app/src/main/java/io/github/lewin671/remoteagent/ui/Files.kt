@@ -4,9 +4,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,56 +26,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.lewin671.remoteagent.core.*
-import io.github.lewin671.remoteagent.core.proto.AttachmentEvalScreenRequest
+import io.github.lewin671.remoteagent.core.Remote
+import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.coreTextToMessageText
+import io.github.lewin671.remoteagent.core.draftScopeStorageKey
+import io.github.lewin671.remoteagent.core.proto.AttachmentDraftView
+import io.github.lewin671.remoteagent.core.proto.AttachmentItemState
+import io.github.lewin671.remoteagent.core.proto.DraftScope
 import io.github.lewin671.remoteagent.core.proto.SessionFileRefView
 
 @Composable
 internal fun rememberDocumentPicker(
-    draft: ImageDraft,
+    draft: AttachmentDraftView,
+    scope: DraftScope,
     remote: Remote,
-    machineId: String?,
-    caps: AttachmentCaps,
-    sessionId: String = "",
+    supportsFiles: Boolean,
 ): (() -> Unit)? {
     val copy = uiText()
     val context = LocalContext.current
+    val scopeKey = draftScopeStorageKey(scope)
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) {
-            draft.addPickedCandidates(
-                context = context,
-                uris = uris,
-                remote = remote,
-                machineId = machineId,
-                sessionId = sessionId,
-                caps = caps,
-                forceFile = true,
-            )
+            dispatchPickedUris(context, remote, scope, uris, forceFile = true)
         }
     }
-    if (!caps.supportsFiles) return null
+    if (!supportsFiles) return null
     return {
-        if (!draft.restoring && !draft.readingFiles) {
-            val eval = remote.evaluateAttachments(
-                AttachmentEvalScreenRequest.newBuilder().apply {
-                    if (!machineId.isNullOrEmpty()) setMachineId(machineId)
-                    if (sessionId.isNotEmpty()) setSessionId(sessionId)
-                    setCurrentImages(draft.pictures.size)
-                    setCurrentFiles(draft.documents.size)
-                }.build(),
-            )
-            if (!eval.canPickFiles) {
-                val reason = if (eval.hasFilesPickBlockedReason()) {
-                    coreTextToMessageText(eval.filesPickBlockedReason).resolve(copy)
+        if (!draft.restoring && !draft.hasPendingPicks) {
+            if (!draft.canPickFiles) {
+                val reason = if (draft.hasFilesPickBlockedReason()) {
+                    coreTextToMessageText(draft.filesPickBlockedReason).resolve(copy)
                 } else {
                     ""
                 }
-                if (reason.isNotEmpty()) ImageNotices.show(draft.key, reason)
+                if (reason.isNotEmpty()) DraftUiNotices.show(scopeKey, reason)
             } else {
                 picker.launch(arrayOf("*/*"))
             }
@@ -75,31 +74,43 @@ internal fun rememberDocumentPicker(
 }
 
 /**
- * A file, the same one-line capsule in the box, in a sent message and in a
- * queued one: the file icon, its name (the middle left out, the extension
- * kept), its size and its upload, and × to remove it. No file content is
- * loaded to draw it.
+ * A file capsule in the composer draft or in a sent message: the file icon, its name (the middle
+ * elided with extension preserved), its size and Core-provided status/progress, and optional
+ * pause/resume/retry/remove actions. No file content is loaded to draw it.
  */
 @Composable
 internal fun FileChip(
     name: String,
     sizeText: String,
-    state: PendingImage.State? = null,
+    state: AttachmentItemState? = null,
+    progress: Float = 0f,
+    statusText: String = "",
+    errorText: String = "",
+    onPause: (() -> Unit)? = null,
+    onResume: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
     onRemove: (() -> Unit)? = null,
+    removeContentDescription: String = "",
     nameHead: String = "",
     nameTail: String = "",
 ) {
     val copy = uiText()
     val p = pal
-    // One line is a capsule; once a reason or a large font makes it taller, a card's corners (design-system §5).
     val density = androidx.compose.ui.platform.LocalDensity.current
     var tall by remember { mutableStateOf(false) }
     val nameStyle = T.s15.copy(fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.Medium))
+    val isFailed = state == AttachmentItemState.ATTACHMENT_ITEM_STATE_FAILED
+    val isUploading = state == AttachmentItemState.ATTACHMENT_ITEM_STATE_UPLOADING ||
+        state == AttachmentItemState.ATTACHMENT_ITEM_STATE_WAITING_RECONNECT
+    val hasTrailing = onRemove != null || onRetry != null || onPause != null || onResume != null
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).onSizeChanged { tall = with(density) { it.height.toDp() } > 60.dp }
-            .clip(if (tall) Radii.R20 else Radii.Pill).background(p.fill)
-            .padding(start = 14.dp, end = if (onRemove != null || onRetry != null) 6.dp else 14.dp, top = 6.dp, bottom = 6.dp),
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .onSizeChanged { tall = with(density) { it.height.toDp() } > 60.dp }
+            .clip(if (tall) Radii.R20 else Radii.Pill)
+            .background(p.fill)
+            .padding(start = 14.dp, end = if (hasTrailing) 6.dp else 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -112,28 +123,102 @@ internal fun FileChip(
                     val shown = remember(name, nameHead, nameTail, nameStyle, maxWidthPx) {
                         fitMiddleEllipsizedName(name, nameHead, nameTail, nameStyle, maxWidthPx, 1, measurer)
                     }
-                    Text(shown, maxLines = 1, overflow = TextOverflow.Ellipsis, style = nameStyle, color = p.ink, modifier = Modifier.semantics { contentDescription = name })
+                    Text(
+                        shown,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = nameStyle,
+                        color = p.ink,
+                        modifier = Modifier.semantics { contentDescription = name },
+                    )
                 }
             } else {
-                Text(name, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, style = nameStyle, color = p.ink, modifier = Modifier.semantics { contentDescription = name })
+                Text(
+                    name,
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                    style = nameStyle,
+                    color = p.ink,
+                    modifier = Modifier.semantics { contentDescription = name },
+                )
             }
-            val status = when (state) {
-                PendingImage.State.Processing -> copy(UiMessages.attachmentAndroidPreparingMeta())
-                is PendingImage.State.Uploading -> copy(UiMessages.attachmentAndroidUploadMeta(percent = ((state.progress * 100).toInt()).toString()))
-                is PendingImage.State.Failed -> copy(UiMessages.attachmentAndroidFailedMeta())
+            val meta = when {
+                sizeText.isNotEmpty() && statusText.isNotEmpty() && state != AttachmentItemState.ATTACHMENT_ITEM_STATE_READY ->
+                    "$sizeText · $statusText"
+                sizeText.isNotEmpty() -> sizeText
+                statusText.isNotEmpty() && state != AttachmentItemState.ATTACHMENT_ITEM_STATE_READY -> statusText
                 else -> ""
             }
-            Text(sizeText + status, style = T.s13, color = if (state is PendingImage.State.Failed) p.red else p.ink2)
-            if (state is PendingImage.State.Uploading) Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(Radii.Pill).background(p.fill2)) {
-                Box(Modifier.fillMaxWidth(state.progress).height(3.dp).clip(Radii.Pill).background(p.ink))
+            if (meta.isNotEmpty()) {
+                Text(meta, style = T.s13, color = if (isFailed) p.red else p.ink2)
             }
-            if (state is PendingImage.State.Failed) Text(uiText(state.error), style = T.s13, color = p.red)
+            if (isUploading) {
+                Box(
+                    Modifier
+                        .padding(top = 5.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .clip(Radii.Pill)
+                        .background(p.fill2),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .height(3.dp)
+                            .clip(Radii.Pill)
+                            .background(p.ink),
+                    )
+                }
+            }
+            if (isFailed && errorText.isNotEmpty() && errorText != statusText) {
+                Text(errorText, style = T.s13, color = p.red)
+            }
         }
-        if (state is PendingImage.State.Failed && onRetry != null) Box(Modifier.heightIn(min = 44.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRetry).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
-            Text(copy(UiMessages.commonRetry()), style = T.s15b, color = p.ink)
+        if (onPause != null) {
+            Box(
+                Modifier
+                    .heightIn(min = 44.dp)
+                    .clickable(role = Role.Button, onClick = onPause)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(copy(UiMessages.schedulePause()), style = T.s15b, color = p.ink2)
+            }
         }
-        if (onRemove != null) Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRemove).semantics { contentDescription = copy(UiMessages.attachmentRemoveFile(name = name)) }, contentAlignment = Alignment.Center) {
-            Ic(Lucide.X, 18.dp, p.ink2)
+        if (onResume != null) {
+            Box(
+                Modifier
+                    .heightIn(min = 44.dp)
+                    .clickable(role = Role.Button, onClick = onResume)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(copy(UiMessages.scheduleResume()), style = T.s15b, color = p.ink)
+            }
+        }
+        if (isFailed && onRetry != null) {
+            Box(
+                Modifier
+                    .heightIn(min = 44.dp)
+                    .clickable(role = Role.Button, onClick = onRetry)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(copy(UiMessages.commonRetry()), style = T.s15b, color = p.ink)
+            }
+        }
+        if (onRemove != null) {
+            val a11y = removeContentDescription.ifEmpty { copy(UiMessages.attachmentRemoveFile(name = name)) }
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onRemove)
+                    .semantics { contentDescription = a11y },
+                contentAlignment = Alignment.Center,
+            ) {
+                Ic(Lucide.X, 18.dp, p.ink2)
+            }
         }
     }
 }
@@ -152,45 +237,53 @@ internal fun FileChips(files: List<SessionFileRefView>) {
     }
 }
 
-/** The files in the box, apart from videos from the library, which sit among the images ([ImageStrip]). */
+/** Non-video draft files in the composer box, rendered purely from Core's [AttachmentDraftView]. */
 @Composable
 internal fun FileStrip(
-    draft: ImageDraft,
+    draft: AttachmentDraftView,
+    scope: DraftScope,
     remote: Remote,
-    machineId: String?,
-    caps: AttachmentCaps? = null,
-    docMetaById: Map<String, EvaluatedDocumentMeta>? = null,
-    sessionId: String = "",
 ) {
     val copy = uiText()
-    if (draft.readingFiles) Text(copy(UiMessages.attachmentAndroidReadingFiles()), style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-    val metaById = docMetaById ?: rememberEvaluatedDocuments(draft, remote, machineId)
-    val files = draft.documents.filterNot { metaById[it.id]?.isVideo == true }
-    androidx.compose.runtime.LaunchedEffect(draft, remote, machineId, sessionId, caps) {
-        if (caps == null) draft.refreshCaps(remote, machineId, sessionId)
+    if (draft.hasPendingPicks) {
+        Text(
+            copy(UiMessages.attachmentAndroidReadingFiles()),
+            style = T.s13,
+            color = pal.ink2,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
     }
-    val effectiveCaps = caps ?: draft.cachedCaps
-    val blocked = rememberDraftAttachmentsBlocked(
-        draft = draft,
-        remote = remote,
-        machineId = machineId,
-        sessionId = sessionId,
-        caps = effectiveCaps,
-        checkPictures = !machineId.isNullOrEmpty(),
-    )
+    val files = draft.filesList.filterNot { it.isVideo }
+    val blocked = if (draft.hasSendBlockedReason() && draft.filesCount > 0) {
+        uiText(draft.sendBlockedReason).ifEmpty { null }
+    } else {
+        null
+    }
     if (files.isEmpty() && blocked == null) return
-    val metadataNotice = effectiveCaps?.fileMetadataNotice?.let { uiText(it) }.orEmpty()
+    val metadataNotice = if (draft.hasFileMetadataNotice()) uiText(draft.fileMetadataNotice) else ""
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        blocked?.let { Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp)) }
-        files.forEach { file ->
+        blocked?.let {
+            Text(it, style = T.s13, color = pal.red, modifier = Modifier.padding(horizontal = 8.dp))
+        }
+        files.forEach { item ->
             FileChip(
-                name = file.fileName!!,
-                sizeText = metaById[file.id]?.formattedSize ?: file.formattedSize,
-                state = file.state,
-                onRetry = { machineId?.let { draft.upload(remote, file, it, forceFresh = true, caps = effectiveCaps) } },
-                onRemove = { draft.remove(file) },
+                name = item.displayName,
+                sizeText = if (item.hasSizeText()) uiText(item.sizeText) else "",
+                state = item.state,
+                progress = item.progress.toFloat(),
+                statusText = if (item.hasStatusText()) uiText(item.statusText) else "",
+                errorText = if (item.hasFileErrorText()) uiText(item.fileErrorText) else "",
+                onPause = if (item.canPause) ({ remote.pauseAttachmentUpload(scope, item.itemId) }) else null,
+                onResume = if (item.canResume) ({ remote.resumeAttachmentUpload(scope, item.itemId) }) else null,
+                onRetry = if (item.canRetry) ({ remote.retryDraftItem(scope, item.itemId) }) else null,
+                onRemove = if (item.canRemove) ({ remote.removeDraftItem(scope, item.itemId) }) else null,
+                removeContentDescription = if (item.hasRemoveA11Y()) uiText(item.removeA11Y) else "",
+                nameHead = item.nameHead,
+                nameTail = item.nameTail,
             )
         }
-        if (files.isNotEmpty() && metadataNotice.isNotEmpty()) Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        if (files.isNotEmpty() && metadataNotice.isNotEmpty()) {
+            Text(metadataNotice, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        }
     }
 }

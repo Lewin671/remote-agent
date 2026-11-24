@@ -24,8 +24,7 @@ class RaAppTestRule(
             // key. Robolectric has no AndroidKeyStore provider; its absence is
             // not a disk failure or a composer error in these UI scenarios.
             val key = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
-            app.pendingStore.javaClass.getDeclaredField("cachedKey").apply { isAccessible = true }
-                .set(app.pendingStore, key)
+            app.attachments.setKeyForTest(key)
         }
     }
 

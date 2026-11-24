@@ -249,11 +249,6 @@ class MainActivity : ComponentActivity() {
             val route = entry?.destination?.route
             LaunchedEffect(remote) {
                 launch {
-                    remote.coreHost.attachmentsSettledEvents.collect { settled ->
-                        io.github.lewin671.remoteagent.ui.settleNewSessionStart(settled)
-                    }
-                }
-                launch {
                     remote.coreHost.prepareCleanupEvents.collect { eff ->
                         val key = eff.prompt.takeIf { it.isNotEmpty() }?.let { io.github.lewin671.remoteagent.core.uiMessage(it) }
                             ?: io.github.lewin671.remoteagent.core.UiMessages.machineStatusCleanupPrompt()
@@ -262,8 +257,10 @@ class MainActivity : ComponentActivity() {
                             io.github.lewin671.remoteagent.ui.CleanupDraft.hold(eff.machineId, prompt)
                             actions.newProject()
                         } else {
-                            val draft = io.github.lewin671.remoteagent.ui.ImageDrafts.forProject(eff.projectKey).text
-                            draft.value = io.github.lewin671.remoteagent.ui.cleanupDraftText(draft.value, prompt)
+                            val scope = io.github.lewin671.remoteagent.core.newSessionDraftScope(eff.projectKey)
+                            remote.openDraft(scope, eff.machineId)
+                            val cur = remote.coreHost.snapshotAttachmentDraft(scope).text
+                            remote.setDraftText(scope, io.github.lewin671.remoteagent.ui.cleanupDraftText(cur, prompt))
                             remote.coreHost.openNewSession(eff.projectKey)
                             remote.coreHost.selectNewSessionMachine(eff.machineId)
                             actions.projectNew(eff.projectKey)

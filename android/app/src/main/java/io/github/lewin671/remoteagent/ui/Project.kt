@@ -65,8 +65,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
 }
 
 /**
- * The new-session composer and notice column driven directly by Core's [NewSessionViewModel].
- * Preserves local attachment freezing & idempotent retry in [Starts] for image/file IDs.
+ * The new-session composer and notice column driven directly by Core's [NewSessionViewModel]
+ * and its embedded [AttachmentDraftView].
  */
 @Composable
 fun NewSessionBox(
@@ -82,58 +82,33 @@ fun NewSessionBox(
     val key = view.projectKey
     val cfg = view.config
     val machine = cfg.machineId.takeIf { it.isNotEmpty() }
-    val images = ImageDrafts.forProject(key)
-    var text by images.text
+    val scope = remember(key) { newSessionDraftScope(key) }
+    val scopeKey = remember(scope) { draftScopeStorageKey(scope) }
+    val draft = if (view.hasDraft()) view.draft else AttachmentDraftView.getDefaultInstance()
+
+    LaunchedEffect(remote, key, cfg.machineId) {
+        if (key.isNotEmpty()) {
+            remote.openDraft(scope, cfg.machineId)
+        }
+    }
+
+    val (text, onText) = rememberDraftTextState(scopeKey, draft.text, draft.textRevision) { next ->
+        if (key.isNotEmpty()) remote.setDraftText(scope, next)
+    }
     val fr = remember { FocusRequester() }
     var focused by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(focus) { if (focus && !focused) { focused = true; runCatching { fr.requestFocus() } } }
 
-    LaunchedEffect(key, text, images.images.size) {
-        if (key.isNotEmpty()) {
-            remote.coreHost.setNewSessionPrompt(text, images.images.size, attachmentsMoved = false)
-        }
-    }
-
     val copy = uiText()
-    val attachCaps = view.attachmentCaps()
-    val pickState = rememberAttachmentPickState(remote, machine, "", images.pictures.size, images.documents.size, attachCaps)
-    RefreshDraftUploads(images, remote, machine, attachCaps)
-    val pick = rememberImagePicker(images, remote, machine, attachCaps)
-    val draftBlocked = rememberDraftAttachmentsBlocked(images, remote, machine, "", attachCaps)
-
-    val uploadsReady =
-        !images.restoring &&
-            !images.readingFiles &&
-            draftBlocked == null &&
-            (machine == null || images.images.all { it.readyFor(machine) })
-    val canStart = view.canStart && uploadsReady
+    val pick = rememberImagePicker(draft, scope, remote)
+    val docPicker = rememberDocumentPicker(draft, scope, remote, supportsFiles = view.supportsFiles)
+    val canStart = view.canStart && draft.canSend
 
     fun start() {
-        val currentBlocked = evaluateDraftAttachmentsBlocked(remote, machine, "", images.documents, images.pictures, copy = copy)
-        if (currentBlocked != null) {
-            images.notice = currentBlocked
-            return
-        }
-        if (machine != null && attachCaps.canUploadAnything) images.sendAllTo(remote, machine, attachCaps)
         if (!canStart) return
-        val st = Starts.of(key)
-        val cfgKey = Triple(cfg.machineId, cfg.agent.number, "${cfg.model}/${cfg.effort}/${cfg.standardContext}")
-        if (st.frozen && !st.same(text.trim(), cfgKey, images.images)) {
-            st.taken.forEach { it.allowAbort(st.transferOwner) }
-            st.taken = emptyList()
-            st.frozen = false
-        }
-        if (!st.frozen) {
-            st.prompt = text.trim()
-            st.configKey = cfgKey
-            st.taken = images.images.filter { it.readyFor(cfg.machineId) }
-            st.frozen = true
-        }
         remote.coreHost.submitNewSession(
             projectKey = key,
             autoModeSupported = true,
-            imageIds = st.imageIds,
-            fileIds = st.fileIds,
         )
     }
 
@@ -227,20 +202,20 @@ fun NewSessionBox(
         }
 
         ComposeBox(
-            text, { text = it },
+            text, onText,
             modifier = Modifier.onGloballyPositioned { picker.composer = it.boundsInWindow() }.testTag("new-composer"),
             placeholder = uiText(UiMessages.newSessionPrompt()),
             canSend = canStart,
             onSend = { start() },
             onPlus = pick,
-            onPlusBlocked = if (!images.restoring) ({ showAttachmentBlockedNotice(images, remote, machine, copy = copy) }) else null,
-            onFile = rememberDocumentPicker(images, remote, machine, attachCaps),
-            fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
-            plusEnabled = !images.restoring && pickState.canPickAny,
+            onPlusBlocked = if (!draft.restoring) ({ showAttachmentBlockedNotice(draft, scope, copy = copy) }) else null,
+            onFile = docPicker,
+            fileMetadataNotice = if (draft.hasFileMetadataNotice()) uiText(draft.fileMetadataNotice) else "",
+            plusEnabled = !draft.restoring && (draft.canPickGallery || draft.canPickFiles),
             sendLabel = uiText(UiMessages.newSessionAndroidStart()),
             focusRequester = fr,
-            hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
-            top = { ImageStrip(images, remote, machine, attachCaps.maxImages, attachCaps) },
+            hasDraft = text.isNotBlank() || draft.itemsCount > 0,
+            top = { AttachmentDraftStrip(draft = draft, scope = scope, remote = remote) },
             tools = {
                 NewTaskTools(
                     view = view,
@@ -801,9 +776,11 @@ fun NewProjectAtScreen(machine: String, path: String) {
         remote.coreHost.addProject(path)
         remote.coreHost.openNewSession(path)
         remote.coreHost.selectNewSessionMachine(machine)
-        CleanupDraft.take(machine)?.let {
-            val draft = ImageDrafts.forProject(path).text
-            draft.value = cleanupDraftText(draft.value, it)
+        val scope = newSessionDraftScope(path)
+        remote.openDraft(scope, machine)
+        CleanupDraft.take(machine)?.let { prompt ->
+            val currentText = remote.coreHost.snapshotAttachmentDraft(scope).text
+            remote.setDraftText(scope, cleanupDraftText(currentText, prompt))
         }
     }
     val view by remote.newSessionView.collectAsState()
@@ -811,58 +788,4 @@ fun NewProjectAtScreen(machine: String, path: String) {
     Column(Modifier.fillMaxSize().background(pal.paper)) {
         NewSessionBox(view = view, state = state, focus = true)
     }
-}
-
-/** New-session starts per project for this run of the app: holds frozen attachments for unknown outcomes. */
-object Starts {
-    class Start {
-        var frozen = false
-        var prompt = ""
-        var configKey: Triple<String, Int, String>? = null
-        var imageIds: List<String> = emptyList()
-            private set
-        var fileIds: List<String> = emptyList()
-            private set
-        internal var transferOwner: Any = Any()
-            private set
-        private var preparedImages: List<Processed?> = emptyList()
-        var taken: List<PendingImage> = emptyList()
-            set(value) {
-                field = value
-                transferOwner = Any()
-                value.forEach { it.protectTransfer(transferOwner) }
-                imageIds = value.filterNot { it.isFile }.mapNotNull { it.imageId }
-                fileIds = value.filter { it.isFile }.mapNotNull { it.fileId }
-                preparedImages = value.map { it.processed }
-            }
-
-        fun same(prompt: String, cfgKey: Triple<String, Int, String>, images: List<PendingImage>): Boolean =
-            prompt == this.prompt && cfgKey == configKey && images.map { it.id } == taken.map { it.id } &&
-                images.map { it.processed } == preparedImages
-    }
-
-    private val byProject = HashMap<String, Start>()
-
-    fun of(project: String): Start = byProject.getOrPut(project) { Start() }
-
-    fun clear() = byProject.clear()
-}
-
-internal fun settleNewSessionStart(settled: io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect) {
-    val key = settled.projectKey
-    if (key.isEmpty()) return
-    val images = ImageDrafts.forProject(key)
-    val st = Starts.of(key)
-    val taken = st.taken
-    if (settled.consumed) {
-        images.detach(taken)
-        taken.forEach { it.release(abort = false) }
-        images.whenRestored {
-            if (images.text.value.trim() == st.prompt) images.text.value = ""
-        }
-    } else {
-        taken.forEach { it.allowAbort(st.transferOwner) }
-    }
-    st.taken = emptyList()
-    st.frozen = false
 }

@@ -88,7 +88,7 @@ class RaApp : Application() {
     val db: CacheDb by lazy { CacheDb.open(this) }
     val eventAccess by lazy { io.github.lewin671.remoteagent.data.EventAccess(this) }
     val http: OkHttpClient by lazy { Api.defaultHttp() }
-    val pendingStore by lazy { io.github.lewin671.remoteagent.data.PendingStore(this) }
+    val attachments by lazy { io.github.lewin671.remoteagent.data.AttachmentManager(this) { _remote.value } }
     val imageEnvelopes by lazy { io.github.lewin671.remoteagent.data.ImageEnvelopes(this) }
     val sharedFiles by lazy { io.github.lewin671.remoteagent.data.SharedFileManager(this) { _remote.value } }
 
@@ -156,7 +156,6 @@ class RaApp : Application() {
         // Images shared last time have reached the other app by now.
         scope.launch(Dispatchers.IO) {
             java.io.File(cacheDir, io.github.lewin671.remoteagent.ui.SHARED_DIR).deleteRecursively()
-            pendingStore.expire()
         }
         ProcessLifecycleOwner.get()
             .lifecycle
@@ -269,7 +268,7 @@ class RaApp : Application() {
         runCatching { db.clearAllTables() }
         runCatching { eventAccess.clear() }
         runCatching { imageEnvelopes.clear() }
-        runCatching { pendingStore.clearAll() }
+        runCatching { attachments.clearAllOnDiskAsync() }
         runCatching { sharedFiles.clearAllOnDiskAsync() }
         runCatching { directPrefs.clear() }
         runCatching { io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp) }
@@ -376,23 +375,14 @@ class RaApp : Application() {
         _retainedDenied.value = false
         // Local drafts and pending sends belong to this account.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
-        val localFiles = pendingStore.scoped()
-        val accountToken = AccountMemory.token
         val r =
             Remote(
                 acct,
                 http,
                 RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes, reclaim = cacheDb::reclaimSpace),
                 onSessionRemoved = { sid ->
-                    withContext(Dispatchers.Main.immediate) {
-                        if (accountToken === AccountMemory.token) {
-                            io.github.lewin671.remoteagent.ui.ImageDrafts.forgetSession(sid)
-                            io.github.lewin671.remoteagent.ui.Outbox.forgetSession(sid)
-                        }
-                    }
                     withContext(Dispatchers.IO) {
-                        localFiles.clearFolder("session:$sid")
-                        io.github.lewin671.remoteagent.ui.OutgoingRecords(localFiles).removeSession(sid)
+                        attachments.forgetSession(sid)
                         sharedFiles.forgetSession(sid)
                     }
                 },
@@ -461,6 +451,7 @@ class RaApp : Application() {
         r.uiMessageResolver = { msg -> io.github.lewin671.remoteagent.ui.sessionText(msg) }
         io.github.lewin671.remoteagent.ui.ViewerImages.use(r)
         io.github.lewin671.remoteagent.ui.SettingsExecutor.attach(this@RaApp, r)
+        attachments.attachRemote(r)
         sharedFiles.attachRemote(r)
         attachNetwork(r)
         Push.open()
@@ -539,12 +530,12 @@ class RaApp : Application() {
                 pairings.clear()
                 pairingScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
                 Push.close()
-                pendingStore.invalidate()
                 AccountMemory.clear()
                 io.github.lewin671.remoteagent.ui.SettingsExecutor.detach()
                 io.github.lewin671.remoteagent.ui.HomeScopes.clear(this@RaApp)
                 getSystemService(NotificationManager::class.java).cancelAll()
                 leaving?.let { Push.unregister(it) }
+                leaving?.clearAllDrafts()
                 leaving?.clearAllSharedFiles()
                 leaving?.close()
                 try {
@@ -554,7 +545,7 @@ class RaApp : Application() {
                             { db.clearAllTables() },
                             { eventAccess.clear() },
                             { imageEnvelopes.clear() },
-                            { pendingStore.clearAll() },
+                            { attachments.clearAllOnDisk() },
                             { sharedFiles.clearAllOnDisk() },
                             { contentResolver.persistedUriPermissions.forEach { permission ->
                                 runCatching { contentResolver.releasePersistableUriPermission(permission.uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -584,5 +575,8 @@ class RaApp : Application() {
 
         /** The app's scope, or null outside the app (JVM tests). */
         fun scopeOrNull(): CoroutineScope? = if (::instance.isInitialized) instance.scope else null
+
+        /** The app instance, or null outside the app (pure JVM tests). */
+        fun instanceOrNull(): RaApp? = if (::instance.isInitialized) instance else null
     }
 }

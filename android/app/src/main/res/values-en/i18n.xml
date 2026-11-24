@@ -30,15 +30,7 @@
     <string name="approval_timeout_note">"%1$s; deny on timeout"</string>
     <string name="approval_title" formatted="false">"Approval"</string>
     <string name="approval_truncated" formatted="false">"Content truncated; view in terminal"</string>
-    <string name="attachment_android_choose_computer" formatted="false">"Select a computer first"</string>
-    <string name="attachment_android_failed_meta" formatted="false">" · Upload failed"</string>
-    <string name="attachment_android_not_saved" formatted="false">"Attachments were not saved to the phone. Check free space. You can still send them now, but they may be lost when the app closes"</string>
-    <string name="attachment_android_permission_temporary" formatted="false">"Read permission for this file cannot be kept. You may need to select it again after the app restarts"</string>
-    <string name="attachment_android_preparing_meta" formatted="false">" · Preparing"</string>
     <string name="attachment_android_reading_files" formatted="false">"Reading selected files…"</string>
-    <string name="attachment_android_source_unreadable" formatted="false">"Could not read the source file. Select it again"</string>
-    <string name="attachment_android_upload_meta">" · Uploading %1$s%%"</string>
-    <string name="attachment_android_upload_required" formatted="false">"Attachments need to be uploaded to the computer again. Wait for upload to finish before sending"</string>
     <string name="attachment_choose_computer" formatted="false">"Select a computer first"</string>
     <string name="attachment_computer_offline">"%1$s is offline. Reconnect to add images."</string>
     <string name="attachment_computer_offline_files">"%1$s is offline. Reconnect to add files."</string>
@@ -92,12 +84,10 @@
     <string name="attachment_uploading" formatted="false">"Uploading"</string>
     <string name="attachment_zip_folder" formatted="false">"Folders cannot be sent directly. Compress the folder as a ZIP, then select the file."</string>
     <string name="common_all_projects_avatar" formatted="false">"All"</string>
-    <string name="common_android_account_signed_out" formatted="false">"Account signed out"</string>
     <string name="common_android_allow_camera_access" formatted="false">"Allow camera access"</string>
     <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"Camera access is needed to scan. You can also go back and enter the pairing code."</string>
     <string name="common_android_cannot_find_this_session" formatted="false">"Cannot find this session"</string>
     <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"Could not clear the account and cache on this phone. Retry"</string>
-    <string name="common_android_could_not_save_pending_images" formatted="false">"Could not save pending images"</string>
     <string name="common_android_more" formatted="false">"More"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account."</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"This app version is old. Update and retry"</string>
@@ -128,7 +118,6 @@
     <string name="common_saving" formatted="false">"Saving…"</string>
     <string name="common_settings" formatted="false">"Settings"</string>
     <string name="common_unknown_computer" formatted="false">"Unknown computer"</string>
-    <string name="composer_android_not_sent">"This message was not sent: %1$s"</string>
     <string name="composer_android_unknown_reason" formatted="false">"Unknown reason"</string>
     <string name="composer_answer_first_placeholder" formatted="false">"Seen after you answer"</string>
     <string name="composer_computer_restarted" formatted="false">"remote-agent on the computer restarted while writing"</string>
@@ -238,14 +227,8 @@
     <string name="dock_submitting" formatted="false">"Submitting…"</string>
     <string name="dock_trust_folder" formatted="false">"No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"Waiting for confirmation"</string>
-    <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"Attachment transfer content changed. Retry"</string>
-    <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"Attachment transfer stopped or changed. Retry"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"Cannot find the server. Check your network"</string>
     <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"Cannot open the computer\'s reply. Command outcome unknown"</string>
-    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"Cannot read the source file. Remove it and select the file again"</string>
-    <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"File name is too long or empty. Rename the file and select it again"</string>
-    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"File too large. Maximum size per file: %1$s"</string>
-    <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"File verification failed. Retry or select the file again"</string>
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
     <string name="errors_android_login_expired">"Login expired: %1$s"</string>
@@ -259,14 +242,9 @@
     <string name="errors_android_terminal_connection_dropped_reason">"Terminal connection dropped: %1$s"</string>
     <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"Terminal input paused while waiting for authorization"</string>
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"Terminal output backlog. Reception stopped"</string>
-    <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"The computer did not return a file ID"</string>
-    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"The computer returned invalid file progress"</string>
-    <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"The file changed during upload. Retry or select the file again"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"The phone clock is ahead of the server. Remote control is paused. Correct the system time"</string>
     <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"This command expired and was not sent"</string>
-    <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"Upload connection interrupted. Retry"</string>
-    <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s; the previous outcome is still unknown. Retry the same request once support is restored"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
     <string name="errors_client_out_of_date" formatted="false">"This client version is out of date. Update and retry."</string>
     <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
@@ -429,49 +407,25 @@
     </plurals>
     <string name="image_add" formatted="false">"Add image"</string>
     <string name="image_android_cannot_decode_image" formatted="false">"Cannot decode image"</string>
-    <string name="image_android_cannot_decode_this_image" formatted="false">"Cannot decode this image"</string>
-    <string name="image_android_cannot_read_this_image" formatted="false">"Cannot read this image"</string>
-    <string name="image_android_converted_to_value1_keeping_original_dimensions">"Converted to %1$s, keeping original dimensions"</string>
     <string name="image_android_could_not_save_image_cache" formatted="false">"Could not save image cache"</string>
     <string name="image_android_download_retry">"Could not download: %1$s · Tap to retry"</string>
     <string name="image_android_empty" formatted="false">"No images"</string>
-    <string name="image_android_file_upload_unavailable" formatted="false">"File upload unavailable"</string>
     <string name="image_android_generated_size">"Generated image%1$s"</string>
     <string name="image_android_gif_contains_an_unrecognized_block" formatted="false">"GIF contains an unrecognized block"</string>
     <string name="image_android_gif_is_truncated" formatted="false">"GIF is truncated"</string>
-    <string name="image_android_image_exceeds_value1_mb">"Image exceeds %1$s MB"</string>
     <string name="image_android_image_has_no_dimensions" formatted="false">"Image has no dimensions"</string>
     <string name="image_android_name_only" formatted="false">"Image not synced: filename only; the original is on the computer"</string>
     <string name="image_android_no_preview" formatted="false">"No preview"</string>
-    <string name="image_android_original_exceeds_20_mb" formatted="false">"Original exceeds 20 MB"</string>
     <string name="image_android_original_meta" formatted="false">" Original"</string>
-    <string name="image_android_phone_storage_for_pending_images_is_full_send_or_remove" formatted="false">"Phone storage for pending images is full. Send or remove old drafts"</string>
     <string name="image_android_photo_library_is_not_writable" formatted="false">"Photo library is not writable"</string>
-    <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"; pixel count exceeds this phone\'s limit; scaled down to 1/%1$s"</string>
-    <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"Reprocess or select the image again"</string>
-    <string name="image_android_reprocess_using_the_current_mode" formatted="false">"Reprocess using the current mode"</string>
-    <string name="image_android_restore_retry" formatted="false">"Pending images could not be restored. You can still type; retry on the next edit or return to the composer"</string>
-    <string name="image_android_restore_wait" formatted="false">"Restoring pending images; wait before returning them to the composer"</string>
     <string name="image_android_restoring" formatted="false">"Restoring pending images…"</string>
-    <string name="image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" formatted="false">"Rotate to the capture orientation and re-encode at maximum quality"</string>
     <string name="image_android_save_permission" formatted="false">"Could not save without storage permission"</string>
     <string name="image_android_saved" formatted="false">"Saved to photos"</string>
     <string name="image_android_share_title" formatted="false">"Share image"</string>
-    <string name="image_android_the_computer_did_not_provide_an_image_id" formatted="false">"The computer did not provide an image ID"</string>
-    <string name="image_android_the_computer_has_not_confirmed_the_attachment_upload_retry" formatted="false">"The computer has not confirmed the attachment upload. Retry"</string>
-    <string name="image_android_this_image_has_no_local_copy_available_for_reprocessing_remove" formatted="false">"This image has no local copy available for reprocessing. Remove it and select it again"</string>
-    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"This image has no local copy. Remove it and select it again"</string>
-    <string name="image_android_this_image_is_too_large_for_the_phone_s_available" formatted="false">"This image is too large for the phone\'s available memory"</string>
-    <string name="image_android_this_phone_cannot_read_this_image_format" formatted="false">"This phone cannot read this image format"</string>
-    <string name="image_android_total_size">" · %1$s MB total"</string>
     <string name="image_android_unreadable_gif" formatted="false">"Unreadable GIF"</string>
     <string name="image_android_unreadable_jpeg" formatted="false">"Unreadable JPEG"</string>
     <string name="image_android_unreadable_png" formatted="false">"Unreadable PNG"</string>
     <string name="image_android_unreadable_webp" formatted="false">"Unreadable WebP"</string>
-    <string name="image_android_unsupported_image_format" formatted="false">"Unsupported image format"</string>
-    <string name="image_android_upload_progress">"Uploading to computer, %1$s%%"</string>
-    <string name="image_android_upload_to_the_computer_again" formatted="false">"Upload to the computer again"</string>
-    <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"Upload to the computer again. If the source cannot be read, select the file again"</string>
     <string name="image_android_verify_failed">"Image verification failed: %1$s"</string>
     <plurals name="image_attach_failed">
         <item quantity="one">"%1$d image could not be attached. Tap it for details."</item>

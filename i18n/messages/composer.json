@@ -1,24 +1,5 @@
 [
   {
-    "en": "This message was not sent: {reason}",
-    "key": "composer.android_not_sent",
-    "notes": "Android 批次 B：Session.kt 的现有显示文案，保留原中文措辞与标点。参数：reason 为显示值/原始内容，不翻译用户或 CLI 内容。短标签保持紧凑；说明正文可多行。英文初稿待审。",
-    "params": {
-      "reason": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "没发出去：{reason}"
-  },
-  {
     "en": "Seen after you answer",
     "key": "composer.answer_first_placeholder",
     "notes": "等待批准或提问时输入框占位文字。",

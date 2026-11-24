@@ -1,33 +1,5 @@
 [
   {
-    "en": "Attachment transfer content changed. Retry",
-    "key": "errors.android_attachment_transfer_content_changed_retry",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "附件传输内容已改变，请重试"
-  },
-  {
-    "en": "Attachment transfer stopped or changed. Retry",
-    "key": "errors.android_attachment_transfer_stopped_or_changed_retry",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "附件传输已中止或发生变化，请重试"
-  },
-  {
     "en": "Cannot find the server. Check your network",
     "key": "errors.android_cannot_find_the_server_check_your_network",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -54,67 +26,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "电脑的回复打不开，不确定指令有没有执行"
-  },
-  {
-    "en": "Cannot read the source file. Remove it and select the file again",
-    "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "读不到源文件，请移除后重新选择"
-  },
-  {
-    "en": "File name is too long or empty. Rename the file and select it again",
-    "key": "errors.android_file_name_is_too_long_or_empty_rename_the_file",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "文件名过长或为空，请重命名后重新选择"
-  },
-  {
-    "en": "File too large. Maximum size per file: {value1}",
-    "key": "errors.android_file_too_large_maximum_size_per_file_value1",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "文件太大，单个文件最多 {value1}"
-  },
-  {
-    "en": "File verification failed. Retry or select the file again",
-    "key": "errors.android_file_verification_failed_retry_or_select_the_file_again",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "文件校验失败，请重试或重新选择文件"
   },
   {
     "en": "Image content does not match its format",
@@ -334,48 +245,6 @@
     "zh-CN": "终端输出积压，已停止接收"
   },
   {
-    "en": "The computer did not return a file ID",
-    "key": "errors.android_the_computer_did_not_return_a_file_id",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑没有返回文件 ID"
-  },
-  {
-    "en": "The computer returned invalid file progress",
-    "key": "errors.android_the_computer_returned_invalid_file_progress",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "电脑返回的文件上传进度无效"
-  },
-  {
-    "en": "The file changed during upload. Retry or select the file again",
-    "key": "errors.android_the_file_changed_during_upload_retry_or_select_the_file",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "文件在上传时发生变化，请重试或重新选择文件"
-  },
-  {
     "en": "The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time",
     "key": "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state",
     "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
@@ -416,39 +285,6 @@
       "zh-CN": "source"
     },
     "zh-CN": "这条指令已过期，没有发出"
-  },
-  {
-    "en": "Upload connection interrupted. Retry",
-    "key": "errors.android_upload_connection_interrupted_retry",
-    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {},
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "上传连接中断，请重试"
-  },
-  {
-    "en": "{value1}; the previous outcome is still unknown. Retry the same request once support is restored",
-    "key": "errors.android_value1_the_previous_outcome_is_still_unknown_retry_the_same",
-    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
-    "params": {
-      "value1": {
-        "example": "Example",
-        "type": "string"
-      }
-    },
-    "platforms": [
-      "android"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "{value1}；上一次的结果仍不确定，能力恢复后可重试同一请求"
   },
   {
     "en": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",

@@ -29,15 +29,7 @@
     <string name="approval_timeout_note">"%1$s，超时拒绝"</string>
     <string name="approval_title" formatted="false">"审批"</string>
     <string name="approval_truncated" formatted="false">"内容被截断，请在终端查看"</string>
-    <string name="attachment_android_choose_computer" formatted="false">"先选一台电脑"</string>
-    <string name="attachment_android_failed_meta" formatted="false">" · 上传失败"</string>
-    <string name="attachment_android_not_saved" formatted="false">"附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"</string>
-    <string name="attachment_android_permission_temporary" formatted="false">"这个文件的读取权限无法长期保留，App 重启后可能需要重新选择文件"</string>
-    <string name="attachment_android_preparing_meta" formatted="false">" · 准备中"</string>
     <string name="attachment_android_reading_files" formatted="false">"正在读取所选文件…"</string>
-    <string name="attachment_android_source_unreadable" formatted="false">"读不到源文件，请重新选择"</string>
-    <string name="attachment_android_upload_meta">" · 上传 %1$s%%"</string>
-    <string name="attachment_android_upload_required" formatted="false">"附件需要重新传到电脑，请上传完成后再发送"</string>
     <string name="attachment_choose_computer" formatted="false">"先选一台电脑"</string>
     <string name="attachment_computer_offline">"%1$s 离线，连上后才能添加图片"</string>
     <string name="attachment_computer_offline_files">"%1$s 离线，连上后才能添加文件"</string>
@@ -88,12 +80,10 @@
     <string name="attachment_uploading" formatted="false">"上传中"</string>
     <string name="attachment_zip_folder" formatted="false">"不能直接发送文件夹，请先压缩成 ZIP 再选择文件"</string>
     <string name="common_all_projects_avatar" formatted="false">"全"</string>
-    <string name="common_android_account_signed_out" formatted="false">"账户已退出"</string>
     <string name="common_android_allow_camera_access" formatted="false">"允许使用相机"</string>
     <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"需要相机权限才能扫码；也可以返回手动输入配对码。"</string>
     <string name="common_android_cannot_find_this_session" formatted="false">"找不到这个会话"</string>
     <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"没能清除这台手机上的账户和缓存，请重试"</string>
-    <string name="common_android_could_not_save_pending_images" formatted="false">"没能保存待发图片"</string>
     <string name="common_android_more" formatted="false">"更多"</string>
     <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">"。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"</string>
     <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"这个 App 版本较旧，请更新后再试"</string>
@@ -124,7 +114,6 @@
     <string name="common_saving" formatted="false">"保存中…"</string>
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
-    <string name="composer_android_not_sent">"没发出去：%1$s"</string>
     <string name="composer_android_unknown_reason" formatted="false">"原因未知"</string>
     <string name="composer_answer_first_placeholder" formatted="false">"回答后它才会看到"</string>
     <string name="composer_computer_restarted" formatted="false">"电脑上的 remote-agent 写入时重启了"</string>
@@ -229,14 +218,8 @@
     <string name="dock_submitting" formatted="false">"提交中…"</string>
     <string name="dock_trust_folder" formatted="false">"默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"等待确认"</string>
-    <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"附件传输内容已改变，请重试"</string>
-    <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"附件传输已中止或发生变化，请重试"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
     <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
-    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"读不到源文件，请移除后重新选择"</string>
-    <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"文件名过长或为空，请重命名后重新选择"</string>
-    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件太大，单个文件最多 %1$s"</string>
-    <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"文件校验失败，请重试或重新选择文件"</string>
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
@@ -250,14 +233,9 @@
     <string name="errors_android_terminal_connection_dropped_reason">"终端连接断开：%1$s"</string>
     <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"终端输入等待授权，已暂停"</string>
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"终端输出积压，已停止接收"</string>
-    <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"电脑没有返回文件 ID"</string>
-    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"电脑返回的文件上传进度无效"</string>
-    <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"文件在上传时发生变化，请重试或重新选择文件"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"手机时钟比服务器快，远程控制暂停；请校准系统时间"</string>
     <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"这条指令已过期，没有发出"</string>
-    <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"上传连接中断，请重试"</string>
-    <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s；上一次的结果仍不确定，能力恢复后可重试同一请求"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
@@ -405,49 +383,25 @@
     </plurals>
     <string name="image_add" formatted="false">"添加图片"</string>
     <string name="image_android_cannot_decode_image" formatted="false">"解不出图片"</string>
-    <string name="image_android_cannot_decode_this_image" formatted="false">"解不出这张图片"</string>
-    <string name="image_android_cannot_read_this_image" formatted="false">"读不到这张图片"</string>
-    <string name="image_android_converted_to_value1_keeping_original_dimensions">"转成了 %1$s，保留原始尺寸"</string>
     <string name="image_android_could_not_save_image_cache" formatted="false">"没能保存图片缓存"</string>
     <string name="image_android_download_retry">"没能下载：%1$s · 点按重试"</string>
     <string name="image_android_empty" formatted="false">"没有图片"</string>
-    <string name="image_android_file_upload_unavailable" formatted="false">"文件上传不可用"</string>
     <string name="image_android_generated_size">"生成的图片%1$s"</string>
     <string name="image_android_gif_contains_an_unrecognized_block" formatted="false">"GIF 里有认不出的块"</string>
     <string name="image_android_gif_is_truncated" formatted="false">"GIF 被截断"</string>
-    <string name="image_android_image_exceeds_value1_mb">"图片超过 %1$s MB"</string>
     <string name="image_android_image_has_no_dimensions" formatted="false">"图片没有尺寸"</string>
     <string name="image_android_name_only" formatted="false">"图片没有同步：只有文件名，原图在电脑上"</string>
     <string name="image_android_no_preview" formatted="false">"没有预览"</string>
-    <string name="image_android_original_exceeds_20_mb" formatted="false">"原图超过 20 MB"</string>
     <string name="image_android_original_meta" formatted="false">" 原图"</string>
-    <string name="image_android_phone_storage_for_pending_images_is_full_send_or_remove" formatted="false">"手机待发图片空间不足，请发送或移除旧草稿"</string>
     <string name="image_android_photo_library_is_not_writable" formatted="false">"相册不可写"</string>
-    <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"；像素超过手机能处理的上限，缩小到 1/%1$s"</string>
-    <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"需要重新处理或重新选择图片"</string>
-    <string name="image_android_reprocess_using_the_current_mode" formatted="false">"需要按当前模式重新处理"</string>
-    <string name="image_android_restore_retry" formatted="false">"待发图片没能恢复，仍可输入，下次编辑或放回时重试"</string>
-    <string name="image_android_restore_wait" formatted="false">"正在恢复待发图片，请稍后再放回"</string>
     <string name="image_android_restoring" formatted="false">"正在恢复待发图片…"</string>
-    <string name="image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" formatted="false">"按拍摄方向转正后以最高画质重新编码"</string>
     <string name="image_android_save_permission" formatted="false">"没有存储权限，没能保存"</string>
     <string name="image_android_saved" formatted="false">"已保存到相册"</string>
     <string name="image_android_share_title" formatted="false">"分享图片"</string>
-    <string name="image_android_the_computer_did_not_provide_an_image_id" formatted="false">"电脑没有给出图片 ID"</string>
-    <string name="image_android_the_computer_has_not_confirmed_the_attachment_upload_retry" formatted="false">"电脑尚未确认附件上传完成，请重试"</string>
-    <string name="image_android_this_image_has_no_local_copy_available_for_reprocessing_remove" formatted="false">"这张图没有可重新处理的本机副本，请移除后重新选择"</string>
-    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"这张图片没有本机副本，请移除后重新选择"</string>
-    <string name="image_android_this_image_is_too_large_for_the_phone_s_available" formatted="false">"这张图太大，手机内存不够处理"</string>
-    <string name="image_android_this_phone_cannot_read_this_image_format" formatted="false">"这台手机读不了这种图片格式"</string>
-    <string name="image_android_total_size">" · 共 %1$s MB"</string>
     <string name="image_android_unreadable_gif" formatted="false">"不是能读的 GIF"</string>
     <string name="image_android_unreadable_jpeg" formatted="false">"不是能读的 JPEG"</string>
     <string name="image_android_unreadable_png" formatted="false">"不是能读的 PNG"</string>
     <string name="image_android_unreadable_webp" formatted="false">"不是能读的 WebP"</string>
-    <string name="image_android_unsupported_image_format" formatted="false">"不支持这种图片格式"</string>
-    <string name="image_android_upload_progress">"正在传到电脑，%1$s%%"</string>
-    <string name="image_android_upload_to_the_computer_again" formatted="false">"需要重新传到电脑"</string>
-    <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"需要重新传到电脑；源文件无法读取时请重新选择文件"</string>
     <string name="image_android_verify_failed">"图片校验失败：%1$s"</string>
     <plurals name="image_attach_failed">
         <item quantity="other">"%1$d 张图没加上，点图片看原因"</item>

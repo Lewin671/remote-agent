@@ -179,8 +179,7 @@ fun SettingsScreen() {
     LaunchedEffect(Unit) {
         remote.coreHost.openSettings()
         localCacheBytes = withContext(Dispatchers.IO) {
-            app.pendingStore.expire()
-            app.pendingStore.used + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
+            app.attachments.usedBytes() + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
         }
     }
     DisposableEffect(owner) {
@@ -188,8 +187,7 @@ fun SettingsScreen() {
             if (ev == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 scope.launch {
                     localCacheBytes = withContext(Dispatchers.IO) {
-                        app.pendingStore.expire()
-                        app.pendingStore.used + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
+                        app.attachments.usedBytes() + app.imageEnvelopes.used + app.sharedFiles.usedBytes()
                     }
                 }
             }
@@ -2417,8 +2415,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
     var received by remember { mutableStateOf(0L) }
     LaunchedEffect(stamp) {
         withContext(Dispatchers.IO) {
-            app.pendingStore.expire()
-            used = app.pendingStore.used
+            used = app.attachments.usedBytes()
             cache = app.imageEnvelopes.used
             received = app.sharedFiles.usedBytes()
         }

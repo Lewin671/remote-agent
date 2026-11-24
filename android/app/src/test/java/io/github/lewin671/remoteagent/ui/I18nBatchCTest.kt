@@ -118,7 +118,7 @@ class I18nBatchCTest(private val locale: String) {
             scheduleForm = sampleFormVm,
         )
     }
-    @After fun close() { remote.close(); Outbox.clear(); ImageDrafts.clear(); Drafts.clear() }
+    @After fun close() { remote.close(); Drafts.clear() }
     private fun text(message: UiMessage) = messageTextForTest(message, language)
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalMessageLocale provides language) {
@@ -334,22 +334,6 @@ class I18nBatchCTest(private val locale: String) {
             shot("update")
         } finally { updates.value = UpdateState.Unknown }
     }
-    @Test fun imageErrors() {
-        val eval = evaluateImageProblems(
-            remote,
-            listOf("20 MB", "dimensions", "source missing", "decode", "quota", "network", "opaque").map {
-                io.github.lewin671.remoteagent.core.proto.ImageProblemInput.newBuilder().setRawDiagnostic(it).build()
-            },
-        )
-        show {
-            Column(Modifier.padding(20.dp)) {
-                for (problem in eval.problemsList) {
-                    Text(uiText(problem.message), style = T.s15, modifier = Modifier.padding(vertical = 10.dp))
-                }
-            }
-        }
-        shot("image-errors")
-    }
     @Test fun nativeNotifications() {
         val context = appFixture.app
         Push.createChannels(context, copy = ::text)
@@ -403,15 +387,5 @@ class I18nBatchCTest(private val locale: String) {
         val large = Int.MAX_VALUE.toLong() + 1
         Assert.assertTrue(text(UiMessages.scheduleAndroidLargeEverySeconds(2, large.toString())).contains(large.toString()))
         Assert.assertEquals("原始 CLI / original CLI", displayError(Exception("原始 CLI / original CLI"), copy = ::text))
-        val eval = evaluateImageProblems(
-            remote,
-            listOf("decode", "unsupported").map {
-                io.github.lewin671.remoteagent.core.proto.ImageProblemInput.newBuilder().setRawDiagnostic(it).build()
-            },
-        )
-        Assert.assertEquals(
-            coreTextToMessageText(eval.getProblems(0).message).resolve(::text),
-            coreTextToMessageText(eval.failureSummary).resolve(::text),
-        )
     }
 }

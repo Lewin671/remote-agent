@@ -46,55 +46,6 @@ class ProjectTest {
     @After
     fun tearDown() {
         remote.close()
-        Starts.clear()
-        ImageDrafts.clear()
-    }
-
-    private fun image(id: String, on: String? = "mac") = PendingImage(id, null).also {
-        if (on != null) {
-            it.processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 8, 8)
-            it.state = PendingImage.State.Ready
-            it.expiresMs = Long.MAX_VALUE
-            it.machineId = on
-            it.imageId = "on-$on-$id"
-        } else {
-            it.state = PendingImage.State.Uploading(0.4f)
-        }
-    }
-
-    @Test
-    fun anUnknownStartIsOnlyRepeatedWhileItIsStillTheSameStart() {
-        val cfg = Triple("mac", Agent.AGENT_CODEX.number, "//false")
-        val a = image("a")
-        val st = Starts.Start().apply { prompt = ""; configKey = cfg; taken = listOf(a) }
-        assertEquals(true, st.same("", cfg, listOf(a)))
-        assertEquals(false, st.same("", cfg, listOf(image("b"))))
-        assertEquals(false, st.same("", cfg, listOf(a, image("b"))))
-        assertEquals(false, st.same("", Triple("mac", Agent.AGENT_CLAUDE.number, "//false"), listOf(a)))
-        assertEquals(false, st.same("", Triple("vps", Agent.AGENT_CODEX.number, "//false"), listOf(a)))
-        assertEquals(false, st.same("看这张图", cfg, listOf(a)))
-    }
-
-    @Test
-    fun repreparingTheSameImageChangesThePreparedStart() {
-        val cfg = Triple("mac", Agent.AGENT_CODEX.number, "//false")
-        val a = image("a")
-        val start = Starts.Start().apply { prompt = ""; configKey = cfg; taken = listOf(a) }
-        assertEquals(true, start.same("", cfg, listOf(a)))
-        a.processed = Processed(byteArrayOf(9), ImageFormat.IMAGE_FORMAT_PNG, 30, 40)
-        a.imageId = "original-a"
-        assertEquals(false, start.same("", cfg, listOf(a)))
-    }
-
-    @Test
-    fun renewingAnExpiredUploadKeepsTheUnknownStartAndItsOriginalImageIds() {
-        val cfg = Triple("mac", Agent.AGENT_CODEX.number, "//false")
-        val a = image("a")
-        val start = Starts.Start().apply { prompt = "看图"; configKey = cfg; taken = listOf(a) }
-        val ids = start.imageIds
-        a.imageId = "renewed-upload"
-        assertEquals(true, start.same("看图", cfg, listOf(a)))
-        assertEquals(ids, start.imageIds)
     }
 
     @Test

@@ -3,13 +3,15 @@ package io.github.lewin671.remoteagent.core
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.core.proto.AccountPrefsFetchedEvent
 import io.github.lewin671.remoteagent.core.proto.AccountPrefsPutResultEvent
-import io.github.lewin671.remoteagent.core.proto.AttachmentsSettledEffect
+import io.github.lewin671.remoteagent.core.proto.AttachmentConfigEvent
 import io.github.lewin671.remoteagent.core.proto.CacheBootstrapLoadedEvent
 import io.github.lewin671.remoteagent.core.proto.CacheEventsLoadedEvent
 import io.github.lewin671.remoteagent.core.proto.CacheReadEffect
 import io.github.lewin671.remoteagent.core.proto.CommandOutcomeEvent
 import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.core.proto.DispatchCommandEffect
+import io.github.lewin671.remoteagent.core.proto.DraftOpenAction
+import io.github.lewin671.remoteagent.core.proto.DraftSetTextAction
 import io.github.lewin671.remoteagent.core.proto.EnsureTokenEffect
 import io.github.lewin671.remoteagent.core.proto.Event as CoreEvent
 import io.github.lewin671.remoteagent.core.proto.EventsPageFetchedEvent
@@ -17,7 +19,6 @@ import io.github.lewin671.remoteagent.core.proto.ListsFetchedEvent
 import io.github.lewin671.remoteagent.core.proto.NavigateEffect
 import io.github.lewin671.remoteagent.core.proto.NavigateRoute
 import io.github.lewin671.remoteagent.core.proto.NewSessionOpenAction
-import io.github.lewin671.remoteagent.core.proto.NewSessionSetPromptAction
 import io.github.lewin671.remoteagent.core.proto.NewSessionSubmitAction
 import io.github.lewin671.remoteagent.core.proto.OpenStreamEffect
 import io.github.lewin671.remoteagent.core.proto.OutcomeSource
@@ -93,7 +94,6 @@ class CoreHostSmokeTest {
         val rpcs = ArrayList<RpcEffect>()
         val cmds = ArrayList<DispatchCommandEffect>()
         val navigated = ArrayList<NavigateEffect>()
-        val settled = ArrayList<AttachmentsSettledEffect>()
 
         h.onSaveHomeScope = { savedScope = it.scopeKey }
         h.onCacheRead = { cacheReads += it }
@@ -102,7 +102,6 @@ class CoreHostSmokeTest {
         h.onRpc = { rpcs += it }
         h.onDispatchCommand = { cmds += it }
         h.onNavigate = { navigated += it }
-        h.onAttachmentsSettled = { settled += it }
 
         val machine = PlainMachine.newBuilder()
             .setMachineId("m1")
@@ -329,10 +328,21 @@ class CoreHostSmokeTest {
             h.refreshScreenOnWorker(ScreenTarget.SCREEN_TARGET_HOME)
             assertEquals(CoreConnState.CONN_STATE_CONNECTED, h.homeView.value.connection.state)
 
-            // 4. NewSession open + prompt + submit with attachments -> AttachmentsSettled + Navigate
+            // 4. NewSession open + Core draft text + submit -> Navigate
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setAttachmentConfig(AttachmentConfigEvent.newBuilder().setPersistDrafts(false).setPersistOutbox(false).setScanStorage(false))
+                    .build(),
+            )
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
                     .setNewSessionOpen(NewSessionOpenAction.newBuilder().setProjectKey("/work/app"))
+                    .build(),
+            )
+            val draftScope = newSessionDraftScope("/work/app")
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setDraftOpen(DraftOpenAction.newBuilder().setScope(draftScope).setMachineId("m1"))
                     .build(),
             )
             while (cmds.isNotEmpty()) {
@@ -375,7 +385,7 @@ class CoreHostSmokeTest {
             }
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
-                    .setNewSessionSetPrompt(NewSessionSetPromptAction.newBuilder().setPrompt("hello").setAttachmentCount(2))
+                    .setDraftSetText(DraftSetTextAction.newBuilder().setScope(draftScope).setText("hello"))
                     .build(),
             )
             h.dispatchOnWorker(
@@ -383,16 +393,13 @@ class CoreHostSmokeTest {
                     .setNewSessionSubmit(
                         NewSessionSubmitAction.newBuilder()
                             .setProjectKey("/work/app")
-                            .setAutoModeSupported(true)
-                            .addImageIds("img-1")
-                            .addFileIds("file-1"),
+                            .setAutoModeSupported(true),
                     )
                     .build(),
             )
             val createCmd = cmds.single { Command.parseFrom(it.commandBytes).hasCreateSession() }
             val createdReq = Command.parseFrom(createCmd.commandBytes).createSession
-            assertEquals(listOf("img-1"), createdReq.imageIdsList)
-            assertEquals(listOf("file-1"), createdReq.fileIdsList)
+            assertEquals("hello", createdReq.prompt)
 
             h.dispatchOnWorker(
                 CoreEvent.newBuilder()
@@ -425,7 +432,6 @@ class CoreHostSmokeTest {
                     )
                     .build(),
             )
-            assertTrue(settled.any { it.projectKey == "/work/app" && it.consumed })
             assertTrue(navigated.any { it.route == NavigateRoute.NAVIGATE_ROUTE_SESSION && it.sessionId == "s-created" })
 
             // Synchronous snapshot getters populate first-frame ViewModels before async open/watch events run.

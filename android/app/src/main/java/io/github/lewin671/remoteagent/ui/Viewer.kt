@@ -277,7 +277,7 @@ internal fun PagedImageViewer(
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassButton(Lucide.X, uiText(UiMessages.commonClose()), onClose, dark = true)
             Spacer(Modifier.width(12.dp))
-            val posLabel = positionLabel?.invoke(current) ?: "${current + 1} / $count"
+            val posLabel = positionLabel?.invoke(current).orEmpty()
             if (posLabel.isNotEmpty()) {
                 Text(
                     posLabel,
@@ -416,9 +416,8 @@ private fun ViewerActions(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var msg by remember(img.ref.imageId) { mutableStateOf("") }
-    val ext = img.fileExtension.ifEmpty { "jpg" }
     val mime = img.mimeType.ifEmpty { "image/jpeg" }
-    val name = img.displayName.ifEmpty { copy(UiMessages.imageTitle()) }
+    val downloadName = img.downloadName
 
     fun bytes(): ByteArray? {
         ViewerImages.get(remote, "$sid/${img.ref.imageId}")?.let { return it.bytes }
@@ -431,7 +430,7 @@ private fun ViewerActions(
         scope.launch {
             msg = try {
                 withContext(Dispatchers.IO) {
-                    save(context, data, ext, mime, name)
+                    save(context, data, mime, downloadName)
                 }
                 copy(UiMessages.imageAndroidSaved())
             } catch (e: Exception) {
@@ -472,7 +471,7 @@ private fun ViewerActions(
                 val data = bytes() ?: return@TextButton
                 scope.launch {
                     try {
-                        val uri = withContext(Dispatchers.IO) { shareFile(context, data, ext) }
+                        val uri = withContext(Dispatchers.IO) { shareFile(context, data, downloadName) }
                         context.startActivity(
                             Intent.createChooser(
                                 Intent(Intent.ACTION_SEND)
@@ -499,14 +498,18 @@ private fun ViewerActions(
 private fun save(
     context: Context,
     data: ByteArray,
-    ext: String,
     mime: String,
-    name: String,
+    downloadName: String,
     copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText,
 ) {
-    val base = name.substringBeforeLast('.').ifEmpty { "remote-agent" }
+    val dot = downloadName.lastIndexOf('.')
+    val displayName = if (dot > 0 && dot < downloadName.length - 1) {
+        "${downloadName.substring(0, dot)}-${System.currentTimeMillis()}${downloadName.substring(dot)}"
+    } else {
+        "$downloadName-${System.currentTimeMillis()}"
+    }
     val values = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, "$base-${System.currentTimeMillis()}.$ext")
+        put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
         put(MediaStore.Images.Media.MIME_TYPE, mime)
         if (Build.VERSION.SDK_INT >= 29) {
             put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/remote-agent")
@@ -526,9 +529,10 @@ private fun save(
 }
 
 /** A file for the share sheet; shared files are deleted when the app starts again. */
-private fun shareFile(context: Context, data: ByteArray, ext: String): android.net.Uri {
-    val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
-    val f = File(dir, "image-${System.currentTimeMillis()}.$ext")
+private fun shareFile(context: Context, data: ByteArray, downloadName: String): android.net.Uri {
+    val dir = File(File(context.cacheDir, SHARED_DIR), System.currentTimeMillis().toString()).apply { mkdirs() }
+    val safeName = File(downloadName).name.ifEmpty { "image.bin" }
+    val f = File(dir, safeName)
     f.writeBytes(data)
     return FileProvider.getUriForFile(context, context.packageName + ".files", f)
 }

@@ -87,6 +87,6 @@ class ToolExpansionLocalTest {
                     File(output, "$phase-$kind-$trial.txt").writeText(shell("dumpsys gfxinfo ${ctx.packageName} framestats"))
                 }
             }
-        } finally { scenario.close(); remote.close(); ImageDrafts.forSession(session.id).clear() }
+        } finally { scenario.close(); remote.close() }
     }
 }

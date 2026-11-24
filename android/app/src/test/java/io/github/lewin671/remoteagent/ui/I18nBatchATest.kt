@@ -60,7 +60,7 @@ class I18nBatchATest(private val locale: String) {
         remote.coreHost.openManageProjects()
         remote.coreHost.openNewSession(path)
     }
-    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); Starts.clear(); HomeScopes.clear(RuntimeEnvironment.getApplication()) }
+    @After fun close() { remote.close(); Drafts.clear(); HomeScopes.clear(RuntimeEnvironment.getApplication()) }
     private fun text(message: UiMessage) = messageTextForTest(message, language)
     private fun show(content: @Composable () -> Unit) = ui.setContent {
         RaTheme(ThemeMode.LIGHT) {

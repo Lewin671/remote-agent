@@ -178,8 +178,6 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
         get() = conflictKind == "identity" || (outcome == Outcome.EXECUTED && !resultAvailable)
     val unknown: Boolean
         get() = outcome == Outcome.UNKNOWN || needsResultRefresh
-    val canRetryUpload: Boolean
-        get() = outcome == Outcome.UNKNOWN || (outcome == Outcome.NOT_SENT && code == "network")
 
     companion object {
         const val UNKNOWN = "unknown_outcome"

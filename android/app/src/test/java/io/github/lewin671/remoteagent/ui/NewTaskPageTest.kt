@@ -118,12 +118,12 @@ class NewTaskPageTest {
         ui.waitUntil(5000) {
             ui.mainClock.advanceTimeByFrame()
             ui.waitForIdle()
-            !ImageDrafts.forProject(path).restoring
+            !remote.coreHost.snapshotAttachmentDraft(io.github.lewin671.remoteagent.core.newSessionDraftScope(path)).restoring
         }
         ui.waitForIdle()
     }
 
-    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); Starts.clear() }
+    @After fun close() { remote.close(); Drafts.clear() }
 
     @Test fun theTitleSaysWhereAndTheBoxHoldsTheRest() {
         show("a", "b")

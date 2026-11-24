@@ -8,9 +8,6 @@ import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import java.io.ByteArrayOutputStream
 
-/** The long side of a compressed image. */
-const val COMPRESSED_LONG_SIDE = 2048
-
 /** The format of encoded image bytes, by their signature; null for anything else (HEIC and the like). */
 fun detectFormat(b: ByteArray): ImageFormat? = when {
     b.size >= 8 && b[0] == 0x89.toByte() && b[1] == 'P'.code.toByte() && b[2] == 'N'.code.toByte() && b[3] == 'G'.code.toByte() -> ImageFormat.IMAGE_FORMAT_PNG
@@ -318,77 +315,11 @@ fun stripOriginal(b: ByteArray): ByteArray? {
 }
 
 /** The size of a picture shrunk so its long side is at most [max]; never enlarged. */
-fun fitLongSide(w: Int, h: Int, max: Int = COMPRESSED_LONG_SIDE): Pair<Int, Int> {
+fun fitLongSide(w: Int, h: Int, max: Int): Pair<Int, Int> {
     val long = maxOf(w, h)
     if (long <= max || long == 0) return w to h
     val scale = max.toDouble() / long
     return maxOf(1, Math.round(w * scale).toInt()) to maxOf(1, Math.round(h * scale).toInt())
-}
-
-// --- uploading ---
-
-/** Chunks start at this size when the daemon names none: an encrypted command stays well under 1 MiB. */
-const val DEFAULT_CHUNK_BYTES = 768 * 1024
-
-/** The daemon's upload commands for one machine; each call is one machine command. */
-interface UploadChannel {
-    suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
-    suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus = messageError(UiMessages.imageAndroidFileUploadUnavailable().messageText())
-    suspend fun put(transferId: String, offset: Long, data: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
-    suspend fun status(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
-    suspend fun abort(transferId: String)
-    suspend fun complete(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
-}
-
-/** A completed upload is usable only until the daemon-provided deadline. */
-data class UploadedImage(val imageId: String, val expiresMs: Long)
-
-/**
- * Sends one image to a machine in chunks and returns its ID and expiry
- * for sending with a message. Every step can be repeated: beginning again returns the
- * transfer's state, a chunk is resent from where the daemon has durably
- * stored bytes, and completing again returns the same ID. When a step's
- * outcome is unknown, the daemon's status says where to go on; a definite
- * refusal ends the upload with an error, never a partial success.
- */
-suspend fun uploadImage(
-    ch: UploadChannel,
-    transferId: String,
-    data: ByteArray,
-    maxChunk: Int = DEFAULT_CHUNK_BYTES,
-    retries: Int = 3,
-    onProgress: (Long, Long) -> Unit = { _, _ -> },
-): UploadedImage {
-    val format = detectFormat(data) ?: throw MessageException(UiMessages.imageAndroidUnsupportedImageFormat().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE)
-    val total = data.size.toLong()
-    var tries = 0
-    suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
-        while (true) {
-            try {
-                return block().also { tries = 0 }
-            } catch (e: CommandException) {
-                if (!e.canRetryUpload || tries >= retries) throw e
-                tries++
-                resync()
-            }
-        }
-    }
-    var st = step({ ch.begin(transferId, format, total, sha256(data)) }) {}
-    val chunk = listOf(maxChunk, st.maxChunkBytes.takeIf { it > 0 } ?: Int.MAX_VALUE).min()
-    while (st.state == io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING && st.persistedBytes < total) {
-        val off = st.persistedBytes
-        onProgress(off, total)
-        val end = minOf(total, off + chunk).toInt()
-        st = step({ ch.put(transferId, off, data.copyOfRange(off.toInt(), end)) }) { st = ch.status(transferId) }
-    }
-    onProgress(total, total)
-    var completing = 0
-    while (st.state == io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
-        if (completing++ > retries) throw CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_UPLOAD_FAILED)
-        st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
-    }
-    if (st.imageId.isEmpty()) throw CommandException("internal", UiMessages.imageAndroidTheComputerDidNotProvideAnImageId().messageText(), imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_PROCESSING_FAILED)
-    return UploadedImage(st.imageId, st.expiresMs)
 }
 
 // --- image decoding ---
