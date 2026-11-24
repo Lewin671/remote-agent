@@ -62,16 +62,16 @@ export function useBlobUrl(
   bytes: Uint8Array | undefined,
   type: string,
 ): string | undefined {
-  const [url, setUrl] = useState<string>();
+  const [shown, setShown] = useState<{ bytes: Uint8Array; type: string; url: string }>();
   useEffect(() => {
-    if (!bytes || !bytes.length || !type) return setUrl(undefined);
+    if (!bytes || !bytes.length || !type) return setShown(undefined);
     const u = URL.createObjectURL(
       new Blob([bytes as Uint8Array<ArrayBuffer>], { type }),
     );
-    setUrl(u);
+    setShown({ bytes, type, url: u });
     return () => URL.revokeObjectURL(u);
   }, [bytes, type]);
-  return url;
+  return shown && shown.bytes === bytes && shown.type === type ? shown.url : undefined;
 }
 
 /** The URL of a blob while mounted. */
@@ -822,7 +822,11 @@ export function OutboxThumbs({
     let alive = true;
     const load = () => {
       void Promise.all(images.map((it) => attachments.ensureBlob(it.thumbRef))).then((loaded) => {
-        if (alive) setBlobs(loaded.filter((b): b is Blob => !!b));
+        if (!alive) return;
+        const next = loaded.filter((b): b is Blob => !!b);
+        setBlobs((prev) =>
+          prev.length === next.length && prev.every((b, i) => b === next[i]) ? prev : next,
+        );
       });
     };
     load();
@@ -842,12 +846,13 @@ export function OutboxThumbs({
 }
 
 export function LocalThumbs({ blobs, sizes }: { blobs?: Blob[]; sizes?: { width: number; height: number }[] }) {
-  const [urls, setUrls] = useState<string[]>([]);
+  const [shown, setShown] = useState<{ blobs: Blob[] | undefined; urls: string[] }>();
   useEffect(() => {
     const us = (blobs ?? []).map((b) => URL.createObjectURL(b));
-    setUrls(us);
+    setShown({ blobs, urls: us });
     return () => us.forEach((u) => URL.revokeObjectURL(u));
   }, [blobs]);
+  const urls = shown && shown.blobs === blobs ? shown.urls : [];
   if (!urls.length) return null;
   return (
     <span className="pics">

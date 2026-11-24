@@ -48,17 +48,17 @@ export function filesToCandidates(files: readonly File[]): DraftCandidateEntry[]
 
 function useLocalBlobUrl(attachments: AttachmentExecutor | undefined, ref: string | undefined): string | undefined {
   const blob = useLocalAttachmentBlob(attachments, ref);
-  const [url, setUrl] = useState<string>();
+  const [shown, setShown] = useState<{ blob: Blob; url: string }>();
   useEffect(() => {
     if (!blob) {
-      setUrl(undefined);
+      setShown(undefined);
       return;
     }
     const u = URL.createObjectURL(blob);
-    setUrl(u);
+    setShown({ blob, url: u });
     return () => URL.revokeObjectURL(u);
   }, [blob]);
-  return url;
+  return shown && shown.blob === blob ? shown.url : undefined;
 }
 
 /** ＋ opens the library at once; when the machine offers file uploads it
