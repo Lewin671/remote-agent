@@ -1,14 +1,17 @@
 package io.github.lewin671.remoteagent.data
 
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.system.ErrnoException
+import android.system.Os
 import android.system.OsConstants
 import android.util.LruCache
 import androidx.compose.ui.graphics.ImageBitmap
@@ -32,10 +35,14 @@ import io.github.lewin671.remoteagent.core.sha256
 import io.github.lewin671.remoteagent.ui.PrepareImageException
 import io.github.lewin671.remoteagent.ui.encodeThumbnailBytes
 import io.github.lewin671.remoteagent.ui.prepareImageFromSource
+import java.io.Closeable
 import java.io.File
+import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileNotFoundException
+import java.io.FilterInputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.ByteBuffer
 import java.security.KeyStore
 import java.security.MessageDigest
@@ -91,6 +98,7 @@ internal object RealAndroidKeyStoreBackend : AndroidKeyStoreBackend {
 internal class AndroidAttachmentKeyProvider(
     private val dir: File,
     private val keystore: AndroidKeyStoreBackend = RealAndroidKeyStoreBackend,
+    private val alias: String = ALIAS,
 ) : AttachmentStorageKeyProvider {
     private val keyFile = File(dir, "key.bin")
     @Volatile private var cachedKey: ByteArray? = null
@@ -116,7 +124,7 @@ internal class AndroidAttachmentKeyProvider(
         }
         dir.mkdirs()
         val wrap = try {
-            keystore.getKey(ALIAS) ?: keystore.generateKey(ALIAS)
+            keystore.getKey(alias) ?: keystore.generateKey(alias)
         } catch (e: AttachmentKeyUnavailableException) {
             throw e
         } catch (t: Throwable) {
@@ -145,14 +153,14 @@ internal class AndroidAttachmentKeyProvider(
         cachedKey?.fill(0)
         cachedKey = null
         runCatching { keyFile.delete() }
-        runCatching { keystore.deleteKey(ALIAS) }
+        runCatching { keystore.deleteKey(alias) }
     }
 
     private fun readStoredKey(): ByteArray? {
         if (!keyFile.exists()) return null
         if (!keyFile.isFile) throw AttachmentKeyUnavailableException("key_file_not_regular")
         val wrap = try {
-            keystore.getKey(ALIAS)
+            keystore.getKey(alias)
         } catch (e: AttachmentKeyUnavailableException) {
             throw e
         } catch (t: Throwable) {
@@ -192,6 +200,26 @@ class AttachmentManager(
     val rootDir = File(context.noBackupFilesDir, "pending-images").apply { mkdirs() }
     private val keyProvider = AndroidAttachmentKeyProvider(rootDir)
     private val thumbCache = LruCache<String, ImageBitmap>(64)
+    private val chunkReader = SourceChunkReader(
+        access = object : AttachmentSourceAccess {
+            override fun isDirectory(ref: String): Boolean = isDirectoryUri(Uri.parse(ref))
+
+            override fun open(ref: String): OpenedAttachmentSource? {
+                val uri = Uri.parse(ref)
+                val pfd = if (uri.scheme == ContentResolver.SCHEME_FILE && uri.path != null) {
+                    val f = File(uri.path!!)
+                    if (f.isDirectory) throw IOException("EISDIR")
+                    ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
+                } else {
+                    context.contentResolver.openFileDescriptor(uri, "r")
+                }
+                if (pfd != null) return openParcelFileDescriptorAsSource(pfd)
+                val stream = openSourceStream(uri) ?: return null
+                return OpenedAttachmentSource.Stream(stream)
+            }
+        },
+        isDirectoryError = { isDirectoryError(it) },
+    )
 
     val executor: AttachmentIoExecutor = AttachmentIoExecutor(
         rootDir = rootDir,
@@ -214,6 +242,7 @@ class AttachmentManager(
                 }.getOrDefault(emptyList())
 
             override fun releaseExternalRef(ref: String) {
+                chunkReader.closeRef(ref)
                 if (ref.startsWith("content://")) {
                     runCatching {
                         context.contentResolver.releasePersistableUriPermission(
@@ -225,6 +254,7 @@ class AttachmentManager(
             }
 
             override fun releaseAllExternalRefs() {
+                chunkReader.closeAll()
                 runCatching {
                     context.contentResolver.persistedUriPermissions.forEach { perm ->
                         runCatching {
@@ -241,10 +271,12 @@ class AttachmentManager(
                 t is ErrnoException && (t.errno == OsConstants.ENOSPC || t.errno == OsConstants.EDQUOT)
 
             override fun onLocalBlobDeleted(ref: String) {
+                chunkReader.closeRef(ref)
                 thumbCache.remove(ref)
             }
 
             override fun onAllCleared() {
+                chunkReader.closeAll()
                 thumbCache.evictAll()
             }
         },
@@ -286,6 +318,7 @@ class AttachmentManager(
     }
 
     fun close() {
+        chunkReader.close()
         executor.close()
     }
 
@@ -479,163 +512,17 @@ class AttachmentManager(
         }
     }
 
-    private fun executeReadFileChunk(eff: AttachmentReadChunkEffect): ReadChunkOutcome {
-        val ref = eff.sourceRef
-        if (ref.isEmpty()) {
-            return ReadChunkOutcome(
-                ok = false,
-                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                errorDetail = "empty_source_ref",
-            )
-        }
-        val uri = Uri.parse(ref)
-        if (isDirectoryUri(uri)) {
-            return ReadChunkOutcome(
-                ok = false,
-                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIRECTORY,
-                errorDetail = "directory",
-            )
-        }
-        val offset = eff.offset
-        val length = eff.length
-        val expectedSize = eff.expectedSizeBytes
-        if (offset < 0L || length < 0) {
-            return ReadChunkOutcome(
-                ok = false,
-                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
-                errorDetail = "invalid_range",
-            )
-        }
-        return try {
-            // Fast O(1) seekable FileChannel path for local files & SAF providers.
-            val pfd = try {
-                if (uri.scheme == "file" && uri.path != null) {
-                    val f = File(uri.path!!)
-                    if (f.isDirectory) {
-                        return ReadChunkOutcome(
-                            ok = false,
-                            errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIRECTORY,
-                            errorDetail = "directory",
-                        )
-                    }
-                    android.os.ParcelFileDescriptor.open(f, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
-                } else {
-                    context.contentResolver.openFileDescriptor(uri, "r")
-                }
-            } catch (e: FileNotFoundException) {
-                return ReadChunkOutcome(
-                    ok = false,
-                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                    errorDetail = e.message.orEmpty(),
-                )
-            } catch (e: SecurityException) {
-                return ReadChunkOutcome(
-                    ok = false,
-                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                    errorDetail = e.message.orEmpty(),
-                )
-            }
-            if (pfd != null) {
-                pfd.use { fd ->
-                    FileInputStream(fd.fileDescriptor).use { fis ->
-                        val ch = fis.channel
-                        val channelSize = runCatching { ch.size() }.getOrNull()
-                        if (channelSize != null && channelSize >= 0L) {
-                            if (expectedSize >= 0L && channelSize != expectedSize) {
-                                return ReadChunkOutcome(
-                                    ok = false,
-                                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-                                    errorDetail = "size_changed",
-                                )
-                            }
-                            if (offset + length > channelSize) {
-                                return ReadChunkOutcome(
-                                    ok = false,
-                                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-                                    errorDetail = "range_past_eof",
-                                )
-                            }
-                            if (length == 0) return ReadChunkOutcome(ok = true, data = ByteArray(0))
-                            val out = ByteArray(length)
-                            val buf = ByteBuffer.wrap(out)
-                            var pos = offset
-                            while (buf.hasRemaining()) {
-                                val n = ch.read(buf, pos)
-                                if (n < 0) {
-                                    return ReadChunkOutcome(
-                                        ok = false,
-                                        errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-                                        errorDetail = "unexpected_eof",
-                                    )
-                                }
-                                pos += n
-                            }
-                            return ReadChunkOutcome(ok = true, data = out)
-                        }
-                    }
-                }
-            }
-            // Fallback for non-seekable virtual content streams.
-            val stream = openSourceStream(uri)
-                ?: return ReadChunkOutcome(
-                    ok = false,
-                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                    errorDetail = "cannot_open_stream",
-                )
-            stream.use { input ->
-                val scratch = ByteArray(64 * 1024)
-                var skipped = 0L
-                while (skipped < offset) {
-                    val toRead = minOf(scratch.size.toLong(), offset - skipped).toInt()
-                    val n = input.read(scratch, 0, toRead)
-                    if (n < 0) {
-                        return ReadChunkOutcome(
-                            ok = false,
-                            errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-                            errorDetail = "unexpected_eof_before_offset",
-                        )
-                    }
-                    skipped += n
-                }
-                if (length == 0) return ReadChunkOutcome(ok = true, data = ByteArray(0))
-                val out = ByteArray(length)
-                var got = 0
-                while (got < length) {
-                    val n = input.read(out, got, length - got)
-                    if (n < 0) {
-                        return ReadChunkOutcome(
-                            ok = false,
-                            errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
-                            errorDetail = "unexpected_eof_in_chunk",
-                        )
-                    }
-                    got += n
-                }
-                ReadChunkOutcome(ok = true, data = out)
-            }
-        } catch (e: FileNotFoundException) {
-            ReadChunkOutcome(
-                ok = false,
-                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                errorDetail = e.message.orEmpty(),
-            )
-        } catch (e: SecurityException) {
-            ReadChunkOutcome(
-                ok = false,
-                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
-                errorDetail = e.message.orEmpty(),
-            )
-        } catch (e: Throwable) {
-            ReadChunkOutcome(
-                ok = false,
-                errorKind = if (isDirectoryError(e)) AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIRECTORY else executor.classifyIoError(e),
-                errorDetail = e.message.orEmpty(),
-            )
-        }
-    }
+    private fun executeReadFileChunk(eff: AttachmentReadChunkEffect): ReadChunkOutcome =
+        chunkReader.readChunk(
+            ref = eff.sourceRef,
+            offset = eff.offset,
+            length = eff.length,
+            expectedSize = eff.expectedSizeBytes,
+            classifyError = { executor.classifyIoError(it) },
+        )
 
     private fun openSourceStream(uri: Uri) =
-        if (uri.scheme == "file" && uri.path != null) {
+        if (uri.scheme == ContentResolver.SCHEME_FILE && uri.path != null) {
             val f = File(uri.path!!)
             if (f.isDirectory) throw IOException("EISDIR")
             FileInputStream(f)
@@ -644,7 +531,7 @@ class AttachmentManager(
         }
 
     private fun isDirectoryUri(uri: Uri): Boolean {
-        if (uri.scheme == "file" && uri.path != null) {
+        if (uri.scheme == ContentResolver.SCHEME_FILE && uri.path != null) {
             return File(uri.path!!).isDirectory
         }
         val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()
@@ -664,7 +551,7 @@ class AttachmentManager(
     private fun probeVideoDurationMs(uri: Uri): Long? {
         val mmr = MediaMetadataRetriever()
         return try {
-            if (uri.scheme == "file" && uri.path != null) {
+            if (uri.scheme == ContentResolver.SCHEME_FILE && uri.path != null) {
                 mmr.setDataSource(uri.path)
             } else {
                 mmr.setDataSource(context, uri)
@@ -675,5 +562,300 @@ class AttachmentManager(
         } finally {
             runCatching { mmr.release() }
         }
+    }
+}
+
+internal sealed class OpenedAttachmentSource : Closeable {
+    class Regular(
+        private val closeable: Closeable,
+        private val sizeProvider: () -> Long,
+        private val reader: (ByteBuffer, Long) -> Int,
+    ) : OpenedAttachmentSource() {
+        fun size(): Long = sizeProvider()
+        fun readAt(dst: ByteBuffer, position: Long): Int = reader(dst, position)
+        override fun close() = closeable.close()
+    }
+
+    class Stream(val input: InputStream) : OpenedAttachmentSource() {
+        override fun close() = input.close()
+    }
+}
+
+internal interface AttachmentSourceAccess {
+    fun isDirectory(ref: String): Boolean
+    fun open(ref: String): OpenedAttachmentSource?
+}
+
+internal fun isRegularFileDescriptor(fd: FileDescriptor): Boolean = try {
+    OsConstants.S_ISREG(Os.fstat(fd).st_mode)
+} catch (_: Throwable) {
+    false
+}
+
+internal fun openParcelFileDescriptorAsSource(pfd: ParcelFileDescriptor): OpenedAttachmentSource {
+    if (isRegularFileDescriptor(pfd.fileDescriptor)) {
+        val fis = FileInputStream(pfd.fileDescriptor)
+        val ch = fis.channel
+        val size = runCatching { ch.size() }.getOrNull()
+        if (size != null && size >= 0L) {
+            return OpenedAttachmentSource.Regular(
+                closeable = Closeable {
+                    runCatching { fis.close() }
+                    runCatching { pfd.close() }
+                },
+                sizeProvider = { size },
+                reader = { dst, pos -> ch.read(dst, pos) },
+            )
+        }
+        return OpenedAttachmentSource.Stream(
+            object : FilterInputStream(fis) {
+                override fun close() {
+                    try {
+                        super.close()
+                    } finally {
+                        runCatching { pfd.close() }
+                    }
+                }
+            },
+        )
+    }
+    return OpenedAttachmentSource.Stream(ParcelFileDescriptor.AutoCloseInputStream(pfd))
+}
+
+/**
+ * Reads chunks from regular files in O(1) via positional `FileChannel.read` and from non-regular
+ * descriptors (such as SAF pipes/virtual streams where `fstat` is not `S_ISREG`) via a bounded
+ * sequential stream cursor cache so consecutive chunk reads run in O(n) total time.
+ */
+internal class SourceChunkReader(
+    private val access: AttachmentSourceAccess,
+    private val isDirectoryError: (Throwable) -> Boolean = { false },
+    private val maxOpenCursors: Int = 4,
+) : Closeable {
+    private class StreamCursor(
+        val ref: String,
+        val input: InputStream,
+        var pos: Long = 0L,
+    ) : Closeable {
+        override fun close() {
+            runCatching { input.close() }
+        }
+    }
+
+    private val lock = Any()
+    private val cursors = LinkedHashMap<String, StreamCursor>(maxOpenCursors, 0.75f, true)
+    @Volatile private var closed = false
+
+    fun readChunk(
+        ref: String,
+        offset: Long,
+        length: Int,
+        expectedSize: Long,
+        classifyError: (Throwable) -> AttachmentIOErrorKind = { AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER },
+    ): ReadChunkOutcome {
+        if (ref.isEmpty()) {
+            return ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+                errorDetail = "empty_source_ref",
+            )
+        }
+        if (offset < 0L || length < 0) {
+            return ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_OTHER,
+                errorDetail = "invalid_range",
+            )
+        }
+        if (expectedSize >= 0L && offset + length > expectedSize) {
+            return ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                errorDetail = "range_past_eof",
+            )
+        }
+        if (access.isDirectory(ref)) {
+            return ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIRECTORY,
+                errorDetail = "directory",
+            )
+        }
+        var activeCursor: StreamCursor? = null
+        return try {
+            val cached = synchronized(lock) { cursors.remove(ref) }
+            if (cached != null) {
+                if (cached.pos <= offset) {
+                    activeCursor = cached
+                } else {
+                    cached.close()
+                }
+            }
+            if (activeCursor == null) {
+                val opened = access.open(ref)
+                    ?: return ReadChunkOutcome(
+                        ok = false,
+                        errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+                        errorDetail = "cannot_open_stream",
+                    )
+                when (opened) {
+                    is OpenedAttachmentSource.Regular -> {
+                        return opened.use { reg ->
+                            val fileSize = reg.size()
+                            if (expectedSize >= 0L && fileSize != expectedSize) {
+                                return ReadChunkOutcome(
+                                    ok = false,
+                                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                                    errorDetail = "size_changed",
+                                )
+                            }
+                            if (offset + length > fileSize) {
+                                return ReadChunkOutcome(
+                                    ok = false,
+                                    errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                                    errorDetail = "range_past_eof",
+                                )
+                            }
+                            if (length == 0) return ReadChunkOutcome(ok = true, data = ByteArray(0))
+                            val out = ByteArray(length)
+                            val buf = ByteBuffer.wrap(out)
+                            var pos = offset
+                            while (buf.hasRemaining()) {
+                                val n = reg.readAt(buf, pos)
+                                if (n < 0) {
+                                    return ReadChunkOutcome(
+                                        ok = false,
+                                        errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                                        errorDetail = "unexpected_eof",
+                                    )
+                                }
+                                pos += n
+                            }
+                            ReadChunkOutcome(ok = true, data = out)
+                        }
+                    }
+                    is OpenedAttachmentSource.Stream -> {
+                        activeCursor = StreamCursor(ref = ref, input = opened.input, pos = 0L)
+                    }
+                }
+            }
+
+            val cursor = activeCursor!!
+            if (cursor.pos < offset) {
+                val scratch = ByteArray(64 * 1024)
+                while (cursor.pos < offset) {
+                    val toRead = minOf(scratch.size.toLong(), offset - cursor.pos).toInt()
+                    val n = cursor.input.read(scratch, 0, toRead)
+                    if (n < 0) {
+                        cursor.close()
+                        activeCursor = null
+                        return ReadChunkOutcome(
+                            ok = false,
+                            errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                            errorDetail = "unexpected_eof_before_offset",
+                        )
+                    }
+                    cursor.pos += n
+                }
+            }
+            val out = if (length == 0) {
+                ByteArray(0)
+            } else {
+                val buf = ByteArray(length)
+                var got = 0
+                while (got < length) {
+                    val n = cursor.input.read(buf, got, length - got)
+                    if (n < 0) {
+                        cursor.close()
+                        activeCursor = null
+                        return ReadChunkOutcome(
+                            ok = false,
+                            errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                            errorDetail = "unexpected_eof_in_chunk",
+                        )
+                    }
+                    got += n
+                    cursor.pos += n
+                }
+                buf
+            }
+
+            if (expectedSize >= 0L && cursor.pos == expectedSize) {
+                // Final chunk reached expected EOF: probe 1 extra byte to catch oversized streams.
+                val extra = cursor.input.read()
+                cursor.close()
+                activeCursor = null
+                if (extra >= 0) {
+                    return ReadChunkOutcome(
+                        ok = false,
+                        errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_CHANGED,
+                        errorDetail = "size_exceeded",
+                    )
+                }
+                return ReadChunkOutcome(ok = true, data = out)
+            }
+
+            // More chunks expected: park cursor for O(1) continuation on the next sequential chunk.
+            parkCursor(cursor)
+            activeCursor = null
+            ReadChunkOutcome(ok = true, data = out)
+        } catch (e: FileNotFoundException) {
+            activeCursor?.close()
+            ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+                errorDetail = e.message.orEmpty(),
+            )
+        } catch (e: SecurityException) {
+            activeCursor?.close()
+            ReadChunkOutcome(
+                ok = false,
+                errorKind = AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING,
+                errorDetail = e.message.orEmpty(),
+            )
+        } catch (e: Throwable) {
+            activeCursor?.close()
+            ReadChunkOutcome(
+                ok = false,
+                errorKind = if (isDirectoryError(e)) AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIRECTORY else classifyError(e),
+                errorDetail = e.message.orEmpty(),
+            )
+        }
+    }
+
+    private fun parkCursor(cursor: StreamCursor) {
+        val toClose = mutableListOf<StreamCursor>()
+        synchronized(lock) {
+            if (closed) {
+                toClose.add(cursor)
+            } else {
+                cursors.put(cursor.ref, cursor)?.let { toClose.add(it) }
+                while (cursors.size > maxOpenCursors) {
+                    val eldest = cursors.entries.iterator().next()
+                    toClose.add(eldest.value)
+                    cursors.remove(eldest.key)
+                }
+            }
+        }
+        for (c in toClose) c.close()
+    }
+
+    fun closeRef(ref: String) {
+        val removed = synchronized(lock) { cursors.remove(ref) }
+        removed?.close()
+    }
+
+    fun closeAll() {
+        val all = synchronized(lock) {
+            val copy = cursors.values.toList()
+            cursors.clear()
+            copy
+        }
+        for (c in all) c.close()
+    }
+
+    override fun close() {
+        closed = true
+        closeAll()
     }
 }
