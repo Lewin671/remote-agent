@@ -602,11 +602,16 @@ func (c *Core) handleDraftStorageListed(ctx *sync.StepContext, ev *corev1.DraftS
 			if d != nil && d.loadState != draftLoadLoaded {
 				// Only hydrate on startup scan; do NOT eagerly prepare/upload unopened sessions!
 				hadPreConfigEdit := d.hasLocalTextEdit
+				shouldWrite := hadPreConfigEdit || d.textRev != d.loadStartTextRev || hasPendingLoadOutboxBarriers(d)
 				c.hydrateDraftFromPersisted(ctx, d, rec, d.activated, &effects)
+				d.activeLoadOpID = 0
+				d.storageError = nil
 				d.hasLocalTextEdit = false
-				if hadPreConfigEdit {
-					c.enqueueDraftWrite(d, &effects)
+				if shouldWrite {
+					targetSeq := c.enqueueDraftWrite(d, &effects)
+					c.bindPendingLoadOutboxBarriers(d, targetSeq, &effects)
 				}
+				c.markDraftDirty(ctx, d.scope)
 			}
 		}
 	}
@@ -678,7 +683,7 @@ func (c *Core) handleDraftStorageReadResult(ctx *sync.StepContext, ev *corev1.Dr
 			}
 		}
 	}
-	if d == nil || d.activeLoadOpID == 0 || d.activeLoadOpID != ev.OpId {
+	if d == nil || d.activeLoadOpID == 0 || d.activeLoadOpID != ev.OpId || d.loadState == draftLoadLoaded {
 		return nil
 	}
 	d.activeLoadOpID = 0

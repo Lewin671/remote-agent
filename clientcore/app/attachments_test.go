@@ -2771,3 +2771,120 @@ func TestAttachments_StaleReadChunkPutAndHashAfterPauseCancelRestart(t *testing.
 		t.Fatalf("stale PutImageChunk must NOT pollute restarted upload progress, got %d%%", h.draftView(scope).Files[0].ProgressPercent)
 	}
 }
+
+func TestAttachments_StartupScanHydratesLoadingDraft_IgnoresLateReadResult(t *testing.T) {
+	c := New()
+	defer c.Close()
+	scope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_SESSION, Id: "s-race"}
+	nowMs := int64(1_791_078_060_000)
+
+	// 1. Configure with ScanStorage=true -> emits DraftStorageListEffect.
+	cfgEff := c.Dispatch(&corev1.Event{
+		NowMs: nowMs, MonoMs: 10_000,
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts: true,
+				PersistOutbox: true,
+				ScanStorage:   true,
+			},
+		},
+	})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if ls := ef.GetDraftStorageList(); ls != nil {
+			listOp = ls.OpId
+		}
+	}
+	if listOp == 0 {
+		t.Fatalf("expected DraftStorageListEffect on AttachmentConfig(ScanStorage=true)")
+	}
+
+	// 2. DraftOpen arrives BEFORE DraftStorageListed -> transitions draft to draftLoadLoading and emits DraftStorageReadEffect.
+	openEff := c.Dispatch(&corev1.Event{
+		NowMs: nowMs, MonoMs: 10_010,
+		Event: &corev1.Event_DraftOpen{
+			DraftOpen: &corev1.DraftOpenAction{Scope: scope},
+		},
+	})
+	var readOp uint64
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			readOp = rd.OpId
+		}
+	}
+	if readOp == 0 {
+		t.Fatalf("expected DraftStorageReadEffect on DraftOpen while scan is in flight")
+	}
+
+	rawDisk, err := attachments.EncodePersistedDraft(&corev1.PersistedDraftRecord{
+		SchemaVersion: attachments.PersistedSchemaVersion,
+		Scope:         scope,
+		Text:          "hello",
+		UpdatedMs:     nowMs - 1_000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. Startup scan completes first -> hydrates draft, clears activeLoadOpID, and marks draft dirty.
+	listedEff := c.Dispatch(&corev1.Event{
+		NowMs: nowMs, MonoMs: 10_020,
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{
+					{
+						Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT,
+						Key:    attachments.ScopeStorageKey(scope),
+						Data:   rawDisk,
+					},
+				},
+			},
+		},
+	})
+	var sawDraftRender bool
+	for _, ef := range listedEff.GetEffects() {
+		if r := ef.GetRender(); r != nil {
+			for _, s := range r.Screens {
+				if s == corev1.ScreenTarget_SCREEN_TARGET_ATTACHMENT_DRAFT {
+					sawDraftRender = true
+				}
+			}
+		}
+	}
+	if !sawDraftRender {
+		t.Fatalf("expected DraftStorageListed hydrating an open draft to mark ATTACHMENT_DRAFT dirty")
+	}
+
+	viewDraft := func() *corev1.AttachmentDraftView {
+		vm, err := c.View(&corev1.Screen{
+			Screen: &corev1.Screen_AttachmentDraft{
+				AttachmentDraft: &corev1.AttachmentDraftScreenRequest{Scope: scope},
+			},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vm.GetAttachmentDraft().GetDraft()
+	}
+	if dv := viewDraft(); dv.GetText() != "hello" || dv.GetRestoring() {
+		t.Fatalf("expected hydrated text \"hello\" and restoring=false, got text=%q restoring=%v", dv.GetText(), dv.GetRestoring())
+	}
+
+	// 4. Late DraftStorageReadResult arrives -> MUST be ignored without duplicating text ("hello\nhello")!
+	c.Dispatch(&corev1.Event{
+		NowMs: nowMs, MonoMs: 10_030,
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{
+				OpId:   readOp,
+				Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT,
+				Key:    attachments.ScopeStorageKey(scope),
+				Found:  true,
+				Data:   rawDisk,
+			},
+		},
+	})
+	if got := viewDraft().GetText(); got != "hello" {
+		t.Fatalf("late DraftStorageReadResult must not merge text twice, got %q", got)
+	}
+}
