@@ -2260,6 +2260,13 @@ actor CoreHost: SyncEngine {
             case .sharedFileCompleted(let eff):
                 completedSharedFiles.append(eff)
 
+            case .attachmentHashFile, .attachmentPrepareImage, .attachmentReadChunk,
+                 .attachmentReleaseLocal, .draftStorageList, .draftStorageRead,
+                 .draftStorageWrite, .draftStorageDelete, .draftStorageClearAll:
+                // iOS still uses the pre-Core attachment path and never sends
+                // AttachmentConfig, so Core does not emit these effects here.
+                break
+
             case nil:
                 break
             }
