@@ -208,4 +208,26 @@ class TerminalHistoryTest {
         assertEquals("terminal.history_closed", state.get().statusText?.key)
         assertEquals(listOf("here"), plainLines(state.get()))
     }
+
+    @Test fun closeOnProcessedRunsAfterCoreClearsVisibleState() = withCoreHistory { host, state, requests ->
+        host.sendTerminalHistory("term-test-1", TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_OPEN)
+        runCurrent()
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED,
+            TerminalHistoryPage.newBuilder().setRequestId(requests.last().requestId).addLines("line").build(),
+        )
+        runCurrent()
+        assertTrue(state.get().visible)
+
+        var visibleInsideCallback: Boolean? = null
+        host.sendTerminalHistory(
+            "term-test-1",
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE,
+            onProcessed = { visibleInsideCallback = state.get().visible },
+        )
+        runCurrent()
+        assertEquals(false, visibleInsideCallback)
+        assertFalse(state.get().visible)
+    }
 }

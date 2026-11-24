@@ -250,10 +250,10 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             term.openHistory()
         }
     }
-    fun leaveReading() {
+    fun leaveReading(onClosed: (() -> Unit)? = null) {
         pull.reset()
         newOutput = false
-        term.closeHistory()
+        term.closeHistory(onClosed)
     }
     // A capture that came back empty, or failed, starts the pull over: asking again takes a fresh
     // pull, not the distance this one had already gathered.
@@ -418,8 +418,9 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             compact = compact,
             enabled = state == RemoteTerminal.State.Live,
             onKey = { key ->
-                if (term.history.value.visible) leaveReading()
-                term.sendText(keySequence(key, term.session.emulator?.isCursorKeysApplicationMode == true))
+                val seq = keySequence(key, term.session.emulator?.isCursorKeysApplicationMode == true)
+                if (term.history.value.visible) leaveReading { term.sendText(seq) }
+                else term.sendText(seq)
             },
             onKeyboard = {
                 val v = term.view ?: return@KeyBar

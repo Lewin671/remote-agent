@@ -92,8 +92,12 @@ class RemoteTerminal(
         remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_RETRY)
     }
 
-    fun closeHistory() {
-        remote.coreHost.sendTerminalHistory(terminalId, TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE)
+    fun closeHistory(onClosed: (() -> Unit)? = null) {
+        remote.coreHost.sendTerminalHistory(
+            terminalId,
+            TerminalHistoryEventKind.TERMINAL_HISTORY_EVENT_KIND_CLOSE,
+            onProcessed = onClosed?.let { cb -> { main.post(cb) } },
+        )
     }
 
     private val main = Handler(Looper.getMainLooper())

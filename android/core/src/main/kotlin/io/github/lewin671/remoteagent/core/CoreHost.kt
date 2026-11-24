@@ -2114,15 +2114,17 @@ class CoreHost(
         terminalId: String,
         kind: TerminalHistoryEventKind,
         page: io.github.lewin671.remoteagent.proto.TerminalHistoryPage? = null,
+        onProcessed: (() -> Unit)? = null,
     ) {
-        if (terminalId.isEmpty() || closed.get()) return
-        send {
-            val b = TerminalHistoryEvent.newBuilder()
-                .setTerminalId(terminalId)
-                .setKind(kind)
-            if (page != null) b.setPage(page)
-            setTerminalHistory(b)
+        if (terminalId.isEmpty() || closed.get()) {
+            onProcessed?.invoke()
+            return
         }
+        val b = TerminalHistoryEvent.newBuilder()
+            .setTerminalId(terminalId)
+            .setKind(kind)
+        if (page != null) b.setPage(page)
+        dispatch(CoreEvent.newBuilder().setTerminalHistory(b).build(), onProcessed)
     }
 
     fun onTerminalHistorySendRequest(
