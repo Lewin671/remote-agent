@@ -354,6 +354,7 @@ export interface HostBridge {
     sessionId: string,
     cmd: MessageInitShape<typeof CommandSchema>["kind"],
     signal?: AbortSignal,
+    skipConnectivityPreflight?: boolean,
   ): Promise<void>;
   changeProjectPref(kind: "pin" | "unpin" | "hide" | "unhide", path: string): void;
   dispatchEvent(ev: Event, onProcessed?: () => void): void;
@@ -948,8 +949,8 @@ export class CoreHost {
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
         dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
           this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
-        runMachineCommand: (machineId, sessionId, cmd, signal) =>
-          this.runMachineCommand(machineId, sessionId, cmd, signal),
+        runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
+          this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
         changeProjectPref: (kind, path) =>
           this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
