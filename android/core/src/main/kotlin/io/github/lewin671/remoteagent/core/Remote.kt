@@ -62,8 +62,8 @@ class TermConn internal constructor(
     private val ws: FrameStream,
     private val sendFrame: (TerminalFrame) -> Unit,
     private val closeLocal: () -> Unit,
-    private val confirmRebuildAction: () -> Unit = {},
 ) {
+    internal var confirmRebuildAction: () -> Unit = {}
     fun send(frame: TerminalFrame) = sendFrame(frame)
     fun close() = cleanup(closeLocal, { ws.close() })
     fun confirmRebuild() = confirmRebuildAction()
@@ -2650,6 +2650,7 @@ class Remote(
                     }
                 },
                 closeLocal = { finish() },
+            ).apply {
                 confirmRebuildAction = {
                     if (!closed.get()) {
                         coreHost.dispatch(
@@ -2660,8 +2661,8 @@ class Remote(
                                 .build(),
                         )
                     }
-                },
-            )
+                }
+            }
         } catch (e: Exception) {
             finish()
             throw e
