@@ -96,10 +96,19 @@ final class ImageCenter {
 
     /// Bounded LRU cache of decoded thumbnails for Core's local attachment refs (`thumb_ref` / `prepared_ref`).
     static let maxLocalImages = 64
+    /// Bounded negative cache so undecodable/missing/oversized blobs do not re-trigger reads on every SwiftUI render.
+    static let maxFailedLocalRefs = 256
+    /// Size cap for inline strip thumbnail decodes (normal `thumb_ref` is ~20 KiB; huge original blobs skip full decrypt here).
+    static let maxThumbnailBlobBytes: Int64 = 8 * 1024 * 1024
     private var localImages: [String: UIImage] = [:]
     @ObservationIgnored private var localImageOrder: [String] = []
     @ObservationIgnored private var loadingRefs = Set<String>()
+    @ObservationIgnored private var failedLocalRefs = Set<String>()
+    @ObservationIgnored private var failedLocalRefOrder: [String] = []
     @ObservationIgnored private var loadTasks: [String: Task<Void, Never>] = [:]
+    #if DEBUG
+    @ObservationIgnored private var localImageLoadCount = 0
+    #endif
 
     /// Transient picker / clipboard UX notices (e.g., empty clipboard or blocked picker tap).
     private(set) var notices: [String: Notice] = [:]
@@ -129,6 +138,8 @@ final class ImageCenter {
         for task in loadTasks.values { task.cancel() }
         loadTasks.removeAll()
         loadingRefs.removeAll()
+        failedLocalRefs.removeAll()
+        failedLocalRefOrder.removeAll()
         localImages.removeAll()
         localImageOrder.removeAll()
         notices.removeAll()
@@ -143,20 +154,34 @@ final class ImageCenter {
         for ref in refs {
             loadTasks.removeValue(forKey: ref)?.cancel()
             loadingRefs.remove(ref)
+            failedLocalRefs.remove(ref)
             localImages.removeValue(forKey: ref)
         }
         localImageOrder.removeAll { removed.contains($0) }
+        failedLocalRefOrder.removeAll { removed.contains($0) }
     }
 
     private func clearLocalCache() {
         for task in loadTasks.values { task.cancel() }
         loadTasks.removeAll()
         loadingRefs.removeAll()
+        failedLocalRefs.removeAll()
+        failedLocalRefOrder.removeAll()
         localImages.removeAll()
         localImageOrder.removeAll()
     }
 
+    private func recordFailedLocalRef(_ ref: String) {
+        guard failedLocalRefs.insert(ref).inserted else { return }
+        failedLocalRefOrder.append(ref)
+        while failedLocalRefOrder.count > Self.maxFailedLocalRefs {
+            let evicted = failedLocalRefOrder.removeFirst()
+            failedLocalRefs.remove(evicted)
+        }
+    }
+
     private func cacheLocalImage(_ image: UIImage, for ref: String) {
+        failedLocalRefs.remove(ref)
         localImages[ref] = image
         if let idx = localImageOrder.firstIndex(of: ref) {
             localImageOrder.remove(at: idx)
@@ -170,6 +195,8 @@ final class ImageCenter {
 
     #if DEBUG
     var localImageCacheCountForTesting: Int { localImages.count }
+    var failedLocalRefCountForTesting: Int { failedLocalRefs.count }
+    var localImageLoadCountForTesting: Int { localImageLoadCount }
     #endif
 
     // MARK: Viewed images & timeline previews
@@ -196,6 +223,12 @@ final class ImageCenter {
 
     // MARK: Local attachment thumbnails & sharp viewer decode
 
+    private enum LocalThumbnailDecode: @unchecked Sendable {
+        case image(UIImage)
+        case transientFailure
+        case permanentFailure
+    }
+
     /// Returns a cached thumbnail for `ref` (`thumb_ref` or `prepared_ref`), or triggers an async decode.
     func localImage(for ref: String) -> UIImage? {
         guard !ref.isEmpty, !closed else { return nil }
@@ -206,21 +239,38 @@ final class ImageCenter {
             }
             return cached
         }
+        guard !failedLocalRefs.contains(ref) else { return nil }
         guard loadingRefs.insert(ref).inserted else { return nil }
+        #if DEBUG
+        localImageLoadCount += 1
+        #endif
         let store = pending
+        let maxBytes = Self.maxThumbnailBlobBytes
         loadTasks[ref] = Task { [weak self] in
-            let decoded: UIImage? = await Task.detached(priority: .userInitiated) {
-                guard let bytes = try? store.readBlob(ref),
-                      let cg = thumbnailImage(bytes, maxLong: 256)
-                else { return nil }
-                return UIImage(cgImage: cg)
+            let outcome: LocalThumbnailDecode = await Task.detached(priority: .userInitiated) {
+                do {
+                    let bytes = try store.readBlob(ref, maxBytes: maxBytes)
+                    guard let cg = thumbnailImage(bytes, maxLong: 256) else {
+                        return .permanentFailure
+                    }
+                    return .image(UIImage(cgImage: cg))
+                } catch let v as VaultError where v.isLocked {
+                    return .transientFailure
+                } catch {
+                    return .permanentFailure
+                }
             }.value
             guard let self else { return }
             self.loadingRefs.remove(ref)
             self.loadTasks.removeValue(forKey: ref)
             guard !self.closed, !Task.isCancelled else { return }
-            if let decoded {
+            switch outcome {
+            case .image(let decoded):
                 self.cacheLocalImage(decoded, for: ref)
+            case .permanentFailure:
+                self.recordFailedLocalRef(ref)
+            case .transientFailure:
+                break
             }
         }
         return nil

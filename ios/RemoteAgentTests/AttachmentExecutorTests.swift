@@ -502,6 +502,42 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(h.center.localImageCacheCountForTesting <= ImageCenter.maxLocalImages)
     }
 
+    @Test func localImageNegativeCachesDecodeFailuresAndBoundsBlobSize() async throws {
+        let store = PendingStore.ephemeral()
+        let h = try await makeHarness(store: store, persist: false)
+        defer {
+            Task {
+                await h.host.closeAsync()
+                await MainActor.run { ImageCenter.remove(h.remote) }
+            }
+        }
+
+        let badRef = try store.storeBlob(Data("not-an-image".utf8), prefix: "bad")
+        let hugeRef = try store.storeBlob(Data(count: Int(ImageCenter.maxThumbnailBlobBytes) + 1), prefix: "huge")
+
+        #expect(h.center.localImage(for: badRef) == nil)
+        await eventually("badRef recorded in negative cache") {
+            h.center.failedLocalRefCountForTesting == 1
+        }
+        let loadsAfterBad = h.center.localImageLoadCountForTesting
+        for _ in 0..<5 {
+            #expect(h.center.localImage(for: badRef) == nil)
+        }
+        #expect(h.center.localImageLoadCountForTesting == loadsAfterBad)
+
+        #expect(h.center.localImage(for: hugeRef) == nil)
+        await eventually("oversized ref rejected before decode and cached") {
+            h.center.failedLocalRefCountForTesting == 2
+        }
+        let loadsAfterHuge = h.center.localImageLoadCountForTesting
+        #expect(h.center.localImage(for: hugeRef) == nil)
+        #expect(h.center.localImageLoadCountForTesting == loadsAfterHuge)
+
+        // Evicting a ref clears its negative-cache entry.
+        h.center.handlers().onReleaseLocalRefs([badRef])
+        #expect(h.center.failedLocalRefCountForTesting == 1)
+    }
+
     @Test func oversizedLibraryVideoSkipsCopyAndIsRejectedByCore() async throws {
         let store = PendingStore.ephemeral()
         let h = try await makeHarness(store: store, persist: false)

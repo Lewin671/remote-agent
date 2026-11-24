@@ -575,8 +575,9 @@ final class PendingStore: @unchecked Sendable {
     }
 
     /// Reads and decrypts a full `"blob:<id>"` (for `AttachmentPrepareImageEffect`, thumbnails, and viewer).
+    /// When `maxBytes > 0`, rejects blobs larger than `maxBytes` before allocating or decrypting chunks.
     /// Releases `lock` during streaming decryption.
-    func readBlob(_ ref: String, expectedEpoch: Int? = nil) throws -> Data {
+    func readBlob(_ ref: String, maxBytes: Int64 = 0, expectedEpoch: Int? = nil) throws -> Data {
         guard let id = Self.refID(ref, prefix: "blob:") else {
             throw AttachmentFileIOError(.sourceMissing)
         }
@@ -584,6 +585,7 @@ final class PendingStore: @unchecked Sendable {
             return try lock.withLock {
                 if let expectedEpoch, expectedEpoch != epoch { throw AttachmentFileIOError(.sourceMissing) }
                 guard let data = memBlobs[ref] else { throw AttachmentFileIOError(.sourceMissing) }
+                if maxBytes > 0 && Int64(data.count) > maxBytes { throw AttachmentFileIOError(.fileTooLarge) }
                 return data
             }
         }
@@ -602,6 +604,9 @@ final class PendingStore: @unchecked Sendable {
         let fileSize = Int64(try handle.seekToEnd())
         try handle.seek(toOffset: 0)
         let (plainSize, chunkSize) = try Self.readBlobHeader(handle, fileSize: fileSize, maxPlainBytes: limit)
+        if maxBytes > 0 && plainSize > maxBytes {
+            throw AttachmentFileIOError(.fileTooLarge)
+        }
         if plainSize == 0 {
             try lock.withLock { if epoch != startEpoch { throw AttachmentFileIOError(.sourceMissing) } }
             return Data()
@@ -1067,8 +1072,8 @@ struct PendingScope: Sendable {
         try store.storeBlob(from: sourceURL, prefix: prefix, expectedEpoch: epoch)
     }
 
-    func readBlob(_ ref: String) throws -> Data {
-        try store.readBlob(ref, expectedEpoch: epoch)
+    func readBlob(_ ref: String, maxBytes: Int64 = 0) throws -> Data {
+        try store.readBlob(ref, maxBytes: maxBytes, expectedEpoch: epoch)
     }
 
     func readBlobChunk(_ ref: String, offset: Int64, length: Int, expectedSizeBytes: Int64) throws -> Data {
