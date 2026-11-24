@@ -1073,11 +1073,11 @@ func (s *TerminalStream) Advance(now uint64) (emitACK bool) {
 		if !item.frame.IsInput {
 			continue
 		}
-		if now-item.cachedAt >= TermInputCacheMaxMs || (item.frame.DeadlineMs > 0 && now >= item.frame.DeadlineMs) {
+		if (now >= item.cachedAt && now-item.cachedAt >= TermInputCacheMaxMs) || (item.frame.DeadlineMs > 0 && now >= item.frame.DeadlineMs) {
 			s.Paused = true
 		}
 	}
-	if s.dirtyACK > 0 && now-s.lastACK >= TermAckIntervalMs {
+	if s.dirtyACK > 0 && now >= s.lastACK && now-s.lastACK >= TermAckIntervalMs {
 		s.dirtyACK = 0
 		s.lastACK = now
 		emitACK = true
@@ -1164,7 +1164,7 @@ func (s *TerminalStream) refreshOutputGap() {
 }
 
 func (s *TerminalStream) pruneReplay(now uint64) {
-	for len(s.replay) > 0 && (len(s.replay) > TermOutputReplayMaxFrames || s.replayBytes > TermOutputReplayMaxBytes || now-s.replay[0].recordedAt >= TermOutputReplayMaxMs) {
+	for len(s.replay) > 0 && (len(s.replay) > TermOutputReplayMaxFrames || s.replayBytes > TermOutputReplayMaxBytes || (now >= s.replay[0].recordedAt && now-s.replay[0].recordedAt >= TermOutputReplayMaxMs)) {
 		s.replayBytes -= len(s.replay[0].frame.RawEnvelope)
 		s.replay = s.replay[1:]
 	}
@@ -1279,7 +1279,7 @@ func (r *TerminalRegistry) ForceRetire(id string, now uint64) {
 // Prune removes retired streams whose 30s query retention has elapsed.
 func (r *TerminalRegistry) Prune(now uint64) {
 	for id, s := range r.retired {
-		if now-s.RetiredAt >= TermRetiredRetainMs {
+		if now >= s.RetiredAt && now-s.RetiredAt >= TermRetiredRetainMs {
 			delete(r.retired, id)
 		}
 	}

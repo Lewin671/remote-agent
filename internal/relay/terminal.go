@@ -190,9 +190,9 @@ func (h *terminalHub) evictOldestZeroLegLocked(peerID string, nowMs uint64) *liv
 	}
 	oldest.mu.Lock()
 	oldest.explicitClosed = true
-	oldest.mu.Unlock()
 	delete(h.live, oldest.streamID)
 	h.registry.ForceRetire(oldest.streamID, nowMs)
+	oldest.mu.Unlock()
 	return oldest
 }
 
@@ -417,7 +417,9 @@ func (lt *liveTerminal) serve() {
 		if lt.hub.live[lt.streamID] == lt {
 			delete(lt.hub.live, lt.streamID)
 		}
+		lt.mu.Lock()
 		lt.hub.registry.ForceRetire(lt.streamID, nowMs)
+		lt.mu.Unlock()
 		lt.hub.mu.Unlock()
 	}()
 
@@ -1466,7 +1468,7 @@ func (c *endpoint) handleDirectTerminalControl(m *directManager, p *directPeer, 
 		if maxFrames == 0 || maxFrames > linkcore.TermOutputReplayMaxFrames {
 			maxFrames = linkcore.TermOutputReplayMaxFrames
 		}
-		frames, rerr := lt.stream.ReplayOutput(now, msg.FromSeq, targetSeq, maxBytes, maxFrames)
+		frames, rerr := lt.stream.ReplayOutput(uint64(hub.now().UnixMilli()), msg.FromSeq, targetSeq, maxBytes, maxFrames)
 		rp := lt.relayPath
 		lt.mu.Unlock()
 		// D: Normal paginated Replay stopping cleanly at maxFrames/maxBytes is NOT overflow;
