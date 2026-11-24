@@ -1,355 +1,275 @@
-// Images sent from the phone (architecture §17): reading formats and
-// orientation, taking metadata out of files sent as originals, the limits
-// of one message, and uploading in chunks. Decoding and re-encoding pixels
-// needs the platform and is in the app.
-//
-// The parsers read files people picked, so every offset is checked before
-// it is used: Kotlin's version leans on array bounds exceptions in places,
-// where an unchecked read here would stop the app.
+// Images sent from the phone (architecture §17): container format sniffing,
+// orientation inspection, and lossless metadata stripping delegate to
+// clientcore/domain/imageparse via Corebind using header/seek windows and
+// local Data range splicing (no full-file copy across FFI). Decoding and
+// re-encoding pixels remain in ImagePrepare.swift.
+import Corebind
+import Darwin
 import Foundation
 import RAProto
 
 /// The long side of a compressed image.
 public let compressedLongSide = 2048
 
-private typealias Bytes = [UInt8]
+private let imgFmtUnknown: Int32 = 0
+private let imgFmtJpeg: Int32 = 1
+private let imgFmtPng: Int32 = 2
+private let imgFmtWebp: Int32 = 3
+private let imgFmtGif: Int32 = 4
 
-/// Whether the bytes at `i` spell `text` (ASCII).
-private func has(_ b: Bytes, _ i: Int, _ text: String) -> Bool {
-    let t = Array(text.utf8)
-    return i >= 0 && i + t.count <= b.count && b[i..<(i + t.count)].elementsEqual(t)
+private let imgModeInspect: Int32 = 1
+private let imgModeStrip: Int32 = 2
+
+private let imgStatusDone: UInt8 = 0
+private let imgStatusNeedRead: UInt8 = 1
+private let imgStatusNeedScanJpegEntropy: UInt8 = 2
+private let imgStatusNeedSkipGifSubBlocks: UInt8 = 3
+private let imgStatusError: UInt8 = 4
+
+private let imgErrMalformed: UInt8 = 1
+private let imgErrUnsupported: UInt8 = 2
+private let imgErrGifUnreadable: UInt8 = 3
+private let imgErrGifTruncated: UInt8 = 4
+private let imgErrGifUnknownBlock: UInt8 = 5
+private let imgErrTooComplex: UInt8 = 6
+
+private let imgSniffHeaderBytes = 256
+private let imgInitialHeaderBytes = 64 * 1024
+
+private func formatFromCore(_ code: Int32) -> PBImageFormat? {
+    switch code {
+    case imgFmtJpeg: return .jpeg
+    case imgFmtPng: return .png
+    case imgFmtWebp: return .webp
+    case imgFmtGif: return .gif
+    default: return nil
+    }
 }
 
-/// The four bytes at `i` as a chunk type; they are compared with ASCII names only.
-private func tag(_ b: Bytes, _ i: Int) -> String { String(decoding: b[i..<(i + 4)], as: Unicode.ASCII.self) }
-
-private func detect(_ b: Bytes) -> PBImageFormat? {
-    if b.count >= 8 && b[0] == 0x89 && has(b, 1, "PNG") { return .png }
-    if b.count >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF { return .jpeg }
-    if b.count >= 12 && has(b, 0, "RIFF") && has(b, 8, "WEBP") { return .webp }
-    if b.count >= 6 && (has(b, 0, "GIF87a") || has(b, 0, "GIF89a")) { return .gif }
-    return nil
+/// Returns a zero-based Data slice for [offset..<end] relative to `data.startIndex`.
+private func subdataCopy(_ data: Data, _ offset: Int, _ end: Int) -> Data {
+    let lo = max(0, min(offset, data.count))
+    let hi = max(lo, min(end, data.count))
+    let base = data.startIndex
+    return Data(data[(base + lo)..<(base + hi)])
 }
 
 /// The format of encoded image bytes, by their signature; nil for anything else (HEIC and the like).
-public func detectFormat(_ data: Data) -> PBImageFormat? { detect(Bytes(data.prefix(12))) }
-
-private func u16(_ b: Bytes, _ i: Int, le: Bool) -> Int? {
-    guard i >= 0, i + 2 <= b.count else { return nil }
-    return le ? Int(b[i]) | Int(b[i + 1]) << 8 : Int(b[i]) << 8 | Int(b[i + 1])
-}
-
-private func u32(_ b: Bytes, _ i: Int, le: Bool) -> Int? {
-    guard let a = u16(b, i, le: le), let c = u16(b, i + 2, le: le) else { return nil }
-    return le ? a | c << 16 : a << 16 | c
-}
-
-/// The orientation (1 to 8) a TIFF/Exif block records; 1 when it says none or cannot be read.
-private func tiffOrientation(_ t: Bytes, _ off: Int, _ end: Int) -> Int {
-    if end - off < 8 || end > t.count || off < 0 { return 1 }
-    let le: Bool
-    if has(t, off, "II") { le = true } else if has(t, off, "MM") { le = false } else { return 1 }
-    guard u16(t, off + 2, le: le) == 42, let rel = u32(t, off + 4, le: le) else { return 1 }
-    let ifd = off + rel
-    if ifd + 2 > end { return 1 }
-    guard let n = u16(t, ifd, le: le) else { return 1 }
-    for i in 0..<n {
-        let e = ifd + 2 + i * 12
-        if e + 12 > end { return 1 }
-        if u16(t, e, le: le) == 0x0112 {
-            guard let v = u16(t, e + 8, le: le) else { return 1 }
-            return (1...8).contains(v) ? v : 1
-        }
-    }
-    return 1
+public func detectFormat(_ data: Data) -> PBImageFormat? {
+    let head = subdataCopy(data, 0, min(data.count, imgSniffHeaderBytes))
+    return formatFromCore(CorebindSniffImageFormat(head))
 }
 
 /// The orientation (1 to 8) a TIFF/Exif block records; 1 when it says none or cannot be read.
 public func tiffOrientation(_ data: Data) -> Int {
-    let t = Bytes(data)
-    return tiffOrientation(t, 0, t.count)
+    let raw = data.startIndex == 0 ? data : Data(data)
+    return Int(CorebindTiffOrientation(raw))
 }
 
-/// A JPEG's segments before the image data: marker, and where the segment starts and ends.
-private struct Segment {
-    var marker: Int
-    var start: Int
-    var end: Int
+private func u32le(_ d: Data, _ at: Int) -> Int {
+    let base = d.startIndex + at
+    return Int(d[base]) | (Int(d[base + 1]) << 8) | (Int(d[base + 2]) << 16) | (Int(d[base + 3]) << 24)
 }
 
-private func jpegSegments(_ b: Bytes) -> [Segment]? {
-    if detect(b) != .jpeg { return nil }
-    var out = [Segment]()
-    var i = 2
-    while i + 4 <= b.count {
-        if b[i] != 0xFF { return nil }
-        let marker = Int(b[i + 1])
-        if marker == 0xFF {
-            i += 1
-            continue
+private func u64le(_ d: Data, _ at: Int) -> Int64 {
+    let base = d.startIndex + at
+    var v: UInt64 = 0
+    for i in 0..<8 { v |= UInt64(d[base + i]) << (i * 8) }
+    return Int64(bitPattern: v)
+}
+
+/// In-place memchr-accelerated scan for the first real JPEG marker after entropy-coded data; -1 on EOF.
+private func scanJpegEntropy(_ data: Data, _ pos: Int) -> Int {
+    guard pos >= 0, pos + 1 < data.count else { return -1 }
+    return data.withUnsafeBytes { raw -> Int in
+        guard let base = raw.baseAddress else { return -1 }
+        let b = raw.bindMemory(to: UInt8.self)
+        let n = b.count
+        var i = pos
+        while i + 1 < n {
+            guard let found = memchr(base.advanced(by: i), 0xFF, n - i) else { return -1 }
+            let idx = base.distance(to: found)
+            var k = idx
+            while k + 1 < n && b[k + 1] == 0xFF { k += 1 }
+            if k + 1 >= n { return -1 }
+            let next = b[k + 1]
+            if next == 0x00 || (next >= 0xD0 && next <= 0xD7) {
+                i = k + 2
+                continue
+            }
+            return idx
         }
-        // Start of scan: everything from here on is image data.
-        if marker == 0xDA { return out }
-        if marker == 0xD8 || (0xD0...0xD7).contains(marker) || marker == 0x01 {
-            i += 2
-            continue
-        }
-        let len = Int(b[i + 2]) << 8 | Int(b[i + 3])
-        if len < 2 || i + 2 + len > b.count { return nil }
-        out.append(Segment(marker: marker, start: i, end: i + 2 + len))
-        i += 2 + len
+        return -1
     }
-    return nil
 }
 
-private func jpegOrientation(_ b: Bytes) -> Int {
-    guard let segs = jpegSegments(b) else { return 1 }
-    for s in segs where s.marker == 0xE1 && s.end - s.start > 10 && has(b, s.start + 4, "Exif\0\0") {
-        return tiffOrientation(b, s.start + 10, s.end)
+/// In-place skip over a GIF sub-block chain; returns offset after 0x00 terminator or -1 on EOF.
+private func skipGifSubBlocks(_ data: Data, _ pos: Int) -> Int {
+    guard pos >= 0, pos < data.count else { return -1 }
+    return data.withUnsafeBytes { raw -> Int in
+        let b = raw.bindMemory(to: UInt8.self)
+        let n = b.count
+        var p = pos
+        while true {
+            if p >= n { return -1 }
+            let len = Int(b[p])
+            p += 1 + len
+            if p > n { return -1 }
+            if len == 0 { return p }
+        }
     }
-    return 1
+}
+
+private enum ImagePlanFailure: Error {
+    case rejected(UInt8)
+}
+
+private func runImagePlan(_ data: Data, mode: Int32, expectedFormat: Int32) throws -> Data {
+    let maxSteps = CorebindImagePlanMaxSteps(Int64(data.count))
+    guard let plan = CorebindNewImagePlan(mode, expectedFormat, Int64(data.count)) else {
+        throw ImagePlanFailure.rejected(imgErrMalformed)
+    }
+    var offset: Int64 = 0
+    var slice = subdataCopy(data, 0, min(imgInitialHeaderBytes, data.count))
+    for _ in 0..<maxSteps {
+        let res = try plan.step(offset, buf: slice)
+        guard !res.isEmpty else { throw ImagePlanFailure.rejected(imgErrMalformed) }
+        let status = res[res.startIndex]
+        if status == imgStatusDone { return res }
+        if status == imgStatusError {
+            let code = res.count >= 2 ? res[res.startIndex + 1] : imgErrMalformed
+            throw ImagePlanFailure.rejected(code)
+        }
+        switch status {
+        case imgStatusNeedRead:
+            offset = u64le(res, 1)
+            let need = u32le(res, 9)
+            let lo = Int(max(0, min(offset, Int64(data.count))))
+            let hi = Int(min(Int64(data.count), offset + Int64(need)))
+            slice = subdataCopy(data, lo, hi)
+        case imgStatusNeedScanJpegEntropy:
+            let from = Int(u64le(res, 1))
+            let found = scanJpegEntropy(data, from)
+            offset = Int64(found)
+            slice = found >= 0 ? subdataCopy(data, found, min(found + imgInitialHeaderBytes, data.count)) : Data()
+        case imgStatusNeedSkipGifSubBlocks:
+            let from = Int(u64le(res, 1))
+            let end = skipGifSubBlocks(data, from)
+            offset = Int64(end)
+            slice = end >= 0 ? subdataCopy(data, end, min(end + imgInitialHeaderBytes, data.count)) : Data()
+        default:
+            throw ImagePlanFailure.rejected(imgErrMalformed)
+        }
+    }
+    throw ImagePlanFailure.rejected(imgErrTooComplex)
+}
+
+private func spliceImagePlan(_ src: Data, _ done: Data) -> Data {
+    let count = u32le(done, 12)
+    let base = done.startIndex
+    var at = 16
+    var total = 0
+    for _ in 0..<count {
+        let kind = done[base + at]
+        at += 1
+        if kind == 0 {
+            let s = Int(u64le(done, at))
+            let e = Int(u64le(done, at + 8))
+            total += e - s
+            at += 16
+        } else {
+            let n = u32le(done, at)
+            total += n
+            at += 4 + n
+        }
+    }
+    var out = Data(capacity: total)
+    let srcBase = src.startIndex
+    at = 16
+    for _ in 0..<count {
+        let kind = done[base + at]
+        at += 1
+        if kind == 0 {
+            let s = Int(u64le(done, at))
+            let e = Int(u64le(done, at + 8))
+            out.append(src[(srcBase + s)..<(srcBase + e)])
+            at += 16
+        } else {
+            let n = u32le(done, at)
+            out.append(done[(base + at + 4)..<(base + at + 4 + n)])
+            at += 4 + n
+        }
+    }
+    return out
+}
+
+private func inspectOrientation(_ data: Data, expectedFormat: Int32) -> Int {
+    guard let done = try? runImagePlan(data, mode: imgModeInspect, expectedFormat: expectedFormat), done.count >= 3 else {
+        return 1
+    }
+    return Int(done[done.startIndex + 2])
 }
 
 /// A JPEG's Exif orientation, 1 when none.
-public func jpegOrientation(_ data: Data) -> Int { jpegOrientation(Bytes(data)) }
-
-/// Whether an application or comment segment is kept: JFIF, the color profile and Adobe's color transform.
-private func keepJpegSegment(_ b: Bytes, marker: Int, start: Int, end: Int) -> Bool {
-    switch marker {
-    case 0xE0: return end - start >= 8 && has(b, start + 4, "JFIF")
-    case 0xE2: return end - start >= 15 && has(b, start + 4, "ICC_PROFILE")
-    case 0xEE: return true
-    case 0xFE: return false
-    case 0xE1...0xEF: return false
-    default: return true
-    }
-}
-
-private func stripJpeg(_ b: Bytes) throws -> Bytes {
-    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg(), problemKind: .decode)
-    if detect(b) != .jpeg { throw bad }
-    var out = Bytes()
-    out.reserveCapacity(b.count)
-    out.append(contentsOf: b[0..<2])
-    var i = 2
-    while true {
-        if i + 2 > b.count || b[i] != 0xFF { throw bad }
-        let marker = Int(b[i + 1])
-        if marker == 0xFF {
-            // Fill bytes before a marker.
-            i += 1
-        } else if marker == 0xD9 {
-            out.append(contentsOf: b[i..<(i + 2)])
-            return out
-        } else if (0xD0...0xD7).contains(marker) || marker == 0x01 {
-            out.append(contentsOf: b[i..<(i + 2)])
-            i += 2
-        } else {
-            if i + 4 > b.count { throw bad }
-            let len = Int(b[i + 2]) << 8 | Int(b[i + 3])
-            if len < 2 || i + 2 + len > b.count { throw bad }
-            let end = i + 2 + len
-            if keepJpegSegment(b, marker: marker, start: i, end: end) { out.append(contentsOf: b[i..<end]) }
-            i = end
-            if marker == 0xDA {
-                // The scan's coded data runs to the next marker other than
-                // a stuffed zero or a restart marker. Fill bytes (more
-                // 0xFF) may come before a restart marker too.
-                var j = i
-                while j + 1 < b.count {
-                    if b[j] == 0xFF {
-                        var k = j
-                        while k + 1 < b.count, b[k + 1] == 0xFF { k += 1 }
-                        if k + 1 >= b.count { throw bad }
-                        let n = Int(b[k + 1])
-                        if n != 0x00 && !(0xD0...0xD7).contains(n) { break }
-                        j = k + 2
-                    } else {
-                        j += 1
-                    }
-                }
-                if j + 1 >= b.count { throw bad }
-                out.append(contentsOf: b[i..<j])
-                i = j
-            }
-        }
-    }
-}
-
-/// A JPEG without its metadata: Exif and XMP (APP1), IPTC (APP13), comments
-/// and the other application segments go wherever they are, before the
-/// first scan, between the scans of a progressive JPEG or right before the
-/// end; JFIF (APP0), the color profile (APP2 ICC_PROFILE) and Adobe's color
-/// transform (APP14) stay, since the picture depends on them. Only the
-/// entropy-coded data of each scan is copied without being parsed, up to the
-/// next marker; anything after the end marker goes. Take the orientation
-/// into account first: without Exif the picture shows as stored.
-public func stripJpeg(_ data: Data) throws -> Data { Data(try stripJpeg(Bytes(data))) }
-
-private struct Chunk {
-    var type: String
-    var start: Int
-    var end: Int
-}
-
-private func pngChunks(_ b: Bytes) -> [Chunk]? {
-    if detect(b) != .png { return nil }
-    var out = [Chunk]()
-    var i = 8
-    while i + 12 <= b.count {
-        guard let len = u32(b, i, le: false), len <= b.count else { return nil }
-        let type = tag(b, i + 4)
-        let end = i + 12 + len
-        if end > b.count { return nil }
-        out.append(Chunk(type: type, start: i, end: end))
-        i = end
-        if type == "IEND" { break }
-    }
-    return out
-}
-
-private func pngOrientation(_ b: Bytes) -> Int {
-    guard let c = pngChunks(b)?.first(where: { $0.type == "eXIf" }) else { return 1 }
-    return tiffOrientation(b, c.start + 8, c.end - 4)
-}
+public func jpegOrientation(_ data: Data) -> Int { inspectOrientation(data, expectedFormat: imgFmtJpeg) }
 
 /// A PNG's orientation from its eXIf chunk, 1 when none.
-public func pngOrientation(_ data: Data) -> Int { pngOrientation(Bytes(data)) }
+public func pngOrientation(_ data: Data) -> Int { inspectOrientation(data, expectedFormat: imgFmtPng) }
 
-private func stripPng(_ b: Bytes) throws -> Bytes {
-    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng(), problemKind: .decode) }
-    let drop: Set<String> = ["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]
-    var out = Bytes()
-    out.reserveCapacity(b.count)
-    out.append(contentsOf: b[0..<8])
-    for c in chunks where !drop.contains(c.type) { out.append(contentsOf: b[c.start..<c.end]) }
-    return out
+/// A WebP's orientation from its EXIF chunk, 1 when none.
+public func webpOrientation(_ data: Data) -> Int { inspectOrientation(data, expectedFormat: imgFmtWebp) }
+
+/// An image's orientation, by format; 1 for GIF and anything without one.
+public func orientationOf(_ data: Data) -> Int { inspectOrientation(data, expectedFormat: imgFmtUnknown) }
+
+/// A JPEG without its metadata (EXIF, XMP, IPTC, comments, trailing data); JFIF/ICC/Adobe stay.
+public func stripJpeg(_ data: Data) throws -> Data {
+    do {
+        let done = try runImagePlan(data, mode: imgModeStrip, expectedFormat: imgFmtJpeg)
+        return spliceImagePlan(data, done)
+    } catch {
+        throw UserError(L10nMessage.imageIosNotAReadableJpeg(), problemKind: .decode)
+    }
 }
 
 /// A PNG without text, time and Exif chunks; the image data is not touched.
-public func stripPng(_ data: Data) throws -> Data { Data(try stripPng(Bytes(data))) }
-
-private func webpChunks(_ b: Bytes) -> [Chunk]? {
-    if detect(b) != .webp { return nil }
-    var out = [Chunk]()
-    var i = 12
-    while i + 8 <= b.count {
-        let type = tag(b, i)
-        guard let len = u32(b, i + 4, le: true) else { return nil }
-        let end = i + 8 + len + (len & 1)
-        if len > b.count || end > b.count + 1 { return nil }
-        out.append(Chunk(type: type, start: i, end: min(end, b.count)))
-        i = end
+public func stripPng(_ data: Data) throws -> Data {
+    do {
+        let done = try runImagePlan(data, mode: imgModeStrip, expectedFormat: imgFmtPng)
+        return spliceImagePlan(data, done)
+    } catch {
+        throw UserError(L10nMessage.imageIosNotAReadablePng(), problemKind: .decode)
     }
-    return out
-}
-
-private func webpOrientation(_ b: Bytes) -> Int {
-    guard let c = webpChunks(b)?.first(where: { $0.type == "EXIF" }) else { return 1 }
-    let start = c.start + 8
-    // Some writers put the Exif header in front of the TIFF block.
-    let tiff = c.end - start > 6 && has(b, start, "Exif\0\0") ? start + 6 : start
-    return tiffOrientation(b, tiff, c.end)
-}
-
-/// A WebP's orientation from its EXIF chunk, 1 when none.
-public func webpOrientation(_ data: Data) -> Int { webpOrientation(Bytes(data)) }
-
-private func stripWebp(_ b: Bytes) throws -> Bytes {
-    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp(), problemKind: .decode) }
-    var out = Bytes()
-    out.reserveCapacity(b.count)
-    out.append(contentsOf: b[0..<12])
-    for c in chunks {
-        if c.type == "EXIF" || c.type == "XMP " { continue }
-        if c.type == "VP8X" && c.end - c.start >= 9 {
-            var chunk = Bytes(b[c.start..<c.end])
-            // Flags: bit 3 Exif, bit 2 XMP.
-            chunk[8] &= ~0x0C
-            out.append(contentsOf: chunk)
-        } else {
-            out.append(contentsOf: b[c.start..<c.end])
-        }
-    }
-    let size = UInt32(truncatingIfNeeded: out.count - 8)
-    out[4] = UInt8(truncatingIfNeeded: size)
-    out[5] = UInt8(truncatingIfNeeded: size >> 8)
-    out[6] = UInt8(truncatingIfNeeded: size >> 16)
-    out[7] = UInt8(truncatingIfNeeded: size >> 24)
-    return out
 }
 
 /// A WebP without its EXIF and XMP chunks, with the extended header's flags and the file size to match.
-public func stripWebp(_ data: Data) throws -> Data { Data(try stripWebp(Bytes(data))) }
-
-private func stripGif(_ b: Bytes) throws -> Bytes {
-    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode) }
-    let cut = UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
-    var out = Bytes()
-    out.reserveCapacity(b.count)
-    var i = 13
-    let flags = Int(b[10])
-    if flags & 0x80 != 0 { i += 3 * (1 << ((flags & 7) + 1)) }
-    if i > b.count { throw cut }
-    out.append(contentsOf: b[0..<i])
-    func subBlocks(_ from: Int) throws -> Int {
-        var j = from
-        while true {
-            if j >= b.count { throw cut }
-            let n = Int(b[j])
-            j += 1 + n
-            if n == 0 { return j }
-        }
+public func stripWebp(_ data: Data) throws -> Data {
+    do {
+        let done = try runImagePlan(data, mode: imgModeStrip, expectedFormat: imgFmtWebp)
+        return spliceImagePlan(data, done)
+    } catch {
+        throw UserError(L10nMessage.imageIosNotAReadableWebp(), problemKind: .decode)
     }
-    while i < b.count {
-        switch b[i] {
-        case 0x3B:
-            out.append(0x3B)
-            return out
-        case 0x2C:
-            if i + 10 > b.count { throw cut }
-            let f = Int(b[i + 9])
-            var j = i + 10
-            if f & 0x80 != 0 { j += 3 * (1 << ((f & 7) + 1)) }
-            j = try subBlocks(j + 1)
-            out.append(contentsOf: b[i..<j])
-            i = j
-        case 0x21:
-            if i + 1 >= b.count { throw cut }
-            let label = Int(b[i + 1])
-            let j = try subBlocks(i + 2)
-            let app = label == 0xFF && i + 14 <= b.count && (has(b, i + 3, "NETSCAPE2.0") || has(b, i + 3, "ANIMEXTS1.0"))
-            let keep: Bool
-            switch label {
-            case 0xFE: keep = false
-            case 0xFF: keep = app
-            default: keep = true
-            }
-            if keep { out.append(contentsOf: b[i..<j]) }
-            i = j
-        default:
+}
+
+/// A GIF without comments and non-loop application blocks; frames are not touched.
+public func stripGif(_ data: Data) throws -> Data {
+    do {
+        let done = try runImagePlan(data, mode: imgModeStrip, expectedFormat: imgFmtGif)
+        return spliceImagePlan(data, done)
+    } catch let ImagePlanFailure.rejected(code) {
+        switch code {
+        case imgErrGifUnknownBlock:
             throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock(), problemKind: .decode)
+        case imgErrGifTruncated:
+            throw UserError(L10nMessage.imageIosGifIsTruncated(), problemKind: .decode)
+        default:
+            throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode)
         }
-    }
-    throw cut
-}
-
-/// A GIF without comments and without application blocks other than the
-/// animation loop (NETSCAPE2.0), where XMP and the like live; frames are not
-/// touched.
-public func stripGif(_ data: Data) throws -> Data { Data(try stripGif(Bytes(data))) }
-
-private func orientationOf(_ b: Bytes) -> Int {
-    switch detect(b) {
-    case .jpeg: return jpegOrientation(b)
-    case .png: return pngOrientation(b)
-    case .webp: return webpOrientation(b)
-    default: return 1
+    } catch {
+        throw UserError(L10nMessage.imageIosNotAReadableGif(), problemKind: .decode)
     }
 }
-
-/// An image's orientation, by format; 1 for GIF and anything without one.
-public func orientationOf(_ data: Data) -> Int { orientationOf(Bytes(data)) }
 
 /// An original with its metadata taken out, or nil when that needs new
 /// pixels: it is turned by an orientation tag (lossless rotation is not
@@ -357,14 +277,13 @@ public func orientationOf(_ data: Data) -> Int { orientationOf(Bytes(data)) }
 /// format is not one the CLIs read (HEIC). Throws for a file of a known
 /// format that cannot be read.
 public func stripOriginal(_ data: Data) throws -> Data? {
-    let b = Bytes(data)
-    guard let f = detect(b) else { return nil }
-    if orientationOf(b) != 1 { return nil }
+    guard let f = detectFormat(data) else { return nil }
+    if orientationOf(data) != 1 { return nil }
     switch f {
-    case .jpeg: return Data(try stripJpeg(b))
-    case .png: return Data(try stripPng(b))
-    case .webp: return Data(try stripWebp(b))
-    case .gif: return Data(try stripGif(b))
+    case .jpeg: return try stripJpeg(data)
+    case .png: return try stripPng(data)
+    case .webp: return try stripWebp(data)
+    case .gif: return try stripGif(data)
     default: return nil
     }
 }

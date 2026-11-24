@@ -294,7 +294,9 @@ private let exifHeader = Data("Exif\0\0".utf8)
         // A GIF whose header promises a palette it does not have.
         #expect(throws: UserError(L10nMessage.imageIosGifIsTruncated())) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0x87, 0, 0])) }
         #expect(throws: UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock())) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0, 0, 0, 0x99])) }
-        let webpFile = webp(riffChunk("EXIF", exifHeader + tiff(8)))
+        var vp8xExif = Data(count: 10)
+        vp8xExif[0] = 0x08
+        let webpFile = webp(riffChunk("VP8X", vp8xExif), riffChunk("EXIF", exifHeader + tiff(8)))
         #expect(webpOrientation(webpFile) == 8)
         for n in 0..<webpFile.count {
             _ = webpOrientation(webpFile.prefix(n))

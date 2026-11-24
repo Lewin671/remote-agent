@@ -12,6 +12,12 @@ export interface CoreWasmApi {
   projectionCurrentActions(handle: number, liveBytes?: Uint8Array): CoreWasmResult;
   projectionFree(handle: number): void;
   reduceProjection(agent: number, batchBytes?: Uint8Array): CoreWasmResult;
+  sniffImageFormat(header?: Uint8Array): number;
+  tiffOrientation(tiff?: Uint8Array): number;
+  imagePlanMaxSteps(totalLen: number): number;
+  newImagePlan(mode: number, expectedFormat: number, totalLen: number): number;
+  imagePlanStep(handle: number, offset: number, buf?: Uint8Array): CoreWasmResult;
+  imagePlanFree(handle: number): void;
 }
 
 type CoreWasmResult = { data: Uint8Array } | { error: string };
@@ -184,5 +190,44 @@ export class RemoteAgentCore {
 
   reduce(agent: number, eventBatchBytes?: Uint8Array): Uint8Array {
     return unwrap(this.api.reduceProjection(agent, eventBatchBytes));
+  }
+
+  sniffImageFormat(header: Uint8Array): number {
+    return this.api.sniffImageFormat(header);
+  }
+
+  tiffOrientation(tiff: Uint8Array): number {
+    return this.api.tiffOrientation(tiff);
+  }
+
+  imagePlanMaxSteps(totalLen: number): number {
+    return this.api.imagePlanMaxSteps(totalLen);
+  }
+
+  newImagePlan(mode: number, expectedFormat: number, totalLen: number): WasmImagePlan {
+    return new WasmImagePlan(this.api, mode, expectedFormat, totalLen);
+  }
+}
+
+export class WasmImagePlan {
+  private readonly api: CoreWasmApi;
+  private readonly handle: number;
+  private freed = false;
+
+  constructor(api: CoreWasmApi, mode: number, expectedFormat: number, totalLen: number) {
+    this.api = api;
+    this.handle = api.newImagePlan(mode, expectedFormat, totalLen);
+  }
+
+  step(offset: number, buf?: Uint8Array): Uint8Array {
+    if (this.freed) throw new Error("WasmImagePlan:freed");
+    return unwrap(this.api.imagePlanStep(this.handle, offset, buf));
+  }
+
+  free(): void {
+    if (!this.freed) {
+      this.freed = true;
+      this.api.imagePlanFree(this.handle);
+    }
   }
 }

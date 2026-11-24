@@ -14,6 +14,7 @@ var (
 	nextHandle  int64 = 1
 	projections       = make(map[int64]*corebind.Projection)
 	cores             = make(map[int64]*corebind.Core)
+	imagePlans        = make(map[int64]*corebind.ImagePlan)
 )
 
 func bytesFromJS(v js.Value) []byte {
@@ -54,6 +55,12 @@ func lookupCore(handle int64) *corebind.Core {
 	mu.Lock()
 	defer mu.Unlock()
 	return cores[handle]
+}
+
+func lookupImagePlan(handle int64) *corebind.ImagePlan {
+	mu.Lock()
+	defer mu.Unlock()
+	return imagePlans[handle]
 }
 
 func main() {
@@ -198,6 +205,77 @@ func main() {
 			raw = bytesFromJS(args[1])
 		}
 		return resultBytes(corebind.Reduce(agent, raw))
+	}))
+
+	api.Set("sniffImageFormat", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var raw []byte
+		if len(args) > 0 {
+			raw = bytesFromJS(args[0])
+		}
+		return int(corebind.SniffImageFormat(raw))
+	}))
+
+	api.Set("tiffOrientation", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var raw []byte
+		if len(args) > 0 {
+			raw = bytesFromJS(args[0])
+		}
+		return int(corebind.TiffOrientation(raw))
+	}))
+
+	api.Set("imagePlanMaxSteps", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var totalLen int64
+		if len(args) > 0 {
+			totalLen = int64(args[0].Float())
+		}
+		return float64(corebind.ImagePlanMaxSteps(totalLen))
+	}))
+
+	api.Set("newImagePlan", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		var mode, expected int32
+		var totalLen int64
+		if len(args) > 0 {
+			mode = int32(args[0].Int())
+		}
+		if len(args) > 1 {
+			expected = int32(args[1].Int())
+		}
+		if len(args) > 2 {
+			totalLen = int64(args[2].Float())
+		}
+		mu.Lock()
+		id := nextHandle
+		nextHandle++
+		imagePlans[id] = corebind.NewImagePlan(mode, expected, totalLen)
+		mu.Unlock()
+		return float64(id)
+	}))
+
+	api.Set("imagePlanStep", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) < 2 {
+			return map[string]any{"error": "missing arguments"}
+		}
+		p := lookupImagePlan(int64(args[0].Float()))
+		if p == nil {
+			return map[string]any{"error": "unknown handle"}
+		}
+		offset := int64(args[1].Float())
+		var raw []byte
+		if len(args) > 2 {
+			raw = bytesFromJS(args[2])
+		}
+		return resultBytes(p.Step(offset, raw))
+	}))
+
+	api.Set("imagePlanFree", js.FuncOf(func(_ js.Value, args []js.Value) any {
+		if len(args) < 1 {
+			return nil
+		}
+		id := int64(args[0].Float())
+		mu.Lock()
+		delete(imagePlans, id)
+		mu.Unlock()
+		return nil
 	}))
 
 	js.Global().Set("__remoteAgentCore", api)
