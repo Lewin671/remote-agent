@@ -52,23 +52,3 @@ public func viewerOutcome(_ result: Result<ImageResult, any Error>, online: Bool
     case .failure(let error): return (online ? .failed(why: errorText(error)) : .offline, nil)
     }
 }
-
-/// The file extension of a fetched payload format; JPEG's for one that is not named.
-public func imageExtension(_ f: PBImageFormat) -> String {
-    switch f {
-    case .png: return "png"
-    case .webp: return "webp"
-    case .gif: return "gif"
-    default: return "jpg"
-    }
-}
-
-/// The name a picture is saved or shared under: Core's sanitized `displayName` without its extension, the time, and the extension.
-public func savedImageName(displayName: String, ext: String, nowMs: Int64 = nowMs()) -> String {
-    let name = displayName.isEmpty ? L10n.imageTitle() : displayName
-    var base = name
-    if let dot = name.utf8.lastIndex(of: UInt8(ascii: ".")) { base = String(name[..<dot]) }
-    if base.isEmpty { base = "remote-agent" }
-    let cleanExt = ext.isEmpty ? "jpg" : ext
-    return "\(base)-\(nowMs).\(cleanExt)"
-}

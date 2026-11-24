@@ -205,7 +205,6 @@ public final actor Remote {
     public nonisolated let directSupported: Bool
     private nonisolated let coreEventChain: SerialChain
     nonisolated let directExecutor: DirectExecutor
-    var directTransfers: [String: UploadKind] = [:]
     private let peerBudget = StreamByteBudget(limit: 8 * 65536)
 
     nonisolated let deviceLink: Link

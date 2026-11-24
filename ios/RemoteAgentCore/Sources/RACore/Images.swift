@@ -9,9 +9,6 @@
 import Foundation
 import RAProto
 
-/// The long side of a compressed image.
-public let compressedLongSide = 2048
-
 private typealias Bytes = [UInt8]
 
 /// Whether the bytes at `i` spell `text` (ASCII).
@@ -370,7 +367,7 @@ public func stripOriginal(_ data: Data) throws -> Data? {
 }
 
 /// The size of a picture shrunk so its long side is at most `max`; never enlarged.
-public func fitLongSide(w: Int, h: Int, max: Int = compressedLongSide) -> (w: Int, h: Int) {
+public func fitLongSide(w: Int, h: Int, max: Int) -> (w: Int, h: Int) {
     let long = Swift.max(w, h)
     if long <= max || long == 0 { return (w, h) }
     let scale = Double(max) / Double(long)
@@ -380,121 +377,8 @@ public func fitLongSide(w: Int, h: Int, max: Int = compressedLongSide) -> (w: In
 /// Orientations 5 to 8 swap width and height.
 public func swapsSides(orientation: Int) -> Bool { (5...8).contains(orientation) }
 
-// --- uploading ---
-
-/// Chunks start at this size when the daemon names none: an encrypted command stays well under 1 MiB.
+/// Default streaming buffer size for local SHA-256 hashing and chunk reads.
 public let defaultChunkBytes = 768 * 1024
-
-/// The daemon's upload commands for one machine; each call is one machine command.
-public protocol UploadChannel: Sendable {
-    func abort(transferId: String) async throws
-    func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus
-    func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus
-    func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus
-    func status(transferId: String) async throws -> PBImageUploadStatus
-    func complete(transferId: String) async throws -> PBImageUploadStatus
-}
-
-/// What an upload needs to know of a command that failed: its Connect code
-/// name, and whether the command may or may not have run. The sync engine's
-/// command error conforms. An unknown outcome and "network" are the two an
-/// upload goes on after, by asking the daemon where it stands.
-public protocol UploadFailure: Error {
-    var code: String { get }
-    var unknown: Bool { get }
-}
-
-extension UploadFailure {
-    public var unknown: Bool { code == CommandError.unknownOutcome }
-}
-
-func uploadRetryAllowed(_ error: any Error) -> Bool {
-    if let command = error as? CommandError { return command.canRetryUpload }
-    guard let failure = error as? any UploadFailure else { return false }
-    return failure.unknown || failure.code == "network"
-}
-
-/// An upload that ended without the daemon refusing it: its answer was not one to go on from.
-public struct UploadError: UploadFailure, LocalizedError, Equatable {
-    public let code: String
-    let localized: LocalizedMessage
-    public var message: String { localized.resolve() }
-    public init(code: String, message: String) { self.code = code; localized = LocalizedMessage(raw: message) }
-    public init(code: String, message: LocalizedMessage) { self.code = code; localized = message }
-    public static func == (lhs: UploadError, rhs: UploadError) -> Bool { lhs.code == rhs.code && lhs.localized == rhs.localized }
-
-    public var errorDescription: String? { message }
-}
-
-/// A completed upload and the deadline after which its image ID needs renewing.
-public struct UploadedImage: Equatable, Sendable {
-    public var imageId: String
-    public var expiresMs: Int64
-}
-
-/// Sends one image to a machine in chunks and returns its image ID and deadline. Every step can be repeated: beginning again returns the
-/// transfer's state, a chunk is resent from where the daemon has durably
-/// stored bytes, and completing again returns the same ID. When a step's
-/// outcome is unknown, the daemon's status says where to go on; a definite
-/// refusal ends the upload with an error, never a partial success. It runs
-/// where it is called from, so `onProgress` may touch the caller's state.
-public func uploadImage(
-    isolation: isolated (any Actor)? = #isolation,
-    _ ch: some UploadChannel,
-    transferId: String,
-    data: Data,
-    maxChunk: Int = defaultChunkBytes,
-    retries: Int = 3,
-    onProgress: (Int64, Int64) -> Void = { _, _ in }
-) async throws -> UploadedImage {
-    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat(), problemKind: .decode) }
-    let bytes = Data(data)
-    let total = Int64(bytes.count)
-    var tries = 0
-    // Whether to go on after a failed step: only when its outcome is not known, and not forever.
-    func again(_ error: any Error) -> Bool {
-        guard uploadRetryAllowed(error), tries < retries else { return false }
-        tries += 1
-        return true
-    }
-    var st: PBImageUploadStatus
-    while true {
-        do {
-            st = try await ch.begin(transferId: transferId, format: format, total: total, sha256: sha256(bytes))
-            break
-        } catch where again(error) {}
-    }
-    let chunk = Int64(min(maxChunk, st.maxChunkBytes > 0 ? Int(st.maxChunkBytes) : Int(Int32.max)))
-    while st.state == .receiving && st.persistedBytes < total {
-        let off = st.persistedBytes
-        // Kotlin's copy of the range fails here; a slice of a negative range would stop the app.
-        if off < 0 { throw UploadError(code: "internal", message: L10nMessage.attachmentIosTheComputerReportedInvalidUploadProgress()) }
-        onProgress(off, total)
-        let end = min(total, off + chunk)
-        let part = bytes.subdata(in: Int(off)..<Int(max(off, end)))
-        while true {
-            do {
-                st = try await ch.put(transferId: transferId, offset: off, data: part)
-                break
-            } catch where again(error) {
-                st = try await ch.status(transferId: transferId)
-            }
-        }
-    }
-    onProgress(total, total)
-    if st.state == .receiving {
-        while true {
-            do {
-                st = try await ch.complete(transferId: transferId)
-                break
-            } catch where again(error) {
-                st = try await ch.status(transferId: transferId)
-            }
-        }
-    }
-    if st.imageID.isEmpty { throw UploadError(code: "internal", message: L10nMessage.imageIosTheComputerDidNotProvideAnImageId()) }
-    return UploadedImage(imageId: st.imageID, expiresMs: st.expiresMs)
-}
 
 /// Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB.
 public let maxDecodePixels: Int64 = 40_000_000

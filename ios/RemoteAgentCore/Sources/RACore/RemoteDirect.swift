@@ -9,19 +9,9 @@ final class WeakRemote: @unchecked Sendable {
     var remote: Remote? { get { lock.withLock { stored } } set { lock.withLock { stored = newValue } } }
 }
 
-enum UploadKind: Equatable, Sendable {
-    case image
-    case file
-}
-
 struct DirectBulkHint: Sendable {
     var routeHintValue: UInt32 = 0
     var bulkFileKey: String = ""
-    var bulkBytes: Int64 = 0
-    var bulkUpload: Bool = false
-    var uploadTransferID: String = ""
-    var uploadHasFilename: Bool = false
-    var finishTransferID: String = ""
 }
 
 /// Extracts raw bytes for a top-level length-delimited `PBServerFrame` field (`11` = delivery, `12` = result)
@@ -137,51 +127,17 @@ extension Remote {
         await emitCoreEvent(event)
     }
 
-    func directBulkHint(_ machineId: String, _ cmd: PBCommand) -> DirectBulkHint {
+    func directBulkHint(_ cmd: PBCommand) -> DirectBulkHint {
         var hint = DirectBulkHint()
         switch cmd.kind {
-        case .beginImageUpload(let c)?:
-            hint.uploadTransferID = c.transferID
-            hint.uploadHasFilename = !c.fileName.isEmpty
-        case .putImageChunk(let c)?:
-            if directTransfers["\(machineId)/\(c.transferID)"] != nil {
-                hint.routeHintValue = UInt32(PBCoreCommandRouteHint.bulk.rawValue)
-                hint.bulkFileKey = c.transferID
-                hint.bulkBytes = Int64(c.data.count)
-                hint.bulkUpload = true
-                hint.uploadTransferID = c.transferID
-                hint.uploadHasFilename = (directTransfers["\(machineId)/\(c.transferID)"] == .file)
-            }
         case .getSharedFileChunk(let c)?:
             hint.routeHintValue = UInt32(PBCoreCommandRouteHint.bulk.rawValue)
             hint.bulkFileKey = "\(c.sessionID)/\(c.fileID)"
-        case .completeImageUpload(let c)?:
-            hint.finishTransferID = c.transferID
-        case .abortImageUpload(let c)?:
-            hint.finishTransferID = c.transferID
-        case .getImageUploadStatus?:
-            break
         default:
             if cmd.isReadOnlyCommand {
                 hint.routeHintValue = UInt32(PBCoreCommandRouteHint.read.rawValue)
             }
         }
         return hint
-    }
-
-    func trackTransfer(machineId: String, command cmd: PBCommand) {
-        switch cmd.kind {
-        case .beginImageUpload(let c)?:
-            if directTransfers.count >= 128, let first = directTransfers.keys.first {
-                directTransfers.removeValue(forKey: first)
-            }
-            directTransfers["\(machineId)/\(c.transferID)"] = c.fileName.isEmpty ? .image : .file
-        case .completeImageUpload(let c)?:
-            directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
-        case .abortImageUpload(let c)?:
-            directTransfers.removeValue(forKey: "\(machineId)/\(c.transferID)")
-        default:
-            break
-        }
     }
 }

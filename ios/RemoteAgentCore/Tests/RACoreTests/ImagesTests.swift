@@ -226,9 +226,9 @@ private let exifHeader = Data("Exif\0\0".utf8)
     }
 
     @Test func compressionShrinksTheLongSideOnly() {
-        #expect(fitLongSide(w: 4032, h: 3024) == (2048, 1536))
-        #expect(fitLongSide(w: 3024, h: 4032) == (1536, 2048))
-        #expect(fitLongSide(w: 800, h: 600) == (800, 600))
+        #expect(fitLongSide(w: 4032, h: 3024, max: 2048) == (2048, 1536))
+        #expect(fitLongSide(w: 3024, h: 4032, max: 2048) == (1536, 2048))
+        #expect(fitLongSide(w: 800, h: 600, max: 2048) == (800, 600))
     }
 
     // --- not in Android's tests ---
@@ -338,144 +338,6 @@ private let exifHeader = Data("Exif\0\0".utf8)
                 _ = tiffOrientation(d)
             }
         }
-    }
-}
-
-/// Android's UploadTest (in ImagesTest.kt).
-@Suite(.timeLimit(.minutes(2))) struct UploadTests {
-    private struct Refused: UploadFailure {
-        let code: String
-        let message: String
-    }
-
-    /// The daemon's side, as internal/daemon keeps it: bytes on disk, overlap must match.
-    private actor FakeDaemon: ImageTestChannel {
-        let maxChunk: Int32
-        var stored = Data()
-        var total: Int64 = 0
-        var sha = Data()
-        var done = false
-        var failNextPutAfterStoring = false
-        var stopNextPutAfterStoring = false
-        var puts = 0
-        var refuseComplete = false
-
-        init(maxChunk: Int32 = 10) {
-            self.maxChunk = maxChunk
-        }
-
-        func lose() { failNextPutAfterStoring = true }
-        func stop() { stopNextPutAfterStoring = true }
-        func refuse() { refuseComplete = true }
-
-        private func st() -> PBImageUploadStatus {
-            .with {
-                $0.transferID = "t"
-                $0.persistedBytes = Int64(stored.count)
-                $0.totalBytes = total
-                $0.maxChunkBytes = maxChunk
-                $0.state = done ? .complete : .receiving
-                $0.expiresMs = Int64.max
-                $0.imageID = done ? "img1" : ""
-            }
-        }
-
-        func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-            self.total = total
-            sha = sha256
-            return st()
-        }
-
-        func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus {
-            puts += 1
-            if offset > Int64(stored.count) { throw Refused(code: "failed_precondition", message: "gap") }
-            let overlap = min(stored.count - Int(offset), data.count)
-            if stored.subdata(in: Int(offset)..<(Int(offset) + overlap)) != data.prefix(overlap) {
-                throw Refused(code: "failed_precondition", message: "changed")
-            }
-            stored.append(data.dropFirst(overlap))
-            if failNextPutAfterStoring {
-                failNextPutAfterStoring = false
-                throw Refused(code: "unknown_outcome", message: "reply lost")
-            }
-            if stopNextPutAfterStoring {
-                stopNextPutAfterStoring = false
-                throw CommandError("aborted", "the daemon stopped", fromDaemon: true)
-            }
-            return st()
-        }
-
-        func status(transferId: String) async throws -> PBImageUploadStatus { st() }
-
-        func complete(transferId: String) async throws -> PBImageUploadStatus {
-            if refuseComplete { throw Refused(code: "invalid_argument", message: "not an image") }
-            if Int64(stored.count) != total || sha256(stored) != sha { throw Refused(code: "data_loss", message: "hash") }
-            done = true
-            return st()
-        }
-    }
-
-    private let png = Pictures.encode(Pictures.draw(w: 8, h: 8) { _, _ in (0, 0, 0) }, "public.png")
-
-    @Test func sendsEveryChunkAndCompletes() async throws {
-        let d = FakeDaemon()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
-        #expect(await d.stored == png)
-        #expect(await d.puts == (png.count + 9) / 10)
-    }
-
-    @Test func aLostReplyGoesOnFromWhatTheDaemonStored() async throws {
-        let d = FakeDaemon()
-        await d.lose()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
-        #expect(await d.stored == png)
-    }
-
-    /// A daemon that stopped while storing a chunk answers "aborted" for it: the chunk may be there.
-    @Test func aDaemonThatStoppedHalfwayGoesOnFromWhatItStored() async throws {
-        let d = FakeDaemon()
-        await d.stop()
-        #expect(try await uploadImage(d, transferId: "t", data: png) == UploadedImage(imageId: "img1", expiresMs: Int64.max))
-        #expect(await d.stored == png)
-    }
-
-    @Test func aRefusalIsAnErrorNotASuccess() async throws {
-        let d = FakeDaemon()
-        await d.refuse()
-        await #expect(throws: Refused.self) { try await uploadImage(d, transferId: "t", data: png) }
-    }
-
-    // --- not in Android's tests ---
-
-    @Test func progressIsSaidPerChunkAndAnUnknownOutcomeIsNotRetriedForever() async throws {
-        let d = FakeDaemon(maxChunk: 0)
-        var seen = [Int64]()
-        // The daemon names no chunk size: the caller's is used.
-        #expect(try await uploadImage(d, transferId: "t", data: png, maxChunk: 40) { done, _ in seen.append(done) } == UploadedImage(imageId: "img1", expiresMs: Int64.max))
-        #expect(seen == Array(stride(from: 0, to: Int64(png.count), by: 40)) + [Int64(png.count)])
-
-        struct AlwaysLost: ImageTestChannel {
-            func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-                throw Refused(code: "network", message: "down")
-            }
-            func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-            func status(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-            func complete(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-        }
-        await #expect(throws: Refused.self) { try await uploadImage(AlwaysLost(), transferId: "t", data: png, retries: 2) }
-        // Not an image the CLIs read: nothing is sent.
-        await #expect(throws: UserError(L10nMessage.imageIosUnsupportedImageFormat())) { try await uploadImage(d, transferId: "t", data: Data("hello".utf8)) }
-        // A daemon that completes without naming the image.
-        struct NoId: ImageTestChannel {
-            func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-                .with { $0.state = .complete
-            $0.expiresMs = Int64.max }
-            }
-            func put(transferId: String, offset: Int64, data: Data) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-            func status(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-            func complete(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
-        }
-        await #expect(throws: UploadError(code: "internal", message: L10nMessage.imageIosTheComputerDidNotProvideAnImageId())) { try await uploadImage(NoId(), transferId: "t", data: png) }
     }
 }
 

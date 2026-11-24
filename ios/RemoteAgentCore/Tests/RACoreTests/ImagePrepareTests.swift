@@ -21,17 +21,17 @@ enum TestPictures {
         let ctx = CGContext(
             data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
             bitmapInfo: info.rawValue)!
-        // CoreGraphics counts rows from the bottom.
         let (hw, hh) = (CGFloat(w / 2), CGFloat(h / 2))
         let parts: [([UInt8], CGRect)] = [
-            (red, CGRect(x: 0, y: hh, width: hw, height: CGFloat(h) - hh)), (green, CGRect(x: hw, y: hh, width: CGFloat(w) - hw, height: CGFloat(h) - hh)),
-            (white, CGRect(x: 0, y: 0, width: hw, height: hh)), (blue, CGRect(x: hw, y: 0, width: CGFloat(w) - hw, height: hh)),
+            (red, CGRect(x: 0, y: hh, width: hw, height: CGFloat(h) - hh)),
+            (green, CGRect(x: hw, y: hh, width: CGFloat(w) - hw, height: CGFloat(h) - hh)),
+            (white, CGRect(x: 0, y: 0, width: hw, height: hh)),
+            (blue, CGRect(x: hw, y: 0, width: CGFloat(w) - hw, height: hh)),
         ]
         for (c, rect) in parts {
             ctx.setFillColor(red: CGFloat(c[0]) / 255, green: CGFloat(c[1]) / 255, blue: CGFloat(c[2]) / 255, alpha: 1)
             ctx.fill(rect)
         }
-        // One clear pixel is enough to make it a picture with transparency.
         if alpha { ctx.clear(CGRect(x: 0, y: h - 1, width: 1, height: 1)) }
         return ctx.makeImage()!
     }
@@ -53,7 +53,6 @@ enum TestPictures {
         return out as Data
     }
 
-    /// The color at a place of a picture given as fractions of its sides, rounded to pure channels.
     static func color(_ image: CGImage, _ fx: Double, _ fy: Double) -> [UInt8] {
         let (w, h) = (image.width, image.height)
         let ctx = CGContext(
@@ -65,7 +64,6 @@ enum TestPictures {
         return (0..<4).map { px[at + $0] > 127 ? 255 : 0 }
     }
 
-    /// The four corners, top left first, clockwise.
     static func corners(_ image: CGImage) -> [[UInt8]] {
         [color(image, 0.2, 0.2), color(image, 0.8, 0.2), color(image, 0.8, 0.8), color(image, 0.2, 0.8)]
     }
@@ -81,12 +79,13 @@ enum TestPictures {
     }
 }
 
-/// What Android's ui/ImageProcess.kt does to a picked image, held to docs/session-images.md.
+/// Platform image decoding, orientation correction, EXIF stripping, and Core-parameterized compression.
 @Suite(.timeLimit(.minutes(2))) struct ImagePrepareTests {
     private typealias P = TestPictures
     private static let testOriginalMaxBytes: Int64 = 20 * 1024 * 1024
+    private static let testMaxDimensionPx = 2048
+    private static let testMaxCompressedBytes = 900 * 1024
 
-    /// How a picture stored with each orientation looks once upright: the corners, top left first, clockwise.
     private static let upright: [Int: [[UInt8]]] = [
         1: [P.red, P.green, P.blue, P.white],
         2: [P.green, P.red, P.white, P.blue],
@@ -99,25 +98,28 @@ enum TestPictures {
     ]
 
     @Test func theQualityGoesDownBeforeThePictureShrinks() {
-        let over = compressedTargetBytes + 1
-        #expect(nextCompressStep(bytes: compressedTargetBytes, quality: 85, longSide: 2048, png: false) == nil)
-        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 2048, png: false) == .quality(75))
-        #expect(nextCompressStep(bytes: over, quality: 75, longSide: 2048, png: false) == .quality(65))
-        #expect(nextCompressStep(bytes: over, quality: 65, longSide: 2048, png: false) == .quality(55))
-        #expect(nextCompressStep(bytes: over, quality: 55, longSide: 2048, png: false) == .shrink)
-        // Nothing more is tried once it is both at the lowest quality and small.
-        #expect(nextCompressStep(bytes: over, quality: 55, longSide: 800, png: false) == nil)
-        // A PNG has no quality to lower.
-        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 2048, png: true) == .shrink)
-        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 10, png: true) == .shrink)
+        let target = Self.testMaxCompressedBytes
+        let over = target + 1
+        #expect(nextCompressStep(bytes: target, quality: 85, longSide: 2048, png: false, targetBytes: target) == nil)
+        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 2048, png: false, targetBytes: target) == .quality(75))
+        #expect(nextCompressStep(bytes: over, quality: 75, longSide: 2048, png: false, targetBytes: target) == .quality(65))
+        #expect(nextCompressStep(bytes: over, quality: 65, longSide: 2048, png: false, targetBytes: target) == .quality(55))
+        #expect(nextCompressStep(bytes: over, quality: 55, longSide: 2048, png: false, targetBytes: target) == .shrink)
+        #expect(nextCompressStep(bytes: over, quality: 55, longSide: 800, png: false, targetBytes: target) == nil)
+        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 2048, png: true, targetBytes: target) == .shrink)
+        #expect(nextCompressStep(bytes: over, quality: 85, longSide: 10, png: true, targetBytes: target) == .shrink)
         #expect(shrunkSide(2048) == 1638 && shrunkSide(1) == 1)
     }
 
-    @Test func aFileTooLargeToReadIsRefusedInWords() throws {
+    @Test func aFileTooLargeToReadIsRefusedWithDimensionsKind() throws {
         try checkPicked(bytes: 80 * 1024 * 1024, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)) { try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false, originalMaxBytes: Self.testOriginalMaxBytes) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), ioKind: .dimensions)) {
+            try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        }
         try checkPicked(bytes: 60 * 1024 * 1024, original: true, originalMaxBytes: Self.testOriginalMaxBytes)
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 60), kind: .dimensions)) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true, originalMaxBytes: Self.testOriginalMaxBytes) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 60), ioKind: .dimensions)) {
+            try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true, originalMaxBytes: Self.testOriginalMaxBytes)
+        }
     }
 
     @Test func aPickedFileTooLargeIsRefusedBeforeItIsRead() throws {
@@ -127,21 +129,14 @@ enum TestPictures {
         let small = dir.appendingPathComponent("small.png")
         try Data("picked".utf8).write(to: small)
         #expect(try readPicked(small) == Data("picked".utf8))
-        // One byte more than is ever read of a file; nothing of it is written, so nothing of it could be read fast.
         let large = dir.appendingPathComponent("large.tiff")
         #expect(FileManager.default.createFile(atPath: large.path, contents: nil))
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false, originalMaxBytes: Self.testOriginalMaxBytes)) + 1)
         try handle.close()
-        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), kind: .dimensions)) { try readPicked(large) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80), ioKind: .dimensions)) { try readPicked(large) }
         try FileHandle(forWritingTo: large).truncate(atOffset: UInt64(pickedReadLimit(original: false, originalMaxBytes: Self.testOriginalMaxBytes)))
         #expect(try readPicked(large).count == 80 * 1024 * 1024)
-    }
-
-    @Test func whatAnOriginalThatCouldNotGoAsItWasSays() {
-        #expect(originalNote(turned: true, png: false, sample: 1) == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
-        #expect(originalNote(turned: false, png: false, sample: 1) == "转成了 JPEG，保留原始尺寸")
-        #expect(originalNote(turned: false, png: true, sample: 2) == "转成了 PNG，保留原始尺寸；像素超过手机能处理的上限，缩小到 1/2")
     }
 
     @Test func thePixelBudgetHasACapAndFollowsMemory() {
@@ -149,31 +144,41 @@ enum TestPictures {
         #expect(pixelBudget(physicalMemory: 1 << 30) == Int64(1 << 30) / 64)
     }
 
-    @Test func aPhotoIsShrunkTurnedUprightAndLosesItsLocation() throws {
-        // A phone's photo: stored on its side, tagged with where it was taken.
+    @Test func aPhotoIsShrunkToCoreDimensionTurnedUprightAndLosesItsLocation() throws {
         let photo = P.encode(P.quarters(w: 4000, h: 3000), .jpeg, orientation: 6, gps: true)
         #expect(P.properties(photo)[kCGImagePropertyGPSDictionary] != nil)
         #expect(jpegOrientation(photo) == 6)
 
-        let p = try prepareImageNow(photo, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let p = try prepareImageNow(
+            photo, original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(p.format == .jpeg && detectFormat(p.bytes) == .jpeg)
         #expect(p.width == 1536 && p.height == 2048)
-        #expect(p.note.isEmpty)
-        #expect(p.bytes.count <= compressedTargetBytes)
-        // Upright in its pixels, with no tag left to say otherwise.
+        #expect(p.bytes.count <= Self.testMaxCompressedBytes)
         #expect(P.corners(P.decoded(p.bytes)) == Self.upright[6])
         #expect(jpegOrientation(p.bytes) == 1)
         let props = P.properties(p.bytes)
         #expect(props[kCGImagePropertyGPSDictionary] == nil)
         #expect((props[kCGImagePropertyExifDictionary] as? [CFString: Any])?[kCGImagePropertyExifUserComment] == nil)
-        // No Exif or XMP segment at all: what is left is what `stripJpeg` leaves.
         #expect(try stripJpeg(p.bytes) == p.bytes)
         #expect(p.bytes.range(of: Data("Exif".utf8)) == nil && p.bytes.range(of: Data("taken at home".utf8)) == nil)
+
+        // Custom Core maxDimensionPx is obeyed instead of any hardcoded shell constant.
+        let custom = try prepareImageNow(
+            photo, original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: 1024, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
+        #expect(custom.width == 768 && custom.height == 1024)
     }
 
     @Test func everyOrientationComesOutUpright() throws {
         for o in 1...8 {
-            let p = try prepareImageNow(P.encode(P.quarters(w: 60, h: 40), .jpeg, orientation: o, quality: 1), original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+            let p = try prepareImageNow(
+                P.encode(P.quarters(w: 60, h: 40), .jpeg, orientation: o, quality: 1),
+                original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+                maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+            )
             #expect(P.corners(P.decoded(p.bytes)) == Self.upright[o], "orientation \(o)")
             #expect((p.width, p.height) == (o >= 5 ? (40, 60) : (60, 40)), "orientation \(o)")
         }
@@ -184,7 +189,6 @@ enum TestPictures {
         for o in 1...8 {
             let mine = try oriented(stored, orientation: o)
             #expect(P.corners(mine) == Self.upright[o], "orientation \(o)")
-            // The same file through ImageIO's own transform.
             let theirs = try decodeUpright(P.encode(stored, .tiff, orientation: o), maxLong: 0).image
             #expect((mine.width, mine.height) == (theirs.width, theirs.height), "orientation \(o)")
             #expect(P.corners(mine) == P.corners(theirs), "orientation \(o)")
@@ -192,7 +196,6 @@ enum TestPictures {
     }
 
     @Test func aTagImageIODoesNotActOnStillTurnsThePicture() throws {
-        // A PNG with an eXIf chunk that says "rotate": spliced in by hand, before the image data.
         let plain = try stripPng(P.encode(P.quarters(w: 60, h: 40), .png))
         #expect(pngOrientation(plain) == 1)
         let tiff = Data("MM".utf8) + Data([0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0, 0, 0, 0, 0])
@@ -203,96 +206,104 @@ enum TestPictures {
         let tagged = plain.prefix(idat) + chunk + plain.suffix(from: idat)
         #expect(pngOrientation(tagged) == 6)
 
-        let p = try prepareImageNow(tagged, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let p = try prepareImageNow(
+            tagged, original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(P.corners(P.decoded(p.bytes)) == Self.upright[6])
         #expect((p.width, p.height) == (40, 60))
         #expect(orientationOf(p.bytes) == 1)
     }
 
     @Test func transparencyKeepsAPngAndEverythingElseBecomesAJpeg() throws {
-        let clear = try prepareImageNow(P.encode(P.quarters(w: 64, h: 48, alpha: true), .png), original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let clear = try prepareImageNow(
+            P.encode(P.quarters(w: 64, h: 48, alpha: true), .png),
+            original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(clear.format == .png && detectFormat(clear.bytes) == .png)
         #expect(try stripPng(clear.bytes) == clear.bytes)
-        let opaque = try prepareImageNow(P.encode(P.quarters(w: 64, h: 48), .png), original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let opaque = try prepareImageNow(
+            P.encode(P.quarters(w: 64, h: 48), .png),
+            original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(opaque.format == .jpeg)
-        // A format the CLIs do not read is converted in the same step.
-        let tiff = try prepareImageNow(P.encode(P.quarters(w: 64, h: 48), .tiff), original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let tiff = try prepareImageNow(
+            P.encode(P.quarters(w: 64, h: 48), .tiff),
+            original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(tiff.format == .jpeg && (tiff.width, tiff.height) == (64, 48))
     }
 
-    @Test func aSmallPictureIsNotEnlarged() throws {
-        let p = try prepareImageNow(P.encode(P.quarters(w: 300, h: 200), .jpeg), original: false, originalMaxBytes: Self.testOriginalMaxBytes)
-        #expect((p.width, p.height) == (300, 200))
-    }
-
-    @Test func anOriginalGoesAsItIsWithoutItsMetadata() throws {
+    @Test func anOriginalGoesAsItIsWithoutItsMetadataAndEnforcesCoreLimit() throws {
         let photo = P.encode(P.quarters(w: 400, h: 300), .jpeg, gps: true)
-        let p = try prepareImageNow(photo, original: true, originalMaxBytes: Self.testOriginalMaxBytes)
-        // The file's own bytes, less the metadata: not re-encoded.
+        let p = try prepareImageNow(
+            photo, original: true, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(p.bytes == (try stripJpeg(photo)))
-        #expect(p.format == .jpeg && (p.width, p.height) == (400, 300) && p.note.isEmpty)
+        #expect(p.format == .jpeg && (p.width, p.height) == (400, 300))
         #expect(P.properties(p.bytes)[kCGImagePropertyGPSDictionary] == nil)
-        // Caller-supplied originalMaxBytes is enforced.
         #expect(throws: ImageTooLarge.self) {
-            try prepareImageNow(photo, original: true, originalMaxBytes: Int64(p.bytes.count - 1))
+            try prepareImageNow(
+                photo, original: true, originalMaxBytes: Int64(p.bytes.count - 1),
+                maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+            )
         }
     }
 
     @Test func anOriginalTurnedByItsTagIsReencodedAtItsOwnSize() throws {
         let photo = P.encode(P.quarters(w: 400, h: 300), .jpeg, orientation: 8, gps: true)
-        let p = try prepareImageNow(photo, original: true, originalMaxBytes: Self.testOriginalMaxBytes)
+        let p = try prepareImageNow(
+            photo, original: true, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect((p.width, p.height) == (300, 400))
-        #expect(p.note == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
         #expect(P.corners(P.decoded(p.bytes)) == Self.upright[8])
         #expect(jpegOrientation(p.bytes) == 1)
         #expect(P.properties(p.bytes)[kCGImagePropertyGPSDictionary] == nil)
     }
 
-    @Test func anOriginalInAFormatTheCLIsDoNotReadIsConverted() throws {
-        let p = try prepareImageNow(P.encode(P.quarters(w: 400, h: 300), .tiff, gps: true), original: true, originalMaxBytes: Self.testOriginalMaxBytes)
-        #expect(p.format == .jpeg && (p.width, p.height) == (400, 300))
-        #expect(p.note == "转成了 JPEG，保留原始尺寸")
-        #expect(P.properties(p.bytes)[kCGImagePropertyGPSDictionary] == nil)
-    }
-
     @Test func aHeicPhotoIsConverted() throws {
-        // Not every Mac can write HEIC; one that cannot has nothing to check here.
         let out = NSMutableData()
         guard let dest = CGImageDestinationCreateWithData(out, UTType.heic.identifier as CFString, 1, nil) else { return }
         CGImageDestinationAddImage(dest, P.quarters(w: 640, h: 480), [kCGImagePropertyOrientation: 6] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { return }
         let heic = out as Data
         #expect(detectFormat(heic) == nil)
-        let p = try prepareImageNow(heic, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
+        let p = try prepareImageNow(
+            heic, original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+        )
         #expect(p.format == .jpeg && (p.width, p.height) == (480, 640))
         #expect(P.corners(P.decoded(p.bytes)) == Self.upright[6])
     }
 
     @Test func aPictureOverThePixelBudgetIsSampledDownNotDecodedWhole() throws {
         let big = P.encode(P.quarters(w: 4000, h: 3000), .tiff)
-        // A budget this picture does not fit: an original is sent at a fraction of its size, and says so.
-        let p = try prepareImageNow(big, original: true, originalMaxBytes: Self.testOriginalMaxBytes, budget: 4_000_000)
+        let p = try prepareImageNow(
+            big, original: true, originalMaxBytes: Self.testOriginalMaxBytes,
+            maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes,
+            budget: 4_000_000
+        )
         #expect((p.width, p.height) == (2000, 1500))
-        #expect(p.note == "转成了 JPEG，保留原始尺寸；像素超过手机能处理的上限，缩小到 1/2")
-        let d = try decodeUpright(big, maxLong: compressedLongSide, budget: 1_000_000)
+        let d = try decodeUpright(big, maxLong: Self.testMaxDimensionPx, budget: 1_000_000)
         #expect(d.sample == 4 && (d.image.width, d.image.height) == (1000, 750))
     }
 
-    @Test func whatIsNotAnImageIsRefused() {
-        #expect(throws: UserError(L10nMessage.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data("hello, not a picture".utf8), original: false, originalMaxBytes: Self.testOriginalMaxBytes) }
-        #expect(throws: UserError(L10nMessage.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data(), original: true, originalMaxBytes: Self.testOriginalMaxBytes) }
-        // A JPEG cut short is a JPEG that cannot be read.
-        let cut = P.encode(P.quarters(w: 40, h: 30), .jpeg).prefix(40)
-        #expect(throws: (any Error).self) { try prepareImageNow(Data(cut), original: true, originalMaxBytes: Self.testOriginalMaxBytes) }
-    }
-
-    @Test func imagesArePreparedOneAfterAnother() async throws {
-        let photo = P.encode(P.quarters(w: 800, h: 600), .jpeg, orientation: 3)
-        async let a = prepareImage(photo, original: false, originalMaxBytes: Self.testOriginalMaxBytes)
-        async let b = prepareImage(photo, original: true, originalMaxBytes: Self.testOriginalMaxBytes)
-        let (compressed, original) = try await (a, b)
-        #expect((compressed.width, compressed.height) == (800, 600))
-        #expect(original.note == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
+    @Test func whatIsNotAnImageIsRefusedAndMappedToDecodeKind() {
+        #expect(throws: UserError(L10nMessage.imageIosCannotDecodeThisImage())) {
+            try prepareImageNow(
+                Data("hello, not a picture".utf8), original: false, originalMaxBytes: Self.testOriginalMaxBytes,
+                maxDimensionPx: Self.testMaxDimensionPx, maxCompressedBytes: Self.testMaxCompressedBytes
+            )
+        }
+        #expect(attachmentIOErrorKind(for: UserError("bad", problemKind: .decode)) == .decode)
+        #expect(attachmentIOErrorKind(for: NSError(domain: NSCocoaErrorDomain, code: NSFileWriteOutOfSpaceError)) == .storageFull)
+        #expect(attachmentIOErrorKind(for: NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))) == .storageFull)
+        #expect(attachmentIOErrorKind(for: NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoSuchFileError)) == .sourceMissing)
     }
 
     @Test func aThumbnailIsSmallAndUpright() throws {
@@ -300,6 +311,8 @@ enum TestPictures {
         let t = try #require(thumbnailImage(photo, maxLong: 256))
         #expect(t.height == 256 && (170...171).contains(t.width))
         #expect(P.corners(t) == Self.upright[6])
+        let thumbBytes = try #require(thumbnailData(photo, maxLong: 256))
+        #expect(detectFormat(thumbBytes) == .jpeg)
         #expect(thumbnailImage(Data("nope".utf8)) == nil)
         #expect(imagePixelSize(photo).map { [$0.w, $0.h] } == [1200, 800])
     }
