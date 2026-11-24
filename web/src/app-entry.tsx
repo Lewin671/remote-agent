@@ -22,7 +22,7 @@ fetchAhead([
   ...pagesAhead,
   function () { return import("./views/Pairing"); },
   function () { return import("./views/Terminal"); },
-  function () { return import("./sendimages"); },
+  function () { return import("./core/attachment-prepare-default"); },
 ]);
 
 createRoot(document.getElementById("root")!).render(

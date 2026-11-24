@@ -70,7 +70,6 @@ export interface MessageArgs {
   "attachment.disconnected": { [name: string]: never };
   "attachment.disconnected_files": { [name: string]: never };
   "attachment.failed": { [name: string]: never };
-  "attachment.failed_send_hint": { reason: string };
   "attachment.failure": { reason: string };
   "attachment.file": { [name: string]: never };
   "attachment.file_changed": { [name: string]: never };
@@ -1829,7 +1828,6 @@ export const messages = {
     "attachment.disconnected": "Disconnected from server. Reconnect to add images.",
     "attachment.disconnected_files": "Disconnected from server. Reconnect to add files.",
     "attachment.failed": "Failed",
-    "attachment.failed_send_hint": "{reason}. Retry or remove the file before sending.",
     "attachment.failure": "Failed: {reason}",
     "attachment.file": "File",
     "attachment.file_changed": "The file changed during upload. Retry or select it again.",
@@ -4173,7 +4171,6 @@ export const messages = {
     "attachment.disconnected": "和服务器断线了，连上后才能添加图片",
     "attachment.disconnected_files": "和服务器断线了，连上后才能添加文件",
     "attachment.failed": "失败",
-    "attachment.failed_send_hint": "{reason}。点「重试」或移除后才能发送",
     "attachment.failure": "失败：{reason}",
     "attachment.file": "文件",
     "attachment.file_changed": "文件在上传时发生变化，请重试或重新选择",

@@ -4,8 +4,8 @@ import * as i18n from "../i18n";
 // send actions when running ("做完再发" + ↑, or ■ when empty).
 
 import { useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
-import type { Tray } from "../attach";
 import { renderText } from "../core/text";
+import type { AttachmentDraftView } from "../gen/remoteagent/core/v1/attachments_pb";
 import type { SessionComposerView } from "../gen/remoteagent/core/v1/session_view_pb";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import { ArrowUp, Square } from "../icons";
@@ -61,7 +61,7 @@ export function Composer({
   onInterrupt,
   draft,
   onDraft,
-  tray,
+  draftView,
   trayView,
   pendingTray,
   attach,
@@ -78,7 +78,7 @@ export function Composer({
   onInterrupt: () => void;
   draft: string;
   onDraft: (text: string) => void;
-  tray?: Tray;
+  draftView?: AttachmentDraftView;
   trayView?: ReactNode;
   pendingTray?: ReactNode;
   attach?: ReactNode;
@@ -90,7 +90,7 @@ export function Composer({
   onFocusChange?: (focused: boolean) => void;
 }) {
   const [text, setTextState] = useState(draft);
-  useLayoutEffect(() => setTextState(draft), [draft]);
+  useLayoutEffect(() => setTextState(draft), [draft, draftView?.textRevision]);
   const setText = (v: string) => {
     setTextState(v);
     onDraft(v);
@@ -107,26 +107,20 @@ export function Composer({
   const online = composer?.enabled ?? false;
   const offline = composer ? !composer.enabled : false;
   const t = text.trim();
-  const images = tray?.items.length ?? 0;
-  const hasDraft = !!(t || images);
-  const canSend = online && (images ? (tray?.ready() ?? false) : !!t);
+  const itemCount = draftView?.items.length ?? 0;
+  const hasDraft = !!(t || itemCount || draftView?.hasPendingPicks);
+  const canSend = draftView
+    ? online && draftView.canSend && !draftView.sending && !draftView.restoring
+    : online && !!t;
   const showSendAfter = running && hasDraft && supportsQueueMode;
   const twoRow = showSendAfter || t.length > 20 || text.includes("\n");
 
   const defaultMode = composer?.defaultSendMode || SendMode.STEER;
   const submit = (force = false, sendMode: SendMode = defaultMode) => {
-    tray?.refreshExpired();
-    if (!canSend || (images && !tray!.ready())) return;
-    if (images) {
-      const blocked = tray!.checkSendBlocked();
-      if (blocked) {
-        tray!.setNote(blocked);
-        return;
-      }
-    }
-    if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
+    if (!canSend) return;
+    if (t.startsWith("/") && !force && !itemCount) return setSlash(sendMode);
     onSend(t, sendMode);
-    setText("");
+    if (!draftView) setText("");
   };
 
   const keys = sendKeys(fine);

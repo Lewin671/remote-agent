@@ -1,6 +1,7 @@
 import { create, fromBinary, toBinary, type MessageInitShape } from "@bufbuild/protobuf";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import type { Tray, TrayItem } from "../attach";
+import { AttachmentExecutor, type ImagePrepareFn } from "../attachment-executor";
+import { MemoryAttachmentStore, WebAttachmentStore, type AttachmentStore } from "../attachment-store";
 import { newRequestID, UnsupportedHistoryError } from "../crypto";
 import * as l10n from "../i18n";
 import { PEER_PROTOCOL_VERSION } from "../protocol";
@@ -123,9 +124,40 @@ import {
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
 import {
+  AttachmentCandidateInputSchema,
   AttachmentEvalScreenRequestSchema,
   type AttachmentEvalViewModel,
 } from "../gen/remoteagent/core/v1/attachments_view_pb";
+import {
+  AttachmentConfigEventSchema,
+  AttachmentDraftScreenRequestSchema,
+  AttachmentPauseUploadActionSchema,
+  AttachmentResumeUploadActionSchema,
+  DraftAddItemsActionSchema,
+  DraftClearActionSchema,
+  DraftClearAllActionSchema,
+  DraftDismissNoticeActionSchema,
+  DraftForgetSessionActionSchema,
+  DraftImageViewerCloseActionSchema,
+  DraftImageViewerNavigateActionSchema,
+  DraftImageViewerOpenActionSchema,
+  DraftOpenActionSchema,
+  DraftPickedItemSchema,
+  DraftPutBackInputActionSchema,
+  DraftReleaseSlotsActionSchema,
+  DraftRemoveItemActionSchema,
+  DraftReserveSlotsActionSchema,
+  DraftRetryItemActionSchema,
+  DraftScopeKind,
+  DraftScopeSchema,
+  DraftSendSessionActionSchema,
+  DraftSetOriginalActionSchema,
+  DraftSetTargetMachineActionSchema,
+  DraftSetTextActionSchema,
+  DraftStorageBucket,
+  type AttachmentDraftViewModel,
+  type DraftScope,
+} from "../gen/remoteagent/core/v1/attachments_pb";
 import {
   SecurityConfigEventSchema,
   SecurityErrorCode,
@@ -161,7 +193,7 @@ import {
   type DirectPreferenceEntry,
   type DirectSignalSendEffect,
 } from "../gen/remoteagent/core/v1/transport_pb";
-import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
 import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
@@ -233,7 +265,6 @@ import {
   SessionTraySessionActionSchema,
   SessionWindowRequestSchema,
   SharedFileFailureKind,
-  type SessionResendAttachmentsEffect,
   type SessionRestoreComposerEffect,
   type SessionViewModel,
 } from "../gen/remoteagent/core/v1/session_view_pb";
@@ -251,7 +282,7 @@ import {
 } from "../gen/remoteagent/core/v1/shared_files_pb";
 import { SharedFileExecutor, WEB_LOCAL_CACHE_MAX_BYTES } from "../shared-files";
 import { sharedFileStore, type SharedFileStore } from "../shared-file-store";
-import { registerActiveSharedFileClearer } from "./security-store-v4";
+import { registerActiveAttachmentClearer, registerActiveSharedFileClearer } from "./security-store-v4";
 import {
   CheckForUpdatesEventSchema,
   ClientDetailScreenRequestSchema,
@@ -303,11 +334,12 @@ const INITIAL_ENTROPY_COUNT = 32;
 
 export type Go = (route: string, replace?: boolean) => void;
 
-export interface StartTraySnapshot {
-  tray: Tray;
-  imageIds: string[];
-  fileIds: string[];
-  items: TrayItem[];
+export interface DraftCandidateEntry {
+  file?: Blob;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  isDirectory?: boolean;
 }
 
 export interface StreamLegCallbacks {
@@ -422,6 +454,12 @@ export interface CoreHostOptions {
   sharedFileStore?: SharedFileStore;
   /** Optional large-file (> 50 MiB) delivery hook (defaults to browser download save). */
   onDeliverLargeSharedFile?: (blob: Blob, displayName: string) => void;
+  /** Optional attachment store override (defaults to remote.attachmentStore or persistent WebAttachmentStore). */
+  attachmentStore?: AttachmentStore;
+  /** Optional image preparation hook (defaults to browser compressImage/prepareOriginal). */
+  prepareImage?: ImagePrepareFn;
+  /** Optional video duration probe hook (defaults to browser <video> metadata probe). */
+  probeVideoDurationMs?: (blob: Blob) => Promise<number | undefined>;
 }
 
 /** Current browser IANA timezone ID (falls back to UTC when unavailable). */
@@ -708,8 +746,31 @@ const ALL_TARGETS = [
   ScreenTarget.SCHEDULE_DETAIL,
   ScreenTarget.SCHEDULE_FORM,
   ScreenTarget.SCHEDULE_SESSION_STRIP,
+  ScreenTarget.ATTACHMENT_DRAFT,
   ...SETTINGS_TARGETS,
 ];
+
+function draftScopeKey(scope: Pick<DraftScope, "kind" | "id">): string {
+  return `${scope.kind}:${scope.id}`;
+}
+
+export function sessionDraftScope(sessionId: string): DraftScope {
+  return create(DraftScopeSchema, { kind: DraftScopeKind.SESSION, id: sessionId });
+}
+
+export function newSessionDraftScope(projectKey: string): DraftScope {
+  return create(DraftScopeSchema, { kind: DraftScopeKind.NEW_SESSION, id: projectKey });
+}
+
+function parseDraftStorageKeyToScope(key: string): DraftScope | undefined {
+  if (key.startsWith("session:") && key.length > "session:".length) {
+    return sessionDraftScope(key.slice("session:".length));
+  }
+  if (key.startsWith("new:") && key.length > "new:".length) {
+    return newSessionDraftScope(key.slice("new:".length));
+  }
+  return undefined;
+}
 
 export function toCoreTheme(t: Theme): ThemePreference {
   switch (t) {
@@ -802,6 +863,9 @@ export class CoreHost {
   private clientDetailCache = new Map<string, { version: number; vm: ClientDetailViewModel }>();
   private usageCache = new Map<string, { version: number; vm: UsageViewModel }>();
   private directDiagnosticsCache = new Map<string, { version: number; vm: DirectDiagnosticsViewModel }>();
+  private attachmentDraftCache = new Map<string, { version: number; vm: AttachmentDraftViewModel }>();
+  private knownDraftScopes = new Map<string, DraftScope>();
+  private pendingTextOnlyStarts = new Map<string, string>();
   private usageHydratedMachines = new Set<string>();
   private nextDirectCallId = 0n;
   private bulkRouteWaiters = new Map<bigint, (eff: DirectBulkRouteEffect) => void>();
@@ -813,7 +877,6 @@ export class CoreHost {
   private closed = false;
   private watchCounts = new Map<string, number>();
   private restoreComposerListeners = new Map<string, Set<(eff: SessionRestoreComposerEffect) => void>>();
-  private resendAttachmentsListeners = new Map<string, Set<(eff: SessionResendAttachmentsEffect) => void>>();
   private scheduleFormCloseListeners = new Map<string, Set<() => void>>();
   private scheduleFormTimingListeners = new Map<string, Set<(formKey: string) => void>>();
   private scheduleFocus = new Map<string, { runId: string; seq: bigint }>();
@@ -835,19 +898,17 @@ export class CoreHost {
   private clockTimer?: ReturnType<typeof setInterval>;
   private unsubscribeLocale?: () => void;
   private unregisterSharedFileClearer?: () => void;
+  private unregisterAttachmentClearer?: () => void;
   readonly sharedFiles: SharedFileExecutor;
+  readonly attachments: AttachmentExecutor;
+  private attachmentConfigured = false;
   private cacheWriteQueue: Promise<void> = Promise.resolve();
 
   private pendingEvents: Array<{ ev: Event; onProcessed?: () => void }> = [];
   private draining = false;
   private dirtyTargets = new Set<ScreenTarget>();
 
-  private readonly trays = new Map<string, () => StartTraySnapshot>();
-  private pendingStart?: {
-    projectKey: string;
-    prompt: string;
-    taken: TrayItem[];
-  };
+  private pendingStart = false;
   private lastProjectPrefEvent?: Event;
   private bootstrapped = false;
   private preloadedBootstrap?: CacheBootstrapLoadedEvent;
@@ -878,7 +939,33 @@ export class CoreHost {
       },
       onDeliverOnly: opts.onDeliverLargeSharedFile,
     });
+    const attStore =
+      opts.attachmentStore ??
+      remote?.attachmentStore ??
+      (remote ? new WebAttachmentStore(remote.account) : new MemoryAttachmentStore());
+    this.attachments = new AttachmentExecutor({
+      store: attStore,
+      onEvent: (event) => {
+        if (this.closed) return;
+        if (event.case === "draftStorageListed") {
+          for (const entry of event.value.entries) {
+            if (entry.bucket === DraftStorageBucket.DRAFT && !entry.corrupt) {
+              const scope = parseDraftStorageKeyToScope(entry.key);
+              if (scope) this.knownDraftScopes.set(draftScopeKey(scope), scope);
+            }
+          }
+        }
+        this.emit(event);
+      },
+      ensureStorageReady: () => this.ensureSecurityBootstrapped(),
+      prepareImage: opts.prepareImage ?? ((blob, pOpts) => {
+        if (remote?.prepareImageOverride) return remote.prepareImageOverride(blob, pOpts);
+        return import("./attachment-prepare-default").then((m) => m.prepareImageDefault(blob, pOpts));
+      }),
+      probeVideoDurationMs: opts.probeVideoDurationMs,
+    });
     this.unregisterSharedFileClearer = registerActiveSharedFileClearer(() => this.sharedFileClearAllAndWait());
+    this.unregisterAttachmentClearer = registerActiveAttachmentClearer(() => this.draftClearAllAndWait());
 
     if (this.remote) {
       this.remote.attachHost({
@@ -954,11 +1041,19 @@ export class CoreHost {
     this.go = go;
   }
 
-  registerTray(projectKey: string, getter: () => StartTraySnapshot): () => void {
-    this.trays.set(projectKey, getter);
-    return () => {
-      if (this.trays.get(projectKey) === getter) this.trays.delete(projectKey);
-    };
+  private ensureAttachmentConfigured() {
+    if (this.closed || this.attachmentConfigured) return;
+    this.attachmentConfigured = true;
+    this.emit({
+      case: "attachmentConfig",
+      value: create(AttachmentConfigEventSchema, {
+        persistDrafts: true,
+        persistOutbox: true,
+        scanStorage: true,
+        maxChunkBytes: 0,
+        hasPersistedPreparedImages: this.attachments.store.hasPersistedPreparedImages,
+      }),
+    });
   }
 
   // --- Lifecycle & Sync triggers ---
@@ -1017,6 +1112,11 @@ export class CoreHost {
     if (this.closed || !this.executor) return;
     this.ensureSecurityConfigured();
     await this.ensureSecurityBootstrapped();
+    if (this.closed) return;
+    await this.attachments.store.probe().catch(() => false);
+    if (this.closed) return;
+    this.ensureAttachmentConfigured();
+    await raceTimeout(this.attachments.whenStorageIdle(), CoreHost.WARM_BOOTSTRAP_CACHE_TIMEOUT_MS).catch(() => undefined);
     if (this.closed) return;
     if (!this.bootstrapped) {
       try {
@@ -1100,6 +1200,7 @@ export class CoreHost {
           platformAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
         }),
       });
+      this.ensureAttachmentConfigured();
       this.emit({
         case: "sharedFileConfig",
         value: create(SharedFileConfigEventSchema, {
@@ -1315,10 +1416,238 @@ export class CoreHost {
     this.emit({ case: "newSessionSelectModel", value: create(NewSessionSelectModelActionSchema, { model, effort, ...(standardContext !== undefined ? { standardContext } : {}) }) });
   newSessionRetryModels = (projectKey: string) => this.emit({ case: "newSessionRetryModels", value: create(NewSessionProjectActionSchema, { projectKey }) });
   newSessionRetrySaveConfig = (projectKey: string) => this.emit({ case: "newSessionRetrySaveConfig", value: create(NewSessionProjectActionSchema, { projectKey }) });
-  newSessionSetPrompt = (prompt: string, attachmentCount = 0, attachmentsMoved = false) =>
-    this.emit({ case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt, attachmentCount, attachmentsMoved }) });
-  newSessionSubmit = (projectKey: string) => this.emit({ case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey }) });
-  newSessionAbandonStart = (projectKey: string) => this.emit({ case: "newSessionAbandonStart", value: create(NewSessionProjectActionSchema, { projectKey }) });
+  newSessionSubmit = (projectKey: string) => {
+    this.ensureAttachmentConfigured();
+    if (projectKey) {
+      const scope = newSessionDraftScope(projectKey);
+      const draft = this.viewAttachmentDraft(scope).draft;
+      if (draft && draft.items.length === 0) {
+        this.pendingTextOnlyStarts.set(projectKey, draft.text.trim());
+      } else {
+        this.pendingTextOnlyStarts.delete(projectKey);
+      }
+    }
+    this.emit({ case: "newSessionSubmit", value: create(NewSessionSubmitActionSchema, { projectKey }) });
+  };
+  newSessionAbandonStart = (projectKey: string) => {
+    this.pendingTextOnlyStarts.delete(projectKey);
+    this.emit({ case: "newSessionAbandonStart", value: create(NewSessionProjectActionSchema, { projectKey }) });
+  };
+
+  // --- Attachment & Draft Intents (Contract §1.3) ---
+
+  private trackDraftScope(scope: DraftScope) {
+    if (scope.id) this.knownDraftScopes.set(draftScopeKey(scope), scope);
+  }
+
+  draftOpen = (scope: DraftScope, machineId = "") => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.trackDraftScope(scope);
+    this.emit({ case: "draftOpen", value: create(DraftOpenActionSchema, { scope, machineId }) });
+  };
+
+  draftSetText = (scope: DraftScope, text: string) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.trackDraftScope(scope);
+    this.emit({ case: "draftSetText", value: create(DraftSetTextActionSchema, { scope, text }) });
+  };
+
+  draftSetTargetMachine = (scope: DraftScope, machineId: string) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.trackDraftScope(scope);
+    this.emit({ case: "draftSetTargetMachine", value: create(DraftSetTargetMachineActionSchema, { scope, machineId }) });
+  };
+
+  draftReserveSlots = (scope: DraftScope, reservationId: string, imageSlots: number, fileSlots: number) => {
+    if (!scope.id || !reservationId) return;
+    this.ensureAttachmentConfigured();
+    this.trackDraftScope(scope);
+    this.emit({
+      case: "draftReserveSlots",
+      value: create(DraftReserveSlotsActionSchema, { scope, reservationId, imageSlots, fileSlots }),
+    });
+  };
+
+  draftReleaseSlots = (scope: DraftScope, reservationId: string) => {
+    if (!scope.id || !reservationId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({
+      case: "draftReleaseSlots",
+      value: create(DraftReleaseSlotsActionSchema, { scope, reservationId }),
+    });
+  };
+
+  stageAndAddDraftItems = (
+    scope: DraftScope,
+    entries: readonly DraftCandidateEntry[],
+    forceFile: boolean,
+  ): void => {
+    if (!scope.id || !entries.length) return;
+    this.ensureAttachmentConfigured();
+    this.trackDraftScope(scope);
+    const reservationId = newRequestID();
+    let imageSlots = 0;
+    let fileSlots = 0;
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      if (!forceFile && entry.mimeType.toLowerCase().startsWith("image/")) imageSlots++;
+      else fileSlots++;
+    }
+    if (imageSlots > 0 || fileSlots > 0) {
+      this.draftReserveSlots(scope, reservationId, imageSlots, fileSlots);
+    }
+    const stagedRefs: string[] = [];
+    try {
+      const items = entries.map((entry) => {
+        const sourceRef = !entry.isDirectory && entry.file ? this.attachments.stagePickedBlob(entry.file) : "";
+        if (sourceRef) stagedRefs.push(sourceRef);
+        return create(DraftPickedItemSchema, {
+          candidate: create(AttachmentCandidateInputSchema, {
+            name: entry.name,
+            mimeType: entry.mimeType,
+            sizeBytes: BigInt(Math.max(0, Math.floor(entry.sizeBytes))),
+            sizeUnknown: false,
+            isDirectory: !!entry.isDirectory,
+            forceFile,
+          }),
+          sourceRef,
+          thumbRef: "",
+          hasOriginalSource: !!sourceRef,
+          hasDuration: false,
+          durationMs: 0n,
+        });
+      });
+      this.emit({
+        case: "draftAddItems",
+        value: create(DraftAddItemsActionSchema, {
+          scope,
+          reservationId: imageSlots > 0 || fileSlots > 0 ? reservationId : "",
+          items,
+        }),
+      });
+    } catch (err) {
+      if (imageSlots > 0 || fileSlots > 0) this.draftReleaseSlots(scope, reservationId);
+      if (stagedRefs.length > 0) void this.attachments.store.deleteLocalRefs(stagedRefs).catch(() => undefined);
+      throw err;
+    }
+  };
+
+  draftRemoveItem = (scope: DraftScope, itemId: string) => {
+    if (!scope.id || !itemId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftRemoveItem", value: create(DraftRemoveItemActionSchema, { scope, itemId }) });
+  };
+
+  draftRetryItem = (scope: DraftScope, itemId: string) => {
+    if (!scope.id || !itemId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftRetryItem", value: create(DraftRetryItemActionSchema, { scope, itemId }) });
+  };
+
+  draftSetOriginal = (scope: DraftScope, original: boolean) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftSetOriginal", value: create(DraftSetOriginalActionSchema, { scope, original }) });
+  };
+
+  draftClear = (scope: DraftScope) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftClear", value: create(DraftClearActionSchema, { scope }) });
+  };
+
+  draftForgetSession = (sessionId: string) => {
+    if (!sessionId) return;
+    this.ensureAttachmentConfigured();
+    this.knownDraftScopes.delete(draftScopeKey(sessionDraftScope(sessionId)));
+    this.emit({ case: "draftForgetSession", value: create(DraftForgetSessionActionSchema, { sessionId }) });
+  };
+
+  draftClearAll = () => {
+    this.ensureAttachmentConfigured();
+    this.knownDraftScopes.clear();
+    this.emit({ case: "draftClearAll", value: create(DraftClearAllActionSchema, {}) });
+  };
+
+  async draftClearAllAndWait(): Promise<void> {
+    if (!this.closed) this.draftClearAll();
+    else this.attachments.handleDraftStorageClearAll();
+    await this.attachments.whenIdle();
+  }
+
+  draftDismissNotice = (scope: DraftScope) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftDismissNotice", value: create(DraftDismissNoticeActionSchema, { scope }) });
+  };
+
+  attachmentPauseUpload = (scope: DraftScope, itemId: string) => {
+    if (!scope.id || !itemId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "attachmentPauseUpload", value: create(AttachmentPauseUploadActionSchema, { scope, itemId }) });
+  };
+
+  attachmentResumeUpload = (scope: DraftScope, itemId: string) => {
+    if (!scope.id || !itemId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "attachmentResumeUpload", value: create(AttachmentResumeUploadActionSchema, { scope, itemId }) });
+  };
+
+  draftSendSession = (sessionId: string, mode: SendMode) => {
+    if (!sessionId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftSendSession", value: create(DraftSendSessionActionSchema, { sessionId, mode }) });
+  };
+
+  draftPutBackInput = (sessionId: string, requestId: string) => {
+    if (!sessionId || !requestId) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftPutBackInput", value: create(DraftPutBackInputActionSchema, { sessionId, requestId }) });
+  };
+
+  draftImageViewerOpen = (scope: DraftScope, index: number) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftImageViewerOpen", value: create(DraftImageViewerOpenActionSchema, { scope, index }) });
+  };
+
+  draftImageViewerNavigate = (scope: DraftScope, opts: { delta?: number; setIndex?: boolean; index?: number }) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({
+      case: "draftImageViewerNavigate",
+      value: create(DraftImageViewerNavigateActionSchema, {
+        scope,
+        delta: opts.delta ?? 0,
+        setIndex: !!opts.setIndex,
+        index: opts.index ?? 0,
+      }),
+    });
+  };
+
+  draftImageViewerClose = (scope: DraftScope) => {
+    if (!scope.id) return;
+    this.ensureAttachmentConfigured();
+    this.emit({ case: "draftImageViewerClose", value: create(DraftImageViewerCloseActionSchema, { scope }) });
+  };
+
+  appendNewSessionPrompt = (projectKey: string, prompt: string) => {
+    if (!projectKey || !prompt) return;
+    const scope = newSessionDraftScope(projectKey);
+    const existing = this.viewAttachmentDraft(scope).draft?.text ?? "";
+    const next = !existing ? prompt : existing.includes(prompt) ? existing : `${existing}\n\n${prompt}`;
+    this.draftSetText(scope, next);
+  };
+
+  hasUnsavedDrafts(): boolean {
+    for (const scope of this.knownDraftScopes.values()) {
+      if (this.viewAttachmentDraft(scope).draft?.hasUnsavedContent) return true;
+    }
+    return false;
+  }
 
   watchSession(sessionId: string) {
     if (!sessionId) return;
@@ -1451,19 +1780,6 @@ export class CoreHost {
     return () => {
       set?.delete(fn);
       if (set?.size === 0) this.restoreComposerListeners.delete(sessionId);
-    };
-  }
-
-  onResendAttachments(sessionId: string, fn: (eff: SessionResendAttachmentsEffect) => void): () => void {
-    let set = this.resendAttachmentsListeners.get(sessionId);
-    if (!set) {
-      set = new Set();
-      this.resendAttachmentsListeners.set(sessionId, set);
-    }
-    set.add(fn);
-    return () => {
-      set?.delete(fn);
-      if (set?.size === 0) this.resendAttachmentsListeners.delete(sessionId);
     };
   }
 
@@ -2117,6 +2433,19 @@ export class CoreHost {
     );
   }
 
+  viewAttachmentDraft(scope: DraftScope): AttachmentDraftViewModel {
+    const ver = this.version(ScreenTarget.ATTACHMENT_DRAFT);
+    const key = draftScopeKey(scope);
+    const cached = this.attachmentDraftCache.get(key);
+    if (cached && cached.version === ver) return cached.vm;
+    const value = this.queryView<AttachmentDraftViewModel>(
+      { case: "attachmentDraft", value: create(AttachmentDraftScreenRequestSchema, { scope }) },
+      "attachmentDraft",
+    );
+    this.attachmentDraftCache.set(key, { version: ver, vm: value });
+    return value;
+  }
+
   viewSyncState(): SyncStateView {
     const ver = this.version(ScreenTarget.SYNC_STATE);
     if (this.syncStateCache && this.syncStateCache.version === ver) {
@@ -2379,12 +2708,7 @@ export class CoreHost {
     const projectKey = sub.projectKey;
     const vm = this.viewNewSession(projectKey);
     const autoSupported = sub.autoModeSupported || !!vm.modelPanel?.canSelectAutoMode;
-    const snap = this.trays.get(projectKey)?.();
-    this.pendingStart = {
-      projectKey,
-      prompt: vm.prompt.trim(),
-      taken: snap?.items ?? [],
-    };
+    this.pendingStart = true;
     return create(EventSchema, {
       nowMs: ev.nowMs,
       monoMs: ev.monoMs,
@@ -2395,8 +2719,6 @@ export class CoreHost {
         value: create(NewSessionSubmitActionSchema, {
           projectKey,
           autoModeSupported: autoSupported,
-          imageIds: sub.imageIds.length ? sub.imageIds : (snap?.imageIds ?? []),
-          fileIds: sub.fileIds.length ? sub.fileIds : (snap?.fileIds ?? []),
         }),
       },
     });
@@ -2508,6 +2830,7 @@ export class CoreHost {
         this.cacheWriteQueue = this.cacheWriteQueue.then(() => this.executor?.deleteCache(delEff)).catch(() => undefined);
         if (delEff.kind.case === "removeSessionId" && delEff.kind.value) {
           this.sharedFileForgetSession(delEff.kind.value);
+          this.draftForgetSession(delEff.kind.value);
         }
         break;
       }
@@ -2555,14 +2878,40 @@ export class CoreHost {
         break;
 
       case "attachmentsSettled":
-        this.handleAttachmentsSettled(val.value.projectKey, val.value.consumed);
+        // Core manages new-session draft consumption directly when configured; clear pendingStart flag if not consumed.
+        if (!val.value.consumed) this.pendingStart = false;
         break;
 
       case "navigate": {
         const nav = val.value;
-        const replaceSession = nav.route === NavigateRoute.SESSION && !!this.pendingStart;
+        const replaceSession = nav.route === NavigateRoute.SESSION && this.pendingStart;
         if (nav.route === NavigateRoute.SESSION && nav.sessionId) {
-          this.pendingStart = undefined;
+          this.pendingStart = false;
+          if (nav.projectKey && this.pendingTextOnlyStarts.has(nav.projectKey)) {
+            // Core's prepareNewSessionAttachments skips recording text-only starts,
+            // leaving attDraft.text stale and wiping newly-typed NewSessionDraft.Prompt on settle.
+            const submitted = this.pendingTextOnlyStarts.get(nav.projectKey)!;
+            this.pendingTextOnlyStarts.delete(nav.projectKey);
+            const scope = newSessionDraftScope(nav.projectKey);
+            const cur = this.viewAttachmentDraft(scope).draft?.text ?? "";
+            if (cur.trim() === submitted) {
+              this.pendingEvents.push({
+                ev: create(EventSchema, {
+                  nowMs: BigInt(Date.now()),
+                  monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
+                  event: { case: "draftSetText", value: create(DraftSetTextActionSchema, { scope, text: "" }) },
+                }),
+              });
+            } else if (cur) {
+              this.pendingEvents.push({
+                ev: create(EventSchema, {
+                  nowMs: BigInt(Date.now()),
+                  monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
+                  event: { case: "newSessionSetPrompt", value: create(NewSessionSetPromptActionSchema, { prompt: cur }) },
+                }),
+              });
+            }
+          }
         }
         if (nav.route === NavigateRoute.SESSION && !replaceSession && this.watchCounts.size === 0) {
           break;
@@ -2589,12 +2938,9 @@ export class CoreHost {
         break;
       }
 
-      case "sessionResendAttachments": {
-        const eff = val.value;
-        const set = this.resendAttachmentsListeners.get(eff.sessionId);
-        if (set) for (const fn of [...set]) fn(eff);
+      case "sessionResendAttachments":
+        // Core-configured path never relies on legacy SessionResendAttachmentsEffect (Contract §6).
         break;
-      }
 
       case "scheduleReadCache": {
         const { opId, machineId } = val.value;
@@ -2826,11 +3172,7 @@ export class CoreHost {
         }
         if (eff.projectKey && this.remote) {
           const prompt = l10n.t("machine_status.cleanup_prompt");
-          const draft = this.remote.drafts.get("new:" + eff.projectKey);
-          this.remote.drafts.set(
-            "new:" + eff.projectKey,
-            !draft ? prompt : draft.includes(prompt) ? draft : `${draft}\n\n${prompt}`,
-          );
+          this.appendNewSessionPrompt(eff.projectKey, prompt);
           if (eff.machineId) this.remote.draftMachines.set(eff.projectKey, eff.machineId);
           this.remote.focusProject = eff.projectKey;
           this.remote.touch();
@@ -2971,6 +3313,42 @@ export class CoreHost {
         this.sharedFiles.handleCompleted(val.value);
         break;
 
+      case "attachmentPrepareImage":
+        this.attachments.handlePrepareImage(val.value);
+        break;
+
+      case "attachmentHashFile":
+        this.attachments.handleHashFile(val.value);
+        break;
+
+      case "attachmentReadChunk":
+        this.attachments.handleReadChunk(val.value);
+        break;
+
+      case "attachmentReleaseLocal":
+        this.attachments.handleReleaseLocal(val.value);
+        break;
+
+      case "draftStorageList":
+        this.attachments.handleDraftStorageList(val.value);
+        break;
+
+      case "draftStorageRead":
+        this.attachments.handleDraftStorageRead(val.value);
+        break;
+
+      case "draftStorageWrite":
+        this.attachments.handleDraftStorageWrite(val.value);
+        break;
+
+      case "draftStorageDelete":
+        this.attachments.handleDraftStorageDelete(val.value);
+        break;
+
+      case "draftStorageClearAll":
+        this.attachments.handleDraftStorageClearAll();
+        break;
+
       case undefined:
         break;
 
@@ -2979,40 +3357,6 @@ export class CoreHost {
         break;
     }
     this.onEffect?.(eff);
-  }
-
-  private handleAttachmentsSettled(projectKey: string, consumed: boolean) {
-    const start = this.pendingStart;
-    if (!consumed) {
-      if (start?.projectKey === projectKey) this.pendingStart = undefined;
-      return;
-    }
-    const tray = this.trays.get(projectKey)?.().tray;
-    if (tray && start?.taken.length) tray.detach(start.taken);
-    if (this.remote) {
-      const draftKey = "new:" + projectKey;
-      if ((this.remote.drafts.get(draftKey)?.trim() ?? "") === (start?.prompt ?? "")) {
-        this.remote.drafts.delete(draftKey);
-      }
-      const keptDraft = this.remote.drafts.get(draftKey);
-      if (keptDraft || (tray && tray.items.length > 0)) {
-        this.pendingEvents.push({
-          ev: create(EventSchema, {
-            nowMs: BigInt(Date.now()),
-            monoMs: BigInt(Math.max(0, Math.floor(performance.now()))),
-            event: {
-              case: "newSessionSetPrompt",
-              value: create(NewSessionSetPromptActionSchema, {
-                prompt: keptDraft ?? "",
-                attachmentCount: tray?.items.length ?? 0,
-                attachmentsMoved: false,
-              }),
-            },
-          }),
-        });
-      }
-      this.remote.touch();
-    }
   }
 
   private navigateTo(route: NavigateRoute, projectKey: string, sessionId: string, machineId: string, replace = false) {
@@ -3054,6 +3398,7 @@ export class CoreHost {
     else if (target === ScreenTarget.CLIENT_DETAIL) this.clientDetailCache.clear();
     else if (target === ScreenTarget.USAGE) this.usageCache.clear();
     else if (target === ScreenTarget.DIRECT_DIAGNOSTICS) this.directDiagnosticsCache.clear();
+    else if (target === ScreenTarget.ATTACHMENT_DRAFT) this.attachmentDraftCache.clear();
   }
 
   private flushRenders() {
@@ -3108,6 +3453,8 @@ export class CoreHost {
     this.unsubscribeLocale = undefined;
     this.unregisterSharedFileClearer?.();
     this.unregisterSharedFileClearer = undefined;
+    this.unregisterAttachmentClearer?.();
+    this.unregisterAttachmentClearer = undefined;
     this.sharedFiles.setAutoOpenHandler(undefined);
     this.stop();
     this.closed = true;
@@ -3115,7 +3462,8 @@ export class CoreHost {
     this.dirtyTargets.clear();
     for (const set of this.listeners.values()) set.clear();
     this.totalListeners = 0;
-    this.trays.clear();
+    this.knownDraftScopes.clear();
+    this.attachmentDraftCache.clear();
     this.scheduleFormCloseListeners.clear();
     this.scheduleFormTimingListeners.clear();
     this.scheduleFocus.clear();
@@ -3346,6 +3694,16 @@ export function useClientRenameState(host: CoreHost, deviceId: string): { saving
 export function useDirectDiagnosticsView(host: CoreHost, machineId: string): DirectDiagnosticsViewModel {
   const version = useScreenVersion(host, ScreenTarget.DIRECT_DIAGNOSTICS);
   return useMemo(() => host.viewDirectDiagnostics(machineId), [host, version, machineId]);
+}
+
+export function useAttachmentDraftView(host: CoreHost, scope: DraftScope): AttachmentDraftViewModel {
+  const version = useScreenVersion(host, ScreenTarget.ATTACHMENT_DRAFT);
+  const kind = scope.kind;
+  const id = scope.id;
+  return useMemo(
+    () => host.viewAttachmentDraft(create(DraftScopeSchema, { kind, id })),
+    [host, version, kind, id],
+  );
 }
 
 export {

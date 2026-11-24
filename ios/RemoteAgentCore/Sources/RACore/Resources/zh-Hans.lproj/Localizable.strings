@@ -30,7 +30,6 @@
 "attachment_disconnected" = "和服务器断线了，连上后才能添加图片";
 "attachment_disconnected_files" = "和服务器断线了，连上后才能添加文件";
 "attachment_failed" = "失败";
-"attachment_failed_send_hint" = "%1$@。点「重试」或移除后才能发送";
 "attachment_failure" = "失败：%1$@";
 "attachment_file" = "文件";
 "attachment_file_changed" = "文件在上传时发生变化，请重试或重新选择";

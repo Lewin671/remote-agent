@@ -46,7 +46,6 @@
     <string name="attachment_disconnected" formatted="false">"和服务器断线了，连上后才能添加图片"</string>
     <string name="attachment_disconnected_files" formatted="false">"和服务器断线了，连上后才能添加文件"</string>
     <string name="attachment_failed" formatted="false">"失败"</string>
-    <string name="attachment_failed_send_hint">"%1$s。点「重试」或移除后才能发送"</string>
     <string name="attachment_failure">"失败：%1$s"</string>
     <string name="attachment_file" formatted="false">"文件"</string>
     <string name="attachment_file_changed" formatted="false">"文件在上传时发生变化，请重试或重新选择"</string>

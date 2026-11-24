@@ -8,7 +8,6 @@ import { DemoRemote } from "../dev/demo";
 import { localeStore, t as message } from "../i18n";
 import { CommandError } from "../remote";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
-import { getCoreHost } from "../core/host";
 import { setDemoDirect } from "../dev/direct-demo";
 import { Sheet } from "../ui";
 import { Home } from "./Home";
@@ -175,7 +174,12 @@ describe("Running Composer two-button actions, DOM identity, and dock demotion",
     const r = DemoRemote.create(new URLSearchParams());
     remotes.push(r);
     r.start();
-    const submit = vi.spyOn(getCoreHost(r), "sessionSubmitCommand");
+    const sent: SendMode[] = [];
+    const orig = r.command.bind(r);
+    vi.spyOn(r, "command").mockImplementation((sid, cmd, slot) => {
+      if (cmd?.case === "send") sent.push(cmd.value.mode ?? SendMode.UNSPECIFIED);
+      return orig(sid, cmd, slot);
+    });
     await mountAsync(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
 
     const textareaBefore = host.querySelector<HTMLTextAreaElement>("textarea.draft")!;
@@ -194,15 +198,14 @@ describe("Running Composer two-button actions, DOM identity, and dock demotion",
     expect(document.activeElement).toBe(textareaBefore);
 
     await click(later);
-    expect(submit).toHaveBeenCalled();
-    expect(submit.mock.calls[0][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.QUEUE } });
+    expect(sent).toEqual([SendMode.QUEUE]);
     expect(textareaBefore.value).toBe("");
 
     await act(async () => {
       setTextarea(textareaBefore, "第二句直接发送");
     });
     await click(host.querySelector<HTMLButtonElement>("button.snd")!);
-    expect(submit.mock.calls[1][3].kind).toMatchObject({ case: "send", value: { mode: SendMode.STEER } });
+    expect(sent).toEqual([SendMode.QUEUE, SendMode.STEER]);
   });
 
   it("demotes send button when dock is open and hides composer while denying in dock", async () => {

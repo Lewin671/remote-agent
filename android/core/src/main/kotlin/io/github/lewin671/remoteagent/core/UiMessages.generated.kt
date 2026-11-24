@@ -47,7 +47,6 @@ object UiMessages {
     fun attachmentDisconnected(): UiMessage = UiMessage("attachment.disconnected", emptyMap())
     fun attachmentDisconnectedFiles(): UiMessage = UiMessage("attachment.disconnected_files", emptyMap())
     fun attachmentFailed(): UiMessage = UiMessage("attachment.failed", emptyMap())
-    fun attachmentFailedSendHint(reason: String): UiMessage = UiMessage("attachment.failed_send_hint", mapOf("reason" to reason))
     fun attachmentFailure(reason: String): UiMessage = UiMessage("attachment.failure", mapOf("reason" to reason))
     fun attachmentFile(): UiMessage = UiMessage("attachment.file", emptyMap())
     fun attachmentFileChanged(): UiMessage = UiMessage("attachment.file_changed", emptyMap())

@@ -480,8 +480,7 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
       overlaySlot={cleanupPrompt !== null && (
         <NewProjectSheet remote={remote} fixedMachine={id} onClose={() => setCleanupPrompt(null)} onDone={(machineId, path) => {
           addProject(remote, machineId, path); setCleanupPrompt(null);
-          const draft = remote.drafts.get("new:" + path);
-          remote.drafts.set("new:" + path, !draft ? cleanupPrompt : draft.includes(cleanupPrompt) ? draft : `${draft}\n\n${cleanupPrompt}`);
+          host.appendNewSessionPrompt(path, cleanupPrompt);
           remote.draftMachines.set(path, machineId); remote.focusProject = path; remote.touch(); go(routeForProject(path));
         }} />
       )}

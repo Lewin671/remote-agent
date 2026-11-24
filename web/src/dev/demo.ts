@@ -32,6 +32,7 @@
 //   ?demo&notify=1#/s/s-notify              scheduled pushes' receipts: the computer's copy, the agent's own, a stopped run's
 
 import { localeStore, t, type Locale } from "../i18n";
+import { MemoryAttachmentStore, type AttachmentStore } from "../attachment-store";
 import { bytesToHex, MemorySharedFileStore, SHARED_FILE_META_VERSION } from "../shared-file-store";
 import { seedDirect } from "./direct-demo";
 import { buildDemoUsageResponse } from "./usage-demo";
@@ -59,6 +60,8 @@ import {
 } from "../gen/remoteagent/v1/event_pb";
 import {
   DaemonSettingsSchema,
+  ImageUploadState,
+  ImageUploadStatusSchema,
   ListModelsResponseSchema,
   SessionSchema,
   UsageRangePreset,
@@ -84,7 +87,7 @@ import {
   type StreamLegCallbacks,
   type TermConn,
 } from "../remote";
-import { getCoreHost } from "../core/host";
+import { getCoreHost, sessionDraftScope } from "../core/host";
 import {
   AccountPrefsFetchedEventSchema,
   AccountPrefsPutResultEventSchema,
@@ -1553,7 +1556,10 @@ const longCommand = [
 export class DemoRemote extends Remote {
   // Locally authored samples, with no relay or account data.
   override readonly sharedFileStore = new MemorySharedFileStore();
+  override readonly attachmentStore = new MemoryAttachmentStore();
   override demoFlag(name: string): boolean { return this.opts.has(name); }
+  private demoUploads = new Map<string, { fileName: string; totalBytes: bigint; persistedBytes: bigint; imageId: string; fileId: string; expiresMs: bigint; completed: boolean }>();
+  private demoUploadSeq = 0;
   private demoMachines = new Map<string, MachineView>();
   private demoSessions = new Map<string, SessionView>();
   private demoDevices = new Map<string, import("../devices").DeviceInfo>();
@@ -1852,6 +1858,12 @@ export class DemoRemote extends Remote {
     try {
       const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
       const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000, undefined, false) : undefined;
+      const isMachineUpload =
+        cmd.case === "beginImageUpload" ||
+        cmd.case === "putImageChunk" ||
+        cmd.case === "getImageUploadStatus" ||
+        cmd.case === "completeImageUpload" ||
+        cmd.case === "abortImageUpload";
       const result = !eff.sessionId && cmd.case === "listModels" && this.listModels !== Remote.prototype.listModels
         ? create(CommandResultSchema, { kind: { case: "listModels", value: await this.listModels(eff.machineId, cmd.value.agent, true) } })
         : !eff.sessionId && cmd.case === "getSettings" && this.settings !== Remote.prototype.settings
@@ -1860,7 +1872,9 @@ export class DemoRemote extends Remote {
             ? this.liveSnapshotResult(eff.sessionId)
             : eff.sessionId && cmd.case === "getSharedFileChunk"
               ? create(CommandResultSchema, { kind: { case: "getSharedFileChunk", value: await this.getSharedFileChunk(eff.sessionId, cmd.value.fileId, cmd.value.offset) } })
-              : eff.sessionId ? await this.command(eff.sessionId, cmd, slot) : await this.machineCommand(eff.machineId, cmd, slot);
+              : isMachineUpload || !eff.sessionId
+                ? await this.machineCommand(eff.machineId, cmd, slot)
+                : await this.command(eff.sessionId, cmd, slot);
       const outcome = result.outcome || "executed";
       const reason = result.reason || "completed";
       const norm = create(CommandResultSchema, {
@@ -1884,7 +1898,7 @@ export class DemoRemote extends Remote {
     }
   }
 
-  static create(q: URLSearchParams, pause = sleep): DemoRemote {
+  static create(q: URLSearchParams, pause = sleep, attachmentStore?: AttachmentStore): DemoRemote {
     const r = new DemoRemote(
       {
         server: "https://ra.example.com",
@@ -1892,27 +1906,26 @@ export class DemoRemote extends Remote {
         accountId: ME,
       },
     );
+    if (attachmentStore) {
+      Object.defineProperty(r, "attachmentStore", { value: attachmentStore });
+    }
     r.opts = q;
     r.pause = pause;
     // ?lang=en shows the English copy, for looking at layouts.
     const lang = q.get("lang");
     if (lang) localeStore.overrideForTesting(lang as Locale);
-    // Prepared as for real, remembering the file's name so that one named
-    // with "fail" can fail its upload.
-    const real = r.prepareImage;
-    r.prepareImage = async (f, original, maxOriginalBytes) => {
-      let p;
+    r.prepareImageOverride = async (blob, opts) => {
       try {
-        p = await real(f, original, maxOriginalBytes);
+        const { prepareImageDefault } = await import("../core/attachment-prepare-default");
+        return await prepareImageDefault(blob, opts);
       } catch {
-        p = {
-          bytes: new Uint8Array(await f.arrayBuffer()),
+        return {
+          bytes: new Uint8Array(await blob.arrayBuffer()),
           format: "png" as const,
           width: 1,
           height: 1,
         };
       }
-      return Object.assign(p, { name: (f as File).name ?? "" });
     };
     r.seed();
     r.seedMachineStatus();
@@ -2733,8 +2746,8 @@ export class DemoRemote extends Remote {
         if (m.meta) m.meta.hostname += "-with-a-very-long-machine-name";
     void this.drawPreviews();
     if (this.opts.has("draft"))
-      this.drafts.set(
-        "s-run",
+      getCoreHost(this).draftSetText(
+        sessionDraftScope("s-run"),
         "请检查这段很长的路径 /Users/me/Code/foo/internal/generated/remoteagent/v1/client/session/messages/pending.ts，并补充测试",
       );
     this.stored.prefs = create(ProjectPrefsSchema, {
@@ -2780,29 +2793,6 @@ export class DemoRemote extends Remote {
         }
       }
     this.changed();
-  }
-
-  // Uploads take a moment per piece; a file named with "fail" fails.
-  override async uploadImage(
-    machineId: string,
-    p: { bytes: Uint8Array; format: string },
-    progress: (done: number, total: number) => void = () => undefined,
-  ): Promise<{ imageId: string; expiresMs: number }> {
-    const total = p.bytes.length;
-    for (let done = 0; done < total; done += 786432) {
-      progress(done, total);
-      await this.pause(400);
-    }
-    progress(total, total);
-    await this.pause(300);
-    if (!this.machines.get(machineId)?.online)
-      throw new CommandError("unavailable", "电脑不在线，指令没有发出");
-    if ((p as { name?: string }).name?.includes("fail"))
-      throw new CommandError("unavailable", "连接超时");
-    return {
-      imageId: "up-" + Math.random().toString(16).slice(2, 10),
-      expiresMs: Date.now() + 86400000,
-    };
   }
 
   override async getImage(sid: string, imageId: string) {
@@ -3290,6 +3280,110 @@ export class DemoRemote extends Remote {
       return encode(next);
     }
     switch (cmd.case) {
+      case "beginImageUpload": {
+        const req = cmd.value;
+        const up = {
+          fileName: req.fileName ?? "",
+          totalBytes: req.totalBytes,
+          persistedBytes: 0n,
+          imageId: "",
+          fileId: "",
+          expiresMs: BigInt(Date.now() + 86_400_000),
+          completed: false,
+        };
+        this.demoUploads.set(req.transferId, up);
+        return create(CommandResultSchema, {
+          kind: {
+            case: "beginImageUpload",
+            value: {
+              status: create(ImageUploadStatusSchema, {
+                transferId: req.transferId,
+                state: ImageUploadState.RECEIVING,
+                persistedBytes: 0n,
+                totalBytes: req.totalBytes,
+                maxChunkBytes: 768 * 1024,
+                expiresMs: up.expiresMs,
+              }),
+            },
+          },
+        });
+      }
+      case "putImageChunk": {
+        const req = cmd.value;
+        const up = this.demoUploads.get(req.transferId);
+        if (!up) throw new CommandError("not_found", "upload not found", true);
+        const end = req.offset + BigInt(req.data.byteLength);
+        if (end > up.persistedBytes) up.persistedBytes = end > up.totalBytes ? up.totalBytes : end;
+        return create(CommandResultSchema, {
+          kind: {
+            case: "putImageChunk",
+            value: {
+              status: create(ImageUploadStatusSchema, {
+                transferId: req.transferId,
+                state: ImageUploadState.RECEIVING,
+                persistedBytes: up.persistedBytes,
+                totalBytes: up.totalBytes,
+                maxChunkBytes: 768 * 1024,
+                expiresMs: up.expiresMs,
+              }),
+            },
+          },
+        });
+      }
+      case "getImageUploadStatus": {
+        const req = cmd.value;
+        const up = this.demoUploads.get(req.transferId);
+        if (!up) throw new CommandError("not_found", "upload not found", true);
+        return create(CommandResultSchema, {
+          kind: {
+            case: "getImageUploadStatus",
+            value: {
+              status: create(ImageUploadStatusSchema, {
+                transferId: req.transferId,
+                state: up.completed ? ImageUploadState.COMPLETE : ImageUploadState.RECEIVING,
+                persistedBytes: up.persistedBytes,
+                totalBytes: up.totalBytes,
+                maxChunkBytes: 768 * 1024,
+                imageId: up.imageId,
+                fileId: up.fileId,
+                expiresMs: up.expiresMs,
+              }),
+            },
+          },
+        });
+      }
+      case "completeImageUpload": {
+        const req = cmd.value;
+        const up = this.demoUploads.get(req.transferId);
+        if (!up) throw new CommandError("not_found", "upload not found", true);
+        const id = "up-" + ++this.demoUploadSeq;
+        up.completed = true;
+        if (up.fileName) up.fileId = "file-" + id;
+        else up.imageId = "img-" + id;
+        return create(CommandResultSchema, {
+          kind: {
+            case: "completeImageUpload",
+            value: {
+              status: create(ImageUploadStatusSchema, {
+                transferId: req.transferId,
+                state: ImageUploadState.COMPLETE,
+                persistedBytes: up.totalBytes,
+                totalBytes: up.totalBytes,
+                maxChunkBytes: 768 * 1024,
+                imageId: up.imageId,
+                fileId: up.fileId,
+                expiresMs: up.expiresMs,
+              }),
+            },
+          },
+        });
+      }
+      case "abortImageUpload": {
+        this.demoUploads.delete(cmd.value.transferId);
+        return create(CommandResultSchema, {
+          kind: { case: "abortImageUpload", value: {} },
+        });
+      }
       case "listModels":
         if(this.opts.has("scheduled-final")) return create(CommandResultSchema,{kind:{case:"listModels",value:{defaultModel:"haiku",models:[{slug:"haiku",displayName:"haiku"}]}}});
         if (machineId === "vps") throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");

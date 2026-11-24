@@ -6,19 +6,13 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { afterEach, expect, it, vi } from "vitest";
 import { patchSyncState, SyntheticRemote } from "./test/remote-fixture";
 const liveFixtures: SyntheticRemote[] = [];
-const demoFixtures: Remote[] = [];
 async function probe() {
   const r = await SyntheticRemote.create();
   liveFixtures.push(r);
   return r;
 }
-function trackDemo<T extends Remote>(r: T): T {
-  demoFixtures.push(r);
-  return r;
-}
 afterEach(async () => {
   for (const r of liveFixtures.splice(0)) await r.dispose();
-  for (const r of demoFixtures.splice(0)) r.dispose();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -28,9 +22,7 @@ import {
   COMMAND_TTL_MS,
   newSlot,
   RequestSlot,
-  Remote,
   uncertain,
-  type CommandKind,
 } from "./remote";
 
 it("reuses a request slot only when the outcome is unknown", () => {
@@ -314,93 +306,6 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   };
   expect((await r.getImage("s1", "good")).kind).toBe("ok");
   await expect(r.getImage("s1", "liar")).rejects.toThrow();
-});
-
-it("uploads an image in chunks and resumes from what the machine has after a lost reply", async () => {
-  const { DemoRemote } = await import("./dev/demo");
-  const r = trackDemo(DemoRemote.create(new URLSearchParams()));
-  const bytes = new Uint8Array(2_000_000).map((_, i) => i % 251);
-  const calls: string[] = [];
-  let persisted = 0n;
-  let lost = true;
-  r.machineCommand = async (_m: string, cmd: CommandKind) => {
-    const { create } = await import("@bufbuild/protobuf");
-    const { CommandResultSchema } = await import(
-      "./gen/remoteagent/v1/remote_pb"
-    );
-    const status = (extra = {}) => ({
-      status: {
-        transferId: "t",
-        state: 1,
-        persistedBytes: persisted,
-        totalBytes: BigInt(bytes.length),
-        maxChunkBytes: 1_000_000,
-        ...extra,
-      },
-    });
-    switch (cmd?.case) {
-      case "beginImageUpload":
-        calls.push(`begin ${cmd.value.totalBytes} ${cmd.value.sha256?.length}`);
-        return create(CommandResultSchema, {
-          kind: { case: "beginImageUpload", value: status() },
-        });
-      case "putImageChunk": {
-        calls.push(`put ${cmd.value.offset} ${cmd.value.data?.length}`);
-        expect(cmd.value.offset).toBe(persisted);
-        expect([...cmd.value.data!.slice(0, 3)]).toEqual([
-          ...bytes.slice(
-            Number(cmd.value.offset),
-            Number(cmd.value.offset) + 3,
-          ),
-        ]);
-        persisted += BigInt(cmd.value.data!.length);
-        // The reply to the second chunk is lost, though it was stored.
-        if (persisted > 800_000n && lost) {
-          lost = false;
-          throw new CommandError("unknown_outcome", "连接超时", false, false, "unknown");
-        }
-        return create(CommandResultSchema, {
-          kind: { case: "putImageChunk", value: status() },
-        });
-      }
-      case "getImageUploadStatus":
-        calls.push("status");
-        return create(CommandResultSchema, {
-          kind: { case: "getImageUploadStatus", value: status() },
-        });
-      case "completeImageUpload":
-        calls.push("complete");
-        return create(CommandResultSchema, {
-          kind: {
-            case: "completeImageUpload",
-            value: status({
-              state: 2,
-              imageId: "img-1",
-              expiresMs: 123456789n,
-            }),
-          },
-        });
-    }
-    throw new Error("unexpected " + cmd?.case);
-  };
-  const progress: number[] = [];
-  const id = await Remote.prototype.uploadImage.call(
-    r,
-    "mac",
-    { bytes, format: "jpeg" },
-    (d: number) => progress.push(d),
-  );
-  expect(id).toEqual({ imageId: "img-1", expiresMs: 123456789 });
-  // Chunks of at most 768 KiB, each starting where the machine is.
-  expect(calls).toEqual([
-    `begin 2000000 32`,
-    "put 0 786432",
-    "put 786432 786432",
-    "status",
-    "put 1572864 427136",
-    "complete",
-  ]);
-  expect(progress.at(-1)).toBe(2_000_000);
 });
 
 it("gives up on a stream that never opens, and retains backoff when the network returns", async () => {
@@ -692,45 +597,6 @@ it("installs the updated head and valid lease through Core sync after a head cha
   const synced = await r.syncSecurityNow();
   expect(synced.headEpoch).toBeGreaterThan(before.headEpoch);
   expect(synced.leaseValid).toBe(true);
-});
-
-it("uploads files through shared RPCs with UNSPECIFIED format and separate IDs", async () => {
-  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const calls: CommandKind[] = [];
-  const bytes = new Uint8Array([0, 1, 255, 10]);
-  const r = { machineCommand: async (_m: string, cmd: CommandKind) => {
-    if (!cmd) throw new Error("missing command");
-    calls.push(cmd);
-    if (cmd.case === "beginImageUpload") {
-      expect(cmd.value.fileName).toBe("报告.pdf"); expect(cmd.value.format).toBe(0); expect(cmd.value.totalBytes).toBe(4n);
-      expect(cmd.value.sha256).toHaveLength(32);
-    }
-    if (cmd.case === "putImageChunk") expect(cmd.value.data).toEqual(bytes);
-    const done = cmd.case === "completeImageUpload";
-    return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { persistedBytes: cmd.case === "beginImageUpload" ? 0n : 4n, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "file-1" : "", expiresMs: 123456789n } } } });
-  } };
-  const result = await Remote.prototype.uploadImage.call(r as unknown as Remote, "mac", { bytes, format: "file", fileName: "报告.pdf" });
-  expect(result).toEqual({ imageId: "", fileId: "file-1", expiresMs: 123456789 });
-  expect(calls.map((c) => c?.case)).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload"]);
-});
-
-it("retries Complete on the same transfer while hashing after a lost reply, without reuploading bytes", async () => {
-  const { CommandResultSchema } = await import("./gen/remoteagent/v1/remote_pb");
-  const calls: string[] = [];
-  let transfer = ""; let complete = 0; let persisted = 0n;
-  const r = { machineCommand: async (_m: string, cmd: CommandKind) => {
-    if (!cmd?.case) throw new Error("missing command");
-    calls.push(cmd.case);
-    if (cmd.case === "beginImageUpload") transfer = cmd.value.transferId!;
-    else expect(cmd.value).toMatchObject({ transferId: transfer });
-    if (cmd.case === "putImageChunk") persisted = 4n;
-    if (cmd.case === "completeImageUpload" && ++complete === 1) throw new CommandError("unknown_outcome", "lost completion reply", false, false, "unknown");
-    const done = cmd.case === "completeImageUpload";
-    return create(CommandResultSchema, { kind: { case: cmd.case as "beginImageUpload", value: { status: { transferId: transfer, state: done ? 2 : 1, persistedBytes: persisted, totalBytes: 4n, maxChunkBytes: 786432, fileId: done ? "ready" : "", expiresMs: 123456789n } } } });
-  } };
-  const result = await Remote.prototype.uploadImage.call(r as unknown as Remote, "mac", { bytes: new Uint8Array([0,1,2,3]), format: "file", fileName: "data.bin" });
-  expect(result.fileId).toBe("ready");
-  expect(calls).toEqual(["beginImageUpload", "putImageChunk", "completeImageUpload", "getImageUploadStatus", "completeImageUpload"]);
 });
 
 it.each(["send", "createSession"] as const)("rejects file-bearing %s when refreshed capability is false", async (kind) => {

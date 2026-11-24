@@ -183,8 +183,8 @@ export function App() {
   }, []);
   useEffect(() => {
     if (!remote) return;
-    return guardUpdateInput(() => [...remote.drafts.values(), ...remote.approvalReasons.values()].some(text => text.length > 0) ||
-      [...remote.trays.values()].some(tray => tray.items.length > 0) || getCoreHost(remote).hasUnsavedScheduleDrafts());
+    return guardUpdateInput(() => [...remote.approvalReasons.values()].some(text => text.length > 0) ||
+      getCoreHost(remote).hasUnsavedDrafts() || getCoreHost(remote).hasUnsavedScheduleDrafts());
   }, [remote]);
   useEffect(() => {
     if (!remote) return;

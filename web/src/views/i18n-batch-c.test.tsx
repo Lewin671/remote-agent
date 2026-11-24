@@ -7,16 +7,15 @@ import { DemoRemote } from "../dev/demo";
 import { SecurityPage } from "./Security";
 import { Settings } from "./Settings";
 import { ScheduleDetail } from "./Schedules";
-import { getCoreHost } from "../core/host";
+import { getCoreHost, sessionDraftScope } from "../core/host";
 import { CommandError, errorText, SecurityError } from "../remote";
 import { SecurityWorkflowError } from "../core/security-client";
 import { SecurityErrorCode } from "../gen/remoteagent/core/v1/security_pb";
 import { joinBanner } from "./Pairing";
 import { ImageError } from "../imagecodec/error";
-import { Tray } from "../attach";
 import { renderText } from "../core/text";
+import { AttachmentItemState } from "../gen/remoteagent/core/v1/attachments_pb";
 import { ImageProblemKind } from "../gen/remoteagent/core/v1/attachments_view_pb";
-import { createTestAttachmentEval } from "../test/attachment-eval";
 import { pushContent } from "../sw-notify";
 import { t as launchText } from "../i18n/startup";
 
@@ -74,24 +73,24 @@ it.each(["zh-CN", "en"] as const)("uses schedule codes and closes a conflicted e
 
 it("keeps local image categories after an English codec error, without exposing its detail", async () => {
   localeStore.overrideForTesting("en");
-  const evalHost = createTestAttachmentEval();
-  try {
-    const tray = new Tray(
-      async () => { throw new ImageError("too_large", "private codec diagnostic", t("image.image_dimensions_are_too_large"), "dimensions"); },
-      async () => { throw new Error("unexpected upload"); },
-      () => {},
-      6,
-      evalHost.evaluate,
-    );
-    tray.retarget("example-computer");
-    tray.add([new Blob(["image"])]);
-    await vi.waitFor(() => expect(tray.items[0]?.state).toBe("failed"));
-    expect(tray.items[0].problem?.kind).toBe(ImageProblemKind.DIMENSIONS);
-    expect(tray.items[0].problem?.retryable).toBe(false);
-    expect(renderText(tray.items[0].problem?.message)).toBe("Image dimensions are too large. Resize it and retry.");
-  } finally {
-    evalHost.close();
-  }
+  const r = demo();
+  r.prepareImageOverride = async () => {
+    throw new ImageError("too_large", "private codec diagnostic", t("image.image_dimensions_are_too_large"), "dimensions");
+  };
+  const core = getCoreHost(r);
+  const scope = sessionDraftScope("s-idle");
+  core.draftOpen(scope, "mac");
+  await core.attachments.whenIdle();
+  const img = new File(["image"], "huge.png", { type: "image/png" });
+  core.stageAndAddDraftItems(scope, [{ file: img, name: img.name, mimeType: img.type, sizeBytes: img.size }], false);
+  await vi.waitFor(() => {
+    const item = core.viewAttachmentDraft(scope).draft?.items[0];
+    expect(item?.state).toBe(AttachmentItemState.FAILED);
+  });
+  const item = core.viewAttachmentDraft(scope).draft!.items[0];
+  expect(item.problem?.kind).toBe(ImageProblemKind.DIMENSIONS);
+  expect(item.problem?.retryable).toBe(false);
+  expect(renderText(item.problem?.message)).toBe("Image dimensions are too large. Resize it and retry.");
 });
 
 it("localizes safe error and notification shells while preserving external content", async () => {

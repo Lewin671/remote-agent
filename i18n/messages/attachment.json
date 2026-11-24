@@ -205,27 +205,6 @@
     }
   },
   {
-    "key": "attachment.failed_send_hint",
-    "zh-CN": "{reason}。点「重试」或移除后才能发送",
-    "en": "{reason}. Retry or remove the file before sending.",
-    "notes": "会话文件/视频附件栏。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Example"
-      }
-    },
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "attachment.failure",
     "zh-CN": "失败：{reason}",
     "en": "Failed: {reason}",

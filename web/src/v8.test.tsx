@@ -54,11 +54,10 @@ it("shows pending tray in place and folds more than three", async () => {
 
 it("uses Alt+Enter for queue and Ctrl+Enter for steer while running", async () => {
   const r = demo(); const seen: SendMode[] = [];
-  const core = getCoreHost(r);
-  const orig = core.sessionSubmitCommand.bind(core);
-  vi.spyOn(core, "sessionSubmitCommand").mockImplementation((slotKey, machineId, sid, cmd) => {
-    if (cmd.kind.case === "send") seen.push(cmd.kind.value.mode ?? SendMode.UNSPECIFIED);
-    return orig(slotKey, machineId, sid, cmd);
+  const orig = r.command.bind(r);
+  vi.spyOn(r, "command").mockImplementation((sid, cmd, slot) => {
+    if (cmd?.case === "send") seen.push(cmd.value.mode ?? SendMode.UNSPECIFIED);
+    return orig(sid, cmd, slot);
   });
   await mount(<SessionPage remote={r} sessionId="s-run" onBack={() => undefined} wide={false} />);
   const input = host.querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!;

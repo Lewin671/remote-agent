@@ -3,7 +3,7 @@ import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { getCoreHost } from "../core/host";
+import { getCoreHost, sessionDraftScope } from "../core/host";
 import { localeStore, t, useLocale } from "../i18n";
 import { ANDROID, DemoRemote } from "../dev/demo";
 import { ApprovalMode, OriginKind, OriginSchema, type EventSchema } from "../gen/remoteagent/v1/event_pb";
@@ -54,7 +54,7 @@ it("updates existing history and preserves the draft and structured changes on l
   demoPush("s-idle", { case: "turnContext", value: { permissionMode: "auto", model: "new-model" } });
   (remote as unknown as { demoSessions: Map<string, { info?: { mode: number } }>; syncDemoToCore(): void }).demoSessions.get("s-idle")!.info!.mode = ApprovalMode.AUTO;
   (remote as unknown as { syncDemoToCore(): void }).syncDemoToCore();
-  remote.drafts.set("s-idle", "User draft 原文");
+  getCoreHost(remote).draftSetText(sessionDraftScope("s-idle"), "User draft 原文");
   await mount("s-idle");
   const input = host.querySelector<HTMLTextAreaElement>("textarea")!;
   expect(host.textContent).toContain(t("session.terminal_mode_change", { value: t("modes.auto") }));

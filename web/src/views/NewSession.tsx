@@ -1,17 +1,29 @@
 import { t } from "../i18n";
 // Starting sessions backed by clientcore's NewSessionViewModel.
 
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useNewSessionView, useProjectView, routeForMachineCli, routeForMachineSettings, type Go, type StartTraySnapshot } from "../core/host";
+import type { AttachmentExecutor } from "../attachment-executor";
+import {
+  newSessionDraftScope,
+  routeForMachineCli,
+  routeForMachineSettings,
+  useAttachmentDraftView,
+  useCoreHost,
+  useNewSessionView,
+  useProjectView,
+  type DraftCandidateEntry,
+  type Go,
+} from "../core/host";
 import { renderText } from "../core/text";
+import type { AttachmentDraftView } from "../gen/remoteagent/core/v1/attachments_pb";
 import { NoticeActionKind, NoticeKind, NoticeSeverity, type NewSessionNoticeView, type NewSessionViewModel } from "../gen/remoteagent/core/v1/new_session_view_pb";
 import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { ArrowUp, Check, ChevronDown, ChevronRight, X } from "../icons";
 import { useKeyboardDismiss } from "../keyboard";
 import type { Remote } from "../remote";
 import { anchorOf, Avatar, Banner, sendKeys, Sheet, StateMark, usePointerFine, useRemote } from "../ui";
-import { AttachButton, TrayView, useDropPaste, useTray } from "./Attach";
+import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { useAutoGrow } from "./Composer";
 import { ComposerPicker, keepComposerFocus } from "./ComposerPicker";
 import { DiskFullCard } from "./DiskFullCard";
@@ -44,6 +56,8 @@ const NOTICE_ACTION_LABEL: Partial<Record<NoticeActionKind, () => string>> = {
 export function NewBoxView(p: {
   vm: NewSessionViewModel;
   remote?: Remote;
+  draft?: AttachmentDraftView;
+  attachments?: AttachmentExecutor;
   autoFocus?: boolean;
   variant?: "sheet" | "start";
   fixed?: boolean;
@@ -57,16 +71,24 @@ export function NewBoxView(p: {
   onSelectModel: (model: string, effort: string, standardContext?: boolean) => void;
   onRetryModels: () => void;
   onRetrySaveConfig: () => void;
-  onSetPrompt: (prompt: string, attachmentCount: number, attachmentsMoved: boolean) => void;
+  onSetPrompt: (prompt: string) => void;
   onSubmit: () => void;
   onRetryDiskFull?: () => void;
   onAbandonStart: () => void;
   onOpenMachineSettings: (machineId: string, agent?: Agent) => void;
   onOpenDiskUsage: (machineId: string) => void;
   onReaddProject: () => void;
-  onRegisterTray?: (projectKey: string, getter: () => StartTraySnapshot) => () => void;
+  onPickFiles?: (entries: DraftCandidateEntry[], forceFile: boolean) => void;
+  onRemoveAttachment?: (itemId: string) => void;
+  onRetryAttachment?: (itemId: string) => void;
+  onPauseAttachment?: (itemId: string) => void;
+  onResumeAttachment?: (itemId: string) => void;
+  onSetOriginal?: (original: boolean) => void;
+  onOpenAttachmentViewer?: (index: number) => void;
+  onNavigateAttachmentViewer?: (delta: number) => void;
+  onCloseAttachmentViewer?: () => void;
 }) {
-  const { vm, remote, variant = "sheet", onDraft, onSetPrompt, onSubmit, onRegisterTray } = p;
+  const { vm, variant = "sheet", onDraft, onSetPrompt, onSubmit } = p;
   const [config, setConfig] = useState<PickLayer>(p.initialConfigOpen ? "model" : "");
   const [choosing, setChoosing] = useState(false);
   const [toast, setToast] = useState("");
@@ -81,6 +103,8 @@ export function NewBoxView(p: {
   const agent = vm.config?.agent ?? Agent.CODEX;
   const projectKey = vm.projectKey;
   const projectName = renderText(vm.projectName) || t("projects.unknown");
+  const activeDraft = p.draft ?? vm.draft;
+  const prompt = activeDraft ? activeDraft.text : vm.prompt;
 
   const target = `${projectKey}/${machineId}/${agent}`;
   const previousTarget = useRef(target);
@@ -91,54 +115,26 @@ export function NewBoxView(p: {
     setConfig("");
   }, [target, phone]);
 
-  useAutoGrow(input, vm.prompt, 240);
+  useAutoGrow(input, prompt, 240);
   useEffect(() => { if (p.autoFocus) input.current?.focus(); }, [p.autoFocus]);
 
   const attachWhy = renderText(vm.imageUploadBlockedReason);
-  const fileWhy = renderText(vm.fileUploadBlockedReason);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const tray = remote
-    ? useTray(remote, "new:" + projectKey, machineId, {
-        maxImages: vm.maxImages,
-        maxFiles: vm.maxFiles,
-        supportsFiles: vm.supportsFiles,
-        originalImageMaxBytes: Number(vm.originalImageMaxBytes),
-        galleryAcceptMime: vm.galleryAcceptMime || undefined,
-        originalImageHint: renderText(vm.originalImageHint),
-        fileMetadataNotice: renderText(vm.fileMetadataNotice),
-        blocked: attachWhy,
-        fileBlocked: fileWhy,
-      })
-    : undefined;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const drop = remote && tray ? useDropPaste(tray, attachWhy, setToast) : { over: false, props: {} };
-  if (tray) tray.onAdd = () => onDraft?.();
-
-  const trayCount = tray?.items.length ?? 0;
-  const lastTrayCount = useRef(trayCount);
-  const lastMachine = useRef(machineId);
-  useEffect(() => {
-    const moved = lastMachine.current !== machineId && trayCount > 0;
-    const countChanged = lastTrayCount.current !== trayCount;
-    lastMachine.current = machineId;
-    lastTrayCount.current = trayCount;
-    if (moved || countChanged) onSetPrompt(vm.prompt, trayCount, moved);
-  }, [machineId, trayCount]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!onRegisterTray || !tray || !projectKey) return;
-    return onRegisterTray(projectKey, () => ({ tray, imageIds: tray.imageIds(), fileIds: tray.fileIds(), items: [...tray.items] }));
-  }, [onRegisterTray, tray, projectKey]);
+  const handlePickFiles = (entries: DraftCandidateEntry[], forceFile: boolean) => {
+    onDraft?.();
+    p.onPickFiles?.(entries, forceFile);
+  };
+  const dropHook = useDropPaste(handlePickFiles, attachWhy, setToast);
+  const drop = p.onPickFiles ? dropHook : { over: false, props: {} };
 
   const frozenSigRef = useRef<string | undefined>(undefined);
   const currentSig = JSON.stringify({
-    prompt: vm.prompt.trim(),
+    prompt: prompt.trim(),
     machineId,
     agent,
     model: vm.config?.model ?? "",
     effort: vm.config?.effort ?? "",
     standardContext: !!vm.config?.standardContext,
-    tray: tray?.items.map((i) => `${i.key}:${i.prepared ?? ""}`) ?? [],
+    items: activeDraft?.items.map((i) => `${i.itemId}:${i.state}`) ?? [],
   });
   useEffect(() => {
     if (!vm.busy && !vm.frozen) frozenSigRef.current = undefined;
@@ -146,26 +142,23 @@ export function NewBoxView(p: {
   }, [vm.busy, vm.frozen, currentSig]);
   const changedSinceFrozen = vm.frozen && frozenSigRef.current !== undefined && frozenSigRef.current !== currentSig;
 
+  const hasDraftItems = (activeDraft?.items.length ?? 0) > 0 || !!activeDraft?.hasPendingPicks;
+  const draftReady = activeDraft
+    ? hasDraftItems
+      ? activeDraft.ready && !activeDraft.sending && !activeDraft.restoring && !activeDraft.hasPendingPicks && !activeDraft.sendBlockedReason
+      : !activeDraft.sending && !activeDraft.restoring && !!prompt.trim()
+    : !!prompt.trim();
+
   const submit = () => {
     if (changedSinceFrozen) {
       frozenSigRef.current = currentSig;
       p.onAbandonStart();
     } else if (!vm.canStart || !vm.settled) return;
-    if (tray) {
-      tray.refreshExpired();
-      if (tray.items.length ? !tray.ready() : !vm.prompt.trim()) return;
-      if (tray.items.length) {
-        const blocked = tray.checkSendBlocked();
-        if (blocked) {
-          tray.setNote(blocked);
-          return;
-        }
-      }
-    } else if (!vm.prompt.trim()) return;
+    if (!draftReady) return;
     onSubmit();
   };
 
-  const disabled = vm.busy || !vm.settled || (!changedSinceFrozen && !vm.canStart) || (tray ? (trayCount ? !tray.ready() : !vm.prompt.trim()) : !vm.prompt.trim());
+  const disabled = vm.busy || !vm.settled || (!changedSinceFrozen && !vm.canStart) || !draftReady;
   const openModelPanel = () => {
     if (phone) setChoosing(false);
     setConfig((c) => {
@@ -176,14 +169,23 @@ export function NewBoxView(p: {
   };
   const keys = sendKeys(usePointerFine());
 
-  const trayView = remote && tray && (
+  const movedNotice = vm.notices.find((n) => n.kind === NoticeKind.ATTACHMENTS_MOVED);
+  const trayView = (activeDraft || toast || movedNotice) && (
     <TrayView
-      tray={tray}
-      remote={remote}
+      draft={activeDraft}
+      attachments={p.attachments}
+      onRemove={p.onRemoveAttachment}
+      onRetry={p.onRetryAttachment}
+      onPause={p.onPauseAttachment}
+      onResume={p.onResumeAttachment}
+      onSetOriginal={p.onSetOriginal}
+      onOpenViewer={p.onOpenAttachmentViewer}
+      onNavigateViewer={p.onNavigateAttachmentViewer}
+      onCloseViewer={p.onCloseAttachmentViewer}
       note={
         <>
-          {vm.notices.some((n) => n.kind === NoticeKind.ATTACHMENTS_MOVED) && tray.busy() && (
-            <Banner>{renderText(vm.notices.find((n) => n.kind === NoticeKind.ATTACHMENTS_MOVED)!.text)}</Banner>
+          {movedNotice && activeDraft?.busy && (
+            <Banner>{renderText(movedNotice.text)}</Banner>
           )}
           {toast && <Banner action={t("common.got_it")} onAction={() => setToast("")}>{toast}</Banner>}
         </>
@@ -194,15 +196,14 @@ export function NewBoxView(p: {
   const field = (
     <textarea
       ref={input}
-      className={"ask" + (vm.prompt ? " typed" : "")}
+      className={"ask" + (prompt ? " typed" : "")}
       rows={1}
-      value={vm.prompt}
+      value={prompt}
       placeholder={t("new_session.prompt")}
       onChange={(e) => {
         const val = e.target.value;
-        if (!vm.prompt && val) onDraft?.();
-        if (remote && projectKey) { remote.drafts.set("new:" + projectKey, val); remote.touch(); }
-        onSetPrompt(val, trayCount, false);
+        if (!prompt && val) onDraft?.();
+        onSetPrompt(val);
       }}
       onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
       aria-label={t("new_session.first_message")}
@@ -318,7 +319,15 @@ export function NewBoxView(p: {
       onMouseDown={phone ? keepComposerFocus : undefined}
     />
   );
-  const attach = remote && tray && <AttachButton tray={tray} blocked={attachWhy} onBlocked={setToast} />;
+  const attach = p.onPickFiles && (
+    <AttachButton
+      draft={activeDraft}
+      supportsFiles={vm.supportsFiles}
+      blocked={attachWhy}
+      onPickFiles={handlePickFiles}
+      onBlocked={setToast}
+    />
+  );
 
   const body = variant === "sheet" ? (
     <div ref={boundaryRef} className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={t("new_session.project_session_label", { name: projectName })}>
@@ -394,6 +403,10 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
   const host = useCoreHost(remote, go);
   const vm = useNewSessionView(host, projectKey);
   const activeKey = vm.projectKey || projectKey;
+  const scope = useMemo(() => newSessionDraftScope(activeKey), [activeKey]);
+  const draftVm = useAttachmentDraftView(host, scope);
+  const draft = vm.draft ?? draftVm.draft;
+  const machineId = vm.config?.machineId ?? "";
 
   useLayoutEffect(() => {
     host.newSessionOpen(projectKey);
@@ -402,20 +415,20 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
   }, [host, remote, projectKey]);
 
   useEffect(() => {
-    if (!vm.settled && activeKey && remote.moreSessions) void remote.loadMoreSessions();
-  }, [vm.settled, activeKey, remote, remote.moreSessions]);
+    if (activeKey) host.draftOpen(scope, machineId);
+  }, [host, scope, activeKey, machineId]);
 
   useEffect(() => {
-    if (!projectKey || vm.busy || vm.frozen) return;
-    const saved = remote.drafts.get("new:" + projectKey);
-    if (saved && vm.prompt === "") host.newSessionSetPrompt(saved);
-  }, [host, remote, projectKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!vm.settled && activeKey && remote.moreSessions) void remote.loadMoreSessions();
+  }, [vm.settled, activeKey, remote, remote.moreSessions]);
 
   return (
     <NewBoxView
       key={activeKey}
       vm={vm}
       remote={remote}
+      draft={draft}
+      attachments={host.attachments}
       autoFocus={autoFocus}
       variant={variant}
       fixed={fixed}
@@ -429,7 +442,7 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
       onSelectModel={host.newSessionSelectModel}
       onRetryModels={() => host.newSessionRetryModels(activeKey)}
       onRetrySaveConfig={() => host.newSessionRetrySaveConfig(activeKey)}
-      onSetPrompt={host.newSessionSetPrompt}
+      onSetPrompt={(text) => host.draftSetText(scope, text)}
       onSubmit={() => host.newSessionSubmit(activeKey)}
       onRetryDiskFull={() => host.newSessionSubmit(activeKey)}
       onAbandonStart={() => host.newSessionAbandonStart(activeKey)}
@@ -438,7 +451,15 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
       }
       onOpenDiskUsage={(machineId) => go("machine-status/" + encodeURIComponent(machineId))}
       onReaddProject={() => host.projectToggleHide(activeKey)}
-      onRegisterTray={(k, getter) => host.registerTray(k, getter)}
+      onPickFiles={(entries, forceFile) => host.stageAndAddDraftItems(scope, entries, forceFile)}
+      onRemoveAttachment={(id) => host.draftRemoveItem(scope, id)}
+      onRetryAttachment={(id) => host.draftRetryItem(scope, id)}
+      onPauseAttachment={(id) => host.attachmentPauseUpload(scope, id)}
+      onResumeAttachment={(id) => host.attachmentResumeUpload(scope, id)}
+      onSetOriginal={(orig) => host.draftSetOriginal(scope, orig)}
+      onOpenAttachmentViewer={(idx) => host.draftImageViewerOpen(scope, idx)}
+      onNavigateAttachmentViewer={(delta) => host.draftImageViewerNavigate(scope, { delta })}
+      onCloseAttachmentViewer={() => host.draftImageViewerClose(scope)}
     />
   );
 }

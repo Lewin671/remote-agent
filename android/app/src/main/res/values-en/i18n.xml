@@ -47,7 +47,6 @@
     <string name="attachment_disconnected" formatted="false">"Disconnected from server. Reconnect to add images."</string>
     <string name="attachment_disconnected_files" formatted="false">"Disconnected from server. Reconnect to add files."</string>
     <string name="attachment_failed" formatted="false">"Failed"</string>
-    <string name="attachment_failed_send_hint">"%1$s. Retry or remove the file before sending."</string>
     <string name="attachment_failure">"Failed: %1$s"</string>
     <string name="attachment_file" formatted="false">"File"</string>
     <string name="attachment_file_changed" formatted="false">"The file changed during upload. Retry or select it again."</string>

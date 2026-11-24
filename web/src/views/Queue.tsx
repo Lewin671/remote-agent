@@ -3,7 +3,6 @@ import * as i18n from "../i18n";
 // waiting, paused, failed, and unconfirmed messages in fixed 7-group order.
 
 import { useEffect, useState, type MouseEvent, type MutableRefObject, type PointerEvent } from "react";
-import type { TrayItem } from "../attach";
 import { renderText } from "../core/text";
 import {
   SessionTrayGroupKind,
@@ -12,17 +11,8 @@ import {
   type SessionPendingTrayView,
   type SessionTrayItemView,
 } from "../gen/remoteagent/core/v1/session_view_pb";
-import type { SentFile } from "../gen/remoteagent/v1/event_pb";
 import { ChevronDown, ChevronUp, LoaderCircle, Paperclip, X } from "../icons";
 import { useFresh } from "../motion";
-
-export interface LocalSendAttachments {
-  thumbs?: Blob[];
-  imageSizes?: { width: number; height: number }[];
-  files?: Array<Pick<SentFile, "name" | "sizeBytes" | "fileId"> & { file?: File }>;
-  items?: TrayItem[];
-  original?: boolean;
-}
 
 export interface PendingTrayProps {
   tray?: SessionPendingTrayView;

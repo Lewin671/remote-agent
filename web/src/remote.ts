@@ -8,7 +8,8 @@ import type { FrameStream } from "./transport/path";
 import { machineNotificationKinds } from "./machine-notifications";
 import * as l10n from "./i18n";
 import { UnsupportedHistoryError } from "./crypto";
-import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
+import type { ImagePrepareFn } from "./attachment-executor";
+import type { AttachmentStore } from "./attachment-store";
 import {
   clearLoginToken,
   loadLoginToken,
@@ -178,7 +179,6 @@ import {
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
-  ImageUploadState,
   type DaemonSettings,
   type ListModelsResponse,
   type Session,
@@ -195,7 +195,6 @@ import {
   type TerminalFrame,
 } from "./gen/remoteagent/v1/remote_pb";
 import { describeBrowser, type DeviceInfo } from "./devices";
-import type { Prepare, Tray } from "./attach";
 import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
@@ -276,8 +275,6 @@ export function readOnlyCommand(cmd: CommandKind): boolean {
 const EMPTY_PREFS: ReadonlyMap<string, string> = new Map();
 const SYNCING_PREFS: ReadonlyMap<string, string> = new Map([["", "syncing"]]);
 
-/** Largest piece of an image upload: each is sealed into one command, which must stay under 1 MiB. */
-const UPLOAD_CHUNK = 768 * 1024;
 const IMAGE_CACHE = 40;
 const OPEN_TIMEOUT_MS = 15_000;
 const RPC_TIMEOUT_MS = 45_000;
@@ -367,6 +364,8 @@ export class Remote implements CoreExecutor {
 
   directExec: DirectExecutor;
   readonly sharedFileStore?: SharedFileStore;
+  readonly attachmentStore?: AttachmentStore;
+  prepareImageOverride?: ImagePrepareFn;
   private readonly secStore: SecurityStoreV4;
   private readonly secExec: WebSecurityExecutor;
   readonly deviceLink: DeviceLink;
@@ -399,15 +398,7 @@ export class Remote implements CoreExecutor {
   readonly draftMachines = new Map<string, string>();
   readonly termFirst = new Set<string>();
   readonly scroll = new Map<string, { top: number; stick: boolean }>();
-  drafts = new DraftTexts((key) => this.persistDraft(key));
   readonly approvalReasons = new Map<string, string>();
-  readonly trays = new Map<string, Tray>();
-  private localDrafts?: ComposerDraftStore;
-  private readonly forgottenSessions = new Set<string>();
-  private readonly draftLoaded = new Set<string>();
-  private readonly draftLoads = new Map<string, Promise<void>>();
-  private readonly draftRevisions = new Map<string, number>();
-  private readonly localNotices = new Map<string, string>();
   readonly notices = new Map<string, string>();
 
   private cachedMachineMap?: Map<string, MachineView>;
@@ -509,7 +500,6 @@ export class Remote implements CoreExecutor {
       accountId: status.accountId,
     };
     const r = new Remote(acct, eventCache(), status);
-    r.localDrafts = new ComposerDraftStore(acct);
     return r;
   }
 
@@ -1127,7 +1117,7 @@ export class Remote implements CoreExecutor {
         await this.cache?.drop(eff.kind.value);
         this.persistedSessions.delete(eff.kind.value);
         this.persistedOpen.delete(eff.kind.value);
-        this.forgetLocalSession(eff.kind.value);
+        this.scroll.delete(eff.kind.value);
         await this.persistSessionsList();
         await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
         break;
@@ -1919,104 +1909,9 @@ export class Remote implements CoreExecutor {
     for (const run of runs) void closeScheduleNotification(run);
   }
 
-  draft(key: string): string { return this.drafts.get(key) ?? ""; }
-  setDraft(key: string, text: string) {
-    text ? this.drafts.set(key, text) : this.drafts.delete(key);
-    void this.persistDraft(key)?.catch(() => undefined);
-    this.changed();
-  }
-
-  private clearLocalNotice(key: string) {
-    const tray = this.trays.get(key);
-    const notice = this.localNotices.get(key);
-    if (tray && notice && tray.note === notice) {
-      tray.note = "";
-      this.touch();
-    }
-    this.localNotices.delete(key);
-  }
-
-  persistDraft(key: string): Promise<void> | undefined {
-    const revision = (this.draftRevisions.get(key) ?? 0) + 1;
-    this.draftRevisions.set(key, revision);
-    const tray = this.trays.get(key);
-    if (this.closed || this.forgottenSessions.has(key) || !this.localDrafts || !tray) return;
-    if (!this.draftLoaded.has(key)) {
-      if (!this.draftLoads.has(key)) void this.restoreDraft(key, tray).catch(() => undefined);
-      return;
-    }
-    const text = this.drafts.get(key) ?? "";
-    const snapshot = { items: [...tray.items], original: tray.original };
-    const save = this.localDrafts.save(key, text, snapshot);
-    void save.then(
-      () => {
-        if (this.draftRevisions.get(key) === revision) this.clearLocalNotice(key);
-      },
-      () => this.localNotice(key, l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the")),
-    );
-    return save;
-  }
-
-  restoreDraft(key: string, tray: Tray): Promise<void> {
-    if (!this.localDrafts || this.forgottenSessions.has(key) || this.draftLoaded.has(key)) {
-      return Promise.resolve();
-    }
-    const existing = this.draftLoads.get(key);
-    if (existing) return existing;
-    tray.restoring = true;
-    const revision = this.draftRevisions.get(key) ?? 0;
-    const job = this.localDrafts
-      .read(key)
-      .then((saved) => {
-        if (this.closed || this.trays.get(key) !== tray) return;
-        if (saved) {
-          if ((this.draftRevisions.get(key) ?? 0) === revision) this.drafts.restore(key, saved.text);
-          tray.hydrate(saved.items, saved.original);
-        }
-        this.draftLoaded.add(key);
-        this.clearLocalNotice(key);
-      })
-      .catch((error) => {
-        this.draftLoads.delete(key);
-        this.localNotice(key, l10n.t("errors.the_draft_could_not_be_restored_you_can_still"));
-        throw error;
-      })
-      .finally(() => {
-        tray.restoring = false;
-        if (!this.closed && this.draftLoaded.has(key)) void this.persistDraft(key)?.catch(() => undefined);
-        if (!this.closed) this.touch();
-      });
-    this.draftLoads.set(key, job);
-    return job;
-  }
-
-  private forgetLocalSession(sid: string) {
-    this.forgottenSessions.add(sid);
-    this.drafts.delete(sid);
-    this.draftLoaded.delete(sid);
-    this.draftLoads.delete(sid);
-    this.draftRevisions.delete(sid);
-    this.localNotices.delete(sid);
-    this.trays.delete(sid);
-    this.scroll.delete(sid);
-    void this.localDrafts?.removeSession(sid).catch(() => undefined);
-  }
-
-  private localNotice(key: string, message: string) {
-    const tray = this.trays.get(key);
-    if (!this.closed && tray) {
-      this.localNotices.set(key, message);
-      tray.note = message;
-      this.touch();
-    }
-    this.notices.set(key, message);
-    this.changed();
-  }
   clearNotice(sid: string) {
     if (this.notices.delete(sid)) this.changed();
   }
-  tray(key: string): Tray | undefined { return this.trays.get(key); }
-  setTray(key: string, tray: Tray) { this.trays.set(key, tray); }
 
   async openTerminal(
     sid: string,
@@ -2121,60 +2016,6 @@ export class Remote implements CoreExecutor {
       },
       close: () => finish(l10n.t("errors.terminal_connection_closed"), false),
     };
-  }
-
-  prepareImage: Prepare = async (file, original, maxOriginalBytes) => (await import("./sendimages")).prepareForSending(file, original, maxOriginalBytes);
-
-  async uploadImage(
-    machineId: string,
-    p: { bytes: Uint8Array; format: string; fileName?: string },
-    progress: (done: number, total: number) => void = () => undefined,
-    started: (abort: () => void) => void = () => undefined,
-  ): Promise<{ imageId: string; fileId?: string; expiresMs: number }> {
-    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format] ?? ImageFormat.UNSPECIFIED;
-    const transferId = newRequestID();
-    const sha256 = new Uint8Array(await crypto.subtle.digest("SHA-256", p.bytes as Uint8Array<ArrayBuffer>));
-    const total = p.bytes.length;
-    const statusOf = (r: CommandResult) => {
-      const k = r.kind;
-      const st = k.case === "beginImageUpload" || k.case === "putImageChunk" || k.case === "getImageUploadStatus" || k.case === "completeImageUpload" ? k.value.status : undefined;
-      if (!st) throw new Error(l10n.t("new_session.unexpected_reply"));
-      return st;
-    };
-    const step = async (cmd: CommandKind) => {
-      for (let i = 0; ; i++) {
-        try {
-          const st = statusOf(await this.machineCommand(machineId, cmd));
-          if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) {
-            if (i >= 2) throw new Error(l10n.t("errors.the_computer_is_still_verifying_attachments_retry_shortly"));
-            continue;
-          }
-          return st;
-        } catch (e) {
-          if (!uncertain(e) || (e instanceof CommandError && e.outcome !== "unknown") || i >= 2) throw e;
-          try {
-            const st = statusOf(await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId } }));
-            if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) continue;
-            return st;
-          } catch (e2) {
-            if (!uncertain(e2) || (e2 instanceof CommandError && e2.outcome !== "unknown") || i >= 2) throw e2;
-          }
-        }
-      }
-    };
-    let st = await step({ case: "beginImageUpload", value: { transferId, format, fileName: p.fileName ?? "", totalBytes: BigInt(total), sha256 } });
-    started(() => void this.machineCommand(machineId, { case: "abortImageUpload", value: { transferId } }).catch(() => undefined));
-    const chunk = Math.min(UPLOAD_CHUNK, st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK);
-    for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
-      if (guard > total / chunk + 10) throw new Error(l10n.t("errors.upload_made_no_progress"));
-      const offset = Number(st.persistedBytes);
-      progress(offset, total);
-      st = await step({ case: "putImageChunk", value: { transferId, offset: BigInt(offset), data: p.bytes.subarray(offset, offset + chunk) } });
-    }
-    progress(total, total);
-    st = await step({ case: "completeImageUpload", value: { transferId } });
-    if (p.fileName ? !st.fileId : !st.imageId) throw new Error(l10n.t("errors.the_computer_did_not_return_an_attachment_id"));
-    return { imageId: st.imageId, ...(st.fileId ? { fileId: st.fileId } : {}), expiresMs: Number(st.expiresMs) };
   }
 
   async getImage(sid: string, imageId: string): Promise<ImageResult> {

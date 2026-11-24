@@ -17,6 +17,7 @@ import sessionQuestionPlanGolden from "../../../testdata/screens/session_questio
 import sessionQueueRetryGolden from "../../../testdata/screens/session_queue_retry.golden.json";
 import sessionScheduledFoldGolden from "../../../testdata/screens/session_scheduled_fold.golden.json";
 import sessionSharedFilesImagesGolden from "../../../testdata/screens/session_shared_files_images.golden.json";
+import sessionAttachmentsDraftGolden from "../../../testdata/screens/session_attachments_draft.golden.json";
 import schedulesInboxDetailGolden from "../../../testdata/screens/schedules_inbox_detail.golden.json";
 import schedulesFormLifecycleGolden from "../../../testdata/screens/schedules_form_lifecycle.golden.json";
 import settingsOverviewGolden from "../../../testdata/screens/settings_overview.golden.json";
@@ -31,6 +32,7 @@ import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { localeStore, t } from "../i18n";
 import { ThemePreference } from "../core/host";
 import { HomeView, SidebarView } from "./Home";
+import { TrayView } from "./Attach";
 import { NewBoxView } from "./NewSession";
 import { ManageProjectsScreen, RemovedNotice } from "./Projects";
 import {
@@ -289,7 +291,7 @@ describe("golden ViewModel layout and interaction", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Implement feature");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(onSetPrompt).toHaveBeenCalledWith("Implement feature", 0, false);
+    expect(onSetPrompt).toHaveBeenCalledWith("Implement feature");
   });
 });
 
@@ -1006,5 +1008,56 @@ describe("golden SessionScreenView layout and interaction", () => {
     const closedView = closedVm.view.value;
     act(() => root!.render(renderSession(closedView)));
     expect(host.querySelector(".viewer")).toBeNull();
+  });
+
+  it("renders session_attachments_draft.golden.json draft preparing, ready, viewer, and post-send session", () => {
+    const preparingVm = goldenView(sessionAttachmentsDraftGolden as GoldenDoc, "draft_preparing");
+    expect(preparingVm.view.case).toBe("attachmentDraft");
+    if (preparingVm.view.case !== "attachmentDraft") return;
+    mount(<TrayView draft={preparingVm.view.value.draft} />);
+    expect(host.querySelector(".att-tray .ring.spin")).toBeTruthy();
+    expect(host.querySelector(".att-meta")?.textContent).toContain("1 / 6");
+
+    const readyVm = goldenView(sessionAttachmentsDraftGolden as GoldenDoc, "draft_ready");
+    expect(readyVm.view.case).toBe("attachmentDraft");
+    if (readyVm.view.case !== "attachmentDraft") return;
+    const readyDraft = readyVm.view.value.draft;
+    const onOpenViewer = vi.fn();
+    const onSetOriginal = vi.fn();
+    act(() =>
+      root!.render(
+        <TrayView
+          draft={readyDraft}
+          onOpenViewer={onOpenViewer}
+          onSetOriginal={onSetOriginal}
+        />,
+      ),
+    );
+    expect(host.querySelector(".att-tray .ring.spin")).toBeNull();
+    act(() => host.querySelector<HTMLButtonElement>(".draft-open")!.click());
+    expect(onOpenViewer).toHaveBeenCalledWith(0);
+    act(() => host.querySelector<HTMLButtonElement>(".orig")!.click());
+    expect(onSetOriginal).toHaveBeenCalledWith(true);
+
+    const viewerVm = goldenView(sessionAttachmentsDraftGolden as GoldenDoc, "draft_viewer_open");
+    expect(viewerVm.view.case).toBe("attachmentDraft");
+    if (viewerVm.view.case !== "attachmentDraft") return;
+    const viewerDraft = viewerVm.view.value.draft;
+    const onCloseViewer = vi.fn();
+    act(() =>
+      root!.render(
+        <TrayView draft={viewerDraft} onCloseViewer={onCloseViewer} />,
+      ),
+    );
+    const dialog = document.querySelector<HTMLElement>(".viewer, .lightbox");
+    expect(dialog).toBeTruthy();
+    expect(dialog?.textContent).toContain("1 / 1");
+    const closeBtn = dialog!.querySelector<HTMLButtonElement>(`button[aria-label="${t("common.close")}"]`)!;
+    act(() => closeBtn.click());
+    expect(onCloseViewer).toHaveBeenCalledTimes(1);
+
+    const afterSendVm = sessionGoldenView(sessionAttachmentsDraftGolden as GoldenDoc, "session_after_send");
+    renderSessionGolden(afterSendVm);
+    expect(host.querySelector(".ptray")?.textContent).toContain("review screenshot");
   });
 });
