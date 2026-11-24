@@ -650,6 +650,7 @@ message Event {
     DraftImageViewerOpenAction draft_image_viewer_open = 264;
     DraftImageViewerNavigateAction draft_image_viewer_navigate = 265;
     DraftImageViewerCloseAction draft_image_viewer_close = 266;
+    DraftAppendTextAction draft_append_text = 267;
     ScheduleCacheLoadedEvent schedule_cache_loaded = 300;
     ScheduleSeenLoadedEvent schedule_seen_loaded = 301;
     ScheduleLocalContextEvent schedule_local_context = 302;

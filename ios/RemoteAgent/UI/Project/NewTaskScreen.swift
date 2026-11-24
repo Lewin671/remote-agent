@@ -49,14 +49,11 @@ struct NewTaskScreen: View {
                 })
             }
             if let cleanupPrompt, !cleanupPrompt.isEmpty {
-                let scope = PBDraftScope.newSession(key)
-                await context.coreHost.openDraft(scope: scope, machineID: machine ?? context.core.newSession.config.machineID)
-                let existing = context.core.newSession.draft.text.isEmpty ? context.core.newSession.prompt : context.core.newSession.draft.text
-                if !existing.contains(cleanupPrompt) {
-                    let trimmed = existing.trimmingCharacters(in: .whitespacesAndNewlines)
-                    let combined = trimmed.isEmpty ? cleanupPrompt : trimmed + "\n\n" + cleanupPrompt
-                    await context.coreHost.setDraftText(scope: scope, text: combined)
-                }
+                await context.coreHost.appendDraftText(
+                    scope: .newSession(key),
+                    text: cleanupPrompt,
+                    machineID: machine ?? context.core.newSession.config.machineID
+                )
             }
         }
         .kitSheet(item: $settings) { request in

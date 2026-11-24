@@ -1843,6 +1843,17 @@ actor CoreHost: SyncEngine {
         }
     }
 
+    func appendDraftText(scope: PBDraftScope, text: String, machineID: String = "") async {
+        guard !closed, !text.isEmpty else { return }
+        await dispatch {
+            $0.draftAppendText = .with {
+                $0.scope = scope
+                $0.text = text
+                $0.machineID = machineID
+            }
+        }
+    }
+
     func setDraftTargetMachine(scope: PBDraftScope, machineID: String) async {
         guard !closed else { return }
         await dispatch {

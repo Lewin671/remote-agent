@@ -2270,6 +2270,68 @@ func (x *DraftSetTextAction) GetText() string {
 	return ""
 }
 
+// Appends text (e.g. a cleanup prompt) to a draft after any pending disk load finishes,
+// deduplicating if the text is already present and preserving existing draft content.
+type DraftAppendTextAction struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Scope         *DraftScope            `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	MachineId     string                 `protobuf:"bytes,3,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DraftAppendTextAction) Reset() {
+	*x = DraftAppendTextAction{}
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DraftAppendTextAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DraftAppendTextAction) ProtoMessage() {}
+
+func (x *DraftAppendTextAction) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DraftAppendTextAction.ProtoReflect.Descriptor instead.
+func (*DraftAppendTextAction) Descriptor() ([]byte, []int) {
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *DraftAppendTextAction) GetScope() *DraftScope {
+	if x != nil {
+		return x.Scope
+	}
+	return nil
+}
+
+func (x *DraftAppendTextAction) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *DraftAppendTextAction) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
 type DraftSetTargetMachineAction struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Scope         *DraftScope            `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
@@ -2280,7 +2342,7 @@ type DraftSetTargetMachineAction struct {
 
 func (x *DraftSetTargetMachineAction) Reset() {
 	*x = DraftSetTargetMachineAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2292,7 +2354,7 @@ func (x *DraftSetTargetMachineAction) String() string {
 func (*DraftSetTargetMachineAction) ProtoMessage() {}
 
 func (x *DraftSetTargetMachineAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[17]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2305,7 +2367,7 @@ func (x *DraftSetTargetMachineAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftSetTargetMachineAction.ProtoReflect.Descriptor instead.
 func (*DraftSetTargetMachineAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DraftSetTargetMachineAction) GetScope() *DraftScope {
@@ -2334,7 +2396,7 @@ type DraftReserveSlotsAction struct {
 
 func (x *DraftReserveSlotsAction) Reset() {
 	*x = DraftReserveSlotsAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2346,7 +2408,7 @@ func (x *DraftReserveSlotsAction) String() string {
 func (*DraftReserveSlotsAction) ProtoMessage() {}
 
 func (x *DraftReserveSlotsAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[18]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2359,7 +2421,7 @@ func (x *DraftReserveSlotsAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftReserveSlotsAction.ProtoReflect.Descriptor instead.
 func (*DraftReserveSlotsAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DraftReserveSlotsAction) GetScope() *DraftScope {
@@ -2400,7 +2462,7 @@ type DraftReleaseSlotsAction struct {
 
 func (x *DraftReleaseSlotsAction) Reset() {
 	*x = DraftReleaseSlotsAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2412,7 +2474,7 @@ func (x *DraftReleaseSlotsAction) String() string {
 func (*DraftReleaseSlotsAction) ProtoMessage() {}
 
 func (x *DraftReleaseSlotsAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[19]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2425,7 +2487,7 @@ func (x *DraftReleaseSlotsAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftReleaseSlotsAction.ProtoReflect.Descriptor instead.
 func (*DraftReleaseSlotsAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DraftReleaseSlotsAction) GetScope() *DraftScope {
@@ -2456,7 +2518,7 @@ type DraftPickedItem struct {
 
 func (x *DraftPickedItem) Reset() {
 	*x = DraftPickedItem{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2468,7 +2530,7 @@ func (x *DraftPickedItem) String() string {
 func (*DraftPickedItem) ProtoMessage() {}
 
 func (x *DraftPickedItem) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[20]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2481,7 +2543,7 @@ func (x *DraftPickedItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftPickedItem.ProtoReflect.Descriptor instead.
 func (*DraftPickedItem) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DraftPickedItem) GetCandidate() *AttachmentCandidateInput {
@@ -2538,7 +2600,7 @@ type DraftAddItemsAction struct {
 
 func (x *DraftAddItemsAction) Reset() {
 	*x = DraftAddItemsAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2550,7 +2612,7 @@ func (x *DraftAddItemsAction) String() string {
 func (*DraftAddItemsAction) ProtoMessage() {}
 
 func (x *DraftAddItemsAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[21]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2563,7 +2625,7 @@ func (x *DraftAddItemsAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftAddItemsAction.ProtoReflect.Descriptor instead.
 func (*DraftAddItemsAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DraftAddItemsAction) GetScope() *DraftScope {
@@ -2597,7 +2659,7 @@ type DraftRemoveItemAction struct {
 
 func (x *DraftRemoveItemAction) Reset() {
 	*x = DraftRemoveItemAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2609,7 +2671,7 @@ func (x *DraftRemoveItemAction) String() string {
 func (*DraftRemoveItemAction) ProtoMessage() {}
 
 func (x *DraftRemoveItemAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[22]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2622,7 +2684,7 @@ func (x *DraftRemoveItemAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftRemoveItemAction.ProtoReflect.Descriptor instead.
 func (*DraftRemoveItemAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DraftRemoveItemAction) GetScope() *DraftScope {
@@ -2649,7 +2711,7 @@ type DraftRetryItemAction struct {
 
 func (x *DraftRetryItemAction) Reset() {
 	*x = DraftRetryItemAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2661,7 +2723,7 @@ func (x *DraftRetryItemAction) String() string {
 func (*DraftRetryItemAction) ProtoMessage() {}
 
 func (x *DraftRetryItemAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[23]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2674,7 +2736,7 @@ func (x *DraftRetryItemAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftRetryItemAction.ProtoReflect.Descriptor instead.
 func (*DraftRetryItemAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DraftRetryItemAction) GetScope() *DraftScope {
@@ -2701,7 +2763,7 @@ type DraftSetOriginalAction struct {
 
 func (x *DraftSetOriginalAction) Reset() {
 	*x = DraftSetOriginalAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2713,7 +2775,7 @@ func (x *DraftSetOriginalAction) String() string {
 func (*DraftSetOriginalAction) ProtoMessage() {}
 
 func (x *DraftSetOriginalAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[24]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2726,7 +2788,7 @@ func (x *DraftSetOriginalAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftSetOriginalAction.ProtoReflect.Descriptor instead.
 func (*DraftSetOriginalAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DraftSetOriginalAction) GetScope() *DraftScope {
@@ -2752,7 +2814,7 @@ type DraftClearAction struct {
 
 func (x *DraftClearAction) Reset() {
 	*x = DraftClearAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2764,7 +2826,7 @@ func (x *DraftClearAction) String() string {
 func (*DraftClearAction) ProtoMessage() {}
 
 func (x *DraftClearAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[25]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2777,7 +2839,7 @@ func (x *DraftClearAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftClearAction.ProtoReflect.Descriptor instead.
 func (*DraftClearAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DraftClearAction) GetScope() *DraftScope {
@@ -2796,7 +2858,7 @@ type DraftForgetSessionAction struct {
 
 func (x *DraftForgetSessionAction) Reset() {
 	*x = DraftForgetSessionAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2808,7 +2870,7 @@ func (x *DraftForgetSessionAction) String() string {
 func (*DraftForgetSessionAction) ProtoMessage() {}
 
 func (x *DraftForgetSessionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[26]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2821,7 +2883,7 @@ func (x *DraftForgetSessionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftForgetSessionAction.ProtoReflect.Descriptor instead.
 func (*DraftForgetSessionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DraftForgetSessionAction) GetSessionId() string {
@@ -2839,7 +2901,7 @@ type DraftClearAllAction struct {
 
 func (x *DraftClearAllAction) Reset() {
 	*x = DraftClearAllAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2851,7 +2913,7 @@ func (x *DraftClearAllAction) String() string {
 func (*DraftClearAllAction) ProtoMessage() {}
 
 func (x *DraftClearAllAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[27]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2864,7 +2926,7 @@ func (x *DraftClearAllAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftClearAllAction.ProtoReflect.Descriptor instead.
 func (*DraftClearAllAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{28}
 }
 
 type DraftDismissNoticeAction struct {
@@ -2876,7 +2938,7 @@ type DraftDismissNoticeAction struct {
 
 func (x *DraftDismissNoticeAction) Reset() {
 	*x = DraftDismissNoticeAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2888,7 +2950,7 @@ func (x *DraftDismissNoticeAction) String() string {
 func (*DraftDismissNoticeAction) ProtoMessage() {}
 
 func (x *DraftDismissNoticeAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[28]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2901,7 +2963,7 @@ func (x *DraftDismissNoticeAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftDismissNoticeAction.ProtoReflect.Descriptor instead.
 func (*DraftDismissNoticeAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *DraftDismissNoticeAction) GetScope() *DraftScope {
@@ -2921,7 +2983,7 @@ type AttachmentPauseUploadAction struct {
 
 func (x *AttachmentPauseUploadAction) Reset() {
 	*x = AttachmentPauseUploadAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2933,7 +2995,7 @@ func (x *AttachmentPauseUploadAction) String() string {
 func (*AttachmentPauseUploadAction) ProtoMessage() {}
 
 func (x *AttachmentPauseUploadAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[29]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2946,7 +3008,7 @@ func (x *AttachmentPauseUploadAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentPauseUploadAction.ProtoReflect.Descriptor instead.
 func (*AttachmentPauseUploadAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{29}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *AttachmentPauseUploadAction) GetScope() *DraftScope {
@@ -2973,7 +3035,7 @@ type AttachmentResumeUploadAction struct {
 
 func (x *AttachmentResumeUploadAction) Reset() {
 	*x = AttachmentResumeUploadAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2985,7 +3047,7 @@ func (x *AttachmentResumeUploadAction) String() string {
 func (*AttachmentResumeUploadAction) ProtoMessage() {}
 
 func (x *AttachmentResumeUploadAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[30]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2998,7 +3060,7 @@ func (x *AttachmentResumeUploadAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentResumeUploadAction.ProtoReflect.Descriptor instead.
 func (*AttachmentResumeUploadAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{30}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *AttachmentResumeUploadAction) GetScope() *DraftScope {
@@ -3039,7 +3101,7 @@ type AttachmentPrepareImageResultEvent struct {
 
 func (x *AttachmentPrepareImageResultEvent) Reset() {
 	*x = AttachmentPrepareImageResultEvent{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3051,7 +3113,7 @@ func (x *AttachmentPrepareImageResultEvent) String() string {
 func (*AttachmentPrepareImageResultEvent) ProtoMessage() {}
 
 func (x *AttachmentPrepareImageResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[31]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3064,7 +3126,7 @@ func (x *AttachmentPrepareImageResultEvent) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AttachmentPrepareImageResultEvent.ProtoReflect.Descriptor instead.
 func (*AttachmentPrepareImageResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{31}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AttachmentPrepareImageResultEvent) GetOpId() uint64 {
@@ -3200,7 +3262,7 @@ type AttachmentHashFileResultEvent struct {
 
 func (x *AttachmentHashFileResultEvent) Reset() {
 	*x = AttachmentHashFileResultEvent{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3212,7 +3274,7 @@ func (x *AttachmentHashFileResultEvent) String() string {
 func (*AttachmentHashFileResultEvent) ProtoMessage() {}
 
 func (x *AttachmentHashFileResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[32]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3225,7 +3287,7 @@ func (x *AttachmentHashFileResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentHashFileResultEvent.ProtoReflect.Descriptor instead.
 func (*AttachmentHashFileResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{32}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *AttachmentHashFileResultEvent) GetOpId() uint64 {
@@ -3329,7 +3391,7 @@ type AttachmentReadChunkResultEvent struct {
 
 func (x *AttachmentReadChunkResultEvent) Reset() {
 	*x = AttachmentReadChunkResultEvent{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3341,7 +3403,7 @@ func (x *AttachmentReadChunkResultEvent) String() string {
 func (*AttachmentReadChunkResultEvent) ProtoMessage() {}
 
 func (x *AttachmentReadChunkResultEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[33]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3354,7 +3416,7 @@ func (x *AttachmentReadChunkResultEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentReadChunkResultEvent.ProtoReflect.Descriptor instead.
 func (*AttachmentReadChunkResultEvent) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{33}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *AttachmentReadChunkResultEvent) GetOpId() uint64 {
@@ -3430,7 +3492,7 @@ type DraftSendSessionAction struct {
 
 func (x *DraftSendSessionAction) Reset() {
 	*x = DraftSendSessionAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3442,7 +3504,7 @@ func (x *DraftSendSessionAction) String() string {
 func (*DraftSendSessionAction) ProtoMessage() {}
 
 func (x *DraftSendSessionAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[34]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3455,7 +3517,7 @@ func (x *DraftSendSessionAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftSendSessionAction.ProtoReflect.Descriptor instead.
 func (*DraftSendSessionAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{34}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *DraftSendSessionAction) GetSessionId() string {
@@ -3482,7 +3544,7 @@ type DraftPutBackInputAction struct {
 
 func (x *DraftPutBackInputAction) Reset() {
 	*x = DraftPutBackInputAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3494,7 +3556,7 @@ func (x *DraftPutBackInputAction) String() string {
 func (*DraftPutBackInputAction) ProtoMessage() {}
 
 func (x *DraftPutBackInputAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[35]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3507,7 +3569,7 @@ func (x *DraftPutBackInputAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftPutBackInputAction.ProtoReflect.Descriptor instead.
 func (*DraftPutBackInputAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{35}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *DraftPutBackInputAction) GetSessionId() string {
@@ -3534,7 +3596,7 @@ type DraftImageViewerOpenAction struct {
 
 func (x *DraftImageViewerOpenAction) Reset() {
 	*x = DraftImageViewerOpenAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3546,7 +3608,7 @@ func (x *DraftImageViewerOpenAction) String() string {
 func (*DraftImageViewerOpenAction) ProtoMessage() {}
 
 func (x *DraftImageViewerOpenAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[36]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3559,7 +3621,7 @@ func (x *DraftImageViewerOpenAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftImageViewerOpenAction.ProtoReflect.Descriptor instead.
 func (*DraftImageViewerOpenAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{36}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *DraftImageViewerOpenAction) GetScope() *DraftScope {
@@ -3588,7 +3650,7 @@ type DraftImageViewerNavigateAction struct {
 
 func (x *DraftImageViewerNavigateAction) Reset() {
 	*x = DraftImageViewerNavigateAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3600,7 +3662,7 @@ func (x *DraftImageViewerNavigateAction) String() string {
 func (*DraftImageViewerNavigateAction) ProtoMessage() {}
 
 func (x *DraftImageViewerNavigateAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[37]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3613,7 +3675,7 @@ func (x *DraftImageViewerNavigateAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftImageViewerNavigateAction.ProtoReflect.Descriptor instead.
 func (*DraftImageViewerNavigateAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{37}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DraftImageViewerNavigateAction) GetScope() *DraftScope {
@@ -3653,7 +3715,7 @@ type DraftImageViewerCloseAction struct {
 
 func (x *DraftImageViewerCloseAction) Reset() {
 	*x = DraftImageViewerCloseAction{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3665,7 +3727,7 @@ func (x *DraftImageViewerCloseAction) String() string {
 func (*DraftImageViewerCloseAction) ProtoMessage() {}
 
 func (x *DraftImageViewerCloseAction) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[38]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3678,7 +3740,7 @@ func (x *DraftImageViewerCloseAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftImageViewerCloseAction.ProtoReflect.Descriptor instead.
 func (*DraftImageViewerCloseAction) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{38}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *DraftImageViewerCloseAction) GetScope() *DraftScope {
@@ -3697,7 +3759,7 @@ type DraftStorageListEffect struct {
 
 func (x *DraftStorageListEffect) Reset() {
 	*x = DraftStorageListEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3709,7 +3771,7 @@ func (x *DraftStorageListEffect) String() string {
 func (*DraftStorageListEffect) ProtoMessage() {}
 
 func (x *DraftStorageListEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[39]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3722,7 +3784,7 @@ func (x *DraftStorageListEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftStorageListEffect.ProtoReflect.Descriptor instead.
 func (*DraftStorageListEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{39}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *DraftStorageListEffect) GetOpId() uint64 {
@@ -3743,7 +3805,7 @@ type DraftStorageReadEffect struct {
 
 func (x *DraftStorageReadEffect) Reset() {
 	*x = DraftStorageReadEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3755,7 +3817,7 @@ func (x *DraftStorageReadEffect) String() string {
 func (*DraftStorageReadEffect) ProtoMessage() {}
 
 func (x *DraftStorageReadEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[40]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3768,7 +3830,7 @@ func (x *DraftStorageReadEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftStorageReadEffect.ProtoReflect.Descriptor instead.
 func (*DraftStorageReadEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{40}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *DraftStorageReadEffect) GetOpId() uint64 {
@@ -3806,7 +3868,7 @@ type DraftStorageWriteEffect struct {
 
 func (x *DraftStorageWriteEffect) Reset() {
 	*x = DraftStorageWriteEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3818,7 +3880,7 @@ func (x *DraftStorageWriteEffect) String() string {
 func (*DraftStorageWriteEffect) ProtoMessage() {}
 
 func (x *DraftStorageWriteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[41]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3831,7 +3893,7 @@ func (x *DraftStorageWriteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftStorageWriteEffect.ProtoReflect.Descriptor instead.
 func (*DraftStorageWriteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{41}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *DraftStorageWriteEffect) GetOpId() uint64 {
@@ -3879,7 +3941,7 @@ type DraftStorageDeleteEffect struct {
 
 func (x *DraftStorageDeleteEffect) Reset() {
 	*x = DraftStorageDeleteEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3891,7 +3953,7 @@ func (x *DraftStorageDeleteEffect) String() string {
 func (*DraftStorageDeleteEffect) ProtoMessage() {}
 
 func (x *DraftStorageDeleteEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[42]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3904,7 +3966,7 @@ func (x *DraftStorageDeleteEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftStorageDeleteEffect.ProtoReflect.Descriptor instead.
 func (*DraftStorageDeleteEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{42}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *DraftStorageDeleteEffect) GetBucket() DraftStorageBucket {
@@ -3929,7 +3991,7 @@ type DraftStorageClearAllEffect struct {
 
 func (x *DraftStorageClearAllEffect) Reset() {
 	*x = DraftStorageClearAllEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3941,7 +4003,7 @@ func (x *DraftStorageClearAllEffect) String() string {
 func (*DraftStorageClearAllEffect) ProtoMessage() {}
 
 func (x *DraftStorageClearAllEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[43]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3954,7 +4016,7 @@ func (x *DraftStorageClearAllEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DraftStorageClearAllEffect.ProtoReflect.Descriptor instead.
 func (*DraftStorageClearAllEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{43}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{44}
 }
 
 type AttachmentPrepareImageEffect struct {
@@ -3976,7 +4038,7 @@ type AttachmentPrepareImageEffect struct {
 
 func (x *AttachmentPrepareImageEffect) Reset() {
 	*x = AttachmentPrepareImageEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3988,7 +4050,7 @@ func (x *AttachmentPrepareImageEffect) String() string {
 func (*AttachmentPrepareImageEffect) ProtoMessage() {}
 
 func (x *AttachmentPrepareImageEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[44]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4001,7 +4063,7 @@ func (x *AttachmentPrepareImageEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentPrepareImageEffect.ProtoReflect.Descriptor instead.
 func (*AttachmentPrepareImageEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{44}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *AttachmentPrepareImageEffect) GetOpId() uint64 {
@@ -4082,7 +4144,7 @@ type AttachmentHashFileEffect struct {
 
 func (x *AttachmentHashFileEffect) Reset() {
 	*x = AttachmentHashFileEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4094,7 +4156,7 @@ func (x *AttachmentHashFileEffect) String() string {
 func (*AttachmentHashFileEffect) ProtoMessage() {}
 
 func (x *AttachmentHashFileEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[45]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4107,7 +4169,7 @@ func (x *AttachmentHashFileEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentHashFileEffect.ProtoReflect.Descriptor instead.
 func (*AttachmentHashFileEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{45}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *AttachmentHashFileEffect) GetOpId() uint64 {
@@ -4178,7 +4240,7 @@ type AttachmentReadChunkEffect struct {
 
 func (x *AttachmentReadChunkEffect) Reset() {
 	*x = AttachmentReadChunkEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4190,7 +4252,7 @@ func (x *AttachmentReadChunkEffect) String() string {
 func (*AttachmentReadChunkEffect) ProtoMessage() {}
 
 func (x *AttachmentReadChunkEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[46]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4203,7 +4265,7 @@ func (x *AttachmentReadChunkEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentReadChunkEffect.ProtoReflect.Descriptor instead.
 func (*AttachmentReadChunkEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{46}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *AttachmentReadChunkEffect) GetOpId() uint64 {
@@ -4294,7 +4356,7 @@ type AttachmentReleaseLocalEffect struct {
 
 func (x *AttachmentReleaseLocalEffect) Reset() {
 	*x = AttachmentReleaseLocalEffect{}
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4306,7 +4368,7 @@ func (x *AttachmentReleaseLocalEffect) String() string {
 func (*AttachmentReleaseLocalEffect) ProtoMessage() {}
 
 func (x *AttachmentReleaseLocalEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[47]
+	mi := &file_remoteagent_core_v1_attachments_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4319,7 +4381,7 @@ func (x *AttachmentReleaseLocalEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttachmentReleaseLocalEffect.ProtoReflect.Descriptor instead.
 func (*AttachmentReleaseLocalEffect) Descriptor() ([]byte, []int) {
-	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{47}
+	return file_remoteagent_core_v1_attachments_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *AttachmentReleaseLocalEffect) GetRefs() []string {
@@ -4554,7 +4616,12 @@ const file_remoteagent_core_v1_attachments_proto_rawDesc = "" +
 	"machine_id\x18\x02 \x01(\tR\tmachineId\"_\n" +
 	"\x12DraftSetTextAction\x125\n" +
 	"\x05scope\x18\x01 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"s\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"\x81\x01\n" +
+	"\x15DraftAppendTextAction\x125\n" +
+	"\x05scope\x18\x01 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x03 \x01(\tR\tmachineId\"s\n" +
 	"\x1bDraftSetTargetMachineAction\x125\n" +
 	"\x05scope\x18\x01 \x01(\v2\x1f.remoteagent.core.v1.DraftScopeR\x05scope\x12\x1d\n" +
 	"\n" +
@@ -4773,7 +4840,7 @@ func file_remoteagent_core_v1_attachments_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_core_v1_attachments_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_remoteagent_core_v1_attachments_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
+var file_remoteagent_core_v1_attachments_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_remoteagent_core_v1_attachments_proto_goTypes = []any{
 	(DraftScopeKind)(0),                       // 0: remoteagent.core.v1.DraftScopeKind
 	(AttachmentItemKind)(0),                   // 1: remoteagent.core.v1.AttachmentItemKind
@@ -4797,84 +4864,85 @@ var file_remoteagent_core_v1_attachments_proto_goTypes = []any{
 	(*DraftStorageWriteResultEvent)(nil),      // 19: remoteagent.core.v1.DraftStorageWriteResultEvent
 	(*DraftOpenAction)(nil),                   // 20: remoteagent.core.v1.DraftOpenAction
 	(*DraftSetTextAction)(nil),                // 21: remoteagent.core.v1.DraftSetTextAction
-	(*DraftSetTargetMachineAction)(nil),       // 22: remoteagent.core.v1.DraftSetTargetMachineAction
-	(*DraftReserveSlotsAction)(nil),           // 23: remoteagent.core.v1.DraftReserveSlotsAction
-	(*DraftReleaseSlotsAction)(nil),           // 24: remoteagent.core.v1.DraftReleaseSlotsAction
-	(*DraftPickedItem)(nil),                   // 25: remoteagent.core.v1.DraftPickedItem
-	(*DraftAddItemsAction)(nil),               // 26: remoteagent.core.v1.DraftAddItemsAction
-	(*DraftRemoveItemAction)(nil),             // 27: remoteagent.core.v1.DraftRemoveItemAction
-	(*DraftRetryItemAction)(nil),              // 28: remoteagent.core.v1.DraftRetryItemAction
-	(*DraftSetOriginalAction)(nil),            // 29: remoteagent.core.v1.DraftSetOriginalAction
-	(*DraftClearAction)(nil),                  // 30: remoteagent.core.v1.DraftClearAction
-	(*DraftForgetSessionAction)(nil),          // 31: remoteagent.core.v1.DraftForgetSessionAction
-	(*DraftClearAllAction)(nil),               // 32: remoteagent.core.v1.DraftClearAllAction
-	(*DraftDismissNoticeAction)(nil),          // 33: remoteagent.core.v1.DraftDismissNoticeAction
-	(*AttachmentPauseUploadAction)(nil),       // 34: remoteagent.core.v1.AttachmentPauseUploadAction
-	(*AttachmentResumeUploadAction)(nil),      // 35: remoteagent.core.v1.AttachmentResumeUploadAction
-	(*AttachmentPrepareImageResultEvent)(nil), // 36: remoteagent.core.v1.AttachmentPrepareImageResultEvent
-	(*AttachmentHashFileResultEvent)(nil),     // 37: remoteagent.core.v1.AttachmentHashFileResultEvent
-	(*AttachmentReadChunkResultEvent)(nil),    // 38: remoteagent.core.v1.AttachmentReadChunkResultEvent
-	(*DraftSendSessionAction)(nil),            // 39: remoteagent.core.v1.DraftSendSessionAction
-	(*DraftPutBackInputAction)(nil),           // 40: remoteagent.core.v1.DraftPutBackInputAction
-	(*DraftImageViewerOpenAction)(nil),        // 41: remoteagent.core.v1.DraftImageViewerOpenAction
-	(*DraftImageViewerNavigateAction)(nil),    // 42: remoteagent.core.v1.DraftImageViewerNavigateAction
-	(*DraftImageViewerCloseAction)(nil),       // 43: remoteagent.core.v1.DraftImageViewerCloseAction
-	(*DraftStorageListEffect)(nil),            // 44: remoteagent.core.v1.DraftStorageListEffect
-	(*DraftStorageReadEffect)(nil),            // 45: remoteagent.core.v1.DraftStorageReadEffect
-	(*DraftStorageWriteEffect)(nil),           // 46: remoteagent.core.v1.DraftStorageWriteEffect
-	(*DraftStorageDeleteEffect)(nil),          // 47: remoteagent.core.v1.DraftStorageDeleteEffect
-	(*DraftStorageClearAllEffect)(nil),        // 48: remoteagent.core.v1.DraftStorageClearAllEffect
-	(*AttachmentPrepareImageEffect)(nil),      // 49: remoteagent.core.v1.AttachmentPrepareImageEffect
-	(*AttachmentHashFileEffect)(nil),          // 50: remoteagent.core.v1.AttachmentHashFileEffect
-	(*AttachmentReadChunkEffect)(nil),         // 51: remoteagent.core.v1.AttachmentReadChunkEffect
-	(*AttachmentReleaseLocalEffect)(nil),      // 52: remoteagent.core.v1.AttachmentReleaseLocalEffect
-	(v1.ImageFormat)(0),                       // 53: remoteagent.v1.ImageFormat
-	(v1.SendMode)(0),                          // 54: remoteagent.v1.SendMode
-	(*Text)(nil),                              // 55: remoteagent.core.v1.Text
-	(*ImageProblemView)(nil),                  // 56: remoteagent.core.v1.ImageProblemView
-	(*AttachmentCandidateInput)(nil),          // 57: remoteagent.core.v1.AttachmentCandidateInput
+	(*DraftAppendTextAction)(nil),             // 22: remoteagent.core.v1.DraftAppendTextAction
+	(*DraftSetTargetMachineAction)(nil),       // 23: remoteagent.core.v1.DraftSetTargetMachineAction
+	(*DraftReserveSlotsAction)(nil),           // 24: remoteagent.core.v1.DraftReserveSlotsAction
+	(*DraftReleaseSlotsAction)(nil),           // 25: remoteagent.core.v1.DraftReleaseSlotsAction
+	(*DraftPickedItem)(nil),                   // 26: remoteagent.core.v1.DraftPickedItem
+	(*DraftAddItemsAction)(nil),               // 27: remoteagent.core.v1.DraftAddItemsAction
+	(*DraftRemoveItemAction)(nil),             // 28: remoteagent.core.v1.DraftRemoveItemAction
+	(*DraftRetryItemAction)(nil),              // 29: remoteagent.core.v1.DraftRetryItemAction
+	(*DraftSetOriginalAction)(nil),            // 30: remoteagent.core.v1.DraftSetOriginalAction
+	(*DraftClearAction)(nil),                  // 31: remoteagent.core.v1.DraftClearAction
+	(*DraftForgetSessionAction)(nil),          // 32: remoteagent.core.v1.DraftForgetSessionAction
+	(*DraftClearAllAction)(nil),               // 33: remoteagent.core.v1.DraftClearAllAction
+	(*DraftDismissNoticeAction)(nil),          // 34: remoteagent.core.v1.DraftDismissNoticeAction
+	(*AttachmentPauseUploadAction)(nil),       // 35: remoteagent.core.v1.AttachmentPauseUploadAction
+	(*AttachmentResumeUploadAction)(nil),      // 36: remoteagent.core.v1.AttachmentResumeUploadAction
+	(*AttachmentPrepareImageResultEvent)(nil), // 37: remoteagent.core.v1.AttachmentPrepareImageResultEvent
+	(*AttachmentHashFileResultEvent)(nil),     // 38: remoteagent.core.v1.AttachmentHashFileResultEvent
+	(*AttachmentReadChunkResultEvent)(nil),    // 39: remoteagent.core.v1.AttachmentReadChunkResultEvent
+	(*DraftSendSessionAction)(nil),            // 40: remoteagent.core.v1.DraftSendSessionAction
+	(*DraftPutBackInputAction)(nil),           // 41: remoteagent.core.v1.DraftPutBackInputAction
+	(*DraftImageViewerOpenAction)(nil),        // 42: remoteagent.core.v1.DraftImageViewerOpenAction
+	(*DraftImageViewerNavigateAction)(nil),    // 43: remoteagent.core.v1.DraftImageViewerNavigateAction
+	(*DraftImageViewerCloseAction)(nil),       // 44: remoteagent.core.v1.DraftImageViewerCloseAction
+	(*DraftStorageListEffect)(nil),            // 45: remoteagent.core.v1.DraftStorageListEffect
+	(*DraftStorageReadEffect)(nil),            // 46: remoteagent.core.v1.DraftStorageReadEffect
+	(*DraftStorageWriteEffect)(nil),           // 47: remoteagent.core.v1.DraftStorageWriteEffect
+	(*DraftStorageDeleteEffect)(nil),          // 48: remoteagent.core.v1.DraftStorageDeleteEffect
+	(*DraftStorageClearAllEffect)(nil),        // 49: remoteagent.core.v1.DraftStorageClearAllEffect
+	(*AttachmentPrepareImageEffect)(nil),      // 50: remoteagent.core.v1.AttachmentPrepareImageEffect
+	(*AttachmentHashFileEffect)(nil),          // 51: remoteagent.core.v1.AttachmentHashFileEffect
+	(*AttachmentReadChunkEffect)(nil),         // 52: remoteagent.core.v1.AttachmentReadChunkEffect
+	(*AttachmentReleaseLocalEffect)(nil),      // 53: remoteagent.core.v1.AttachmentReleaseLocalEffect
+	(v1.ImageFormat)(0),                       // 54: remoteagent.v1.ImageFormat
+	(v1.SendMode)(0),                          // 55: remoteagent.v1.SendMode
+	(*Text)(nil),                              // 56: remoteagent.core.v1.Text
+	(*ImageProblemView)(nil),                  // 57: remoteagent.core.v1.ImageProblemView
+	(*AttachmentCandidateInput)(nil),          // 58: remoteagent.core.v1.AttachmentCandidateInput
 }
 var file_remoteagent_core_v1_attachments_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.DraftScope.kind:type_name -> remoteagent.core.v1.DraftScopeKind
 	1,  // 1: remoteagent.core.v1.PersistedAttachmentItem.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
-	53, // 2: remoteagent.core.v1.PersistedAttachmentItem.image_format:type_name -> remoteagent.v1.ImageFormat
+	54, // 2: remoteagent.core.v1.PersistedAttachmentItem.image_format:type_name -> remoteagent.v1.ImageFormat
 	5,  // 3: remoteagent.core.v1.PersistedDraftRecord.scope:type_name -> remoteagent.core.v1.DraftScope
 	6,  // 4: remoteagent.core.v1.PersistedDraftRecord.items:type_name -> remoteagent.core.v1.PersistedAttachmentItem
-	54, // 5: remoteagent.core.v1.PersistedOutboxRecord.mode:type_name -> remoteagent.v1.SendMode
+	55, // 5: remoteagent.core.v1.PersistedOutboxRecord.mode:type_name -> remoteagent.v1.SendMode
 	6,  // 6: remoteagent.core.v1.PersistedOutboxRecord.items:type_name -> remoteagent.core.v1.PersistedAttachmentItem
 	1,  // 7: remoteagent.core.v1.OutboxAttachmentSummary.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
-	55, // 8: remoteagent.core.v1.OutboxAttachmentSummary.size_text:type_name -> remoteagent.core.v1.Text
+	56, // 8: remoteagent.core.v1.OutboxAttachmentSummary.size_text:type_name -> remoteagent.core.v1.Text
 	1,  // 9: remoteagent.core.v1.AttachmentDraftItemView.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
 	2,  // 10: remoteagent.core.v1.AttachmentDraftItemView.state:type_name -> remoteagent.core.v1.AttachmentItemState
-	55, // 11: remoteagent.core.v1.AttachmentDraftItemView.size_text:type_name -> remoteagent.core.v1.Text
-	55, // 12: remoteagent.core.v1.AttachmentDraftItemView.status_text:type_name -> remoteagent.core.v1.Text
-	56, // 13: remoteagent.core.v1.AttachmentDraftItemView.problem:type_name -> remoteagent.core.v1.ImageProblemView
-	55, // 14: remoteagent.core.v1.AttachmentDraftItemView.file_error_text:type_name -> remoteagent.core.v1.Text
-	55, // 15: remoteagent.core.v1.AttachmentDraftItemView.position_text:type_name -> remoteagent.core.v1.Text
-	55, // 16: remoteagent.core.v1.AttachmentDraftItemView.position_a11y:type_name -> remoteagent.core.v1.Text
-	55, // 17: remoteagent.core.v1.AttachmentDraftItemView.remove_a11y:type_name -> remoteagent.core.v1.Text
-	55, // 18: remoteagent.core.v1.AttachmentDraftItemView.badge_text:type_name -> remoteagent.core.v1.Text
-	55, // 19: remoteagent.core.v1.DraftImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
-	55, // 20: remoteagent.core.v1.DraftImageViewerView.position_a11y:type_name -> remoteagent.core.v1.Text
+	56, // 11: remoteagent.core.v1.AttachmentDraftItemView.size_text:type_name -> remoteagent.core.v1.Text
+	56, // 12: remoteagent.core.v1.AttachmentDraftItemView.status_text:type_name -> remoteagent.core.v1.Text
+	57, // 13: remoteagent.core.v1.AttachmentDraftItemView.problem:type_name -> remoteagent.core.v1.ImageProblemView
+	56, // 14: remoteagent.core.v1.AttachmentDraftItemView.file_error_text:type_name -> remoteagent.core.v1.Text
+	56, // 15: remoteagent.core.v1.AttachmentDraftItemView.position_text:type_name -> remoteagent.core.v1.Text
+	56, // 16: remoteagent.core.v1.AttachmentDraftItemView.position_a11y:type_name -> remoteagent.core.v1.Text
+	56, // 17: remoteagent.core.v1.AttachmentDraftItemView.remove_a11y:type_name -> remoteagent.core.v1.Text
+	56, // 18: remoteagent.core.v1.AttachmentDraftItemView.badge_text:type_name -> remoteagent.core.v1.Text
+	56, // 19: remoteagent.core.v1.DraftImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
+	56, // 20: remoteagent.core.v1.DraftImageViewerView.position_a11y:type_name -> remoteagent.core.v1.Text
 	10, // 21: remoteagent.core.v1.DraftImageViewerView.current_image:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	55, // 22: remoteagent.core.v1.DraftImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
+	56, // 22: remoteagent.core.v1.DraftImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
 	5,  // 23: remoteagent.core.v1.AttachmentDraftView.scope:type_name -> remoteagent.core.v1.DraftScope
-	55, // 24: remoteagent.core.v1.AttachmentDraftView.original_toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
-	55, // 25: remoteagent.core.v1.AttachmentDraftView.original_total_size_text:type_name -> remoteagent.core.v1.Text
-	55, // 26: remoteagent.core.v1.AttachmentDraftView.original_hint:type_name -> remoteagent.core.v1.Text
-	55, // 27: remoteagent.core.v1.AttachmentDraftView.file_metadata_notice:type_name -> remoteagent.core.v1.Text
-	55, // 28: remoteagent.core.v1.AttachmentDraftView.image_count_text:type_name -> remoteagent.core.v1.Text
-	55, // 29: remoteagent.core.v1.AttachmentDraftView.file_count_text:type_name -> remoteagent.core.v1.Text
+	56, // 24: remoteagent.core.v1.AttachmentDraftView.original_toggle_disabled_reason:type_name -> remoteagent.core.v1.Text
+	56, // 25: remoteagent.core.v1.AttachmentDraftView.original_total_size_text:type_name -> remoteagent.core.v1.Text
+	56, // 26: remoteagent.core.v1.AttachmentDraftView.original_hint:type_name -> remoteagent.core.v1.Text
+	56, // 27: remoteagent.core.v1.AttachmentDraftView.file_metadata_notice:type_name -> remoteagent.core.v1.Text
+	56, // 28: remoteagent.core.v1.AttachmentDraftView.image_count_text:type_name -> remoteagent.core.v1.Text
+	56, // 29: remoteagent.core.v1.AttachmentDraftView.file_count_text:type_name -> remoteagent.core.v1.Text
 	10, // 30: remoteagent.core.v1.AttachmentDraftView.items:type_name -> remoteagent.core.v1.AttachmentDraftItemView
 	10, // 31: remoteagent.core.v1.AttachmentDraftView.images:type_name -> remoteagent.core.v1.AttachmentDraftItemView
 	10, // 32: remoteagent.core.v1.AttachmentDraftView.files:type_name -> remoteagent.core.v1.AttachmentDraftItemView
-	55, // 33: remoteagent.core.v1.AttachmentDraftView.send_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 34: remoteagent.core.v1.AttachmentDraftView.notice:type_name -> remoteagent.core.v1.Text
-	55, // 35: remoteagent.core.v1.AttachmentDraftView.failure_summary:type_name -> remoteagent.core.v1.Text
-	55, // 36: remoteagent.core.v1.AttachmentDraftView.storage_error:type_name -> remoteagent.core.v1.Text
-	55, // 37: remoteagent.core.v1.AttachmentDraftView.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 38: remoteagent.core.v1.AttachmentDraftView.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
-	55, // 39: remoteagent.core.v1.AttachmentDraftView.gallery_blocked_reason:type_name -> remoteagent.core.v1.Text
+	56, // 33: remoteagent.core.v1.AttachmentDraftView.send_blocked_reason:type_name -> remoteagent.core.v1.Text
+	56, // 34: remoteagent.core.v1.AttachmentDraftView.notice:type_name -> remoteagent.core.v1.Text
+	56, // 35: remoteagent.core.v1.AttachmentDraftView.failure_summary:type_name -> remoteagent.core.v1.Text
+	56, // 36: remoteagent.core.v1.AttachmentDraftView.storage_error:type_name -> remoteagent.core.v1.Text
+	56, // 37: remoteagent.core.v1.AttachmentDraftView.images_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	56, // 38: remoteagent.core.v1.AttachmentDraftView.files_pick_blocked_reason:type_name -> remoteagent.core.v1.Text
+	56, // 39: remoteagent.core.v1.AttachmentDraftView.gallery_blocked_reason:type_name -> remoteagent.core.v1.Text
 	11, // 40: remoteagent.core.v1.AttachmentDraftView.image_viewer:type_name -> remoteagent.core.v1.DraftImageViewerView
 	5,  // 41: remoteagent.core.v1.AttachmentDraftScreenRequest.scope:type_name -> remoteagent.core.v1.DraftScope
 	12, // 42: remoteagent.core.v1.AttachmentDraftViewModel.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
@@ -4887,42 +4955,43 @@ var file_remoteagent_core_v1_attachments_proto_depIdxs = []int32{
 	3,  // 49: remoteagent.core.v1.DraftStorageWriteResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
 	5,  // 50: remoteagent.core.v1.DraftOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
 	5,  // 51: remoteagent.core.v1.DraftSetTextAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 52: remoteagent.core.v1.DraftSetTargetMachineAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 53: remoteagent.core.v1.DraftReserveSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 54: remoteagent.core.v1.DraftReleaseSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	57, // 55: remoteagent.core.v1.DraftPickedItem.candidate:type_name -> remoteagent.core.v1.AttachmentCandidateInput
-	5,  // 56: remoteagent.core.v1.DraftAddItemsAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	25, // 57: remoteagent.core.v1.DraftAddItemsAction.items:type_name -> remoteagent.core.v1.DraftPickedItem
-	5,  // 58: remoteagent.core.v1.DraftRemoveItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 59: remoteagent.core.v1.DraftRetryItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 60: remoteagent.core.v1.DraftSetOriginalAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 61: remoteagent.core.v1.DraftClearAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 62: remoteagent.core.v1.DraftDismissNoticeAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 63: remoteagent.core.v1.AttachmentPauseUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 64: remoteagent.core.v1.AttachmentResumeUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 65: remoteagent.core.v1.AttachmentPrepareImageResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	53, // 66: remoteagent.core.v1.AttachmentPrepareImageResultEvent.format:type_name -> remoteagent.v1.ImageFormat
-	3,  // 67: remoteagent.core.v1.AttachmentPrepareImageResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	5,  // 68: remoteagent.core.v1.AttachmentHashFileResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	3,  // 69: remoteagent.core.v1.AttachmentHashFileResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	5,  // 70: remoteagent.core.v1.AttachmentReadChunkResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
-	3,  // 71: remoteagent.core.v1.AttachmentReadChunkResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
-	54, // 72: remoteagent.core.v1.DraftSendSessionAction.mode:type_name -> remoteagent.v1.SendMode
-	5,  // 73: remoteagent.core.v1.DraftImageViewerOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 74: remoteagent.core.v1.DraftImageViewerNavigateAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 75: remoteagent.core.v1.DraftImageViewerCloseAction.scope:type_name -> remoteagent.core.v1.DraftScope
-	4,  // 76: remoteagent.core.v1.DraftStorageReadEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	4,  // 77: remoteagent.core.v1.DraftStorageWriteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	4,  // 78: remoteagent.core.v1.DraftStorageDeleteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
-	5,  // 79: remoteagent.core.v1.AttachmentPrepareImageEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 80: remoteagent.core.v1.AttachmentHashFileEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	5,  // 81: remoteagent.core.v1.AttachmentReadChunkEffect.scope:type_name -> remoteagent.core.v1.DraftScope
-	1,  // 82: remoteagent.core.v1.AttachmentReadChunkEffect.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
-	83, // [83:83] is the sub-list for method output_type
-	83, // [83:83] is the sub-list for method input_type
-	83, // [83:83] is the sub-list for extension type_name
-	83, // [83:83] is the sub-list for extension extendee
-	0,  // [0:83] is the sub-list for field type_name
+	5,  // 52: remoteagent.core.v1.DraftAppendTextAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 53: remoteagent.core.v1.DraftSetTargetMachineAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 54: remoteagent.core.v1.DraftReserveSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 55: remoteagent.core.v1.DraftReleaseSlotsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	58, // 56: remoteagent.core.v1.DraftPickedItem.candidate:type_name -> remoteagent.core.v1.AttachmentCandidateInput
+	5,  // 57: remoteagent.core.v1.DraftAddItemsAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	26, // 58: remoteagent.core.v1.DraftAddItemsAction.items:type_name -> remoteagent.core.v1.DraftPickedItem
+	5,  // 59: remoteagent.core.v1.DraftRemoveItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 60: remoteagent.core.v1.DraftRetryItemAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 61: remoteagent.core.v1.DraftSetOriginalAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 62: remoteagent.core.v1.DraftClearAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 63: remoteagent.core.v1.DraftDismissNoticeAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 64: remoteagent.core.v1.AttachmentPauseUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 65: remoteagent.core.v1.AttachmentResumeUploadAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 66: remoteagent.core.v1.AttachmentPrepareImageResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	54, // 67: remoteagent.core.v1.AttachmentPrepareImageResultEvent.format:type_name -> remoteagent.v1.ImageFormat
+	3,  // 68: remoteagent.core.v1.AttachmentPrepareImageResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	5,  // 69: remoteagent.core.v1.AttachmentHashFileResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	3,  // 70: remoteagent.core.v1.AttachmentHashFileResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	5,  // 71: remoteagent.core.v1.AttachmentReadChunkResultEvent.scope:type_name -> remoteagent.core.v1.DraftScope
+	3,  // 72: remoteagent.core.v1.AttachmentReadChunkResultEvent.error_kind:type_name -> remoteagent.core.v1.AttachmentIOErrorKind
+	55, // 73: remoteagent.core.v1.DraftSendSessionAction.mode:type_name -> remoteagent.v1.SendMode
+	5,  // 74: remoteagent.core.v1.DraftImageViewerOpenAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 75: remoteagent.core.v1.DraftImageViewerNavigateAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 76: remoteagent.core.v1.DraftImageViewerCloseAction.scope:type_name -> remoteagent.core.v1.DraftScope
+	4,  // 77: remoteagent.core.v1.DraftStorageReadEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	4,  // 78: remoteagent.core.v1.DraftStorageWriteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	4,  // 79: remoteagent.core.v1.DraftStorageDeleteEffect.bucket:type_name -> remoteagent.core.v1.DraftStorageBucket
+	5,  // 80: remoteagent.core.v1.AttachmentPrepareImageEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 81: remoteagent.core.v1.AttachmentHashFileEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	5,  // 82: remoteagent.core.v1.AttachmentReadChunkEffect.scope:type_name -> remoteagent.core.v1.DraftScope
+	1,  // 83: remoteagent.core.v1.AttachmentReadChunkEffect.kind:type_name -> remoteagent.core.v1.AttachmentItemKind
+	84, // [84:84] is the sub-list for method output_type
+	84, // [84:84] is the sub-list for method input_type
+	84, // [84:84] is the sub-list for extension type_name
+	84, // [84:84] is the sub-list for extension extendee
+	0,  // [0:84] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_attachments_proto_init() }
@@ -4938,7 +5007,7 @@ func file_remoteagent_core_v1_attachments_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_core_v1_attachments_proto_rawDesc), len(file_remoteagent_core_v1_attachments_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   48,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

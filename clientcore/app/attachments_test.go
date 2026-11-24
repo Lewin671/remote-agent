@@ -272,6 +272,16 @@ func findReadChunkEffects(b *corev1.EffectBatch) []*corev1.AttachmentReadChunkEf
 	return out
 }
 
+func findDraftReadEffects(b *corev1.EffectBatch) []*corev1.DraftStorageReadEffect {
+	var out []*corev1.DraftStorageReadEffect
+	for _, ef := range b.GetEffects() {
+		if r := ef.GetDraftStorageRead(); r != nil {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 func findDraftWriteEffects(b *corev1.EffectBatch) []*corev1.DraftStorageWriteEffect {
 	var out []*corev1.DraftStorageWriteEffect
 	for _, ef := range b.GetEffects() {
@@ -3432,5 +3442,158 @@ func TestAttachments_StorageLockedByOther_AndConfigUpdate_AndBadgeText(t *testin
 	dv = h.draftView(sessScope)
 	if dv.Files[1].BadgeText == nil || dv.Files[1].BadgeText.GetKey() != text.KeyCommonRetry {
 		t.Fatalf("expected retryable failed file BadgeText common.retry, got %+v", dv.Files[1].BadgeText)
+	}
+}
+
+func TestAttachments_DraftAppendText_QueuesDuringLoadAndPreservesPersistedText(t *testing.T) {
+	// 1. Append while draft is loading preserves disk draft text and merges cleanup prompt after read completes.
+	h := newAttHarness(t, true, true)
+	nsScope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/proj"}
+	diskBytes, err := attachments.EncodePersistedDraft(&corev1.PersistedDraftRecord{
+		Scope:     nsScope,
+		Text:      "existing saved draft",
+		UpdatedMs: h.nowMs,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	openEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: nsScope, MachineId: "m1"}},
+	})
+	readOps := findDraftReadEffects(openEff)
+	if len(readOps) != 1 {
+		t.Fatalf("expected 1 DraftStorageReadEffect, got %d", len(readOps))
+	}
+
+	// Append cleanup prompt BEFORE disk read returns (simulating NewTaskScreen opening a project with saved draft).
+	appendEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAppendText{
+			DraftAppendText: &corev1.DraftAppendTextAction{
+				Scope:     nsScope,
+				Text:      "Clean up temporary files.",
+				MachineId: "m1",
+			},
+		},
+	})
+	if len(findDraftWriteEffects(appendEff)) != 0 {
+		t.Fatalf("must NOT write draft before disk read completes")
+	}
+
+	// Disk read returns existing saved draft -> Core hydrates disk text THEN merges queued append and persists.
+	readResEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{
+				OpId:   readOps[0].OpId,
+				Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT,
+				Key:    readOps[0].Key,
+				Found:  true,
+				Data:   diskBytes,
+			},
+		},
+	})
+	want := "existing saved draft\n\nClean up temporary files."
+	if got := h.draftView(nsScope).Text; got != want {
+		t.Fatalf("merged draft text = %q, want %q", got, want)
+	}
+	writes := findDraftWriteEffects(readResEff)
+	if len(writes) != 1 {
+		t.Fatalf("expected 1 DraftStorageWriteEffect after flushing queued append, got %d", len(writes))
+	}
+	dec, ok := attachments.DecodePersistedDraft(writes[0].Data)
+	if !ok || dec.Text != want {
+		t.Fatalf("persisted draft text = %q (ok=%v), want %q", dec.GetText(), ok, want)
+	}
+
+	// Duplicate append on loaded draft is a no-op (no extra write).
+	dupEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAppendText{
+			DraftAppendText: &corev1.DraftAppendTextAction{
+				Scope: nsScope,
+				Text:  "Clean up temporary files.",
+			},
+		},
+	})
+	if len(findDraftWriteEffects(dupEff)) != 0 {
+		t.Fatalf("duplicate DraftAppendText must not emit write")
+	}
+	if got := h.draftView(nsScope).Text; got != want {
+		t.Fatalf("draft text changed on duplicate append: %q", got)
+	}
+
+	// 2. Append arriving before AttachmentConfigEvent is queued and merged once startup scan hydrates disk record.
+	c := New()
+	defer c.Close()
+	c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_000,
+		Event: &corev1.Event_DraftAppendText{
+			DraftAppendText: &corev1.DraftAppendTextAction{Scope: nsScope, Text: "Pre-config prompt"},
+		},
+	})
+	cfgEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_010,
+		Event: &corev1.Event_AttachmentConfig{
+			AttachmentConfig: &corev1.AttachmentConfigEvent{
+				PersistDrafts: true, PersistOutbox: true, ScanStorage: true, HasPersistedPreparedImages: true,
+			},
+		},
+	})
+	var listOp uint64
+	for _, ef := range cfgEff.GetEffects() {
+		if l := ef.GetDraftStorageList(); l != nil {
+			listOp = l.OpId
+		}
+	}
+	if listOp == 0 {
+		t.Fatalf("expected DraftStorageListEffect")
+	}
+	listEff := c.Dispatch(&corev1.Event{
+		NowMs: 1_791_078_060_000, MonoMs: 10_020,
+		Event: &corev1.Event_DraftStorageListed{
+			DraftStorageListed: &corev1.DraftStorageListedEvent{
+				OpId: listOp,
+				Entries: []*corev1.DraftStorageEntry{{
+					Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT,
+					Key:    attachments.ScopeStorageKey(nsScope),
+					Data:   diskBytes,
+				}},
+			},
+		},
+	})
+	if len(findDraftWriteEffects(listEff)) != 1 {
+		t.Fatalf("expected persisted write after startup scan flushed pre-config append")
+	}
+	vm, err := c.View(&corev1.Screen{Screen: &corev1.Screen_AttachmentDraft{AttachmentDraft: &corev1.AttachmentDraftScreenRequest{Scope: nsScope}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPre := "existing saved draft\n\nPre-config prompt"
+	if got := vm.GetAttachmentDraft().GetDraft().GetText(); got != wantPre {
+		t.Fatalf("pre-config merged text = %q, want %q", got, wantPre)
+	}
+
+	// 3. Append on an absent disk draft (found=false) sets text to the addition and persists it.
+	emptyScope := &corev1.DraftScope{Kind: corev1.DraftScopeKind_DRAFT_SCOPE_KIND_NEW_SESSION, Id: "/Users/me/empty"}
+	appendEmpty := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftAppendText{
+			DraftAppendText: &corev1.DraftAppendTextAction{Scope: emptyScope, Text: "Only cleanup", MachineId: "m1"},
+		},
+	})
+	rdEmpty := findDraftReadEffects(appendEmpty)
+	if len(rdEmpty) != 1 {
+		t.Fatalf("expected DraftStorageReadEffect for unloaded append, got %d", len(rdEmpty))
+	}
+	resEmpty := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftStorageReadResult{
+			DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{
+				OpId: rdEmpty[0].OpId, Bucket: corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT, Key: rdEmpty[0].Key, Found: false,
+			},
+		},
+	})
+	if got := h.draftView(emptyScope).Text; got != "Only cleanup" {
+		t.Fatalf("empty disk draft append = %q, want %q", got, "Only cleanup")
+	}
+	if len(findDraftWriteEffects(resEmpty)) != 1 {
+		t.Fatalf("expected DraftStorageWriteEffect for empty disk draft append")
 	}
 }

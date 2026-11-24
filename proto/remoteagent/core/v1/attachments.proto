@@ -295,6 +295,14 @@ message DraftSetTextAction {
   string text = 2;
 }
 
+// Appends text (e.g. a cleanup prompt) to a draft after any pending disk load finishes,
+// deduplicating if the text is already present and preserving existing draft content.
+message DraftAppendTextAction {
+  DraftScope scope = 1;
+  string text = 2;
+  string machine_id = 3;
+}
+
 message DraftSetTargetMachineAction {
   DraftScope scope = 1;
   string machine_id = 2;
