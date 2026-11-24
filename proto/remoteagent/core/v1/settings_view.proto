@@ -133,6 +133,7 @@ message ClientRowView {
 message HandoffCandidateView {
   string device_id = 1;
   string display_name = 2;
+  Text display_name_text = 3;
 }
 
 message SecuritySummaryView {

@@ -645,33 +645,21 @@ func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCan
 	}
 	selfID := syncView.GetSelfDeviceId()
 	sorted := machine.SortClients(syncView.GetDevices(), selfID)
-	nameCounts := make(map[string]int, len(sorted))
-	for _, d := range sorted {
-		if d == nil || d.DeviceId == "" || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
-			continue
-		}
-		if n := machine.ClientName(d); n != "" {
-			nameCounts[n]++
-		}
-	}
 	var out []*corev1.HandoffCandidateView
 	for _, d := range sorted {
 		if d == nil || d.DeviceId == "" || d.DeviceId == selfID || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
 			continue
 		}
+		if syncView.GetSecurityLoaded() && !d.GetTrusted() {
+			continue
+		}
 		if d.Meta == nil || len(d.Meta.HandoffRecoveryEd) != 32 {
 			continue
 		}
-		name := machine.ClientName(d)
-		switch {
-		case name == "":
-			name = machine.ShortID(d.DeviceId)
-		case nameCounts[name] > 1:
-			name = name + " · " + machine.ShortID(d.DeviceId)
-		}
 		out = append(out, &corev1.HandoffCandidateView{
-			DeviceId:    d.DeviceId,
-			DisplayName: name,
+			DeviceId:        d.DeviceId,
+			DisplayName:     machine.ReadableClientPlainName(d, sorted),
+			DisplayNameText: machine.ReadableClientNameText(d, sorted),
 		})
 	}
 	return out

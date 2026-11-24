@@ -148,11 +148,9 @@ import {
   DemoSessionSchema,
   SeedDemoWorldEventSchema,
   SecurityBootstrapKind,
-  SecurityHandoffCandidateSchema,
   SecurityPairingInfoSchema,
   SecurityPendingOpSummarySchema,
   SecurityWorkflowStatusSchema,
-  type SecurityHandoffCandidate,
   type SecurityPairingInfo,
   type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
@@ -2380,9 +2378,6 @@ export class DemoRemote extends Remote {
   override async discardPendingOp() { await this.demoWork(); this.demoPendingOp = undefined; this.changed(); }
   override async resumeSecurityOperation() { await this.demoWork(); }
   override async completeAccountPublicProfile(_code: string) { await this.demoWork(); this.demoHasProfile = true; this.changed(); }
-  override async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
-    return [create(SecurityHandoffCandidateSchema, { deviceId: ANDROID, recoveryEd: new Uint8Array(32) })];
-  }
   override async handoffAuthority(id: string) { await this.demoWork(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); }
   override async removeDevice(id: string) { await this.demoWork(); this.removedDemoDevices.add(id); await this.loadDevices(); }
   override async deleteMachineRecords(id: string) { await this.demoWork(); this.demoMachines.delete(id); this.syncDemoToCore(); }
@@ -3747,6 +3742,7 @@ export class DemoRemote extends Remote {
         meta: create(DeviceMetaSchema, {
           platform: "android",
           description: "Android 16 · Pixel 9",
+          handoffRecoveryEd: new Uint8Array(32),
         }),
       },
     ],

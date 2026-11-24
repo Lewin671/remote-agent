@@ -513,64 +513,118 @@ func TestBuildSettingsHandoffCandidates(t *testing.T) {
 		SelfDeviceId:      "self-1111",
 		AuthorityDeviceId: "self-1111",
 		IsManager:         true,
+		SecurityLoaded:    true,
 		Devices: []*corev1.SyncDeviceView{
 			{
 				DeviceId:   "self-1111",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
-				LastSeenMs: 300,
-				Meta:       &v1.DeviceMeta{Name: "Manager", HandoffRecoveryEd: key},
+				LastSeenMs: 500,
+				Meta:       &v1.DeviceMeta{Name: "Manager", Platform: "android", Description: "Android 16 · Pixel 9", HandoffRecoveryEd: key},
 			},
 			{
 				DeviceId:   "machine-2222",
 				Kind:       v1.DeviceKind_DEVICE_KIND_MACHINE,
 				Trusted:    true,
-				LastSeenMs: 400,
+				LastSeenMs: 450,
 				Meta:       &v1.DeviceMeta{Name: "Box", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-untrusted",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    false,
+				LastSeenMs: 420,
+				Meta:       &v1.DeviceMeta{Name: "Revoked", Platform: "android", HandoffRecoveryEd: key},
 			},
 			{
 				DeviceId:   "client-no-offer",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
-				LastSeenMs: 250,
-				Meta:       &v1.DeviceMeta{Name: "NoOffer"},
+				LastSeenMs: 400,
+				Meta:       &v1.DeviceMeta{Name: "NoOffer", Platform: "ios", Description: "iOS 18 · iPhone 16"},
 			},
 			{
 				DeviceId:   "client-aaaa",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
-				LastSeenMs: 200,
-				Meta:       &v1.DeviceMeta{Description: "Pixel 3", HandoffRecoveryEd: key},
+				LastSeenMs: 300,
+				Meta:       &v1.DeviceMeta{Platform: "android", Description: "Android 16 · Pixel 9", HandoffRecoveryEd: key},
 			},
 			{
 				DeviceId:   "client-bbbb",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
-				LastSeenMs: 100,
-				Meta:       &v1.DeviceMeta{Description: "Pixel 3", HandoffRecoveryEd: key},
+				LastSeenMs: 250,
+				Meta:       &v1.DeviceMeta{Platform: "ios", Description: "iOS 18 · iPhone 15", HandoffRecoveryEd: key},
 			},
 			{
 				DeviceId:   "client-cccc",
 				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
 				Trusted:    true,
+				LastSeenMs: 200,
+				Meta:       &v1.DeviceMeta{Platform: "web", Description: "Chrome on macOS", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-dddd",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 150,
+				Meta:       &v1.DeviceMeta{Platform: "web", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-eeee",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 120,
+				Meta:       &v1.DeviceMeta{Platform: "web", HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-ffff",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
+				LastSeenMs: 80,
+				Meta:       &v1.DeviceMeta{HandoffRecoveryEd: key},
+			},
+			{
+				DeviceId:   "client-9999",
+				Kind:       v1.DeviceKind_DEVICE_KIND_CLIENT,
+				Trusted:    true,
 				LastSeenMs: 50,
-				Meta:       &v1.DeviceMeta{Name: "Work Phone", HandoffRecoveryEd: key},
+				Meta:       &v1.DeviceMeta{Name: "Work Phone", Platform: "android", Description: "Android 16 · Pixel 9", HandoffRecoveryEd: key},
 			},
 		},
 	}
 
 	vm := BuildSettings(st, sv, nil)
 	got := vm.GetSecurity().GetHandoffCandidates()
-	if len(got) != 3 {
-		t.Fatalf("expected 3 handoff candidates, got %+v", got)
+	if len(got) != 7 {
+		t.Fatalf("expected 7 trusted handoff candidates, got %d: %+v", len(got), got)
 	}
-	if got[0].DeviceId != "client-aaaa" || got[0].DisplayName != "Pixel 3 · …aaaa" {
+	// client-aaaa shares base "Android · Pixel 9" with self-1111 (named) and client-9999 (named) -> disambiguated with last4 (no ellipsis).
+	if got[0].DeviceId != "client-aaaa" || got[0].DisplayName != "Android · Pixel 9 · aaaa" || got[0].GetDisplayNameText().GetSeparatorLiteral() != " · " {
 		t.Fatalf("unexpected candidate[0]: %+v", got[0])
 	}
-	if got[1].DeviceId != "client-bbbb" || got[1].DisplayName != "Pixel 3 · …bbbb" {
+	// client-bbbb is unique iOS model -> "iPhone 15".
+	if got[1].DeviceId != "client-bbbb" || got[1].DisplayName != "iPhone 15" || got[1].GetDisplayNameText().GetLiteral() != "iPhone 15" {
 		t.Fatalf("unexpected candidate[1]: %+v", got[1])
 	}
-	if got[2].DeviceId != "client-cccc" || got[2].DisplayName != "Work Phone" {
+	// client-cccc is unique Web description -> "Chrome · macOS".
+	if got[2].DeviceId != "client-cccc" || got[2].DisplayName != "Chrome · macOS" || got[2].GetDisplayNameText().GetLiteral() != "Chrome · macOS" {
 		t.Fatalf("unexpected candidate[2]: %+v", got[2])
+	}
+	// client-dddd and client-eeee are two unnamed Web browsers -> KeySecurityBrowser + " · dddd" / " · eeee".
+	if got[3].DeviceId != "client-dddd" || len(got[3].GetDisplayNameText().GetJoin()) != 2 || got[3].GetDisplayNameText().GetJoin()[0].GetKey() != text.KeySecurityBrowser || got[3].GetDisplayNameText().GetJoin()[1].GetLiteral() != "dddd" {
+		t.Fatalf("unexpected candidate[3]: %+v", got[3])
+	}
+	if got[4].DeviceId != "client-eeee" || len(got[4].GetDisplayNameText().GetJoin()) != 2 || got[4].GetDisplayNameText().GetJoin()[0].GetKey() != text.KeySecurityBrowser || got[4].GetDisplayNameText().GetJoin()[1].GetLiteral() != "eeee" {
+		t.Fatalf("unexpected candidate[4]: %+v", got[4])
+	}
+	// client-ffff has empty platform -> unique KeySecurityClient (must not collide with Browser).
+	if got[5].DeviceId != "client-ffff" || got[5].GetDisplayNameText().GetKey() != text.KeySecurityClient {
+		t.Fatalf("unexpected candidate[5]: %+v", got[5])
+	}
+	// client-9999 has custom Name -> never gets suffix.
+	if got[6].DeviceId != "client-9999" || got[6].DisplayName != "Work Phone" || got[6].GetDisplayNameText().GetLiteral() != "Work Phone" {
+		t.Fatalf("unexpected candidate[6]: %+v", got[6])
 	}
 }

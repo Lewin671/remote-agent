@@ -67,7 +67,6 @@ import {
   SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
   SecuritySealEnvelopeOpSchema,
-  type SecurityHandoffCandidate,
   type SecurityPairingInfo,
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
@@ -1896,11 +1895,6 @@ export class Remote implements CoreExecutor {
 
   cancelPairing(pairingId: string): Promise<void> {
     return this.ensureHost().securityClient.cancelPairing(pairingId);
-  }
-
-  async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
-    await this.loadDevices(false);
-    return this.ensureHost().securityClient.listHandoffCandidates();
   }
 
   async handoffAuthority(incoming: string) {

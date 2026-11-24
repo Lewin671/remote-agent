@@ -405,9 +405,10 @@ func (m *ClientRowView) AppendMarshal(b []byte) []byte {
 }
 
 type HandoffCandidateView struct {
-	_           [0]func()
-	DeviceId    string
-	DisplayName string
+	_               [0]func()
+	DeviceId        string
+	DisplayName     string
+	DisplayNameText *Text
 }
 
 func (m *HandoffCandidateView) GetDeviceId() string {
@@ -422,11 +423,18 @@ func (m *HandoffCandidateView) GetDisplayName() string {
 	}
 	return ""
 }
+func (m *HandoffCandidateView) GetDisplayNameText() *Text {
+	if m != nil {
+		return m.DisplayNameText
+	}
+	return nil
+}
 
 var LitewireDesc_HandoffCandidateView = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(HandoffCandidateView{}.DeviceId), Kind: litewire.KindString},
 		{Num: 2, Offset: unsafe.Offsetof(HandoffCandidateView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HandoffCandidateView{}.DisplayNameText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

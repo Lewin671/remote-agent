@@ -105,6 +105,16 @@ class HandoffTest {
                 .setDeviceId("d-1")
                 .setDisplayName("Chrome · macOS · a1b2")
                 .build(),
+            io.github.lewin671.remoteagent.core.proto.HandoffCandidateView.newBuilder()
+                .setDeviceId("d-2")
+                .setDisplayName("c3d4")
+                .setDisplayNameText(
+                    io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                        .setSeparatorLiteral(" · ")
+                        .addJoin(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setKey("security.browser"))
+                        .addJoin(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("c3d4")),
+                )
+                .build(),
         )
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
@@ -112,5 +122,6 @@ class HandoffTest {
             }
         }
         ui.onNodeWithText("交接给 Chrome · macOS · a1b2").assertExists()
+        ui.onNodeWithText("交接给 浏览器 · c3d4").assertExists()
     }
 }

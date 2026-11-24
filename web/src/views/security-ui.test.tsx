@@ -301,3 +301,9 @@ it("lets a confirmed uncertain handoff offer be abandoned with a public-key warn
   await click(message("new_session.android_abandon"));
   expect(discard).toHaveBeenCalledOnce();
 });
+it("renders Core readable handoff candidates in the transfer management view", async () => {
+  const r = demo("role=authority");
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  await click(message("security.transfer_management"));
+  expect(host.textContent).toContain("Android · Pixel 9");
+});

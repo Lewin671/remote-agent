@@ -122,10 +122,13 @@ internal fun HandoffControlsContent(
     var target by remember { mutableStateOf<HandoffCandidateView?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
+    fun candidateLabel(c: HandoffCandidateView): String =
+        if (c.hasDisplayNameText()) io.github.lewin671.remoteagent.core.coreTextToMessageText(c.displayNameText).resolve(copy)
+        else c.displayName
     GLabel(copy(UiMessages.securityTransferManagement()))
     Hint(copy(UiMessages.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts()), Modifier)
     for (c in candidates) PillButton(
-        copy(UiMessages.securityAndroidTransferTo(c.displayName)),
+        copy(UiMessages.securityAndroidTransferTo(candidateLabel(c))),
         { target = c },
         Modifier.fillMaxWidth().padding(top = 8.dp),
         ButtonKind.SECONDARY,
@@ -136,7 +139,7 @@ internal fun HandoffControlsContent(
     target?.let { cand ->
         Alert(
             copy(UiMessages.securityTransferManagement()),
-            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(cand.displayName)),
+            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(candidateLabel(cand))),
             copy(UiMessages.securityConfirmTransfer()),
             danger = true,
             onDismiss = { target = null },

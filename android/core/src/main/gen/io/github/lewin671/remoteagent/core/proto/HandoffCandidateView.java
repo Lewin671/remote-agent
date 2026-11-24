@@ -18,6 +18,7 @@ public  final class HandoffCandidateView extends
     deviceId_ = "";
     displayName_ = "";
   }
+  private int bitField0_;
   public static final int DEVICE_ID_FIELD_NUMBER = 1;
   private java.lang.String deviceId_;
   /**
@@ -112,6 +113,54 @@ public  final class HandoffCandidateView extends
     checkByteStringIsUtf8(value);
     displayName_ = value.toStringUtf8();
 
+  }
+
+  public static final int DISPLAY_NAME_TEXT_FIELD_NUMBER = 3;
+  private io.github.lewin671.remoteagent.core.proto.Text displayNameText_;
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   */
+  @java.lang.Override
+  public boolean hasDisplayNameText() {
+    return ((bitField0_ & 0x00000001) != 0);
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.Text getDisplayNameText() {
+    return displayNameText_ == null ? io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance() : displayNameText_;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setDisplayNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    displayNameText_ = value;
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeDisplayNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+    value.getClass();  // minimal bytecode null check
+    if (displayNameText_ != null &&
+        displayNameText_ != io.github.lewin671.remoteagent.core.proto.Text.getDefaultInstance()) {
+      displayNameText_ =
+        io.github.lewin671.remoteagent.core.proto.Text.newBuilder(displayNameText_).mergeFrom(value).buildPartial();
+    } else {
+      displayNameText_ = value;
+    }
+    bitField0_ |= 0x00000001;
+  }
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   */
+  private void clearDisplayNameText() {
+    displayNameText_ = null;
+    bitField0_ = (bitField0_ & ~0x00000001);
   }
 
   public static io.github.lewin671.remoteagent.core.proto.HandoffCandidateView parseFrom(
@@ -309,6 +358,53 @@ public  final class HandoffCandidateView extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    @java.lang.Override
+    public boolean hasDisplayNameText() {
+      return instance.hasDisplayNameText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.Text getDisplayNameText() {
+      return instance.getDisplayNameText();
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    public Builder setDisplayNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.setDisplayNameText(value);
+      return this;
+      }
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    public Builder setDisplayNameText(
+        io.github.lewin671.remoteagent.core.proto.Text.Builder builderForValue) {
+      copyOnWrite();
+      instance.setDisplayNameText(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    public Builder mergeDisplayNameText(io.github.lewin671.remoteagent.core.proto.Text value) {
+      copyOnWrite();
+      instance.mergeDisplayNameText(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+     */
+    public Builder clearDisplayNameText() {  copyOnWrite();
+      instance.clearDisplayNameText();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.HandoffCandidateView)
   }
   @java.lang.Override
@@ -325,12 +421,14 @@ public  final class HandoffCandidateView extends
       }
       case BUILD_MESSAGE_INFO: {
           java.lang.Object[] objects = new java.lang.Object[] {
+            "bitField0_",
             "deviceId_",
             "displayName_",
+            "displayNameText_",
           };
           java.lang.String info =
-              "\u0000\u0002\u0000\u0000\u0001\u0002\u0002\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
-              "";
+              "\u0000\u0003\u0000\u0001\u0001\u0003\u0003\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0003\u1009\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

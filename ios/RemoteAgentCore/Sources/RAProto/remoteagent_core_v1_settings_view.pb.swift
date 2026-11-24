@@ -720,9 +720,20 @@ public struct PBHandoffCandidateView: Sendable {
 
   public var displayName: String = String()
 
+  public var displayNameText: PBCoreText {
+    get {return _displayNameText ?? PBCoreText()}
+    set {_displayNameText = newValue}
+  }
+  /// Returns true if `displayNameText` has been explicitly set.
+  public var hasDisplayNameText: Bool {return self._displayNameText != nil}
+  /// Clears the value of `displayNameText`. Subsequent reads from it will return its default value.
+  public mutating func clearDisplayNameText() {self._displayNameText = nil}
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
+
+  fileprivate var _displayNameText: PBCoreText? = nil
 }
 
 public struct PBSecuritySummaryView: @unchecked Sendable {
@@ -3853,7 +3864,7 @@ extension PBClientRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
 
 extension PBHandoffCandidateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".HandoffCandidateView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0\u{3}display_name_text\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3863,24 +3874,33 @@ extension PBHandoffCandidateView: SwiftProtobuf.Message, SwiftProtobuf._MessageI
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._displayNameText) }()
       default: break
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if !self.deviceID.isEmpty {
       try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
     }
     if !self.displayName.isEmpty {
       try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
     }
+    try { if let v = self._displayNameText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBHandoffCandidateView, rhs: PBHandoffCandidateView) -> Bool {
     if lhs.deviceID != rhs.deviceID {return false}
     if lhs.displayName != rhs.displayName {return false}
+    if lhs._displayNameText != rhs._displayNameText {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

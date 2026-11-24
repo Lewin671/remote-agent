@@ -33,4 +33,15 @@ public interface HandoffCandidateViewOrBuilder extends
    */
   com.google.protobuf.ByteString
       getDisplayNameBytes();
+
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   * @return Whether the displayNameText field is set.
+   */
+  boolean hasDisplayNameText();
+  /**
+   * <code>.remoteagent.core.v1.Text display_name_text = 3 [json_name = "displayNameText"];</code>
+   * @return The displayNameText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getDisplayNameText();
 }
