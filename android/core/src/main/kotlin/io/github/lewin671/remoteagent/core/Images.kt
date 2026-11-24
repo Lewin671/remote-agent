@@ -194,8 +194,7 @@ private fun spliceImagePlan(src: ByteArray, done: ByteArray): ByteArray {
 private fun inspectOrientation(b: ByteArray, expectedFormat: Int): Int {
     return try {
         val done = runImagePlan(b, IMG_MODE_INSPECT, expectedFormat) { throw IllegalStateException() }
-        val o = done[2].toInt() and 0xff
-        if (o in 1..8) o else 1
+        done[2].toInt() and 0xff
     } catch (_: Throwable) {
         1
     }

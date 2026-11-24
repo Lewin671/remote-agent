@@ -220,8 +220,7 @@ export function stripMetadata(b: Uint8Array, format: ImageFormat): Uint8Array {
 export function readOrientation(b: Uint8Array): number {
   try {
     const done = runPlan(b, MODE_INSPECT, 0);
-    const o = done[2];
-    return o >= 1 && o <= 8 ? o : 1;
+    return done[2];
   } catch {
     return 1;
   }

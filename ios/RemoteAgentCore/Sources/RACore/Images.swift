@@ -207,8 +207,7 @@ private func inspectOrientation(_ data: Data, expectedFormat: Int32) -> Int {
     guard let done = try? runImagePlan(data, mode: imgModeInspect, expectedFormat: expectedFormat), done.count >= 3 else {
         return 1
     }
-    let o = Int(done[done.startIndex + 2])
-    return (1...8).contains(o) ? o : 1
+    return Int(done[done.startIndex + 2])
 }
 
 /// A JPEG's Exif orientation, 1 when none.
