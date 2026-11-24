@@ -175,7 +175,7 @@ func newDirectSyncHarness(t *testing.T) *directSyncHarness {
 	account := "00000000000000000000000000000001"
 	domain := sha256.Sum256([]byte("direct-sync-domain"))
 	genHash, headHash, headEpoch, statesRaw, leaseRaw := makeDirectTestChain(t, account, domain, client, daemon, now)
-	codec, err := peerwire.NewCodec(account, domain, headHash, headEpoch, 17)
+	codec, err := peerwire.NewCodec(account, domain, headHash, headEpoch, uint64(PeerVersion))
 	if err != nil {
 		t.Fatal(err)
 	}

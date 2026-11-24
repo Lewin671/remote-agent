@@ -114,8 +114,10 @@ func (m *Machine) ReceivePage(page *v1.TerminalHistoryPage) Transition {
 	}
 	m.Pending = ""
 
+	hasError := page.ErrorCode != v1.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_UNSPECIFIED || page.Error != ""
+
 	if m.Phase == corev1.TerminalHistoryPhase_TERMINAL_HISTORY_PHASE_OPENING {
-		if page.Error != "" {
+		if hasError {
 			// Before the reader opens, there is no capture to expire yet: any
 			// error is a retryable opening failure.
 			m.Phase = corev1.TerminalHistoryPhase_TERMINAL_HISTORY_PHASE_OPENING_FAILED
@@ -142,8 +144,8 @@ func (m *Machine) ReceivePage(page *v1.TerminalHistoryPage) Transition {
 	}
 
 	if m.Phase == corev1.TerminalHistoryPhase_TERMINAL_HISTORY_PHASE_OPEN {
-		if page.Error != "" {
-			if containsExpiredASCII(page.Error) {
+		if hasError {
+			if page.ErrorCode == v1.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED {
 				m.Trouble = corev1.TerminalHistoryStatus_TERMINAL_HISTORY_STATUS_EXPIRED
 			} else {
 				m.Trouble = corev1.TerminalHistoryStatus_TERMINAL_HISTORY_STATUS_FAILED
@@ -258,28 +260,4 @@ func (m *Machine) CanLoadEarlier() bool {
 		m.Pending == "" &&
 		m.Trouble == corev1.TerminalHistoryStatus_TERMINAL_HISTORY_STATUS_NONE &&
 		m.Cursor != ""
-}
-
-func containsExpiredASCII(s string) bool {
-	const needle = "expired"
-	if len(s) < len(needle) {
-		return false
-	}
-	for i := 0; i <= len(s)-len(needle); i++ {
-		matched := true
-		for j := 0; j < len(needle); j++ {
-			c := s[i+j]
-			if c >= 'A' && c <= 'Z' {
-				c += 'a' - 'A'
-			}
-			if c != needle[j] {
-				matched = false
-				break
-			}
-		}
-		if matched {
-			return true
-		}
-	}
-	return false
 }

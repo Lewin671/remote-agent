@@ -34,6 +34,14 @@ const (
 	DefaultModeSource_DEFAULT_MODE_SOURCE_CLI_CONFIG      DefaultModeSource = 2
 )
 
+type TerminalHistoryErrorCode int32
+
+const (
+	TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_UNSPECIFIED TerminalHistoryErrorCode = 0
+	TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED      TerminalHistoryErrorCode = 1
+	TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED     TerminalHistoryErrorCode = 2
+)
+
 type MachineMeta struct {
 	_                [0]func()
 	Hostname         string
@@ -2803,6 +2811,7 @@ type TerminalHistoryPage struct {
 	Lines      []string
 	NextCursor string
 	Error      string
+	ErrorCode  TerminalHistoryErrorCode
 	hasUnknown bool
 }
 
@@ -2832,6 +2841,12 @@ func (m *TerminalHistoryPage) GetError() string {
 	}
 	return ""
 }
+func (m *TerminalHistoryPage) GetErrorCode() TerminalHistoryErrorCode {
+	if m != nil {
+		return m.ErrorCode
+	}
+	return 0
+}
 
 var LitewireDesc_TerminalHistoryPage = litewire.MessageDesc{
 	Strict:        true,
@@ -2842,6 +2857,7 @@ var LitewireDesc_TerminalHistoryPage = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(TerminalHistoryPage{}.Lines), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 		{Num: 3, Offset: unsafe.Offsetof(TerminalHistoryPage{}.NextCursor), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(TerminalHistoryPage{}.Error), Kind: litewire.KindString},
+		{Num: 5, Offset: unsafe.Offsetof(TerminalHistoryPage{}.ErrorCode), Kind: litewire.KindInt32},
 	},
 }
 

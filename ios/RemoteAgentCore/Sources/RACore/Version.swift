@@ -11,4 +11,4 @@ public let relayProtocolVersion: UInt32 = 17
 /// versions do not work together; keep it in step with PeerVersion in Go's
 /// internal/protocol, clientcore, web/src and Android. It is not envelopeVersion,
 /// which stored data keeps.
-public let peerProtocolVersion: UInt32 = 17
+public let peerProtocolVersion: UInt32 = 18

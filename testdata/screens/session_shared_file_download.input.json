@@ -71,7 +71,7 @@
               "meta": {
                 "hostname": "Studio",
                 "home": "/Users/me",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "capabilities": {
                   "sharedFiles": true,
                   "sharedFileChunkBytes": 16

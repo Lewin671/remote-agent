@@ -48,17 +48,26 @@ func TestHistoryPagingKeepsWholeUTF8LinesAndStableCursors(t *testing.T) {
 	if strings.Join(got, "\n") != strings.Join(lines, "\n") {
 		t.Fatal("pagination dropped, reordered or duplicated lines")
 	}
-	for _, bad := range []string{"other:1200", "token:-1", "token:1201", "token:0", "broken"} {
-		page, _ := stream.History(&pb.TerminalHistoryRequest{RequestId: "bad", Cursor: bad})
-		if page.Error == "" || len(page.Lines) != 0 {
-			t.Errorf("accepted %q", bad)
+	for _, tc := range []struct {
+		cursor string
+		want   pb.TerminalHistoryErrorCode
+	}{
+		{"other:1200", pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED},
+		{"broken", pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED},
+		{"token:-1", pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED},
+		{"token:1201", pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED},
+		{"token:0", pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED},
+	} {
+		page, _ := stream.History(&pb.TerminalHistoryRequest{RequestId: "bad", Cursor: tc.cursor})
+		if page.Error == "" || page.ErrorCode != tc.want || len(page.Lines) != 0 {
+			t.Errorf("cursor %q: got code=%v err=%q lines=%d, want code=%v", tc.cursor, page.ErrorCode, page.Error, len(page.Lines), tc.want)
 		}
 	}
 }
 func TestHistoryPageRejectsOversizedLineWithoutSkippingIt(t *testing.T) {
 	stream := &TermStream{history: historyFile(t, []string{strings.Repeat("x", historyPageBytes+1)})}
 	page, _ := stream.History(&pb.TerminalHistoryRequest{RequestId: "big", Cursor: "token:1"})
-	if page.Error == "" || len(page.Lines) > 0 {
+	if page.Error == "" || page.ErrorCode != pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED || len(page.Lines) > 0 {
 		t.Fatal("oversized line silently truncated")
 	}
 }

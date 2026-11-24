@@ -282,11 +282,18 @@ message TerminalHistoryRequest {
   string request_id = 1;
   string cursor = 2;
 }
+enum TerminalHistoryErrorCode {
+  TERMINAL_HISTORY_ERROR_CODE_UNSPECIFIED = 0;
+  TERMINAL_HISTORY_ERROR_CODE_FAILED = 1;
+  TERMINAL_HISTORY_ERROR_CODE_EXPIRED = 2;
+}
+
 message TerminalHistoryPage {
   string request_id = 1;
   repeated string lines = 2;
   string next_cursor = 3;
   string error = 4;
+  TerminalHistoryErrorCode error_code = 5;
 }
 
 // TerminalResize with fit set resizes the tmux window to the client's

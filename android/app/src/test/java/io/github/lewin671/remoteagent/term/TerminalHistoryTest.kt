@@ -7,6 +7,7 @@ import io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffec
 import io.github.lewin671.remoteagent.core.proto.TerminalHistoryStatus
 import io.github.lewin671.remoteagent.core.proto.TerminalRunWidth
 import io.github.lewin671.remoteagent.core.proto.TerminalSgrColorKind
+import io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode
 import io.github.lewin671.remoteagent.proto.TerminalHistoryPage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -146,6 +147,7 @@ class TerminalHistoryTest {
             TerminalHistoryPage.newBuilder()
                 .setRequestId(requests.last().requestId)
                 .setError("history expired; reopen history")
+                .setErrorCode(TerminalHistoryErrorCode.TERMINAL_HISTORY_ERROR_CODE_EXPIRED)
                 .build(),
         )
         runCurrent()
@@ -195,6 +197,7 @@ class TerminalHistoryTest {
             TerminalHistoryPage.newBuilder()
                 .setRequestId(requests.last().requestId)
                 .setError("history expired; reopen history")
+                .setErrorCode(TerminalHistoryErrorCode.TERMINAL_HISTORY_ERROR_CODE_EXPIRED)
                 .build(),
         )
         runCurrent()

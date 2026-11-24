@@ -91,17 +91,21 @@ func (t *TermStream) History(req *pb.TerminalHistoryRequest) (*pb.TerminalHistor
 	t.historyMu.Lock()
 	defer t.historyMu.Unlock()
 	page := &pb.TerminalHistoryPage{RequestId: req.RequestId}
-	fail := func(message string) (*pb.TerminalHistoryPage, error) { page.Error = message; return page, nil }
+	fail := func(code pb.TerminalHistoryErrorCode, message string) (*pb.TerminalHistoryPage, error) {
+		page.ErrorCode = code
+		page.Error = message
+		return page, nil
+	}
 	if len(req.RequestId) == 0 || len(req.RequestId) > 128 || len(req.Cursor) > 128 {
-		return fail("invalid history request")
+		return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "invalid history request")
 	}
 	if t.ctx != nil && t.ctx.Err() != nil {
-		return fail("terminal closed")
+		return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "terminal closed")
 	}
 	if req.Cursor == "" {
 		h, err := t.captureHistory()
 		if err != nil {
-			return fail("cannot capture terminal history; retry or return to the live terminal")
+			return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "cannot capture terminal history; retry or return to the live terminal")
 		}
 		if t.history != nil {
 			t.history.file.Close()
@@ -110,17 +114,17 @@ func (t *TermStream) History(req *pb.TerminalHistoryRequest) (*pb.TerminalHistor
 	}
 	h := t.history
 	if h == nil {
-		return fail("history expired; reopen history")
+		return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED, "history expired; reopen history")
 	}
 	end := len(h.offsets) - 1
 	if req.Cursor != "" {
 		parts := strings.Split(req.Cursor, ":")
 		if len(parts) != 2 || parts[0] != h.token {
-			return fail("history expired; reopen history")
+			return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED, "history expired; reopen history")
 		}
 		n, err := strconv.Atoi(parts[1])
 		if err != nil || n <= 0 || n > end {
-			return fail("invalid history cursor")
+			return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "invalid history cursor")
 		}
 		end = n
 	}
@@ -135,11 +139,11 @@ func (t *TermStream) History(req *pb.TerminalHistoryRequest) (*pb.TerminalHistor
 		start--
 	}
 	if start == end && end > 0 {
-		return fail("a terminal history line is too large to read")
+		return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "a terminal history line is too large to read")
 	}
 	data := make([]byte, h.offsets[end]-h.offsets[start])
 	if _, err := h.file.ReadAt(data, h.offsets[start]); err != nil && err != io.EOF {
-		return fail("cannot read terminal history; retry")
+		return fail(pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED, "cannot read terminal history; retry")
 	}
 	if !utf8.Valid(data) {
 		data = bytes.ToValidUTF8(data, []byte("�"))

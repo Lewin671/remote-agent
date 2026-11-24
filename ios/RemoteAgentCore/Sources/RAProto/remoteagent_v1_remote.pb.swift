@@ -154,6 +154,44 @@ public enum PBDefaultModeSource: SwiftProtobuf.Enum, Swift.CaseIterable {
 
 }
 
+public enum PBTerminalHistoryErrorCode: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case unspecified // = 0
+  case failed // = 1
+  case expired // = 2
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .unspecified
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .failed
+    case 2: self = .expired
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .failed: return 1
+    case .expired: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [PBTerminalHistoryErrorCode] = [
+    .unspecified,
+    .failed,
+    .expired,
+  ]
+
+}
+
 /// MachineMeta describes a computer running a daemon.
 public struct PBMachineMeta: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
@@ -1197,6 +1235,8 @@ public struct PBTerminalHistoryPage: Sendable {
 
   public var error: String = String()
 
+  public var errorCode: PBTerminalHistoryErrorCode = .unspecified
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1562,6 +1602,10 @@ extension PBQuotaLogin: SwiftProtobuf._ProtoNameProviding {
 
 extension PBDefaultModeSource: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0DEFAULT_MODE_SOURCE_UNSPECIFIED\0\u{1}DEFAULT_MODE_SOURCE_DAEMON_SETTINGS\0\u{1}DEFAULT_MODE_SOURCE_CLI_CONFIG\0")
+}
+
+extension PBTerminalHistoryErrorCode: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0TERMINAL_HISTORY_ERROR_CODE_UNSPECIFIED\0\u{1}TERMINAL_HISTORY_ERROR_CODE_FAILED\0\u{1}TERMINAL_HISTORY_ERROR_CODE_EXPIRED\0")
 }
 
 extension PBMachineMeta: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -3402,7 +3446,7 @@ extension PBTerminalHistoryRequest: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 extension PBTerminalHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".TerminalHistoryPage"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}lines\0\u{3}next_cursor\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}request_id\0\u{1}lines\0\u{3}next_cursor\0\u{1}error\0\u{3}error_code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3414,6 +3458,7 @@ extension PBTerminalHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 2: try { try decoder.decodeRepeatedStringField(value: &self.lines) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.nextCursor) }()
       case 4: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 5: try { try decoder.decodeSingularEnumField(value: &self.errorCode) }()
       default: break
       }
     }
@@ -3432,6 +3477,9 @@ extension PBTerminalHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 4)
     }
+    if self.errorCode != .unspecified {
+      try visitor.visitSingularEnumField(value: self.errorCode, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3440,6 +3488,7 @@ extension PBTerminalHistoryPage: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.lines != rhs.lines {return false}
     if lhs.nextCursor != rhs.nextCursor {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

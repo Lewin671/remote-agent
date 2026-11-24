@@ -71,7 +71,7 @@
               "meta": {
                 "hostname": "Workstation",
                 "home": "/Users/dev",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "capabilities": {
                   "imageUpload": true,
                   "fileUpload": true,

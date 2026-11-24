@@ -59,12 +59,19 @@ import UIKit
         }
     }
 
-    private func page(_ request: String, lines: [String] = [], cursor: String = "", error: String = "") -> PBTerminalHistoryPage {
+    private func page(
+        _ request: String,
+        lines: [String] = [],
+        cursor: String = "",
+        error: String = "",
+        errorCode: PBTerminalHistoryErrorCode = .unspecified
+    ) -> PBTerminalHistoryPage {
         .with {
             $0.requestID = request
             $0.lines = lines
             $0.nextCursor = cursor
             $0.error = error
+            $0.errorCode = errorCode
         }
     }
 
@@ -136,6 +143,14 @@ import UIKit
         #expect(h.state.phase == .open && h.state.status == .disconnected && h.state.pages.count == 2)
         h.dispatch(.close)
         #expect(h.state.phase == .idle && h.state.pages.isEmpty)
+
+        // Structured EXPIRED error code enters non-retryable EXPIRED status without string matching.
+        h.dispatch(.open)
+        h.dispatch(.pageReceived, page: page(h.sent.last!.id, lines: ["here"], cursor: "capture:5"))
+        h.dispatch(.loadEarlier)
+        h.dispatch(.pageReceived, page: page(h.sent.last!.id, errorCode: .expired))
+        #expect(h.state.status == .expired && !h.state.canRetry && !h.state.canLoadEarlier)
+        h.dispatch(.close)
 
         // Deterministic timeout via Core timer effect (no wall-clock sleep).
         h.scheduledTimers.removeAll()

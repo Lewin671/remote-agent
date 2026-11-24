@@ -88,8 +88,8 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 		t.Fatal("recapture leaked the old file")
 	}
 	stale, _ := stream.History(&pb.TerminalHistoryRequest{RequestId: "stale", Cursor: first.NextCursor})
-	if stale.Error == "" {
-		t.Fatal("old capture cursor accepted")
+	if stale.Error == "" || stale.ErrorCode != pb.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED {
+		t.Fatalf("old capture cursor accepted or missing EXPIRED code: code=%v err=%q", stale.ErrorCode, stale.Error)
 	}
 	file = stream.history.file
 	stream.Close()

@@ -394,7 +394,7 @@
               "attemptId": "att-req-03",
               "machineId": "m-gold",
               "deadlineMs": "1791078120000",
-              "commandBytes": "ygEyCgphdHQtcmVxLTAxEAIYBCIgERERERERERERERERERERERERERERERERERERERERERGgBhE=",
+              "commandBytes": "ygEyCgphdHQtcmVxLTAxEAIYBCIgERERERERERERERERERERERERERERERERERERERERERGgBhI=",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
@@ -887,7 +887,7 @@
               "machineId": "m-gold",
               "sessionId": "s-gold",
               "deadlineMs": "1791078120000",
-              "commandBytes": "CjUKBnMtZ29sZBIRcmV2aWV3IHNjcmVlbnNob3QaCmF0dC1yZXEtMDQiCmltZy1nb2xkLTEoAaAGEQ==",
+              "commandBytes": "CjUKBnMtZ29sZBIRcmV2aWV3IHNjcmVlbnNob3QaCmF0dC1yZXEtMDQiCmltZy1nb2xkLTEoAaAGEg==",
               "routeHint": "COMMAND_ROUTE_HINT_NORMAL",
               "routeLeg": "COMMAND_ROUTE_LEG_RELAY"
             }
@@ -932,8 +932,8 @@
               },
               "computerOnline": true,
               "connState": "CONN_STATE_CONNECTED",
-              "daemonProtocolVersion": 17,
-              "clientProtocolVersion": 17,
+              "daemonProtocolVersion": 18,
+              "clientProtocolVersion": 18,
               "capabilities": {
                 "canSend": true,
                 "supportsImages": true,

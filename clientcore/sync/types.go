@@ -22,7 +22,7 @@ const (
 	// RelayVersion must match internal/relayproto.Version (and web/android/ios).
 	RelayVersion uint32 = 17
 	// PeerVersion must match internal/protocol.PeerVersion (and web/android/ios).
-	PeerVersion uint32 = 17
+	PeerVersion uint32 = 18
 
 	MaxClockSkewMs             int64  = 300_000
 	CommandTTLMs               int64  = 60_000

@@ -17,4 +17,4 @@ const val RELAY_PROTOCOL_VERSION = 17
  * internal/protocol, clientcore, web/src and iOS. It is not ENVELOPE_VERSION,
  * which stored data keeps.
  */
-const val PEER_PROTOCOL_VERSION = 17
+const val PEER_PROTOCOL_VERSION = 18

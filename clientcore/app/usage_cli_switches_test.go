@@ -61,7 +61,7 @@ func seedDualCLIMachine(t *testing.T, c *Core) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								MachineStatus:  true,
 								ScheduledTasks: true,
@@ -208,7 +208,7 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 						MetaRev:   10,
 						Meta: &v1.MachineMeta{
 							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
+							ProtocolVersion:  18,
 							SettingsRevision: 1,
 							Capabilities:     &v1.MachineCapabilities{CliSwitches: true, UsageStats: true},
 							Agents: []*v1.AgentInfo{
@@ -313,7 +313,7 @@ func TestCliSwitchesToggleConflictAndDraftFallback(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:         "MacStudio",
-							ProtocolVersion:  17,
+							ProtocolVersion:  18,
 							SettingsRevision: 5,
 							DisabledAgents:   []v1.Agent{v1.Agent_AGENT_CLAUDE, v1.Agent_AGENT_ANTIGRAVITY},
 							Capabilities: &v1.MachineCapabilities{
@@ -485,7 +485,7 @@ func TestUsageOfflineCacheAndMachineStatus30dFallback(t *testing.T) {
 						Online:    false,
 						Meta: &v1.MachineMeta{
 							Hostname:        "MacStudio",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								MachineStatus: true,
 								CliSwitches:   true,

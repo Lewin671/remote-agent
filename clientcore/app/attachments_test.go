@@ -101,7 +101,7 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 						Meta: &v1.MachineMeta{
 							Hostname:        "Alpha",
 							Home:            "/Users/me",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								ImageUpload:          true,
 								FileUpload:           true,
@@ -116,7 +116,7 @@ func newAttHarness(t *testing.T, persistDrafts, persistOutbox bool) *attHarness 
 						Meta: &v1.MachineMeta{
 							Hostname:        "Beta",
 							Home:            "/Users/me",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								ImageUpload: true,
 								FileUpload:  false, // Beta does NOT support files
@@ -924,7 +924,7 @@ func TestAttachments_PauseDisconnectAnd30sReconnectResume(t *testing.T) {
 						Online:    false,
 						MetaRev:   2,
 						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
 						},
 					},
@@ -954,7 +954,7 @@ func TestAttachments_PauseDisconnectAnd30sReconnectResume(t *testing.T) {
 						Online:    true,
 						MetaRev:   3,
 						Meta: &v1.MachineMeta{
-							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17,
+							Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true},
 						},
 					},
@@ -2132,7 +2132,7 @@ func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *tes
 				Frame: &corev1.StreamFrameEvent_MachineUpdated{
 					MachineUpdated: &corev1.PlainMachine{
 						MachineId: h.machineA, Online: false, MetaRev: 2,
-						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
+						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 18, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
 					},
 				},
 			},
@@ -2237,7 +2237,7 @@ func TestAttachments_ColdStartOffline_LazyUnopened_7DayExpiry_AndOrphanGC(t *tes
 				Frame: &corev1.StreamFrameEvent_MachineUpdated{
 					MachineUpdated: &corev1.PlainMachine{
 						MachineId: h.machineA, Online: true, MetaRev: 3,
-						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 17, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
+						Meta: &v1.MachineMeta{Hostname: "Alpha", Home: "/Users/me", ProtocolVersion: 18, Capabilities: &v1.MachineCapabilities{ImageUpload: true, FileUpload: true}},
 					},
 				},
 			},

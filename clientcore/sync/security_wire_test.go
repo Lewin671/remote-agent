@@ -630,7 +630,7 @@ func TestSyncWireDirectEventsSenderVerification(t *testing.T) {
 	leaseRaw, _ := lease.MarshalBinary()
 
 	h.headHash = s2Hash
-	h.codec, err = peerwire.NewCodec(h.account, h.domain, s2Hash, s2.Core.Epoch, 17)
+	h.codec, err = peerwire.NewCodec(h.account, h.domain, s2Hash, s2.Core.Epoch, uint64(PeerVersion))
 	if err != nil {
 		t.Fatal(err)
 	}

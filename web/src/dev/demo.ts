@@ -3658,6 +3658,7 @@ export class DemoRemote extends Remote {
                     lines,
                     nextCursor: start ? String(start) : "",
                     error: "",
+                    errorCode: 0,
                   },
                 },
               }),

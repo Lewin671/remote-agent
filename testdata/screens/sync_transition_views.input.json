@@ -91,7 +91,7 @@
               "lastSeenMs": "1791078060000",
               "meta": {
                 "hostname": "MacStudio",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "agents": [
                   {
                     "agent": "AGENT_CODEX",

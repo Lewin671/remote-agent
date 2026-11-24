@@ -259,6 +259,48 @@ public  final class TerminalHistoryPage extends
 
   }
 
+  public static final int ERROR_CODE_FIELD_NUMBER = 5;
+  private int errorCode_;
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @return The enum numeric value on the wire for errorCode.
+   */
+  @java.lang.Override
+  public int getErrorCodeValue() {
+    return errorCode_;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @return The errorCode.
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode getErrorCode() {
+    io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode result = io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode.forNumber(errorCode_);
+    return result == null ? io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode.UNRECOGNIZED : result;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @param value The enum numeric value on the wire for errorCode to set.
+   */
+  private void setErrorCodeValue(int value) {
+      errorCode_ = value;
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @param value The errorCode to set.
+   */
+  private void setErrorCode(io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode value) {
+    errorCode_ = value.getNumber();
+
+  }
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   */
+  private void clearErrorCode() {
+
+    errorCode_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.TerminalHistoryPage parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -595,6 +637,52 @@ public  final class TerminalHistoryPage extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+     * @return The enum numeric value on the wire for errorCode.
+     */
+    @java.lang.Override
+    public int getErrorCodeValue() {
+      return instance.getErrorCodeValue();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+     * @param value The errorCode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setErrorCodeValue(int value) {
+      copyOnWrite();
+      instance.setErrorCodeValue(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+     * @return The errorCode.
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode getErrorCode() {
+      return instance.getErrorCode();
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+     * @param value The enum numeric value on the wire for errorCode to set.
+     * @return This builder for chaining.
+     */
+    public Builder setErrorCode(io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode value) {
+      copyOnWrite();
+      instance.setErrorCode(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearErrorCode() {
+      copyOnWrite();
+      instance.clearErrorCode();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.TerminalHistoryPage)
   }
   @java.lang.Override
@@ -615,10 +703,11 @@ public  final class TerminalHistoryPage extends
             "lines_",
             "nextCursor_",
             "error_",
+            "errorCode_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0001\u0000\u0001\u0208\u0002\u021a" +
-              "\u0003\u0208\u0004\u0208";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0001\u0000\u0001\u0208\u0002\u021a" +
+              "\u0003\u0208\u0004\u0208\u0005\f";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

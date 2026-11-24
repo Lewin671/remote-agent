@@ -95,7 +95,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacStudio",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "daemonVersion": "0.94.0",
                 "capabilities": {
                   "machineStatus": true
@@ -216,7 +216,7 @@
         "transportConfig": {
           "supported": true,
           "account": "00000000000000000000000000000001",
-          "protocolVersion": 17
+          "protocolVersion": 18
         }
       },
       "views": [

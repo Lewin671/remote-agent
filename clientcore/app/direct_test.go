@@ -24,7 +24,7 @@ func TestAppDirectDiagnosticsViewAndPreferences(t *testing.T) {
 			TransportConfig: &corev1.TransportConfigEvent{
 				Supported:       true,
 				Account:         acct,
-				ProtocolVersion: 17,
+				ProtocolVersion: 18,
 				PlatformAgent:   "TestBrowser/1.0",
 			},
 		},

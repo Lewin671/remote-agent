@@ -96,7 +96,7 @@ func newSFHarness(t *testing.T, chunkBytes int32, files ...*v1.SharedFile) *sfHa
 						Meta: &v1.MachineMeta{
 							Hostname:        "Studio",
 							Home:            "/Users/me",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								SharedFiles:          true,
 								SharedFileChunkBytes: chunkBytes,
@@ -342,7 +342,7 @@ func (h *sfHarness) setMachineOnline(online bool) *corev1.EffectBatch {
 						Meta: &v1.MachineMeta{
 							Hostname:        "Studio",
 							Home:            "/Users/me",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities: &v1.MachineCapabilities{
 								SharedFiles:          true,
 								SharedFileChunkBytes: h.chunkBytes,

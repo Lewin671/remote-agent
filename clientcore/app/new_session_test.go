@@ -158,7 +158,7 @@ func seedOneMachine(c *Core) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "Workstation",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Agents: []*v1.AgentInfo{
 								{Agent: v1.Agent_AGENT_CODEX, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},
 								{Agent: v1.Agent_AGENT_CLAUDE, DefaultMode: v1.ApprovalMode_APPROVAL_MODE_ASK},

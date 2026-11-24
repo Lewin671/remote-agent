@@ -82,7 +82,7 @@ func TestMachineStatusWatchStartsPollOnceMachineBecomesOnline(t *testing.T) {
 						Online:    true,
 						Meta: &v1.MachineMeta{
 							Hostname:        "MacBook",
-							ProtocolVersion: 17,
+							ProtocolVersion: 18,
 							Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
 						},
 					},
@@ -152,7 +152,7 @@ func TestMachineStatusWatchBeforeConnectedStartsPollOnStreamReady(t *testing.T) 
 							Online:    true,
 							Meta: &v1.MachineMeta{
 								Hostname:        "MacBook",
-								ProtocolVersion: 17,
+								ProtocolVersion: 18,
 								Capabilities:    &v1.MachineCapabilities{MachineStatus: true},
 							},
 						},

@@ -104,7 +104,7 @@
               "online": true,
               "meta": {
                 "hostname": "Workstation",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "scheduleRevision": "1",
                 "capabilities": {
                   "scheduledTasks": true

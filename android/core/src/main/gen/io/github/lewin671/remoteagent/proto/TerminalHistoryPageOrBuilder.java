@@ -70,4 +70,15 @@ public interface TerminalHistoryPageOrBuilder extends
    */
   com.google.protobuf.ByteString
       getErrorBytes();
+
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @return The enum numeric value on the wire for errorCode.
+   */
+  int getErrorCodeValue();
+  /**
+   * <code>.remoteagent.v1.TerminalHistoryErrorCode error_code = 5 [json_name = "errorCode"];</code>
+   * @return The errorCode.
+   */
+  io.github.lewin671.remoteagent.proto.TerminalHistoryErrorCode getErrorCode();
 }

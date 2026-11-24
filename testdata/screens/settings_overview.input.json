@@ -84,7 +84,7 @@
               "lastSeenMs": "1791078060000",
               "meta": {
                 "hostname": "BuildBox",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "capabilities": {
                   "machineStatus": true
                 },
@@ -215,7 +215,7 @@
         "nowMs": "1791078060080",
         "clientUpdateState": {
           "currentVersion": "0.32.0",
-          "protocolVersion": 17,
+          "protocolVersion": 18,
           "channel": "stable",
           "releases": [
             {

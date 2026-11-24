@@ -115,9 +115,13 @@ func TestMachineFailuresTimeoutsExpiredAndDisconnect(t *testing.T) {
 	var m Machine
 	nextID := seqIDs()
 
-	// Opening error (even containing "expired") stays OPENING_FAILED (never EXPIRED).
+	// Opening error (even with EXPIRED code) stays OPENING_FAILED (never EXPIRED).
 	m.Open(nextID) // req-1
-	tr := m.ReceivePage(&v1.TerminalHistoryPage{RequestId: "req-1", Error: "history expired; reopen history"})
+	tr := m.ReceivePage(&v1.TerminalHistoryPage{
+		RequestId: "req-1",
+		Error:     "history expired; reopen history",
+		ErrorCode: v1.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED,
+	})
 	if !tr.Changed || !tr.CancelTimer {
 		t.Fatalf("unexpected transition: %#v", tr)
 	}
@@ -159,7 +163,25 @@ func TestMachineFailuresTimeoutsExpiredAndDisconnect(t *testing.T) {
 	if !tr.Changed || tr.Cursor != "cap:50" || tr.RequestID != "req-5" {
 		t.Fatalf("expected retry to reuse cursor cap:50, got %#v", tr)
 	}
-	tr = m.ReceivePage(&v1.TerminalHistoryPage{RequestId: "req-5", Error: "History EXPIRED; reopen"})
+	// Error text mentioning "expired" without EXPIRED error_code stays retryable FAILED (no string matching).
+	tr = m.ReceivePage(&v1.TerminalHistoryPage{
+		RequestId: "req-5",
+		Error:     "History EXPIRED; reopen",
+		ErrorCode: v1.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_FAILED,
+	})
+	if !tr.Changed || m.Status() != corev1.TerminalHistoryStatus_TERMINAL_HISTORY_STATUS_FAILED || !m.CanRetry() {
+		t.Fatalf("expected FAILED when error_code != EXPIRED, got status=%v canRetry=%v", m.Status(), m.CanRetry())
+	}
+
+	// Structured EXPIRED error_code (even with empty error message) transitions to non-retryable EXPIRED.
+	tr = m.Retry(nextID) // req-6
+	if !tr.Changed || tr.Cursor != "cap:50" || tr.RequestID != "req-6" {
+		t.Fatalf("expected retry to reuse cursor cap:50, got %#v", tr)
+	}
+	tr = m.ReceivePage(&v1.TerminalHistoryPage{
+		RequestId: "req-6",
+		ErrorCode: v1.TerminalHistoryErrorCode_TERMINAL_HISTORY_ERROR_CODE_EXPIRED,
+	})
 	if !tr.Changed || m.Status() != corev1.TerminalHistoryStatus_TERMINAL_HISTORY_STATUS_EXPIRED || m.CanRetry() || m.CanLoadEarlier() {
 		t.Fatalf("expected EXPIRED non-retryable, got status=%v canRetry=%v", m.Status(), m.CanRetry())
 	}

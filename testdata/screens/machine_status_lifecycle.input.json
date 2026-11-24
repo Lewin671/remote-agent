@@ -95,7 +95,7 @@
               "online": true,
               "meta": {
                 "hostname": "MacStudio",
-                "protocolVersion": 17,
+                "protocolVersion": 18,
                 "capabilities": {
                   "machineStatus": true
                 },
