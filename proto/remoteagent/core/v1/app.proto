@@ -14,6 +14,7 @@ import "remoteagent/core/v1/shared_files.proto";
 import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/sync_view.proto";
+import "remoteagent/core/v1/terminal_history.proto";
 import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
 import "remoteagent/v1/envelope.proto";
@@ -169,6 +170,7 @@ enum TimerKind {
   TIMER_KIND_ATTACHMENT_UPLOAD_POLL = 17;
   TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT = 18;
   TIMER_KIND_DRAFT_EXPIRY = 19;
+  TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;
 }
 
 message TimerFiredEvent {
@@ -704,6 +706,7 @@ message Event {
     DirectBulkTransferDoneEvent direct_bulk_transfer_done = 419;
     TerminalStreamEvent terminal_stream = 420;
     DirectPreferencesLoadedEvent direct_preferences_loaded = 421;
+    TerminalHistoryEvent terminal_history = 422;
 
     // Security engine (450-499 reserved for security).
     SecurityConfigEvent security_config = 450;
@@ -1002,6 +1005,8 @@ message Effect {
     DirectBulkRouteEffect direct_bulk_route = 111;
     TerminalReopenEffect terminal_reopen = 112;
     DirectRetryNowResultEffect direct_retry_now_result = 113;
+    TerminalHistorySendRequestEffect terminal_history_send_request = 114;
+    TerminalHistoryUpdatedEffect terminal_history_updated = 115;
 
     // Security engine (130-159 reserved for security).
     SecurityKeySignEffect security_key_sign = 130;

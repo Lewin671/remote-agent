@@ -4,6 +4,7 @@ import (
 	"path"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/termhistory"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/screens"
@@ -64,6 +65,7 @@ type Model struct {
 	sessions              *sessionStore
 	sharedFiles           *sfManager
 	attachments           *attManager
+	termHistories         map[string]*termhistory.Machine
 	schedActive           bool
 	schedDirty            scheduleDirty
 	nextScheduleCacheOpID uint64

@@ -40,6 +40,9 @@ managed:
     - file_option: swift_prefix
       path: remoteagent/core/v1/transport.proto
       value: PBCore
+    - file_option: swift_prefix
+      path: remoteagent/core/v1/terminal_history.proto
+      value: PBCore
 plugins:
   - remote: buf.build/apple/swift:v1.31.0
     out: RemoteAgentCore/Sources/RAProto

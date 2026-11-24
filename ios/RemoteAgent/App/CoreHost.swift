@@ -2267,6 +2267,11 @@ actor CoreHost: SyncEngine {
                 // AttachmentConfig, so Core does not emit these effects here.
                 break
 
+            case .terminalHistorySendRequest, .terminalHistoryUpdated:
+                // iOS still uses its legacy terminal history path and does not dispatch
+                // TerminalHistoryEvent yet, so Core does not emit these effects here.
+                break
+
             case nil:
                 break
             }

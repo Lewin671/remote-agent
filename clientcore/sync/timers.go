@@ -107,7 +107,8 @@ func isAppTimerKind(k corev1.TimerKind) bool {
 		k == corev1.TimerKind_TIMER_KIND_SHARED_FILE_RECONNECT ||
 		k == corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL ||
 		k == corev1.TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT ||
-		k == corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY
+		k == corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY ||
+		k == corev1.TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT
 }
 
 func (e *Engine) handleTimerFired(ctx *StepContext, ev *corev1.TimerFiredEvent) {

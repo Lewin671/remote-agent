@@ -1477,6 +1477,8 @@ func (c *Core) handleSessionTimerFired(ctx *sync.StepContext, store *sessionStor
 		return c.handleUploadReconnectTimer(ctx, ev.Key)
 	case corev1.TimerKind_TIMER_KIND_DRAFT_EXPIRY:
 		return c.handleDraftExpiryTimer(ctx, ev.Key)
+	case corev1.TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT:
+		return c.handleTerminalHistoryTimeout(ctx, ev.Key)
 	}
 	sid := ev.Key
 	ui := store.ensureUI(sid)

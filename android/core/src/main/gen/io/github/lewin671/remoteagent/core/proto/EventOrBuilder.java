@@ -2046,6 +2046,17 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent getDirectPreferencesLoaded();
 
   /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   * @return Whether the terminalHistory field is set.
+   */
+  boolean hasTerminalHistory();
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   * @return The terminalHistory.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent getTerminalHistory();
+
+  /**
    * <pre>
    * Security engine (450-499 reserved for security).
    * </pre>

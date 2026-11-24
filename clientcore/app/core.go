@@ -933,6 +933,9 @@ func (c *Core) dispatchUI(ctx *sync.StepContext, ev *corev1.Event) []*corev1.Eff
 			d.ActiveStartRequestID = ""
 		}
 		ctx.Dirty.Add(false, false, true)
+
+	case *corev1.Event_TerminalHistory:
+		effects = append(effects, c.handleTerminalHistoryEvent(ctx, k.TerminalHistory)...)
 	default:
 		effects = append(effects, c.dispatchSettingsUI(ctx, ev)...)
 		effects = append(effects, c.dispatchSessionUI(ctx, ev)...)

@@ -671,6 +671,28 @@ public interface EffectOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect getDirectRetryNowResult();
 
   /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   * @return Whether the terminalHistorySendRequest field is set.
+   */
+  boolean hasTerminalHistorySendRequest();
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   * @return The terminalHistorySendRequest.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect getTerminalHistorySendRequest();
+
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   * @return Whether the terminalHistoryUpdated field is set.
+   */
+  boolean hasTerminalHistoryUpdated();
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   * @return The terminalHistoryUpdated.
+   */
+  io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect getTerminalHistoryUpdated();
+
+  /**
    * <pre>
    * Security engine (130-159 reserved for security).
    * </pre>

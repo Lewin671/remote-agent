@@ -79,6 +79,8 @@ public  final class Effect extends
     DIRECT_BULK_ROUTE(111),
     TERMINAL_REOPEN(112),
     DIRECT_RETRY_NOW_RESULT(113),
+    TERMINAL_HISTORY_SEND_REQUEST(114),
+    TERMINAL_HISTORY_UPDATED(115),
     SECURITY_KEY_SIGN(130),
     SECURITY_KEY_AGREE(131),
     SECURITY_CRYPTO_BATCH(135),
@@ -167,6 +169,8 @@ public  final class Effect extends
         case 111: return DIRECT_BULK_ROUTE;
         case 112: return TERMINAL_REOPEN;
         case 113: return DIRECT_RETRY_NOW_RESULT;
+        case 114: return TERMINAL_HISTORY_SEND_REQUEST;
+        case 115: return TERMINAL_HISTORY_UPDATED;
         case 130: return SECURITY_KEY_SIGN;
         case 131: return SECURITY_KEY_AGREE;
         case 135: return SECURITY_CRYPTO_BATCH;
@@ -3316,6 +3320,110 @@ public  final class Effect extends
    */
   private void clearDirectRetryNowResult() {
     if (effectCase_ == 113) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_HISTORY_SEND_REQUEST_FIELD_NUMBER = 114;
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalHistorySendRequest() {
+    return effectCase_ == 114;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect getTerminalHistorySendRequest() {
+    if (effectCase_ == 114) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalHistorySendRequest(io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 114;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalHistorySendRequest(io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 114 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 114;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+   */
+  private void clearTerminalHistorySendRequest() {
+    if (effectCase_ == 114) {
+      effectCase_ = 0;
+      effect_ = null;
+    }
+  }
+
+  public static final int TERMINAL_HISTORY_UPDATED_FIELD_NUMBER = 115;
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalHistoryUpdated() {
+    return effectCase_ == 115;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect getTerminalHistoryUpdated() {
+    if (effectCase_ == 115) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect) effect_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalHistoryUpdated(io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    effect_ = value;
+    effectCase_ = 115;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalHistoryUpdated(io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect value) {
+    value.getClass();  // minimal bytecode null check
+    if (effectCase_ == 115 &&
+        effect_ != io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.getDefaultInstance()) {
+      effect_ = io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect) effect_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      effect_ = value;
+    }
+    effectCase_ = 115;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+   */
+  private void clearTerminalHistoryUpdated() {
+    if (effectCase_ == 115) {
       effectCase_ = 0;
       effect_ = null;
     }
@@ -7007,6 +7115,102 @@ public  final class Effect extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalHistorySendRequest() {
+      return instance.hasTerminalHistorySendRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect getTerminalHistorySendRequest() {
+      return instance.getTerminalHistorySendRequest();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    public Builder setTerminalHistorySendRequest(io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect value) {
+      copyOnWrite();
+      instance.setTerminalHistorySendRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    public Builder setTerminalHistorySendRequest(
+        io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalHistorySendRequest(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    public Builder mergeTerminalHistorySendRequest(io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalHistorySendRequest(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistorySendRequestEffect terminal_history_send_request = 114 [json_name = "terminalHistorySendRequest"];</code>
+     */
+    public Builder clearTerminalHistorySendRequest() {
+      copyOnWrite();
+      instance.clearTerminalHistorySendRequest();
+      return this;
+    }
+
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalHistoryUpdated() {
+      return instance.hasTerminalHistoryUpdated();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect getTerminalHistoryUpdated() {
+      return instance.getTerminalHistoryUpdated();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    public Builder setTerminalHistoryUpdated(io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect value) {
+      copyOnWrite();
+      instance.setTerminalHistoryUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    public Builder setTerminalHistoryUpdated(
+        io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalHistoryUpdated(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    public Builder mergeTerminalHistoryUpdated(io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect value) {
+      copyOnWrite();
+      instance.mergeTerminalHistoryUpdated(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryUpdatedEffect terminal_history_updated = 115 [json_name = "terminalHistoryUpdated"];</code>
+     */
+    public Builder clearTerminalHistoryUpdated() {
+      copyOnWrite();
+      instance.clearTerminalHistoryUpdated();
+      return this;
+    }
+
+    /**
      * <pre>
      * Security engine (130-159 reserved for security).
      * </pre>
@@ -7732,6 +7936,8 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.DirectBulkRouteEffect.class,
             io.github.lewin671.remoteagent.core.proto.TerminalReopenEffect.class,
             io.github.lewin671.remoteagent.core.proto.DirectRetryNowResultEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalHistorySendRequestEffect.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalHistoryUpdatedEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreeEffect.class,
             io.github.lewin671.remoteagent.core.proto.SecurityCryptoBatchEffect.class,
@@ -7747,16 +7953,16 @@ public  final class Effect extends
             io.github.lewin671.remoteagent.core.proto.SecurityTokenUpdatedEffect.class,
           };
           java.lang.String info =
-              "\u0000I\u0001\u0000\u0001\u0091I\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
+              "\u0000K\u0001\u0000\u0001\u0091K\u0000\u0000\u0000\u0001<\u0000\u0002<\u0000\u0003" +
               "<\u0000\u0004<\u0000\u0005<\u0000\u0007<\u0000\b<\u0000\t<\u0000\n<\u0000\u000b<" +
               "\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011<\u0000(<\u0000" +
               ")<\u0000*<\u0000+<\u0000,<\u0000-<\u0000.<\u0000/<\u00000<\u00001<\u00002<\u0000" +
               "<<\u0000=<\u0000><\u0000?<\u0000@<\u0000A<\u0000F<\u0000G<\u0000H<\u0000I<\u0000" +
               "J<\u0000K<\u0000L<\u0000P<\u0000Q<\u0000R<\u0000S<\u0000T<\u0000U<\u0000V<\u0000" +
               "W<\u0000X<\u0000f<\u0000g<\u0000h<\u0000i<\u0000j<\u0000k<\u0000l<\u0000m<\u0000" +
-              "o<\u0000p<\u0000q<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088<\u0000\u0089" +
-              "<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000\u008f<\u0000" +
-              "\u0090<\u0000\u0091<\u0000";
+              "o<\u0000p<\u0000q<\u0000r<\u0000s<\u0000\u0082<\u0000\u0083<\u0000\u0087<\u0000\u0088" +
+              "<\u0000\u0089<\u0000\u008a<\u0000\u008b<\u0000\u008c<\u0000\u008d<\u0000\u008e<\u0000" +
+              "\u008f<\u0000\u0090<\u0000\u0091<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

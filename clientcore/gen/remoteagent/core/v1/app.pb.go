@@ -44,6 +44,7 @@ const (
 	TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_POLL      TimerKind = 17
 	TimerKind_TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT TimerKind = 18
 	TimerKind_TIMER_KIND_DRAFT_EXPIRY                TimerKind = 19
+	TimerKind_TIMER_KIND_TERMINAL_HISTORY_TIMEOUT    TimerKind = 20
 )
 
 type OutcomeSource int32
@@ -5333,6 +5334,13 @@ type Event_DirectPreferencesLoaded struct {
 
 func (*Event_DirectPreferencesLoaded) isEvent_Event() {}
 
+type Event_TerminalHistory struct {
+	_               [0]func()
+	TerminalHistory *TerminalHistoryEvent
+}
+
+func (*Event_TerminalHistory) isEvent_Event() {}
+
 type Event_SecurityConfig struct {
 	_              [0]func()
 	SecurityConfig *SecurityConfigEvent
@@ -6540,6 +6548,12 @@ func (m *Event) GetDirectPreferencesLoaded() *DirectPreferencesLoadedEvent {
 	}
 	return nil
 }
+func (m *Event) GetTerminalHistory() *TerminalHistoryEvent {
+	if x, ok := m.GetEvent().(*Event_TerminalHistory); ok && x != nil {
+		return x.TerminalHistory
+	}
+	return nil
+}
 func (m *Event) GetSecurityConfig() *SecurityConfigEvent {
 	if x, ok := m.GetEvent().(*Event_SecurityConfig); ok && x != nil {
 		return x.SecurityConfig
@@ -6690,7 +6704,7 @@ func extraUnmarshal_Event(base unsafe.Pointer, num litewire.Number, wtyp litewir
 		return m.extraUnmarshalPart13(num, wtyp, bp)
 	case num <= 416:
 		return m.extraUnmarshalPart14(num, wtyp, bp)
-	case num <= 459:
+	case num <= 458:
 		return m.extraUnmarshalPart15(num, wtyp, bp)
 	case num <= 465:
 		return m.extraUnmarshalPart16(num, wtyp, bp)
@@ -8269,6 +8283,13 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.DirectPreferencesLoaded
+		case 422:
+			w, _ := m.Event.(*Event_TerminalHistory)
+			if w == nil || w.TerminalHistory == nil {
+				w = &Event_TerminalHistory{TerminalHistory: &TerminalHistoryEvent{}}
+				m.Event = w
+			}
+			sub = w.TerminalHistory
 		case 450:
 			w, _ := m.Event.(*Event_SecurityConfig)
 			if w == nil || w.SecurityConfig == nil {
@@ -8311,13 +8332,6 @@ func (m *Event) extraUnmarshalPart15(num litewire.Number, wtyp litewire.Type, bp
 				m.Event = w
 			}
 			sub = w.SeedDemoWorld
-		case 459:
-			w, _ := m.Event.(*Event_SecurityKeyGenerated)
-			if w == nil || w.SecurityKeyGenerated == nil {
-				w = &Event_SecurityKeyGenerated{SecurityKeyGenerated: &SecurityKeyGeneratedEvent{}}
-				m.Event = w
-			}
-			sub = w.SecurityKeyGenerated
 		}
 		if sub != nil {
 			if err := litewire.ReadMessage(&b, sub); err != nil {
@@ -8336,6 +8350,13 @@ func (m *Event) extraUnmarshalPart16(num litewire.Number, wtyp litewire.Type, bp
 	var sub litewire.Unmarshaler
 	if wtyp == litewire.BytesType {
 		switch num {
+		case 459:
+			w, _ := m.Event.(*Event_SecurityKeyGenerated)
+			if w == nil || w.SecurityKeyGenerated == nil {
+				w = &Event_SecurityKeyGenerated{SecurityKeyGenerated: &SecurityKeyGeneratedEvent{}}
+				m.Event = w
+			}
+			sub = w.SecurityKeyGenerated
 		case 460:
 			w, _ := m.Event.(*Event_SecurityKeyEncapsulated)
 			if w == nil || w.SecurityKeyEncapsulated == nil {
@@ -10222,6 +10243,20 @@ type Effect_DirectRetryNowResult struct {
 
 func (*Effect_DirectRetryNowResult) isEffect_Effect() {}
 
+type Effect_TerminalHistorySendRequest struct {
+	_                          [0]func()
+	TerminalHistorySendRequest *TerminalHistorySendRequestEffect
+}
+
+func (*Effect_TerminalHistorySendRequest) isEffect_Effect() {}
+
+type Effect_TerminalHistoryUpdated struct {
+	_                      [0]func()
+	TerminalHistoryUpdated *TerminalHistoryUpdatedEffect
+}
+
+func (*Effect_TerminalHistoryUpdated) isEffect_Effect() {}
+
 type Effect_SecurityKeySign struct {
 	_               [0]func()
 	SecurityKeySign *SecurityKeySignEffect
@@ -10679,6 +10714,18 @@ func (m *Effect) GetDirectRetryNowResult() *DirectRetryNowResultEffect {
 	}
 	return nil
 }
+func (m *Effect) GetTerminalHistorySendRequest() *TerminalHistorySendRequestEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalHistorySendRequest); ok && x != nil {
+		return x.TerminalHistorySendRequest
+	}
+	return nil
+}
+func (m *Effect) GetTerminalHistoryUpdated() *TerminalHistoryUpdatedEffect {
+	if x, ok := m.GetEffect().(*Effect_TerminalHistoryUpdated); ok && x != nil {
+		return x.TerminalHistoryUpdated
+	}
+	return nil
+}
 func (m *Effect) GetSecurityKeySign() *SecurityKeySignEffect {
 	if x, ok := m.GetEffect().(*Effect_SecurityKeySign); ok && x != nil {
 		return x.SecurityKeySign
@@ -11114,6 +11161,14 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 	var onum litewire.Number
 	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
+	case *Effect_TerminalHistorySendRequest:
+		if x != nil && x.TerminalHistorySendRequest != nil {
+			onum, omsg = 114, x.TerminalHistorySendRequest
+		}
+	case *Effect_TerminalHistoryUpdated:
+		if x != nil && x.TerminalHistoryUpdated != nil {
+			onum, omsg = 115, x.TerminalHistoryUpdated
+		}
 	case *Effect_SecurityKeySign:
 		if x != nil && x.SecurityKeySign != nil {
 			onum, omsg = 130, x.SecurityKeySign
@@ -11154,14 +11209,6 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 		if x != nil && x.SecurityWorkflowResult != nil {
 			onum, omsg = 142, x.SecurityWorkflowResult
 		}
-	case *Effect_SecurityStatusChanged:
-		if x != nil && x.SecurityStatusChanged != nil {
-			onum, omsg = 143, x.SecurityStatusChanged
-		}
-	case *Effect_SecurityNotifyOpened:
-		if x != nil && x.SecurityNotifyOpened != nil {
-			onum, omsg = 144, x.SecurityNotifyOpened
-		}
 	default:
 		return b, false
 	}
@@ -11173,16 +11220,26 @@ func (m *Effect) appendMarshalEffectPart5(b []byte) ([]byte, bool) {
 
 //go:noinline
 func (m *Effect) appendMarshalEffectPart6(b []byte) ([]byte, bool) {
+	var onum litewire.Number
+	var omsg litewire.Marshaler
 	switch x := m.Effect.(type) {
-	case *Effect_SecurityTokenUpdated:
-		if x != nil {
-			if x.SecurityTokenUpdated != nil {
-				b = litewire.AppendMessage(b, 145, x.SecurityTokenUpdated)
-			}
+	case *Effect_SecurityStatusChanged:
+		if x != nil && x.SecurityStatusChanged != nil {
+			onum, omsg = 143, x.SecurityStatusChanged
 		}
-		return b, true
+	case *Effect_SecurityNotifyOpened:
+		if x != nil && x.SecurityNotifyOpened != nil {
+			onum, omsg = 144, x.SecurityNotifyOpened
+		}
+	case *Effect_SecurityTokenUpdated:
+		if x != nil && x.SecurityTokenUpdated != nil {
+			onum, omsg = 145, x.SecurityTokenUpdated
+		}
 	default:
 		return b, false
+	}
+	if omsg != nil {
+		b = litewire.AppendMessage(b, onum, omsg)
 	}
 	return b, true
 }

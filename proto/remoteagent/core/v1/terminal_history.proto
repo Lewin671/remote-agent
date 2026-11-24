@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package remoteagent.core.v1;
+
+import "remoteagent/core/v1/text.proto";
+import "remoteagent/v1/remote.proto";
+
+enum TerminalHistoryEventKind {
+  TERMINAL_HISTORY_EVENT_KIND_UNSPECIFIED = 0;
+  // Start a fresh capture (when idle or opening_failed).
+  TERMINAL_HISTORY_EVENT_KIND_OPEN = 1;
+  // Load the next older page from the active cursor (when open and idle).
+  TERMINAL_HISTORY_EVENT_KIND_LOAD_EARLIER = 2;
+  // Retry after a failure (opening_failed -> fresh capture; open+failed -> reuse cursor).
+  TERMINAL_HISTORY_EVENT_KIND_RETRY = 3;
+  // Leave reading and discard state.
+  TERMINAL_HISTORY_EVENT_KIND_CLOSE = 4;
+  // Terminal stream disconnected: keep loaded pages if open, otherwise reset to idle.
+  TERMINAL_HISTORY_EVENT_KIND_DISCONNECTED = 5;
+  // A TerminalHistoryPage frame arrived from the daemon.
+  TERMINAL_HISTORY_EVENT_KIND_PAGE_RECEIVED = 6;
+  // Terminal component disposed: cancel timer and remove state entry.
+  TERMINAL_HISTORY_EVENT_KIND_DISPOSED = 7;
+}
+
+message TerminalHistoryEvent {
+  string terminal_id = 1;
+  TerminalHistoryEventKind kind = 2;
+  // Populated only when kind == PAGE_RECEIVED.
+  remoteagent.v1.TerminalHistoryPage page = 3;
+}
+
+enum TerminalHistoryPhase {
+  TERMINAL_HISTORY_PHASE_IDLE = 0;
+  TERMINAL_HISTORY_PHASE_OPENING = 1;
+  TERMINAL_HISTORY_PHASE_OPENING_FAILED = 2;
+  TERMINAL_HISTORY_PHASE_OPEN = 3;
+}
+
+enum TerminalHistoryStatus {
+  TERMINAL_HISTORY_STATUS_NONE = 0;
+  TERMINAL_HISTORY_STATUS_OPENING = 1;
+  TERMINAL_HISTORY_STATUS_OPENING_FAILED = 2;
+  TERMINAL_HISTORY_STATUS_LOADING_EARLIER = 3;
+  TERMINAL_HISTORY_STATUS_FAILED = 4;
+  TERMINAL_HISTORY_STATUS_EXPIRED = 5;
+  TERMINAL_HISTORY_STATUS_DISCONNECTED = 6;
+  TERMINAL_HISTORY_STATUS_START = 7;
+}
+
+enum TerminalSgrColorKind {
+  TERMINAL_SGR_COLOR_KIND_DEFAULT = 0;
+  TERMINAL_SGR_COLOR_KIND_PALETTE = 1;
+  TERMINAL_SGR_COLOR_KIND_RGB = 2;
+}
+
+message TerminalHistoryRun {
+  string text = 1;
+  TerminalSgrColorKind fg_kind = 2;
+  // Palette index (0-255) when fg_kind == PALETTE, or packed 0xRRGGBB when fg_kind == RGB.
+  uint32 fg_value = 3;
+  TerminalSgrColorKind bg_kind = 4;
+  // Palette index (0-255) when bg_kind == PALETTE, or packed 0xRRGGBB when bg_kind == RGB.
+  uint32 bg_value = 5;
+  bool bold = 6;
+  bool dim = 7;
+  bool italic = 8;
+  bool underline = 9;
+  bool inverse = 10;
+}
+
+message TerminalHistoryLine {
+  repeated TerminalHistoryRun runs = 1;
+  int32 cells = 2;
+}
+
+message TerminalHistoryParsedPage {
+  string id = 1;
+  repeated TerminalHistoryLine lines = 2;
+  int32 max_cells = 3;
+}
+
+// Emitted by Core when the shell should send a TerminalHistoryRequest frame on the terminal stream.
+message TerminalHistorySendRequestEffect {
+  string terminal_id = 1;
+  string request_id = 2;
+  string cursor = 3;
+}
+
+// Emitted by Core whenever a terminal's history state transitions.
+// When a new non-empty page is accepted, added_page carries its pre-parsed SGR lines once.
+message TerminalHistoryUpdatedEffect {
+  string terminal_id = 1;
+  TerminalHistoryPhase phase = 2;
+  TerminalHistoryStatus status = 3;
+  Text status_text = 4;
+  bool can_retry = 5;
+  bool can_load_earlier = 6;
+  bool has_more = 7;
+  bool pending = 8;
+  int32 max_cells = 9;
+  // True when the visit reset/closed or a fresh capture began; shell clears its page list.
+  bool reset_pages = 10;
+  // Present only on the single transition where a newly arrived non-empty page was parsed.
+  TerminalHistoryParsedPage added_page = 11;
+}

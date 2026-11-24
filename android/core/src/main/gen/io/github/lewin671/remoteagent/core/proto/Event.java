@@ -206,6 +206,7 @@ public  final class Event extends
     DIRECT_BULK_TRANSFER_DONE(419),
     TERMINAL_STREAM(420),
     DIRECT_PREFERENCES_LOADED(421),
+    TERMINAL_HISTORY(422),
     SECURITY_CONFIG(450),
     SECURITY_KEY_SIGNED(452),
     SECURITY_KEY_AGREED(453),
@@ -419,6 +420,7 @@ public  final class Event extends
         case 419: return DIRECT_BULK_TRANSFER_DONE;
         case 420: return TERMINAL_STREAM;
         case 421: return DIRECT_PREFERENCES_LOADED;
+        case 422: return TERMINAL_HISTORY;
         case 450: return SECURITY_CONFIG;
         case 452: return SECURITY_KEY_SIGNED;
         case 453: return SECURITY_KEY_AGREED;
@@ -10068,6 +10070,58 @@ public  final class Event extends
    */
   private void clearDirectPreferencesLoaded() {
     if (eventCase_ == 421) {
+      eventCase_ = 0;
+      event_ = null;
+    }
+  }
+
+  public static final int TERMINAL_HISTORY_FIELD_NUMBER = 422;
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   */
+  @java.lang.Override
+  public boolean hasTerminalHistory() {
+    return eventCase_ == 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent getTerminalHistory() {
+    if (eventCase_ == 422) {
+       return (io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent) event_;
+    }
+    return io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setTerminalHistory(io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    event_ = value;
+    eventCase_ = 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeTerminalHistory(io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent value) {
+    value.getClass();  // minimal bytecode null check
+    if (eventCase_ == 422 &&
+        event_ != io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.getDefaultInstance()) {
+      event_ = io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.newBuilder((io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent) event_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      event_ = value;
+    }
+    eventCase_ = 422;
+  }
+  /**
+   * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+   */
+  private void clearTerminalHistory() {
+    if (eventCase_ == 422) {
       eventCase_ = 0;
       event_ = null;
     }
@@ -19977,6 +20031,54 @@ public  final class Event extends
     }
 
     /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    @java.lang.Override
+    public boolean hasTerminalHistory() {
+      return instance.hasTerminalHistory();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent getTerminalHistory() {
+      return instance.getTerminalHistory();
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    public Builder setTerminalHistory(io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent value) {
+      copyOnWrite();
+      instance.setTerminalHistory(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    public Builder setTerminalHistory(
+        io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.Builder builderForValue) {
+      copyOnWrite();
+      instance.setTerminalHistory(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    public Builder mergeTerminalHistory(io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent value) {
+      copyOnWrite();
+      instance.mergeTerminalHistory(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.core.v1.TerminalHistoryEvent terminal_history = 422 [json_name = "terminalHistory"];</code>
+     */
+    public Builder clearTerminalHistory() {
+      copyOnWrite();
+      instance.clearTerminalHistory();
+      return this;
+    }
+
+    /**
      * <pre>
      * Security engine (450-499 reserved for security).
      * </pre>
@@ -21048,6 +21150,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.DirectBulkTransferDoneEvent.class,
             io.github.lewin671.remoteagent.core.proto.TerminalStreamEvent.class,
             io.github.lewin671.remoteagent.core.proto.DirectPreferencesLoadedEvent.class,
+            io.github.lewin671.remoteagent.core.proto.TerminalHistoryEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityConfigEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeySignedEvent.class,
             io.github.lewin671.remoteagent.core.proto.SecurityKeyAgreedEvent.class,
@@ -21063,7 +21166,7 @@ public  final class Event extends
             io.github.lewin671.remoteagent.core.proto.SecurityOpenNotifyEvent.class,
           };
           java.lang.String info =
-              "\u0000\u00ca\u0001\u0000\u0001\u01d1\u00ca\u0000\u0002\u0000\u0001<\u0000\u0002<" +
+              "\u0000\u00cb\u0001\u0000\u0001\u01d1\u00cb\u0000\u0002\u0000\u0001<\u0000\u0002<" +
               "\u0000\u0003<\u0000\u0004<\u0000\u0005<\u0000\u0006<\u0000\u0007<\u0000\b<\u0000" +
               "\t<\u0000\n<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010" +
               "<\u0000\u0011<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000" +
@@ -21091,9 +21194,9 @@ public  final class Event extends
               "<\u0000\u0180<\u0000\u0181<\u0000\u0190<\u0000\u0192<\u0000\u0193<\u0000\u0196<\u0000" +
               "\u0197<\u0000\u0198<\u0000\u0199<\u0000\u019a<\u0000\u019b<\u0000\u019c<\u0000\u019d" +
               "<\u0000\u019e<\u0000\u019f<\u0000\u01a0<\u0000\u01a1<\u0000\u01a2<\u0000\u01a3<\u0000" +
-              "\u01a4<\u0000\u01a5<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8<\u0000\u01c9" +
-              "<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000\u01cf<\u0000" +
-              "\u01d0<\u0000\u01d1<\u0000";
+              "\u01a4<\u0000\u01a5<\u0000\u01a6<\u0000\u01c2<\u0000\u01c4<\u0000\u01c5<\u0000\u01c8" +
+              "<\u0000\u01c9<\u0000\u01ca<\u0000\u01cb<\u0000\u01cc<\u0000\u01cd<\u0000\u01ce<\u0000" +
+              "\u01cf<\u0000\u01d0<\u0000\u01d1<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

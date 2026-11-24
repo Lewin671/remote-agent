@@ -91,6 +91,10 @@ public enum TimerKind
    * <code>TIMER_KIND_DRAFT_EXPIRY = 19;</code>
    */
   TIMER_KIND_DRAFT_EXPIRY(19),
+  /**
+   * <code>TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;</code>
+   */
+  TIMER_KIND_TERMINAL_HISTORY_TIMEOUT(20),
   UNRECOGNIZED(-1),
   ;
 
@@ -174,6 +178,10 @@ public enum TimerKind
    * <code>TIMER_KIND_DRAFT_EXPIRY = 19;</code>
    */
   public static final int TIMER_KIND_DRAFT_EXPIRY_VALUE = 19;
+  /**
+   * <code>TIMER_KIND_TERMINAL_HISTORY_TIMEOUT = 20;</code>
+   */
+  public static final int TIMER_KIND_TERMINAL_HISTORY_TIMEOUT_VALUE = 20;
 
 
   @java.lang.Override
@@ -217,6 +225,7 @@ public enum TimerKind
       case 17: return TIMER_KIND_ATTACHMENT_UPLOAD_POLL;
       case 18: return TIMER_KIND_ATTACHMENT_UPLOAD_RECONNECT;
       case 19: return TIMER_KIND_DRAFT_EXPIRY;
+      case 20: return TIMER_KIND_TERMINAL_HISTORY_TIMEOUT;
       default: return null;
     }
   }
