@@ -136,6 +136,10 @@ protocol CoreHostExecutor: AnyObject, Sendable {
     func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect)
     func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect)
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async
+    func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect)
+    func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect)
+    func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect)
+    func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect)
     func close() async
 }
 
@@ -164,6 +168,10 @@ extension CoreHostExecutor {
     func handleDirectPcClose(_ eff: PBCoreDirectPcCloseEffect) {}
     func handleDirectPcSendProbe(_ eff: PBCoreDirectPcSendProbeEffect) {}
     func handleDirectDcReadStats(_ eff: PBCoreDirectDcReadStatsEffect) async {}
+    func handleTerminalDirectSend(_ eff: PBCoreTerminalDirectSendEffect) {}
+    func handleTerminalDirectDeliver(_ eff: PBCoreTerminalDirectDeliverEffect) {}
+    func handleTerminalDirectAttachRelay(_ eff: PBCoreTerminalDirectAttachRelayEffect) {}
+    func handleTerminalDirectState(_ eff: PBCoreTerminalDirectStateEffect) {}
     func discardToken(_ rejected: String) async {}
     func setWatchedSessions(_ sessionIds: [String]) async {}
     func renameDevice(_ id: String, name: String) async throws {}
@@ -2177,6 +2185,18 @@ actor CoreHost: SyncEngine {
                 spawnIO { host in
                     await host.executor.handleDirectDcReadStats(eff)
                 }
+
+            case .terminalDirectSend(let eff):
+                executor.handleTerminalDirectSend(eff)
+
+            case .terminalDirectDeliver(let eff):
+                executor.handleTerminalDirectDeliver(eff)
+
+            case .terminalDirectAttachRelay(let eff):
+                executor.handleTerminalDirectAttachRelay(eff)
+
+            case .terminalDirectState(let eff):
+                executor.handleTerminalDirectState(eff)
 
             case .securityKeyGenerate, .securityKeySign, .securityKeyAgree,
                  .securityKeyEncapsulate, .securityKeyDiscard, .securityStorage, .securityRpc:

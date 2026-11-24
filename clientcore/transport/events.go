@@ -134,12 +134,14 @@ type CapabilitySnapshot struct {
 }
 
 // Capabilities: Control 1 opened on the round. DownloadUntil is 0 when
-// downloads are not offered; EventPush when it lists Control 15.
+// downloads are not offered; EventPush when it lists Control 15; Terminal
+// when it lists the Phase 3 terminal continuity controls.
 type Capabilities struct {
 	Round         RoundID
 	Seq           uint64
 	DownloadUntil int64
 	EventPush     bool
+	Terminal      bool
 }
 
 // ---- effects for the session layer ----

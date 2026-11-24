@@ -397,6 +397,48 @@ func (e *Engine) handleTerminalStream(ctx *StepContext, ev *corev1.TerminalStrea
 	}
 }
 
+func (e *Engine) handleTerminalDirectOpen(ctx *StepContext, ev *corev1.TerminalDirectOpenEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectOpen(e.nowMs, ev.StreamId, ev.MachineId, ev.SessionId, ev.RelayLegId))
+}
+
+func (e *Engine) handleTerminalDirectClose(ctx *StepContext, ev *corev1.TerminalDirectCloseEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectClose(e.nowMs, ev.StreamId))
+}
+
+func (e *Engine) handleTerminalDirectLeg(ctx *StepContext, ev *corev1.TerminalDirectLegEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectLeg(e.nowMs, ev.StreamId, ev.LegId, ev.Direct, ev.Open, ev.PcId))
+}
+
+func (e *Engine) handleTerminalDirectInput(ctx *StepContext, ev *corev1.TerminalDirectInputEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectInput(e.nowMs, ev.StreamId, ev.Seq, ev.IsInput, ev.SealedEnvelope, ev.FrameHash))
+}
+
+func (e *Engine) handleTerminalDirectOutput(ctx *StepContext, ev *corev1.TerminalDirectOutputEvent) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectOutput(e.nowMs, ev.StreamId, ev.Seq, ev.FrameHash, ev.Payload, ev.FromDirect, ev.PcId))
+}
+
+func (e *Engine) handleTerminalDirectConfirmRebuild(ctx *StepContext, ev *corev1.TerminalDirectConfirmRebuildAction) {
+	if ev == nil || ev.StreamId == "" {
+		return
+	}
+	e.emitCoordEffects(ctx, e.ensureTransportCoord().TerminalDirectConfirmRebuild(e.nowMs, ev.StreamId))
+}
+
 func (e *Engine) syncDirectWatched(ctx *StepContext) {
 	if e.transportCoord == nil {
 		return
@@ -590,6 +632,51 @@ func (e *Engine) emitCoordEffects(ctx *StepContext, effs []transport.CoordEffect
 				Effect: &corev1.Effect_TerminalReopen{
 					TerminalReopen: &corev1.TerminalReopenEffect{
 						TerminalId: eff.TerminalID,
+					},
+				},
+			})
+
+		case transport.CoordTerminalSend:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectSend{
+					TerminalDirectSend: &corev1.TerminalDirectSendEffect{
+						StreamId:       eff.StreamID,
+						SendRelay:      eff.SendRelay,
+						DirectPcId:     eff.DirectPCID,
+						SealedEnvelope: eff.SealedEnvelope,
+					},
+				},
+			})
+
+		case transport.CoordTerminalDeliver:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectDeliver{
+					TerminalDirectDeliver: &corev1.TerminalDirectDeliverEffect{
+						StreamId: eff.StreamID,
+						Payloads: eff.Payloads,
+					},
+				},
+			})
+
+		case transport.CoordTerminalAttachRelay:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectAttachRelay{
+					TerminalDirectAttachRelay: &corev1.TerminalDirectAttachRelayEffect{
+						StreamId:  eff.StreamID,
+						MachineId: eff.MachineID,
+						LegId:     eff.LegID,
+					},
+				},
+			})
+
+		case transport.CoordTerminalState:
+			ctx.emit(&corev1.Effect{
+				Effect: &corev1.Effect_TerminalDirectState{
+					TerminalDirectState: &corev1.TerminalDirectStateEffect{
+						StreamId:          eff.StreamID,
+						State:             eff.State,
+						Reason:            eff.Reason,
+						NeedsConfirmation: eff.NeedsConfirmation,
 					},
 				},
 			})

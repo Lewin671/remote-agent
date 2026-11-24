@@ -56,6 +56,7 @@ type round struct {
 	downloadSeq       uint64
 	downloadUntil     int64
 	eventPush         bool
+	terminalDirect    bool
 	subscribed        uint64
 	subscribedPresent bool
 }
@@ -700,10 +701,18 @@ func (e *Engine) capabilities(now int64, ev Capabilities) {
 	p.downloadSeq = ev.Seq
 	p.downloadUntil = ev.DownloadUntil
 	p.eventPush = ev.EventPush
+	p.terminalDirect = ev.Terminal
 	if p.eventPush {
 		e.sendSubscription(now, p, false)
 	}
 	e.markChanged()
+}
+
+// TerminalReady reports whether machine m has a live verified direct UseRead
+// path and has advertised Phase 3 terminal continuity controls.
+func (e *Engine) TerminalReady(now int64, m string) bool {
+	p := e.peers[m]
+	return p != nil && e.active(p, now) && p.paths[UseRead].ready && p.terminalDirect
 }
 
 func (e *Engine) setWatched(now int64, sessions map[string][]string) {

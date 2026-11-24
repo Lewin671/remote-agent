@@ -14,7 +14,7 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 		if err != nil {
 			return 0, nil
 		}
-		download, eventPush, ok := parseCapabilitiesPayload(o.Payload)
+		download, eventPush, terminalDirect, ok := parseCapabilitiesPayload(o.Payload)
 		if !ok {
 			return 0, nil
 		}
@@ -27,7 +27,11 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 			Seq:           o.Context.Seq,
 			DownloadUntil: dlUntil,
 			EventPush:     eventPush,
+			Terminal:      terminalDirect,
 		})
+		if terminalDirect {
+			c.attachDirectTerminalsForMachine(now, r.machine)
+		}
 		return 4, ackPayload(o)
 
 	case 14: // CapabilitySnapshot
@@ -46,6 +50,9 @@ func (c *Coordinator) decodeControl(now int64, r *coordRound, eff linkcore.Handl
 			ExpiresAt: int64(exp),
 		})
 		return 4, ackPayload(o)
+
+	case linkcore.ControlAck, linkcore.ControlStreamFailed, linkcore.ControlInputStatusReply, linkcore.ControlBarrierReply:
+		return c.handleInboundTerminalControl(now, r, o)
 
 	default:
 		return 0, nil
@@ -71,13 +78,24 @@ func encodeSubscription(sessionIDs []string) []byte {
 }
 
 // parseCapabilitiesPayload extracts field 5 (file_download) and whether field 2
-// (control_types, packed or unpacked) contains 15.
-func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok bool) {
+// (control_types, packed or unpacked) contains 15 (event push) and Phase 3 terminal
+// continuity controls (2, 3, 5, 6, 7, 8, 11, 12).
+func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, terminalDirect bool, ok bool) {
+	var termMask uint32
+	noteControl := func(v uint64) {
+		switch v {
+		case 15:
+			eventPush = true
+		case 2, 3, 5, 6, 7, 8, 11, 12:
+			termMask |= 1 << v
+		}
+	}
+	const wantTermMask uint32 = (1 << 2) | (1 << 3) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 11) | (1 << 12)
 	pos := 0
 	for pos < len(raw) {
 		tag, n := readUvarint(raw[pos:])
 		if n <= 0 {
-			return false, false, false
+			return false, false, false, false
 		}
 		pos += n
 		fieldNum := tag >> 3
@@ -86,21 +104,19 @@ func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok
 		case 0:
 			v, m := readUvarint(raw[pos:])
 			if m <= 0 {
-				return false, false, false
+				return false, false, false, false
 			}
 			pos += m
 			switch fieldNum {
 			case 2:
-				if v == 15 {
-					eventPush = true
-				}
+				noteControl(v)
 			case 5:
 				fileDownload = v != 0
 			}
 		case 2:
 			size, m := readUvarint(raw[pos:])
 			if m <= 0 || size > uint64(len(raw)-pos-m) {
-				return false, false, false
+				return false, false, false, false
 			}
 			pos += m
 			sub := raw[pos : pos+int(size)]
@@ -109,23 +125,21 @@ func parseCapabilitiesPayload(raw []byte) (fileDownload bool, eventPush bool, ok
 				for sp := 0; sp < len(sub); {
 					v, k := readUvarint(sub[sp:])
 					if k <= 0 {
-						return false, false, false
+						return false, false, false, false
 					}
 					sp += k
-					if v == 15 {
-						eventPush = true
-					}
+					noteControl(v)
 				}
 			}
 		default:
 			nSkip := skipWireField(raw[pos:], wire)
 			if nSkip < 0 {
-				return false, false, false
+				return false, false, false, false
 			}
 			pos += nSkip
 		}
 	}
-	return fileDownload, eventPush, true
+	return fileDownload, eventPush, (termMask & wantTermMask) == wantTermMask, true
 }
 
 // parseCapabilitySnapshotPayload extracts CapabilitySnapshot.capabilities (field 2).

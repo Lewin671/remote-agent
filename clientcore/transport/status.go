@@ -33,6 +33,7 @@ type Status struct {
 	Reason   Reason
 	Read     Route
 	File     Route
+	Terminal Route
 	ReadSlow bool // the read path fell back under rule 4 and is waiting
 	FileSlow bool // the file path fell back under rule 4 and is waiting
 	Measured Measured
@@ -55,7 +56,7 @@ func reasonOf(f Failure) Reason {
 // Status reports what the user can be told about the computer's direct path
 // now. Numbers are present only when measured.
 func (e *Engine) Status(now int64, m string) Status {
-	s := Status{Read: Relay, File: Relay}
+	s := Status{Read: Relay, File: Relay, Terminal: Relay}
 	if r := e.routes[m]; r != nil {
 		s.Measured = r.Measured(now)
 	}
@@ -75,6 +76,9 @@ func (e *Engine) Status(now int64, m string) Status {
 		s.State = StateConnected
 		if readReady {
 			s.Read, s.ReadSlow = route.ReadRoute(now), route.ReadSlow(now)
+			if p.terminalDirect {
+				s.Terminal = Direct
+			}
 		}
 		if fileReady {
 			s.File, s.FileSlow = route.FileRoute(now), route.FileSlow(now)

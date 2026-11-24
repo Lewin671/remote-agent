@@ -84,6 +84,7 @@ export class DirectExecutor {
     private readonly options: {
       emit: (ev: CoreEvent) => void;
       onPushedEvent: (machineId: string, pcId: bigint, env: Envelope, header: Header, size: number) => void;
+      onTerminalOutput?: (machineId: string, pcId: bigint, env: Envelope, header: Header, raw: Uint8Array<ArrayBuffer>) => void;
       factory?: (config: RTCConfiguration) => RTCPeerConnection;
     },
   ) {}
@@ -276,6 +277,13 @@ export class DirectExecutor {
     entry.channel.sendProbe(eff.raw as Uint8Array<ArrayBuffer>);
   }
 
+  sendTerminalFrame(pcId: bigint, raw: Uint8Array<ArrayBuffer>): boolean {
+    const entry = this.pcs.get(pcId);
+    if (!entry || !entry.confirmed || !entry.channel.ready || entry.use !== 1) return false;
+    void entry.channel.write(raw, () => {}).catch(() => {});
+    return true;
+  }
+
   async dcReadStats(eff: DirectDcReadStatsEffect): Promise<void> {
     const entry = this.pcs.get(eff.pcId);
     if (!entry) {
@@ -335,6 +343,12 @@ export class DirectExecutor {
       if (entry.use === 1 && header.kind === PayloadKind.EVENT) {
         if (entry.confirmed && header.machineId === entry.machineId && header.sender === entry.machineId) {
           this.options.onPushedEvent(entry.machineId, pcId, env, header, raw.byteLength);
+        }
+        return;
+      }
+      if (entry.use === 1 && header.kind === PayloadKind.TERMINAL_OUTPUT) {
+        if (entry.confirmed && header.machineId === entry.machineId && header.sender === entry.machineId) {
+          this.options.onTerminalOutput?.(entry.machineId, pcId, env, header, raw);
         }
         return;
       }

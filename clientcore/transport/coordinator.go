@@ -321,8 +321,9 @@ type Coordinator struct {
 	transfers     map[string]Upload
 	transferOrder []string
 
-	termBudget linkcore.Budget
-	terms      map[string]*termState
+	termBudget  linkcore.Budget
+	terms       map[string]*termState
+	termStreams map[string]*clientTermStream
 
 	out []CoordEffect
 }
@@ -547,6 +548,7 @@ func (c *Coordinator) OnSessionTimer(now int64) []CoordEffect {
 		}
 	}
 	c.stepProbeTrackers(now)
+	c.stepClientTerminals(now)
 	return c.take()
 }
 
@@ -1174,6 +1176,11 @@ func (c *Coordinator) markPCClosed(now int64, r *coordRound, b *pcBinding) {
 	if b.confirmed && !b.closedNotified {
 		b.closedNotified = true
 		r.confirmed[b.use] = false
+		if b.use == UseRead {
+			if pcID := r.localToGlobal[b.localID]; pcID != 0 {
+				c.detachDirectTerminalsForPC(now, pcID)
+			}
+		}
 		c.handleEngine(now, PathClosed{Round: r.id, Use: b.use})
 	}
 }
@@ -1466,6 +1473,18 @@ func (c *Coordinator) NextTimers(now int64) (engineAt int64, engineOK bool, sess
 				due = now
 			}
 			addSess(due)
+		}
+	}
+	for _, ct := range c.termStreams {
+		if ct == nil {
+			continue
+		}
+		if due, ok := ct.stream.NextDue(); ok {
+			d := int64(due)
+			if d < now {
+				d = now
+			}
+			addSess(d)
 		}
 	}
 	for _, ts := range c.terms {
@@ -1842,6 +1861,9 @@ func (c *Coordinator) applySessionEffects(now int64, r *coordRound, effects []li
 			r.everReady = true
 			c.emit(CoordPcConfirm{PCID: pcID, MachineID: r.machine, Use: u})
 			c.handleEngine(now, PathReady{Round: r.id, Use: u, Path: pcID})
+			if u == UseRead {
+				c.attachDirectTerminalsForMachine(now, r.machine)
+			}
 
 		case linkcore.ClosePC:
 			pcID := r.localToGlobal[eff.ID]

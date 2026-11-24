@@ -205,6 +205,7 @@ public final actor Remote {
     public nonisolated let directSupported: Bool
     private nonisolated let coreEventChain: SerialChain
     nonisolated let directExecutor: DirectExecutor
+    nonisolated let activeTerminals = ActiveTerminalRegistry()
     var directTransfers: [String: UploadKind] = [:]
     private let peerBudget = StreamByteBudget(limit: 8 * 65536)
 
@@ -354,6 +355,7 @@ public final actor Remote {
         )
         self.directGate = gate
         self.coreEventChain = eventChain
+        let terminals = activeTerminals
         directExecutor = DirectExecutor(
             emit: { ev in
                 eventChain.run {
@@ -373,6 +375,9 @@ public final actor Remote {
                     await holder.remote?.handleDirectEvent(machineId: machineId, pcId: pcId, envelope: env, header: header, size: size)
                     gate.release(sid, bytes: size)
                 }
+            },
+            onTerminalOutput: { machineId, pcId, env, header, raw in
+                terminals.onDirectOutput(streamId: header.requestID, machineId: machineId, pcId: pcId, env: env, raw: raw)
             },
             factory: rtc,
             clock: { UInt64(max(0, clock())) },

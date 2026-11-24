@@ -35,6 +35,8 @@ const (
 	directEventQueueMaxItems  = 32
 	directEventQueueMaxBytes  = 256 << 10
 	directResultQueueMaxItems = 128
+	directTermQueueMaxItems   = 128
+	directTermQueueMaxBytes   = 2 << 20
 	directLowMaxBuffered      = 16 << 10
 )
 
@@ -65,6 +67,8 @@ type directPeer struct {
 	writeMu   sync.Mutex
 	writeWake chan struct{}
 	highQueue []peerWriteItem
+	termQueue []peerWriteItem
+	termBytes int
 	lowQueue  []peerWriteItem
 	lowBytes  int
 }
@@ -169,6 +173,9 @@ func newDirectManager(d *dispatcher) (*directManager, error) {
 	m.workers.Go(m.writeLoop)
 	m.workers.Go(m.maintenance)
 	m.workers.Go(m.capabilityLoop)
+	if d != nil && d.endpoint != nil {
+		d.endpoint.direct.Store(m)
+	}
 	return m, nil
 }
 
@@ -193,6 +200,9 @@ func directPort(value string) int {
 }
 func (m *directManager) close() {
 	m.closeOnce.Do(func() {
+		if m.d != nil && m.d.endpoint != nil {
+			m.d.endpoint.direct.CompareAndSwap(m, nil)
+		}
 		m.inMu.Lock()
 		m.inClosed = true
 		m.inMu.Unlock()
@@ -426,6 +436,11 @@ func (m *directManager) createLocked(binding deviceauth.PeerBinding, codec *peer
 				}
 				return 4, peerwire.PB(peerwire.U(4, o.Context.Class), peerwire.U(5, o.Context.Seq), peerwire.B(6, o.Hash), peerwire.U(7, o.Context.Generation), peerwire.U(8, o.Context.Use))
 			}
+			if o.Type == 2 || o.Type == 3 || o.Type == 4 || o.Type == 5 || o.Type == 6 || o.Type == 8 {
+				if m.d != nil && m.d.endpoint != nil {
+					return m.d.endpoint.handleDirectTerminalControl(m, p, o, now)
+				}
+			}
 			return 0, nil
 		},
 		Ready: func(use uint64, path *direct.Path) {
@@ -485,6 +500,21 @@ func (p *directPeer) enqueueHigh(raw []byte, deadline time.Time) bool {
 	return true
 }
 
+func (p *directPeer) enqueueTerm(raw []byte, deadline time.Time) bool {
+	if len(raw) == 0 || len(raw) > (1<<20) {
+		return false
+	}
+	p.writeMu.Lock()
+	defer p.writeMu.Unlock()
+	if len(p.termQueue) >= directTermQueueMaxItems || p.termBytes+len(raw) > directTermQueueMaxBytes {
+		return false
+	}
+	p.termQueue = append(p.termQueue, peerWriteItem{raw: raw, deadline: deadline})
+	p.termBytes += len(raw)
+	notify(p.writeWake)
+	return true
+}
+
 func (p *directPeer) enqueueLow(raw []byte) bool {
 	if len(raw) == 0 || len(raw) > direct.MaxSingleFragmentBytes {
 		return false
@@ -508,6 +538,12 @@ func (p *directPeer) popWrite() (item peerWriteItem, isHigh, ok bool) {
 		p.highQueue = p.highQueue[1:]
 		return item, true, true
 	}
+	if len(p.termQueue) > 0 {
+		item = p.termQueue[0]
+		p.termQueue = p.termQueue[1:]
+		p.termBytes -= len(item.raw)
+		return item, true, true
+	}
 	if len(p.lowQueue) > 0 {
 		item = p.lowQueue[0]
 		p.lowQueue = p.lowQueue[1:]
@@ -515,6 +551,20 @@ func (p *directPeer) popWrite() (item peerWriteItem, isHigh, ok bool) {
 		return item, false, true
 	}
 	return peerWriteItem{}, false, false
+}
+
+func (m *directManager) activePeerFor(peerID string) (*directPeer, bool) {
+	if m == nil || peerID == "" {
+		return nil, false
+	}
+	m.mu.Lock()
+	p := m.active[peerID]
+	hasRead := p != nil && p.paths[0] != nil
+	m.mu.Unlock()
+	if !hasRead || !m.peerAuthorized(p) {
+		return nil, false
+	}
+	return p, true
 }
 
 func (m *directManager) writePath(peer *directPeer, path *direct.Path) {
@@ -560,6 +610,9 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 				m.reconcileTailersLocked(nil)
 			}
 			m.mu.Unlock()
+			if m.d != nil && m.d.endpoint != nil {
+				m.d.endpoint.onDirectPeerPathClosed(peer.binding.Peer.ID)
+			}
 		}
 	}()
 	// This local gate has no endpoint lock: AcceptOptions invokes it while the
@@ -579,7 +632,16 @@ func (m *directManager) readPath(peer *directPeer, use uint64, path *direct.Path
 			continue
 		}
 		header, err := devicesec.ParseHeader(wire.Header)
-		if err != nil || header.Sender != peer.binding.Peer.ID || header.Machine != m.d.acct.DeviceID || header.Purpose != devicesec.Command {
+		if err != nil || header.Sender != peer.binding.Peer.ID || header.Machine != m.d.acct.DeviceID {
+			continue
+		}
+		if use == 1 && header.Purpose.Control() && header.Purpose != devicesec.Command {
+			if m.peerAuthorized(peer) && m.d != nil && m.d.endpoint != nil {
+				m.d.endpoint.handleDirectTerminalInput(peer.binding.Peer.ID, header.Request, raw)
+			}
+			continue
+		}
+		if header.Purpose != devicesec.Command {
 			continue
 		}
 		deadline := time.UnixMilli(int64(header.Deadline))
@@ -782,7 +844,12 @@ func (m *directManager) maintenance() {
 			if p.session.Established() && p.session.Active() && (now >= p.nextCapabilities || !proto.Equal(p.lastCapabilities, capabilities)) {
 				var id [16]byte
 				_, _ = rand.Read(id[:])
-				body := peerwire.PB(peerwire.B(1, id[:]), peerwire.U(2, 1), peerwire.U(2, 4), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15), peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9), peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20))
+				body := peerwire.PB(
+					peerwire.B(1, id[:]),
+					peerwire.U(2, 1), peerwire.U(2, 2), peerwire.U(2, 3), peerwire.U(2, 4), peerwire.U(2, 5), peerwire.U(2, 6), peerwire.U(2, 7), peerwire.U(2, 8), peerwire.U(2, 9), peerwire.U(2, 10), peerwire.U(2, 11), peerwire.U(2, 12), peerwire.U(2, 13), peerwire.U(2, 14), peerwire.U(2, 15),
+					peerwire.U(3, 1), peerwire.U(3, 2), peerwire.U(3, 3), peerwire.U(3, 4), peerwire.U(3, 5), peerwire.U(3, 6), peerwire.U(3, 7), peerwire.U(3, 8), peerwire.U(3, 9),
+					peerwire.U(4, now+60000), peerwire.U(5, 1), peerwire.U(6, 1<<20),
+				)
 				snapshot, err := proto.Marshal(&pb.CapabilitySnapshot{CapabilityId: id[:], Capabilities: capabilities, ExpiresAtMs: int64(now + 60000)})
 				if p.session.SendControl(1, body) && err == nil && capabilities != nil && p.session.SendControl(14, snapshot) {
 					p.nextCapabilities = now + 55000
