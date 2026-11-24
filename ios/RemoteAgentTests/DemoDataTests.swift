@@ -29,7 +29,7 @@ import Testing
         #expect(remote.current == state)
         let model = AppModel(settings: SettingsStore(defaults: UserDefaults(suiteName: "demo-\(UUID().uuidString)")!))
         model.showDemo(account: Demo.account, remote: remote, initial: state, events: events) {}
-        #expect(model.stage == .ready && model.isDemo && model.state == state)
+        #expect(model.stage == .ready && model.isDemo)
         #expect(model.context?.me == Demo.me)
         if let context = model.context, let sid = state.sessions.keys.sorted().first {
             let token = await context.coreHost.acquireSessionWatch(sid)

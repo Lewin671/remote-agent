@@ -231,7 +231,6 @@
 "errors_ios_this_app_version_is_out_of_date_update_and" = "This app version is out of date. Update and retry.";
 "errors_ios_this_command_expired_and_was_not_sent" = "This command expired and was not sent";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.";
-"errors_ios_this_device_is_over_5_minutes_behind_the_security" = "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.";
 "errors_ios_unknown_session" = "Unknown session";
 "errors_ios_unsure_whether_the_computer_executed_this" = "Unsure whether the computer executed this: %1$@";
 "errors_it_may_have_been_deleted_or_belong_to_a" = "It may have been deleted, or belong to a computer that was removed.";

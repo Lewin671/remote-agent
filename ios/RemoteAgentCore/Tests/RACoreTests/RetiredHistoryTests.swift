@@ -80,9 +80,9 @@ extension ServerTests {
                     )
                 }
             }
-            var state = r.current
-            state.sessions["s1"] = SessionView(id: "s1", machineId: w.daemon.account.deviceId)
-            await r.publishSyncState(state)
+            await r.applyCoreSyncState(PBCoreSyncStateView.with {
+                $0.sessions = [.with { $0.sessionID = "s1"; $0.machineID = w.daemon.account.deviceId }]
+            })
             let events = await r.executeCacheRead(PBCoreCacheReadEffect.with {
                 $0.events = .with { $0.opID = 1; $0.sessionID = "s1"; $0.limit = 50 }
             }).cacheEventsLoaded

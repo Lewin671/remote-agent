@@ -24,6 +24,7 @@ final class CoreScreens {
     }
 
     var home = PBCoreHomeViewModel()
+    var syncState = PBCoreSyncStateView()
     var projectDetail = PBCoreProjectDetailView()
     var manageProjects = PBCoreManageProjectsView()
     var dirPickers: [String: PBCoreDirPickerView] = [:]
@@ -58,12 +59,11 @@ final class CoreScreens {
 
 protocol CoreHostExecutor: AnyObject, Sendable {
     var account: Account { get }
-    var state: Feed<RemoteState> { get }
     var directSupported: Bool { get }
     var directServerHost: String { get }
     var directConfiguredStun: String { get }
     func installCoreHooks(_ hooks: Remote.CoreHooks) async
-    func publishSyncState(_ snapshot: RemoteState) async
+    func applyCoreSyncState(_ snapshot: PBCoreSyncStateView) async
     func setNetworkGeneration(_ gen: UInt64) async
     func ensureToken(opId: UInt64, forceLogin: Bool, timeoutMs: Int64) async -> PBCoreTokenResultEvent
     func discardToken(_ rejected: String) async
@@ -381,6 +381,8 @@ actor CoreHost: SyncEngine {
     private var retryNowWaiters: [String: [CheckedContinuation<Bool, Never>]] = [:]
     private var terminalReopenListeners: [String: (token: UUID, handler: @MainActor @Sendable () -> Void)] = [:]
     private var onPersistClientPrefs: (@MainActor @Sendable (PBPersistClientPrefsEffect) -> Void)?
+    private var deviceDescription: @MainActor @Sendable () -> String = { "" }
+    private var describedKey: String?
     #if DEBUG
     enum DemoCommandAction: Sendable {
         case hold
@@ -401,7 +403,6 @@ actor CoreHost: SyncEngine {
     private var clockTask: Task<Void, Never>?
 
     nonisolated var account: Account { executor.account }
-    nonisolated var state: Feed<RemoteState> { executor.state }
 
     static func live(
         remote: Remote,
@@ -549,8 +550,30 @@ actor CoreHost: SyncEngine {
         Task { await self.closeAsync() }
     }
 
-    func describeSelf(platform: String, description: String) async throws {
-        try await executor.describeSelf(platform: platform, description: description)
+    func setDeviceDescription(_ provider: @escaping @MainActor @Sendable () -> String) {
+        deviceDescription = provider
+    }
+
+    /// Says what this client is, sealed, so other clients can tell it apart.
+    func maybeDescribeSelf(_ v: PBCoreSyncStateView) async {
+        guard v.connection == .connected else {
+            // A try made on the connection that is gone may not have arrived: the next one tries again.
+            describedKey = nil
+            return
+        }
+        guard !demoMode,
+              let me = v.devices.first(where: { $0.deviceID == account.deviceId && $0.trusted }) else { return }
+        let description = await deviceDescription()
+        guard !description.isEmpty else { return }
+        guard !me.hasMeta || me.meta.platform != "ios" || me.meta.description_p != description else { return }
+        // One try per revision and connection: a failure waits for the next change instead of spinning.
+        let key = "\(me.metaRev):\(v.leaseEndMs)"
+        guard describedKey != key else { return }
+        describedKey = key
+        let exec = executor
+        Task {
+            try? await exec.describeSelf(platform: "ios", description: description)
+        }
     }
 
     private nonisolated func lastNetworkSignatureFor(_ available: Bool) -> String {
@@ -3108,7 +3131,7 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        if !demoMode && targets.contains(.syncState) {
+        if targets.contains(.syncState) {
             syncStateVM = try? client.view(PBCoreScreen.with {
                 $0.syncState = PBCoreSyncStateScreenRequest()
             }).syncState
@@ -3186,17 +3209,18 @@ actor CoreHost: SyncEngine {
         }
 
         if let syncStateVM {
-            let adapted = SyncStateAdapter.toRemoteState(syncStateVM)
-            await executor.publishSyncState(adapted)
+            await executor.applyCoreSyncState(syncStateVM)
+            await maybeDescribeSelf(syncStateVM)
         }
 
         await MainActor.run { [
-            screens, homeVM, projectVM, dirPickerVMs, newSessionVM,
+            screens, homeVM, syncStateVM, projectVM, dirPickerVMs, newSessionVM,
             schedulesVM, scheduleDetailVM, scheduleFormVM,
             settingsVM, machineStatusVM, machineSettingsVM, quotaVM, usageVM, devicesVM, clientDetailVM,
             directDiagnosticsVM, sessionVMs, scheduleStripVMs
         ] in
             if let homeVM { screens.home = homeVM }
+            if let syncStateVM { screens.syncState = syncStateVM }
             if let projectVM {
                 if projectVM.hasDetail { screens.projectDetail = projectVM.detail }
                 if projectVM.hasManage { screens.manageProjects = projectVM.manage }
@@ -3760,7 +3784,7 @@ actor CoreHost: SyncEngine {
         case .online:
             break
         }
-        await renderTargets([.home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        await renderTargets([.syncState, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }
@@ -3832,7 +3856,7 @@ actor CoreHost: SyncEngine {
                 }
             }
         }
-        await renderTargets([.home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
+        await renderTargets([.syncState, .home, .project, .newSession, .session, .schedules, .settings, .devices, .machineSettings, .quota, .clientDetail])
         if !activeMachineSettingsID.isEmpty {
             await openMachineSettings(machineID: activeMachineSettingsID)
         }

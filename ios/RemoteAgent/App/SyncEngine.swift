@@ -11,7 +11,6 @@ import os
 /// tests wrap a `Remote` that is never started and count the calls.
 protocol SyncEngine: AnyObject, Sendable {
     var account: Account { get }
-    var state: Feed<RemoteState> { get }
     func start()
     func stop()
     func setNetwork(_ available: Bool)
@@ -19,7 +18,6 @@ protocol SyncEngine: AnyObject, Sendable {
     func reconnectNow()
     func retryLogin()
     func close()
-    func describeSelf(platform: String, description: String) async throws
 }
 
 extension SyncEngine {

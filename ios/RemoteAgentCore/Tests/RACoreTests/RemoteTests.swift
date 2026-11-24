@@ -136,29 +136,33 @@ private final class Frames: TermListener, Sendable {
 }
 
 private extension Remote {
-    func hydrateExecutorState() async throws {
+    @discardableResult
+    func hydrateExecutorState() async throws -> [String: PBSession] {
         _ = await ensureToken(opId: 1, forceLogin: false, timeoutMs: 15_000)
         _ = try await syncSecurity()
         let fetched = await executeRpc(PBCoreRpcEffect.with {
             $0.opID = 3
             $0.fetchLists = PBCoreFetchListsRpc.with { $0.limit = 50 }
         }).listsFetched
-        var s = RemoteState()
-        s.conn = .online
-        s.link = .online
-        s.synced = true
+        var sync = PBCoreSyncStateView()
+        sync.connection = .connected
+        sync.machinesListed = true
+        sync.sessionsListed = true
+        var openedSessions: [String: PBSession] = [:]
         for m in fetched.wireMachines {
-            var meta: PBMachineMeta?
-            var metaRev: UInt64 = 0
+            var sm = PBCoreSyncMachineView.with {
+                $0.machineID = m.id
+                $0.online = m.online
+                $0.lastSeenMs = m.lastSeenMs
+            }
             if m.hasMeta, let opened = try? await openSecureMessage(
                 envelope: m.meta, want: Place(.machineMeta, machineId: m.id), as: PBMachineMeta.self) {
-                meta = opened.1
-                metaRev = opened.0.seq
+                sm.meta = opened.1
+                sm.metaRev = opened.0.seq
+                sm.protocolVersion = opened.1.protocolVersion
             }
-            s.machines[m.id] = MachineView(
-                id: m.id, online: m.online, lastSeenMs: m.lastSeenMs,
-                meta: meta, metaRev: metaRev)
-            s.currentMachines.insert(m.id)
+            sync.machines.append(sm)
+            sync.trustedMachineIds.append(m.id)
         }
         for rs in fetched.wireSessions {
             if rs.hasKey {
@@ -166,31 +170,20 @@ private extension Remote {
                     envelope: rs.key, expectedPurpose: .sessionKey,
                     machineId: rs.machineID, sessionId: rs.sessionID, history: true)
             }
-            var info: PBSession?
-            var metaRev: UInt64 = 0
             if rs.hasMeta, let opened = try? await openSecureMessage(
                 envelope: rs.meta, want: Place(.sessionMeta, machineId: rs.machineID, sessionId: rs.sessionID), as: PBSession.self) {
-                info = opened.1
-                metaRev = opened.0.seq
+                openedSessions[rs.sessionID] = opened.1
             }
-            s.sessions[rs.sessionID] = SessionView(
-                id: rs.sessionID, machineId: rs.machineID,
-                info: info, metaRev: metaRev,
-                lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs)
+            sync.sessions.append(.with {
+                $0.sessionID = rs.sessionID
+                $0.machineID = rs.machineID
+                $0.lastSeq = rs.lastSeq
+                $0.updatedMs = rs.updatedMs
+                $0.listedEndedMs = rs.endedMs
+            })
         }
-        for dev in fetched.wireDevices {
-            var meta: PBDeviceMeta?
-            var metaRev = dev.metaRevision
-            if dev.hasMeta, dev.kind == .client, let opened = try? await openSecureMessage(
-                envelope: dev.meta, want: Place(.deviceMeta, requestId: dev.id), as: PBDeviceMeta.self) {
-                meta = opened.1
-                metaRev = opened.0.seq
-            }
-            s.devices[dev.id] = DeviceView(
-                id: dev.id, kind: dev.kind, createdMs: dev.createdMs,
-                meta: meta, metaRev: metaRev, lastSeenMs: dev.lastSeenMs)
-        }
-        publishSyncState(s)
+        applyCoreSyncState(sync)
+        return openedSessions
     }
 }
 
@@ -346,8 +339,8 @@ extension SyncServerTests {
                 let acct = Account(server: w.server.url, deviceId: status.deviceID, accountId: status.accountID)
                 let joined = try Remote(account: acct, http: w.http, securityStore: joinStore, allowPlainHttp: true)
                 defer { joined.close() }
-                try await joined.hydrateExecutorState()
-                #expect(joined.current.sessions["s1"]?.info != nil)
+                let openedSessions = try await joined.hydrateExecutorState()
+                #expect(openedSessions["s1"] != nil)
             }
         }
 

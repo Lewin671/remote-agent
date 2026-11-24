@@ -150,7 +150,7 @@ struct MachineStatusScreen: View {
         let m = context.core.settings.machines.first { $0.machineID == id }
         return PBMachineStatusViewModel.with {
             $0.machineID = id
-            $0.machineName = m?.name.or(id.jvmTake(8)) ?? id.jvmTake(8).ifEmpty(L10n.commonUnknownComputer())
+            $0.machineName = (m?.name ?? "").or(String(id.prefix(8))).or(L10n.commonUnknownComputer())
             $0.found = m != nil
             $0.supported = true
             $0.online = m?.online ?? false

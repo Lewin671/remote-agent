@@ -231,7 +231,6 @@
 "errors_ios_this_app_version_is_out_of_date_update_and" = "这个 App 版本较旧，请更新后再试";
 "errors_ios_this_command_expired_and_was_not_sent" = "这条指令已过期，没有发出";
 "errors_ios_this_deletes_the_account_keys_and_cache_on_this" = "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。";
-"errors_ios_this_device_is_over_5_minutes_behind_the_security" = "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试";
 "errors_ios_unknown_session" = "未知会话";
 "errors_ios_unsure_whether_the_computer_executed_this" = "不确定电脑有没有执行：%1$@";
 "errors_it_may_have_been_deleted_or_belong_to_a" = "它可能已经被删除，或者属于一台被移除的电脑。";

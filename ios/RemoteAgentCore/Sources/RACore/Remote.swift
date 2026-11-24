@@ -217,6 +217,7 @@ public final actor Remote {
             if watchedSessionIds != oldValue { directGate.updateWatched(watchedSessionIds) }
         }
     }
+    var machineProtocols: [String: (version: UInt32, name: String)] = [:]
     var clockSkewed = false
     var foregroundActive = true
     var networkGeneration: UInt64 = 0
@@ -376,24 +377,27 @@ public final actor Remote {
         self.hostHooks = hooks
     }
 
-    public func publishSyncState(_ snapshot: RemoteState) {
-        self.clockSkewed = !snapshot.clockWarning.isEmpty
-        var updated = snapshot
-        let peers = deviceLink.observe(updated)
-        updated.machines = updated.machines.mapValues { machine in
-            var projected = machine
-            projected.linkState = peers[machine.id]
-            return projected
+    public func applyCoreSyncState(_ v: PBCoreSyncStateView) {
+        self.clockSkewed = v.accountClockSkewed
+        var nextProtocols: [String: (version: UInt32, name: String)] = [:]
+        nextProtocols.reserveCapacity(v.machines.count)
+        for m in v.machines {
+            let ver = m.protocolVersion > 0 ? m.protocolVersion : (m.hasMeta ? m.meta.protocolVersion : 0)
+            if ver > 0 {
+                let host = m.hasMeta ? m.meta.hostname.removingSuffix(".local") : ""
+                let name = host.isEmpty ? m.machineID.jvmTake(8) : host
+                nextProtocols[m.machineID] = (ver, name)
+            }
         }
+        machineProtocols = nextProtocols
         // Keep sessionMachines in sync so directGate / terminal know owner machine IDs.
-        if updated.sessions.contains(where: { sessionMachines[$0.key] != $0.value.machineId }) {
+        if v.sessions.contains(where: { sessionMachines[$0.sessionID] != $0.machineID }) {
             var nextMachines = sessionMachines
-            for (sid, s) in updated.sessions {
-                nextMachines[sid] = s.machineId
+            for s in v.sessions {
+                nextMachines[s.sessionID] = s.machineID
             }
             sessionMachines = nextMachines
         }
-        if updated != state.value { state.set(updated) }
     }
 
     public func setWatchedSessions(_ sessionIds: [String]) {
@@ -785,6 +789,9 @@ public final actor Remote {
     public func refresh() async -> Bool {
         if let hooks = hostHooks {
             await hooks.onRefresh()
+            if let v = await currentCoreSyncStateView() {
+                return v.connection == .connected
+            }
             return state.value.conn == .online
         }
         return false

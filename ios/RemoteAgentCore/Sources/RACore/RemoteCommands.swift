@@ -303,7 +303,14 @@ extension Remote {
                 ? CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult(), outcome: .unknown)
                 : CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
-        if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
+        if let mp = machineProtocols[p.machineId] {
+            if mp.version < peerProtocolVersion {
+                throw CommandError("failed_precondition", L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: mp.name), outcome: prior ? .unknown : .notSent)
+            }
+            if mp.version > peerProtocolVersion {
+                throw CommandError("failed_precondition", L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd(), outcome: prior ? .unknown : .notSent)
+            }
+        } else if let refusal = protocolMismatch(state.value.machines[p.machineId]) {
             throw CommandError("failed_precondition", refusal, outcome: prior ? .unknown : .notSent)
         }
         let bulkHint = directBulkHint(p.command)

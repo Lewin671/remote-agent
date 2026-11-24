@@ -1507,20 +1507,6 @@
     "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
   },
   {
-    "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
-    "key": "errors.ios_this_device_is_over_5_minutes_behind_the_security",
-    "notes": "iOS Remote.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "en": "draft",
-      "zh-CN": "source"
-    },
-    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试"
-  },
-  {
     "en": "Unknown session",
     "key": "errors.ios_unknown_session",
     "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
