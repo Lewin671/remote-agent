@@ -5843,5 +5843,20 @@
     "path": "clientcore/security/workflow_op.go",
     "literal": "offer",
     "reason": "Internal persisted security operation kind discriminator in switch case; flagged only because newWfError(...) precedes it within the scanner window."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Failed to read screen golden \\(url.path): \\(error)",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Failed to decode screen golden \\(url.path): \\(error)",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
+  },
+  {
+    "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
+    "literal": "Screen golden \\(name).golden.pb contained no \\(kind) views",
+    "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
   }
 ]

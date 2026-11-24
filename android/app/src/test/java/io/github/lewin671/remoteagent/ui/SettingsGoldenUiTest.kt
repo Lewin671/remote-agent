@@ -48,6 +48,9 @@ class SettingsGoldenUiTest {
     fun settingsOverviewSettingsAndCheckingUpdateRenderGoldenAndDispatchActions() {
         val settingsVm = ScreenGoldenLoader.settingsView("settings_overview", "settings")
         val checkingVm = ScreenGoldenLoader.settingsView("settings_overview", "checkingUpdate")
+        val connFailedVm = ScreenGoldenLoader.settingsView("settings_overview", "connCheckFailed")
+        assertEquals("", connFailedVm.connCheck.lastFailureText.key)
+        assertEquals("dial tcp: timeout", connFailedVm.connCheck.lastFailureText.literal)
         val vmState = mutableStateOf(settingsVm)
         var pickedTheme: ThemePreference? = null
         var openedNotifications = 0

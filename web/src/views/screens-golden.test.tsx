@@ -113,7 +113,7 @@ afterEach(() => {
 });
 
 describe("golden ViewModel layout and interaction", () => {
-  it("renders HomeView and SidebarView from home_timeline.golden.json and dispatches interactions", () => {
+  it("renders HomeView and SidebarView from home_timeline.golden.pb and dispatches interactions", () => {
     const initial = goldenView(homeTimelineGolden as GoldenDoc, "homeInitial");
     expect(initial.view.case).toBe("home");
     if (initial.view.case !== "home") return;
@@ -210,7 +210,7 @@ describe("golden ViewModel layout and interaction", () => {
     expect(host.querySelector(".hl")?.textContent).toBeTruthy();
   });
 
-  it("renders ManageProjectsScreen & RemovedNotice from project_manage_detail.golden.json", () => {
+  it("renders ManageProjectsScreen & RemovedNotice from project_manage_detail.golden.pb", () => {
     const manage = goldenView(projectManageGolden as GoldenDoc, "managePinning");
     if (manage.view.case !== "project" || !manage.view.value.manage) {
       throw new Error("expected project manage view");
@@ -262,7 +262,7 @@ describe("golden ViewModel layout and interaction", () => {
     expect(onReadd).toHaveBeenCalled();
   });
 
-  it("renders NewBoxView from new_session_lifecycle.golden.json and dispatches actions", () => {
+  it("renders NewBoxView from new_session_lifecycle.golden.pb and dispatches actions", () => {
     const vmWrap = goldenView(newSessionGolden as GoldenDoc, "offlineWithDraftChoices");
     if (vmWrap.view.case !== "newSession") throw new Error("expected newSession view");
     const vm = vmWrap.view.value;
@@ -347,7 +347,7 @@ function renderSessionGolden(vm: SessionViewModel, overrides: Partial<SessionScr
 }
 
 describe("golden SessionScreenView layout and interaction", () => {
-  it("renders approval flow states and dispatches approval command from session_approval_flow.golden.json", () => {
+  it("renders approval flow states and dispatches approval command from session_approval_flow.golden.pb", () => {
     const onSubmitCommand = vi.fn();
     const pendingVm = sessionGoldenView(sessionApprovalGolden as GoldenDoc, "pendingApprovalDock");
     renderSessionGolden(pendingVm, { onSubmitCommand });
@@ -379,7 +379,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("session.origin_elsewhere"));
   });
 
-  it("renders CLI error turns and interrupted markers from session_cli_error_turn.golden.json", () => {
+  it("renders CLI error turns and interrupted markers from session_cli_error_turn.golden.pb", () => {
     const vm = sessionGoldenView(sessionCliErrorGolden as GoldenDoc, "cliErrorTurns");
     renderSessionGolden(vm);
 
@@ -391,7 +391,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelectorAll(".sysline.fail").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("renders windowed history slices and triggers onLoadEarlier from session_long_window.golden.json", () => {
+  it("renders windowed history slices and triggers onLoadEarlier from session_long_window.golden.pb", () => {
     const onLoadEarlier = vi.fn();
     const tailVm = sessionGoldenView(sessionLongWindowGolden as GoldenDoc, "tail10");
     renderSessionGolden(tailVm, { onLoadEarlier });
@@ -409,7 +409,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("schedule.earlier"));
   });
 
-  it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.json", () => {
+  it("renders question steps, plan dock, unknown frozen retry & abandon from session_question_plan.golden.pb", () => {
     const onSubmitCommand = vi.fn();
     const onAbandonCommand = vi.fn();
 
@@ -452,7 +452,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(t("dock.plan_implement_record"));
   });
 
-  it("renders failed/unsure tray rows and pending queue from session_queue_retry.golden.json", () => {
+  it("renders failed/unsure tray rows and pending queue from session_queue_retry.golden.pb", () => {
     const onCancelTrayItem = vi.fn();
     const onIgnoreTrayItem = vi.fn();
     const onRestoreTrayItem = vi.fn();
@@ -501,7 +501,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onCancelTrayItem).toHaveBeenCalledWith("msg-q");
   });
 
-  it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.json", () => {
+  it("renders folded quiet scheduled runs and dispatches onExpandGroup from session_scheduled_fold.golden.pb", () => {
     const onExpandGroup = vi.fn();
     const foldedVm = sessionGoldenView(sessionScheduledFoldGolden as GoldenDoc, "foldedQuietRuns");
     renderSessionGolden(foldedVm, { onExpandGroup });
@@ -520,7 +520,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect([...host.querySelectorAll(".me")].filter((m) => m.textContent?.includes("Check health"))).toHaveLength(4);
   });
 
-  it("renders schedules list, detail, and session strip from schedules_inbox_detail.golden.json", () => {
+  it("renders schedules list, detail, and session strip from schedules_inbox_detail.golden.pb", () => {
     const listVm = goldenView(schedulesInboxDetailGolden as GoldenDoc, "schedules_1");
     expect(listVm.view.case).toBe("schedules");
     if (listVm.view.case !== "schedules") return;
@@ -616,7 +616,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onStripSelect).toHaveBeenCalledTimes(1);
   });
 
-  it("renders schedule form, timing draft, and detail from schedules_form_lifecycle.golden.json", () => {
+  it("renders schedule form, timing draft, and detail from schedules_form_lifecycle.golden.pb", () => {
     const form2 = goldenView(schedulesFormLifecycleGolden as GoldenDoc, "scheduleForm_2");
     expect(form2.view.case).toBe("scheduleForm");
     if (form2.view.case !== "scheduleForm") return;
@@ -688,7 +688,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".navbar .title b")?.textContent).toBe("Weekly audit");
   });
 
-  it("renders settings_overview.golden.json screens (Settings, Devices, ClientDetail) and dispatches actions", () => {
+  it("renders settings_overview.golden.pb screens (Settings, Devices, ClientDetail) and dispatches actions", () => {
     const settingsVm = goldenView(settingsOverviewGolden as GoldenDoc, "settings");
     expect(settingsVm.view.case).toBe("settings");
     if (settingsVm.view.case !== "settings") return;
@@ -728,6 +728,13 @@ describe("golden SessionScreenView layout and interaction", () => {
     const checkingVm = goldenView(settingsOverviewGolden as GoldenDoc, "checkingUpdate");
     expect(checkingVm.view.case).toBe("settings");
     if (checkingVm.view.case !== "settings") return;
+
+    const connFailedVm = goldenView(settingsOverviewGolden as GoldenDoc, "connCheckFailed");
+    expect(connFailedVm.view.case).toBe("settings");
+    if (connFailedVm.view.case === "settings") {
+      expect(connFailedVm.view.value.connCheck?.lastFailureText?.key).toBe("");
+      expect(connFailedVm.view.value.connCheck?.lastFailureText?.literal).toBe("dial tcp: timeout");
+    }
     const baseCheck = {
       ...checkingVm.view.value,
       update: checkingVm.view.value.update ? { ...checkingVm.view.value.update, hasUpdate: false, checking: false } : undefined,
@@ -816,7 +823,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(onRename).toHaveBeenCalledTimes(1);
   });
 
-  it("renders machine_settings_edit.golden.json lifecycle and dispatches agent/daemon updates", () => {
+  it("renders machine_settings_edit.golden.pb lifecycle and dispatches agent/daemon updates", () => {
     const initVm = goldenView(machineSettingsEditGolden as GoldenDoc, "initialLoaded");
     expect(initVm.view.case).toBe("machineSettings");
     if (initVm.view.case !== "machineSettings") return;
@@ -886,7 +893,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.textContent).toContain(failedView.name);
   });
 
-  it("renders machine_status_lifecycle.golden.json states and dispatches tab/cleanup/retry", () => {
+  it("renders machine_status_lifecycle.golden.pb states and dispatches tab/cleanup/retry", () => {
     const loadVm = goldenView(machineStatusLifecycleGolden as GoldenDoc, "loading");
     expect(loadVm.view.case).toBe("machineStatus");
     if (loadVm.view.case !== "machineStatus") return;
@@ -950,7 +957,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".ms-page.is-stale")).toBeNull();
   });
 
-  it("renders machine_quota.golden.json sections cleanly", () => {
+  it("renders machine_quota.golden.pb sections cleanly", () => {
     const allVm = goldenView(machineQuotaGolden as GoldenDoc, "allQuotas");
     expect(allVm.view.case).toBe("quota");
     if (allVm.view.case !== "quota") return;
@@ -968,7 +975,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect([...host.querySelectorAll(".label")].map((e) => e.textContent)).not.toContain("Claude Code");
   });
 
-  it("renders session_shared_files_images.golden.json shared files, image chips, and viewer navigation", () => {
+  it("renders session_shared_files_images.golden.pb shared files, image chips, and viewer navigation", () => {
     const initialVm = goldenView(sessionSharedFilesImagesGolden as GoldenDoc, "session_initial");
     expect(initialVm.view.case).toBe("session");
     if (initialVm.view.case !== "session") return;
@@ -1026,7 +1033,7 @@ describe("golden SessionScreenView layout and interaction", () => {
     expect(host.querySelector(".viewer")).toBeNull();
   });
 
-  it("renders session_attachments_draft.golden.json draft preparing, ready, viewer, and post-send session", () => {
+  it("renders session_attachments_draft.golden.pb draft preparing, ready, viewer, and post-send session", () => {
     const preparingVm = goldenView(sessionAttachmentsDraftGolden as GoldenDoc, "draft_preparing");
     expect(preparingVm.view.case).toBe("attachmentDraft");
     if (preparingVm.view.case !== "attachmentDraft") return;
