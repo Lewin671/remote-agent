@@ -14,7 +14,7 @@ struct AuthorityAccess {
     var emptyHint: String { L10n.homeAddViaManager(name: name) }
     static func exitAdvice(authority: Bool, unresolved: Bool) -> String {
         if unresolved { return L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts() }
-        if authority { return L10n.securityIosThisDeviceIsTheSoleManagingClientTransferManagement() }
+        if authority { return L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement() }
         return L10n.securityExitingDeletesLocalKeysYouWillNeedToPair()
     }
 }

@@ -694,13 +694,18 @@ final class AppModel {
 
     /// The confirmation captures security facts, independently of its displayed language.
     enum RejoinAdvice: Equatable {
-        case sensitive(authority: Bool, unresolved: Bool)
+        case sensitive(authority: Bool, unresolved: Bool, message: String = "")
         case unreadable
         var text: String {
             switch self {
-            case .sensitive(let authority, let unresolved):
-                AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
-            case .unreadable: L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
+            case .sensitive(let authority, let unresolved, let message):
+                let coreText = translateSecurityKey(message)
+                let lead = coreText.isEmpty
+                    ? AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved)
+                    : coreText
+                return lead + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            case .unreadable:
+                return L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
             }
         }
     }
@@ -715,7 +720,7 @@ final class AppModel {
                 adv = try await parts.checkExitAdvice(parts.storage.vault)
             }
             if adv.authority || adv.unresolved {
-                return .sensitive(authority: adv.authority, unresolved: adv.unresolved)
+                return .sensitive(authority: adv.authority, unresolved: adv.unresolved, message: adv.message)
             }
             return nil
         } catch {

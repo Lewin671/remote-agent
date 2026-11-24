@@ -1126,7 +1126,6 @@
 "security_ios_this_deletes_the_entire_account_on_the_current_relay" = "This deletes the entire account on the current relay, device registrations, encrypted session records, images, file chunks, and account settings, and disconnects all paired devices. This is permanent account deletion; a recovery code cannot restore it.";
 "security_ios_this_device_has_no_available_camera_go_back_to" = "This device has no available camera. Go back to enter the pairing code manually.";
 "security_ios_this_device_is_over_5_minutes_behind_the_security" = "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.";
-"security_ios_this_device_is_the_sole_managing_client_transfer_management" = "This device is the sole managing client. Transfer management first if possible. Exiting deletes management keys; without a recovery code backup, management will be lost.";
 "security_ios_this_device_s_account_keys_and_cache_will_be" = "This device’s account keys and cache will be deleted before joining with a pairing code.";
 "security_ios_this_device_was_removed_the_successor_is_now_the" = "This device was removed. The successor is now the sole managing client. Pair again to rejoin.";
 "security_ios_this_ipad" = "this iPad";

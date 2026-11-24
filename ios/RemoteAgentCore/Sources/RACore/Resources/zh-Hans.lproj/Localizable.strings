@@ -1126,7 +1126,6 @@
 "security_ios_this_deletes_the_entire_account_on_the_current_relay" = "这会删除当前中继上的整个账户、设备登记、加密会话记录、图片、文件块和账户设置，并使所有已配对设备断开。这不是退出登录，删除后无法用恢复码找回。";
 "security_ios_this_device_has_no_available_camera_go_back_to" = "这台设备没有可用的相机；可以返回手动输入配对码。";
 "security_ios_this_device_is_over_5_minutes_behind_the_security" = "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试";
-"security_ios_this_device_is_the_sole_managing_client_transfer_management" = "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。";
 "security_ios_this_device_s_account_keys_and_cache_will_be" = "会先删除这台设备上的账户密钥和缓存，再用配对码加入。";
 "security_ios_this_device_was_removed_the_successor_is_now_the" = "本机已移除，接任设备成为唯一管理端。要再次加入，请重新配对。";
 "security_ios_this_ipad" = "这台 iPad";

@@ -184,6 +184,40 @@ final class Harness {
         #expect(h.model.stage == .join)
     }
 
+    @Test func corruptRecordSurfacesUnreadableExitAdviceAndAllowsSetupReset() async throws {
+        defer { h.cleanUp() }
+        // Seed a corrupt record blob (no device keys) using real Go bootstrap & real checkExitAdvice.
+        _ = h.vault.executeStorage(.with {
+            $0.op = .writeCas
+            $0.bucket = .record
+            $0.key = "record"
+            $0.createOnly = true
+            $0.nextRevision = "r1"
+            $0.data = Data([1, 2, 3, 4])
+        })
+        var parts = AppModel.Parts()
+        parts.storage = AccountStorage(
+            vault: h.vault, cacheRoot: h.root.appending(path: "cache"), pending: h.pending)
+        parts.network = FakeNetwork()
+        parts.defaults = h.defaults
+        parts.allowPlainHttp = true
+        parts.frame = { _ in }
+        parts.clearNotifications = { [unowned h] in h.cleared += 1 }
+        let model = AppModel(settings: h.settings, parts: parts)
+        model.setForeground(true)
+        await model.waitForLoadForTest()
+        guard case .failed = model.stage else {
+            Issue.record("expected failed stage on corrupt record, got \(model.stage)")
+            return
+        }
+        // SetupReset confirmation queries rejoinAdvice(); must report .unreadable rather than deadlocking.
+        let advice = await model.rejoinAdvice()
+        #expect(advice == .unreadable)
+        await model.logout()
+        #expect(model.stage == .join)
+        #expect(!h.vault.hasPersistedState())
+    }
+
     @Test func withoutAnAccountTheJoinFlowIsShown() async {
         defer { h.cleanUp() }
         #expect(h.model.stage == .loading)

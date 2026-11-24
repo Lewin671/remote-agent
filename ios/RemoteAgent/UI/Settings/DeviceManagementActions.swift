@@ -15,18 +15,26 @@ struct DeviceManagementActions: View {
     var body: some View {
         let settings = context.core.settings
         let isManager = settings.security.isManager
+        let incomplete = !machine && context.core.devices.unfinishedPairings.contains(where: { $0.deviceID == id })
         let present: Bool = if machine {
             settings.machines.first(where: { $0.machineID == id })?.inDeviceDirectory ?? false
         } else {
-            context.core.clientDetail.deviceID == id
-                ? context.core.clientDetail.found
-                : context.core.devices.clients.contains(where: { $0.deviceID == id })
+            incomplete
+                || (context.core.clientDetail.deviceID == id
+                    ? context.core.clientDetail.found
+                    : context.core.devices.clients.contains(where: { $0.deviceID == id }))
         }
         let addHint = settings.addDeviceHint.rendered().or(L10n.securityAddOnAuthority(name: settings.security.authorityName))
         if isManager && id != context.me {
             GroupCard {
                 if present {
-                    GRow(machine ? L10n.settingsRemoveComputerEllipsis() : L10n.securityRemoveDevice(), danger: true, enabled: !action.running) { removing = true }
+                    GRow(
+                        incomplete
+                            ? L10n.securityRemoveUnfinishedPairing()
+                            : (machine ? L10n.settingsRemoveComputerEllipsis() : L10n.securityRemoveDevice()),
+                        danger: true,
+                        enabled: !action.running
+                    ) { removing = true }
                 } else if machine {
                     GRow(L10n.securityIosRejoinFromOriginalRecords(), chevron: true, enabled: !action.running) {
                         nav.open(.addDevice(replacing: id))
@@ -39,10 +47,12 @@ struct DeviceManagementActions: View {
         } else if !isManager { GroupNote(addHint) }
         Color.clear.frame(height: 0)
             .confirm(isPresented: $removing, title: L10n.securityRemoveDeviceDeviceManagement(),
-                text: L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
+                text: incomplete
+                    ? L10n.securityAfterRemovingThisUnfinishedPairingGenerateANewCode()
+                    : L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
                 confirm: L10n.commonRemove(), danger: true) {
                     done = ""
-                    action.run { try await context.remote.removeDevice(id) } onDone: { done = L10n.securityIosDeviceRemoved() }
+                    action.run { try await context.remote.removeDevice(id, abandonPairDelivery: incomplete) } onDone: { done = L10n.securityIosDeviceRemoved() }
                 }
             .confirm(isPresented: $deleting, title: L10n.securityIosDeleteThisComputerSRecords(),
                 text: L10n.securityThisPermanentlyDeletesSessionsEventsAndImagesOnThe(),

@@ -26,9 +26,16 @@ import UIKit
     }
     @Test func logoutPrioritizesUnresolvedEvidenceAndWarnsTheOnlyAuthority() {
         #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: true) == L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts())
-        #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: false).contains("唯一管理端"))
-        #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: false).contains("没有恢复码备份将丢失管理权"))
+        #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: false) == L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement())
+        #expect(AuthorityAccess.exitAdvice(authority: true, unresolved: false).contains("本机是唯一管理端"))
+        #expect(!AuthorityAccess.exitAdvice(authority: true, unresolved: false).contains("此浏览器"))
         #expect(AuthorityAccess.exitAdvice(authority: false, unresolved: false) == L10n.securityExitingDeletesLocalKeysYouWillNeedToPair())
+        let fromCore = AppModel.RejoinAdvice.sensitive(
+            authority: true,
+            unresolved: false,
+            message: "security.this_device_is_the_only_managing_client_transfer_management"
+        )
+        #expect(fromCore.text.contains(L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement()))
     }
     @Test func unrelatedPendingCannotBecomeAPairingSuccessAfterRetry() throws {
         var lease = PBSecurityPendingOpSummary()

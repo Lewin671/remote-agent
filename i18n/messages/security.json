@@ -5518,20 +5518,6 @@
     }
   },
   {
-    "key": "security.ios_this_device_is_the_sole_managing_client_transfer_management",
-    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
-    "en": "This device is the sole managing client. Transfer management first if possible. Exiting deletes management keys; without a recovery code backup, management will be lost.",
-    "notes": "iOS AuthorityAccess.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
-    "params": {},
-    "platforms": [
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "security.ios_this_device_s_account_keys_and_cache_will_be",
     "zh-CN": "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
     "en": "This device’s account keys and cache will be deleted before joining with a pairing code.",
