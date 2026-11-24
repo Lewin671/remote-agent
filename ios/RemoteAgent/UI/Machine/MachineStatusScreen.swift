@@ -126,6 +126,24 @@ private struct SwapFade: ViewModifier, @preconcurrency Animatable {
 // MARK: Connected wrapper
 
 struct MachineStatusScreen: View {
+    /// `PrepareCleanupSessionEffect.prompt` carries the i18n key `machine_status.cleanup_prompt` from `clientcore`;
+    /// resolve it through `L10n` instead of pasting the raw key into the draft.
+    static func resolvedCleanupPrompt(_ raw: String) -> String {
+        if raw.isEmpty || raw == "machine_status.cleanup_prompt" {
+            return L10n.machineStatusCleanupPrompt()
+        }
+        return raw
+    }
+
+    /// `mem.totalText` already incorporates swap (`machine_status.total_swap`) when swap > 0,
+    /// so fall back to `swapText` only when `totalText` is empty (matching Web and Android).
+    static func memoryTotalSummary(_ mem: PBMachineMemorySection, locale: String? = nil) -> String {
+        if let locale {
+            return mem.totalText.rendered(locale: locale).or(mem.swapText.rendered(locale: locale))
+        }
+        return mem.totalText.rendered().or(mem.swapText.rendered())
+    }
+
     let id: String
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -217,7 +235,7 @@ struct MachineStatusScreen: View {
             guard let pending = context.core.pendingCleanup, pending.effect.machineID == id else { return }
             context.core.consumeCleanup(pending.id)
             let eff = pending.effect
-            let prompt = eff.prompt.or(L10n.machineStatusCleanupPrompt())
+            let prompt = Self.resolvedCleanupPrompt(eff.prompt)
             if eff.needsDirectoryPicker {
                 cleanup = .pickFolder
             } else {
@@ -824,10 +842,8 @@ private struct HeroContent: View {
                 if !d2.isEmpty { highlightDigits(d2, bold: ink, rest: ink2).monospacedDigit() }
                 if !d1.isEmpty { Text(d1).font(.footnote).foregroundStyle(ink2) }
             } else {
-                let total = mem.totalText.rendered()
-                let swap = mem.swapText.rendered()
-                if !total.isEmpty { Text(total).font(.footnote).foregroundStyle(ink2) }
-                if !swap.isEmpty { Text(swap).font(.footnote).foregroundStyle(ink2) }
+                let summary = MachineStatusScreen.memoryTotalSummary(mem)
+                if !summary.isEmpty { Text(summary).font(.footnote).foregroundStyle(ink2) }
             }
         }
     }
@@ -1002,9 +1018,7 @@ private struct SmallTile: View {
             VStack(alignment: .leading, spacing: 0) {
                 if metric == .memory {
                     let pressureWord = mem.pressureText.rendered()
-                    let totalLine = [mem.totalText.rendered(), mem.swapText.rendered()]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: "，")
+                    let totalLine = MachineStatusScreen.memoryTotalSummary(mem)
                     Kick(symbol: .memory, label: L10n.machineStatusMemory(), color: ink2)
                     LargeFigure(value: fig.value, number: fig.number, unit: fig.unit, color: ink, unitColor: ink2)
                     if mem.hasPressurePosition_p {

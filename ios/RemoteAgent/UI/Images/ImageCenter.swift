@@ -587,18 +587,65 @@ final class ImageCenter {
         }
     }
 
-    /// Loads one image `NSItemProvider` via `loadFileRepresentation` + `readPicked` so oversized clipboard
-    /// images are refused by size before reading bytes into memory.
-    static func loadBoundedImageData(from provider: NSItemProvider) async throws -> Data {
-        try await withCheckedThrowingContinuation { done in
-            _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, error in
-                guard let url else {
-                    done.resume(throwing: error ?? AttachmentFileIOError(.decode))
-                    return
-                }
-                done.resume(with: Result { try readPicked(url) })
+    /// Picks candidate image UTIs registered on `provider` (concrete types first, then `public.image`)
+    /// because `UIPasteboard` item providers register concrete types (`public.jpeg`, `public.png`, …)
+    /// and reject `loadFileRepresentation(forTypeIdentifier: "public.image")`.
+    static func imageTypeIdentifiers(for provider: NSItemProvider) -> [String] {
+        var ids: [String] = []
+        for id in provider.registeredTypeIdentifiers {
+            if let type = UTType(id), type.conforms(to: .image), !ids.contains(id) {
+                ids.append(id)
             }
         }
+        if !ids.contains(UTType.image.identifier) {
+            ids.append(UTType.image.identifier)
+        }
+        return ids
+    }
+
+    /// Loads one image `NSItemProvider` via `loadFileRepresentation` + `readPicked` so oversized clipboard
+    /// images are refused by size before reading bytes into memory. Falls back to `loadDataRepresentation`
+    /// only when the provider cannot serve a file representation for its concrete image UTI.
+    static func loadBoundedImageData(from provider: NSItemProvider) async throws -> Data {
+        let typeIDs = imageTypeIdentifiers(for: provider)
+        var lastError: Error?
+        for typeID in typeIDs {
+            do {
+                return try await withCheckedThrowingContinuation { done in
+                    _ = provider.loadFileRepresentation(forTypeIdentifier: typeID) { url, error in
+                        guard let url else {
+                            done.resume(throwing: error ?? AttachmentFileIOError(.decode))
+                            return
+                        }
+                        done.resume(with: Result { try readPicked(url) })
+                    }
+                }
+            } catch let tooLarge as ImageTooLarge {
+                throw tooLarge
+            } catch {
+                lastError = error
+            }
+        }
+        for typeID in typeIDs {
+            do {
+                let data: Data = try await withCheckedThrowingContinuation { done in
+                    _ = provider.loadDataRepresentation(forTypeIdentifier: typeID) { d, error in
+                        if let d {
+                            done.resume(returning: d)
+                        } else {
+                            done.resume(throwing: error ?? AttachmentFileIOError(.decode))
+                        }
+                    }
+                }
+                try checkPicked(bytes: Int64(data.count), original: false, originalMaxBytes: 0)
+                return data
+            } catch let tooLarge as ImageTooLarge {
+                throw tooLarge
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError ?? AttachmentFileIOError(.decode)
     }
 
     /// Pastes images from the system clipboard.

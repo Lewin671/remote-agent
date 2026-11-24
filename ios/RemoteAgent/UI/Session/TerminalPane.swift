@@ -357,6 +357,7 @@ struct TerminalPane: View {
         .padding(12)
         .background(TermColors.bar, in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous).strokeBorder(TermColors.line, lineWidth: 1))
+        .environment(\.colorScheme, .dark)
         .padding(12)
     }
 }

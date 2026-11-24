@@ -320,6 +320,15 @@ func (mgr *attManager) allocItemID() string {
 	return "att-" + strconv.FormatUint(mgr.nextItemSeq, 10)
 }
 
+func (mgr *attManager) observeItemID(id string) {
+	if !strings.HasPrefix(id, "att-") {
+		return
+	}
+	if n, err := strconv.ParseUint(strings.TrimPrefix(id, "att-"), 10, 64); err == nil && n > mgr.nextItemSeq {
+		mgr.nextItemSeq = n
+	}
+}
+
 func cloneDraftScope(s *corev1.DraftScope) *corev1.DraftScope {
 	if s == nil {
 		return nil
@@ -827,12 +836,14 @@ func (c *Core) hydrateDraftFromPersisted(ctx *sync.StepContext, d *attDraft, rec
 		c.syncNewSessionPromptFromDraft(d)
 	}
 	if len(d.items) == 0 {
+		mgr := c.m.ensureAttachments()
 		d.original = rec.Original
 		for _, pi := range rec.Items {
 			if pi == nil || pi.ItemId == "" {
 				continue
 			}
 			it := attItemFromPersisted(pi)
+			mgr.observeItemID(it.id)
 			// Per docs/session-files.md §历史事件与网页: restored items NEVER trust old remote IDs
 			// as immediately ready; clear remote ID/expiry and re-validate/re-upload before sending.
 			it.remoteID = ""

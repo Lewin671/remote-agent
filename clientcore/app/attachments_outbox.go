@@ -451,7 +451,9 @@ func (c *Core) restoreOutboxRecordFromPersisted(rec *corev1.PersistedOutboxRecor
 	items := make([]*attItem, 0, len(rec.Items))
 	for _, pi := range rec.Items {
 		if pi != nil {
-			items = append(items, attItemFromPersisted(pi))
+			it := attItemFromPersisted(pi)
+			mgr.observeItemID(it.id)
+			items = append(items, it)
 		}
 	}
 	outRec := &attOutboxRecord{
