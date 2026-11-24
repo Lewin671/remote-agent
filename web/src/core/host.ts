@@ -3402,10 +3402,6 @@ export class CoreHost {
     this.terminalReopenListeners.clear();
     this.terminalHistoryRequestListeners.clear();
     this.terminalHistoryUpdatedListeners.clear();
-    for (const w of this.bulkRouteWaiters.values()) {
-      w({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
-    }
-    this.bulkRouteWaiters.clear();
     for (const map of this.inFlightDispatches.values()) {
       for (const ac of map.values()) ac.abort();
     }
