@@ -40,17 +40,17 @@ class ScheduleNotificationRouteTest {
     }
 
     @Test fun sessionViewNonOwnedRoutesToConversation() = runTest {
-        val view = SessionView("s", "computer", Session.newBuilder().setId("s").build())
+        val view = SyncSessionView.newBuilder().setSessionId("s").setMachineId("computer").setInfo(Session.newBuilder().setId("s")).build()
         assertEquals(ScheduleNotificationRoute.Conversation, cachedScheduleNotificationRoute("s", view))
     }
 
     @Test fun coldLoadCanResolveAnOwnedSessionBeforeTheTaskListArrives() = runTest {
-        var view: SessionView? = null
+        var view: SyncSessionView? = null
         val route = resolveScheduleNotificationRoute(
             cached = { cachedScheduleNotificationRoute("s", view) },
             load = {
                 delay(100)
-                view = SessionView("s", "computer", Session.newBuilder().setTaskOwned(true).setScheduledTaskId("t").build())
+                view = SyncSessionView.newBuilder().setSessionId("s").setMachineId("computer").setInfo(Session.newBuilder().setTaskOwned(true).setScheduledTaskId("t")).build()
             },
         )
         assertEquals(ScheduleNotificationRoute.Task("computer", "t"), route)

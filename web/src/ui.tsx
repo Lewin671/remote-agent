@@ -2,6 +2,9 @@ import { t } from "./i18n";
 // Small building blocks shared by the views.
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject, type TouchEvent } from "react";
+import { useCoreHost, useSyncState } from "./core/host";
+import { renderText } from "./core/text";
+import { ConnBannerKind } from "./gen/remoteagent/core/v1/sync_view_pb";
 import { useExit, useKnob, useMarkSwap } from "./motion";
 import type { Tone } from "./model";
 import type { Remote } from "./remote";
@@ -524,23 +527,25 @@ export function Banner({ kind = "", children, action, onAction }: { kind?: "" | 
  * while it is not up. It names the nearest stretch that is down
  * (client-v30 「断线」): this device's network, or the server. */
 export function ConnBar({ remote, className = "connbar" }: { remote: Remote; className?: string }) {
+  const host = useCoreHost(remote);
+  const sync = useSyncState(host);
   const [details, setDetails] = useState(false);
-  const link = remote.link;
-  if (link === "online" || remote.displayGrace) return null;
-  // Nothing kept from before to show: the bar says what the connection is for.
-  const kept = remote.listed || remote.sessions.size > 0;
-  if (link === "waiting" && !remote.showWaiting) return null;
-  if (link === "no-network") return <div className={className}><WifiOff /><span>{kept ? t("connection.no_network_previous") : t("connection.no_network_empty")}</span></div>;
-  if (link === "no-server")
+  const banner = sync.connBanner;
+  if (!banner?.visible) return null;
+  if (banner.kind === ConnBannerKind.NO_NETWORK) {
+    return <div className={className}><WifiOff /><span>{renderText(banner.text)}</span></div>;
+  }
+  if (banner.kind === ConnBannerKind.NO_SERVER) {
     return (
-      <div className={className + (kept ? "" : " err")}>
+      <div className={className + (banner.errorTone ? " err" : "")}>
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
-        {kept ? <CloudOff /> : <X />}
-        <span>{details ? t("connection.server_details", { reason: remote.connError || t("connection.no_response") }) : t("connection.server_retrying")}</span>
-        {details ? <button onClick={() => remote.reconnectNow(true)}>{t("common.retry")}</button> : <button onClick={() => setDetails(true)}>{t("common.details")}</button>}
+        {banner.keptData ? <CloudOff /> : <X />}
+        <span>{details ? renderText(banner.detailText) : renderText(banner.text)}</span>
+        {details ? <button onClick={() => host.reconnectNow()}>{t("common.retry")}</button> : <button onClick={() => setDetails(true)}>{t("common.details")}</button>}
       </div>
     );
-  return <div className={className}><LoaderCircle /><span>{remote.everOnline ? t("connection.reconnecting") : t("connection.connecting")}</span></div>;
+  }
+  return <div className={className}><LoaderCircle /><span>{renderText(banner.text)}</span></div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {
@@ -617,16 +622,6 @@ export function usePageVisible() {
  * (design-system §5). */
 export function Exp({ up }: { up?: boolean }) {
   return up ? <ChevronUp className="exp" /> : <ChevronDown className="exp" />;
-}
-
-/** What a command does to the route when it has ended, held to the page that
- * sent it: the command outlives its page, so by then the user may be on
- * another one, which is left as it is. Made when the command is sent. */
-export function fromHere<A extends unknown[]>(then: (...args: A) => void): (...args: A) => void {
-  const here = location.hash;
-  return (...args) => {
-    if (location.hash === here) then(...args);
-  };
 }
 
 export function Switch({

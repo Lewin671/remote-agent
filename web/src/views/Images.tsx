@@ -12,10 +12,14 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
 } from "react";
 import type { AttachmentExecutor } from "../attachment-executor";
+import { getCoreHost } from "../core/host";
 import { renderText } from "../core/text";
+import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
+import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import {
   AttachmentItemKind,
   AttachmentItemState,
@@ -34,7 +38,7 @@ import { matchesFormat, mimeOf } from "../imageview";
 import { hhmm } from "../model";
 import { errorText, type ImageResult, type Remote } from "../remote";
 import { saveBlobAsDownload } from "../shared-files";
-import { Exp, GlassButton, useDialogFocus, useEscape, useRemote } from "../ui";
+import { Exp, GlassButton, useDialogFocus, useEscape } from "../ui";
 import { useRowExpanded } from "./RowState";
 
 export interface ImageAnchor {
@@ -295,6 +299,9 @@ type Load =
   | ImageResult;
 
 /** Fetches the display copy of the picture shown, once per picture. */
+const NOOP_SUB = () => () => {};
+const NOOP_ONLINE = () => false;
+
 function useDisplay(
   remote: Remote | undefined,
   sid: string,
@@ -303,7 +310,11 @@ function useDisplay(
   local?: AttachmentDraftItemView,
   localBlob?: Blob,
 ): Load {
-  useRemote(remote);
+  const host = remote ? getCoreHost(remote) : undefined;
+  const isOnline = useSyncExternalStore(
+    host ? (cb) => host.subscribe(ScreenTarget.SYNC_STATE, cb) : NOOP_SUB,
+    host ? () => { return host.viewSyncState().connection === ConnState.CONNECTED; } : NOOP_ONLINE,
+  );
   const [state, setState] = useState<Load>({ kind: "idle" });
   const localLoad = useMemo<Load | undefined>(() => {
     if (!local) return;
@@ -329,7 +340,7 @@ function useDisplay(
     if (!remote) return setState({ kind: "idle" });
     const cached = remote.cachedImage(sid, imageId);
     if (cached) return setState(cached);
-    if (remote.conn !== "online") return setState({ kind: "offline" });
+    if (!isOnline) return setState({ kind: "offline" });
     let alive = true;
     setState({ kind: "loading" });
     remote.getImage(sid, imageId).then(
@@ -337,7 +348,7 @@ function useDisplay(
       (e) =>
         alive &&
         setState({
-          kind: remote.conn === "online" ? "error" : "offline",
+          kind: host?.viewSyncState().connection === ConnState.CONNECTED ? "error" : "offline",
           error: errorText(e),
         }),
     );
@@ -345,7 +356,7 @@ function useDisplay(
       alive = false;
     };
     // Offline, it waits for the connection and then fetches by itself.
-  }, [remote, sid, local ? undefined : imageId, sync, hasDisplayCopy, attempt, remote?.conn === "online"]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [remote, host, sid, local ? undefined : imageId, sync, hasDisplayCopy, attempt, isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
   return localLoad ?? state;
 }
 

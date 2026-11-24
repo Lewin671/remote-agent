@@ -412,6 +412,48 @@ func (m *ClientRowView) AppendMarshal(b []byte) []byte {
 	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ClientRowView)
 }
 
+type HandoffCandidateView struct {
+	_               [0]func()
+	DeviceId        string
+	DisplayName     string
+	DisplayNameText *Text
+}
+
+func (m *HandoffCandidateView) GetDeviceId() string {
+	if m != nil {
+		return m.DeviceId
+	}
+	return ""
+}
+func (m *HandoffCandidateView) GetDisplayName() string {
+	if m != nil {
+		return m.DisplayName
+	}
+	return ""
+}
+func (m *HandoffCandidateView) GetDisplayNameText() *Text {
+	if m != nil {
+		return m.DisplayNameText
+	}
+	return nil
+}
+
+var LitewireDesc_HandoffCandidateView = litewire.MessageDesc{
+	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(HandoffCandidateView{}.DeviceId), Kind: litewire.KindString},
+		{Num: 2, Offset: unsafe.Offsetof(HandoffCandidateView{}.DisplayName), Kind: litewire.KindString},
+		{Num: 3, Offset: unsafe.Offsetof(HandoffCandidateView{}.DisplayNameText), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
+	},
+}
+
+func (m *HandoffCandidateView) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *HandoffCandidateView) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_HandoffCandidateView)
+}
+
 type SecuritySummaryView struct {
 	_                   [0]func()
 	IsManager           bool
@@ -425,6 +467,7 @@ type SecuritySummaryView struct {
 	HasHandoffOffer     bool
 	RecoveryStatusStale bool
 	LeaseEndMs          int64
+	HandoffCandidates   []*HandoffCandidateView
 }
 
 func (m *SecuritySummaryView) GetIsManager() bool {
@@ -493,6 +536,12 @@ func (m *SecuritySummaryView) GetLeaseEndMs() int64 {
 	}
 	return 0
 }
+func (m *SecuritySummaryView) GetHandoffCandidates() []*HandoffCandidateView {
+	if m != nil {
+		return m.HandoffCandidates
+	}
+	return nil
+}
 
 var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -507,6 +556,7 @@ var LitewireDesc_SecuritySummaryView = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(SecuritySummaryView{}.HasHandoffOffer), Kind: litewire.KindBool},
 		{Num: 10, Offset: unsafe.Offsetof(SecuritySummaryView{}.RecoveryStatusStale), Kind: litewire.KindBool},
 		{Num: 11, Offset: unsafe.Offsetof(SecuritySummaryView{}.LeaseEndMs), Kind: litewire.KindInt64},
+		{Num: 12, Offset: unsafe.Offsetof(SecuritySummaryView{}.HandoffCandidates), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_HandoffCandidateView},
 	},
 }
 

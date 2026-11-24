@@ -31,41 +31,44 @@ A
 	
 
 
-È
+Å
 
 B
 cold-start
 	
 
-≈
-emptyManager¥
-±"
-home.all_projects2
-connection.connected :
+›
+emptyManagerÃ
+…"
+home.all_projects24
+connection.connected :
+connection.connected:
 home.no_sessionsB_>
 home.no_machines_setup$
 commandremote-agent account joinremote-agent account join0 H
-†
+π
 
 	
 
-ê
-emptyMemberÄ
-~"
-home.all_projects2
-connection.connected :
+©
+emptyMemberô
+ñ"
+home.all_projects24
+connection.connected :
+connection.connected:
 home.no_sessionsB,(
 home.add_via_manager
 name*Studio H
-À
+„
 
 	
 
-ª
-emptyAllOfflineß
-§"
-home.all_projects2
-connection.connected :
+”
+emptyAllOfflineø
+º"
+home.all_projects24
+connection.connected :
+connection.connected:
 home.no_sessionsBR9
 home.no_online_computer
 commandremote-agent daemonremote-agent daemon H

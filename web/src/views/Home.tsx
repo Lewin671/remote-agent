@@ -4,7 +4,8 @@
 import { create } from "@bufbuild/protobuf";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AgentMark } from "../agent-mark";
-import { useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSessionView, type Go } from "../core/host";
+import { getCoreHost, useCoreHost, useHomeView, useNewSessionView, useProjectView, useSchedulesView, useSessionView, useSyncState, type Go } from "../core/host";
+import type { SyncStateView } from "../gen/remoteagent/core/v1/sync_view_pb";
 import { renderText } from "../core/text";
 import { SessionCommandStatus, SessionDockKind } from "../gen/remoteagent/core/v1/session_view_pb";
 import { CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
@@ -68,14 +69,20 @@ function UpdateBanner() {
 }
 
 function ListError({ remote }: { remote: Remote }) {
-  return remote.listError ? <Banner kind="err" action={t("common.retry")} onAction={() => remote.retryList()}>{remote.listError}</Banner> : null;
+  const host = useCoreHost(remote);
+  const sync = useSyncState(host);
+  const msg = renderText(sync.sessionListError);
+  return msg ? <Banner kind="err" action={t("common.retry")} onAction={() => host.homeRetryLoad()}>{msg}</Banner> : null;
 }
 
 function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: boolean }) {
+  const host = useCoreHost(remote);
+  const sync = useSyncState(host);
+  const clockWarning = renderText(sync.clockSkewBannerText);
   return (
     <div className="home-banners">
       <UpdateBanner />
-      {remote.clockWarning && <Banner kind="warn">{remote.clockWarning}</Banner>}
+      {clockWarning && <Banner kind="warn">{clockWarning}</Banner>}
       <RecoveryNotice remote={remote} go={go} />
       <DiskReminders remote={remote} go={go} />
       <ListError remote={remote} />
@@ -84,8 +91,8 @@ function HomeBanners({ remote, go, quiet }: { remote: Remote; go: Go; quiet?: bo
   );
 }
 
-function suppressWaitingHeadline(remote?: Remote, vm?: HomeHeadlineView): boolean {
-  if (!remote || !vm || remote.conn === "online" || remote.link !== "waiting" || remote.showWaiting) return false;
+function suppressWaitingHeadline(sync?: SyncStateView, vm?: HomeHeadlineView): boolean {
+  if (!sync || !vm || !sync.displayGrace || sync.connection === ConnState.CONNECTED) return false;
   return vm.isConnecting;
 }
 
@@ -562,7 +569,7 @@ function TopApprovalPreview({ card, onOpen }: { card: AttentionCardView; onOpen:
 }
 
 /** One session row in the running/waiting list, driven by SessionRowView. */
-export function SessionRow({ row, onSelect, last, fresh }: { row: SessionRowView; onSelect: () => void; last?: boolean; fresh?: boolean; remote?: Remote }) {
+export function SessionRow({ row, onSelect, last, fresh }: { row: SessionRowView; onSelect: () => void; last?: boolean; fresh?: boolean }) {
   const timeText = renderText(row.time);
   const second = renderText(row.secondLine) || renderText(row.preview);
   const meta = renderText(row.metaLine);
@@ -704,7 +711,7 @@ export function HomeView(p: {
           <GlassButton label={t("common.settings")} onClick={p.onOpenSettings}><Settings /></GlassButton>
         </div>
         {p.connBar}
-        <Headline vm={suppressWaitingHeadline(remote, vm.headline) ? undefined : vm.headline} onDetails={p.onOpenDetails} />
+        <Headline vm={suppressWaitingHeadline(remote ? getCoreHost(remote).viewSyncState() : undefined, vm.headline) ? undefined : vm.headline} onDetails={p.onOpenDetails} />
         {p.banners}
         <HomeEmpty empty={vm.empty} onAddDevice={p.onAddDevice} onStartFirst={p.onStart} onRetry={p.onRetryLoad} />
         {vm.canFilter && <FilterBar query={vm.filterQuery} onChange={p.onSetFilter} />}
@@ -734,7 +741,7 @@ export function HomeView(p: {
           <>
             <div className="sec">{t("home.live")}<span>{vm.running.length}</span></div>
             {shownRunning.map((row, idx) => (
-              <SessionRow key={row.sessionId} row={row} remote={remote} last={idx === shownRunning.length - 1 && hiddenRunning === 0} fresh={fresh(row.sessionId)} onSelect={() => p.onOpenSession(row.sessionId)} />
+              <SessionRow key={row.sessionId} row={row} last={idx === shownRunning.length - 1 && hiddenRunning === 0} fresh={fresh(row.sessionId)} onSelect={() => p.onOpenSession(row.sessionId)} />
             ))}
             {hiddenRunning > 0 && <button type="button" className="more-row" onClick={() => setAllLive(true)}>{t("home.more_live", { count: hiddenRunning })}<ChevronRight /></button>}
           </>
@@ -752,8 +759,8 @@ export function HomeView(p: {
 
 /** Connected phone Home screen wired to CoreHost. */
 export function Home({ remote, go }: { remote: Remote; go: Go }) {
-  useRemote(remote);
   const host = useCoreHost(remote, go);
+  const sync = useSyncState(host);
   const [endedLimit, setEndedLimit] = useState(30);
   const vm = useHomeView(host, endedLimit);
   const [connOpen, setConnOpen] = useState(false);
@@ -761,10 +768,10 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
 
   const heldEnded = vm.endedGroups.reduce((n, g) => n + g.items.length, 0);
   useEffect(() => {
-    if (!vm.filterQuery && remote.moreSessions && (vm.endedTail?.kind === TailKind.MORE_ENDED || vm.endedTail?.kind === TailKind.MORE_ON_SERVER) && heldEnded < endedLimit) {
+    if (!vm.filterQuery && sync.hasMoreSessions && (vm.endedTail?.kind === TailKind.MORE_ENDED || vm.endedTail?.kind === TailKind.MORE_ON_SERVER) && heldEnded < endedLimit) {
       void remote.loadMoreSessions();
     }
-  }, [vm.filterQuery, vm.endedTail?.kind, remote, remote.moreSessions, heldEnded, endedLimit]);
+  }, [vm.filterQuery, vm.endedTail?.kind, remote, sync.hasMoreSessions, heldEnded, endedLimit]);
 
   const startTask = () => {
     if (vm.scopeKey) { remote.focusProject = vm.scopeKey; go("p/" + encodeURIComponent(vm.scopeKey)); }
@@ -788,7 +795,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
         onAddDevice={() => go("devices")}
         onStart={startTask}
         onLoadMoreEnded={() => { setEndedLimit((n) => n + 30); host.homeLoadMoreEnded(30); }}
-        onRetryLoad={() => { host.homeRetryLoad(); remote.retryList(); }}
+        onRetryLoad={() => host.homeRetryLoad()}
         onOpenDetails={() => setConnOpen(true)}
         connBar={<ConnBar remote={remote} />}
         banners={<HomeBanners remote={remote} go={go} />}
@@ -823,12 +830,12 @@ export function SidebarView(p: {
   onRetryLoad: () => void;
   banners?: ReactNode;
 }) {
-  const { vm, remote, selected, tasks = false } = p;
+  const { vm, selected, tasks = false } = p;
   const [scopeOpen, setScopeOpen] = useState(false);
   const scopeBtn = useRef<HTMLButtonElement>(null);
   const scopeTitle = renderText(vm.scopeTitle) || t("home.all_projects");
   const isAllScope = !vm.scopeKey;
-  const connText = renderText(vm.connection?.badgeText);
+  const connText = renderText(vm.connection?.sidebarBadgeText);
   const fresh = useFresh(vm.running.map((r) => r.sessionId), vm.headline?.kind !== HeadlineKind.UNSPECIFIED);
 
   return (
@@ -864,7 +871,7 @@ export function SidebarView(p: {
             <>
               <div className="sec">{t("home.live")}</div>
               {vm.running.map((row, idx) => (
-                <SessionRow key={row.sessionId} row={selected && row.sessionId === selected ? { ...row, selected: true } : row} remote={remote} last={idx === vm.running.length - 1} fresh={fresh(row.sessionId)} onSelect={() => p.onSelectSession(row.sessionId)} />
+                <SessionRow key={row.sessionId} row={selected && row.sessionId === selected ? { ...row, selected: true } : row} last={idx === vm.running.length - 1} fresh={fresh(row.sessionId)} onSelect={() => p.onSelectSession(row.sessionId)} />
               ))}
             </>
           )}
@@ -899,15 +906,12 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
 
   useEffect(() => { host.homeSelectSession(selected ?? ""); }, [host, selected]);
 
-  // Don't render stale "已连接" while reconnecting during grace window.
-  const connView = remote.conn !== "online" && !remote.showWaiting ? (vm.connection ? { ...vm.connection, badgeText: undefined } : undefined) : vm.connection;
-  const viewVm = connView === vm.connection ? vm : { ...vm, connection: connView };
   const activeScope = project ?? vm.scopeKey;
 
   return (
     <>
       <SidebarView
-        vm={viewVm}
+        vm={vm}
         remote={remote}
         selected={selected}
         tasks={showTasks}
@@ -925,7 +929,7 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
         onManageProjects={() => go("projects")}
         onOpenConnCheck={() => setConnOpen(true)}
         onLoadMoreEnded={() => { setEndedLimit((n) => n + 30); host.homeLoadMoreEnded(30); }}
-        onRetryLoad={() => { host.homeRetryLoad(); remote.retryList(); }}
+        onRetryLoad={() => host.homeRetryLoad()}
         banners={<HomeBanners remote={remote} go={go} quiet />}
       />
       {connOpen && <ConnCheck remote={remote} onClose={() => setConnOpen(false)} />}
@@ -935,8 +939,8 @@ export function Sidebar({ remote, selected, project, active = "sessions", tasks,
 
 /** Wide main area: start a new session directly (for all projects or a picked project). */
 export function WideHome({ remote, go, project }: { remote: Remote; go: Go; project?: string }) {
-  useRemote(remote);
   const host = useCoreHost(remote, go);
+  const sync = useSyncState(host);
   const homeVm = useHomeView(host, 1);
   const scopedProject = project || homeVm.scopeKey;
   const [draftKey, setDraftKey] = useState("");
@@ -951,14 +955,14 @@ export function WideHome({ remote, go, project }: { remote: Remote; go: Go; proj
 
   if (!homeVm.canStart) {
     if (homeVm.empty?.kind === HomeEmptyKind.LOADING || homeVm.empty?.kind === HomeEmptyKind.NONE) {
-      return <div className="page wnew"><div className="wstart">{remote.listError ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
+      return <div className="page wnew"><div className="wstart">{renderText(sync.sessionListError) ? <ListError remote={remote} /> : <div data-late="1"><Skeleton /></div>}</div></div>;
     }
     return (
       <div className="page wnew">
         <div className="wstart">
-          <Headline vm={suppressWaitingHeadline(remote, homeVm.headline) ? undefined : homeVm.headline} />
+          <Headline vm={suppressWaitingHeadline(sync, homeVm.headline) ? undefined : homeVm.headline} />
           <div className="home-banners"><ListError remote={remote} /><PrefsBanner remote={remote} /></div>
-          <HomeEmpty empty={homeVm.empty} onAddDevice={() => go("devices")} onStartFirst={() => {}} onRetry={() => { host.homeRetryLoad(); remote.retryList(); }} />
+          <HomeEmpty empty={homeVm.empty} onAddDevice={() => go("devices")} onStartFirst={() => {}} onRetry={() => host.homeRetryLoad()} />
         </div>
       </div>
     );

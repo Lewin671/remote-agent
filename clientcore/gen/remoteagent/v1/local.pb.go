@@ -701,6 +701,14 @@ var LitewireDesc_CreateSessionResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *CreateSessionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CreateSessionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CreateSessionResponse)
+}
+
 func (m *CreateSessionResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CreateSessionResponse)
 }
@@ -815,6 +823,14 @@ var LitewireDesc_SendResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *SendResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SendResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SendResponse)
+}
+
 func (m *SendResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SendResponse)
 }
@@ -887,6 +903,14 @@ var LitewireDesc_InterruptResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *InterruptResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *InterruptResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_InterruptResponse)
+}
+
 func (m *InterruptResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_InterruptResponse)
 }
@@ -945,6 +969,14 @@ var LitewireDesc_StopSessionResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(StopSessionResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&StopSessionResponse{}) },
+}
+
+func (m *StopSessionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *StopSessionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_StopSessionResponse)
 }
 
 func (m *StopSessionResponse) Unmarshal(b []byte) error {
@@ -1015,6 +1047,14 @@ var LitewireDesc_CancelInputResponse = litewire.MessageDesc{
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&CancelInputResponse{}) },
 }
 
+func (m *CancelInputResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CancelInputResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CancelInputResponse)
+}
+
 func (m *CancelInputResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CancelInputResponse)
 }
@@ -1081,6 +1121,14 @@ var LitewireDesc_ResumeInputResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(ResumeInputResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResumeInputResponse{}) },
+}
+
+func (m *ResumeInputResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ResumeInputResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeInputResponse)
 }
 
 func (m *ResumeInputResponse) Unmarshal(b []byte) error {
@@ -1181,6 +1229,14 @@ var LitewireDesc_ResolveApprovalResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(ResolveApprovalResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&ResolveApprovalResponse{}) },
+}
+
+func (m *ResolveApprovalResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ResolveApprovalResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResolveApprovalResponse)
 }
 
 func (m *ResolveApprovalResponse) Unmarshal(b []byte) error {
@@ -1288,6 +1344,14 @@ var LitewireDesc_AnswerQuestionResponse = litewire.MessageDesc{
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerQuestionResponse{}) },
 }
 
+func (m *AnswerQuestionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *AnswerQuestionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerQuestionResponse)
+}
+
 func (m *AnswerQuestionResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerQuestionResponse)
 }
@@ -1362,6 +1426,14 @@ var LitewireDesc_SetModelResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(SetModelResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetModelResponse{}) },
+}
+
+func (m *SetModelResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SetModelResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetModelResponse)
 }
 
 func (m *SetModelResponse) Unmarshal(b []byte) error {
@@ -1493,6 +1565,14 @@ var LitewireDesc_ModelInfo = litewire.MessageDesc{
 	},
 }
 
+func (m *ModelInfo) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ModelInfo) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ModelInfo)
+}
+
 func (m *ModelInfo) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ModelInfo)
 }
@@ -1538,8 +1618,17 @@ var LitewireDesc_ListModelsResponse = litewire.MessageDesc{
 	HasUnknownOff: unsafe.Offsetof(ListModelsResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&ListModelsResponse{}) },
 	Fields: []litewire.Field{
+		{Num: 1, Offset: unsafe.Offsetof(ListModelsResponse{}.Models), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ModelInfo},
 		{Num: 2, Offset: unsafe.Offsetof(ListModelsResponse{}.DefaultModel), Kind: litewire.KindString},
 	},
+}
+
+func (m *ListModelsResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ListModelsResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ListModelsResponse)
 }
 
 func (m *ListModelsResponse) Unmarshal(b []byte) error {
@@ -1628,6 +1717,14 @@ var LitewireDesc_SetApprovalModeResponse = litewire.MessageDesc{
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&SetApprovalModeResponse{}) },
 }
 
+func (m *SetApprovalModeResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *SetApprovalModeResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_SetApprovalModeResponse)
+}
+
 func (m *SetApprovalModeResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_SetApprovalModeResponse)
 }
@@ -1696,6 +1793,14 @@ var LitewireDesc_RenameSessionResponse = litewire.MessageDesc{
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&RenameSessionResponse{}) },
 }
 
+func (m *RenameSessionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *RenameSessionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_RenameSessionResponse)
+}
+
 func (m *RenameSessionResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_RenameSessionResponse)
 }
@@ -1754,6 +1859,14 @@ var LitewireDesc_CompactResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(CompactResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&CompactResponse{}) },
+}
+
+func (m *CompactResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CompactResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CompactResponse)
 }
 
 func (m *CompactResponse) Unmarshal(b []byte) error {
@@ -1839,6 +1952,14 @@ var LitewireDesc_AnswerPlanResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(AnswerPlanResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&AnswerPlanResponse{}) },
+}
+
+func (m *AnswerPlanResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *AnswerPlanResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AnswerPlanResponse)
 }
 
 func (m *AnswerPlanResponse) Unmarshal(b []byte) error {
@@ -1935,6 +2056,14 @@ var LitewireDesc_ListDirectoriesResponse = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Home), Kind: litewire.KindString},
 		{Num: 4, Offset: unsafe.Offsetof(ListDirectoriesResponse{}.Dirs), Kind: litewire.KindString, Flags: litewire.FlagRepeated},
 	},
+}
+
+func (m *ListDirectoriesResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ListDirectoriesResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ListDirectoriesResponse)
 }
 
 func (m *ListDirectoriesResponse) Unmarshal(b []byte) error {
@@ -2217,6 +2346,14 @@ var LitewireDesc_GetSettingsResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *GetSettingsResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetSettingsResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetSettingsResponse)
+}
+
 func (m *GetSettingsResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSettingsResponse)
 }
@@ -2349,6 +2486,14 @@ var LitewireDesc_UpdateSettingsResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *UpdateSettingsResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *UpdateSettingsResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_UpdateSettingsResponse)
+}
+
 func (m *UpdateSettingsResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_UpdateSettingsResponse)
 }
@@ -2421,6 +2566,14 @@ var LitewireDesc_ResumeSessionResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *ResumeSessionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ResumeSessionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeSessionResponse)
+}
+
 func (m *ResumeSessionResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResumeSessionResponse)
 }
@@ -2491,6 +2644,14 @@ var LitewireDesc_ForkSessionResponse = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ForkSessionResponse{}.Session), Kind: litewire.KindMessage, Sub: &LitewireDesc_Session},
 	},
+}
+
+func (m *ForkSessionResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ForkSessionResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ForkSessionResponse)
 }
 
 func (m *ForkSessionResponse) Unmarshal(b []byte) error {
@@ -2591,6 +2752,14 @@ var LitewireDesc_ImageUploadStatus = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(ImageUploadStatus{}.MaxChunkBytes), Kind: litewire.KindInt32},
 		{Num: 10, Offset: unsafe.Offsetof(ImageUploadStatus{}.FileId), Kind: litewire.KindString},
 	},
+}
+
+func (m *ImageUploadStatus) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ImageUploadStatus) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ImageUploadStatus)
 }
 
 func (m *ImageUploadStatus) Unmarshal(b []byte) error {
@@ -2698,6 +2867,14 @@ var LitewireDesc_BeginImageUploadResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *BeginImageUploadResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *BeginImageUploadResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_BeginImageUploadResponse)
+}
+
 func (m *BeginImageUploadResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_BeginImageUploadResponse)
 }
@@ -2785,6 +2962,14 @@ var LitewireDesc_PutImageChunkResponse = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(PutImageChunkResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
 	},
+}
+
+func (m *PutImageChunkResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *PutImageChunkResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_PutImageChunkResponse)
 }
 
 func (m *PutImageChunkResponse) Unmarshal(b []byte) error {
@@ -2927,6 +3112,14 @@ var LitewireDesc_GetSharedFileChunkResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *GetSharedFileChunkResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetSharedFileChunkResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetSharedFileChunkResponse)
+}
+
 func (m *GetSharedFileChunkResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_GetSharedFileChunkResponse)
 }
@@ -2953,6 +3146,14 @@ var LitewireDesc_GetImageUploadStatusResponse = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(GetImageUploadStatusResponse{}.Status), Kind: litewire.KindMessage, Sub: &LitewireDesc_ImageUploadStatus},
 	},
+}
+
+func (m *GetImageUploadStatusResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *GetImageUploadStatusResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_GetImageUploadStatusResponse)
 }
 
 func (m *GetImageUploadStatusResponse) Unmarshal(b []byte) error {
@@ -3027,6 +3228,14 @@ var LitewireDesc_CompleteImageUploadResponse = litewire.MessageDesc{
 	},
 }
 
+func (m *CompleteImageUploadResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *CompleteImageUploadResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteImageUploadResponse)
+}
+
 func (m *CompleteImageUploadResponse) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_CompleteImageUploadResponse)
 }
@@ -3085,6 +3294,14 @@ var LitewireDesc_AbortImageUploadResponse = litewire.MessageDesc{
 	Strict:        true,
 	HasUnknownOff: unsafe.Offsetof(AbortImageUploadResponse{}.hasUnknown),
 	New:           func() unsafe.Pointer { return unsafe.Pointer(&AbortImageUploadResponse{}) },
+}
+
+func (m *AbortImageUploadResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *AbortImageUploadResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_AbortImageUploadResponse)
 }
 
 func (m *AbortImageUploadResponse) Unmarshal(b []byte) error {
@@ -3173,7 +3390,16 @@ var LitewireDesc_ImageStorageUsage = litewire.MessageDesc{
 		{Num: 3, Offset: unsafe.Offsetof(ImageStorageUsage{}.ProtectedBytes), Kind: litewire.KindInt64},
 		{Num: 4, Offset: unsafe.Offsetof(ImageStorageUsage{}.ReclaimableBytes), Kind: litewire.KindInt64},
 		{Num: 5, Offset: unsafe.Offsetof(ImageStorageUsage{}.CacheBytes), Kind: litewire.KindInt64},
+		{Num: 6, Offset: unsafe.Offsetof(ImageStorageUsage{}.Sessions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ImageSessionStorage},
 	},
+}
+
+func (m *ImageStorageUsage) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ImageStorageUsage) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ImageStorageUsage)
 }
 
 func (m *ImageStorageUsage) Unmarshal(b []byte) error {
@@ -3244,6 +3470,14 @@ var LitewireDesc_ImageSessionStorage = litewire.MessageDesc{
 		{Num: 2, Offset: unsafe.Offsetof(ImageSessionStorage{}.Bytes), Kind: litewire.KindInt64},
 		{Num: 3, Offset: unsafe.Offsetof(ImageSessionStorage{}.ProtectedBytes), Kind: litewire.KindInt64},
 	},
+}
+
+func (m *ImageSessionStorage) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ImageSessionStorage) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ImageSessionStorage)
 }
 
 func (m *ImageSessionStorage) Unmarshal(b []byte) error {
@@ -3357,6 +3591,14 @@ var LitewireDesc_ScheduleResponse = litewire.MessageDesc{
 	Fields: []litewire.Field{
 		{Num: 1, Offset: unsafe.Offsetof(ScheduleResponse{}.ResultJson), Kind: litewire.KindBytes},
 	},
+}
+
+func (m *ScheduleResponse) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ScheduleResponse) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ScheduleResponse)
 }
 
 func (m *ScheduleResponse) Unmarshal(b []byte) error {
@@ -3527,6 +3769,14 @@ var LitewireDesc_MachineSample = litewire.MessageDesc{
 	},
 }
 
+func (m *MachineSample) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineSample) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineSample)
+}
+
 func (m *MachineSample) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_MachineSample)
 }
@@ -3595,6 +3845,14 @@ var LitewireDesc_ResourceUsage = litewire.MessageDesc{
 	},
 }
 
+func (m *ResourceUsage) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *ResourceUsage) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_ResourceUsage)
+}
+
 func (m *ResourceUsage) Unmarshal(b []byte) error {
 	return litewire.UnmarshalTable(b, unsafe.Pointer(m), &LitewireDesc_ResourceUsage)
 }
@@ -3637,6 +3895,14 @@ var LitewireDesc_MachineBattery = litewire.MessageDesc{
 		{Num: 1, Offset: unsafe.Offsetof(MachineBattery{}.Percent), Kind: litewire.KindDouble},
 		{Num: 2, Offset: unsafe.Offsetof(MachineBattery{}.Charging), Kind: litewire.KindBool},
 	},
+}
+
+func (m *MachineBattery) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineBattery) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineBattery)
 }
 
 func (m *MachineBattery) Unmarshal(b []byte) error {
@@ -3823,9 +4089,20 @@ var LitewireDesc_MachineStatus = litewire.MessageDesc{
 		{Num: 9, Offset: unsafe.Offsetof(MachineStatus{}.SwapUsedBytes), Kind: litewire.KindUint64, Flags: litewire.FlagOptional},
 		{Num: 10, Offset: unsafe.Offsetof(MachineStatus{}.Disk), Kind: litewire.KindMessage, Sub: &LitewireDesc_DiskStatus},
 		{Num: 11, Offset: unsafe.Offsetof(MachineStatus{}.AgentBytes), Kind: litewire.KindUint64, Flags: litewire.FlagOptional},
+		{Num: 12, Offset: unsafe.Offsetof(MachineStatus{}.Sessions), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ResourceUsage},
+		{Num: 13, Offset: unsafe.Offsetof(MachineStatus{}.Processes), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_ResourceUsage},
 		{Num: 14, Offset: unsafe.Offsetof(MachineStatus{}.UptimeSeconds), Kind: litewire.KindUint64},
 		{Num: 15, Offset: unsafe.Offsetof(MachineStatus{}.Battery), Kind: litewire.KindMessage, Sub: &LitewireDesc_MachineBattery},
+		{Num: 16, Offset: unsafe.Offsetof(MachineStatus{}.Samples), Kind: litewire.KindMessage, Flags: litewire.FlagRepeated | litewire.FlagMarshalOnly, Sub: &LitewireDesc_MachineSample},
 	},
+}
+
+func (m *MachineStatus) Marshal() ([]byte, error) {
+	return m.AppendMarshal(nil), nil
+}
+
+func (m *MachineStatus) AppendMarshal(b []byte) []byte {
+	return litewire.AppendTable(b, unsafe.Pointer(m), &LitewireDesc_MachineStatus)
 }
 
 func (m *MachineStatus) Unmarshal(b []byte) error {

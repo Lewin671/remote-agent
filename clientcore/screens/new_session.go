@@ -487,13 +487,17 @@ func BuildNewSession(st *State, projectKey string) *corev1.NewSessionViewModel {
 		st.Removed,
 	)
 	attCaps := attdomain.ResolveCaps(machine, cfg.MachineID, computerOnline, onlineReady)
-	prefsBlocked := st.World.AccountControlLost || st.World.AccountClockSkewed || lists.WorldUnlinked(&st.World)
+	prefsBlocked := st.World.AccountControlLost || st.World.AccountClockSkewed || st.World.Connection != lists.ConnConnected || !st.World.PrefsLoaded
 	var prefsBlockedReason *corev1.Text
 	switch {
 	case st.World.AccountClockSkewed:
 		prefsBlockedReason = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountStateRemote)
-	case st.World.AccountControlLost || lists.WorldUnlinked(&st.World):
+	case st.World.AccountControlLost:
 		prefsBlockedReason = text.Msg(text.KeyErrorsRemoteControlExpiredSavingChangesSessionControlAndNew)
+	case st.World.Connection != lists.ConnConnected:
+		prefsBlockedReason = text.Msg(text.KeyProjectsConnectToEdit)
+	case !st.World.PrefsLoaded:
+		prefsBlockedReason = text.Msg(text.KeyCommonLoading)
 	}
 
 	modelPanel := buildModelPanelView(st, cfg, modelsResp, hasModels, modelsLoading, modelsErrText, modelsErr, pickedModel, efforts, selectedEffort, defaultModelLabel, frozen, busy, machineOnline)

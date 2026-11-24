@@ -169,7 +169,7 @@ class LayoutTest {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
                     Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
                         Segmented(listOf("聊天", "终端"), 0, {}, dot = 1)
-                        Composer("s", state, vm, {}, {})
+                        Composer("s", vm, {}, {})
                     }
                 }
             }
@@ -214,7 +214,6 @@ class LayoutTest {
                                 .setConfig(io.github.lewin671.remoteagent.core.proto.NewSessionConfig.newBuilder().setMachineId(machineId).setModel("long-model-name"))
                                 .setModelLabel(io.github.lewin671.remoteagent.core.proto.Text.newBuilder().setLiteral("long-model-name"))
                                 .build(),
-                            state,
                             focus = false,
                         )
                     }

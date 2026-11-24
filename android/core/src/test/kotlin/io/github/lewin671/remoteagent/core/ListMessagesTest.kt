@@ -19,10 +19,8 @@ class ListMessagesTest {
     }
 
     @Test fun theSameDeferredValueRendersInBothLanguagesWithoutChangingRawContent() {
-        val value = listOf(UiMessages.listStateRunning().messageText(), "原始 CLI / raw CLI".messageText()).joinMessages(" · ")
-        assertEquals("运行中 · 原始 CLI / raw CLI", value.testText())
-        assertEquals("Running · 原始 CLI / raw CLI", value.testText("en"))
+        assertEquals("运行中", UiMessages.listStateRunning().messageText().testText())
+        assertEquals("Running", UiMessages.listStateRunning().messageText().testText("en"))
         assertEquals("Unknown project", listProjectName("").testText("en"))
-        assertEquals("Unknown computer", listMachineName(null).testText("en"))
     }
 }

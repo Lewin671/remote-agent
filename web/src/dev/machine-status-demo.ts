@@ -14,7 +14,7 @@
 
 import { create } from "@bufbuild/protobuf";
 import { MachineStatusSchema, ResourcePressure, type DiskStatus, type MachineStatus } from "../gen/remoteagent/v1/local_pb";
-import { CommandError } from "../remote";
+import { CommandError } from "./demo";
 
 const GB = 1e9;
 /** Memory is counted in binary units (ui-rulings 1). */

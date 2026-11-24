@@ -20,10 +20,12 @@ import {
   type Event,
   type RpcEffect,
 } from "../gen/remoteagent/core/v1/app_pb";
-import { DemoSecuritySchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
+import { DemoMachineSchema, DemoSecuritySchema, SeedDemoWorldEventSchema } from "../gen/remoteagent/core/v1/security_pb";
 import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { Agent, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
+import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
+import { PEER_PROTOCOL_VERSION } from "../protocol";
 import { localeStore } from "../i18n";
 import { CoreHost, type CoreExecutor, type StreamLegCallbacks } from "./host";
 
@@ -371,4 +373,75 @@ test("CoreHost dispatches LocaleChangedEvent on init and locale changes and unsu
   host.dispose();
   localeStore.overrideForTesting("zh-CN");
   expect(rendered).toEqual([]);
+});
+
+test("cancelMachineCommand aborts only the matching request_id signal", async () => {
+  const attempts: Array<{ eff: DispatchCommandEffect; signal?: AbortSignal; resolve: (ev: ReturnType<typeof create<typeof CommandOutcomeEventSchema>>) => void }> = [];
+  const exec = makeExecutor({
+    executeCommandAttempt(eff, signal) {
+      return new Promise((resolve) => {
+        attempts.push({ eff, signal, resolve });
+      });
+    },
+  });
+  const host = new CoreHost(undefined, { executor: exec });
+  hosts.push(host);
+  host.start();
+  await flushPromises();
+  const now = BigInt(Date.now());
+  host.dispatch(
+    create(EventSchema, {
+      nowMs: now,
+      event: {
+        case: "seedDemoWorld",
+        value: create(SeedDemoWorldEventSchema, {
+          machines: [
+            create(DemoMachineSchema, {
+              machineId: "m1",
+              online: true,
+              meta: { hostname: "Box", protocolVersion: PEER_PROTOCOL_VERSION },
+            }),
+          ],
+          security: create(DemoSecuritySchema, {
+            isMember: true,
+            selfDeviceId: "c1",
+            authorityDeviceId: "c1",
+            trustedMachineIds: ["m1"],
+            headEpoch: 1n,
+            leaseEndMs: now + 3_600_000n,
+          }),
+        }),
+      },
+    }),
+  );
+
+  const ac1 = new AbortController();
+  const ac2 = new AbortController();
+  const p1 = host.runMachineCommand("m1", "", { case: "getSettings", value: {} }, ac1.signal);
+  const p2 = host.runMachineCommand("m1", "", { case: "getSettings", value: {} }, ac2.signal);
+  expect(attempts).toHaveLength(2);
+  expect(attempts[0].eff.requestId).not.toBe(attempts[1].eff.requestId);
+  expect(attempts[0].signal?.aborted).toBe(false);
+  expect(attempts[1].signal?.aborted).toBe(false);
+
+  ac1.abort();
+  await expect(p1).rejects.toThrow();
+  expect(attempts[0].signal?.aborted).toBe(true);
+  expect(attempts[1].signal?.aborted).toBe(false);
+
+  attempts[1].resolve(
+    create(CommandOutcomeEventSchema, {
+      requestId: attempts[1].eff.requestId,
+      attemptId: attempts[1].eff.attemptId,
+      source: OutcomeSource.DAEMON,
+      signed: true,
+      hashesMatch: true,
+      attemptBound: true,
+      outerMatchesInner: true,
+      outerOutcome: "executed",
+      outerReason: "ok",
+      result: create(CommandResultSchema, { outcome: "executed", reason: "ok", resultAvailable: true }),
+    }),
+  );
+  await expect(p2).resolves.toBeUndefined();
 });

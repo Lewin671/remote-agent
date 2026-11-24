@@ -4,7 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.proto.SyncStateView
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -27,7 +27,7 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        RemoteState(isAuthority = true),
+                        SyncStateView.newBuilder().setIsManager(true).build(),
                         {
                             io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
                                 .setAuthority(true)
@@ -55,7 +55,7 @@ class AccountExitTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
-                    AccountExitAction(RemoteState(), { throw IllegalStateException("read failed") }, { exits++ })
+                    AccountExitAction(SyncStateView.getDefaultInstance(), { throw IllegalStateException("read failed") }, { exits++ })
                 }
             }
         }
@@ -72,7 +72,7 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        RemoteState(),
+                        SyncStateView.getDefaultInstance(),
                         { io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.getDefaultInstance() },
                         { exits++ },
                     )
@@ -91,7 +91,7 @@ class AccountExitTest {
             RaTheme(ThemeMode.LIGHT) {
                 Column {
                     AccountExitAction(
-                        RemoteState(isAuthority = true),
+                        SyncStateView.newBuilder().setIsManager(true).build(),
                         {
                             io.github.lewin671.remoteagent.core.proto.SecurityExitAdvice.newBuilder()
                                 .setAuthority(true)

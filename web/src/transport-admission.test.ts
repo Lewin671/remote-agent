@@ -5,6 +5,7 @@ import { create } from "@bufbuild/protobuf";
 import { ResolveApprovalRequestSchema } from "./gen/remoteagent/v1/local_pb";
 import { GetLiveSnapshotRequestSchema } from "./gen/remoteagent/v1/remote_pb";
 import { Remote } from "./remote";
+import { getCoreHost } from "./core/host";
 import { createTestSecurityStore } from "./test/security-fixture";
 
 test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under daemon saturation", async () => {
@@ -35,19 +36,19 @@ test.skipIf(!process.env.RA_1B_FLOW_ROOT)("full snapshot and approval flow under
     await control("reset");
     remote.start();
     await until(() => remote.conn === "online" && remote.sessions.has(sid));
-    await remote.command(sid, {case:"getLiveSnapshot",value:create(GetLiveSnapshotRequestSchema,{sessionId:sid})});
-    for (let i = 0; i < 20; i++) await remote.command(sid, approval(i));
+    const host = getCoreHost(remote);
+    const machineId = remote.sessions.get(sid)!.machineId;
+    await host.runMachineCommand(machineId, sid, {case:"getLiveSnapshot",value:create(GetLiveSnapshotRequestSchema,{sessionId:sid})});
+    for (let i = 0; i < 20; i++) await host.runMachineCommand(machineId, sid, approval(i));
     const load = await control("start"); loaded = true;
     expect(load).toMatchObject({ normal: 4, bulk: 2, input: 1, input_overdue: true });
     const timings: number[] = []; let completed = 0; let failed = 0;
     for (let i = 20; i < 120; i++) {
       const start = performance.now();
-      let timer: ReturnType<typeof setTimeout> | undefined;
+      const stop = new AbortController();
+      const timer = setTimeout(() => stop.abort(), 1500);
       try {
-        await Promise.race([
-          remote.command(sid, approval(i)),
-          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(Error("full approval flow timed out")), 1500); }),
-        ]);
+        await host.runMachineCommand(machineId, sid, approval(i), stop.signal);
         completed++;
       } catch { failed++; } finally { clearTimeout(timer); timings.push(performance.now() - start); }
       if (failed) break;

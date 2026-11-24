@@ -28,7 +28,7 @@ export class SecurityError extends Error {
   }
 }
 
-export function structuredToSecurityCode(code: SecurityErrorCode): SecurityError["code"] {
+function structuredToSecurityCode(code: SecurityErrorCode): SecurityError["code"] {
   switch (code) {
     case SecurityErrorCode.LEASE_EXPIRED:
       return "lease";
@@ -58,6 +58,7 @@ function makeSecErr(code: SecurityError["code"]): SecurityError {
 import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
+  CancelMachineCommandActionSchema,
   CommandOutcomeEventSchema,
   DirNavigateActionSchema,
   DirPickerCloseActionSchema,
@@ -65,7 +66,6 @@ import {
   EffectBatchSchema,
   EntropyProvidedSchema,
   EventSchema,
-  FetchSessionActionSchema,
   HomeLoadMoreEndedActionSchema,
   HomeRetryLoadActionSchema,
   HomeScreenRequestSchema,
@@ -89,12 +89,9 @@ import {
   ProjectKeyActionSchema,
   ProjectScreenRequestSchema,
   ProjectSetSearchActionSchema,
+  RunMachineCommandActionSchema,
   ScreenSchema,
   ScreenTarget,
-  type Screen,
-  SessionPinEventSchema,
-  SessionScheduleHintSchema,
-  SessionScheduleHintsEventSchema,
   SessionWatchEventSchema,
   StreamClosedEventSchema,
   StreamFrameEventSchema,
@@ -122,20 +119,14 @@ import {
   type TokenResultEvent,
   type ViewModel,
 } from "../gen/remoteagent/core/v1/app_pb";
-import {
-  AttachmentCandidateInputSchema,
-  AttachmentEvalScreenRequestSchema,
-  type AttachmentEvalViewModel,
-} from "../gen/remoteagent/core/v1/attachments_view_pb";
+import { AttachmentCandidateInputSchema } from "../gen/remoteagent/core/v1/attachments_view_pb";
 import {
   AttachmentConfigEventSchema,
   AttachmentDraftScreenRequestSchema,
   AttachmentPauseUploadActionSchema,
   AttachmentResumeUploadActionSchema,
   DraftAddItemsActionSchema,
-  DraftClearActionSchema,
   DraftClearAllActionSchema,
-  DraftDismissNoticeActionSchema,
   DraftForgetSessionActionSchema,
   DraftImageViewerCloseActionSchema,
   DraftImageViewerNavigateActionSchema,
@@ -151,7 +142,6 @@ import {
   DraftScopeSchema,
   DraftSendSessionActionSchema,
   DraftSetOriginalActionSchema,
-  DraftSetTargetMachineActionSchema,
   DraftSetTextActionSchema,
   DraftStorageBucket,
   type AttachmentDraftViewModel,
@@ -168,10 +158,9 @@ import {
   type SecurityTokenUpdatedEffect,
 } from "../gen/remoteagent/core/v1/security_pb";
 import { buildEntropyProvided, SecurityClient } from "./security-client";
+import { renderText } from "./text";
 import {
   CommandRouteLeg,
-  DirectBulkTransferBeginEventSchema,
-  DirectBulkTransferDoneEventSchema,
   DirectPreferenceEntrySchema,
   DirectPreferencesLoadedEventSchema,
   DirectRefreshDiagnosticsActionSchema,
@@ -181,7 +170,6 @@ import {
   TerminalStreamEventKind,
   TerminalStreamEventSchema,
   TransportConfigEventSchema,
-  type DirectBulkRouteEffect,
   type DirectDcReadStatsEffect,
   type DirectPcAddCandidatesEffect,
   type DirectPcCloseEffect,
@@ -195,7 +183,7 @@ import {
 import { ApprovalMode, SendMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import { UsageRangePreset, UsageStatsResponseSchema, type UsageStatsResponse } from "../gen/remoteagent/v1/local_pb";
 import { ConnState, type HomeViewModel } from "../gen/remoteagent/core/v1/home_view_pb";
-import { CommandResultSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
+import { CommandResultSchema, CommandSchema, type Command } from "../gen/remoteagent/v1/remote_pb";
 import {
   MachineChartKind,
   MachinePollMode,
@@ -254,7 +242,6 @@ import {
   SessionImageViewerNavigateActionSchema,
   SessionImageViewerOpenActionSchema,
   SessionOpenActionSchema,
-  SessionQuestionStepActionSchema,
   SessionRefreshHistoryActionSchema,
   SessionRetryLoadActionSchema,
   SessionScreenRequestSchema,
@@ -274,7 +261,6 @@ import {
   SharedFileDeleteLocalActionSchema,
   SharedFileDurationProbedEventSchema,
   SharedFileForgetSessionActionSchema,
-  SharedFileLocalMissingEventSchema,
   SharedFilePauseDownloadActionSchema,
   SharedFileSetVisibleSessionActionSchema,
   SharedFileStartDownloadActionSchema,
@@ -368,39 +354,21 @@ export interface HostBridge {
   reconnectNow(networkChanged?: boolean): void;
   retryLogin(): void;
   loadMoreSessions(): Promise<boolean>;
-  loadAllSessions(): Promise<void>;
   retryList(): void;
   retryPrefs(): void;
-  ensureSession(sessionId: string): Promise<void>;
   retrySession(sessionId: string): void;
   retryEvents(sessionId: string): void;
   readonly securityClient: SecurityClient;
   securityOp(op: SecurityOpRequestEvent["op"]): Promise<SecurityOpResultEffect>;
   dispatchDirectSignal(raw: Uint8Array<ArrayBuffer>): void;
   dispatchDirectSignalDelivery(frameId: Uint8Array<ArrayBuffer>, status: number, retryAfterMs: number): void;
-  beginDirectBulkTransfer(params: {
-    machineId: string;
-    routeHint?: number;
-    bulkFileKey?: string;
-    bulkBytes?: bigint;
-    bulkUpload?: boolean;
-    deadlineMs: bigint;
-    forceRelay?: boolean;
-    uploadTransferId?: string;
-    uploadHasFilename?: boolean;
-    interactiveDual?: boolean;
-  }): Promise<DirectBulkRouteEffect>;
-  finishDirectBulkTransfer(params: {
-    ticketId: bigint;
-    routeWasDirect: boolean;
-    ok: boolean;
-    elapsedMs: number;
-    observedBytes: bigint;
-    finishUploadTransferId?: string;
-    machineId?: string;
-  }): void;
-  pushScheduleHints(hints: Array<{ sessionId: string; scheduleName: string; unread: boolean }>): void;
-  pushSessionPin(sessionId: string, pinned: boolean): void;
+  runMachineCommand(
+    machineId: string,
+    sessionId: string,
+    cmd: MessageInitShape<typeof CommandSchema>["kind"],
+    signal?: AbortSignal,
+    skipConnectivityPreflight?: boolean,
+  ): Promise<void>;
   changeProjectPref(kind: "pin" | "unpin" | "hide" | "unhide", path: string): void;
   dispatchEvent(ev: Event, onProcessed?: () => void): void;
 }
@@ -424,7 +392,7 @@ export interface CoreExecutor {
   writeCache(eff: CacheWriteEffect): Promise<void>;
   deleteCache(eff: CacheDeleteEffect): Promise<void>;
   executeRpc(eff: RpcEffect): Promise<Event>;
-  executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent>;
+  executeCommandAttempt(eff: DispatchCommandEffect, signal?: AbortSignal): Promise<CommandOutcomeEvent>;
   applySyncStateView(view: SyncStateView): void;
   readScheduleCache?(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent>;
   deleteScheduleCache?(machineId: string): Promise<void>;
@@ -454,7 +422,7 @@ export interface SessionWindowOptions {
   expandedGroupIds?: string[];
 }
 
-export interface CoreHostOptions {
+interface CoreHostOptions {
   /** Overrides the executor used to execute Core Effects (defaults to Remote). */
   executor?: CoreExecutor;
   /** Optional observer hook called for every executed Effect (primarily for tests). */
@@ -475,7 +443,7 @@ export interface CoreHostOptions {
 }
 
 /** Current browser IANA timezone ID (falls back to UTC when unavailable). */
-export function localTimeZoneId(): string {
+function localTimeZoneId(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   } catch {
@@ -484,7 +452,7 @@ export function localTimeZoneId(): string {
 }
 
 /** Computes local timezone and tomorrow/day-after-tomorrow day boundaries for Core's ScheduleLocalContextEvent. */
-export function scheduleLocalContext(nowMs = Date.now()) {
+function scheduleLocalContext(nowMs = Date.now()) {
   const d = new Date(nowMs);
   const tomorrow = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
   const dayAfter = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2).getTime();
@@ -496,7 +464,7 @@ export function scheduleLocalContext(nowMs = Date.now()) {
 }
 
 /** Computes local-timezone calendar boundaries + 36 month starts for Core's ClockUpdated event. */
-export function localCalendar(nowMs = Date.now()): LocalCalendar {
+function localCalendar(nowMs = Date.now()): LocalCalendar {
   const d = new Date(nowMs);
   const todayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const yesterdayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1).getTime();
@@ -581,10 +549,6 @@ export function routeForMachineSettings(machineId: string): string {
 
 export function routeForMachineStorage(machineId: string): string {
   return "m/" + encodeURIComponent(machineId) + "/storage";
-}
-
-export function routeForMachineDirect(machineId: string): string {
-  return "m/" + encodeURIComponent(machineId) + "/direct";
 }
 
 export function routeForMachineCli(machineId: string, agent: Agent): string {
@@ -784,7 +748,7 @@ function parseDraftStorageKeyToScope(key: string): DraftScope | undefined {
   return undefined;
 }
 
-export function toCoreTheme(t: Theme): ThemePreference {
+function toCoreTheme(t: Theme): ThemePreference {
   switch (t) {
     case "light": return ThemePreference.LIGHT;
     case "dark": return ThemePreference.DARK;
@@ -792,7 +756,7 @@ export function toCoreTheme(t: Theme): ThemePreference {
   }
 }
 
-export function fromCoreTheme(t: ThemePreference): Theme {
+function fromCoreTheme(t: ThemePreference): Theme {
   switch (t) {
     case ThemePreference.LIGHT: return "light";
     case ThemePreference.DARK: return "dark";
@@ -878,8 +842,9 @@ export class CoreHost {
   private attachmentDraftCache = new Map<string, { version: number; vm: AttachmentDraftViewModel }>();
   private knownDraftScopes = new Map<string, DraftScope>();
   private usageHydratedMachines = new Set<string>();
-  private nextDirectCallId = 0n;
-  private bulkRouteWaiters = new Map<bigint, (eff: DirectBulkRouteEffect) => void>();
+  private nextMachineCmdOpId = 0n;
+  private machineCmdWaiters = new Map<bigint, { resolve: () => void; reject: (err: Error) => void }>();
+  private inFlightDispatches = new Map<string, Map<string, AbortController>>();
   private retryNowWaiters = new Map<string, Array<(started: boolean) => void>>();
   private terminalReopenListeners = new Map<string, () => void>();
   private terminalHistoryRequestListeners = new Map<string, (req: TerminalHistorySendRequestEffect) => void>();
@@ -990,10 +955,8 @@ export class CoreHost {
         reconnectNow: () => this.reconnectNow(),
         retryLogin: () => this.retryLogin(),
         loadMoreSessions: () => this.loadMoreSessions(),
-        loadAllSessions: () => this.loadAllSessions(),
         retryList: () => this.retryList(),
         retryPrefs: () => this.retryPrefs(),
-        ensureSession: (sid) => this.ensureSession(sid),
         retrySession: (sid) => this.retrySession(sid),
         retryEvents: (sid) => this.retryEvents(sid),
         securityClient: this.securityClient,
@@ -1001,12 +964,8 @@ export class CoreHost {
         dispatchDirectSignal: (raw) => this.dispatchDirectSignal(raw),
         dispatchDirectSignalDelivery: (frameId, status, retryAfterMs) =>
           this.dispatchDirectSignalDelivery(frameId, status, retryAfterMs),
-        beginDirectBulkTransfer: (params) => this.beginDirectBulkTransfer(params),
-        finishDirectBulkTransfer: (params) => this.finishDirectBulkTransfer(params),
-        pushScheduleHints: (hints) =>
-          this.emit({ case: "sessionScheduleHints", value: create(SessionScheduleHintsEventSchema, { hints: hints.map((h) => create(SessionScheduleHintSchema, h)) }) }),
-        pushSessionPin: (sessionId, pinned) =>
-          this.emit({ case: "sessionPin", value: create(SessionPinEventSchema, { sessionId, pinned }) }),
+        runMachineCommand: (machineId, sessionId, cmd, signal, skipConnectivityPreflight) =>
+          this.runMachineCommand(machineId, sessionId, cmd, signal, skipConnectivityPreflight),
         changeProjectPref: (kind, path) =>
           this.emit({ case: kind === "pin" || kind === "unpin" ? "projectTogglePin" : "projectToggleHide", value: create(ProjectKeyActionSchema, { projectKey: path }) }),
         dispatchEvent: (ev, onProcessed) => this.dispatch(ev, onProcessed),
@@ -1319,10 +1278,6 @@ export class CoreHost {
     return Promise.resolve(true);
   }
 
-  async loadAllSessions(): Promise<void> {
-    this.emit({ case: "homeLoadMoreEnded", value: create(HomeLoadMoreEndedActionSchema, { step: 100 }) });
-  }
-
   retryList() {
     this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
   }
@@ -1333,11 +1288,6 @@ export class CoreHost {
       return;
     }
     this.emit({ case: "homeRetryLoad", value: create(HomeRetryLoadActionSchema) });
-  }
-
-  ensureSession(sessionId: string): Promise<void> {
-    if (sessionId) this.emit({ case: "fetchSession", value: create(FetchSessionActionSchema, { sessionId }) });
-    return Promise.resolve();
   }
 
   retrySession(sessionId: string) {
@@ -1378,9 +1328,6 @@ export class CoreHost {
     if (!this.closed && sessionId && fileId && Number.isFinite(durationMs) && durationMs > 0) {
       this.emit({ case: "sharedFileDurationProbed", value: create(SharedFileDurationProbedEventSchema, { sessionId, fileId, durationMs: BigInt(Math.round(durationMs)) }) });
     }
-  }
-  sharedFileLocalMissing(sessionId: string, fileId: string) {
-    if (!this.closed && sessionId && fileId) this.emit({ case: "sharedFileLocalMissing", value: create(SharedFileLocalMissingEventSchema, { sessionId, fileId }) });
   }
 
   sessionImageViewerOpen = (
@@ -1477,13 +1424,6 @@ export class CoreHost {
     this.emit({ case: "draftSetText", value: create(DraftSetTextActionSchema, { scope, text }) });
   };
 
-  draftSetTargetMachine = (scope: DraftScope, machineId: string) => {
-    if (!scope.id) return;
-    this.ensureAttachmentConfigured();
-    this.trackDraftScope(scope);
-    this.emit({ case: "draftSetTargetMachine", value: create(DraftSetTargetMachineActionSchema, { scope, machineId }) });
-  };
-
   draftReserveSlots = (scope: DraftScope, reservationId: string, imageSlots: number, fileSlots: number) => {
     if (!scope.id || !reservationId) return;
     this.ensureAttachmentConfigured();
@@ -1576,12 +1516,6 @@ export class CoreHost {
     this.emit({ case: "draftSetOriginal", value: create(DraftSetOriginalActionSchema, { scope, original }) });
   };
 
-  draftClear = (scope: DraftScope) => {
-    if (!scope.id) return;
-    this.ensureAttachmentConfigured();
-    this.emit({ case: "draftClear", value: create(DraftClearActionSchema, { scope }) });
-  };
-
   draftForgetSession = (sessionId: string) => {
     if (!sessionId) return;
     this.ensureAttachmentConfigured();
@@ -1600,12 +1534,6 @@ export class CoreHost {
     else this.attachments.handleDraftStorageClearAll();
     await this.attachments.whenIdle();
   }
-
-  draftDismissNotice = (scope: DraftScope) => {
-    if (!scope.id) return;
-    this.ensureAttachmentConfigured();
-    this.emit({ case: "draftDismissNotice", value: create(DraftDismissNoticeActionSchema, { scope }) });
-  };
 
   attachmentPauseUpload = (scope: DraftScope, itemId: string) => {
     if (!scope.id || !itemId) return;
@@ -1678,7 +1606,7 @@ export class CoreHost {
     this.watchCounts.set(sessionId, prev + 1);
     if (prev === 0) {
       this.sessionCache.delete(sessionId);
-      const mid = this.remote?.sessions.get(sessionId)?.machineId;
+      const mid = this.viewSyncState().sessions.find((s) => s.sessionId === sessionId)?.machineId;
       if (mid) this.hydrateUsageCache(mid);
       this.executor?.setWatchedSessions?.([...this.watchCounts.keys()].reverse());
       this.emit({ case: "sessionWatch", value: create(SessionWatchEventSchema, { sessionId, watched: true }) });
@@ -1778,13 +1706,6 @@ export class CoreHost {
     });
   }
 
-  sessionSetQuestionIndex(sessionId: string, questionId: string, questionIndex: number) {
-    this.emit({
-      case: "sessionSetQuestionIndex",
-      value: create(SessionQuestionStepActionSchema, { sessionId, questionId, questionIndex }),
-    });
-  }
-
   sessionLoadEarlier(sessionId: string) {
     if (!sessionId) return;
     this.emit({
@@ -1834,8 +1755,6 @@ export class CoreHost {
     this.emit({ case: "scheduleMarkUnread", value: create(ScheduleTaskBoolActionSchema, { machineId, taskId, value: unread }) });
   scheduleDetailOpen = (machineId: string, taskId: string) =>
     this.emit({ case: "scheduleDetailOpen", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
-  scheduleDetailHide = (machineId: string, taskId: string) =>
-    this.emit({ case: "scheduleDetailHide", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
   scheduleDetailClose = (machineId: string, taskId: string) =>
     this.emit({ case: "scheduleDetailClose", value: create(ScheduleTaskRefSchema, { machineId, taskId }) });
   scheduleDetailShowLatestResult = (machineId: string, taskId: string) =>
@@ -2312,65 +2231,45 @@ export class CoreHost {
     }
   }
 
-  beginDirectBulkTransfer(params: {
-    machineId: string;
-    routeHint?: number;
-    bulkFileKey?: string;
-    bulkBytes?: bigint;
-    bulkUpload?: boolean;
-    deadlineMs: bigint;
-    forceRelay?: boolean;
-    uploadTransferId?: string;
-    uploadHasFilename?: boolean;
-    interactiveDual?: boolean;
-  }): Promise<DirectBulkRouteEffect> {
-    if (this.closed || !this.started) {
-      return Promise.resolve({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
-    }
-    const callId = ++this.nextDirectCallId;
-    return new Promise<DirectBulkRouteEffect>((resolve) => {
-      this.bulkRouteWaiters.set(callId, resolve);
+  runMachineCommand(
+    machineId: string,
+    sessionId: string,
+    cmd: MessageInitShape<typeof CommandSchema>["kind"],
+    signal?: AbortSignal,
+    skipConnectivityPreflight = false,
+  ): Promise<void> {
+    if (this.closed) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    if (signal?.aborted) return Promise.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    const opId = ++this.nextMachineCmdOpId;
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = () => {
+        if (!this.machineCmdWaiters.delete(opId)) return;
+        if (!this.closed) {
+          this.emit({ case: "cancelMachineCommand", value: create(CancelMachineCommandActionSchema, { opId }) });
+        }
+        reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+      };
+      if (signal) signal.addEventListener("abort", onAbort, { once: true });
+      this.machineCmdWaiters.set(opId, {
+        resolve: () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        },
+        reject: (err) => {
+          signal?.removeEventListener("abort", onAbort);
+          reject(err);
+        },
+      });
       this.emit({
-        case: "directBulkTransferBegin",
-        value: create(DirectBulkTransferBeginEventSchema, {
-          callId,
-          machineId: params.machineId,
-          routeHint: params.routeHint ?? 0,
-          bulkFileKey: params.bulkFileKey ?? "",
-          bulkBytes: params.bulkBytes ?? 0n,
-          bulkUpload: !!params.bulkUpload,
-          deadlineMs: params.deadlineMs,
-          forceRelay: !!params.forceRelay,
-          uploadTransferId: params.uploadTransferId ?? "",
-          uploadHasFilename: !!params.uploadHasFilename,
-          interactiveDual: !!params.interactiveDual,
+        case: "runMachineCommand",
+        value: create(RunMachineCommandActionSchema, {
+          opId,
+          machineId,
+          sessionId,
+          command: create(CommandSchema, { kind: cmd }),
+          skipConnectivityPreflight,
         }),
       });
-    });
-  }
-
-  finishDirectBulkTransfer(params: {
-    ticketId: bigint;
-    routeWasDirect: boolean;
-    ok: boolean;
-    elapsedMs: number;
-    observedBytes: bigint;
-    finishUploadTransferId?: string;
-    machineId?: string;
-  }) {
-    if (this.closed) return;
-    if (params.ticketId === 0n && !params.finishUploadTransferId) return;
-    this.emit({
-      case: "directBulkTransferDone",
-      value: create(DirectBulkTransferDoneEventSchema, {
-        ticketId: params.ticketId,
-        routeWasDirect: params.routeWasDirect,
-        ok: params.ok,
-        elapsedMs: params.elapsedMs,
-        observedBytes: params.observedBytes,
-        finishUploadTransferId: params.finishUploadTransferId ?? "",
-        machineId: params.machineId ?? "",
-      }),
     });
   }
 
@@ -2474,15 +2373,6 @@ export class CoreHost {
     return value;
   }
 
-  evalAttachments(
-    req: MessageInitShape<typeof AttachmentEvalScreenRequestSchema>,
-  ): AttachmentEvalViewModel {
-    return this.queryView<AttachmentEvalViewModel>(
-      { case: "attachmentEval", value: create(AttachmentEvalScreenRequestSchema, req) },
-      "attachmentEval",
-    );
-  }
-
   viewAttachmentDraft(scope: DraftScope): AttachmentDraftViewModel {
     const ver = this.version(ScreenTarget.ATTACHMENT_DRAFT);
     const key = draftScopeKey(scope);
@@ -2539,7 +2429,10 @@ export class CoreHost {
     return value;
   }
 
-  private queryView<T>(screen: Screen["screen"], expectedCase: NonNullable<ViewModel["view"]["case"]>): T {
+  private queryView<T>(
+    screen: NonNullable<Parameters<typeof create<typeof ScreenSchema>>[1]>["screen"],
+    expectedCase: NonNullable<ViewModel["view"]["case"]>,
+  ): T {
     const req = create(ScreenSchema, { screen } as Parameters<typeof create<typeof ScreenSchema>>[1]);
     const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
     if (vm.view.case !== expectedCase) throw new Error("unexpected view model case: " + vm.view.case);
@@ -2595,20 +2488,10 @@ export class CoreHost {
     return value;
   }
 
-  private readView<T>(
-    caseName: NonNullable<ViewModel["view"]["case"]>,
-    screen: NonNullable<Parameters<typeof create<typeof ScreenSchema>>[1]>["screen"],
-  ): T {
-    const req = create(ScreenSchema, { screen });
-    const vm = fromBinary(ViewModelSchema, this.core.view(toBinary(ScreenSchema, req)));
-    if (vm.view.case !== caseName) throw new Error("unexpected view model case: " + vm.view.case);
-    return vm.view.value as unknown as T;
-  }
-
   viewSettings(): SettingsViewModel {
     const ver = this.version(ScreenTarget.SETTINGS);
     if (this.settingsCache?.version === ver) return this.settingsCache.vm;
-    const vm = this.readView<SettingsViewModel>("settings", { case: "settings", value: {} });
+    const vm = this.queryView<SettingsViewModel>({ case: "settings", value: {} }, "settings");
     this.settingsCache = { version: ver, vm };
     return vm;
   }
@@ -2617,7 +2500,7 @@ export class CoreHost {
     const ver = this.version(ScreenTarget.MACHINE_STATUS);
     const cached = this.machineStatusCache.get(machineId);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<MachineStatusViewModel>("machineStatus", { case: "machineStatus", value: create(MachineStatusScreenRequestSchema, { machineId }) });
+    const vm = this.queryView<MachineStatusViewModel>({ case: "machineStatus", value: create(MachineStatusScreenRequestSchema, { machineId }) }, "machineStatus");
     this.machineStatusCache.set(machineId, { version: ver, vm });
     return vm;
   }
@@ -2626,7 +2509,7 @@ export class CoreHost {
     const ver = this.version(ScreenTarget.MACHINE_SETTINGS);
     const cached = this.machineSettingsCache.get(machineId);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<MachineSettingsViewModel>("machineSettings", { case: "machineSettings", value: create(MachineSettingsScreenRequestSchema, { machineId }) });
+    const vm = this.queryView<MachineSettingsViewModel>({ case: "machineSettings", value: create(MachineSettingsScreenRequestSchema, { machineId }) }, "machineSettings");
     this.machineSettingsCache.set(machineId, { version: ver, vm });
     return vm;
   }
@@ -2635,7 +2518,7 @@ export class CoreHost {
     const ver = this.version(ScreenTarget.QUOTA);
     const cached = this.quotaCache.get(machineId);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<QuotaViewModel>("quota", { case: "quota", value: create(QuotaScreenRequestSchema, { machineId }) });
+    const vm = this.queryView<QuotaViewModel>({ case: "quota", value: create(QuotaScreenRequestSchema, { machineId }) }, "quota");
     this.quotaCache.set(machineId, { version: ver, vm });
     return vm;
   }
@@ -2643,7 +2526,7 @@ export class CoreHost {
   viewDevices(): DevicesViewModel {
     const ver = this.version(ScreenTarget.DEVICES);
     if (this.devicesCache?.version === ver) return this.devicesCache.vm;
-    const vm = this.readView<DevicesViewModel>("devices", { case: "devices", value: {} });
+    const vm = this.queryView<DevicesViewModel>({ case: "devices", value: {} }, "devices");
     this.devicesCache = { version: ver, vm };
     return vm;
   }
@@ -2652,7 +2535,7 @@ export class CoreHost {
     const ver = this.version(ScreenTarget.CLIENT_DETAIL);
     const cached = this.clientDetailCache.get(deviceId);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<ClientDetailViewModel>("clientDetail", { case: "clientDetail", value: create(ClientDetailScreenRequestSchema, { deviceId }) });
+    const vm = this.queryView<ClientDetailViewModel>({ case: "clientDetail", value: create(ClientDetailScreenRequestSchema, { deviceId }) }, "clientDetail");
     this.clientDetailCache.set(deviceId, { version: ver, vm });
     return vm;
   }
@@ -2673,17 +2556,20 @@ export class CoreHost {
     const cacheKey = `${req.machineId}:${focusAgent}:${focusModel}:${preset}:${clamped.startMs}:${clamped.endMs}`;
     const cached = this.usageCache.get(cacheKey);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<UsageViewModel>("usage", {
-      case: "usage",
-      value: create(UsageScreenRequestSchema, {
-        machineId: req.machineId,
-        focusAgent,
-        focusModel,
-        preset,
-        customStartMs: clamped.startMs,
-        customEndMs: clamped.endMs,
-      }),
-    });
+    const vm = this.queryView<UsageViewModel>(
+      {
+        case: "usage",
+        value: create(UsageScreenRequestSchema, {
+          machineId: req.machineId,
+          focusAgent,
+          focusModel,
+          preset,
+          customStartMs: clamped.startMs,
+          customEndMs: clamped.endMs,
+        }),
+      },
+      "usage",
+    );
     this.usageCache.set(cacheKey, { version: ver, vm });
     return vm;
   }
@@ -2692,10 +2578,13 @@ export class CoreHost {
     const ver = this.version(ScreenTarget.DIRECT_DIAGNOSTICS);
     const cached = this.directDiagnosticsCache.get(machineId);
     if (cached?.version === ver) return cached.vm;
-    const vm = this.readView<DirectDiagnosticsViewModel>("directDiagnostics", {
-      case: "directDiagnostics",
-      value: create(DirectDiagnosticsScreenRequestSchema, { machineId }),
-    });
+    const vm = this.queryView<DirectDiagnosticsViewModel>(
+      {
+        case: "directDiagnostics",
+        value: create(DirectDiagnosticsScreenRequestSchema, { machineId }),
+      },
+      "directDiagnostics",
+    );
     this.directDiagnosticsCache.set(machineId, { version: ver, vm });
     return vm;
   }
@@ -2715,7 +2604,7 @@ export class CoreHost {
       this.bootstrapped = true;
     }
     if (ev.event.case === "newSessionSubmit") {
-      ev = this.enrichNewSessionSubmit(ev);
+      this.pendingStart = true;
     }
     if (
       ev.event.case === "projectTogglePin" ||
@@ -2750,28 +2639,6 @@ export class CoreHost {
     } finally {
       this.draining = false;
     }
-  }
-
-  private enrichNewSessionSubmit(ev: Event): Event {
-    if (ev.event.case !== "newSessionSubmit") return ev;
-    const sub = ev.event.value;
-    const projectKey = sub.projectKey;
-    const vm = this.viewNewSession(projectKey);
-    const autoSupported = sub.autoModeSupported || !!vm.modelPanel?.canSelectAutoMode;
-    this.pendingStart = true;
-    return create(EventSchema, {
-      nowMs: ev.nowMs,
-      monoMs: ev.monoMs,
-      randomIds: ev.randomIds,
-      unitFloats: ev.unitFloats,
-      event: {
-        case: "newSessionSubmit",
-        value: create(NewSessionSubmitActionSchema, {
-          projectKey,
-          autoModeSupported: autoSupported,
-        }),
-      },
-    });
   }
 
   private handleEffect(eff: Effect) {
@@ -2890,11 +2757,30 @@ export class CoreHost {
         break;
 
       case "dispatchCommand": {
+        if (!this.executor) break;
         const cmdEff = val.value;
-        void this.executor?.executeCommandAttempt(cmdEff).then(
-          (value) => !this.closed && this.emit({ case: "commandOutcome", value }),
+        const ac = new AbortController();
+        let byAttempt = this.inFlightDispatches.get(cmdEff.requestId);
+        if (!byAttempt) {
+          byAttempt = new Map();
+          this.inFlightDispatches.set(cmdEff.requestId, byAttempt);
+        }
+        byAttempt.set(cmdEff.attemptId, ac);
+        const cleanup = () => {
+          const map = this.inFlightDispatches.get(cmdEff.requestId);
+          if (map) {
+            map.delete(cmdEff.attemptId);
+            if (map.size === 0) this.inFlightDispatches.delete(cmdEff.requestId);
+          }
+        };
+        void this.executor.executeCommandAttempt(cmdEff, ac.signal).then(
+          (value) => {
+            cleanup();
+            if (!this.closed && !ac.signal.aborted) this.emit({ case: "commandOutcome", value });
+          },
           (err) => {
-            if (this.closed) return;
+            cleanup();
+            if (this.closed || ac.signal.aborted) return;
             const c = err as { code?: string; fromDaemon?: boolean; outcome?: string; message?: string };
             const value = c?.fromDaemon
               ? create(CommandOutcomeEventSchema, {
@@ -2923,6 +2809,15 @@ export class CoreHost {
         break;
       }
 
+      case "cancelDispatch": {
+        const map = this.inFlightDispatches.get(val.value.requestId);
+        if (map) {
+          this.inFlightDispatches.delete(val.value.requestId);
+          for (const ac of map.values()) ac.abort();
+        }
+        break;
+      }
+
       case "saveHomeScope":
         writeStoredScope(val.value.scopeToken);
         break;
@@ -2948,6 +2843,21 @@ export class CoreHost {
             event: { case: "entropyProvided", value: buildEntropyProvided(val.value.minIds, val.value.minFloats, val.value.minRandomBytes) },
           }),
         });
+        break;
+      }
+
+      case "runMachineCommandResult": {
+        const res = val.value;
+        const w = this.machineCmdWaiters.get(res.opId);
+        if (w) {
+          this.machineCmdWaiters.delete(res.opId);
+          if (res.ok) {
+            w.resolve();
+          } else {
+            const msg = renderText(res.errorText) || res.errorCode || l10n.t("errors.connection_timed_out");
+            w.reject(new Error(msg));
+          }
+        }
         break;
       }
 
@@ -3233,15 +3143,6 @@ export class CoreHost {
         this.executor?.directDcReadStats?.(val.value);
         break;
 
-      case "directBulkRoute": {
-        const w = this.bulkRouteWaiters.get(val.value.callId);
-        if (w) {
-          this.bulkRouteWaiters.delete(val.value.callId);
-          w(val.value);
-        }
-        break;
-      }
-
       case "terminalReopen": {
         this.terminalReopenListeners.get(val.value.terminalId)?.();
         break;
@@ -3505,6 +3406,14 @@ export class CoreHost {
       w({ $typeName: "remoteagent.core.v1.DirectBulkRouteEffect", callId: 0n, useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n });
     }
     this.bulkRouteWaiters.clear();
+    for (const map of this.inFlightDispatches.values()) {
+      for (const ac of map.values()) ac.abort();
+    }
+    this.inFlightDispatches.clear();
+    for (const w of this.machineCmdWaiters.values()) {
+      w.reject(new Error(l10n.t("errors.terminal_connection_canceled")));
+    }
+    this.machineCmdWaiters.clear();
     for (const list of this.retryNowWaiters.values()) {
       for (const fn of list) fn(false);
     }
@@ -3745,9 +3654,7 @@ export {
   TerminalSgrColorKind,
   TerminalStreamEventKind,
   ConnState,
-  MachineChartKind,
   MachinePollMode,
-  MachineUsageTab,
   NotificationPermissionState,
   PushRegistrationState,
   ThemePreference,

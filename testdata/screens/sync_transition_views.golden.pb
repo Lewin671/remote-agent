@@ -36,27 +36,28 @@ A
 	
 
 
-‚
+©
 
 B
 cold-start
 	
 
-Ş
-syncStateOnlineÊ"Ç(8Bdev-1Jdev-1RPhonepx€à×âÍ4 ª&
+…
+syncStateOnlineñ"î(8Bdev-1Jdev-1RPhonepx€à×âÍ4 ª3
 m1àŸÉ¤4"
-	MacStudioJ `8P°º­
+	MacStudioJ `8Ppz	MacStudio°º°
 s-trm1C
 s-tr/Users/me/Code/alpha BğÜ†ÖzTransitional screen dataÈ(0€ËÅ¤48ĞÑÈ¤4HR'#’
-ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ÀÈª"
+ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ˆÀÈª"
 dev-1€ì¬ÿ4*
-PhoneiOS@HÂm1ĞàŸÉ¤4Øà
+PhoneiOS@HÂm1ĞàŸÉ¤4Øà¢
+security.renew_now
 
 
 	
 
 
-Á
+Ä
 h
 Js-tr(€
 	: ˜u
@@ -67,12 +68,12 @@ live-att-1m1"s-tr(üôÌ¤42ú
 s-tr 8h€
 
 
-Ô
-sessionLoadingÁ*¾
-s-tr­
+×
+sessionLoadingÄ*Á
+s-tr°
 s-trm1C
 s-tr/Users/me/Code/alpha BğÜ†ÖzTransitional screen dataÈ(0€ËÅ¤48ĞÑÈ¤4HR'#’
-ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./... 0Hˆ¢-
+ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ˆ 0Hˆ¢-
 )
 ap-tr-1
 ap-tr-1Bash"go test ./...@ª'#’
@@ -84,29 +85,30 @@ live-att-1m1"s-tr(üôÌ¤42ú
 
 
 
-ª
+Ô
 
 
 
 
-
-sessionLoadedû*ø
-s-tr­
+
+sessionLoadedş*û
+s-tr°
 s-trm1C
 s-tr/Users/me/Code/alpha BğÜ†ÖzTransitional screen dataÈ(0€ËÅ¤48ĞÑÈ¤4HR'#’
-ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...(xˆ¢1
+ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ˆ(xˆ¢1
 )
 ap-tr-1
 ap-tr-1Bash"go test ./...@¢ª'#’
 ap-tr-1Bash"go test ./...0² ap-tr-1Bash"go test ./...ºR
 	run testsº#’
-ap-tr-1Bash"go test ./...‹
-syncStateAfterLoadô"ñ(8Bdev-1Jdev-1RPhonepx€à×âÍ4 ª&
+ap-tr-1Bash"go test ./...²
+syncStateAfterLoad›"˜(8Bdev-1Jdev-1RPhonepx€à×âÍ4 ª3
 m1àŸÉ¤4"
-	MacStudioJ `8P°º­
+	MacStudioJ `8Ppz	MacStudio°º°
 s-trm1C
 s-tr/Users/me/Code/alpha BğÜ†ÖzTransitional screen dataÈ(0€ËÅ¤48ĞÑÈ¤4HR'#’
-ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ÀÈø¢!
+ap-tr-1Bash"go test ./...0‚ ap-tr-1Bash"go test ./...ˆÀÈø¢!
 /Users/me/Code/alpha€ì¬ÿ4ª"
 dev-1€ì¬ÿ4*
-PhoneiOS@HÂm1ĞàŸÉ¤4Øà
+PhoneiOS@HÂm1ĞàŸÉ¤4Øà¢
+security.renew_now

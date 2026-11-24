@@ -26,11 +26,12 @@ import {
   routeForUsage,
   useCoreHost,
   useMachineStatusView,
+  useProjectView,
 } from "../core/host";
 import { renderText } from "../core/text";
 import type { Remote } from "../remote";
 import { NavBar } from "../ui";
-import { addProject, MachineDirSheet as NewProjectSheet } from "./ScheduleConfig";
+import { DirPickerSheet } from "./Projects";
 import { Roll, flipBox, useFlipList, usePageVisible, useReducedMotion } from "./machine-status-hooks";
 
 type Go = (route: string) => void;
@@ -461,9 +462,12 @@ export function MachineStatusScreenView({ id, vm, visible = true, reduced = fals
   );
 }
 
+const MACHINE_STATUS_PICKER_KEY = "machine-status";
+
 export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; id: string; go: Go; onBack: () => void }) {
   const host = useCoreHost(remote, go), visible = usePageVisible(), reduced = useReducedMotion();
   const vm = useMachineStatusView(host, id, visible ? MachinePollMode.LIVE : MachinePollMode.OFF);
+  const picker = useProjectView(host, "", true, 30, "", MACHINE_STATUS_PICKER_KEY).manage?.dirPicker;
   const [cleanupPrompt, setCleanupPrompt] = useState<string | null>(null);
   const stale = vm.pollState === MachinePollState.STALE;
   useEffect(() => {
@@ -471,18 +475,37 @@ export function MachineStatusPage({ remote, id, go, onBack }: { remote: Remote; 
     const timer = setInterval(() => host.tickClock(), 1000);
     return () => clearInterval(timer);
   }, [stale, visible, host]);
-  useEffect(() => host.onCleanupPicker((eff) => { if (eff.machineId === id) setCleanupPrompt(t("machine_status.cleanup_prompt")); }), [host, id]);
+  useEffect(() => host.onCleanupPicker((eff) => {
+    if (eff.machineId === id) {
+      setCleanupPrompt(t("machine_status.cleanup_prompt"));
+      host.projectOpenDirPicker(false, id, "", MACHINE_STATUS_PICKER_KEY);
+    }
+  }), [host, id]);
+
+  const closeCleanupPicker = () => {
+    setCleanupPrompt(null);
+    host.projectCloseDirPicker(MACHINE_STATUS_PICKER_KEY);
+  };
 
   return (
     <MachineStatusScreenView id={id} vm={vm} visible={visible} reduced={reduced} go={go} onBack={onBack}
       onRetry={() => host.retryMachineStatus(id)} onSelectTab={(tab) => host.selectMachineStatusTab(id, tab)}
       onScrub={(kind, idx, clear) => host.scrubMachineStatus(id, kind, idx, clear)} onCleanup={() => host.cleanupMachineStatus(id)}
-      overlaySlot={cleanupPrompt !== null && (
-        <NewProjectSheet remote={remote} fixedMachine={id} onClose={() => setCleanupPrompt(null)} onDone={(machineId, path) => {
-          addProject(remote, machineId, path); setCleanupPrompt(null);
-          host.appendNewSessionPrompt(path, cleanupPrompt);
-          remote.draftMachines.set(path, machineId); remote.focusProject = path; remote.touch(); go(routeForProject(path));
-        }} />
+      overlaySlot={cleanupPrompt !== null && picker?.open && (
+        <DirPickerSheet
+          picker={picker}
+          fixedMachine={id}
+          title={t("projects.choose_directory")}
+          onNavigate={(mid, path) => host.projectDirNavigate(mid, path, MACHINE_STATUS_PICKER_KEY)}
+          onClose={closeCleanupPicker}
+          onConfirm={(path) => {
+            host.projectAdd(path, MACHINE_STATUS_PICKER_KEY);
+            host.projectCloseDirPicker(MACHINE_STATUS_PICKER_KEY);
+            setCleanupPrompt(null);
+            host.appendNewSessionPrompt(path, cleanupPrompt);
+            remote.draftMachines.set(path, id); remote.focusProject = path; remote.touch(); go(routeForProject(path));
+          }}
+        />
       )}
     />
   );

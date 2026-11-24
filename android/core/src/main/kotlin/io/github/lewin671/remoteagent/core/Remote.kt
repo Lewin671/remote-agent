@@ -67,8 +67,6 @@ class TermConn internal constructor(
 
 internal fun ucmp(a: Long, b: Long): Int = java.lang.Long.compareUnsigned(a, b)
 
-const val COMMAND_TTL_MS = 60_000L
-
 private const val STREAM_PING_SECONDS = 20L
 private const val STREAM_OPEN_MS = 15_000L
 private const val STREAM_FRAME_BYTES = 2 * 1024 * 1024
@@ -85,11 +83,6 @@ class Remote(
     private val log: (String) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
     private val frameQueue: Int = 1024,
-    @Suppress("unused") private val historyIdleMs: Long = 60_000,
-    @Suppress("unused") private val historyIdleCount: Int = 8,
-    @Suppress("unused") private val historyIdleBytes: Long = 16L * 1024 * 1024,
-    @Suppress("unused") private val streamOpenMs: Long = STREAM_OPEN_MS,
-    @Suppress("unused") private val linkGraceMs: Long = 10_000,
     private val securityStore: SecurityStoreV4 = MemorySecurityStoreV4(),
     private val scheduleSeenStore: ScheduleSeenStore? = null,
     private val onDismissScheduleNotifications: (List<ScheduleNotificationRef>) -> Unit = {},
@@ -104,7 +97,6 @@ class Remote(
     private val directJitter: (() -> Double)? = null,
 ) {
     private val dispatcher = dispatcher ?: Dispatchers.IO.limitedParallelism(1)
-    private val cpuDispatcher = if (dispatcher == null) Dispatchers.Default else this.dispatcher
     private val bulkCpuDispatcher =
         if (dispatcher == null) io.github.lewin671.remoteagent.core.transport.CpuLanes.bulk else this.dispatcher
     private val directDispatcher =
@@ -113,11 +105,11 @@ class Remote(
 
     private val peerJobs = java.util.concurrent.atomic.AtomicInteger()
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
-    @Volatile private var relayObservation = RemoteState()
     private val directServerHost: String =
         if (stunUrls != null) "" else runCatching { java.net.URI(account.server).host.orEmpty() }.getOrDefault("")
     private val directConfiguredStun: String = stunUrls?.joinToString(",") ?: ""
     private val scope = CoroutineScope(SupervisorJob() + this.dispatcher)
+    private val inFlightDispatches = ConcurrentHashMap<String, Pair<DispatchCommandEffect, Job>>()
     private val usageHydratedMachines = ConcurrentHashMap.newKeySet<String>()
 
     private fun usageBlobKey(machineId: String, preset: UsageRangePreset): String =
@@ -138,11 +130,7 @@ class Remote(
     @Volatile private var inFlightLoginJob: Job? = null
     @Volatile private var networkAvailable = true
     @Volatile private var lastNetworkSignature: String? = null
-    @Volatile private var networkGeneration = 0L
-    private val securityPushSeq = AtomicLong(1L)
     private val devicesPushSeq = AtomicLong(1L)
-    private val coreSyncDepth = java.util.concurrent.atomic.AtomicInteger(0)
-    private val securitySnapshotLock = Any()
     @Volatile private var running = false
     @Volatile private var closed = false
     @Volatile private var serverAhead = false
@@ -229,28 +217,8 @@ class Remote(
         api = api,
         sockets = { socketFactory ?: streamHttp },
         token = { currentToken() },
-        renew = { used, _ -> if (used != null) discardToken(used); currentToken() },
-        observe = { id ->
-            relayObservation.let {
-                val directReady = coreHost.syncStateView.value.machinesList.firstOrNull { m -> m.machineId == id }?.directReady == true
-                val base = RelayPath.discovery(
-                    it.machines[id],
-                    ready = directReady || it.conn == ConnState.ONLINE,
-                    authorized = !it.removed,
-                    unlinked = it.unlinked,
-                )
-                base.copy(
-                    reachable = directReady || it.machines[id]?.online == true,
-                    relayRequired = !directReady,
-                    knownOffline = !directReady && it.machines[id]?.online == false,
-                    protocolVersion = if (directReady) PEER_PROTOCOL_VERSION else base.protocolVersion,
-                    capabilities = base.capabilities,
-                )
-            }
-        },
     ))
 
-    fun peer(machineId: String?) = state.value.peer(machineId)
     fun directEnabled(machineId: String): Boolean =
         runCatching { directPrefs.isEnabled(account.server, account.deviceId, machineId) }.getOrDefault(true)
     fun setDirectEnabled(machineId: String, enabled: Boolean) = coreHost.updateDirectPreference(machineId, enabled)
@@ -258,7 +226,6 @@ class Remote(
     fun filePath(machineId: String): DirectPathChoice =
         if (directRouteReport(machineId).fileRoute == DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT) DirectPathChoice.DIRECT_PATH_CHOICE_DIRECT
         else DirectPathChoice.DIRECT_PATH_CHOICE_RELAY
-    fun monotonicMillis(): Long = monotonic()
     @Volatile internal var parseServerFrame: (ByteArray) -> ServerFrame = ServerFrame::parseFrom
 
     private fun ensureSecurityConfigured() {
@@ -303,7 +270,6 @@ class Remote(
             .build()
     }
 
-    private val models = HashMap<String, Deferred<ListModelsResponse>>()
     @Volatile private var watchedSessionIds: List<String> = emptyList()
 
     private var authorityJob = SupervisorJob(scope.coroutineContext[Job])
@@ -345,7 +311,7 @@ class Remote(
     val securityStatus: StateFlow<SecurityWorkflowStatus?> get() = coreHost.securityClient.status
 
     fun watchSession(sid: String, initialWindow: SessionWindowRequest? = null): Flow<SessionViewModel> {
-        state.value.sessions[sid]?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
+        coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }?.machineId?.takeIf { it.isNotEmpty() }?.let { coreHost.hydrateUsageCache(it) }
         return coreHost.watchSession(sid, initialWindow)
     }
 
@@ -394,38 +360,11 @@ class Remote(
     fun loadEarlierSessionHistory(sid: String) =
         coreHost.loadEarlierSessionHistory(sid)
 
-    // --- Transitional Step 4 view & schedule projection ---
-
-    @Volatile private var testStateOverride: RemoteState? = null
-    private val _testStateFlow = MutableStateFlow<RemoteState?>(null)
     private val pendingSessionLookups = ConcurrentHashMap<String, java.util.concurrent.CopyOnWriteArrayList<CompletableDeferred<Boolean>>>()
-    private val _networkAvailableFlow = MutableStateFlow(true)
-    private val _state = MutableStateFlow(RemoteState())
-    val state: StateFlow<RemoteState> = _state.asStateFlow()
-
-    private fun updateProjectedStateNow() {
-        val next = testStateOverride ?: coreHost.syncStateView.value.toRemoteState(networkAvailable)
-        relayObservation = next
-        _state.value = next
-    }
 
     init {
         coreHost.onDirectPreference = { eff ->
             runCatching { directPrefs.setEnabled(account.server, account.deviceId, eff.machineId, eff.enabled) }
-        }
-        coreHost.onRender = { targets ->
-            if (io.github.lewin671.remoteagent.core.proto.ScreenTarget.SCREEN_TARGET_SYNC_STATE in targets) {
-                updateProjectedStateNow()
-            }
-        }
-        scope.launch {
-            combine(
-                coreHost.syncStateView,
-                _networkAvailableFlow,
-                _testStateFlow,
-            ) { syncView, net, override ->
-                (override ?: syncView.toRemoteState(net)).also { relayObservation = it }
-            }.collect { _state.value = it }
         }
     }
 
@@ -508,7 +447,22 @@ class Remote(
             }
         }
         coreHost.onRpc = { eff -> scope.launch { executeRpc(eff) } }
-        coreHost.onDispatchCommand = { eff -> scope.launch { executeDispatchCommand(eff) } }
+        coreHost.onDispatchCommand = { eff ->
+            val job = scope.launch { executeDispatchCommand(eff) }
+            inFlightDispatches[eff.attemptId] = eff to job
+            job.invokeOnCompletion { inFlightDispatches.remove(eff.attemptId) }
+        }
+        coreHost.onCancelDispatch = { eff ->
+            val rid = eff.requestId
+            if (rid.isNotEmpty()) {
+                for ((aid, pair) in inFlightDispatches.entries.toList()) {
+                    val (dispatched, job) = pair
+                    if (dispatched.requestId == rid) {
+                        if (inFlightDispatches.remove(aid, pair)) job.cancel()
+                    }
+                }
+            }
+        }
         coreHost.onScheduleReadCache = { eff ->
             enqueueCacheOp {
                 try {
@@ -714,7 +668,6 @@ class Remote(
             runCatching { securityStore.clearLoginToken(account.server, account.deviceId) }
         }
         coreHost.dispatchAndWait(CoreEvent.getDefaultInstance())
-        updateProjectedStateNow()
         pruneUntrustedCaches()
     }
 
@@ -1250,19 +1203,6 @@ class Remote(
         coreHost.dispatch(CoreEvent.newBuilder().setCommandOutcome(outcome).build())
     }
 
-    private class AttemptOutcome(
-        val outcome: CommandOutcomeEvent,
-        val trusted: Boolean,
-        val elapsedMs: Double,
-        val observedBytes: Long,
-        val ok: Boolean,
-        val msg: CommandResult? = null,
-        val connectError: ConnectException? = null,
-        val refusal: PathRefusal? = null,
-        val otherError: Exception? = null,
-        val handedOff: Boolean = false,
-    )
-
     private suspend fun executeCommandLeg(
         machineId: String,
         sessionId: String,
@@ -1270,13 +1210,12 @@ class Remote(
         attemptId: String,
         parsedCmd: Command?,
         authorized: Envelope,
-        binding: Pair<ByteArray, ByteArray>?,
         prior: Boolean,
         bulk: Boolean,
         useDirect: Boolean,
         directPcId: Long,
         directTimeoutMs: Long,
-    ): AttemptOutcome {
+    ): CommandOutcomeEvent {
         var handedOff = false
         val handoff: () -> Unit = { handedOff = true }
         val relayAttempt = if (useDirect) null else deviceLink.path.attempt(attemptId, handoff)
@@ -1299,134 +1238,48 @@ class Remote(
             }
             val dtMs = elapsedMs()
             val attemptBound = res.attemptId == attemptId
-            if (binding == null) {
-                if (
-                    cache != null &&
-                    parsedCmd?.hasSchedule() == true &&
-                    parsedCmd.schedule.operation == "list" &&
-                    attemptBound &&
-                    (useDirect || res.outcome == "executed") &&
-                    currentScheduleMember(machineId)
-                ) {
-                    val msg = runCatching {
-                        openSecureMessage(
-                            res.result,
-                            Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
-                            CommandResult::parseFrom,
-                            bulk = bulk,
-                        ).second
-                    }.getOrNull()
-                    if (msg != null && msg.hasSchedule() && msg.errorCode.isEmpty() && msg.outcome == "executed") {
-                        cache.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
-                        if (!currentScheduleMember(machineId)) cache.removeBlob("schedule:$machineId")
-                    }
-                }
-                return AttemptOutcome(
-                    outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
-                        .setAttemptBound(attemptBound)
-                        .apply { if (res.hasResult()) setSealedResult(res.result) }
-                        .setOuterOutcome(res.outcome)
-                        .setOuterReason(res.reason)
-                        .setHandedOff(handedOff)
-                        .setElapsedMs(dtMs)
-                        .build(),
-                    trusted = false,
-                    elapsedMs = dtMs,
-                    observedBytes = 0L,
-                    ok = false,
-                    handedOff = handedOff,
-                )
-            }
-            val msg = try {
-                openSecureMessage(
-                    res.result,
-                    Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
-                    CommandResult::parseFrom,
-                    bulk = bulk,
-                ).second
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                return AttemptOutcome(
-                    outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
-                        .setAttemptBound(attemptBound)
-                        .setSigned(false)
-                        .setHashesMatch(false)
-                        .setHandedOff(handedOff)
-                        .setElapsedMs(dtMs)
-                        .build(),
-                    trusted = false,
-                    elapsedMs = dtMs,
-                    observedBytes = 0L,
-                    ok = false,
-                    handedOff = handedOff,
-                )
-            }
-            val hashesMatch = msg.requestKeyHash.toByteArray().contentEquals(binding.first) &&
-                msg.payloadHash.toByteArray().contentEquals(binding.second) &&
-                (msg.outcome == "conflict" || msg.conflictKind.isEmpty())
-            val outerMatchesInner = useDirect || (res.outcome == msg.outcome && res.reason == msg.reason)
-            val outerOutcome = if (useDirect) msg.outcome else res.outcome
-            val outerReason = if (useDirect) msg.reason else res.reason
-            val obsBytes = when {
-                parsedCmd?.hasPutImageChunk() == true -> parsedCmd.putImageChunk.data.size().toLong()
-                msg.hasGetSharedFileChunk() -> msg.getSharedFileChunk.data.size().toLong()
-                else -> 0L
-            }
-            val category = verifiedOutcome(msg, binding.first, binding.second, outerOutcome, outerReason)
-            val trusted = hashesMatch && attemptBound && outerMatchesInner && category != Outcome.UNKNOWN
-            val ok = trusted && msg.errorCode.isEmpty() && category == Outcome.EXECUTED
-            if (ok &&
+            if (
+                cache != null &&
                 parsedCmd?.hasSchedule() == true &&
                 parsedCmd.schedule.operation == "list" &&
-                msg.hasSchedule() &&
+                attemptBound &&
+                (useDirect || res.outcome == "executed") &&
                 currentScheduleMember(machineId)
             ) {
-                cache?.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
-                if (!currentScheduleMember(machineId)) cache?.removeBlob("schedule:$machineId")
+                val msg = runCatching {
+                    openSecureMessage(
+                        res.result,
+                        Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machineId, sessionId = sessionId, requestId = requestId),
+                        CommandResult::parseFrom,
+                        bulk = bulk,
+                    ).second
+                }.getOrNull()
+                if (msg != null && msg.hasSchedule() && msg.errorCode.isEmpty() && msg.outcome == "executed") {
+                    cache.putBlob("schedule:$machineId", scheduleSnapshot(requestId, res.result))
+                    if (!currentScheduleMember(machineId)) cache.removeBlob("schedule:$machineId")
+                }
             }
-            AttemptOutcome(
-                outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
-                    .setAttemptBound(attemptBound)
-                    .setSigned(true)
-                    .setHashesMatch(hashesMatch)
-                    .setOuterMatchesInner(outerMatchesInner)
-                    .setOuterOutcome(outerOutcome)
-                    .setOuterReason(outerReason)
-                    .setResult(msg)
-                    .setHandedOff(handedOff)
-                    .setElapsedMs(dtMs)
-                    .setObservedBytes(obsBytes)
-                    .build(),
-                trusted = trusted,
-                elapsedMs = dtMs,
-                observedBytes = obsBytes,
-                ok = ok,
-                msg = msg,
-                handedOff = handedOff,
-            )
+            baseOutcome(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                .setAttemptBound(attemptBound)
+                .apply { if (res.hasResult()) setSealedResult(res.result) }
+                .setOuterOutcome(res.outcome)
+                .setOuterReason(res.reason)
+                .setHandedOff(handedOff)
+                .setElapsedMs(dtMs)
+                .build()
         } catch (e: CancellationException) {
             throw e
         } catch (_: PathChanged) {
-            val dtMs = elapsedMs()
-            AttemptOutcome(
-                outcome = baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                    .setNotForwarded(!handedOff)
-                    .setHandedOff(handedOff)
-                    .setTransportCode("path_changed")
-                    .setElapsedMs(dtMs)
-                    .build(),
-                trusted = false,
-                elapsedMs = dtMs,
-                observedBytes = 0L,
-                ok = false,
-                otherError = PathChanged(),
-                handedOff = handedOff,
-            )
+            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                .setNotForwarded(!handedOff)
+                .setHandedOff(handedOff)
+                .setTransportCode("path_changed")
+                .setElapsedMs(elapsedMs())
+                .build()
         } catch (ce: ConnectException) {
             val dtMs = elapsedMs()
             val refusal = relayAttempt?.refusal(ce)
-            val ev = if (refusal != null) {
+            if (refusal != null) {
                 baseOutcome(OutcomeSource.OUTCOME_SOURCE_SERVER).setNotForwarded(true).setAttemptBound(true)
                     .setOuterReason(refusal.reason).setTransportCode(mapConnectCode(ce.code))
                     .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
@@ -1435,46 +1288,18 @@ class Remote(
                     .setTransportCode(if (unresolvedHost(ce)) "unresolved_host" else mapConnectCode(ce.code))
                     .setTransportDetail(ce.message ?: "").setElapsedMs(dtMs).build()
             }
-            AttemptOutcome(
-                outcome = ev,
-                trusted = false,
-                elapsedMs = dtMs,
-                observedBytes = 0L,
-                ok = false,
-                connectError = ce,
-                refusal = refusal,
-                handedOff = handedOff,
-            )
         } catch (e: IOException) {
-            val dtMs = elapsedMs()
-            AttemptOutcome(
-                outcome = baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
-                    .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
-                    .setTransportDetail(e.message ?: e.javaClass.simpleName).setElapsedMs(dtMs).build(),
-                trusted = false,
-                elapsedMs = dtMs,
-                observedBytes = 0L,
-                ok = false,
-                otherError = e,
-                handedOff = handedOff,
-            )
+            baseOutcome(OutcomeSource.OUTCOME_SOURCE_TRANSPORT).setNotForwarded(!handedOff).setHandedOff(handedOff)
+                .setTransportCode(if (unresolvedHost(e)) "unresolved_host" else "network")
+                .setTransportDetail(e.message ?: e.javaClass.simpleName).setElapsedMs(elapsedMs()).build()
         } catch (e: Exception) {
-            val dtMs = elapsedMs()
-            AttemptOutcome(
-                outcome = baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
-                    .setNotForwarded(!handedOff)
-                    .setHandedOff(handedOff)
-                    .setTransportCode("failed_precondition")
-                    .setTransportDetail(e.message ?: e.javaClass.simpleName)
-                    .setElapsedMs(dtMs)
-                    .build(),
-                trusted = false,
-                elapsedMs = dtMs,
-                observedBytes = 0L,
-                ok = false,
-                otherError = e,
-                handedOff = handedOff,
-            )
+            baseOutcome(if (handedOff) OutcomeSource.OUTCOME_SOURCE_TRANSPORT else OutcomeSource.OUTCOME_SOURCE_LOCAL)
+                .setNotForwarded(!handedOff)
+                .setHandedOff(handedOff)
+                .setTransportCode("failed_precondition")
+                .setTransportDetail(e.message ?: e.javaClass.simpleName)
+                .setElapsedMs(elapsedMs())
+                .build()
         }
     }
 
@@ -1506,13 +1331,12 @@ class Remote(
             attemptId = eff.attemptId,
             parsedCmd = parsedCmd,
             authorized = eff.sealedEnvelope,
-            binding = null,
             prior = eff.retryOfUnknown,
             bulk = bulk,
             useDirect = useDirect,
             directPcId = eff.directPcId,
             directTimeoutMs = eff.directTimeoutMs,
-        ).outcome
+        )
     }
 
     private fun mapConnectCode(code: Code): String = when (code) {
@@ -1580,9 +1404,7 @@ class Remote(
         val realChange = lastNetworkSignature != null && (lastNetworkSignature != signature || networkAvailable != available)
         lastNetworkSignature = signature
         networkAvailable = available
-        _networkAvailableFlow.value = available
         if (realChange) {
-            networkGeneration++
             inFlightToken?.completeExceptionally(NetworkResetException())
             inFlightToken = null
             inFlightLoginJob?.cancel()
@@ -1595,8 +1417,6 @@ class Remote(
 
     fun refreshDirectDiagnostics(machineId: String) = coreHost.refreshDirectDiagnostics(machineId)
 
-    fun setNetwork(available: Boolean) = networkChanged(if (available) "up" else "none", available)
-
     fun reconnectNow() {
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
     }
@@ -1604,8 +1424,6 @@ class Remote(
     fun retryLogin() {
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RETRY_LOGIN)
     }
-
-    fun retryEvents(sid: String) = coreHost.retrySessionEvents(sid)
 
     fun retrySessionLoad(sid: String) = coreHost.retrySessionLoad(sid)
 
@@ -1645,9 +1463,6 @@ class Remote(
     fun setDraftText(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, text: String) =
         coreHost.setDraftText(scope, text)
 
-    fun setDraftTargetMachine(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, machineId: String) =
-        coreHost.setDraftTargetMachine(scope, machineId)
-
     fun reserveDraftSlots(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, reservationId: String, imageSlots: Int, fileSlots: Int) =
         coreHost.reserveDraftSlots(scope, reservationId, imageSlots, fileSlots)
 
@@ -1669,17 +1484,11 @@ class Remote(
     fun setDraftOriginal(scope: io.github.lewin671.remoteagent.core.proto.DraftScope, original: Boolean) =
         coreHost.setDraftOriginal(scope, original)
 
-    fun clearDraft(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
-        coreHost.clearDraft(scope)
-
     fun forgetDraftSession(sessionId: String) =
         coreHost.forgetDraftSession(sessionId)
 
     fun clearAllDrafts() =
         coreHost.clearAllDrafts()
-
-    suspend fun clearAllDraftsAndWait() =
-        coreHost.clearAllDraftsAndWait()
 
     fun dismissDraftNotice(scope: io.github.lewin671.remoteagent.core.proto.DraftScope) =
         coreHost.dismissDraftNotice(scope)
@@ -1719,7 +1528,7 @@ class Remote(
         coreHost.closeSessionImageViewer(sid)
 
     suspend fun fetchSession(sid: String): Boolean {
-        if (state.value.sessions[sid] != null) return true
+        if (coreHost.syncStateView.value.sessionsList.any { it.sessionId == sid }) return true
         val deferred = CompletableDeferred<Boolean>()
         pendingSessionLookups.computeIfAbsent(sid) { java.util.concurrent.CopyOnWriteArrayList() }.add(deferred)
         coreHost.fetchSession(sid)
@@ -1755,22 +1564,9 @@ class Remote(
         )
     }
 
-    // --- Transitional Step 3/4 UI & Test Helpers ---
-
-    fun showForTest(
-        state: RemoteState,
-        modelLists: Map<Pair<String, Agent>, ListModelsResponse> = emptyMap(),
-        sessions: Map<String, SessionViewModel> = emptyMap(),
-    ) {
+    internal fun prepareForTest(sessions: Map<String, SessionViewModel> = emptyMap()) {
         check(!running) { "showForTest on a started Remote" }
         _bootstrapped.value = true
-        relayObservation = state
-        testStateOverride = state
-        _testStateFlow.value = state
-        _state.value = state
-        for ((key, response) in modelLists) {
-            models["${key.first}/${key.second.number}"] = CompletableDeferred(response)
-        }
         coreHost.dispatchOnWorker(
             CoreEvent.newBuilder()
                 .setTransportConfig(
@@ -1796,7 +1592,6 @@ class Remote(
                 .build(),
         )
         coreHost.showViewsForTest(sessions = sessions)
-        seedCoreForTest(coreHost, account.deviceId, state, modelLists)
     }
 
     // --- S6 Security Management & Recovery (delegated to Core SecurityClient) ---
@@ -1815,7 +1610,6 @@ class Remote(
         val ds = api.client.listDevices(ListDevicesRequest.getDefaultInstance(), Api.headers(currentToken())).value()
         val ev = DevicesFetchedEvent.newBuilder().setOpId(0L).setPushSeq(pushSeq).addAllWireDevices(ds.devicesList).build()
         coreHost.dispatchAndWait(CoreEvent.newBuilder().setDevicesFetched(ev).build())
-        updateProjectedStateNow()
     }
 
     suspend fun getSecurityStatus(): SecurityWorkflowStatus =
@@ -1856,12 +1650,6 @@ class Remote(
         if (!closed) refreshDevices()
     }
 
-    suspend fun listHandoffCandidates(): List<SecurityHandoffCandidate> {
-        ensureSecurityBootstrapped()
-        refreshDevices()
-        return coreHost.securityClient.listHandoffCandidates()
-    }
-
     suspend fun handoffAuthority(incoming: String) { withSecurity { handoffAuthority(incoming) } }
 
     suspend fun finishPairingDelivery(pairingId: String): SecurityPairingInfo =
@@ -1870,10 +1658,6 @@ class Remote(
     suspend fun discardPendingOp(abandonHandoff: Boolean = false) { withSecurity { discardPendingOp(abandonHandoff) } }
 
     suspend fun checkExitAdvice(): SecurityExitAdvice = withSecurity { checkExitAdvice() }
-
-    suspend fun clearSecurity() { withSecurity { clearSecurity() } }
-
-    suspend fun republishRecoveryObjects(flag: Boolean = false) { withSecurity { republishRecoveryObjects(flag) } }
 
     suspend fun renameDevice(id: String, name: String) {
         if (id != account.deviceId) {
@@ -1898,37 +1682,7 @@ class Remote(
         coreHost.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_RECONNECT_NOW)
     }
 
-    // --- Infrastructure Machine Commands (uploads, downloads, terminal, settings, schedules) ---
-
-    suspend fun getMachineStatus(machineId: String): io.github.lewin671.remoteagent.proto.MachineStatus {
-        val result = machineCommand(machineId, Command.newBuilder().setGetMachineStatus(io.github.lewin671.remoteagent.proto.GetMachineStatusRequest.getDefaultInstance()).build())
-        check(result.hasMachineStatus()) { UiMessages.machineStatusUnavailable().messageText() }
-        return result.machineStatus
-    }
-
-    private fun commandSessionId(cmd: Command): String = when (cmd.kindCase) {
-        Command.KindCase.SEND -> cmd.send.sessionId
-        Command.KindCase.INTERRUPT -> cmd.interrupt.sessionId
-        Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.sessionId
-        Command.KindCase.ANSWER_QUESTION -> cmd.answerQuestion.sessionId
-        Command.KindCase.STOP_SESSION -> cmd.stopSession.sessionId
-        Command.KindCase.CANCEL_INPUT -> cmd.cancelInput.sessionId
-        Command.KindCase.SET_MODEL -> cmd.setModel.sessionId
-        Command.KindCase.SET_APPROVAL_MODE -> cmd.setApprovalMode.sessionId
-        Command.KindCase.COMPACT -> cmd.compact.sessionId
-        Command.KindCase.ANSWER_PLAN -> cmd.answerPlan.sessionId
-        Command.KindCase.OPEN_TERMINAL -> cmd.openTerminal.sessionId
-        Command.KindCase.RESUME_SESSION -> cmd.resumeSession.sessionId
-        Command.KindCase.RESUME_INPUT -> cmd.resumeInput.sessionId
-        Command.KindCase.RENAME_SESSION -> cmd.renameSession.sessionId
-        Command.KindCase.FORK_SESSION -> cmd.forkSession.sessionId
-        Command.KindCase.GET_LIVE_SNAPSHOT -> cmd.getLiveSnapshot.sessionId
-        Command.KindCase.GET_SHARED_FILE_CHUNK -> cmd.getSharedFileChunk.sessionId
-        else -> ""
-    }
-
-    suspend fun machineCommand(machineId: String, cmd: Command): CommandResult =
-        sendMachineCommand(machineId, cmd, sessionId = commandSessionId(cmd))
+    // --- One-shot Machine Probes ---
 
     suspend fun pingServer(timeoutMs: Long = 8_000): Long = withContext(Dispatchers.IO) {
         val req = okhttp3.Request.Builder().url(api.server.trimEnd('/') + "/healthz").header("Cache-Control", "no-store").build()
@@ -1947,283 +1701,21 @@ class Remote(
     suspend fun pingMachine(machineId: String, timeoutMs: Long = 15_000): Long {
         val started = System.nanoTime()
         try {
-            withTimeout(timeoutMs) { machineCommand(machineId, Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build()) }
+            withTimeout(timeoutMs) {
+                coreHost.runMachineCommand(
+                    machineId,
+                    "",
+                    Command.newBuilder().setGetSettings(GetSettingsRequest.getDefaultInstance()).build(),
+                    skipConnectivityPreflight = true,
+                )
+            }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
             throw MessageException(UiMessages.connectionNoResponse().messageText(), e)
         }
         return (System.nanoTime() - started) / 1_000_000
     }
 
-    private suspend fun sendMachineCommand(
-        machineId: String,
-        cmd: Command,
-        sessionId: String = "",
-        requestId: String = newRequestId(),
-        deadlineMs: Long = clock() + COMMAND_TTL_MS,
-    ): CommandResult = withContext(dispatcher) {
-        val versioned = cmd.toBuilder().setProtocolVersion(PEER_PROTOCOL_VERSION).build()
-        var uncertain = false
-        protocolMismatch(state.value.machines[machineId])?.let {
-            throw CommandException("failed_precondition", it, outcome = Outcome.NOT_SENT)
-        }
-        if (clock() >= deadlineMs) {
-            throw CommandException(
-                CommandException.EXPIRED,
-                UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText(),
-                outcome = Outcome.NOT_SENT,
-            )
-        }
-        if (serverAhead || coreHost.securityClient.currentStatus?.clockSkewed == true) {
-            throw CommandException(
-                "failed_precondition",
-                UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText(),
-            )
-        }
-        val bulk = versioned.hasPutImageChunk() || versioned.hasGetSharedFileChunk()
-        val routeHintValue = when {
-            versioned.hasGetSharedFileChunk() || versioned.hasPutImageChunk() ->
-                CommandRouteHint.COMMAND_ROUTE_HINT_BULK_VALUE
-            versioned.isReadOnlyCommand() && !versioned.hasGetImageUploadStatus() ->
-                CommandRouteHint.COMMAND_ROUTE_HINT_READ_VALUE
-            else -> CommandRouteHint.COMMAND_ROUTE_HINT_UNSPECIFIED_VALUE
-        }
-        val bulkFileKey = when {
-            versioned.hasGetSharedFileChunk() -> "$sessionId/${versioned.getSharedFileChunk.fileId}"
-            versioned.hasPutImageChunk() -> versioned.putImageChunk.transferId
-            else -> ""
-        }
-        val bulkBytes = if (versioned.hasPutImageChunk()) versioned.putImageChunk.data.size().toLong() else 0L
-        val bulkUpload = versioned.hasPutImageChunk()
-        val uploadTransferId = if (versioned.hasBeginImageUpload()) versioned.beginImageUpload.transferId else ""
-        val uploadHasFilename = versioned.hasBeginImageUpload() && versioned.beginImageUpload.fileName.isNotEmpty()
-        val finishUploadTransferId = when {
-            versioned.hasCompleteImageUpload() -> versioned.completeImageUpload.transferId
-            versioned.hasAbortImageUpload() -> versioned.abortImageUpload.transferId
-            else -> ""
-        }
-
-        val (authorized, binding) = try {
-            val sealed = sealEnvelopeOp(
-                PayloadKind.PAYLOAD_KIND_COMMAND.number,
-                machineId = machineId,
-                sessionId = sessionId,
-                request = requestId,
-                deadline = deadlineMs.toULong(),
-                plain = versioned.toByteArray(),
-            )
-            sealed.envelope to (sealed.requestKeyHash.toByteArray() to sealed.payloadHash.toByteArray())
-        } catch (e: SecurityFailure) {
-            when (e.code) {
-                "lease" -> throw CommandException(
-                    "failed_precondition",
-                    localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) },
-                )
-                "clock" -> throw CommandException(
-                    "failed_precondition",
-                    UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText(),
-                )
-                else -> throw CommandException(
-                    "authorization_unavailable",
-                    UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(),
-                )
-            }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            throw CommandException(
-                "authorization_unavailable",
-                UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText(),
-            )
-        }
-
-        var forceRelay = false
-        var attempt = 0
-        while (true) {
-            val attemptId = newRequestId()
-            val dec = if (routeHintValue != 0 || uploadTransferId.isNotEmpty()) {
-                coreHost.beginDirectBulkTransfer(
-                    machineId = machineId,
-                    routeHint = routeHintValue,
-                    bulkFileKey = bulkFileKey,
-                    bulkBytes = bulkBytes,
-                    bulkUpload = bulkUpload,
-                    deadlineMs = deadlineMs,
-                    forceRelay = forceRelay,
-                    uploadTransferId = uploadTransferId,
-                    uploadHasFilename = uploadHasFilename,
-                )
-            } else {
-                DirectBulkRouteEffect.getDefaultInstance()
-            }
-            val useDirect = dec.useDirect && !forceRelay && dec.pcId > 0L
-            val res = try {
-                executeCommandLeg(
-                    machineId = machineId,
-                    sessionId = sessionId,
-                    requestId = requestId,
-                    attemptId = attemptId,
-                    parsedCmd = versioned,
-                    authorized = authorized,
-                    binding = binding,
-                    prior = uncertain,
-                    bulk = bulk,
-                    useDirect = useDirect,
-                    directPcId = dec.pcId,
-                    directTimeoutMs = dec.timeoutMs,
-                )
-            } finally {
-                // Report completion asynchronously to Core Coordinator without blocking caller.
-            }
-            coreHost.finishDirectBulkTransfer(
-                ticketId = dec.ticketId,
-                routeWasDirect = useDirect,
-                ok = res.ok,
-                elapsedMs = res.elapsedMs,
-                observedBytes = res.observedBytes,
-                finishUploadTransferId = finishUploadTransferId,
-                machineId = machineId,
-            )
-            if (res.handedOff) uncertain = true
-
-            val ev = res.outcome
-            val msg = res.msg
-            if (ev.source == OutcomeSource.OUTCOME_SOURCE_DAEMON) {
-                if (!ev.signed || !ev.hashesMatch || !ev.attemptBound || !ev.outerMatchesInner || msg == null) {
-                    throw CommandException(
-                        CommandException.UNKNOWN,
-                        UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
-                        failureKind = if (!ev.signed) CommandFailureKind.REPLY_UNVERIFIED else CommandFailureKind.RAW,
-                        fromDaemon = true,
-                        outcome = Outcome.UNKNOWN,
-                    )
-                }
-                val category = verifiedOutcome(msg, binding.first, binding.second, ev.outerOutcome, ev.outerReason)
-                if (category == Outcome.UNKNOWN) {
-                    throw CommandException(
-                        CommandException.UNKNOWN,
-                        UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
-                        fromDaemon = true,
-                        outcome = Outcome.UNKNOWN,
-                    )
-                }
-                if ((category == Outcome.EXECUTED && !msg.resultAvailable) || (category == Outcome.CONFLICT && msg.conflictKind == "identity")) {
-                    throw CommandException(
-                        msg.errorCode,
-                        (if (category == Outcome.EXECUTED) UiMessages.errorsExecutedResultUnavailable() else UiMessages.errorsRequestIdentityConflict()).messageText(),
-                        fromDaemon = true,
-                        outcome = category,
-                        conflictKind = msg.conflictKind,
-                        resultAvailable = msg.resultAvailable,
-                    )
-                }
-                if (msg.errorCode.isNotEmpty() || category != Outcome.EXECUTED) {
-                    throw CommandException(
-                        msg.errorCode,
-                        msg.errorMessage.ifEmpty { msg.errorCode },
-                        fromDaemon = true,
-                        readOnly = versioned.isReadOnlyCommand(),
-                        outcome = category,
-                        conflictKind = msg.conflictKind,
-                        resultAvailable = msg.resultAvailable,
-                    )
-                }
-                return@withContext msg
-            }
-
-            if (useDirect && routeHintValue != 0 && !forceRelay) {
-                forceRelay = true
-                if (versioned.hasPutImageChunk()) {
-                    machineCommand(
-                        machineId,
-                        Command.newBuilder()
-                            .setGetImageUploadStatus(
-                                io.github.lewin671.remoteagent.proto.GetImageUploadStatusRequest.newBuilder()
-                                    .setTransferId(versioned.putImageChunk.transferId)
-                                    .build(),
-                            )
-                            .build(),
-                    )
-                }
-                continue
-            }
-
-            if (res.otherError is PathChanged) {
-                if (uncertain) {
-                    throw CommandException(CommandException.UNKNOWN, errorText(res.otherError, state.value), outcome = Outcome.UNKNOWN)
-                }
-                throw res.otherError
-            }
-
-            val ce = res.connectError
-            if (ce != null) {
-                val refusal = res.refusal
-                if (refusal != null && !uncertain) {
-                    val msgText = if (refusal.reason == "machine_offline") UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText()
-                    else if (ce.code == Code.UNAVAILABLE) (ce.message ?: ce.code.name.lowercase()).messageText()
-                    else errorText(ce)
-                    throw CommandException(ce.code.name.lowercase(), msgText, outcome = Outcome.NOT_SENT)
-                }
-                val cause = ce.exception
-                if (cause is java.net.UnknownHostException || cause is java.net.ConnectException) {
-                    throw if (uncertain) {
-                        CommandException(CommandException.UNKNOWN, errorText(ce, state.value), outcome = Outcome.UNKNOWN)
-                    } else {
-                        CommandException("network", errorText(ce), outcome = Outcome.NOT_SENT)
-                    }
-                }
-                if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
-                    attempt++
-                    discardToken(currentToken())
-                    continue
-                }
-                if (ce.code in setOf(Code.DEADLINE_EXCEEDED, Code.UNKNOWN, Code.INTERNAL_ERROR, Code.CANCELED, Code.ABORTED) &&
-                    attempt < 3 &&
-                    clock() + 2_000L < deadlineMs
-                ) {
-                    attempt++
-                    kotlinx.coroutines.delay(1_000L * attempt)
-                    continue
-                }
-                if (ce.code == Code.UNAUTHENTICATED) discardToken(currentToken())
-                throw CommandException(CommandException.UNKNOWN, errorText(ce, state.value), outcome = Outcome.UNKNOWN)
-            }
-
-            val err = res.otherError
-            if (err is CommandException) throw err
-            if (uncertain && err != null) {
-                throw CommandException(CommandException.UNKNOWN, errorText(err, state.value), outcome = Outcome.UNKNOWN)
-            }
-            if (err != null) throw err
-            throw CommandException(
-                CommandException.UNKNOWN,
-                if (ev.transportDetail.isNotEmpty()) ev.transportDetail.messageText()
-                else UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(),
-                outcome = Outcome.UNKNOWN,
-            )
-        }
-        throw IllegalStateException()
-    }
-
-    suspend fun listModels(
-        machineId: String,
-        agent: Agent = Agent.AGENT_UNSPECIFIED,
-        fresh: Boolean = false,
-    ): ListModelsResponse {
-        val d = withContext(dispatcher) {
-            val k = "$machineId/${agent.number}"
-            models[k]?.takeUnless { it.isCompleted && (fresh || it.getCompletionExceptionOrNull() != null) }
-                ?: scope.async {
-                    val r = machineCommand(
-                        machineId,
-                        Command.newBuilder().setListModels(ListModelsRequest.newBuilder().setAgent(agent)).build(),
-                    )
-                    if (!r.hasListModels()) throw CommandException("internal", UiMessages.newSessionUnexpectedReply().messageText())
-                    r.listModels
-                }.also { models[k] = it }
-        }
-        return d.await()
-    }
-
-    // --- Media, Files & Terminal ---
+    // --- Media & Terminal ---
 
     sealed interface ImageResult {
         class Loaded(val payload: ImagePayload) : ImageResult
@@ -2233,7 +1725,8 @@ class Remote(
     }
 
     suspend fun image(sid: String, imageId: String): ImageResult = withContext(dispatcher) {
-        val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
         var env = runCatching { cache?.image(cacheKey)?.let { Envelope.parseFrom(it) } }.getOrNull()
@@ -2262,7 +1755,7 @@ class Remote(
         } catch (e: OpenException) {
             return@withContext ImageResult.Corrupt(e.display)
         } catch (e: SecurityFailure) {
-            return@withContext ImageResult.Corrupt(errorText(e, state.value))
+            return@withContext ImageResult.Corrupt(errorText(e, coreHost.syncStateView.value))
         }
         if (detectFormat(payload.data.toByteArray()) != payload.format) {
             return@withContext ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
@@ -2272,7 +1765,8 @@ class Remote(
     }
 
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
-        val s = state.value.sessions[sid] ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        val s = coreHost.syncStateView.value.sessionsList.firstOrNull { it.sessionId == sid }
+            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         if (!hasSessionSeed(sid)) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val tok = currentToken()
         val streamId = newRequestId()
@@ -2317,7 +1811,7 @@ class Remote(
                     }
                 }
             } catch (e: Exception) {
-                finish(errorText(e, state.value))
+                finish(errorText(e, coreHost.syncStateView.value))
             }
         }
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/term"
@@ -2346,17 +1840,18 @@ class Remote(
                     }
                     override fun onFailure(stream: FrameStream, error: Throwable) {
                         opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
-                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, state.value).resolve(copy))) })
+                        finish(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(error, coreHost.syncStateView.value).resolve(copy))) })
                     }
                 },
             )
             socket.set(ws)
             if (closed.get()) ws.cancel()
             withTimeout(20_000) { opened.await() }
-            sendMachineCommand(
+            coreHost.runMachineCommand(
                 s.machineId,
+                sid,
                 Command.newBuilder().setOpenTerminal(OpenTerminalRequest.newBuilder().setSessionId(sid).setStreamId(streamId)).build(),
-                sessionId = sid,
+                skipConnectivityPreflight = true,
             )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
@@ -2381,7 +1876,7 @@ class Remote(
                         if (!closed.get()) ws.send(env.toByteArray())
                     }
                 } catch (e: Exception) {
-                    finish(errorText(e, state.value))
+                    finish(errorText(e, coreHost.syncStateView.value))
                 }
             }
             return TermConn(
@@ -2397,22 +1892,6 @@ class Remote(
             finish()
             throw e
         }
-    }
-
-    suspend fun getSharedFileChunk(sessionId: String, fileId: String, offset: Long): GetSharedFileChunkResponse {
-        val s = state.value.sessions[sessionId]
-            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
-        val result = sendMachineCommand(
-            s.machineId,
-            Command.newBuilder()
-                .setGetSharedFileChunk(GetSharedFileChunkRequest.newBuilder().setSessionId(sessionId).setFileId(fileId).setOffset(offset))
-                .build(),
-            sessionId = sessionId,
-        )
-        if (!result.hasGetSharedFileChunk()) {
-            throw CommandException("invalid_response", UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText())
-        }
-        return result.getGetSharedFileChunk()
     }
 
     // --- Crypto Envelope Helpers ---
@@ -2565,11 +2044,6 @@ class Remote(
         )
     }
 }
-
-internal fun Command.isReadOnlyCommand(): Boolean =
-    hasGetMachineStatus() || hasGetUsageStats() || hasGetSettings() || hasListModels() || hasListDirectories() ||
-        hasGetLiveSnapshot() || hasGetImageUploadStatus() || hasGetSharedFileChunk() ||
-        (hasSchedule() && schedule.operation in setOf("list", "get"))
 
 /** The exact signed response plus its original request binding, never locally re-encrypted JSON. */
 internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {

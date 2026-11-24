@@ -753,6 +753,12 @@ func buildSessionActions(
 		if len(m.Efforts) == 1 {
 			fixedNote = text.Msg(text.KeyModelsFixedEffort, text.Str("effort", m.Efforts[0]))
 		}
+		var maxEffortHint *corev1.Text
+		if caps.ShowMaxEffort && len(m.Efforts) > 0 {
+			if last := m.Efforts[len(m.Efforts)-1]; last != "max" && last != "ultra" {
+				maxEffortHint = text.Msg(text.KeySessionMaxEffort, text.Str("effort", last))
+			}
+		}
 		out.ModelChoices = append(out.ModelChoices, &corev1.SessionModelChoiceView{
 			Slug:                    m.Slug,
 			DisplayName:             m.DisplayName,
@@ -762,6 +768,7 @@ func buildSessionActions(
 			IsAuto:                  lists.ModelIs(m.Slug, "auto"),
 			Selected:                lists.ModelIs(header.Model, m.Slug),
 			SupportsStandardContext: caps.StandardContextOption && (m.ContextWindow == 0 || m.ContextWindow > lists.StandardContextWindow),
+			MaxEffortHint:           maxEffortHint,
 		})
 	}
 	efforts, activeEffort := lists.EffortChoices(lists.StartConfig{

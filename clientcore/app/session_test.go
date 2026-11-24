@@ -2795,3 +2795,418 @@ func TestAttachmentEvalPutBackIgnoresOffline(t *testing.T) {
 		t.Fatalf("put-back must ignore offline but keep the 6-image limit: %+v", back.Decisions)
 	}
 }
+
+func TestSessionModelChoiceMaxEffortHint(t *testing.T) {
+	st := screens.NewState(nil)
+	st.World.Connection = lists.ConnConnected
+	st.World.Machines = []*lists.Machine{{
+		ID:     "m-1",
+		Online: true,
+		Meta:   &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}
+	st.MachineModels[screens.MachineAgentKey{MachineID: "m-1", Agent: v1.Agent_AGENT_CODEX}] = &screens.ModelsCacheEntry{
+		Loaded: true,
+		Response: &v1.ListModelsResponse{
+			Models: []*v1.ModelInfo{
+				{Slug: "gpt-5-mini", DisplayName: "Mini", Efforts: []string{"low", "medium", "high"}, DefaultEffort: "medium"},
+				{Slug: "gpt-5", DisplayName: "Full", Efforts: []string{"low", "medium", "max"}, DefaultEffort: "medium"},
+				{Slug: "gpt-fixed", DisplayName: "Fixed", Efforts: nil},
+			},
+		},
+	}
+	snap := world.SessionSnapshot{
+		Found:          true,
+		SessionsListed: true,
+		Session: &lists.Session{
+			ID:        "s-1",
+			MachineID: "m-1",
+			Info: &v1.Session{
+				Id:    "s-1",
+				Agent: v1.Agent_AGENT_CODEX,
+				Cwd:   "/work/app",
+				Model: "gpt-5-mini",
+			},
+		},
+	}
+	vm := screens.BuildSessionView(snap, st, &corev1.SessionScreenRequest{SessionId: "s-1"}, screens.NewSessionUIState())
+	choices := vm.GetActions().GetModelChoices()
+	if len(choices) != 3 {
+		t.Fatalf("expected 3 choices, got %d", len(choices))
+	}
+	if choices[0].GetMaxEffortHint().GetKey() != text.KeySessionMaxEffort {
+		t.Fatalf("expected max_effort_hint on high-capped Codex model, got %+v", choices[0].GetMaxEffortHint())
+	}
+	if choices[1].GetMaxEffortHint() != nil {
+		t.Fatalf("expected no max_effort_hint when max effort is available, got %+v", choices[1].GetMaxEffortHint())
+	}
+	if choices[2].GetMaxEffortHint() != nil {
+		t.Fatalf("expected no max_effort_hint when model has no efforts, got %+v", choices[2].GetMaxEffortHint())
+	}
+}
+
+func TestRunAndCancelMachineCommandOneShot(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
+		MachineId: "m-on",
+		Online:    true,
+		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}, nil)
+	now := int64(1_791_078_061_000)
+
+	// 1. Invalid argument (missing machine_id) settles immediately with ok=false.
+	badBatch := c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{OpId: 1},
+		},
+	})
+	var badRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range badBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			badRes = r
+		}
+	}
+	if badRes == nil || badRes.Ok || badRes.OpId != 1 || badRes.ErrorCode != "invalid_argument" || badRes.GetErrorText().GetKey() != text.KeyErrorsInvalidCommand {
+		t.Fatalf("expected immediate invalid_argument result with error_text, got %+v", badRes)
+	}
+
+	// 1b. Settled daemon error without error_message still populates fallback error_text.
+	runErrBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 5,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      11,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dcErr *corev1.DispatchCommandEffect
+	for _, ef := range runErrBatch.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcErr = d
+		}
+	}
+	if dcErr == nil {
+		t.Fatalf("expected DispatchCommandEffect for op 11")
+	}
+	errDoneBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 8,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dcErr.RequestId,
+				AttemptId:         dcErr.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "failed",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "failed",
+					ResultAvailable: true,
+					ErrorCode:       "failed",
+				},
+			},
+		},
+	})
+	var errRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range errDoneBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			errRes = r
+		}
+	}
+	if errRes == nil || errRes.Ok || errRes.OpId != 11 || errRes.GetErrorText() == nil {
+		t.Fatalf("expected non-nil error_text on daemon error without message, got %+v", errRes)
+	}
+
+	// 2. Valid one-shot command dispatches and settles with ok=true.
+	runBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      2,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, ef := range runBatch.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc = d
+		}
+	}
+	if dc == nil {
+		t.Fatalf("expected DispatchCommandEffect, got %+v", runBatch.GetEffects())
+	}
+	doneBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 50,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.RequestId,
+				AttemptId:         dc.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result: &v1.CommandResult{
+					Outcome:         "executed",
+					Reason:          "ok",
+					ResultAvailable: true,
+					Kind:            &v1.CommandResult_GetSettings{GetSettings: &v1.GetSettingsResponse{}},
+				},
+			},
+		},
+	})
+	var okRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range doneBatch.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			okRes = r
+		}
+	}
+	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
+		t.Fatalf("expected ok result for op 2, got %+v", okRes)
+	}
+
+	// 3. Canceled one-shot command suppresses late CommandOutcome.
+	runBatch2 := c.Dispatch(&corev1.Event{
+		NowMs: now + 100,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      3,
+				MachineId: "m-on",
+				SessionId: "s-1",
+				Command:   &v1.Command{Kind: &v1.Command_OpenTerminal{OpenTerminal: &v1.OpenTerminalRequest{SessionId: "s-1", StreamId: "st-1"}}},
+			},
+		},
+	})
+	var dc2 *corev1.DispatchCommandEffect
+	for _, ef := range runBatch2.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc2 = d
+		}
+	}
+	if dc2 == nil {
+		t.Fatalf("expected DispatchCommandEffect for op 3")
+	}
+	cancelBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 110,
+		Event: &corev1.Event_CancelMachineCommand{
+			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 3},
+		},
+	})
+	var cancelEff *corev1.CancelDispatchEffect
+	for _, ef := range cancelBatch.GetEffects() {
+		if cd := ef.GetCancelDispatch(); cd != nil {
+			cancelEff = cd
+		}
+	}
+	if cancelEff == nil || cancelEff.RequestId != dc2.RequestId {
+		t.Fatalf("expected CancelDispatchEffect for %q, got %+v", dc2.RequestId, cancelBatch.GetEffects())
+	}
+	lateBatch := c.Dispatch(&corev1.Event{
+		NowMs: now + 120,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc2.RequestId,
+				AttemptId:         dc2.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	for _, ef := range lateBatch.GetEffects() {
+		if ef.GetRunMachineCommandResult() != nil {
+			t.Fatalf("canceled one-shot command must not emit result effect: %+v", ef)
+		}
+	}
+
+	// 4. Canceling one of two concurrent identical commands cancels only its own request_id.
+	runA := c.Dispatch(&corev1.Event{
+		NowMs: now + 200,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      4,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	runB := c.Dispatch(&corev1.Event{
+		NowMs: now + 201,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      5,
+				MachineId: "m-on",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var dcA, dcB *corev1.DispatchCommandEffect
+	for _, ef := range runA.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcA = d
+		}
+	}
+	for _, ef := range runB.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dcB = d
+		}
+	}
+	if dcA == nil || dcB == nil || dcA.RequestId == dcB.RequestId {
+		t.Fatalf("expected two distinct dispatches, got %+v and %+v", dcA, dcB)
+	}
+	cancelA := c.Dispatch(&corev1.Event{
+		NowMs: now + 210,
+		Event: &corev1.Event_CancelMachineCommand{
+			CancelMachineCommand: &corev1.CancelMachineCommandAction{OpId: 4},
+		},
+	})
+	var canceledIDs []string
+	for _, ef := range cancelA.GetEffects() {
+		if cd := ef.GetCancelDispatch(); cd != nil {
+			canceledIDs = append(canceledIDs, cd.RequestId)
+		}
+	}
+	if len(canceledIDs) != 1 || canceledIDs[0] != dcA.RequestId {
+		t.Fatalf("expected CancelDispatchEffect only for %q, got %v", dcA.RequestId, canceledIDs)
+	}
+	doneB := c.Dispatch(&corev1.Event{
+		NowMs: now + 220,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dcB.RequestId,
+				AttemptId:         dcB.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	var resB *corev1.RunMachineCommandResultEffect
+	for _, ef := range doneB.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			resB = r
+		}
+	}
+	if resB == nil || !resB.Ok || resB.OpId != 5 {
+		t.Fatalf("expected concurrent op 5 to still succeed, got %+v", resB)
+	}
+}
+
+func TestRunMachineCommandSkipConnectivityPreflight(t *testing.T) {
+	c := bootstrapReadyApp(t, []*corev1.PlainMachine{{
+		MachineId: "m-off",
+		Online:    false,
+		Meta:      &v1.MachineMeta{Hostname: "Box", ProtocolVersion: sync.PeerVersion},
+	}}, nil)
+	now := int64(1_791_078_061_000)
+
+	// Drop the stream so Connection transitions away from ConnConnected (reconnecting).
+	c.Dispatch(&corev1.Event{
+		NowMs: now,
+		Event: &corev1.Event_StreamClosed{
+			StreamClosed: &corev1.StreamClosedEvent{LegId: 1},
+		},
+	})
+	vm, err := c.View(&corev1.Screen{
+		Screen: &corev1.Screen_SyncState{SyncState: &corev1.SyncStateScreenRequest{}},
+	})
+	if err != nil {
+		t.Fatalf("View(SyncState): %v", err)
+	}
+	if got := vm.GetSyncState().GetConnection(); got == corev1.ConnState_CONN_STATE_CONNECTED {
+		t.Fatalf("expected non-connected state after StreamClosed, got %v", got)
+	}
+
+	// Without skip_connectivity_preflight, preflight fails immediately with no DispatchCommandEffect.
+	blocked := c.Dispatch(&corev1.Event{
+		NowMs: now + 10,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:      1,
+				MachineId: "m-off",
+				Command:   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+			},
+		},
+	})
+	var blockedRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range blocked.GetEffects() {
+		if ef.GetDispatchCommand() != nil {
+			t.Fatalf("expected preflight to block dispatch, got %+v", ef)
+		}
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			blockedRes = r
+		}
+	}
+	if blockedRes == nil || blockedRes.Ok || blockedRes.GetErrorText() == nil {
+		t.Fatalf("expected immediate preflight failure with error_text, got %+v", blockedRes)
+	}
+
+	// With skip_connectivity_preflight, probe/open_terminal still attempts dispatch even while reconnecting and machine appears offline.
+	allowed := c.Dispatch(&corev1.Event{
+		NowMs: now + 20,
+		Event: &corev1.Event_RunMachineCommand{
+			RunMachineCommand: &corev1.RunMachineCommandAction{
+				OpId:                      2,
+				MachineId:                 "m-off",
+				Command:                   &v1.Command{Kind: &v1.Command_GetSettings{GetSettings: &v1.GetSettingsRequest{}}},
+				SkipConnectivityPreflight: true,
+			},
+		},
+	})
+	var dc *corev1.DispatchCommandEffect
+	for _, ef := range allowed.GetEffects() {
+		if d := ef.GetDispatchCommand(); d != nil {
+			dc = d
+		}
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			t.Fatalf("expected skip_connectivity_preflight not to fail in preflight, got %+v", r)
+		}
+	}
+	if dc == nil {
+		t.Fatalf("expected DispatchCommandEffect when skip_connectivity_preflight=true, got %+v", allowed.GetEffects())
+	}
+	done := c.Dispatch(&corev1.Event{
+		NowMs: now + 40,
+		Event: &corev1.Event_CommandOutcome{
+			CommandOutcome: &corev1.CommandOutcomeEvent{
+				RequestId:         dc.RequestId,
+				AttemptId:         dc.AttemptId,
+				Source:            corev1.OutcomeSource_OUTCOME_SOURCE_DAEMON,
+				Signed:            true,
+				HashesMatch:       true,
+				AttemptBound:      true,
+				OuterMatchesInner: true,
+				OuterOutcome:      "executed",
+				OuterReason:       "ok",
+				Result:            &v1.CommandResult{Outcome: "executed", Reason: "ok", ResultAvailable: true},
+			},
+		},
+	})
+	var okRes *corev1.RunMachineCommandResultEffect
+	for _, ef := range done.GetEffects() {
+		if r := ef.GetRunMachineCommandResult(); r != nil {
+			okRes = r
+		}
+	}
+	if okRes == nil || !okRes.Ok || okRes.OpId != 2 {
+		t.Fatalf("expected op 2 to succeed after bypass dispatch, got %+v", okRes)
+	}
+}

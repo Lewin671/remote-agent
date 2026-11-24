@@ -198,6 +198,7 @@
 "dock_waiting_confirmation" = "Waiting for confirmation";
 "errors_cannot_connect_to_terminal" = "Cannot connect to terminal";
 "errors_client_out_of_date" = "This client version is out of date. Update and retry.";
+"errors_command_failed" = "Command failed";
 "errors_connection_dropped_midway" = "Connection dropped midway";
 "errors_connection_timed_out" = "Connection timed out";
 "errors_connection_timed_out_reconnecting" = "Connection timed out. Reconnecting.";
@@ -208,6 +209,7 @@
 "errors_history_has_a_gap_retry" = "History has a gap. Retry.";
 "errors_history_keys_unavailable_records_from_before_recovery_cannot_be" = "History keys unavailable: records from before recovery cannot be decrypted";
 "errors_invalid_ciphertext_signature_key_or_content_verification_failed" = "Invalid ciphertext: signature, key, or content verification failed";
+"errors_invalid_command" = "Invalid command arguments";
 "errors_ios_already_registering_wait_for_the_result" = "Already registering %1$@. Wait for the result.";
 "errors_ios_cannot_find_the_server_check_your_network" = "Cannot find the server. Check your network.";
 "errors_ios_cannot_open_the_computer_s_reply_command_execution_is" = "Cannot open the computer’s reply. Command execution is unconfirmed.";
@@ -274,7 +276,6 @@
 "errors_this_device_s_clock_is_behind_the_account_state_remote" = "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.";
 "errors_this_device_s_security_state_could_not_be_verified" = "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.";
 "errors_this_history_uses_an_old_encryption_format_and_can" = "This history uses an old encryption format and can no longer be viewed";
-"errors_this_page_is_out_of_date_refresh_or_update" = "This page is out of date. Refresh or update it and retry.";
 "errors_this_request_has_not_been_verified_by_the_computer" = "This request has not been verified by the computer yet. Wait for sync.";
 "errors_upload_made_no_progress" = "Upload made no progress";
 "errors_waiting_for_the_owning_computer_to_update_the_current_remote" = "Waiting for the owning computer to update the current state: this device lacks the content key from that time";
@@ -630,7 +631,6 @@
 "projects_ios_syncing" = "Syncing…";
 "projects_ios_view_home" = "View this project on the home page";
 "projects_load_failed" = "Could not load projects";
-"projects_loading" = "Loading projects…";
 "projects_manage" = "Manage projects";
 "projects_manage_named" = "Manage %1$@";
 "projects_new" = "New project…";
@@ -649,7 +649,6 @@
 "projects_remove_note" = "Removing a project only hides it from the list. Sessions and the folder on your computer stay in place.";
 "projects_remove_title" = "Remove %1$@?";
 "projects_removed" = "This project was removed from the list";
-"projects_save_failed" = "Could not save. The list is unchanged: %1$@";
 "projects_save_failed_reason" = "Could not save: %1$@";
 "projects_saving_settings" = "Saving project settings…";
 "projects_search" = "Search projects";

@@ -89,9 +89,6 @@ class RemoteTest {
     private suspend fun client(
         cache: CipherCache? = null,
         frameQueue: Int = 1024,
-        historyIdleMs: Long = 60_000,
-        historyIdleCount: Int = 8,
-        linkGraceMs: Long = 10_000,
         httpClient: okhttp3.OkHttpClient = http,
     ): Remote {
         val acct = approvedClient(daemon.phone, http)
@@ -101,9 +98,6 @@ class RemoteTest {
                 httpClient,
                 cache,
                 frameQueue = frameQueue,
-                historyIdleMs = historyIdleMs,
-                historyIdleCount = historyIdleCount,
-                linkGraceMs = linkGraceMs,
             )
         closers += AutoCloseable { r.close() }
         return r
@@ -126,7 +120,7 @@ class RemoteTest {
         val retiredVm = r.watchSession("retired").first { it.timeline.retired }
         assertTrue(retiredVm.timeline.retired)
         assertTrue(retiredVm.timeline.hasHistoryNotice())
-        r.awaitState("current session") { it.sessions["s1"]?.info != null }
+        r.awaitState("current session") { it.session("s1")?.hasInfo() == true }
         val s1Vm = r.watchSession("s1").first { it.timeline.retired }
         assertTrue(s1Vm.timeline.retired)
         assertTrue(s1Vm.timeline.hasHistoryNotice())
@@ -137,8 +131,25 @@ class RemoteTest {
         assertEquals(Remote.ImageResult.Corrupt(RETIRED_HISTORY_ERROR), r.image("s1", "retired"))
     }
 
-    private suspend fun Remote.awaitState(what: String, ok: (RemoteState) -> Boolean): RemoteState =
-        state.first(ok)
+    private val io.github.lewin671.remoteagent.core.proto.SyncStateView.isOnline: Boolean
+        get() = connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_CONNECTED
+    private val io.github.lewin671.remoteagent.core.proto.SyncStateView.isOffline: Boolean
+        get() = connection == io.github.lewin671.remoteagent.core.proto.ConnState.CONN_STATE_OFFLINE
+    private val io.github.lewin671.remoteagent.core.proto.SyncStateView.loaded: Boolean
+        get() = machinesListed || sessionsListed || prefsLoaded
+    private fun io.github.lewin671.remoteagent.core.proto.SyncStateView.machine(id: String) =
+        machinesList.firstOrNull { it.machineId == id }
+    private fun io.github.lewin671.remoteagent.core.proto.SyncStateView.session(id: String) =
+        sessionsList.firstOrNull { it.sessionId == id }
+    private fun io.github.lewin671.remoteagent.core.proto.SyncStateView.device(id: String) =
+        devicesList.firstOrNull { it.deviceId == id }
+    private val io.github.lewin671.remoteagent.core.proto.SyncStateView.pinnedPaths: List<String>
+        get() = prefs.pinnedList.map { it.path }
+    private val io.github.lewin671.remoteagent.core.proto.SyncStateView.hiddenPaths: Set<String>
+        get() = prefs.hiddenList.map { it.path }.toSet()
+
+    private suspend fun Remote.awaitState(what: String, ok: (io.github.lewin671.remoteagent.core.proto.SyncStateView) -> Boolean): io.github.lewin671.remoteagent.core.proto.SyncStateView =
+        coreHost.syncStateView.first(ok)
 
     private suspend fun Remote.awaitSessionTimeline(sid: String, minItems: Int): SessionViewModel =
         watchSession(sid).first { it.timeline.itemsCount >= minItems }
@@ -149,20 +160,20 @@ class RemoteTest {
             val writer = client()
             val reader = client()
             writer.start()
-            writer.awaitState("writer online") { it.conn == ConnState.ONLINE }
+            writer.awaitState("writer online") { it.isOnline }
             writer.coreHost.toggleProjectPin("/stored")
-            writer.awaitState("writer pinned") { it.prefs?.pinned?.contains("/stored") == true }
+            writer.awaitState("writer pinned") { it.prefsLoaded && it.pinnedPaths.contains("/stored") }
             val admin = fixtureRemote(daemon.phone, http)
             closers += AutoCloseable { admin.close() }
             admin.removeDevice(writer.account.deviceId)
             reader.start()
-            reader.awaitState("reader online") { it.conn == ConnState.ONLINE }
+            reader.awaitState("reader online") { it.isOnline }
             reader.coreHost.toggleProjectHide("/next")
             val st = reader.awaitState("reader hidden") {
-                it.prefs?.pinned?.contains("/stored") == true && it.prefs.hidden.contains("/next")
+                it.prefsLoaded && it.pinnedPaths.contains("/stored") && it.hiddenPaths.contains("/next")
             }
-            assertEquals(listOf("/stored"), st.prefs!!.pinned)
-            assertEquals(setOf("/next"), st.prefs.hidden)
+            assertEquals(listOf("/stored"), st.pinnedPaths)
+            assertEquals(setOf("/next"), st.hiddenPaths)
         }
 
     @Test
@@ -176,10 +187,10 @@ class RemoteTest {
             old.start()
             next.start()
             old.awaitState("old phone ready") {
-                it.conn == ConnState.ONLINE && it.devices[incoming.deviceId] != null
+                it.isOnline && it.device(incoming.deviceId) != null
             }
             next.awaitState("new phone ready") {
-                it.conn == ConnState.ONLINE && it.devices[incoming.deviceId] != null
+                it.isOnline && it.device(incoming.deviceId) != null
             }
             val code = next.prepareHandoffCode(storagePersisted = true)
             assertTrue(code.isNotBlank())
@@ -189,10 +200,10 @@ class RemoteTest {
             next.syncSecurity()
             next.renewLeaseBlocking(force = true)
             val nextState = next.awaitState("new authority") {
-                it.isAuthority && it.leaseEndMs > System.currentTimeMillis()
+                it.isManager && it.leaseEndMs > System.currentTimeMillis()
             }
-            assertTrue(nextState.isAuthority)
-            assertFalse(nextState.devices.containsKey(daemon.phone.deviceId))
+            assertTrue(nextState.isManager)
+            assertNull(nextState.device(daemon.phone.deviceId))
         }
 
     @Test
@@ -258,7 +269,7 @@ class RemoteTest {
                 assertEquals(0L, blocked.count)
                 gate.countDown()
                 r.awaitState("reconnected after overflow") {
-                    hole.attempts.get() > 1 && it.conn == ConnState.ONLINE && it.loaded
+                    hole.attempts.get() > 1 && it.isOnline && it.loaded
                 }
             } finally {
                 gate.countDown()
@@ -292,20 +303,20 @@ class RemoteTest {
                 r.start()
                 other.start()
                 r.awaitState("online") {
-                    it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
+                    it.isOnline && it.device(r.account.deviceId) != null
                 }
                 other.awaitState("online") {
-                    it.conn == ConnState.ONLINE && it.devices.containsKey(r.account.deviceId)
+                    it.isOnline && it.device(r.account.deviceId) != null
                 }
                 other.refreshDevices()
                 removeAsAuthority(daemon.phone, r.account.deviceId, http)
                 val st = r.awaitState("removed") { it.removed }
-                assertEquals(ConnState.OFFLINE, st.conn)
+                assertTrue(st.isOffline)
                 // It stays put rather than reconnecting, also when asked to start.
                 r.start()
                 delay(1500)
-                assertTrue(r.state.value.removed)
-                assertEquals(ConnState.OFFLINE, r.state.value.conn)
+                assertTrue(r.coreHost.syncStateView.value.removed)
+                assertTrue(r.coreHost.syncStateView.value.isOffline)
                 // Asked to try again, hold the retry login RPC so trying=!removed is observed
                 // before the conflated StateFlow returns to removed=true on rejection.
                 holdRetryLogin.set(true)
@@ -326,13 +337,13 @@ class RemoteTest {
             r.start()
             val st =
                 r.awaitState("session meta") {
-                    it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null
+                    it.isOnline && it.session("s1")?.hasInfo() == true
                 }
-            assertEquals("fake-mac", machineName(st.machines[daemon.id], copy = ::messageTextForTest))
-            assertTrue(st.machines[daemon.id]!!.online)
-            val s = st.sessions.getValue("s1")
-            assertEquals("修复登录超时", s.info?.title)
-            assertEquals("/Users/me/Code/foo", s.info?.cwd)
+            assertEquals("fake-mac.local", st.machine(daemon.id)?.meta?.hostname)
+            assertTrue(st.machine(daemon.id)!!.online)
+            val s = st.session("s1")!!
+            assertEquals("修复登录超时", s.info.title)
+            assertEquals("/Users/me/Code/foo", s.info.cwd)
 
             val vm = r.awaitSessionTimeline("s1", 3)
             assertEquals(listOf(1L, 2L, 3L), vm.timeline.itemsList.map { it.seq })
@@ -342,7 +353,7 @@ class RemoteTest {
             assertEquals(listOf(1L, 2L, 3L, 4L), vm4.timeline.itemsList.map { it.seq })
             // A newer meta revision replaces the older one.
             daemon.putSession("s1", session("/Users/me/Code/foo", "新的标题"))
-            r.awaitState("new title") { it.sessions["s1"]?.info?.title == "新的标题" }
+            r.awaitState("new title") { it.session("s1")?.info?.title == "新的标题" }
         }
 
     @Test
@@ -368,8 +379,8 @@ class RemoteTest {
             val r = fixtureRemote(acct, trackedHttp, securityStore = tokenStore)
             closers += AutoCloseable { r.close() }
             r.start()
-            val st = r.awaitState("online after forced relogin") { it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null }
-            assertEquals(ConnState.ONLINE, st.conn)
+            val st = r.awaitState("online after forced relogin") { it.isOnline && it.session("s1")?.hasInfo() == true }
+            assertTrue(st.isOnline)
             assertTrue("expected fresh Login RPC after 1008 rejection, got ${loginCalls.get()}", loginCalls.get() >= 1)
             assertTrue("expected clearLoginToken called", clears >= 1)
             assertTrue("expected fresh token saved", savedToken != null && savedToken?.value != stale.value)
@@ -400,7 +411,7 @@ class RemoteTest {
             }
             val r = client(cache = cache)
             r.start()
-            r.awaitState("all bulk sessions listed") { st -> sids.all { st.sessions[it]?.info != null } }
+            r.awaitState("all bulk sessions listed") { st -> sids.all { st.session(it)?.hasInfo() == true } }
             // Watch all 10 sessions concurrently while cache disk writes are gated,
             // so >4096 event objects pass through Core before cache writes drain.
             val win = SessionWindowRequest.newBuilder().setLimit(eventsPerSession).build()
@@ -431,7 +442,7 @@ class RemoteTest {
     @Test fun verifiedReadTimeoutAndFinalFailuresDoNotRetry() = runBlocking<Unit> {
         val r = client()
         r.start()
-        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
+        r.awaitState("online machine") { it.machine(daemon.id)?.online == true }
         for (code in listOf("canceled", "deadline_exceeded", "unknown", "generation_conflict")) {
             var calls = 0
             daemon.answer = { _, _ ->
@@ -441,10 +452,8 @@ class RemoteTest {
             val command = if (code == "generation_conflict")
                 Command.newBuilder().setCompleteImageUpload(CompleteImageUploadRequest.newBuilder().setTransferId("test-transfer-id")).build()
             else Command.newBuilder().setListModels(ListModelsRequest.getDefaultInstance()).build()
-            val error = runCatching { r.machineCommand(daemon.id, command) }.exceptionOrNull() as CommandException
-            assertTrue(error.fromDaemon)
+            val error = runCatching { r.coreHost.runMachineCommand(daemon.id, "", command) }.exceptionOrNull() as CommandException
             assertEquals(code, error.code)
-            assertFalse(error.unknown)
             assertEquals(1, calls)
         }
     }
@@ -453,24 +462,26 @@ class RemoteTest {
     fun machineCommandCarriesSessionIdOnlyForSessionScopedCommands() = runBlocking<Unit> {
         val r = client()
         r.start()
-        r.awaitState("online machine") { it.machines[daemon.id]?.online == true }
+        r.awaitState("online machine") { it.machine(daemon.id)?.online == true }
 
         val headers = java.util.concurrent.CopyOnWriteArrayList<String>()
         daemon.answer = { header, cmd ->
             headers.add(header.sessionId)
             when (cmd.kindCase) {
-                Command.KindCase.RESOLVE_APPROVAL -> CommandResult.newBuilder().setResolveApproval(ResolveApprovalResponse.getDefaultInstance()).build()
+                Command.KindCase.OPEN_TERMINAL -> CommandResult.getDefaultInstance()
                 else -> CommandResult.newBuilder().setSchedule(ScheduleResponse.getDefaultInstance()).build()
             }
         }
-        r.machineCommand(
+        r.coreHost.runMachineCommand(
             daemon.id,
-            Command.newBuilder().setResolveApproval(
-                ResolveApprovalRequest.newBuilder().setSessionId("s1").setApprovalId("a1").setAllow(true),
+            "s1",
+            Command.newBuilder().setOpenTerminal(
+                OpenTerminalRequest.newBuilder().setSessionId("s1").setStreamId("stream-1"),
             ).build(),
         )
-        r.machineCommand(
+        r.coreHost.runMachineCommand(
             daemon.id,
+            "",
             Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list").setSessionId("s1")).build(),
         )
         assertEquals(listOf("s1", ""), headers.toList())
@@ -482,9 +493,9 @@ class RemoteTest {
             val r = client()
             r.start()
             r.awaitState("online machine") {
-                it.conn == ConnState.ONLINE &&
-                    it.machines[daemon.id]?.online == true &&
-                    it.sessions["s1"]?.info != null
+                it.isOnline &&
+                    it.machine(daemon.id)?.online == true &&
+                    it.session("s1")?.hasInfo() == true
             }
             val vmFlow = r.watchSession("s1")
             vmFlow.first { it.timeline.loaded }
@@ -524,7 +535,7 @@ class RemoteTest {
             assertEquals("unimplemented", compactFailed.actions.compact.errorCode)
 
             daemon.disconnect()
-            r.awaitState("offline machine") { it.machines[daemon.id]?.online == false }
+            r.awaitState("offline machine") { it.machine(daemon.id)?.online == false }
             r.submitSessionCommand(
                 "s1",
                 Command.newBuilder()
@@ -545,17 +556,17 @@ class RemoteTest {
         val r = client()
         r.start()
         r.awaitState("online machine") {
-            it.conn == ConnState.ONLINE &&
-                it.machines[daemon.id]?.online == true &&
-                it.sessions["s1"]?.info != null
+            it.isOnline &&
+                it.machine(daemon.id)?.online == true &&
+                it.session("s1")?.hasInfo() == true
         }
         daemon.putMachine("fake-mac.local", protocol)
         r.awaitState("machine protocol") {
-            it.machines[daemon.id]?.meta?.protocolVersion == protocol
+            it.machine(daemon.id)?.meta?.protocolVersion == protocol
         }
         try {
             val command=Command.newBuilder().setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance()).build()
-            r.machineCommand(daemon.id, command)
+            r.coreHost.runMachineCommand(daemon.id, "", command)
             throw AssertionError("expected a version error")
         } catch (e: CommandException) {
             // Nothing was sent.
@@ -578,7 +589,7 @@ class RemoteTest {
         runBlocking<Unit> {
             val e = refused(PEER_PROTOCOL_VERSION + 1)
             assertEquals("failed_precondition", e.code)
-            assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), errorText(e).testText())
+            assertEquals(messageTextForTest(UiMessages.errorsClientOutOfDate()), errorText(e).testText())
         }
 
     @Test
@@ -587,9 +598,9 @@ class RemoteTest {
             val r = client()
             r.start()
             r.awaitState("session") {
-                it.conn == ConnState.ONLINE &&
-                    it.sessions["s1"] != null &&
-                    it.machines[daemon.id]?.online == true
+                it.isOnline &&
+                    it.session("s1") != null &&
+                    it.machine(daemon.id)?.online == true
             }
             val frames = LinkedBlockingQueue<TerminalFrame>()
             val conn =
@@ -630,7 +641,7 @@ class RemoteTest {
             val r = fixtureRemote(daemon.phone, http)
             closers += AutoCloseable { r.close() }
             r.start()
-            r.awaitState("online") { it.conn == ConnState.ONLINE }
+            r.awaitState("online") { it.isOnline }
             val started = r.securityClient.startPairing("https://app.example.com")
             val link = PairLink.parse(started.url)!!
             assertEquals(started.code, link.code)
@@ -676,7 +687,7 @@ class RemoteTest {
             val r = client(cache)
             r.start()
             r.awaitState("session") {
-                it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null
+                it.isOnline && it.session("s1")?.hasInfo() == true
             }
             val png =
                 byteArrayOf(
@@ -738,17 +749,17 @@ class RemoteTest {
             val b = client()
             a.start()
             b.start()
-            a.awaitState("a prefs") { it.conn == ConnState.ONLINE && it.prefs != null }
-            b.awaitState("b prefs") { it.conn == ConnState.ONLINE && it.prefs != null }
+            a.awaitState("a prefs") { it.isOnline && it.prefsLoaded }
+            b.awaitState("b prefs") { it.isOnline && it.prefsLoaded }
             a.coreHost.toggleProjectPin("/Users/me/Code/foo")
-            a.awaitState("a pinned") { it.prefs?.pinned?.contains("/Users/me/Code/foo") == true }
+            a.awaitState("a pinned") { it.pinnedPaths.contains("/Users/me/Code/foo") }
             b.coreHost.toggleProjectHide("/Users/me/Code/billing")
             val sa =
                 a.awaitState("a sees both") {
-                    it.prefs?.hidden?.contains("/Users/me/Code/billing") == true
+                    it.hiddenPaths.contains("/Users/me/Code/billing")
                 }
-            assertEquals(listOf("/Users/me/Code/foo"), sa.prefs!!.pinned)
-            assertEquals(2L, sa.prefs!!.revision)
+            assertEquals(listOf("/Users/me/Code/foo"), sa.pinnedPaths)
+            assertEquals(2L, sa.prefsRevision)
         }
 
     @Test
@@ -771,8 +782,8 @@ class RemoteTest {
             closers += AutoCloseable { r.close() }
             r.start()
             // The stream stays up throughout: nothing but the read itself brings them.
-            val st = r.awaitState("preferences") { it.prefs != null }
-            assertEquals(ConnState.ONLINE, st.conn)
+            val st = r.awaitState("preferences") { it.prefsLoaded }
+            assertTrue(st.isOnline)
             assertEquals(2, reads.get())
         }
 
@@ -784,16 +795,16 @@ class RemoteTest {
             a.start()
             b.start()
             a.awaitState("a devices") {
-                it.conn == ConnState.ONLINE && it.devices.containsKey(a.account.deviceId)
+                it.isOnline && it.device(a.account.deviceId) != null
             }
-            b.awaitState("b sees a") { it.devices.containsKey(a.account.deviceId) }
+            b.awaitState("b sees a") { it.device(a.account.deviceId) != null }
             a.describeSelf("android", "Android 16 · Pixel 9")
             a.renameDevice(a.account.deviceId, "我的手机")
             val sb =
                 b.awaitState("b sees the name") {
-                    it.devices[a.account.deviceId]?.meta?.name == "我的手机"
+                    it.device(a.account.deviceId)?.meta?.name == "我的手机"
                 }
-            assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId, copy = ::messageTextForTest))
+            assertEquals("我的手机", sb.device(a.account.deviceId)?.meta?.name)
         }
 
     @Test fun scheduledSnapshotCannotReturnAfterRevocationDuringCacheRead() = runBlocking<Unit> {
@@ -807,9 +818,9 @@ class RemoteTest {
         }
         val r=client(cache=cache);r.start()
         try {
-            r.awaitState("connected") {it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true}
+            r.awaitState("connected") {it.isOnline && it.machine(daemon.account.deviceId)?.online==true}
             daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            r.machineCommand(daemon.account.deviceId,Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())
+            r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())
             hold.set(true);val reading=async {r.cachedSchedules(daemon.account.deviceId)}
             entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
             release.complete(Unit);assertNull(reading.await());assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
@@ -825,9 +836,9 @@ class RemoteTest {
         }
         val r=client(cache=cache);r.start()
         try {
-            r.awaitState("connected") {it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true}
+            r.awaitState("connected") {it.isOnline && it.machine(daemon.account.deviceId)?.online==true}
             daemon.answer={_,_->CommandResult.newBuilder().setSchedule(ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFromUtf8("{\"tasks\":[]}"))).build()}
-            val writing=async {r.machineCommand(daemon.account.deviceId,Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build())}
+            val writing=async {runCatching { r.coreHost.runMachineCommand(daemon.account.deviceId,"",Command.newBuilder().setSchedule(ScheduleRequest.newBuilder().setOperation("list")).build()) }}
             entered.await();removeAsAuthority(daemon.phone,daemon.account.deviceId,http);r.syncSecurity()
             release.complete(Unit);writing.await()
             assertNull(memory.blob("schedule:${daemon.account.deviceId}"))
@@ -835,11 +846,11 @@ class RemoteTest {
     }
     @Test fun scheduledSnapshotsKeepSignedRepliesAndVerifyThemAgainOffline() = runBlocking<Unit> {
         val memory=MemoryCache();val r=client(cache=memory);r.start()
-        r.awaitState("connected") { it.conn==ConnState.ONLINE && it.machines[daemon.account.deviceId]?.online==true }
+        r.awaitState("connected") { it.isOnline && it.machine(daemon.account.deviceId)?.online==true }
         val originalAnswer=daemon.answer
         val json="""{"tasks":[{"id":"task","spec":{"title":"Private scheduled content"}}]}""".toByteArray()
         daemon.answer={ h,c -> if(c.hasSchedule()) io.github.lewin671.remoteagent.proto.CommandResult.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleResponse.newBuilder().setResultJson(com.google.protobuf.ByteString.copyFrom(json))).build() else originalAnswer(h,c) }
-        r.machineCommand(daemon.account.deviceId,io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
+        r.coreHost.runMachineCommand(daemon.account.deviceId,"",io.github.lewin671.remoteagent.proto.Command.newBuilder().setSchedule(io.github.lewin671.remoteagent.proto.ScheduleRequest.newBuilder().setOperation("list")).build())
         val key="schedule:${daemon.account.deviceId}";val stored=memory.blob(key)!!
         assertFalse(stored.decodeToString().contains("Private scheduled content"))
         assertArrayEquals(json,r.cachedSchedules(daemon.account.deviceId))
@@ -863,13 +874,13 @@ class RemoteTest {
     @Test fun coreRejectsUnsequencedZeroOpDevicesEvent() = runBlocking<Unit> {
         val r = client()
         r.start()
-        r.awaitState("connected") { it.conn == ConnState.ONLINE && r.coreHost.syncStateView.value.securityLoaded }
+        r.awaitState("connected") { it.isOnline && it.securityLoaded }
         assertTrue(r.coreHost.syncStateView.value.securityLoaded)
         assertTrue(r.coreHost.syncStateView.value.isMember)
 
         // Shell refreshDevices sends a monotonic push_seq and keeps devices populated.
         r.refreshDevices()
-        assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
+        assertTrue(r.coreHost.syncStateView.value.device(r.account.deviceId) != null)
 
         // Dispatching op_id=0, push_seq=0 DevicesFetched must be ignored by core.
         r.coreHost.dispatchAndWait(
@@ -881,7 +892,7 @@ class RemoteTest {
                 )
                 .build(),
         )
-        assertTrue(r.state.value.devices.containsKey(r.account.deviceId))
+        assertTrue(r.coreHost.syncStateView.value.device(r.account.deviceId) != null)
     }
 
 }

@@ -1689,39 +1689,69 @@ public struct PBSessionDirectChipView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-public struct PBSessionModelChoiceView: Sendable {
+public struct PBSessionModelChoiceView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  public var slug: String = String()
+  public var slug: String {
+    get {return _storage._slug}
+    set {_uniqueStorage()._slug = newValue}
+  }
 
-  public var displayName: String = String()
+  public var displayName: String {
+    get {return _storage._displayName}
+    set {_uniqueStorage()._displayName = newValue}
+  }
 
   public var fixedEffortNote: PBCoreText {
-    get {return _fixedEffortNote ?? PBCoreText()}
-    set {_fixedEffortNote = newValue}
+    get {return _storage._fixedEffortNote ?? PBCoreText()}
+    set {_uniqueStorage()._fixedEffortNote = newValue}
   }
   /// Returns true if `fixedEffortNote` has been explicitly set.
-  public var hasFixedEffortNote: Bool {return self._fixedEffortNote != nil}
+  public var hasFixedEffortNote: Bool {return _storage._fixedEffortNote != nil}
   /// Clears the value of `fixedEffortNote`. Subsequent reads from it will return its default value.
-  public mutating func clearFixedEffortNote() {self._fixedEffortNote = nil}
+  public mutating func clearFixedEffortNote() {_uniqueStorage()._fixedEffortNote = nil}
 
-  public var efforts: [String] = []
+  public var efforts: [String] {
+    get {return _storage._efforts}
+    set {_uniqueStorage()._efforts = newValue}
+  }
 
-  public var defaultEffort: String = String()
+  public var defaultEffort: String {
+    get {return _storage._defaultEffort}
+    set {_uniqueStorage()._defaultEffort = newValue}
+  }
 
-  public var isAuto: Bool = false
+  public var isAuto: Bool {
+    get {return _storage._isAuto}
+    set {_uniqueStorage()._isAuto = newValue}
+  }
 
-  public var selected: Bool = false
+  public var selected: Bool {
+    get {return _storage._selected}
+    set {_uniqueStorage()._selected = newValue}
+  }
 
-  public var supportsStandardContext: Bool = false
+  public var supportsStandardContext: Bool {
+    get {return _storage._supportsStandardContext}
+    set {_uniqueStorage()._supportsStandardContext = newValue}
+  }
+
+  public var maxEffortHint: PBCoreText {
+    get {return _storage._maxEffortHint ?? PBCoreText()}
+    set {_uniqueStorage()._maxEffortHint = newValue}
+  }
+  /// Returns true if `maxEffortHint` has been explicitly set.
+  public var hasMaxEffortHint: Bool {return _storage._maxEffortHint != nil}
+  /// Clears the value of `maxEffortHint`. Subsequent reads from it will return its default value.
+  public mutating func clearMaxEffortHint() {_uniqueStorage()._maxEffortHint = nil}
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
-  fileprivate var _fixedEffortNote: PBCoreText? = nil
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 public struct PBSessionEffortChoiceView: Sendable {
@@ -5900,68 +5930,125 @@ extension PBSessionDirectChipView: SwiftProtobuf.Message, SwiftProtobuf._Message
 
 extension PBSessionModelChoiceView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SessionModelChoiceView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}slug\0\u{3}display_name\0\u{3}fixed_effort_note\0\u{1}efforts\0\u{3}default_effort\0\u{3}is_auto\0\u{1}selected\0\u{3}supports_standard_context\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}slug\0\u{3}display_name\0\u{3}fixed_effort_note\0\u{1}efforts\0\u{3}default_effort\0\u{3}is_auto\0\u{1}selected\0\u{3}supports_standard_context\0\u{3}max_effort_hint\0")
+
+  fileprivate class _StorageClass {
+    var _slug: String = String()
+    var _displayName: String = String()
+    var _fixedEffortNote: PBCoreText? = nil
+    var _efforts: [String] = []
+    var _defaultEffort: String = String()
+    var _isAuto: Bool = false
+    var _selected: Bool = false
+    var _supportsStandardContext: Bool = false
+    var _maxEffortHint: PBCoreText? = nil
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _slug = source._slug
+      _displayName = source._displayName
+      _fixedEffortNote = source._fixedEffortNote
+      _efforts = source._efforts
+      _defaultEffort = source._defaultEffort
+      _isAuto = source._isAuto
+      _selected = source._selected
+      _supportsStandardContext = source._supportsStandardContext
+      _maxEffortHint = source._maxEffortHint
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.slug) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
-      case 3: try { try decoder.decodeSingularMessageField(value: &self._fixedEffortNote) }()
-      case 4: try { try decoder.decodeRepeatedStringField(value: &self.efforts) }()
-      case 5: try { try decoder.decodeSingularStringField(value: &self.defaultEffort) }()
-      case 6: try { try decoder.decodeSingularBoolField(value: &self.isAuto) }()
-      case 7: try { try decoder.decodeSingularBoolField(value: &self.selected) }()
-      case 8: try { try decoder.decodeSingularBoolField(value: &self.supportsStandardContext) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._slug) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._displayName) }()
+        case 3: try { try decoder.decodeSingularMessageField(value: &_storage._fixedEffortNote) }()
+        case 4: try { try decoder.decodeRepeatedStringField(value: &_storage._efforts) }()
+        case 5: try { try decoder.decodeSingularStringField(value: &_storage._defaultEffort) }()
+        case 6: try { try decoder.decodeSingularBoolField(value: &_storage._isAuto) }()
+        case 7: try { try decoder.decodeSingularBoolField(value: &_storage._selected) }()
+        case 8: try { try decoder.decodeSingularBoolField(value: &_storage._supportsStandardContext) }()
+        case 9: try { try decoder.decodeSingularMessageField(value: &_storage._maxEffortHint) }()
+        default: break
+        }
       }
     }
   }
 
   public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.slug.isEmpty {
-      try visitor.visitSingularStringField(value: self.slug, fieldNumber: 1)
-    }
-    if !self.displayName.isEmpty {
-      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
-    }
-    try { if let v = self._fixedEffortNote {
-      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
-    } }()
-    if !self.efforts.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.efforts, fieldNumber: 4)
-    }
-    if !self.defaultEffort.isEmpty {
-      try visitor.visitSingularStringField(value: self.defaultEffort, fieldNumber: 5)
-    }
-    if self.isAuto != false {
-      try visitor.visitSingularBoolField(value: self.isAuto, fieldNumber: 6)
-    }
-    if self.selected != false {
-      try visitor.visitSingularBoolField(value: self.selected, fieldNumber: 7)
-    }
-    if self.supportsStandardContext != false {
-      try visitor.visitSingularBoolField(value: self.supportsStandardContext, fieldNumber: 8)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every if/case branch local when no optimizations
+      // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+      // https://github.com/apple/swift-protobuf/issues/1182
+      if !_storage._slug.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._slug, fieldNumber: 1)
+      }
+      if !_storage._displayName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._displayName, fieldNumber: 2)
+      }
+      try { if let v = _storage._fixedEffortNote {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+      } }()
+      if !_storage._efforts.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._efforts, fieldNumber: 4)
+      }
+      if !_storage._defaultEffort.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._defaultEffort, fieldNumber: 5)
+      }
+      if _storage._isAuto != false {
+        try visitor.visitSingularBoolField(value: _storage._isAuto, fieldNumber: 6)
+      }
+      if _storage._selected != false {
+        try visitor.visitSingularBoolField(value: _storage._selected, fieldNumber: 7)
+      }
+      if _storage._supportsStandardContext != false {
+        try visitor.visitSingularBoolField(value: _storage._supportsStandardContext, fieldNumber: 8)
+      }
+      try { if let v = _storage._maxEffortHint {
+        try visitor.visitSingularMessageField(value: v, fieldNumber: 9)
+      } }()
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   public static func ==(lhs: PBSessionModelChoiceView, rhs: PBSessionModelChoiceView) -> Bool {
-    if lhs.slug != rhs.slug {return false}
-    if lhs.displayName != rhs.displayName {return false}
-    if lhs._fixedEffortNote != rhs._fixedEffortNote {return false}
-    if lhs.efforts != rhs.efforts {return false}
-    if lhs.defaultEffort != rhs.defaultEffort {return false}
-    if lhs.isAuto != rhs.isAuto {return false}
-    if lhs.selected != rhs.selected {return false}
-    if lhs.supportsStandardContext != rhs.supportsStandardContext {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._slug != rhs_storage._slug {return false}
+        if _storage._displayName != rhs_storage._displayName {return false}
+        if _storage._fixedEffortNote != rhs_storage._fixedEffortNote {return false}
+        if _storage._efforts != rhs_storage._efforts {return false}
+        if _storage._defaultEffort != rhs_storage._defaultEffort {return false}
+        if _storage._isAuto != rhs_storage._isAuto {return false}
+        if _storage._selected != rhs_storage._selected {return false}
+        if _storage._supportsStandardContext != rhs_storage._supportsStandardContext {return false}
+        if _storage._maxEffortHint != rhs_storage._maxEffortHint {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

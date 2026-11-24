@@ -3665,21 +3665,6 @@
     "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
   },
   {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "; case MachineRingKind.MEMORY: return",
-    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
-  },
-  {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "true",
-    "reason": "Not product text: CSS class name, ARIA role/boolean attribute, or internal option identifier."
-  },
-  {
-    "path": "web/src/views/MachineRings.tsx",
-    "literal": "; case MachineRingKind.DISK: return",
-    "reason": "Lexical JSX scanner false positive: TypeScript type arguments or code between angle brackets, not rendered text."
-  },
-  {
     "path": "web/src/views/MachineStatus.tsx",
     "literal": "${renderText(chart.scrubValue)} (${renderText(chart.scrubAge)})",
     "reason": "Punctuation template joining already-localized text and device/model names; no untranslated copy."
@@ -5938,5 +5923,25 @@
     "path": "ios/RemoteAgent/Demo/ScreenGoldens.swift",
     "literal": "Screen golden \\(name).golden.pb contained no \\(kind) views",
     "reason": "DEBUG-only Swift test/preview golden loader fatalError diagnostic; never shipped or shown to end users."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "abort",
+    "reason": "DOM AbortSignal event name; not user-facing text."
+  },
+  {
+    "path": "web/src/core/host.ts",
+    "literal": "sessionRestoreComposer",
+    "reason": "Protobuf oneof case discriminant; not user-facing text."
+  },
+  {
+    "path": "web/src/views/Home.tsx",
+    "literal": "home-banners",
+    "reason": "CSS class name near identifier ending in Text; never rendered as user-facing text."
+  },
+  {
+    "path": "clientcore/app/core.go",
+    "literal": "failed",
+    "reason": "Internal machine error code assigned to RunMachineCommandResultEffect.ErrorCode and state Error fields near screens.ReasonText; never rendered directly as UI text."
   }
 ]

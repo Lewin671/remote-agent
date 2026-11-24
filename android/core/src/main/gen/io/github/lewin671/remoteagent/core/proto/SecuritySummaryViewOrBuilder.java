@@ -97,4 +97,18 @@ public interface SecuritySummaryViewOrBuilder extends
    * @return The leaseEndMs.
    */
   long getLeaseEndMs();
+
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.core.proto.HandoffCandidateView> 
+      getHandoffCandidatesList();
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  io.github.lewin671.remoteagent.core.proto.HandoffCandidateView getHandoffCandidates(int index);
+  /**
+   * <code>repeated .remoteagent.core.v1.HandoffCandidateView handoff_candidates = 12 [json_name = "handoffCandidates"];</code>
+   */
+  int getHandoffCandidatesCount();
 }

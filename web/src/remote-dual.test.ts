@@ -2,8 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { SyntheticRemote } from "./test/remote-fixture";
-import { CommandError, newSlot } from "./remote";
-import { getCoreHost } from "./core/host";
 import { parseTestHeader, testRequestIdentity } from "./test/stored-security-fixture";
 import { EnvelopeSchema, PayloadKind, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { NotForwardedSchema } from "./gen/remoteagent/v1/relay_pb";
@@ -192,33 +190,6 @@ describe("Core-driven command attempt execution (Direct & Relay legs)", () => {
       expect(stale.source).toBe(OutcomeSource.SERVER);
       expect(stale.notForwarded).toBe(false);
       expect(stale.attemptBound).toBe(false);
-    } finally {
-      await r.dispose();
-    }
-  });
-
-  it("settles machineCommand through real CoreHost with NotForwarded not_sent and epoch verification", async () => {
-    const r = await SyntheticRemote.create();
-    const holder = r as unknown as { api: unknown };
-    try {
-      expect(getCoreHost(r)).toBeTruthy();
-      let forwarded = 0;
-      holder.api = {
-        forward: async (q: { attemptId: string; relayEpoch: string }) => {
-          forwarded++;
-          throw new ConnectError("offline", Code.Unavailable, undefined, [
-            {
-              desc: NotForwardedSchema,
-              value: { attemptId: q.attemptId, relayEpoch: q.relayEpoch, reason: "machine_offline" },
-            },
-          ]);
-        },
-      };
-      const slot = newSlot();
-      const err = await r.machineCommand(r.machine, { case: "createSession", value: { cwd: "/work/example" } }, slot).catch((e) => e);
-      expect(forwarded).toBe(1);
-      expect(err).toBeInstanceOf(CommandError);
-      expect(err.outcome).toBe("not_sent");
     } finally {
       await r.dispose();
     }

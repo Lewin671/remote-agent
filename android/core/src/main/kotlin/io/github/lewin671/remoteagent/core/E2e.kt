@@ -1,15 +1,9 @@
 package io.github.lewin671.remoteagent.core
 
-import com.google.protobuf.InvalidProtocolBufferException
 import io.github.lewin671.remoteagent.corebind.Corebind
-import io.github.lewin671.remoteagent.proto.Envelope
-import io.github.lewin671.remoteagent.proto.Header
 import io.github.lewin671.remoteagent.proto.PayloadKind
-import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.util.zip.DataFormatException
-import java.util.zip.Inflater
 
 const val KEY_SIZE = 32
 const val LOGIN_CONTEXT = "remote-agent/v1/login\u0000"
@@ -80,34 +74,6 @@ data class Place(
     val seq: Long = 0,
     val requestId: String = "",
 )
-
-/** Maximum decompressed payload size, including current device-security history. */
-const val MAX_UNPACKED = 64 shl 20
-
-/**
- * Inflates raw DEFLATE. It stops at [max] bytes: a payload that
- * would unpack to more is refused before the rest of it is produced.
- */
-internal fun unpack(packed: ByteArray, max: Int = MAX_UNPACKED): ByteArray {
-    val bad = OpenException("envelope does not open")
-    val inf = Inflater(true)
-    try {
-        inf.setInput(packed)
-        val out = ByteArrayOutputStream(minOf(max, maxOf(packed.size * 4, 1024)))
-        val buf = ByteArray(64 * 1024)
-        while (!inf.finished()) {
-            val n = inf.inflate(buf)
-            if (n == 0 && (inf.needsInput() || inf.needsDictionary())) throw bad
-            if (out.size() + n > max) throw bad
-            out.write(buf, 0, n)
-        }
-        return out.toByteArray()
-    } catch (e: DataFormatException) {
-        throw bad
-    } finally {
-        inf.end()
-    }
-}
 
 fun newRequestId(): String = randomBytes(16).hex()
 

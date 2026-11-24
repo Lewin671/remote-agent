@@ -98,4 +98,22 @@ public interface SyncMachineViewOrBuilder extends
    * @return The reachabilityUnknown.
    */
   boolean getReachabilityUnknown();
+
+  /**
+   * <code>bool terminal_ready = 14 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  boolean getTerminalReady();
+
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @return The displayName.
+   */
+  java.lang.String getDisplayName();
+  /**
+   * <code>string display_name = 15 [json_name = "displayName"];</code>
+   * @return The bytes for displayName.
+   */
+  com.google.protobuf.ByteString
+      getDisplayNameBytes();
 }

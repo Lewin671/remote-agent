@@ -22,14 +22,20 @@ import { DraftScopeKind, DraftScopeSchema, DraftSetTextActionSchema } from "../g
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, type OriginSchema, SessionStatus, ToolKind, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
-import { CommandError, type CommandKind, type RequestSlot } from "../remote";
+import { CommandError, type CommandKind, type RequestSlot } from "../dev/demo";
 import { ModeSheet, SessionSheet } from "../sheets";
 import { Dock, dockContentMax, PlanPage, QuestionPage, type QuestionDraftState } from "./Dock";
 import { Home, Sidebar, WideHome } from "./Home";
 import { NewBox, NewFlow, ProjectPicker } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { ManagePage } from "./Projects";
-import { addProject } from "./ScheduleConfig";
+function addProject(remote: DemoRemote, machineId: string, path: string) {
+  remote.draftMachines.set(path, machineId);
+  const host = getCoreHost(remote);
+  host.projectOpenDirPicker(false, machineId, path, "machine-status");
+  host.projectAdd(path, "machine-status");
+  host.projectCloseDirPicker("machine-status");
+}
 
 const ALL = "all";
 const saveScope = (scopeKey: string, r?: DemoRemote) => {
@@ -4466,7 +4472,7 @@ describe("adding devices on the current authority", () => {
     r.start();
     const go = vi.fn();
     mount(<Home remote={r} go={go} />);
-    expect(host.textContent).toContain(message("home.add_via_manager", {"name":message("settings.unnamed", {}, "zh-CN")}, "zh-CN"));
+    expect(host.textContent).toContain(message("home.add_via_manager", { name: "Android 16 · Pixel 9" }, "zh-CN"));
     expect(button(/添加设备/)).toBeUndefined();
     expect(go).not.toHaveBeenCalledWith("add");
   });

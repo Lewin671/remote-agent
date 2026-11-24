@@ -54,4 +54,15 @@ public interface ConnectionStatusViewOrBuilder extends
    * @return The disconnectedAtMs.
    */
   long getDisconnectedAtMs();
+
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   * @return Whether the sidebarBadgeText field is set.
+   */
+  boolean hasSidebarBadgeText();
+  /**
+   * <code>.remoteagent.core.v1.Text sidebar_badge_text = 7 [json_name = "sidebarBadgeText"];</code>
+   * @return The sidebarBadgeText.
+   */
+  io.github.lewin671.remoteagent.core.proto.Text getSidebarBadgeText();
 }

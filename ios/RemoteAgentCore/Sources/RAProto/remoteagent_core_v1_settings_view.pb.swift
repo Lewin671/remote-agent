@@ -716,6 +716,31 @@ public struct PBClientRowView: @unchecked Sendable {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct PBHandoffCandidateView: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var deviceID: String = String()
+
+  public var displayName: String = String()
+
+  public var displayNameText: PBCoreText {
+    get {return _displayNameText ?? PBCoreText()}
+    set {_displayNameText = newValue}
+  }
+  /// Returns true if `displayNameText` has been explicitly set.
+  public var hasDisplayNameText: Bool {return self._displayNameText != nil}
+  /// Clears the value of `displayNameText`. Subsequent reads from it will return its default value.
+  public mutating func clearDisplayNameText() {self._displayNameText = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _displayNameText: PBCoreText? = nil
+}
+
 public struct PBSecuritySummaryView: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -782,6 +807,11 @@ public struct PBSecuritySummaryView: @unchecked Sendable {
   public var leaseEndMs: Int64 {
     get {return _storage._leaseEndMs}
     set {_uniqueStorage()._leaseEndMs = newValue}
+  }
+
+  public var handoffCandidates: [PBHandoffCandidateView] {
+    get {return _storage._handoffCandidates}
+    set {_uniqueStorage()._handoffCandidates = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -3844,9 +3874,53 @@ extension PBClientRowView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
   }
 }
 
+extension PBHandoffCandidateView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".HandoffCandidateView"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}device_id\0\u{3}display_name\0\u{3}display_name_text\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.deviceID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._displayNameText) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.deviceID.isEmpty {
+      try visitor.visitSingularStringField(value: self.deviceID, fieldNumber: 1)
+    }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
+    }
+    try { if let v = self._displayNameText {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBHandoffCandidateView, rhs: PBHandoffCandidateView) -> Bool {
+    if lhs.deviceID != rhs.deviceID {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs._displayNameText != rhs._displayNameText {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".SecuritySummaryView"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}summary_text\0\u{3}recovery_notice\0\u{3}has_handoff_offer\0\u{3}recovery_status_stale\0\u{3}lease_end_ms\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_manager\0\u{1}unlinked\0\u{3}authority_device_id\0\u{3}authority_name\0\u{3}recovery_pending\0\u{3}recovery_ready_ms\0\u{3}summary_text\0\u{3}recovery_notice\0\u{3}has_handoff_offer\0\u{3}recovery_status_stale\0\u{3}lease_end_ms\0\u{3}handoff_candidates\0")
 
   fileprivate class _StorageClass {
     var _isManager: Bool = false
@@ -3860,6 +3934,7 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     var _hasHandoffOffer_p: Bool = false
     var _recoveryStatusStale: Bool = false
     var _leaseEndMs: Int64 = 0
+    var _handoffCandidates: [PBHandoffCandidateView] = []
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3881,6 +3956,7 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       _hasHandoffOffer_p = source._hasHandoffOffer_p
       _recoveryStatusStale = source._recoveryStatusStale
       _leaseEndMs = source._leaseEndMs
+      _handoffCandidates = source._handoffCandidates
     }
   }
 
@@ -3910,6 +3986,7 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         case 9: try { try decoder.decodeSingularBoolField(value: &_storage._hasHandoffOffer_p) }()
         case 10: try { try decoder.decodeSingularBoolField(value: &_storage._recoveryStatusStale) }()
         case 11: try { try decoder.decodeSingularInt64Field(value: &_storage._leaseEndMs) }()
+        case 12: try { try decoder.decodeRepeatedMessageField(value: &_storage._handoffCandidates) }()
         default: break
         }
       }
@@ -3955,6 +4032,9 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       if _storage._leaseEndMs != 0 {
         try visitor.visitSingularInt64Field(value: _storage._leaseEndMs, fieldNumber: 11)
       }
+      if !_storage._handoffCandidates.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._handoffCandidates, fieldNumber: 12)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3975,6 +4055,7 @@ extension PBSecuritySummaryView: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
         if _storage._hasHandoffOffer_p != rhs_storage._hasHandoffOffer_p {return false}
         if _storage._recoveryStatusStale != rhs_storage._recoveryStatusStale {return false}
         if _storage._leaseEndMs != rhs_storage._leaseEndMs {return false}
+        if _storage._handoffCandidates != rhs_storage._handoffCandidates {return false}
         return true
       }
       if !storagesAreEqual {return false}

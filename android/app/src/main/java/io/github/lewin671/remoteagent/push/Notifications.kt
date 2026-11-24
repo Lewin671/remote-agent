@@ -32,10 +32,10 @@ import com.google.firebase.messaging.RemoteMessage
 import io.github.lewin671.remoteagent.MainActivity
 import io.github.lewin671.remoteagent.R
 import io.github.lewin671.remoteagent.RaApp
-import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.coreTextToMessageText
 import io.github.lewin671.remoteagent.core.openNotifyEnvelopeViaCore
+import io.github.lewin671.remoteagent.core.proto.ConnState as CoreConnState
 import io.github.lewin671.remoteagent.core.proto.SecurityNotifyDisplay
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDockKind
@@ -540,8 +540,10 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         try {
             remote.start()
             val ready = withTimeoutOrNull(10_000L) {
-                remote.state.first {
-                    it.conn == ConnState.ONLINE && it.machines[machine]?.online == true && it.sessions[session]?.info != null
+                remote.coreHost.syncStateView.first {
+                    it.connection == CoreConnState.CONN_STATE_CONNECTED &&
+                        it.machinesList.any { m -> m.machineId == machine && m.online } &&
+                        it.sessionsList.any { s -> s.sessionId == session && s.hasInfo() }
                 }
                 true
             } ?: false

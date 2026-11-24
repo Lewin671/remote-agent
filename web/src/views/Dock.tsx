@@ -557,14 +557,16 @@ function PlanDock({
   onAbandonCommand: (slotKey: string) => void;
 }) {
   const hasContent = !!plan.markdown || plan.choices.length > 0;
-  if (dock.isSkeleton || !hasContent) return <div className="dock muted">{i18n.t("session.skeleton")}</div>;
+  if (dock.isSkeleton || !hasContent) {
+    return <div className="dock muted">{i18n.t("session.skeleton")}</div>;
+  }
   const note = renderText(plan.note);
-  const title = renderText(dock.title) || i18n.t("list_state.plan");
+  const title = renderText(dock.title);
   return (
     <Pending
       frame={frame}
       label={i18n.t("list_state.plan")}
-      brief={title !== i18n.t("list_state.plan") ? title : ""}
+      brief={title}
       busy={!!dock.command?.busy}
       meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }))}
       extra={
@@ -654,7 +656,7 @@ function dockKey(sid: string, dock: SessionDockView): string {
     dock.detail.case === "plan"
       ? dock.detail.value.markdown
       : dock.detail.case === "terminalPopup"
-        ? renderText(dock.detail.value.popupTitle)
+        ? (dock.detail.value.isTrustFolder ? "trust" : "")
         : "";
   return `${sid}|${dock.itemId}|${what}`;
 }

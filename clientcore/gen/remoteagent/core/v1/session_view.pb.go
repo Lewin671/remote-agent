@@ -1295,6 +1295,7 @@ type SessionModelChoiceView struct {
 	IsAuto                  bool
 	Selected                bool
 	SupportsStandardContext bool
+	MaxEffortHint           *Text
 }
 
 func (m *SessionModelChoiceView) GetSlug() string {
@@ -1345,6 +1346,12 @@ func (m *SessionModelChoiceView) GetSupportsStandardContext() bool {
 	}
 	return false
 }
+func (m *SessionModelChoiceView) GetMaxEffortHint() *Text {
+	if m != nil {
+		return m.MaxEffortHint
+	}
+	return nil
+}
 
 var LitewireDesc_SessionModelChoiceView = litewire.MessageDesc{
 	Fields: []litewire.Field{
@@ -1356,6 +1363,7 @@ var LitewireDesc_SessionModelChoiceView = litewire.MessageDesc{
 		{Num: 6, Offset: unsafe.Offsetof(SessionModelChoiceView{}.IsAuto), Kind: litewire.KindBool},
 		{Num: 7, Offset: unsafe.Offsetof(SessionModelChoiceView{}.Selected), Kind: litewire.KindBool},
 		{Num: 8, Offset: unsafe.Offsetof(SessionModelChoiceView{}.SupportsStandardContext), Kind: litewire.KindBool},
+		{Num: 9, Offset: unsafe.Offsetof(SessionModelChoiceView{}.MaxEffortHint), Kind: litewire.KindMessage, Sub: &LitewireDesc_Text},
 	},
 }
 

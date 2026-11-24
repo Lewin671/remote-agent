@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
+	"github.com/Lewin671/remote-agent/clientcore/domain/machine"
 	"github.com/Lewin671/remote-agent/clientcore/domain/world"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
 	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
@@ -106,7 +108,101 @@ func ManagerNameText(w *world.State) *corev1.Text {
 		return text.Plain(w.World.ManagerName)
 	}
 	if w.AuthorityDeviceID != "" {
-		return text.Msg(text.KeySettingsUnnamed)
+		return text.Msg(text.KeySecurityClient)
+	}
+	return nil
+}
+
+func syncManagerNameText(v *corev1.SyncStateView, w *world.State) *corev1.Text {
+	if w != nil && w.World.ManagerName != "" {
+		return text.Plain(w.World.ManagerName)
+	}
+	if v != nil && v.AuthorityDeviceId != "" {
+		for _, d := range v.Devices {
+			if d != nil && d.DeviceId == v.AuthorityDeviceId {
+				return machine.ReadableClientNameText(d, v.Devices)
+			}
+		}
+		return text.Msg(text.KeySecurityClient)
+	}
+	return ManagerNameText(w)
+}
+
+func buildSyncConnBanner(v *corev1.SyncStateView, w *world.State) *corev1.ConnBannerView {
+	if v == nil {
+		return nil
+	}
+	var conn lists.ConnectionKind
+	if w != nil {
+		conn = w.World.Connection
+	} else {
+		switch v.Connection {
+		case corev1.ConnState_CONN_STATE_CONNECTED:
+			conn = lists.ConnConnected
+		case corev1.ConnState_CONN_STATE_RECONNECTING:
+			conn = lists.ConnReconnecting
+		case corev1.ConnState_CONN_STATE_CONNECTING:
+			conn = lists.ConnConnecting
+		case corev1.ConnState_CONN_STATE_OFFLINE:
+			conn = lists.ConnOffline
+		case corev1.ConnState_CONN_STATE_NO_NETWORK:
+			conn = lists.ConnNoNetwork
+		}
+	}
+	var kind corev1.ConnBannerKind
+	switch {
+	case !v.NetworkAvailable:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK
+	case v.Removed || conn == lists.ConnOffline || (v.Unlinked && !v.ReachabilityUnknown):
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER
+	case conn == lists.ConnConnected:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_NONE
+	default:
+		kind = corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING
+	}
+	if kind == corev1.ConnBannerKind_CONN_BANNER_KIND_NONE || v.DisplayGrace {
+		return nil
+	}
+	kept := (v.MachinesListed && v.SessionsListed) || len(v.Sessions) > 0
+	out := &corev1.ConnBannerView{
+		Kind:     kind,
+		Visible:  true,
+		KeptData: kept,
+	}
+	switch kind {
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_NO_NETWORK:
+		if kept {
+			out.Text = text.Msg(text.KeyConnectionNoNetworkPrevious)
+		} else {
+			out.Text = text.Msg(text.KeyConnectionNoNetworkEmpty)
+		}
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_NO_SERVER:
+		out.ErrorTone = !kept
+		out.Text = text.Msg(text.KeyConnectionServerRetrying)
+		reason := v.ConnectionReason
+		if text.IsEmpty(reason) {
+			reason = text.Msg(text.KeyConnectionNoResponse)
+		}
+		out.DetailText = text.Msg(text.KeyConnectionServerDetails, text.ArgText("reason", reason))
+	case corev1.ConnBannerKind_CONN_BANNER_KIND_WAITING:
+		if v.LiveLoaded {
+			out.Text = text.Msg(text.KeyConnectionReconnecting)
+		} else {
+			out.Text = text.Msg(text.KeyConnectionConnecting)
+		}
+	}
+	return out
+}
+
+func buildSyncLeaseRenewalAdvice(v *corev1.SyncStateView) *corev1.Text {
+	if v == nil || !v.SecurityLoaded {
+		return nil
+	}
+	if v.IsManager {
+		return text.Msg(text.KeySecurityRenewNow)
+	}
+	if !text.IsEmpty(v.ManagerName) {
+		return text.Msg(text.KeySecurityOpenToRenew, text.ArgText("value", v.ManagerName))
 	}
 	return nil
 }
@@ -119,11 +215,16 @@ func ApplySyncStateTexts(v *corev1.SyncStateView, w *world.State, connStep world
 	}
 	if w != nil {
 		v.ConnectionReason = ReasonText(w.ConnectionReason)
-		v.ManagerName = ManagerNameText(w)
 		v.SessionListError = ReasonText(w.SessionListError)
 	}
+	v.ManagerName = syncManagerNameText(v, w)
 	v.ConnectionStep = ConnectStepText(connStep)
 	v.DevicesErrorText = ReasonText(devicesErr)
+	v.ConnBanner = buildSyncConnBanner(v, w)
+	if v.AccountClockSkewed {
+		v.ClockSkewBannerText = text.Msg(text.KeyErrorsThisDeviceSClockIsBehindTheAccountState)
+	}
+	v.LeaseRenewalAdvice = buildSyncLeaseRenewalAdvice(v)
 	return v
 }
 

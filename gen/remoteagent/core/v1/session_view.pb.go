@@ -2251,6 +2251,7 @@ type SessionModelChoiceView struct {
 	IsAuto                  bool                   `protobuf:"varint,6,opt,name=is_auto,json=isAuto,proto3" json:"is_auto,omitempty"`
 	Selected                bool                   `protobuf:"varint,7,opt,name=selected,proto3" json:"selected,omitempty"`
 	SupportsStandardContext bool                   `protobuf:"varint,8,opt,name=supports_standard_context,json=supportsStandardContext,proto3" json:"supports_standard_context,omitempty"`
+	MaxEffortHint           *Text                  `protobuf:"bytes,9,opt,name=max_effort_hint,json=maxEffortHint,proto3" json:"max_effort_hint,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -2339,6 +2340,13 @@ func (x *SessionModelChoiceView) GetSupportsStandardContext() bool {
 		return x.SupportsStandardContext
 	}
 	return false
+}
+
+func (x *SessionModelChoiceView) GetMaxEffortHint() *Text {
+	if x != nil {
+		return x.MaxEffortHint
+	}
+	return nil
 }
 
 type SessionEffortChoiceView struct {
@@ -8070,7 +8078,7 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"label_text\x18\x05 \x01(\v2\x19.remoteagent.core.v1.TextR\tlabelText\x12>\n" +
 	"\rpopover_title\x18\x06 \x01(\v2\x19.remoteagent.core.v1.TextR\fpopoverTitle\x12<\n" +
 	"\fpopover_body\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverBody\x12<\n" +
-	"\fpopover_foot\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverFoot\"\xc8\x02\n" +
+	"\fpopover_foot\x18\b \x01(\v2\x19.remoteagent.core.v1.TextR\vpopoverFoot\"\x8b\x03\n" +
 	"\x16SessionModelChoiceView\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12E\n" +
@@ -8079,7 +8087,8 @@ const file_remoteagent_core_v1_session_view_proto_rawDesc = "" +
 	"\x0edefault_effort\x18\x05 \x01(\tR\rdefaultEffort\x12\x17\n" +
 	"\ais_auto\x18\x06 \x01(\bR\x06isAuto\x12\x1a\n" +
 	"\bselected\x18\a \x01(\bR\bselected\x12:\n" +
-	"\x19supports_standard_context\x18\b \x01(\bR\x17supportsStandardContext\"v\n" +
+	"\x19supports_standard_context\x18\b \x01(\bR\x17supportsStandardContext\x12A\n" +
+	"\x0fmax_effort_hint\x18\t \x01(\v2\x19.remoteagent.core.v1.TextR\rmaxEffortHint\"v\n" +
 	"\x17SessionEffortChoiceView\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
 	"\x05label\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05label\x12\x1a\n" +
@@ -8931,168 +8940,169 @@ var file_remoteagent_core_v1_session_view_proto_depIdxs = []int32{
 	80,  // 39: remoteagent.core.v1.SessionDirectChipView.popover_body:type_name -> remoteagent.core.v1.Text
 	80,  // 40: remoteagent.core.v1.SessionDirectChipView.popover_foot:type_name -> remoteagent.core.v1.Text
 	80,  // 41: remoteagent.core.v1.SessionModelChoiceView.fixed_effort_note:type_name -> remoteagent.core.v1.Text
-	80,  // 42: remoteagent.core.v1.SessionEffortChoiceView.label:type_name -> remoteagent.core.v1.Text
-	84,  // 43: remoteagent.core.v1.SessionModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
-	80,  // 44: remoteagent.core.v1.SessionModeChoiceView.label:type_name -> remoteagent.core.v1.Text
-	80,  // 45: remoteagent.core.v1.SessionModeChoiceView.note:type_name -> remoteagent.core.v1.Text
-	80,  // 46: remoteagent.core.v1.SessionModeChoiceView.unavailable_reason:type_name -> remoteagent.core.v1.Text
-	80,  // 47: remoteagent.core.v1.SessionUsageEntryView.subtitle:type_name -> remoteagent.core.v1.Text
-	80,  // 48: remoteagent.core.v1.SessionUsageEntryView.value_text:type_name -> remoteagent.core.v1.Text
-	80,  // 49: remoteagent.core.v1.SessionUsageEntryView.footnote:type_name -> remoteagent.core.v1.Text
-	80,  // 50: remoteagent.core.v1.SessionForkActionView.label:type_name -> remoteagent.core.v1.Text
-	80,  // 51: remoteagent.core.v1.SessionForkActionView.note:type_name -> remoteagent.core.v1.Text
-	20,  // 52: remoteagent.core.v1.SessionActionsView.interrupt:type_name -> remoteagent.core.v1.SessionCommandState
-	20,  // 53: remoteagent.core.v1.SessionActionsView.end:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 54: remoteagent.core.v1.SessionActionsView.end_confirm_note:type_name -> remoteagent.core.v1.Text
-	20,  // 55: remoteagent.core.v1.SessionActionsView.resume:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 56: remoteagent.core.v1.SessionActionsView.resume_note:type_name -> remoteagent.core.v1.Text
-	20,  // 57: remoteagent.core.v1.SessionActionsView.rename:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 58: remoteagent.core.v1.SessionActionsView.fork_blocked_reason:type_name -> remoteagent.core.v1.Text
-	20,  // 59: remoteagent.core.v1.SessionActionsView.fork:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 60: remoteagent.core.v1.SessionActionsView.compact_blocked_reason:type_name -> remoteagent.core.v1.Text
-	20,  // 61: remoteagent.core.v1.SessionActionsView.compact:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 62: remoteagent.core.v1.SessionActionsView.model_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
-	20,  // 63: remoteagent.core.v1.SessionActionsView.set_model:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 64: remoteagent.core.v1.SessionActionsView.models_error:type_name -> remoteagent.core.v1.Text
-	24,  // 65: remoteagent.core.v1.SessionActionsView.model_choices:type_name -> remoteagent.core.v1.SessionModelChoiceView
-	25,  // 66: remoteagent.core.v1.SessionActionsView.effort_choices:type_name -> remoteagent.core.v1.SessionEffortChoiceView
-	80,  // 67: remoteagent.core.v1.SessionActionsView.mode_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
-	20,  // 68: remoteagent.core.v1.SessionActionsView.set_mode:type_name -> remoteagent.core.v1.SessionCommandState
-	26,  // 69: remoteagent.core.v1.SessionActionsView.mode_choices:type_name -> remoteagent.core.v1.SessionModeChoiceView
-	27,  // 70: remoteagent.core.v1.SessionActionsView.usage_entry:type_name -> remoteagent.core.v1.SessionUsageEntryView
-	28,  // 71: remoteagent.core.v1.SessionActionsView.fork_action:type_name -> remoteagent.core.v1.SessionForkActionView
-	80,  // 72: remoteagent.core.v1.SessionActionsView.mode_permission_notice:type_name -> remoteagent.core.v1.Text
-	2,   // 73: remoteagent.core.v1.SessionDockView.kind:type_name -> remoteagent.core.v1.SessionDockKind
-	80,  // 74: remoteagent.core.v1.SessionDockView.title:type_name -> remoteagent.core.v1.Text
-	80,  // 75: remoteagent.core.v1.SessionDockView.summary:type_name -> remoteagent.core.v1.Text
-	80,  // 76: remoteagent.core.v1.SessionDockView.meta:type_name -> remoteagent.core.v1.Text
-	20,  // 77: remoteagent.core.v1.SessionDockView.command:type_name -> remoteagent.core.v1.SessionCommandState
-	80,  // 78: remoteagent.core.v1.SessionDockView.time_left_plain:type_name -> remoteagent.core.v1.Text
-	31,  // 79: remoteagent.core.v1.SessionDockView.approval:type_name -> remoteagent.core.v1.SessionApprovalDockView
-	34,  // 80: remoteagent.core.v1.SessionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionDockView
-	36,  // 81: remoteagent.core.v1.SessionDockView.plan:type_name -> remoteagent.core.v1.SessionPlanDockView
-	37,  // 82: remoteagent.core.v1.SessionDockView.terminal_popup:type_name -> remoteagent.core.v1.SessionTerminalPopupDockView
-	86,  // 83: remoteagent.core.v1.SessionApprovalDockView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
-	80,  // 84: remoteagent.core.v1.SessionApprovalDockView.always_label:type_name -> remoteagent.core.v1.Text
-	80,  // 85: remoteagent.core.v1.SessionApprovalDockView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
-	80,  // 86: remoteagent.core.v1.SessionApprovalDockView.delivery_failed_note:type_name -> remoteagent.core.v1.Text
-	32,  // 87: remoteagent.core.v1.SessionQuestionStepView.options:type_name -> remoteagent.core.v1.SessionQuestionOptionView
-	80,  // 88: remoteagent.core.v1.SessionQuestionDockView.progress_text:type_name -> remoteagent.core.v1.Text
-	33,  // 89: remoteagent.core.v1.SessionQuestionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionStepView
-	87,  // 90: remoteagent.core.v1.SessionPlanChoiceOptionView.choice:type_name -> remoteagent.v1.PlanChoice
-	80,  // 91: remoteagent.core.v1.SessionPlanChoiceOptionView.label:type_name -> remoteagent.core.v1.Text
-	80,  // 92: remoteagent.core.v1.SessionPlanDockView.note:type_name -> remoteagent.core.v1.Text
-	35,  // 93: remoteagent.core.v1.SessionPlanDockView.choices:type_name -> remoteagent.core.v1.SessionPlanChoiceOptionView
-	80,  // 94: remoteagent.core.v1.SessionTerminalPopupDockView.popup_title:type_name -> remoteagent.core.v1.Text
-	80,  // 95: remoteagent.core.v1.SessionTerminalPopupDockView.hint:type_name -> remoteagent.core.v1.Text
-	3,   // 96: remoteagent.core.v1.SessionTrayItemView.group:type_name -> remoteagent.core.v1.SessionTrayGroupKind
-	4,   // 97: remoteagent.core.v1.SessionTrayItemView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
-	5,   // 98: remoteagent.core.v1.SessionTrayItemView.activity:type_name -> remoteagent.core.v1.SessionTrayRowActivity
-	80,  // 99: remoteagent.core.v1.SessionTrayItemView.source_label:type_name -> remoteagent.core.v1.Text
-	88,  // 100: remoteagent.core.v1.SessionTrayItemView.mode:type_name -> remoteagent.v1.SendMode
-	80,  // 101: remoteagent.core.v1.SessionTrayItemView.reason_text:type_name -> remoteagent.core.v1.Text
-	89,  // 102: remoteagent.core.v1.SessionTrayItemView.local_attachments:type_name -> remoteagent.core.v1.OutboxAttachmentSummary
-	3,   // 103: remoteagent.core.v1.SessionTrayGroupView.kind:type_name -> remoteagent.core.v1.SessionTrayGroupKind
-	4,   // 104: remoteagent.core.v1.SessionTrayGroupView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
-	80,  // 105: remoteagent.core.v1.SessionTrayGroupView.title:type_name -> remoteagent.core.v1.Text
-	80,  // 106: remoteagent.core.v1.SessionTrayGroupView.header_text:type_name -> remoteagent.core.v1.Text
-	38,  // 107: remoteagent.core.v1.SessionTrayGroupView.items:type_name -> remoteagent.core.v1.SessionTrayItemView
-	80,  // 108: remoteagent.core.v1.SessionTrayUndoView.label:type_name -> remoteagent.core.v1.Text
-	39,  // 109: remoteagent.core.v1.SessionPendingTrayView.groups:type_name -> remoteagent.core.v1.SessionTrayGroupView
-	38,  // 110: remoteagent.core.v1.SessionPendingTrayView.ordered_items:type_name -> remoteagent.core.v1.SessionTrayItemView
-	40,  // 111: remoteagent.core.v1.SessionPendingTrayView.undo:type_name -> remoteagent.core.v1.SessionTrayUndoView
-	80,  // 112: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	80,  // 113: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
-	41,  // 114: remoteagent.core.v1.SessionComposerView.pending_tray:type_name -> remoteagent.core.v1.SessionPendingTrayView
-	88,  // 115: remoteagent.core.v1.SessionComposerView.default_send_mode:type_name -> remoteagent.v1.SendMode
-	80,  // 116: remoteagent.core.v1.SessionComposerView.slash_warning_title:type_name -> remoteagent.core.v1.Text
-	80,  // 117: remoteagent.core.v1.SessionComposerView.slash_warning_text:type_name -> remoteagent.core.v1.Text
-	90,  // 118: remoteagent.core.v1.SessionComposerView.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
-	44,  // 119: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	80,  // 120: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
-	80,  // 121: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
-	80,  // 122: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
-	56,  // 123: remoteagent.core.v1.SessionTimelineView.viewer_images:type_name -> remoteagent.core.v1.SessionViewerImageView
-	47,  // 124: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
-	48,  // 125: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
-	49,  // 126: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
-	50,  // 127: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
-	51,  // 128: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
-	54,  // 129: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
-	55,  // 130: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
-	58,  // 131: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
-	59,  // 132: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
-	60,  // 133: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
-	62,  // 134: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
-	63,  // 135: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
-	64,  // 136: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
-	65,  // 137: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
-	66,  // 138: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
-	67,  // 139: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
-	61,  // 140: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
-	80,  // 141: remoteagent.core.v1.SessionFileRefView.size_text:type_name -> remoteagent.core.v1.Text
-	80,  // 142: remoteagent.core.v1.SessionMessageTextSegment.image_label:type_name -> remoteagent.core.v1.Text
-	91,  // 143: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
-	45,  // 144: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
-	92,  // 145: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
-	80,  // 146: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
-	46,  // 147: remoteagent.core.v1.SessionUserMessageItem.text_segments:type_name -> remoteagent.core.v1.SessionMessageTextSegment
-	93,  // 148: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
-	6,   // 149: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
-	94,  // 150: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
-	80,  // 151: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
-	80,  // 152: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
-	91,  // 153: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
-	50,  // 154: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
-	80,  // 155: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
-	12,  // 156: remoteagent.core.v1.SharedFileMenuItemView.action:type_name -> remoteagent.core.v1.SharedFileMenuAction
-	80,  // 157: remoteagent.core.v1.SharedFileMenuItemView.label:type_name -> remoteagent.core.v1.Text
-	80,  // 158: remoteagent.core.v1.SharedFileMenuItemView.disabled_reason:type_name -> remoteagent.core.v1.Text
-	7,   // 159: remoteagent.core.v1.SessionSharedFileItem.kind:type_name -> remoteagent.core.v1.SharedFileKind
-	80,  // 160: remoteagent.core.v1.SessionSharedFileItem.kind_label:type_name -> remoteagent.core.v1.Text
-	80,  // 161: remoteagent.core.v1.SessionSharedFileItem.size_text:type_name -> remoteagent.core.v1.Text
-	80,  // 162: remoteagent.core.v1.SessionSharedFileItem.source_caption:type_name -> remoteagent.core.v1.Text
-	10,  // 163: remoteagent.core.v1.SessionSharedFileItem.status:type_name -> remoteagent.core.v1.SharedFileCardStatus
-	80,  // 164: remoteagent.core.v1.SessionSharedFileItem.subtitle:type_name -> remoteagent.core.v1.Text
-	80,  // 165: remoteagent.core.v1.SessionSharedFileItem.a11y_label:type_name -> remoteagent.core.v1.Text
-	11,  // 166: remoteagent.core.v1.SessionSharedFileItem.primary_action:type_name -> remoteagent.core.v1.SharedFilePrimaryAction
-	80,  // 167: remoteagent.core.v1.SessionSharedFileItem.primary_label:type_name -> remoteagent.core.v1.Text
-	80,  // 168: remoteagent.core.v1.SessionSharedFileItem.primary_disabled_reason:type_name -> remoteagent.core.v1.Text
-	52,  // 169: remoteagent.core.v1.SessionSharedFileItem.menu_items:type_name -> remoteagent.core.v1.SharedFileMenuItemView
-	8,   // 170: remoteagent.core.v1.SessionSharedFileItem.web_preview_kind:type_name -> remoteagent.core.v1.SharedFileWebPreviewKind
-	53,  // 171: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
-	91,  // 172: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
-	13,  // 173: remoteagent.core.v1.SessionViewerImageView.kind:type_name -> remoteagent.core.v1.SessionImageSourceKind
-	91,  // 174: remoteagent.core.v1.SessionViewerImageView.ref:type_name -> remoteagent.v1.ImageRef
-	80,  // 175: remoteagent.core.v1.SessionViewerImageView.source_label:type_name -> remoteagent.core.v1.Text
-	80,  // 176: remoteagent.core.v1.SessionImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
-	56,  // 177: remoteagent.core.v1.SessionImageViewerView.current_image:type_name -> remoteagent.core.v1.SessionViewerImageView
-	80,  // 178: remoteagent.core.v1.SessionImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
-	33,  // 179: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
-	15,  // 180: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
-	14,  // 181: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
-	80,  // 182: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
-	80,  // 183: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
-	80,  // 184: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
-	80,  // 185: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
-	80,  // 186: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
-	95,  // 187: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
-	80,  // 188: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
-	80,  // 189: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
-	80,  // 190: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
-	80,  // 191: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
-	16,  // 192: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
-	80,  // 193: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
-	80,  // 194: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
-	80,  // 195: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
-	44,  // 196: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
-	80,  // 197: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
-	96,  // 198: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
-	199, // [199:199] is the sub-list for method output_type
-	199, // [199:199] is the sub-list for method input_type
-	199, // [199:199] is the sub-list for extension type_name
-	199, // [199:199] is the sub-list for extension extendee
-	0,   // [0:199] is the sub-list for field type_name
+	80,  // 42: remoteagent.core.v1.SessionModelChoiceView.max_effort_hint:type_name -> remoteagent.core.v1.Text
+	80,  // 43: remoteagent.core.v1.SessionEffortChoiceView.label:type_name -> remoteagent.core.v1.Text
+	84,  // 44: remoteagent.core.v1.SessionModeChoiceView.mode:type_name -> remoteagent.v1.ApprovalMode
+	80,  // 45: remoteagent.core.v1.SessionModeChoiceView.label:type_name -> remoteagent.core.v1.Text
+	80,  // 46: remoteagent.core.v1.SessionModeChoiceView.note:type_name -> remoteagent.core.v1.Text
+	80,  // 47: remoteagent.core.v1.SessionModeChoiceView.unavailable_reason:type_name -> remoteagent.core.v1.Text
+	80,  // 48: remoteagent.core.v1.SessionUsageEntryView.subtitle:type_name -> remoteagent.core.v1.Text
+	80,  // 49: remoteagent.core.v1.SessionUsageEntryView.value_text:type_name -> remoteagent.core.v1.Text
+	80,  // 50: remoteagent.core.v1.SessionUsageEntryView.footnote:type_name -> remoteagent.core.v1.Text
+	80,  // 51: remoteagent.core.v1.SessionForkActionView.label:type_name -> remoteagent.core.v1.Text
+	80,  // 52: remoteagent.core.v1.SessionForkActionView.note:type_name -> remoteagent.core.v1.Text
+	20,  // 53: remoteagent.core.v1.SessionActionsView.interrupt:type_name -> remoteagent.core.v1.SessionCommandState
+	20,  // 54: remoteagent.core.v1.SessionActionsView.end:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 55: remoteagent.core.v1.SessionActionsView.end_confirm_note:type_name -> remoteagent.core.v1.Text
+	20,  // 56: remoteagent.core.v1.SessionActionsView.resume:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 57: remoteagent.core.v1.SessionActionsView.resume_note:type_name -> remoteagent.core.v1.Text
+	20,  // 58: remoteagent.core.v1.SessionActionsView.rename:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 59: remoteagent.core.v1.SessionActionsView.fork_blocked_reason:type_name -> remoteagent.core.v1.Text
+	20,  // 60: remoteagent.core.v1.SessionActionsView.fork:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 61: remoteagent.core.v1.SessionActionsView.compact_blocked_reason:type_name -> remoteagent.core.v1.Text
+	20,  // 62: remoteagent.core.v1.SessionActionsView.compact:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 63: remoteagent.core.v1.SessionActionsView.model_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
+	20,  // 64: remoteagent.core.v1.SessionActionsView.set_model:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 65: remoteagent.core.v1.SessionActionsView.models_error:type_name -> remoteagent.core.v1.Text
+	24,  // 66: remoteagent.core.v1.SessionActionsView.model_choices:type_name -> remoteagent.core.v1.SessionModelChoiceView
+	25,  // 67: remoteagent.core.v1.SessionActionsView.effort_choices:type_name -> remoteagent.core.v1.SessionEffortChoiceView
+	80,  // 68: remoteagent.core.v1.SessionActionsView.mode_switch_blocked_reason:type_name -> remoteagent.core.v1.Text
+	20,  // 69: remoteagent.core.v1.SessionActionsView.set_mode:type_name -> remoteagent.core.v1.SessionCommandState
+	26,  // 70: remoteagent.core.v1.SessionActionsView.mode_choices:type_name -> remoteagent.core.v1.SessionModeChoiceView
+	27,  // 71: remoteagent.core.v1.SessionActionsView.usage_entry:type_name -> remoteagent.core.v1.SessionUsageEntryView
+	28,  // 72: remoteagent.core.v1.SessionActionsView.fork_action:type_name -> remoteagent.core.v1.SessionForkActionView
+	80,  // 73: remoteagent.core.v1.SessionActionsView.mode_permission_notice:type_name -> remoteagent.core.v1.Text
+	2,   // 74: remoteagent.core.v1.SessionDockView.kind:type_name -> remoteagent.core.v1.SessionDockKind
+	80,  // 75: remoteagent.core.v1.SessionDockView.title:type_name -> remoteagent.core.v1.Text
+	80,  // 76: remoteagent.core.v1.SessionDockView.summary:type_name -> remoteagent.core.v1.Text
+	80,  // 77: remoteagent.core.v1.SessionDockView.meta:type_name -> remoteagent.core.v1.Text
+	20,  // 78: remoteagent.core.v1.SessionDockView.command:type_name -> remoteagent.core.v1.SessionCommandState
+	80,  // 79: remoteagent.core.v1.SessionDockView.time_left_plain:type_name -> remoteagent.core.v1.Text
+	31,  // 80: remoteagent.core.v1.SessionDockView.approval:type_name -> remoteagent.core.v1.SessionApprovalDockView
+	34,  // 81: remoteagent.core.v1.SessionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionDockView
+	36,  // 82: remoteagent.core.v1.SessionDockView.plan:type_name -> remoteagent.core.v1.SessionPlanDockView
+	37,  // 83: remoteagent.core.v1.SessionDockView.terminal_popup:type_name -> remoteagent.core.v1.SessionTerminalPopupDockView
+	86,  // 84: remoteagent.core.v1.SessionApprovalDockView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
+	80,  // 85: remoteagent.core.v1.SessionApprovalDockView.always_label:type_name -> remoteagent.core.v1.Text
+	80,  // 86: remoteagent.core.v1.SessionApprovalDockView.deny_reason_placeholder:type_name -> remoteagent.core.v1.Text
+	80,  // 87: remoteagent.core.v1.SessionApprovalDockView.delivery_failed_note:type_name -> remoteagent.core.v1.Text
+	32,  // 88: remoteagent.core.v1.SessionQuestionStepView.options:type_name -> remoteagent.core.v1.SessionQuestionOptionView
+	80,  // 89: remoteagent.core.v1.SessionQuestionDockView.progress_text:type_name -> remoteagent.core.v1.Text
+	33,  // 90: remoteagent.core.v1.SessionQuestionDockView.question:type_name -> remoteagent.core.v1.SessionQuestionStepView
+	87,  // 91: remoteagent.core.v1.SessionPlanChoiceOptionView.choice:type_name -> remoteagent.v1.PlanChoice
+	80,  // 92: remoteagent.core.v1.SessionPlanChoiceOptionView.label:type_name -> remoteagent.core.v1.Text
+	80,  // 93: remoteagent.core.v1.SessionPlanDockView.note:type_name -> remoteagent.core.v1.Text
+	35,  // 94: remoteagent.core.v1.SessionPlanDockView.choices:type_name -> remoteagent.core.v1.SessionPlanChoiceOptionView
+	80,  // 95: remoteagent.core.v1.SessionTerminalPopupDockView.popup_title:type_name -> remoteagent.core.v1.Text
+	80,  // 96: remoteagent.core.v1.SessionTerminalPopupDockView.hint:type_name -> remoteagent.core.v1.Text
+	3,   // 97: remoteagent.core.v1.SessionTrayItemView.group:type_name -> remoteagent.core.v1.SessionTrayGroupKind
+	4,   // 98: remoteagent.core.v1.SessionTrayItemView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
+	5,   // 99: remoteagent.core.v1.SessionTrayItemView.activity:type_name -> remoteagent.core.v1.SessionTrayRowActivity
+	80,  // 100: remoteagent.core.v1.SessionTrayItemView.source_label:type_name -> remoteagent.core.v1.Text
+	88,  // 101: remoteagent.core.v1.SessionTrayItemView.mode:type_name -> remoteagent.v1.SendMode
+	80,  // 102: remoteagent.core.v1.SessionTrayItemView.reason_text:type_name -> remoteagent.core.v1.Text
+	89,  // 103: remoteagent.core.v1.SessionTrayItemView.local_attachments:type_name -> remoteagent.core.v1.OutboxAttachmentSummary
+	3,   // 104: remoteagent.core.v1.SessionTrayGroupView.kind:type_name -> remoteagent.core.v1.SessionTrayGroupKind
+	4,   // 105: remoteagent.core.v1.SessionTrayGroupView.tone:type_name -> remoteagent.core.v1.SessionTrayTone
+	80,  // 106: remoteagent.core.v1.SessionTrayGroupView.title:type_name -> remoteagent.core.v1.Text
+	80,  // 107: remoteagent.core.v1.SessionTrayGroupView.header_text:type_name -> remoteagent.core.v1.Text
+	38,  // 108: remoteagent.core.v1.SessionTrayGroupView.items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	80,  // 109: remoteagent.core.v1.SessionTrayUndoView.label:type_name -> remoteagent.core.v1.Text
+	39,  // 110: remoteagent.core.v1.SessionPendingTrayView.groups:type_name -> remoteagent.core.v1.SessionTrayGroupView
+	38,  // 111: remoteagent.core.v1.SessionPendingTrayView.ordered_items:type_name -> remoteagent.core.v1.SessionTrayItemView
+	40,  // 112: remoteagent.core.v1.SessionPendingTrayView.undo:type_name -> remoteagent.core.v1.SessionTrayUndoView
+	80,  // 113: remoteagent.core.v1.SessionComposerView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	80,  // 114: remoteagent.core.v1.SessionComposerView.placeholder:type_name -> remoteagent.core.v1.Text
+	41,  // 115: remoteagent.core.v1.SessionComposerView.pending_tray:type_name -> remoteagent.core.v1.SessionPendingTrayView
+	88,  // 116: remoteagent.core.v1.SessionComposerView.default_send_mode:type_name -> remoteagent.v1.SendMode
+	80,  // 117: remoteagent.core.v1.SessionComposerView.slash_warning_title:type_name -> remoteagent.core.v1.Text
+	80,  // 118: remoteagent.core.v1.SessionComposerView.slash_warning_text:type_name -> remoteagent.core.v1.Text
+	90,  // 119: remoteagent.core.v1.SessionComposerView.draft:type_name -> remoteagent.core.v1.AttachmentDraftView
+	44,  // 120: remoteagent.core.v1.SessionTimelineView.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	80,  // 121: remoteagent.core.v1.SessionTimelineView.history_notice:type_name -> remoteagent.core.v1.Text
+	80,  // 122: remoteagent.core.v1.SessionTimelineView.error:type_name -> remoteagent.core.v1.Text
+	80,  // 123: remoteagent.core.v1.SessionTimelineView.fetch_error:type_name -> remoteagent.core.v1.Text
+	56,  // 124: remoteagent.core.v1.SessionTimelineView.viewer_images:type_name -> remoteagent.core.v1.SessionViewerImageView
+	47,  // 125: remoteagent.core.v1.SessionTimelineItem.user_message:type_name -> remoteagent.core.v1.SessionUserMessageItem
+	48,  // 126: remoteagent.core.v1.SessionTimelineItem.agent_message:type_name -> remoteagent.core.v1.SessionAgentMessageItem
+	49,  // 127: remoteagent.core.v1.SessionTimelineItem.reasoning:type_name -> remoteagent.core.v1.SessionReasoningItem
+	50,  // 128: remoteagent.core.v1.SessionTimelineItem.tool_call:type_name -> remoteagent.core.v1.SessionToolCallItem
+	51,  // 129: remoteagent.core.v1.SessionTimelineItem.tool_group:type_name -> remoteagent.core.v1.SessionToolGroupItem
+	54,  // 130: remoteagent.core.v1.SessionTimelineItem.shared_files:type_name -> remoteagent.core.v1.SessionSharedFilesItem
+	55,  // 131: remoteagent.core.v1.SessionTimelineItem.generated_images:type_name -> remoteagent.core.v1.SessionGeneratedImagesItem
+	58,  // 132: remoteagent.core.v1.SessionTimelineItem.async_question:type_name -> remoteagent.core.v1.SessionAsyncQuestionItem
+	59,  // 133: remoteagent.core.v1.SessionTimelineItem.plan:type_name -> remoteagent.core.v1.SessionPlanItem
+	60,  // 134: remoteagent.core.v1.SessionTimelineItem.note:type_name -> remoteagent.core.v1.SessionNoteItem
+	62,  // 135: remoteagent.core.v1.SessionTimelineItem.turn_end:type_name -> remoteagent.core.v1.SessionTurnEndItem
+	63,  // 136: remoteagent.core.v1.SessionTimelineItem.error_line:type_name -> remoteagent.core.v1.SessionErrorLineItem
+	64,  // 137: remoteagent.core.v1.SessionTimelineItem.fork_marker:type_name -> remoteagent.core.v1.SessionForkItem
+	65,  // 138: remoteagent.core.v1.SessionTimelineItem.input_state:type_name -> remoteagent.core.v1.SessionInputStateItem
+	66,  // 139: remoteagent.core.v1.SessionTimelineItem.quiet_scheduled_group:type_name -> remoteagent.core.v1.SessionQuietScheduledGroupItem
+	67,  // 140: remoteagent.core.v1.SessionTimelineItem.skeleton:type_name -> remoteagent.core.v1.SessionSkeletonItem
+	61,  // 141: remoteagent.core.v1.SessionTimelineItem.notify_receipt:type_name -> remoteagent.core.v1.SessionNotifyReceiptItem
+	80,  // 142: remoteagent.core.v1.SessionFileRefView.size_text:type_name -> remoteagent.core.v1.Text
+	80,  // 143: remoteagent.core.v1.SessionMessageTextSegment.image_label:type_name -> remoteagent.core.v1.Text
+	91,  // 144: remoteagent.core.v1.SessionUserMessageItem.images:type_name -> remoteagent.v1.ImageRef
+	45,  // 145: remoteagent.core.v1.SessionUserMessageItem.files:type_name -> remoteagent.core.v1.SessionFileRefView
+	92,  // 146: remoteagent.core.v1.SessionUserMessageItem.origin:type_name -> remoteagent.v1.Origin
+	80,  // 147: remoteagent.core.v1.SessionUserMessageItem.origin_caption:type_name -> remoteagent.core.v1.Text
+	46,  // 148: remoteagent.core.v1.SessionUserMessageItem.text_segments:type_name -> remoteagent.core.v1.SessionMessageTextSegment
+	93,  // 149: remoteagent.core.v1.SessionToolCallItem.tool_kind:type_name -> remoteagent.v1.ToolKind
+	6,   // 150: remoteagent.core.v1.SessionToolCallItem.status:type_name -> remoteagent.core.v1.SessionToolStatus
+	94,  // 151: remoteagent.core.v1.SessionToolCallItem.background_kind:type_name -> remoteagent.v1.ToolBackground
+	80,  // 152: remoteagent.core.v1.SessionToolCallItem.background_label:type_name -> remoteagent.core.v1.Text
+	80,  // 153: remoteagent.core.v1.SessionToolCallItem.decision_label:type_name -> remoteagent.core.v1.Text
+	91,  // 154: remoteagent.core.v1.SessionToolCallItem.images:type_name -> remoteagent.v1.ImageRef
+	50,  // 155: remoteagent.core.v1.SessionToolGroupItem.calls:type_name -> remoteagent.core.v1.SessionToolCallItem
+	80,  // 156: remoteagent.core.v1.SessionToolGroupItem.summary:type_name -> remoteagent.core.v1.Text
+	12,  // 157: remoteagent.core.v1.SharedFileMenuItemView.action:type_name -> remoteagent.core.v1.SharedFileMenuAction
+	80,  // 158: remoteagent.core.v1.SharedFileMenuItemView.label:type_name -> remoteagent.core.v1.Text
+	80,  // 159: remoteagent.core.v1.SharedFileMenuItemView.disabled_reason:type_name -> remoteagent.core.v1.Text
+	7,   // 160: remoteagent.core.v1.SessionSharedFileItem.kind:type_name -> remoteagent.core.v1.SharedFileKind
+	80,  // 161: remoteagent.core.v1.SessionSharedFileItem.kind_label:type_name -> remoteagent.core.v1.Text
+	80,  // 162: remoteagent.core.v1.SessionSharedFileItem.size_text:type_name -> remoteagent.core.v1.Text
+	80,  // 163: remoteagent.core.v1.SessionSharedFileItem.source_caption:type_name -> remoteagent.core.v1.Text
+	10,  // 164: remoteagent.core.v1.SessionSharedFileItem.status:type_name -> remoteagent.core.v1.SharedFileCardStatus
+	80,  // 165: remoteagent.core.v1.SessionSharedFileItem.subtitle:type_name -> remoteagent.core.v1.Text
+	80,  // 166: remoteagent.core.v1.SessionSharedFileItem.a11y_label:type_name -> remoteagent.core.v1.Text
+	11,  // 167: remoteagent.core.v1.SessionSharedFileItem.primary_action:type_name -> remoteagent.core.v1.SharedFilePrimaryAction
+	80,  // 168: remoteagent.core.v1.SessionSharedFileItem.primary_label:type_name -> remoteagent.core.v1.Text
+	80,  // 169: remoteagent.core.v1.SessionSharedFileItem.primary_disabled_reason:type_name -> remoteagent.core.v1.Text
+	52,  // 170: remoteagent.core.v1.SessionSharedFileItem.menu_items:type_name -> remoteagent.core.v1.SharedFileMenuItemView
+	8,   // 171: remoteagent.core.v1.SessionSharedFileItem.web_preview_kind:type_name -> remoteagent.core.v1.SharedFileWebPreviewKind
+	53,  // 172: remoteagent.core.v1.SessionSharedFilesItem.files:type_name -> remoteagent.core.v1.SessionSharedFileItem
+	91,  // 173: remoteagent.core.v1.SessionGeneratedImagesItem.images:type_name -> remoteagent.v1.ImageRef
+	13,  // 174: remoteagent.core.v1.SessionViewerImageView.kind:type_name -> remoteagent.core.v1.SessionImageSourceKind
+	91,  // 175: remoteagent.core.v1.SessionViewerImageView.ref:type_name -> remoteagent.v1.ImageRef
+	80,  // 176: remoteagent.core.v1.SessionViewerImageView.source_label:type_name -> remoteagent.core.v1.Text
+	80,  // 177: remoteagent.core.v1.SessionImageViewerView.position_text:type_name -> remoteagent.core.v1.Text
+	56,  // 178: remoteagent.core.v1.SessionImageViewerView.current_image:type_name -> remoteagent.core.v1.SessionViewerImageView
+	80,  // 179: remoteagent.core.v1.SessionImageViewerView.empty_text:type_name -> remoteagent.core.v1.Text
+	33,  // 180: remoteagent.core.v1.SessionAsyncQuestionItem.questions:type_name -> remoteagent.core.v1.SessionQuestionStepView
+	15,  // 181: remoteagent.core.v1.SessionNoteItem.kind:type_name -> remoteagent.core.v1.SessionNoteKind
+	14,  // 182: remoteagent.core.v1.SessionNoteItem.tone:type_name -> remoteagent.core.v1.SessionNoteTone
+	80,  // 183: remoteagent.core.v1.SessionNoteItem.text:type_name -> remoteagent.core.v1.Text
+	80,  // 184: remoteagent.core.v1.SessionNoteItem.meta:type_name -> remoteagent.core.v1.Text
+	80,  // 185: remoteagent.core.v1.SessionNoteItem.emphasis:type_name -> remoteagent.core.v1.Text
+	80,  // 186: remoteagent.core.v1.SessionNotifyReceiptItem.label:type_name -> remoteagent.core.v1.Text
+	80,  // 187: remoteagent.core.v1.SessionNotifyReceiptItem.time:type_name -> remoteagent.core.v1.Text
+	95,  // 188: remoteagent.core.v1.SessionTurnEndItem.outcome:type_name -> remoteagent.v1.TurnOutcome
+	80,  // 189: remoteagent.core.v1.SessionTurnEndItem.label:type_name -> remoteagent.core.v1.Text
+	80,  // 190: remoteagent.core.v1.SessionErrorLineItem.text:type_name -> remoteagent.core.v1.Text
+	80,  // 191: remoteagent.core.v1.SessionForkItem.source_title:type_name -> remoteagent.core.v1.Text
+	80,  // 192: remoteagent.core.v1.SessionForkItem.text:type_name -> remoteagent.core.v1.Text
+	16,  // 193: remoteagent.core.v1.SessionInputStateItem.kind:type_name -> remoteagent.core.v1.SessionInputNoticeKind
+	80,  // 194: remoteagent.core.v1.SessionInputStateItem.status_text:type_name -> remoteagent.core.v1.Text
+	80,  // 195: remoteagent.core.v1.SessionInputStateItem.reason_text:type_name -> remoteagent.core.v1.Text
+	80,  // 196: remoteagent.core.v1.SessionQuietScheduledGroupItem.title:type_name -> remoteagent.core.v1.Text
+	44,  // 197: remoteagent.core.v1.SessionQuietScheduledGroupItem.items:type_name -> remoteagent.core.v1.SessionTimelineItem
+	80,  // 198: remoteagent.core.v1.SessionSkeletonItem.text:type_name -> remoteagent.core.v1.Text
+	96,  // 199: remoteagent.core.v1.SessionSubmitCommandAction.command:type_name -> remoteagent.v1.Command
+	200, // [200:200] is the sub-list for method output_type
+	200, // [200:200] is the sub-list for method input_type
+	200, // [200:200] is the sub-list for extension type_name
+	200, // [200:200] is the sub-list for extension extendee
+	0,   // [0:200] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_session_view_proto_init() }

@@ -636,8 +636,35 @@ func BuildSettings(st *State, syncView *corev1.SyncStateView, extra *SettingsExt
 		HasHandoffOffer:     syncView.GetHasHandoffOffer(),
 		RecoveryStatusStale: syncView.GetRecoveryStatusStale(),
 		LeaseEndMs:          syncView.GetLeaseEndMs(),
+		HandoffCandidates:   buildHandoffCandidates(syncView),
 	}
 	return vm
+}
+
+func buildHandoffCandidates(syncView *corev1.SyncStateView) []*corev1.HandoffCandidateView {
+	if syncView == nil {
+		return nil
+	}
+	selfID := syncView.GetSelfDeviceId()
+	sorted := machine.SortClients(syncView.GetDevices(), selfID)
+	var out []*corev1.HandoffCandidateView
+	for _, d := range sorted {
+		if d == nil || d.DeviceId == "" || d.DeviceId == selfID || d.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT {
+			continue
+		}
+		if syncView.GetSecurityLoaded() && !d.GetTrusted() {
+			continue
+		}
+		if d.Meta == nil || len(d.Meta.HandoffRecoveryEd) != 32 {
+			continue
+		}
+		out = append(out, &corev1.HandoffCandidateView{
+			DeviceId:        d.DeviceId,
+			DisplayName:     machine.ReadableClientPlainName(d, sorted),
+			DisplayNameText: machine.ReadableClientNameText(d, sorted),
+		})
+	}
+	return out
 }
 
 // BuildMachineSettings builds the per-machine details & daemon configuration ViewModel.
@@ -659,6 +686,7 @@ func BuildMachineSettings(st *State, syncView *corev1.SyncStateView, extra *Sett
 	}
 	if m == nil {
 		vm.Name = machine.ShortID(machineID)
+		vm.ShortId = machine.ShortMachineID(machineID)
 		if !unlinked && waitingForMachineList(st) {
 			vm.Loading = true
 			vm.OfflineOrMismatchBanner = text.Msg(text.KeyCommonLoading)

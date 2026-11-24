@@ -78,15 +78,38 @@ import {
   type TerminalFrame,
 } from "../gen/remoteagent/v1/remote_pb";
 import {
-  CommandError,
   Remote,
-  RequestSlot,
-  type CommandKind,
   type MachineView,
   type SessionView,
   type StreamLegCallbacks,
   type TermConn,
 } from "../remote";
+import { newRequestID } from "../crypto";
+import type { DaemonSettings, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
+
+export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
+export type Outcome = "not_sent" | "executed" | "conflict" | "rejected" | "unknown";
+export class RequestSlot {
+  constructor(public requestId: string, public deadline: number) {}
+}
+export const newSlot = (now = Date.now()) => new RequestSlot(newRequestID(), now + 60_000);
+export class CommandError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly fromDaemon = false,
+    readonly readOnly = false,
+    readonly outcome: Outcome = fromDaemon ? "unknown" : "not_sent",
+    readonly conflictKind = "",
+    readonly resultAvailable = true,
+  ) {
+    super(
+      (outcome === "executed" && !resultAvailable) || conflictKind === "identity"
+        ? message
+        : code === "disk_full" ? t("machine_status.disk_full") : code === "storage_exhausted" ? t("machine_status.storage_exhausted") : message,
+    );
+  }
+}
 import { getCoreHost, sessionDraftScope } from "../core/host";
 import {
   AccountPrefsFetchedEventSchema,
@@ -125,11 +148,9 @@ import {
   DemoSessionSchema,
   SeedDemoWorldEventSchema,
   SecurityBootstrapKind,
-  SecurityHandoffCandidateSchema,
   SecurityPairingInfoSchema,
   SecurityPendingOpSummarySchema,
   SecurityWorkflowStatusSchema,
-  type SecurityHandoffCandidate,
   type SecurityPairingInfo,
   type SecurityWorkflowStatus,
 } from "../gen/remoteagent/core/v1/security_pb";
@@ -1636,8 +1657,18 @@ export class DemoRemote extends Remote {
       recoveryReadyMs: this.demoRecoveryReadyMs,
     });
   }
-  private demoBoot(opId: bigint) {
-    return create(CacheBootstrapLoadedEventSchema, { opId, homeScopeToken: this.demoScope(), scopeHmacKey: new Uint8Array(32) });
+  private demoBoot(opId: bigint, includeCached = false) {
+    return create(CacheBootstrapLoadedEventSchema, {
+      opId,
+      homeScopeToken: this.demoScope(),
+      scopeHmacKey: new Uint8Array(32),
+      ...(includeCached
+        ? {
+            machines: [...this.demoMachines.values()].map(this.plainMachine),
+            sessions: [...this.demoSessions.values()].map(this.plainSession),
+          }
+        : {}),
+    });
   }
   private demoWorld(includeWorld: boolean) {
     if (!includeWorld) {
@@ -1685,8 +1716,8 @@ export class DemoRemote extends Remote {
       try {
         host.start();
         this.demoBootConsumed = true;
-        host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId) } }));
-        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail") } }));
+        host.dispatch(create(CoreEventSchema, { event: { case: "cacheBootstrapLoaded", value: this.demoBoot(this.syncBootOpId, conn === "connecting") } }));
+        host.dispatch(create(CoreEventSchema, { event: { case: "seedDemoWorld", value: this.demoWorld(this.opts.get("list") !== "fail" && conn !== "connecting") } }));
         host.dispatch(create(CoreEventSchema, { event: { case: "tokenResult", value: this.demoToken(this.syncTokenOpId) } }));
         drainRpc();
         if (conn === "noserver" && this.demoStream) {
@@ -1857,16 +1888,16 @@ export class DemoRemote extends Remote {
   override async executeCommandAttempt(eff: DispatchCommandEffect): Promise<CommandOutcomeEvent> {
     try {
       const cmd = fromBinary(CommandSchema, eff.commandBytes).kind;
-      const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000, undefined, false) : undefined;
+      const slot = eff.requestId ? new RequestSlot(eff.requestId, Date.now() + 30_000) : undefined;
       const isMachineUpload =
         cmd.case === "beginImageUpload" ||
         cmd.case === "putImageChunk" ||
         cmd.case === "getImageUploadStatus" ||
         cmd.case === "completeImageUpload" ||
         cmd.case === "abortImageUpload";
-      const result = !eff.sessionId && cmd.case === "listModels" && this.listModels !== Remote.prototype.listModels
+      const result = !eff.sessionId && cmd.case === "listModels" && this.listModels !== DemoRemote.prototype.listModels
         ? create(CommandResultSchema, { kind: { case: "listModels", value: await this.listModels(eff.machineId, cmd.value.agent, true) } })
-        : !eff.sessionId && cmd.case === "getSettings" && this.settings !== Remote.prototype.settings
+        : !eff.sessionId && cmd.case === "getSettings" && this.settings !== DemoRemote.prototype.settings
           ? create(CommandResultSchema, { kind: { case: "getSettings", value: { settings: await this.settings(eff.machineId, true) } } })
           : eff.sessionId && cmd.case === "getLiveSnapshot"
             ? this.liveSnapshotResult(eff.sessionId)
@@ -2310,7 +2341,7 @@ export class DemoRemote extends Remote {
   private demoPendingOp?: ReturnType<typeof create<typeof SecurityPendingOpSummarySchema>>;
   private demoPairings = new Map<string, { code: string; expiresMs: bigint; url: string; approved: boolean }>();
 
-  override get recoveryStatusStale() { return this.demoRecoveryStatusStale; }
+  get recoveryStatusStale() { return this.demoRecoveryStatusStale; }
   override get securityStatus(): SecurityWorkflowStatus {
     return create(SecurityWorkflowStatusSchema, {
       bootstrap: SecurityBootstrapKind.READY,
@@ -2347,9 +2378,6 @@ export class DemoRemote extends Remote {
   override async discardPendingOp() { await this.demoWork(); this.demoPendingOp = undefined; this.changed(); }
   override async resumeSecurityOperation() { await this.demoWork(); }
   override async completeAccountPublicProfile(_code: string) { await this.demoWork(); this.demoHasProfile = true; this.changed(); }
-  override async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
-    return [create(SecurityHandoffCandidateSchema, { deviceId: ANDROID, recoveryEd: new Uint8Array(32) })];
-  }
   override async handoffAuthority(id: string) { await this.demoWork(); this.authorityDeviceId = id; this.removedDemoDevices.add(ME); await this.loadDevices(); }
   override async removeDevice(id: string) { await this.demoWork(); this.removedDemoDevices.add(id); await this.loadDevices(); }
   override async deleteMachineRecords(id: string) { await this.demoWork(); this.demoMachines.delete(id); this.syncDemoToCore(); }
@@ -2833,8 +2861,8 @@ export class DemoRemote extends Remote {
   override setNetwork() {}
 
   private demoAttempt?: { startedAt: number };
-  override get connStep(): string { return this.demoAttempt ? "同步设备状态" : ""; }
-  override get connStartedAt(): number | undefined { return this.demoAttempt?.startedAt; }
+  get connStep(): string { return this.demoAttempt ? "同步设备状态" : ""; }
+  get connStartedAt(): number | undefined { return this.demoAttempt?.startedAt; }
 
   override reconnectNow() {
     this.opts.set("conn", "connecting");
@@ -2953,7 +2981,19 @@ export class DemoRemote extends Remote {
     });
   }
 
-  override async command(
+  async listModels(machineId: string, agent: Agent = Agent.CODEX, _fresh = false): Promise<ListModelsResponse> {
+    const r = await this.machineCommand(machineId, { case: "listModels", value: { agent } });
+    if (r.kind.case !== "listModels") throw new Error(t("new_session.unexpected_reply"));
+    return r.kind.value;
+  }
+
+  async settings(machineId: string, _fresh = false): Promise<DaemonSettings | undefined> {
+    const r = await this.machineCommand(machineId, { case: "getSettings", value: {} });
+    if (r.kind.case !== "getSettings") throw new Error(t("new_session.unexpected_reply"));
+    return r.kind.value.settings;
+  }
+
+  async command(
     sid: string,
     kind: CommandKind,
     slot?: RequestSlot,
@@ -3210,7 +3250,7 @@ export class DemoRemote extends Remote {
     return 150 + Math.round(Math.random() * 60);
   }
 
-  override async machineCommand(
+  async machineCommand(
     machineId: string,
     kind: CommandKind,
     _slot?: RequestSlot,
@@ -3703,6 +3743,7 @@ export class DemoRemote extends Remote {
         meta: create(DeviceMetaSchema, {
           platform: "android",
           description: "Android 16 · Pixel 9",
+          handoffRecoveryEd: new Uint8Array(32),
         }),
       },
     ],

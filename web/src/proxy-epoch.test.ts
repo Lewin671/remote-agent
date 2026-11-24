@@ -5,6 +5,7 @@ import type {AddressInfo} from "node:net";
 import {fileURLToPath} from "node:url";
 import {createServer as viteServer} from "vite";
 import {Remote,apiBase} from "./remote";
+import {getCoreHost} from "./core/host";
 import {relayFetch} from "./transport";
 import {SyntheticRemote} from "./test/remote-fixture";
 import {CommandResultSchema} from "./gen/remoteagent/v1/remote_pb";
@@ -29,15 +30,26 @@ test.each([true,false])("proxy-only command uses effective API origin (cached=%s
  vi.stubGlobal("fetch",fetch);
  const r=await SyntheticRemote.create();useProductionDiscovery(r);
  let calls=0;
- (r as unknown as {api:unknown}).api={forward:async(q:{command:Envelope;relayEpoch:string})=>{
-  calls++;expect(q.relayEpoch).toBe("proxied-epoch");
-  const header=parseTestHeader(new Uint8Array(q.command.securityHeader));
-  return {result:await r.seal({kind:6,requestId:header.request},CommandResultSchema,create(CommandResultSchema))};
- }};
+ (r as unknown as {token:string;tokenExpires:number;openStreamLeg:(id:bigint,t:string,cb:{onReady:(id:bigint,ms:bigint)=>void})=>void}).token="tok";
+ (r as unknown as {tokenExpires:number}).tokenExpires=Date.now()+7*86_400_000;
+ (r as unknown as {openStreamLeg:(id:bigint,t:string,cb:{onReady:(id:bigint,ms:bigint)=>void})=>void}).openStreamLeg=(legId,_t,cb)=>cb.onReady(legId,BigInt(Date.now()));
+ (r as unknown as {api:unknown}).api={
+  listMachines:async()=>({machines:[{id:r.machine,online:true,lastSeenMs:0n}]}),
+  listRemoteSessions:async()=>({sessions:[]}),
+  listDevices:async()=>({devices:[]}),
+  getAccountPrefs:async()=>({}),
+  forward:async(q:{command:Envelope;relayEpoch:string})=>{
+   calls++;expect(q.relayEpoch).toBe("proxied-epoch");
+   const header=parseTestHeader(new Uint8Array(q.command.securityHeader));
+   return {result:await r.seal({kind:6,requestId:header.request},CommandResultSchema,create(CommandResultSchema))};
+  },
+ };
  try {
+  r.start();
+  await vi.waitFor(()=>expect(r.conn).toBe("online"));
   expect(apiBase(r.account.server)).toBe(page);
   if(warm)await relayFetch(page+"/remoteagent.v1.AuthService/Login",{method:"POST"});
-  await expect(r.machineCommand(r.machine,{case:"createSession",value:{cwd:"/work/example"}})).resolves.toBeDefined();
+  await expect(getCoreHost(r).runMachineCommand(r.machine,"",{case:"createSession",value:{cwd:"/work/example"}})).resolves.toBeUndefined();
   expect(calls).toBe(1);
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(String(fetch.mock.calls[0][0])).toBe(page+(warm?"/remoteagent.v1.AuthService/Login":"/healthz"));

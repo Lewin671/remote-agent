@@ -34,4 +34,21 @@ class ErrorTextTest {
     fun aServersOwnAnswerKeepsItsText() {
         assertEquals("登录失效：token expired", errorText(ConnectException(Code.UNAUTHENTICATED, "token expired")))
     }
+
+    @Test
+    fun leaseFailureUsesCoreRenewalAdvice() {
+        val sync = io.github.lewin671.remoteagent.core.proto.SyncStateView.newBuilder()
+            .setLeaseRenewalAdvice(
+                io.github.lewin671.remoteagent.core.proto.Text.newBuilder()
+                    .setKey("security.open_to_renew")
+                    .addArgs(
+                        io.github.lewin671.remoteagent.core.proto.TextArg.newBuilder()
+                            .setName("value")
+                            .setStrValue("Android 16 · Pixel 9"),
+                    ),
+            )
+            .build()
+        val msg = errorText(SecurityFailure("lease"), sync)
+        assertTrue(msg.resolve { it.key + ":" + it.args.values.joinToString(",") }.contains("Android 16 · Pixel 9"))
+    }
 }

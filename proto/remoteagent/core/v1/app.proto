@@ -15,6 +15,7 @@ import "remoteagent/core/v1/schedules_view.proto";
 import "remoteagent/core/v1/security.proto";
 import "remoteagent/core/v1/sync_view.proto";
 import "remoteagent/core/v1/terminal_history.proto";
+import "remoteagent/core/v1/text.proto";
 import "remoteagent/core/v1/transport.proto";
 import "remoteagent/core/v1/usage_view.proto";
 import "remoteagent/v1/envelope.proto";
@@ -592,6 +593,8 @@ message Event {
     SessionSubmitCommandAction session_submit_command = 200;
     SessionSlotAction session_abandon_command = 201;
     SessionOpenAction session_open = 202;
+    RunMachineCommandAction run_machine_command = 203;
+    CancelMachineCommandAction cancel_machine_command = 204;
     SessionQuestionStepAction session_set_question_index = 205;
     SessionRefreshHistoryAction session_load_earlier = 206;
     SessionTrayItemAction session_cancel_tray_item = 207;
@@ -907,6 +910,10 @@ message DispatchCommandEffect {
   remoteagent.v1.Envelope sealed_envelope = 20;
 }
 
+message CancelDispatchEffect {
+  string request_id = 1;
+}
+
 message SaveHomeScopeEffect {
   string scope_key = 1;
   string scope_token = 2;
@@ -933,6 +940,26 @@ message RequestEntropyEffect {
   int32 min_random_bytes = 3;
 }
 
+message RunMachineCommandAction {
+  uint64 op_id = 1;
+  string machine_id = 2;
+  string session_id = 3;
+  remoteagent.v1.Command command = 4;
+  bool skip_connectivity_preflight = 5;
+}
+
+message CancelMachineCommandAction {
+  uint64 op_id = 1;
+}
+
+message RunMachineCommandResultEffect {
+  uint64 op_id = 1;
+  bool ok = 2;
+  string error_code = 3;
+  Text error_text = 4;
+  remoteagent.v1.CommandResult result = 5;
+}
+
 message Effect {
   reserved 16, 41;
   reserved "attachments_settled", "session_resend_attachments";
@@ -952,6 +979,8 @@ message Effect {
     SaveHomeScopeEffect save_home_scope = 14;
     NavigateEffect navigate = 15;
     RequestEntropyEffect request_entropy = 17;
+    RunMachineCommandResultEffect run_machine_command_result = 18;
+    CancelDispatchEffect cancel_dispatch = 19;
     ScheduleMachinePollEffect schedule_machine_poll = 70;
     DirectPreferenceEffect direct_preference = 71;
     RenameClientEffect rename_client = 72;

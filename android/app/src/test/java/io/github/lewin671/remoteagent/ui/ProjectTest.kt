@@ -101,7 +101,7 @@ class ProjectTest {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     val vm by remote.newSessionView.collectAsState()
-                    NewSessionBox(vm, RemoteState(), focus = false)
+                    NewSessionBox(vm, focus = false)
                 }
             }
         }

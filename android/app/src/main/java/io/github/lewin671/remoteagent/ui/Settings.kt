@@ -75,9 +75,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.PairingUiState
-import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.proto.AttachmentStorageView
 import io.github.lewin671.remoteagent.core.proto.CliVersionView
@@ -165,7 +163,6 @@ fun SettingsScreen() {
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val copy = uiText()
-    val state by remote.state.collectAsState()
     val syncView by remote.coreHost.syncStateView.collectAsState()
     val initialVm = remember(remote) { remote.coreHost.snapshotSettingsView() }
     val rawVm by remote.settingsView.collectAsState()
@@ -202,7 +199,6 @@ fun SettingsScreen() {
         }
     SettingsScreenContent(
         vm = vm,
-        state = state,
         syncView = syncView,
         push = push,
         serverDisplay = remote.account.server.removePrefix("https://").removePrefix("http://"),
@@ -239,7 +235,6 @@ private fun connDotFor(vm: SettingsViewModel): MachineStatusDot = when {
 @Composable
 internal fun SettingsScreenContent(
     vm: SettingsViewModel,
-    state: RemoteState = RemoteState(),
     syncView: io.github.lewin671.remoteagent.core.proto.SyncStateView = io.github.lewin671.remoteagent.core.proto.SyncStateView.getDefaultInstance(),
     push: PushStatus = PushStatus(),
     serverDisplay: String = "",
@@ -456,7 +451,7 @@ internal fun SettingsScreenContent(
                 Group(
                     rows = listOf {
                         AccountExitAction(
-                            state,
+                            syncView,
                             readAdvice = readExitAdvice,
                             exit = onExitAccount,
                         )
@@ -850,12 +845,7 @@ fun DeviceScreen(
         },
         onRejoin = { nav.rejoin(id) },
         onRemove = {
-            remove.run(
-                {
-                    remote.removeDevice(id)
-                    null
-                },
-            )
+            remove.run({ remote.removeDevice(id) })
         },
     )
 }
@@ -1313,7 +1303,7 @@ internal fun DeviceScreenContent(
                         copy(UiMessages.settingsDeviceId()),
                         trailing = {
                             Text(
-                                vm.shortId.ifEmpty { vm.machineId.take(8) },
+                                vm.shortId,
                                 style = T.s13.copy(fontFamily = FontFamily.Monospace),
                                 color = p.ink2,
                                 maxLines = 1,
@@ -1955,9 +1945,15 @@ fun PairScreen(replacesDeviceId: String = "") {
         ) {
             Hint(copy(UiMessages.securityComputerRunRemoteAgentAccountJoinAndEnterThe()))
             if (replacesDeviceId.isNotEmpty()) {
-                val current by remote.state.collectAsState()
+                val settingsVm by remote.settingsView.collectAsState()
+                val syncVm by remote.coreHost.syncStateView.collectAsState()
+                val label = settingsVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.name
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: syncVm.machinesList.firstOrNull { it.machineId == replacesDeviceId }?.displayName
+                        ?.takeIf { it.isNotEmpty() }
+                    ?: copy(UiMessages.commonUnknownComputer())
                 Hint(
-                    copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions((machineLabel(current, replacesDeviceId)).toString())),
+                    copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions(label)),
                 )
             } else {
                 Hint(copy(UiMessages.settingsAndroidToResumeARemovedComputerSSessionsOpenItsRetained()))
@@ -2516,7 +2512,6 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                                                 app.imageEnvelopes.clear()
                                                 app.sharedFiles.clearAll()
                                             }
-                                            null
                                         },
                                     ) {
                                         stamp++

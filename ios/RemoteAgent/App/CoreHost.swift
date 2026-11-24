@@ -2678,6 +2678,10 @@ actor CoreHost: SyncEngine {
             case .directRetryNowResult(let eff):
                 resumeRetryNowWaiters(machineID: eff.machineID, started: eff.started)
 
+            case .runMachineCommandResult, .cancelDispatch:
+                // iOS still uses its legacy command path until migrated.
+                break
+
             case .renameClient(let eff):
                 spawnIO { host in
                     try? await host.executor.renameDevice(eff.deviceID, name: eff.name)

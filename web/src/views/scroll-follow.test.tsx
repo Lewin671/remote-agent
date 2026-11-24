@@ -8,6 +8,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { VirtuosoMockContext } from "react-virtuoso";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
+import { getCoreHost } from "../core/host";
+import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
+import { ConnState } from "../gen/remoteagent/core/v1/home_view_pb";
 import { DemoRemote } from "../dev/demo";
 import {
   SessionHeaderViewSchema,
@@ -426,17 +429,16 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     expect(host!.querySelector("[data-history-index]")).toBeTruthy();
   });
 
-  it("re-renders memoized ChatBody and TimelineRow when remote.conn or remote.lostAt changes in place", async () => {
+  it("re-renders memoized ChatBody and TimelineRow when Core sync state disconnectedAtMs or header connState updates", async () => {
     vi.useFakeTimers();
     const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
     remotes.push(r);
     r.start();
-    patchSyncState(r, { conn: "offline", listed: true });
+    const coreHost = getCoreHost(r);
     const base = 1_700_000_000_000;
-    const setLostAt = (ms: number) => {
-      (r as unknown as { syncStateView: { disconnectedAtMs: bigint } }).syncStateView.disconnectedAtMs = BigInt(ms);
-    };
-    setLostAt(base + 5_000);
+    let disconnectedAtMs = BigInt(base + 5_000);
+    const origView = coreHost.viewSyncState.bind(coreHost);
+    vi.spyOn(coreHost, "viewSyncState").mockImplementation(() => ({ ...origView(), disconnectedAtMs }));
 
     const runningTool = create(SessionTimelineItemSchema, {
       id: "e1",
@@ -456,17 +458,23 @@ describe("long-session cold load, memo reactivity, and key-based unseen badge", 
     await renderView(r, vm);
     expect(host!.textContent).toContain("0:05");
 
-    // In-place mutation of remote.lostAt + remote.touch() updates memoized TimelineRow without new vm reference.
-    setLostAt(base + 12_000);
-    await act(async () => { (r as unknown as { touch(): void }).touch(); });
+    // Updating Core SYNC_STATE updates memoized TimelineRow without a new SessionViewModel reference.
+    disconnectedAtMs = BigInt(base + 12_000);
+    await act(async () => {
+      const h = coreHost as unknown as { invalidateTarget(t: ScreenTarget): void; dirtyTargets: Set<ScreenTarget>; flushRenders(): void };
+      h.invalidateTarget(ScreenTarget.SYNC_STATE);
+      h.dirtyTargets.add(ScreenTarget.SYNC_STATE);
+      h.flushRenders();
+    });
     expect(host!.textContent).toContain("0:12");
 
-    // In-place mutation of remote.conn updates HistoryOpening inside memoized ChatBody without new vm reference.
+    // Updating header.connState updates HistoryOpening inside memoized ChatBody.
     const emptyWait = makeVm("s-memo-wait", [], { awaitingCache: true, loaded: false });
     await renderView(r, emptyWait);
     await act(async () => { await vi.advanceTimersByTimeAsync(5100); });
     expect(host!.textContent).not.toContain(message("session.opening_slow"));
-    await act(async () => { patchSyncState(r, { conn: "online", listed: true }); });
+    const onlineWait = { ...emptyWait, header: { ...emptyWait.header!, connState: ConnState.CONNECTED } };
+    await renderView(r, onlineWait);
     expect(host!.textContent).toContain(message("session.opening_slow"));
   });
 

@@ -485,3 +485,88 @@ func TestNewSessionCreateSessionDiskFullLifecycle(t *testing.T) {
 		t.Fatalf("expected DiskFull cleared on NewSessionSelectMachine")
 	}
 }
+
+func TestProjectAddUnhidesHiddenProjectWithoutPriorSettings(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	seedOneMachine(c)
+	c.Dispatch(&corev1.Event{
+		NowMs: 1050,
+		Event: &corev1.Event_AccountPrefsFetched{
+			AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+				OpId: 4,
+				Prefs: &corev1.PlainAccountPrefs{
+					Revision: 1,
+					Prefs: &v1.ProjectPrefs{
+						Schema: 1,
+						Hidden: []*v1.ProjectPref{{Path: "/Users/alice/shop"}},
+					},
+				},
+			},
+		},
+	})
+	if !lists.IsHidden(c.m.state.World.Prefs, "/Users/alice/shop") {
+		t.Fatalf("precondition: expected /Users/alice/shop hidden")
+	}
+
+	c.Dispatch(&corev1.Event{
+		NowMs: 1060,
+		Event: &corev1.Event_ProjectOpenDirPicker{
+			ProjectOpenDirPicker: &corev1.DirPickerOpenAction{PickerKey: "manage", MachineId: "m-1", Path: "/Users/alice/shop"},
+		},
+	})
+	batch := c.Dispatch(&corev1.Event{
+		NowMs: 1070,
+		Event: &corev1.Event_ProjectAdd{
+			ProjectAdd: &corev1.ProjectAddAction{Path: "/Users/alice/shop", PickerKey: "manage"},
+		},
+	})
+	// Drive the enqueued prefs RPCs (unhide + set-settings) to completion.
+	curPrefs := &v1.ProjectPrefs{
+		Schema: 1,
+		Hidden: []*v1.ProjectPref{{Path: "/Users/alice/shop"}},
+	}
+	rev := uint64(1)
+	for step := 0; step < 6 && batch != nil; step++ {
+		var nextBatch *corev1.EffectBatch
+		for _, ef := range batch.GetEffects() {
+			rpc := ef.GetRpc()
+			if rpc == nil {
+				continue
+			}
+			switch rk := rpc.Kind.(type) {
+			case *corev1.RpcEffect_GetAccountPrefs:
+				nextBatch = c.Dispatch(&corev1.Event{
+					NowMs: int64(1080 + step*10),
+					Event: &corev1.Event_AccountPrefsFetched{
+						AccountPrefsFetched: &corev1.AccountPrefsFetchedEvent{
+							OpId:  rpc.OpId,
+							Prefs: &corev1.PlainAccountPrefs{Revision: rev, Prefs: curPrefs.Clone()},
+						},
+					},
+				})
+			case *corev1.RpcEffect_PutAccountPrefs:
+				curPrefs = rk.PutAccountPrefs.GetNextPrefs().Clone()
+				rev++
+				nextBatch = c.Dispatch(&corev1.Event{
+					NowMs: int64(1085 + step*10),
+					Event: &corev1.Event_AccountPrefsPutResult{
+						AccountPrefsPutResult: &corev1.AccountPrefsPutResultEvent{
+							OpId:    rpc.OpId,
+							Applied: true,
+							Current: &corev1.PlainAccountPrefs{Revision: rev, Prefs: curPrefs.Clone()},
+						},
+					},
+				})
+			}
+		}
+		batch = nextBatch
+	}
+	if lists.IsHidden(c.m.state.World.Prefs, "/Users/alice/shop") {
+		t.Fatalf("expected ProjectAdd to unhide hidden project even when no prior ProjectSettings existed")
+	}
+	if saved := lists.SavedSettings(c.m.state.World.Prefs, "/Users/alice/shop"); saved == nil || saved.MachineId != "m-1" {
+		t.Fatalf("expected ProjectAdd to also save settings for m-1, got %+v", saved)
+	}
+}

@@ -62,6 +62,8 @@ message SyncMachineView {
   bool daemon_out_of_date = 11;
   bool client_out_of_date = 12;
   bool reachability_unknown = 13;
+  bool terminal_ready = 14;
+  string display_name = 15;
 }
 
 // Session snapshot for unmigrated Step 3-4 screens (session screen, schedules).
@@ -83,6 +85,8 @@ message SyncSessionView {
   string schedule_name = 14;
   bool schedule_unread = 15;
   SyncPendingAction pending = 16;
+  bool terminal_ready = 17;
+  bool terminal_waiting = 18;
 }
 
 // Device directory entry for unmigrated Step 4 security/settings screens.
@@ -97,6 +101,23 @@ message SyncDeviceView {
   bool meta_broken = 7;
   bool trusted = 8;
   bool registered = 9;
+}
+
+enum ConnBannerKind {
+  CONN_BANNER_KIND_UNSPECIFIED = 0;
+  CONN_BANNER_KIND_NONE = 1;
+  CONN_BANNER_KIND_NO_NETWORK = 2;
+  CONN_BANNER_KIND_NO_SERVER = 3;
+  CONN_BANNER_KIND_WAITING = 4;
+}
+
+message ConnBannerView {
+  ConnBannerKind kind = 1;
+  bool visible = 2;
+  bool error_tone = 3;
+  bool kept_data = 4;
+  Text text = 5;
+  Text detail_text = 6;
 }
 
 // Transitional view exposing Core's synchronized connection, role, machines, sessions, prefs, and devices.
@@ -156,6 +177,9 @@ message SyncStateView {
   bool devices_load_failed = 47;
   Text devices_error_text = 48;
   bool has_handoff_offer = 49;
+  ConnBannerView conn_banner = 50;
+  Text clock_skew_banner_text = 51;
+  Text lease_renewal_advice = 52;
 }
 
 // Transitional view exposing per-session buffer status, Core-derived ProjectionState, latest LiveSnapshot,

@@ -2,9 +2,10 @@
 import { test } from "vitest";
 import { readFileSync, writeFileSync, unlinkSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
-import { fromJson, toJson } from "@bufbuild/protobuf";
-import { Remote, CommandError, RequestSlot } from "../remote";
-import { CommandSchema, CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
+import { fromJson } from "@bufbuild/protobuf";
+import { Remote } from "../remote";
+import { getCoreHost } from "../core/host";
+import { CommandSchema } from "../gen/remoteagent/v1/remote_pb";
 import { createTestSecurityStore } from "./security-fixture";
 
 test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",async()=>{
@@ -15,10 +16,9 @@ test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",
  const { store, record } = await createTestSecurityStore(data.record, seed, data.server);
  class DriverRemote extends Remote { constructor(){super({server:data.server,deviceId:record.memberID,accountId:record.pin.account},undefined,undefined,undefined,undefined,store);} }
  const remote=new DriverRemote();
- await (remote as unknown as { ensureHost(): { securityClient: { bootstrap(): Promise<unknown> } } }).ensureHost().securityClient.bootstrap();
- const runtime=remote as unknown as {token:string; forward(machine:string,sid:string,cmd:unknown,slot:RequestSlot):Promise<import("../gen/remoteagent/v1/remote_pb").CommandResult>};
- runtime.token=data.token;
- const slots=new Map<string,RequestSlot>();
+ const host=getCoreHost(remote);
+ await host.securityClient.bootstrap();
+ (remote as unknown as {token:string}).token=data.token;
  let finish!:()=>void;const stopped=new Promise<void>(resolve=>{finish=resolve});
  const server=createServer(async(req,res)=>{
   if(req.headers["x-transport-test"]!==readFileSync(root+"/control-token","utf8").trim()){res.writeHead(401).end();return;}
@@ -27,12 +27,10 @@ test.skipIf(!process.env.RA_TRANSPORT_WEB)("serve the real Web Remote RPC path",
    const chunks:Buffer[]=[];for await(const chunk of req)chunks.push(Buffer.from(chunk));
    const q=JSON.parse(Buffer.concat(chunks).toString());
    const cmd=fromJson(CommandSchema,q.command);
-   const slot=slots.get(q.id)??new RequestSlot(q.id,q.deadline,undefined,true);slots.set(q.id,slot);
-   const result=await runtime.forward(q.machine,q.session,cmd.kind,slot);
-   res.setHeader("Content-Type","application/json");res.end(JSON.stringify({result:toJson(CommandResultSchema,result)}));
+   await host.runMachineCommand(q.machine,q.session,cmd.kind);
+   res.setHeader("Content-Type","application/json");res.end(JSON.stringify({ok:true}));
   }catch(error){
-   const e=error as CommandError;
-   res.setHeader("Content-Type","application/json");res.end(JSON.stringify({Code:e.code??"unknown_outcome",Message:e.message,Outcome:e.outcome??"unknown",ConflictKind:e.conflictKind??"",FromDaemon:e.fromDaemon??false,ResultAvailable:e.resultAvailable??false}));
+   res.setHeader("Content-Type","application/json");res.end(JSON.stringify({Code:"unknown_outcome",Message:error instanceof Error?error.message:String(error)}));
   }
  });
  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));

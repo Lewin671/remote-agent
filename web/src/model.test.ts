@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { futureTime, shortenPath } from "./model";
-
-describe("whole paths (file edit titles)", () => {
-  const cases: [string, string, string, string][] = [
-    ["/Users/me/Code/foo bar/a.go", "/Users/me/Code/foo", "/Users/me", "~/Code/foo bar/a.go"],
-    ["/Users/me/Code/foo/sub dir/b.go", "/Users/me/Code/foo", "/Users/me", "sub dir/b.go"],
-    ["/private/tmp/p/x y.txt", "/tmp/p", "/Users/me", "x y.txt"],
-    ["/etc/x y", "/Users/me/Code/foo", "/Users/me", "/etc/x y"],
-  ];
-  it.each(cases)("shows %s in %s as expected", (path, cwd, home, shown) => {
-    expect(shortenPath(path, cwd, home)).toBe(shown);
-  });
-});
+import { futureTime } from "./model";
 
 describe("future times", () => {
   const now = new Date(2026, 9, 20, 23, 55).getTime();

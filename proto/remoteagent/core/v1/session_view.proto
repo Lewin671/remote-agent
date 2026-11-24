@@ -197,6 +197,7 @@ message SessionModelChoiceView {
   bool is_auto = 6;
   bool selected = 7;
   bool supports_standard_context = 8;
+  Text max_effort_hint = 9;
 }
 
 message SessionEffortChoiceView {

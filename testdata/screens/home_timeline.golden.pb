@@ -43,15 +43,16 @@ cold-start
 	
 
 
-ˇ
+ó
 
 	
 
-Ô
-homeInitialﬂ
-‹"
-home.all_projects2
-connection.connected :M
+á
+homeInitial˜
+Ù"
+home.all_projects24
+connection.connected :
+connection.connected:M
 home.waiting_count	
 count"
 home.running_count	
@@ -133,17 +134,18 @@ time.today
 time*
 time.minutes_ago	
 count2 ¬∑ 0@–
-Ü
+û
 l
 br`
 /Users/me/Code/alphaHproject:9866d445224662f8870b713b6eb0e5973e720950d887975aa095181bee02d394
 
 
-ï
+≠
 
-homeScopedÜ
-É/Users/me/Code/alpha"alpha*~/Code/alpha2
-connection.connected :M
+homeScopedû
+õ/Users/me/Code/alpha"alpha*~/Code/alpha24
+connection.connected :
+connection.connected:M
 home.waiting_count	
 count"
 home.running_count	
@@ -214,14 +216,15 @@ time.today
 time*
 time.minutes_ago	
 count2 ¬∑ 0@–
-Ç
+ö
 
 
 
-ı
-homeFiltered‰
-·/Users/me/Code/alpha"alpha*~/Code/alpha2
-connection.connected :M
+ç
+homeFiltered¸
+˘/Users/me/Code/alpha"alpha*~/Code/alpha24
+connection.connected :
+connection.connected:M
 home.waiting_count	
 count"
 home.running_count	

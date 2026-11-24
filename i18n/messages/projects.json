@@ -514,22 +514,6 @@
     }
   },
   {
-    "key": "projects.loading",
-    "zh-CN": "正在读取项目列表…",
-    "en": "Loading projects…",
-    "notes": "项目列表不可修改时的原因。 无变量。",
-    "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
     "key": "projects.manage",
     "zh-CN": "项目管理",
     "en": "Manage projects",
@@ -853,27 +837,6 @@
     "en": "This project was removed from the list",
     "notes": "项目页横幅说明。 无变量。",
     "params": {},
-    "platforms": [
-      "web",
-      "android",
-      "ios"
-    ],
-    "status": {
-      "zh-CN": "source",
-      "en": "draft"
-    }
-  },
-  {
-    "key": "projects.save_failed",
-    "zh-CN": "没能保存，列表保持原样：{reason}",
-    "en": "Could not save. The list is unchanged: {reason}",
-    "notes": "项目同步失败横幅，reason 为错误原文 空间：短标签/列表行保持紧凑，正文可多行。 变量：reason，来自当前界面数据；示例只供翻译。",
-    "params": {
-      "reason": {
-        "type": "string",
-        "example": "Error"
-      }
-    },
     "platforms": [
       "web",
       "android",

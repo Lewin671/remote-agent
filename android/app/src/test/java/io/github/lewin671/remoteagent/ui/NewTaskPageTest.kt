@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.showForTest
+
 import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -110,8 +112,7 @@ class NewTaskPageTest {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     val vm by remote.newSessionView.collectAsState()
-                    val current by remote.state.collectAsState()
-                    NewSessionBox(vm, current, focus = false, onProject = {})
+                    NewSessionBox(vm, focus = false, onProject = {})
                 }
             }
         }

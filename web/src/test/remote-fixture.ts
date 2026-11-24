@@ -116,7 +116,7 @@ export function patchSyncState(r: Remote, patch: SyncStatePatch): void {
             ? create(TextSchema, { literal: r.connError })
             : undefined,
       liveLoaded: patch.everOnline ?? r.everOnline,
-      hasMoreSessions: patch.moreSessions ?? r.moreSessions,
+      hasMoreSessions: patch.moreSessions ?? false,
       removed,
       displayGrace: patch.displayGrace ?? false,
       reachabilityUnknown: patch.reachabilityUnknown ?? false,

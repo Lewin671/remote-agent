@@ -2,6 +2,7 @@ package sync
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
@@ -103,8 +104,13 @@ func (e *Engine) managerDevicePlainName() string {
 		return ""
 	}
 	d := e.devices[id]
-	if d != nil && d.Meta != nil && d.Meta.Name != "" {
-		return d.Meta.Name
+	if d != nil && d.Meta != nil {
+		if name := strings.TrimSpace(d.Meta.Name); name != "" {
+			return name
+		}
+		if desc := strings.TrimSpace(d.Meta.Description); desc != "" {
+			return desc
+		}
 	}
 	return ""
 }

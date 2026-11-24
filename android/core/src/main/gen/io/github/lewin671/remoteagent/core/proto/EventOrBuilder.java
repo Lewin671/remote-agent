@@ -836,6 +836,28 @@ public interface EventOrBuilder extends
   io.github.lewin671.remoteagent.core.proto.SessionOpenAction getSessionOpen();
 
   /**
+   * <code>.remoteagent.core.v1.RunMachineCommandAction run_machine_command = 203 [json_name = "runMachineCommand"];</code>
+   * @return Whether the runMachineCommand field is set.
+   */
+  boolean hasRunMachineCommand();
+  /**
+   * <code>.remoteagent.core.v1.RunMachineCommandAction run_machine_command = 203 [json_name = "runMachineCommand"];</code>
+   * @return The runMachineCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.RunMachineCommandAction getRunMachineCommand();
+
+  /**
+   * <code>.remoteagent.core.v1.CancelMachineCommandAction cancel_machine_command = 204 [json_name = "cancelMachineCommand"];</code>
+   * @return Whether the cancelMachineCommand field is set.
+   */
+  boolean hasCancelMachineCommand();
+  /**
+   * <code>.remoteagent.core.v1.CancelMachineCommandAction cancel_machine_command = 204 [json_name = "cancelMachineCommand"];</code>
+   * @return The cancelMachineCommand.
+   */
+  io.github.lewin671.remoteagent.core.proto.CancelMachineCommandAction getCancelMachineCommand();
+
+  /**
    * <code>.remoteagent.core.v1.SessionQuestionStepAction session_set_question_index = 205 [json_name = "sessionSetQuestionIndex"];</code>
    * @return Whether the sessionSetQuestionIndex field is set.
    */

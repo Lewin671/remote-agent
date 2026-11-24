@@ -54,6 +54,7 @@ import io.github.lewin671.remoteagent.proto.ProjectSummary
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.Assert.assertEquals
@@ -551,6 +552,116 @@ class CoreHostSmokeTest {
                 j1.cancel()
                 j2.cancel()
             }
+        } finally {
+            h.close()
+        }
+    }
+
+    @Test
+    fun cancelMachineCommandCancelsOnlyMatchingRequestId() = kotlinx.coroutines.runBlocking {
+        val nowMs = 1_776_000_000_000L
+        val h = CoreHost(
+            workerDispatcher = Dispatchers.Unconfined,
+            clock = { nowMs },
+            zone = { ZoneId.of("UTC") },
+        )
+        try {
+            h.onEnsureToken = { eff ->
+                h.dispatchOnWorker(
+                    CoreEvent.newBuilder()
+                        .setTokenResult(
+                            TokenResultEvent.newBuilder()
+                                .setOpId(eff.opId)
+                                .setToken("tok-1")
+                                .setExpiresMs(nowMs + 86_400_000L),
+                        )
+                        .build(),
+                )
+            }
+            h.onOpenStream = { eff ->
+                h.dispatchOnWorker(
+                    CoreEvent.newBuilder()
+                        .setStreamReady(
+                            StreamReadyEvent.newBuilder()
+                                .setLegId(eff.legId)
+                                .setServerTimeMs(nowMs),
+                        )
+                        .build(),
+                )
+            }
+            h.syncLifecycle(SyncLifecycleKind.SYNC_LIFECYCLE_KIND_START)
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setSeedDemoWorld(
+                        SeedDemoWorldEvent.newBuilder()
+                            .addMachines(
+                                io.github.lewin671.remoteagent.core.proto.DemoMachine.newBuilder()
+                                    .setMachineId("m1")
+                                    .setOnline(true)
+                                    .setMeta(
+                                        MachineMeta.newBuilder()
+                                            .setHostname("Mac Studio")
+                                            .setHome("/Users/dev")
+                                            .setProtocolVersion(PEER_PROTOCOL_VERSION),
+                                    ),
+                            )
+                            .setSecurity(
+                                DemoSecurity.newBuilder()
+                                    .setIsMember(true)
+                                    .setSelfDeviceId("c1")
+                                    .setAuthorityDeviceId("c1")
+                                    .addTrustedMachineIds("m1")
+                                    .setHeadEpoch(1L)
+                                    .setLeaseEndMs(nowMs + 3_600_000L),
+                            ),
+                    )
+                    .build(),
+            )
+            val dispatched = mutableListOf<DispatchCommandEffect>()
+            val canceledRequestIds = mutableListOf<String>()
+            h.onDispatchCommand = { eff -> dispatched.add(eff) }
+            h.onCancelDispatch = { eff -> canceledRequestIds.add(eff.requestId) }
+
+            val cmd = io.github.lewin671.remoteagent.proto.Command.newBuilder()
+                .setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsRequest.getDefaultInstance())
+                .build()
+            val first = launch(Dispatchers.Unconfined) { h.runMachineCommand("m1", "", cmd) }
+            val second = async(Dispatchers.Unconfined) { h.runMachineCommand("m1", "", cmd) }
+
+            assertEquals(2, dispatched.size)
+            val d1 = dispatched[0]
+            val d2 = dispatched[1]
+            org.junit.Assert.assertNotEquals(d1.requestId, d2.requestId)
+
+            first.cancel()
+            first.join()
+            assertEquals(listOf(d1.requestId), canceledRequestIds)
+
+            h.dispatchOnWorker(
+                CoreEvent.newBuilder()
+                    .setCommandOutcome(
+                        CommandOutcomeEvent.newBuilder()
+                            .setRequestId(d2.requestId)
+                            .setAttemptId(d2.attemptId)
+                            .setSource(OutcomeSource.OUTCOME_SOURCE_DAEMON)
+                            .setSigned(true)
+                            .setHashesMatch(true)
+                            .setAttemptBound(true)
+                            .setOuterMatchesInner(true)
+                            .setOuterOutcome("executed")
+                            .setOuterReason("ok")
+                            .setResult(
+                                io.github.lewin671.remoteagent.proto.CommandResult.newBuilder()
+                                    .setOutcome("executed")
+                                    .setReason("ok")
+                                    .setResultAvailable(true)
+                                    .setGetSettings(io.github.lewin671.remoteagent.proto.GetSettingsResponse.getDefaultInstance()),
+                            ),
+                    )
+                    .build(),
+            )
+            val res2 = second.await()
+            assertEquals("executed", res2.outcome)
         } finally {
             h.close()
         }

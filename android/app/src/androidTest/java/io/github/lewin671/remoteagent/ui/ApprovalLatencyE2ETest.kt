@@ -157,9 +157,27 @@ class ApprovalLatencyE2ETest {
         check(machineId.isNotEmpty()) { "Timed out waiting for paired machineId" }
         // Keep the direct path out of the relay-only cases from the start.
         remote.setDirectEnabled(machineId, false)
-        ui.waitUntil(60_000) { remote.state.value.machines[machineId]?.pathState?.reachable == true }
+        ui.waitUntil(60_000) { remote.coreHost.syncStateView.value.machinesList.firstOrNull { it.machineId == machineId }?.let { it.reachable || it.directReady } == true }
 
         val metrics = JSONObject().put("rounds", rounds)
+        suspend fun io.github.lewin671.remoteagent.core.Remote.machineCommand(mid: String, cmd: Command): io.github.lewin671.remoteagent.proto.CommandResult {
+            val sid = when (cmd.kindCase) {
+                Command.KindCase.RESOLVE_APPROVAL -> cmd.resolveApproval.sessionId
+                Command.KindCase.GET_LIVE_SNAPSHOT -> cmd.getLiveSnapshot.sessionId
+                Command.KindCase.GET_SHARED_FILE_CHUNK -> cmd.getSharedFileChunk.sessionId
+                else -> ""
+            }
+            return coreHost.runMachineCommand(mid, sid, cmd)
+        }
+        suspend fun io.github.lewin671.remoteagent.core.Remote.getSharedFileChunk(sid: String, fileId: String, offset: Long): io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse =
+            coreHost.runMachineCommand(
+                machineId,
+                sid,
+                Command.newBuilder().setGetSharedFileChunk(
+                    io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest.newBuilder()
+                        .setSessionId(sid).setFileId(fileId).setOffset(offset),
+                ).build(),
+            ).getSharedFileChunk
         runBlocking(Dispatchers.IO) {
             val created = remote.machineCommand(
                 machineId,

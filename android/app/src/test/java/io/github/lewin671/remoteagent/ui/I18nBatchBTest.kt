@@ -395,7 +395,7 @@ class I18nBatchBTest(private val locale: String) {
     }
     @Test fun languageChangeKeepsComposerAndRebuildsChat() {
         val draft = mutableStateOf("保留原始输入 / original input")
-        show { Column { ChatPane("s", state, defaultSessionVm, Modifier.weight(1f), {}, {}, {})
+        show { Column { ChatPane("s", defaultSessionVm, Modifier.weight(1f), {}, {}, {})
             ComposeBox(draft.value, { draft.value = it }, text(UiMessages.composerMessage()), true, {}, {}) } }
         ui.waitForIdle()
         ui.runOnIdle { language = if (locale == "en") "zh-CN" else "en" }

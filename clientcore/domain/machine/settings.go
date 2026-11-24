@@ -6,6 +6,7 @@ import (
 	"github.com/Lewin671/remote-agent/clientcore/domain/lists"
 	"github.com/Lewin671/remote-agent/clientcore/domain/sortutil"
 	corev1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/core/v1"
+	v1 "github.com/Lewin671/remote-agent/clientcore/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/clientcore/text"
 )
 
@@ -168,6 +169,118 @@ func ClientName(d *corev1.SyncDeviceView) string {
 		return strings.TrimSpace(d.Meta.Name)
 	}
 	return DefaultClientName(d)
+}
+
+type clientBaseKind uint8
+
+const (
+	clientBaseRaw clientBaseKind = iota
+	clientBaseBrowser
+	clientBaseClient
+)
+
+type clientBase struct {
+	kind  clientBaseKind
+	value string
+}
+
+func deviceClientBase(d *corev1.SyncDeviceView) clientBase {
+	if d == nil || d.Meta == nil {
+		return clientBase{kind: clientBaseClient}
+	}
+	desc := strings.TrimSpace(d.Meta.Description)
+	model := ""
+	if _, after, ok := strings.Cut(desc, " · "); ok {
+		model = strings.TrimSpace(after)
+	}
+	switch d.Meta.Platform {
+	case "web":
+		if v := strings.ReplaceAll(desc, " on ", " · "); v != "" {
+			return clientBase{kind: clientBaseRaw, value: v}
+		}
+		return clientBase{kind: clientBaseBrowser}
+	case "android":
+		if model != "" {
+			return clientBase{kind: clientBaseRaw, value: "Android · " + model}
+		}
+		return clientBase{kind: clientBaseRaw, value: "Android"}
+	case "ios":
+		if model != "" {
+			return clientBase{kind: clientBaseRaw, value: model}
+		}
+		return clientBase{kind: clientBaseRaw, value: "iOS"}
+	default:
+		return clientBase{kind: clientBaseClient}
+	}
+}
+
+func last4(id string) string {
+	r := []rune(id)
+	if len(r) <= 4 {
+		return id
+	}
+	return string(r[len(r)-4:])
+}
+
+func hasDuplicateClientBase(d *corev1.SyncDeviceView, base clientBase, allDevices []*corev1.SyncDeviceView) bool {
+	if d == nil {
+		return false
+	}
+	for _, other := range allDevices {
+		if other == nil || other.Kind != v1.DeviceKind_DEVICE_KIND_CLIENT || other.DeviceId == d.DeviceId {
+			continue
+		}
+		if deviceClientBase(other) == base {
+			return true
+		}
+	}
+	return false
+}
+
+// ReadableClientNameText returns the canonical readable display name for a client device,
+// preserving platform + model formatting and appending the last 4 device ID characters
+// when another client shares the same default base identity.
+func ReadableClientNameText(d *corev1.SyncDeviceView, allDevices []*corev1.SyncDeviceView) *corev1.Text {
+	if d != nil && d.Meta != nil {
+		if name := strings.TrimSpace(d.Meta.Name); name != "" {
+			return text.Plain(name)
+		}
+	}
+	base := deviceClientBase(d)
+	var baseText *corev1.Text
+	switch base.kind {
+	case clientBaseRaw:
+		baseText = text.Plain(base.value)
+	case clientBaseBrowser:
+		baseText = text.Msg(text.KeySecurityBrowser)
+	default:
+		baseText = text.Msg(text.KeySecurityClient)
+	}
+	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
+		return text.JoinLiteral(" · ", baseText, text.Plain(last4(d.DeviceId)))
+	}
+	return baseText
+}
+
+// ReadableClientPlainName returns the non-localized string representation for a client device
+// (empty when the canonical display name requires shell localization, unless disambiguated).
+func ReadableClientPlainName(d *corev1.SyncDeviceView, allDevices []*corev1.SyncDeviceView) string {
+	if d != nil && d.Meta != nil {
+		if name := strings.TrimSpace(d.Meta.Name); name != "" {
+			return name
+		}
+	}
+	base := deviceClientBase(d)
+	if base.kind != clientBaseRaw {
+		if d != nil && d.DeviceId != "" {
+			return last4(d.DeviceId)
+		}
+		return ""
+	}
+	if d != nil && d.DeviceId != "" && hasDuplicateClientBase(d, base, allDevices) {
+		return base.value + " · " + last4(d.DeviceId)
+	}
+	return base.value
 }
 
 // SortClients orders clients: self first, then LastSeenMs desc, CreatedMs desc, DeviceId asc.

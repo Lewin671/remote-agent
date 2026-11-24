@@ -1,5 +1,4 @@
 import { DirectExecutor, peerFrameBody } from "./transport/direct-executor";
-import { RESULT_RETENTION_MS } from "./result-retention.gen";
 import { abortable, ownedRound, PathChanged } from "./transport/recovery";
 import { cleanup } from "./cleanup";
 import { Link as DeviceLink } from "./transport/link";
@@ -41,7 +40,6 @@ import {
   CacheBootstrapLoadedEventSchema,
   CacheEventsLoadedEventSchema,
   CommandOutcomeEventSchema,
-  CommandRouteHint,
   DevicesFetchedEventSchema,
   DirectEventsReceivedEventSchema,
   EventSchema as CoreEventSchema,
@@ -69,7 +67,6 @@ import {
   SecurityKeyKind,
   SecurityOpenEnvelopeOpSchema,
   SecuritySealEnvelopeOpSchema,
-  type SecurityHandoffCandidate,
   type SecurityPairingInfo,
   type SecurityStatusChangedEffect,
   type SecurityTokenUpdatedEffect,
@@ -99,8 +96,6 @@ import type { SyncMachineView, SyncSessionView, SyncStateView } from "./gen/remo
 import {
   type LiveSnapshot,
 } from "./gen/remoteagent/v1/remote_pb";
-import { machineName } from "./model";
-import { DEFAULT_AGENT } from "./agents";
 import type { SharedFileStore } from "./shared-file-store";
 import { dispatchSecurityEffect, WebSecurityExecutor } from "./core/security-executor";
 
@@ -126,7 +121,6 @@ export enum Purpose {
 import {
   AuthService,
   ClientService,
-  DeviceKind,
   ForwardResponseSchema,
   ListMachinesResponseSchema,
   ListRemoteSessionsResponseSchema,
@@ -174,13 +168,10 @@ import {
   PayloadKind,
 } from "./gen/remoteagent/v1/envelope_pb";
 import {
-  Agent,
   ImageFormat,
 } from "./gen/remoteagent/v1/event_pb";
 import { matchesFormat, mimeOf } from "./imageview";
 import {
-  type DaemonSettings,
-  type ListModelsResponse,
   type Session,
 } from "./gen/remoteagent/v1/local_pb";
 import {
@@ -199,62 +190,8 @@ import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "
 import { PEER_PROTOCOL_VERSION, RELAY_PROTOCOL_VERSION } from "./protocol";
 import { type StoredAccount } from "./storage";
 
-export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
-
 export interface MachineView { id: string; online: boolean; lastSeenMs: bigint; meta?: MachineMeta; metaRev: bigint; }
 export interface SessionView { id: string; machineId: string; historyError?: string; info?: Session; checkpoint?: LiveSnapshot; checkpointStatus?: "ready" | "waiting" | "invalid"; metaRev: bigint; lastSeq: bigint; updatedMs: bigint; endedMs: bigint; }
-
-// --- Transitional Step 3/4 command helper (remove when Session migrates to Core) ---
-
-export const COMMAND_TTL_MS = 60_000;
-export const COMMAND_EXPIRY_SKEW_MS = MAX_CLOCK_SKEW;
-export type Outcome = "not_sent" | "executed" | "conflict" | "rejected" | "unknown";
-export interface PreparedPayload { machineId: string; sid: string; plain: Uint8Array; }
-
-export class RequestSlot {
-  readonly evidence: { readonly unresolved?: boolean; includePrior: (prior: boolean) => void; trackHandoff: () => () => void; };
-  beforeDispatch?: (slot: RequestSlot) => Promise<void>;
-  constructor(public requestId: string, public deadline: number, public prepared?: PreparedPayload, prior = false) {
-    let priorFlag = prior, handoffs = 0;
-    this.evidence = {
-      get unresolved(): boolean | undefined { return priorFlag || handoffs > 0 ? true : undefined; },
-      includePrior(p: boolean) { if (p) priorFlag = true; },
-      trackHandoff() {
-        handoffs++;
-        let undone = false;
-        return () => { if (!undone) { undone = true; handoffs = Math.max(0, handoffs - 1); } };
-      },
-    };
-  }
-}
-
-export const newSlot = (now = Date.now()) => new RequestSlot(newRequestID(), now + COMMAND_TTL_MS, undefined, false);
-
-export class CommandError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly fromDaemon = false,
-    readonly readOnly = false,
-    readonly outcome: Outcome = fromDaemon ? "unknown" : "not_sent",
-    readonly conflictKind = "",
-    readonly resultAvailable = true,
-  ) {
-    super(
-      (outcome === "executed" && !resultAvailable) || conflictKind === "identity"
-        ? message
-        : code === "disk_full" ? l10n.t("machine_status.disk_full") : code === "storage_exhausted" ? l10n.t("machine_status.storage_exhausted") : message,
-    );
-  }
-  get needsResultRefresh() {
-    return (this.outcome === "executed" && !this.resultAvailable) || (this.outcome === "conflict" && this.conflictKind === "identity");
-  }
-}
-
-export function uncertain(e: unknown): boolean {
-  if (e instanceof CommandError) return e.outcome === "unknown" || e.needsResultRefresh;
-  return e instanceof ConnectError;
-}
 
 export function apiBase(server: string): string {
   const origin = checkServer(server);
@@ -264,13 +201,6 @@ export function apiBase(server: string): string {
 export interface TermConn { send(frame: MessageInitShape<typeof TerminalFrameSchema>): void; close(): void; }
 export type ConnState = "connecting" | "online" | "offline";
 export type Link = "online" | "waiting" | "no-network" | "no-server";
-
-export function readOnlyCommand(cmd: CommandKind): boolean {
-  return !!cmd && (
-    ["getSettings", "listModels", "listDirectories", "getLiveSnapshot", "getMachineStatus", "getUsageStats", "getImageUploadStatus", "getSharedFileChunk"].includes(cmd.case ?? "") ||
-    (cmd.case === "schedule" && ["list", "get"].includes(cmd.value.operation ?? ""))
-  );
-}
 
 const EMPTY_PREFS: ReadonlyMap<string, string> = new Map();
 const SYNCING_PREFS: ReadonlyMap<string, string> = new Map([["", "syncing"]]);
@@ -308,7 +238,7 @@ function purposeOf(kind: PayloadKind): Purpose {
   return PAYLOAD_PURPOSES[kind] ?? Purpose.Event;
 }
 
-type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject } | { kind: "sessionOpen"; sessionId: string; open: boolean };
+type CacheWritePayload = { kind: "machine"; raw: RemoteMachine } | { kind: "session"; raw: RemoteSession } | { kind: "events"; sessionId: string; raw: CachedEvent[] } | { kind: "prefs"; raw: AccountPrefsObject };
 
 const CONNECT_CODES: Partial<Record<Code, string>> = {
   [Code.DeadlineExceeded]: "deadline_exceeded",
@@ -350,7 +280,6 @@ export class Remote implements CoreExecutor {
 
   private persistedMachines = new Map<string, RemoteMachine>();
   private persistedSessions = new Map<string, RemoteSession>();
-  private persistedOpen = new Set<string>();
 
   private watchedSessionIds: string[] = [];
   private describingSelf = false;
@@ -359,7 +288,6 @@ export class Remote implements CoreExecutor {
   private serverAhead = false;
   private securityStatusSnapshot?: SecurityWorkflowStatus;
   authorityDeviceId = "";
-  clockWarning = "";
   authorityError = "";
 
   directExec: DirectExecutor;
@@ -399,15 +327,11 @@ export class Remote implements CoreExecutor {
   readonly termFirst = new Set<string>();
   readonly scroll = new Map<string, { top: number; stick: boolean }>();
   readonly approvalReasons = new Map<string, string>();
-  readonly notices = new Map<string, string>();
 
   private cachedMachineMap?: Map<string, MachineView>;
   private cachedSessionMap?: Map<string, SessionView>;
   private cachedDeviceMap?: Map<string, DeviceInfo>;
   private imageCache = new Map<string, ImageResult>();
-  private models = new Map<string, Promise<ListModelsResponse>>();
-  private modelReads = new Set<string>();
-  private settingsCache = new Map<string, Promise<DaemonSettings | undefined>>();
 
   protected constructor(
     readonly account: StoredAccount,
@@ -596,7 +520,6 @@ export class Remote implements CoreExecutor {
     const prevRemoved = this.removed;
     this.securityStatusSnapshot = status;
     if (status.isAuthority && status.deviceId) this.authorityDeviceId = status.deviceId;
-    this.clockWarning = status.clockSkewed ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state") : "";
     if (status.removed && !this.removalVerified) {
       this.removalVerified = true;
       this.discardToken();
@@ -670,10 +593,6 @@ export class Remote implements CoreExecutor {
     this.changed(true);
   }
 
-  networkChanged(signature: string) {
-    this.ensureHost().setNetwork(this.network, signature);
-  }
-
   reconnectNow(networkChanged = false) {
     this.ensureHost().reconnectNow(networkChanged);
   }
@@ -686,28 +605,12 @@ export class Remote implements CoreExecutor {
     return this.ensureHost().loadMoreSessions();
   }
 
-  loadAllSessions(): Promise<void> {
-    return this.ensureHost().loadAllSessions();
-  }
-
   retryList() {
     this.ensureHost().retryList();
   }
 
   retryPrefs() {
     this.ensureHost().retryPrefs();
-  }
-
-  ensureSession(id: string) {
-    return this.ensureHost().ensureSession(id);
-  }
-
-  retrySession(id: string) {
-    this.ensureHost().retrySession(id);
-  }
-
-  retryEvents(id: string) {
-    this.ensureHost().retryEvents(id);
   }
 
   setWatchedSessions(sessionIds: string[]) {
@@ -773,9 +676,6 @@ export class Remote implements CoreExecutor {
     this.cachedSessionMap = undefined;
     this.cachedDeviceMap = undefined;
     if (view.authorityDeviceId) this.authorityDeviceId = view.authorityDeviceId;
-    this.clockWarning = view.accountClockSkewed || this.securityStatusSnapshot?.clockSkewed
-      ? l10n.t("errors.this_device_s_clock_is_behind_the_account_state")
-      : "";
     if (view.securityLoaded) {
       for (const pm of view.machines) {
         if (!this.isMachineAuthorized(pm.machineId)) {
@@ -794,9 +694,6 @@ export class Remote implements CoreExecutor {
     return this.syncStateView?.connection === CoreConnState.CONNECTED ? "online" : this.syncStateView?.connection === CoreConnState.OFFLINE ? "offline" : "connecting";
   }
   get connError(): string { return renderText(this.syncStateView?.connectionReason); }
-  get failures(): number { return this.syncStateView?.connectionReason ? 1 : 0; }
-  get connStep(): string { return renderText(this.syncStateView?.connectionStep); }
-  get connStartedAt(): number | undefined { return undefined; }
   get everOnline(): boolean { return this.syncStateView?.liveLoaded ?? false; }
   get removed(): boolean { return Boolean(this.syncStateView?.removed || this.securityStatusSnapshot?.removed || this.removalVerified); }
   get link(): Link {
@@ -812,8 +709,6 @@ export class Remote implements CoreExecutor {
   get unlinked(): boolean { return !this.reachabilityUnknown && (this.link === "no-network" || this.link === "no-server" || (this.link === "waiting" && !this.listed)); }
   get lostAt(): number | undefined { const ms = Number(this.syncStateView?.disconnectedAtMs ?? 0n); return ms > 0 ? ms : undefined; }
   get listed(): boolean { return !!(this.syncStateView?.machinesListed && this.syncStateView?.sessionsListed); }
-  get listError(): string { return renderText(this.syncStateView?.sessionListError); }
-  get moreSessions(): boolean { return this.syncStateView?.hasMoreSessions ?? false; }
   get machines(): ReadonlyMap<string, MachineView> {
     if (!this.cachedMachineMap) {
       const m = new Map<string, MachineView>();
@@ -845,9 +740,6 @@ export class Remote implements CoreExecutor {
     }
     return this.cachedDeviceMap;
   }
-  deviceKind(id: string): DeviceKind | undefined {
-    return this.syncStateView?.devices.find((d) => d.deviceId === id)?.kind;
-  }
   get prefs(): PrefsState {
     const v = this.syncStateView;
     return { status: (v?.prefsLoadFailed || v?.prefsBroken) && !v.prefs ? "error" : v?.prefsLoaded ? "ready" : "loading", error: "", snap: v?.prefs ? { revision: v.prefsRevision, prefs: v.prefs } : undefined, pending: v?.prefsSyncing ? SYNCING_PREFS : EMPTY_PREFS };
@@ -855,9 +747,7 @@ export class Remote implements CoreExecutor {
   projectPrefs(): ProjectPrefs { return this.syncStateView?.prefs ?? emptyPrefs(); }
   get securityStatus(): SecurityWorkflowStatus | undefined { return this.securityStatusSnapshot; }
   get securityClient(): SecurityClient { return this.ensureHost().securityClient; }
-  get recoveryStatusStale() { return this.securityStatusSnapshot?.recoveryStatusStale ?? false; }
   demoFlag(_name: string): boolean { return false; }
-  peer(machineId: string | undefined) { return this.deviceLink.status(machineId ?? ""); }
 
   // --- CoreExecutor: Stream / Auth / Security / Cache / RPC ---
 
@@ -1023,13 +913,12 @@ export class Remote implements CoreExecutor {
       if (existingKey instanceof Uint8Array && existingKey.length === 32) scopeHmacKey = new Uint8Array(existingKey);
       else { crypto.getRandomValues(scopeHmacKey); await this.cache.set(SCOPE_HMAC_KEY_VALUE, scopeHmacKey); }
 
-      const [keptMachines, keptSessions, keptPrefs, keptOpen] = await Promise.all([
-        this.cache.get("machines"), this.cache.get("sessions"), this.cache.get("prefs"), this.cache.get("open-sessions"),
+      const [keptMachines, keptSessions, keptPrefs] = await Promise.all([
+        this.cache.get("machines"), this.cache.get("sessions"), this.cache.get("prefs"),
       ]);
       const valid = (v: unknown): v is Record<string, unknown> =>
         !!v && typeof v === "object" && (v as { deviceId?: string }).deviceId === this.account.deviceId && (v as { server?: string }).server === this.account.server;
 
-      if (valid(keptOpen) && Array.isArray(keptOpen.ids)) for (const id of keptOpen.ids) if (typeof id === "string") this.persistedOpen.add(id);
       if (valid(keptMachines) && keptMachines.bytes instanceof Uint8Array) {
         for (const m of fromBinary(ListMachinesResponseSchema, keptMachines.bytes).machines) {
           this.persistedMachines.set(m.id, m);
@@ -1082,7 +971,6 @@ export class Remote implements CoreExecutor {
         return raw.length > 0 ? { kind: "events", sessionId: eff.kind.value.sessionId, raw } : undefined;
       }
       case "writePrefs": return { kind: "prefs", raw: eff.kind.value };
-      case "setSessionOpen": return { kind: "sessionOpen", sessionId: eff.kind.value.sessionId, open: eff.kind.value.open };
       default: return undefined;
     }
   }
@@ -1103,10 +991,6 @@ export class Remote implements CoreExecutor {
       case "session": this.persistedSessions.set(payload.raw.sessionId, payload.raw); await this.persistSessionsList(); break;
       case "events": await this.cache?.append(payload.sessionId, payload.raw); break;
       case "prefs": await this.keepValue("prefs", { bytes: toBinary(AccountPrefsObjectSchema, payload.raw) }); break;
-      case "sessionOpen":
-        if (payload.open) this.persistedOpen.add(payload.sessionId); else this.persistedOpen.delete(payload.sessionId);
-        await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
-        break;
     }
   }
 
@@ -1116,10 +1000,8 @@ export class Remote implements CoreExecutor {
       case "removeSessionId":
         await this.cache?.drop(eff.kind.value);
         this.persistedSessions.delete(eff.kind.value);
-        this.persistedOpen.delete(eff.kind.value);
         this.scroll.delete(eff.kind.value);
         await this.persistSessionsList();
-        await this.keepValue("open-sessions", { ids: [...this.persistedOpen] });
         break;
       case "unlistSessionId": this.persistedSessions.delete(eff.kind.value); await this.persistSessionsList(); break;
       case "removeMachineId": this.persistedMachines.delete(eff.kind.value); await this.persistMachinesList(); break;
@@ -1254,9 +1136,7 @@ export class Remote implements CoreExecutor {
     priorUnknown: boolean;
     directRoute?: { pcId: bigint; ticketId: bigint; timeoutMs: bigint };
     directTicketId?: bigint;
-    hasFiles?: boolean;
     signal?: AbortSignal;
-    onHandoff?: () => () => void;
   }): Promise<{
     outcome: CommandOutcomeEvent;
     msg?: CommandResult;
@@ -1304,19 +1184,7 @@ export class Remote implements CoreExecutor {
         requestKeyHash = sealed.requestKeyHash;
         payloadHash = sealed.payloadHash;
       }
-      if (params.hasFiles) {
-        const issue = this.fileUploadIssue(params.machineId);
-        if (issue) {
-          return {
-            outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: true, transportCode: params.priorUnknown ? "unknown" : "failed_precondition", transportDetail: issue, routeWasDirect: isDirect }),
-            elapsedMs: 0,
-            observedBytes: 0n,
-            ok: false,
-          };
-        }
-      }
     } catch (e) {
-      this.noteClock(e);
       if (params.priorUnknown) {
         return { outcome: mk({ source: OutcomeSource.LOCAL, notForwarded: false, handedOff: true, transportCode: "unknown", transportDetail: errorText(e), routeWasDirect: isDirect }), elapsedMs: 0, observedBytes: 0n, ok: false };
       }
@@ -1325,11 +1193,9 @@ export class Remote implements CoreExecutor {
     }
 
     let handedOff = false;
-    let undo: (() => void) | undefined;
     const handoff = () => {
       if (!handedOff) {
         handedOff = true;
-        undo = params.onHandoff?.();
       }
     };
     const relayAttempt = isDirect ? undefined : this.deviceLink.path.attempt(handoff);
@@ -1466,8 +1332,6 @@ export class Remote implements CoreExecutor {
       if (!isDirect && e instanceof ConnectError && relayAttempt) {
         const refusal = relayAttempt.refusal(e);
         if (refusal !== undefined) {
-          undo?.();
-          undo = undefined;
           return {
             outcome: mk({
               source: OutcomeSource.SERVER,
@@ -1680,166 +1544,13 @@ export class Remote implements CoreExecutor {
     }
   }
 
-  private noteClock(e: unknown) { if (e instanceof SecurityError && e.code === "clock") this.clockWarning = l10n.t("errors.this_device_s_clock_is_behind_the_account_state"); }
-
   private keepValue(name: string, value: Record<string, unknown> | undefined) {
     return this.cache?.set(name, value && { ...value, deviceId: this.account.deviceId, server: this.account.server }).catch(() => undefined);
   }
 
-  // --- Transitional Step 3/4 Command Runner (reuses executeSealedAttempt) ---
-
   protected relayEpoch(): Promise<string> { return relayEpoch(apiBase(this.account.server)); }
 
-  fileUploadIssue(machineId: string): string { return this.peer(machineId).capabilities?.fileUpload === true ? "" : l10n.t("attachment.update_required"); }
-
-  private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {
-    if ((cmd?.case !== "send" && cmd?.case !== "createSession") || !cmd.value.fileIds?.length) return;
-    const issue = this.fileUploadIssue(machineId);
-    if (issue) throw new CommandError(mayHaveRun ? "unknown_outcome" : "failed_precondition", issue, false, false, mayHaveRun ? "unknown" : "not_sent");
-  }
-
-  private readonly authorizedCommands = new WeakMap<RequestSlot, { machineId: string; sid: string; requestId: string; deadline: number; cmd: CommandKind; plain: Uint8Array<ArrayBuffer> }>();
-
-  private preparePayload(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot) {
-    const previous = this.authorizedCommands.get(slot);
-    if (previous) return previous;
-    const saved = slot.prepared;
-    const plain = saved ? new Uint8Array(saved.plain) : (toBinary(CommandSchema, create(CommandSchema, { kind: cmd, protocolVersion: PEER_PROTOCOL_VERSION })) as Uint8Array<ArrayBuffer>);
-    const prepared = { requestId: slot.requestId, deadline: slot.deadline, machineId: saved?.machineId ?? machineId, sid: saved?.sid ?? sid, plain: new Uint8Array(plain) as Uint8Array<ArrayBuffer>, cmd: fromBinary(CommandSchema, plain).kind };
-    this.authorizedCommands.set(slot, prepared);
-    slot.prepared = { machineId: prepared.machineId, sid: prepared.sid, plain: new Uint8Array(plain) };
-    return prepared;
-  }
-
-  async command(sid: string, cmd: CommandKind, slot = newSlot()): Promise<CommandResult> {
-    const authorized = this.authorizedCommands.get(slot) ?? (slot.prepared && this.preparePayload("", "", cmd, slot));
-    if (authorized) return this.forwardCall(authorized.machineId, authorized.sid, authorized.cmd, slot);
-    const s = this.syncSession(sid);
-    if (!s) throw new Error(l10n.t("session.android_unknown"));
-    return this.forwardCall(s.machineId, sid, cmd, slot);
-  }
-
-  machineCommand(machineId: string, cmd: CommandKind, slot?: RequestSlot): Promise<CommandResult> { return this.forward(machineId, "", cmd, slot); }
-  private forwardCall(machineId: string, sid: string, cmd: CommandKind, slot: RequestSlot): Promise<CommandResult> { return this.forward(machineId, sid, cmd, slot); }
-
-  private async forward(machineId: string, sid: string, cmd: CommandKind, slot = newSlot(), signal?: AbortSignal): Promise<CommandResult> {
-    if (this.closed) throw new CommandError("canceled", l10n.t("errors.terminal_connection_canceled"), false, false, "not_sent");
-    const prepared = this.preparePayload(machineId, sid, cmd, slot);
-    machineId = prepared.machineId; sid = prepared.sid; cmd = prepared.cmd;
-    const { requestId, deadline, plain } = prepared;
-    if (!slot.evidence.unresolved && Date.now() >= deadline + COMMAND_EXPIRY_SKEW_MS) throw new CommandError("expired", l10n.t("errors.connection_timed_out"));
-    const sm = this.syncMachine(machineId);
-    const theirs = this.peer(machineId).protocolVersion;
-    if (theirs !== undefined && theirs !== PEER_PROTOCOL_VERSION) {
-      throw new CommandError("failed_precondition", theirs < PEER_PROTOCOL_VERSION ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(sm ? { id: sm.machineId, meta: sm.meta } : undefined)) }) : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"), false, false, slot.evidence.unresolved ? "unknown" : "not_sent");
-    }
-    this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
-    await slot.beforeDispatch?.(slot);
-
-    const routeParams = (() => {
-      if (cmd?.case === "getSharedFileChunk") {
-        return { routeHint: CommandRouteHint.BULK, bulkFileKey: `${cmd.value.sessionId}/${cmd.value.fileId}`, bulkBytes: 0n, bulkUpload: false };
-      }
-      if (cmd?.case === "putImageChunk") {
-        return { routeHint: CommandRouteHint.BULK, bulkFileKey: cmd.value.transferId, bulkBytes: BigInt(cmd.value.data?.length ?? 0), bulkUpload: true };
-      }
-      if (readOnlyCommand(cmd) && cmd?.case !== "getImageUploadStatus") {
-        return { routeHint: CommandRouteHint.READ };
-      }
-      return {};
-    })();
-    const uploadTransferId = cmd?.case === "beginImageUpload" ? cmd.value.transferId : "";
-    const uploadHasFilename = cmd?.case === "beginImageUpload" && !!cmd.value.fileName;
-    const finishUploadTransferId =
-      cmd?.case === "completeImageUpload" || cmd?.case === "abortImageUpload" ? cmd.value.transferId : "";
-
-    let forceRelay = false, attempted = false, recoveryUntil: number | undefined;
-    for (let attempt = 0; ; attempt++) {
-      signal?.throwIfAborted();
-      if (attempted && Date.now() >= deadline + (slot.evidence.unresolved ? RESULT_RETENTION_MS : 0)) {
-        throw new CommandError("unknown_outcome", l10n.t("errors.connection_timed_out"), false, false, "unknown");
-      }
-      this.checkFileCapability(machineId, cmd, slot.evidence.unresolved);
-      attempted = true;
-      const priorUnknown = !!slot.evidence.unresolved;
-      const priorOutcome: Outcome = priorUnknown ? "unknown" : "not_sent";
-      const dec = routeParams.routeHint || uploadTransferId
-        ? await (this.hostBridge?.beginDirectBulkTransfer({
-            machineId,
-            ...routeParams,
-            deadlineMs: BigInt(deadline),
-            forceRelay,
-            uploadTransferId,
-            uploadHasFilename,
-          }) ?? Promise.resolve({ useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n }))
-        : { useDirect: false, pcId: 0n, ticketId: 0n, timeoutMs: 0n };
-      const directRoute = dec.useDirect && !forceRelay && dec.pcId > 0n
-        ? { pcId: dec.pcId, ticketId: dec.ticketId, timeoutMs: dec.timeoutMs }
-        : undefined;
-      const { outcome: ev, msg, elapsedMs, observedBytes, ok } = await this.executeSealedAttempt({
-        requestId, attemptId: newRequestID(), machineId, sessionId: sid, deadlineMs: deadline, commandBytes: plain,
-        priorUnknown, directRoute, directTicketId: dec.ticketId,
-        hasFiles: (cmd?.case === "send" || cmd?.case === "createSession") && !!cmd.value.fileIds?.length,
-        signal, onHandoff: () => slot.evidence.trackHandoff(),
-      });
-      this.hostBridge?.finishDirectBulkTransfer({
-        ticketId: dec.ticketId,
-        routeWasDirect: Boolean(directRoute),
-        ok,
-        elapsedMs,
-        observedBytes,
-        finishUploadTransferId,
-        machineId,
-      });
-
-      if (ev.source === OutcomeSource.DAEMON) {
-        const category = (ev.outerOutcome || msg?.outcome || "unknown") as Outcome;
-        if (!ev.signed || !ev.hashesMatch || !ev.attemptBound || !ev.outerMatchesInner || !msg || category === "unknown") {
-          slot.evidence.includePrior(true);
-          throw new CommandError("unknown_outcome", l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"), true, false, "unknown");
-        }
-        if ((category === "executed" && !msg.resultAvailable) || (category === "conflict" && msg.conflictKind === "identity")) {
-          this.retryList();
-          throw new CommandError(msg.errorCode, l10n.t(category === "executed" ? "errors.executed_result_unavailable" : "errors.request_identity_conflict"), true, false, category, msg.conflictKind, msg.resultAvailable);
-        }
-        if (category !== "executed" || msg.errorCode) throw new CommandError(msg.errorCode, msg.errorMessage, true, readOnlyCommand(cmd), category, msg.conflictKind, msg.resultAvailable);
-        return msg;
-      }
-
-      if (!ev.notForwarded) slot.evidence.includePrior(true);
-      if (ev.routeWasDirect && routeParams.routeHint) {
-        forceRelay = true;
-        if (cmd?.case === "putImageChunk") await this.machineCommand(machineId, { case: "getImageUploadStatus", value: { transferId: cmd.value.transferId } });
-        if (ev.transportCode === "path_changed" && Date.now() < deadline) { attempt--; continue; }
-      }
-      if (ev.transportCode === "path_changed") { attempt--; continue; }
-      if (ev.source === OutcomeSource.LOCAL) {
-        const liveOutcome: Outcome = slot.evidence.unresolved ? "unknown" : priorOutcome;
-        throw new CommandError(ev.transportCode === "unknown" || liveOutcome === "unknown" ? "unknown_outcome" : ev.transportCode, ev.transportDetail, false, false, liveOutcome);
-      }
-      if (ev.notForwarded && ev.attemptBound && ev.transportCode === "unauthenticated" && attempt < 3) { await this.login(signal); continue; }
-      if (ev.notForwarded && ev.attemptBound) {
-        throw new CommandError(ev.transportCode, ev.outerReason === "machine_offline" ? l10n.t("errors.the_computer_is_offline_the_command_was_not_sent") : ev.transportDetail, false, false, priorOutcome);
-      }
-      if (ev.transportCode === "unavailable" && slot.evidence.unresolved && this.started && !this.closed) {
-        signal?.throwIfAborted();
-        if (recoveryUntil === undefined) { recoveryUntil = performance.now() + 3000; if (!ev.notForwarded) this.reconnectNow(); }
-        if (performance.now() + 250 < recoveryUntil) { await abortable(new Promise<void>((resolve) => setTimeout(resolve, 250)), signal); continue; }
-      }
-      const delay = 1000 * (attempt + 1);
-      if (["deadline_exceeded", "unknown", "internal", "canceled", "aborted"].includes(ev.transportCode) && attempt < 3 && Date.now() + delay < deadline) {
-        await new Promise((r) => setTimeout(r, delay)); continue;
-      }
-      if (ev.transportCode === "unavailable") {
-        throw slot.evidence.unresolved
-          ? new CommandError("unknown_outcome", l10n.t("errors.connection_dropped_midway"), false, false, "unknown")
-          : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
-      }
-      throw new CommandError("unknown_outcome", ev.transportDetail || l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"), false, false, "unknown");
-    }
-  }
-
-  // --- Schedules / Drafts / Outbox / Answers / Images / Terminal / Models / Settings / Devices ---
+  // --- Schedules / Images / Terminal / Devices ---
 
   async readScheduleCache(opId: bigint, machineId: string): Promise<ScheduleCacheLoadedEvent> {
     if (!machineId || this.closed || !this.isMachineAuthorized(machineId)) {
@@ -1909,10 +1620,6 @@ export class Remote implements CoreExecutor {
     for (const run of runs) void closeScheduleNotification(run);
   }
 
-  clearNotice(sid: string) {
-    if (this.notices.delete(sid)) this.changed();
-  }
-
   async openTerminal(
     sid: string,
     onFrame: (f: TerminalFrame) => void | Promise<void>,
@@ -1920,7 +1627,7 @@ export class Remote implements CoreExecutor {
     signal?: AbortSignal,
   ): Promise<TermConn> {
     if (this.closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
-    const s = this.sessions.get(sid);
+    const s = this.syncSession(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
     const streamId = newRequestID();
@@ -1993,7 +1700,7 @@ export class Remote implements CoreExecutor {
     ws.onEnd = () => finish(l10n.t("errors.terminal_connection_dropped"));
     if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     try {
-      await this.command(sid, { case: "openTerminal", value: { sessionId: sid, streamId } });
+      await this.ensureHost().runMachineCommand(s.machineId, sid, { case: "openTerminal", value: { sessionId: sid, streamId } }, signal, true);
     } catch (e) {
       finish(errorText(e));
       throw e;
@@ -2022,7 +1729,7 @@ export class Remote implements CoreExecutor {
     const key = sid + "/" + imageId;
     const hit = this.imageCache.get(key);
     if (hit) { this.imageCache.delete(key); this.imageCache.set(key, hit); return hit; }
-    const s = this.sessions.get(sid);
+    const s = this.syncSession(sid);
     if (!s) throw new Error(l10n.t("session.android_unknown"));
     let res;
     try {
@@ -2062,39 +1769,6 @@ export class Remote implements CoreExecutor {
     await this.api.setPushSubscription({ subscriptionJson, kinds: selected });
   }
 
-  listModels(machineId: string, agent: Agent = DEFAULT_AGENT, fresh = false): Promise<ListModelsResponse> {
-    const key = machineId + "/" + agent;
-    let p = fresh && !this.modelReads.has(key) ? undefined : this.models.get(key);
-    if (!p) {
-      p = this.machineCommand(machineId, { case: "listModels", value: { agent } }).then((r) => {
-        if (r.kind.case !== "listModels") throw new Error(l10n.t("new_session.unexpected_reply"));
-        this.changed();
-        return r.kind.value;
-      });
-      this.modelReads.add(key);
-      p.then(
-        () => this.modelReads.delete(key),
-        () => { this.modelReads.delete(key); if (this.models.get(key) === p) this.models.delete(key); },
-      );
-      this.models.set(key, p);
-    }
-    return p;
-  }
-
-  settings(machineId: string, fresh = false): Promise<DaemonSettings | undefined> {
-    let p = fresh ? undefined : this.settingsCache.get(machineId);
-    if (!p) {
-      p = this.machineCommand(machineId, { case: "getSettings", value: {} }).then((r) => {
-        if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
-        if (this.settingsCache.get(machineId) === p) this.changed();
-        return r.kind.value.settings;
-      });
-      p.catch(() => { if (this.settingsCache.get(machineId) === p) this.settingsCache.delete(machineId); });
-      this.settingsCache.set(machineId, p);
-    }
-    return p;
-  }
-
   async pingServer(timeoutMs = 8000): Promise<number> {
     const stop = new AbortController();
     const timer = setTimeout(() => stop.abort(), timeoutMs);
@@ -2112,14 +1786,14 @@ export class Remote implements CoreExecutor {
   }
 
   async pingMachine(machineId: string, timeoutMs = 15_000): Promise<number> {
+    const stop = new AbortController();
+    const timer = setTimeout(() => stop.abort(), timeoutMs);
     const started = performance.now();
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await Promise.race([
-        this.machineCommand(machineId, { case: "getSettings", value: {} }),
-        new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(l10n.t("connection.no_response"))), timeoutMs))),
-      ]);
+      await this.ensureHost().runMachineCommand(machineId, "", { case: "getSettings", value: {} }, stop.signal, true);
       return Math.round(performance.now() - started);
+    } catch (e) {
+      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
     } finally {
       clearTimeout(timer);
     }
@@ -2223,11 +1897,6 @@ export class Remote implements CoreExecutor {
     return this.ensureHost().securityClient.cancelPairing(pairingId);
   }
 
-  async handoffCandidates(): Promise<SecurityHandoffCandidate[]> {
-    await this.loadDevices(false);
-    return this.ensureHost().securityClient.listHandoffCandidates();
-  }
-
   async handoffAuthority(incoming: string) {
     await this.ensureHost().securityClient.handoffAuthority(incoming);
     await this.loadDevices(false);
@@ -2284,7 +1953,6 @@ export function errorText(e: unknown): string {
     if (e.code === "invalid" || e.code === "untrusted") return l10n.t("errors.invalid_ciphertext_signature_key_or_content_verification_failed");
     if (e.code === "conflict") return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
   }
-  if (e instanceof CommandError) return e.message;
   if (e instanceof ConnectError) {
     if (e.code === Code.PermissionDenied && e.rawMessage === "login failed") {
       return l10n.t("errors.the_server_does_not_recognize_this_device_it_may");

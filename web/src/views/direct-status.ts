@@ -1,6 +1,5 @@
 import * as l10n from "../i18n";
-import { ConnectionGroupStage, type ConnCheckDirectRowView } from "../gen/remoteagent/core/v1/settings_view_pb";
-import { renderText as renderCoreText } from "../core/text";
+import { ConnectionGroupStage } from "../gen/remoteagent/core/v1/settings_view_pb";
 import type { Mark } from "../ui";
 
 export function stageToMark(stage: ConnectionGroupStage): Mark {
@@ -10,10 +9,6 @@ export function stageToMark(stage: ConnectionGroupStage): Mark {
     case ConnectionGroupStage.MEASURING: return "run";
     default: return "off";
   }
-}
-
-export function directRowTrailing(row: ConnCheckDirectRowView): string {
-  return renderCoreText(row.statusText);
 }
 
 export function connFooter(unsupported: boolean): string {

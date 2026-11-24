@@ -16,6 +16,7 @@ import {
   type SessionWindowOptions,
 } from "../core/host";
 import { renderText } from "../core/text";
+import { ScreenTarget } from "../gen/remoteagent/core/v1/app_pb";
 import type { AttachmentDraftView, OutboxAttachmentSummary } from "../gen/remoteagent/core/v1/attachments_pb";
 import {
   ComputerReachability,
@@ -100,9 +101,13 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
+
+const NOOP_SYNC_SUB = () => () => {};
+const NOOP_LOST_AT = (): number | undefined => undefined;
 
 const TerminalView = lazy(() =>
   import("./Terminal").then((m) => ({ default: m.TerminalView })),
@@ -1638,7 +1643,16 @@ const ChatBody = memo(function ChatBody({
   const timeline = vm.timeline;
   const dock = vm.dock;
   const locale = i18n.useLocale();
-  useRemote(remote);
+  const host = remote ? getCoreHost(remote) : undefined;
+  const lostAt = useSyncExternalStore(
+    host ? (cb) => host.subscribe(ScreenTarget.SYNC_STATE, cb) : NOOP_SYNC_SUB,
+    host
+      ? () => {
+          const ms = Number(host.viewSyncState().disconnectedAtMs);
+          return ms > 0 ? ms : undefined;
+        }
+      : NOOP_LOST_AT,
+  );
 
   const scroller = useRef<HTMLDivElement>(null);
   const getScrollStore = () => {
@@ -1877,26 +1891,28 @@ const ChatBody = memo(function ChatBody({
   const hasSharedFiles = header?.capabilities?.supportsSharedFiles ?? false;
 
   const renderEntry = useCallback(
-    (entry: TimelineRowEntry) => (
-      <RowState id={entry.key} states={rowStates.current}>
-        <TimelineRow
-          item={entry.item}
-          sessionId={sid}
-          online={online}
-          lostAt={remote?.lostAt}
-          awaitingApproval={awaitingApprovalTool}
-          remote={remote}
-          hasSharedFiles={hasSharedFiles}
-          locale={locale}
-          onTerminal={onTerminal}
-          attachments={attachments}
-          outboxAttachments={outboxAttachments}
-          onRestoreText={onRestoreText}
-          onExpandGroup={onExpandGroup}
-        />
-      </RowState>
-    ),
-    [sid, online, remote, remote?.lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup],
+    (entry: TimelineRowEntry) => {
+      return (
+        <RowState id={entry.key} states={rowStates.current}>
+          <TimelineRow
+            item={entry.item}
+            sessionId={sid}
+            online={online}
+            lostAt={lostAt}
+            awaitingApproval={awaitingApprovalTool}
+            remote={remote}
+            hasSharedFiles={hasSharedFiles}
+            locale={locale}
+            onTerminal={onTerminal}
+            attachments={attachments}
+            outboxAttachments={outboxAttachments}
+            onRestoreText={onRestoreText}
+            onExpandGroup={onExpandGroup}
+          />
+        </RowState>
+      );
+    },
+    [sid, online, remote, lostAt, awaitingApprovalTool, hasSharedFiles, locale, onTerminal, attachments, outboxAttachments, onRestoreText, onExpandGroup],
   );
 
   return (
@@ -1978,7 +1994,7 @@ const ChatBody = memo(function ChatBody({
       {remote && (
         <HistoryOpening
           waiting={!ready && rows.length === 0}
-          connected={header?.connState ? header.connState === ConnState.CONNECTED : remote.conn === "online"}
+          connected={header?.connState === ConnState.CONNECTED}
           scroller={scroller}
           error={historyError || undefined}
           onRetry={onRetryEvents}

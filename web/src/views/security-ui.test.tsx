@@ -13,6 +13,7 @@ import {
   SecurityPage,
 } from "./Security";
 import { Home } from "./Home";
+import Workspace from "../Workspace";
 import * as securityClient from "../core/security-client";
 import type { Remote } from "../remote";
 import {
@@ -151,7 +152,7 @@ it.each(["authority", "member", "machine"])(
     expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
-        message("home.add_via_manager", { name: message("settings.unnamed") }),
+        message("home.add_via_manager", { name: "Android 16 · Pixel 9" }),
       );
   },
 );
@@ -328,4 +329,23 @@ it("lets a confirmed uncertain handoff offer be abandoned with a public-key warn
   expect(host.textContent).toContain("公钥可能已经发布");
   await click(message("new_session.android_abandon"));
   expect(discard).toHaveBeenCalledOnce();
+});
+it("renders Core readable handoff candidates in the transfer management view", async () => {
+  const r = demo("role=authority");
+  await mount(<SecurityPage remote={r} onBack={() => {}} />);
+  await click(message("security.transfer_management"));
+  expect(host.textContent).toContain("Android · Pixel 9");
+});
+it("switches Workspace reactively to RemovedScreen when remote.removed flips without sync.removed", async () => {
+  const r = demo("role=member");
+  await mount(<Workspace remote={r} />);
+  expect(host.textContent).not.toContain("已通过账户签名状态核实本机被移除");
+  r.removalVerified = true;
+  await act(async () => {
+    await r.discardPendingOp();
+  });
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(host.textContent).toContain("已通过账户签名状态核实本机被移除");
+  });
 });

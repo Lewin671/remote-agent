@@ -6,7 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import { localeStore, t as message } from "../i18n";
-import { CommandError } from "../remote";
+import { CommandError } from "../dev/demo";
 import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import { setDemoDirect } from "../dev/direct-demo";
 import { Sheet } from "../ui";

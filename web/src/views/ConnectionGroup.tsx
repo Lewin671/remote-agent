@@ -14,7 +14,7 @@ import {
   type ConnectionGroupView,
 } from "../gen/remoteagent/core/v1/settings_view_pb";
 import { Check, Copy, LoaderCircle } from "../icons";
-import { Banner, Sheet, StateMark, Switch, useRemote, type Mark } from "../ui";
+import { Banner, Sheet, StateMark, Switch, type Mark } from "../ui";
 import type { Remote } from "../remote";
 import { stageToMark } from "./direct-status";
 
@@ -65,7 +65,6 @@ export function DirectSettingsSheet({
   connection?: ConnectionGroupView;
   onClose: () => void;
 }) {
-  useRemote(remote);
   const host = useCoreHost(remote);
   const vm = useMachineSettingsView(host, id);
   const diagVm = useDirectDiagnosticsView(host, id);

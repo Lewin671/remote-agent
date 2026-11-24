@@ -573,6 +573,58 @@ public  final class SyncSessionView extends
     bitField0_ = (bitField0_ & ~0x00000004);
   }
 
+  public static final int TERMINAL_READY_FIELD_NUMBER = 17;
+  private boolean terminalReady_;
+  /**
+   * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+   * @return The terminalReady.
+   */
+  @java.lang.Override
+  public boolean getTerminalReady() {
+    return terminalReady_;
+  }
+  /**
+   * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+   * @param value The terminalReady to set.
+   */
+  private void setTerminalReady(boolean value) {
+    
+    terminalReady_ = value;
+  }
+  /**
+   * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+   */
+  private void clearTerminalReady() {
+
+    terminalReady_ = false;
+  }
+
+  public static final int TERMINAL_WAITING_FIELD_NUMBER = 18;
+  private boolean terminalWaiting_;
+  /**
+   * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+   * @return The terminalWaiting.
+   */
+  @java.lang.Override
+  public boolean getTerminalWaiting() {
+    return terminalWaiting_;
+  }
+  /**
+   * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+   * @param value The terminalWaiting to set.
+   */
+  private void setTerminalWaiting(boolean value) {
+    
+    terminalWaiting_ = value;
+  }
+  /**
+   * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+   */
+  private void clearTerminalWaiting() {
+
+    terminalWaiting_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.core.proto.SyncSessionView parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1243,6 +1295,62 @@ public  final class SyncSessionView extends
       return this;
     }
 
+    /**
+     * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+     * @return The terminalReady.
+     */
+    @java.lang.Override
+    public boolean getTerminalReady() {
+      return instance.getTerminalReady();
+    }
+    /**
+     * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+     * @param value The terminalReady to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalReady(boolean value) {
+      copyOnWrite();
+      instance.setTerminalReady(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_ready = 17 [json_name = "terminalReady"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalReady() {
+      copyOnWrite();
+      instance.clearTerminalReady();
+      return this;
+    }
+
+    /**
+     * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+     * @return The terminalWaiting.
+     */
+    @java.lang.Override
+    public boolean getTerminalWaiting() {
+      return instance.getTerminalWaiting();
+    }
+    /**
+     * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+     * @param value The terminalWaiting to set.
+     * @return This builder for chaining.
+     */
+    public Builder setTerminalWaiting(boolean value) {
+      copyOnWrite();
+      instance.setTerminalWaiting(value);
+      return this;
+    }
+    /**
+     * <code>bool terminal_waiting = 18 [json_name = "terminalWaiting"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearTerminalWaiting() {
+      copyOnWrite();
+      instance.clearTerminalWaiting();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.core.v1.SyncSessionView)
   }
   @java.lang.Override
@@ -1276,12 +1384,14 @@ public  final class SyncSessionView extends
             "scheduleName_",
             "scheduleUnread_",
             "pending_",
+            "terminalReady_",
+            "terminalWaiting_",
           };
           java.lang.String info =
-              "\u0000\u0010\u0000\u0001\u0001\u0010\u0010\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
+              "\u0000\u0012\u0000\u0001\u0001\u0012\u0012\u0000\u0000\u0000\u0001\u0208\u0002\u0208" +
               "\u0003\u1009\u0000\u0004\u0003\u0005\u0003\u0006\u0002\u0007\u0002\b\u0002\t\u0007" +
               "\n\u1009\u0001\u000b\u0007\f\u0007\r\u0007\u000e\u0208\u000f\u0007\u0010\u1009\u0002" +
-              "";
+              "\u0011\u0007\u0012\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

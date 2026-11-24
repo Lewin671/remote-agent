@@ -16,7 +16,6 @@ import org.junit.Test
 @org.robolectric.annotation.Config(sdk=[35], application=android.app.Application::class)
 class NetworkAttachmentTest {
     @get:org.junit.Rule val fixture=RaAppTestRule()
-    private fun field(r:Remote,name:String)=Remote::class.java.getDeclaredField(name).apply{isAccessible=true}.get(r)
     @Test fun networkObservedBeforeAccountLoadingSeedsEachEngine()=runTest {
         val app=fixture.app
         app.observeNetwork("wifi",true)
@@ -41,12 +40,13 @@ class NetworkAttachmentTest {
         val login=async(start=CoroutineStart.LAZY){r.currentToken()}
         try {
             app.attachNetwork(r);runCurrent()
-            assertEquals(0L,field(r,"networkGeneration"))
             login.start();runCurrent();assertEquals(1,challenges)
+            // Re-reporting the seeded network does not retire the cold login.
+            r.networkChanged("wifi",true);runCurrent()
+            assertFalse(login.isCompleted);assertEquals(1,challenges)
             // A real change before any Ready retires the blocked cold login.
             r.networkChanged("cellular",true);runCurrent()
             assertTrue("cold login survived the network switch",login.isCompleted)
-            assertEquals(1L,field(r,"networkGeneration"))
             assertEquals("fresh-token",login.await());assertEquals(2,challenges)
         }finally{login.cancel();r.close();runCurrent()}
     }

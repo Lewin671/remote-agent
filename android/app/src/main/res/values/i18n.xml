@@ -220,25 +220,20 @@
     <string name="dock_trust_folder" formatted="false">"默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"等待确认"</string>
     <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
-    <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
     <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
     <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
     <string name="errors_android_login_expired">"登录失效：%1$s"</string>
-    <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
     <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
-    <string name="errors_android_remote_control_paused_value1_and_retry">"远程控制已暂停：%1$s后再试"</string>
     <string name="errors_android_secure_connection_failed">"安全连接失败：%1$s"</string>
-    <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"安全授权或当前请求尚未核实，操作没有发出；请重试"</string>
     <string name="errors_android_security_state_unavailable" formatted="false">"安全状态不可用"</string>
     <string name="errors_android_server_unavailable_reason">"连不上服务器：%1$s"</string>
     <string name="errors_android_terminal_connection_dropped_reason">"终端连接断开：%1$s"</string>
     <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"终端输入等待授权，已暂停"</string>
     <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"终端输出积压，已停止接收"</string>
     <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
-    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"手机时钟比服务器快，远程控制暂停；请校准系统时间"</string>
-    <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"这条指令已过期，没有发出"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_client_out_of_date" formatted="false">"这个客户端版本较旧，请更新后再试"</string>
+    <string name="errors_command_failed" formatted="false">"指令执行失败"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
     <string name="errors_connection_timed_out" formatted="false">"连接超时"</string>
     <string name="errors_connection_timed_out_reconnecting" formatted="false">"连接超时，正在重连"</string>
@@ -249,6 +244,7 @@
     <string name="errors_history_has_a_gap_retry" formatted="false">"历史记录不连续，请重试读取"</string>
     <string name="errors_history_keys_unavailable_records_from_before_recovery_cannot_be" formatted="false">"历史密钥不可用：恢复前的记录无法解密"</string>
     <string name="errors_invalid_ciphertext_signature_key_or_content_verification_failed" formatted="false">"密文无效：签名、密钥或内容校验失败"</string>
+    <string name="errors_invalid_command" formatted="false">"指令参数无效"</string>
     <string name="errors_it_may_have_been_deleted_or_belong_to_a" formatted="false">"它可能已经被删除，或者属于一台被移除的电脑。"</string>
     <string name="errors_membership_chain_conflict_security_operations_stopped_verify_devices_and" formatted="false">"成员链冲突，安全操作已停止；请核对设备后明确重新加入"</string>
     <string name="errors_names_can_only_be_changed_on_that_device" formatted="false">"名称只能在那台设备上修改"</string>
@@ -290,7 +286,6 @@
     <string name="errors_this_device_s_clock_is_behind_the_account_state_remote" formatted="false">"本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出"</string>
     <string name="errors_this_device_s_security_state_could_not_be_verified" formatted="false">"本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。"</string>
     <string name="errors_this_history_uses_an_old_encryption_format_and_can" formatted="false">"这条历史是旧版加密格式，已不再支持查看"</string>
-    <string name="errors_this_page_is_out_of_date_refresh_or_update" formatted="false">"这个网页版本较旧，请刷新或更新后再试"</string>
     <string name="errors_this_request_has_not_been_verified_by_the_computer" formatted="false">"当前请求尚未由电脑核实，请等待同步"</string>
     <string name="errors_upload_made_no_progress" formatted="false">"上传没有进展"</string>
     <string name="errors_waiting_for_the_owning_computer_to_update_the_current_remote" formatted="false">"等待所属电脑更新当前状态：这台设备没有当时的内容密钥"</string>
@@ -738,7 +733,6 @@
         <item quantity="other">"%1$d 个进行中"</item>
     </plurals>
     <string name="projects_load_failed" formatted="false">"没能读取项目列表"</string>
-    <string name="projects_loading" formatted="false">"正在读取项目列表…"</string>
     <string name="projects_manage" formatted="false">"项目管理"</string>
     <string name="projects_manage_named">"管理 %1$s"</string>
     <string name="projects_new" formatted="false">"新项目…"</string>
@@ -763,7 +757,6 @@
     <string name="projects_remove_note" formatted="false">"移除只是不再列出这个项目，会话和电脑上的目录都不动。"</string>
     <string name="projects_remove_title">"移除 %1$s？"</string>
     <string name="projects_removed" formatted="false">"这个项目已从列表移除"</string>
-    <string name="projects_save_failed">"没能保存，列表保持原样：%1$s"</string>
     <string name="projects_save_failed_reason">"没能保存：%1$s"</string>
     <string name="projects_saving_settings" formatted="false">"正在保存项目设置…"</string>
     <string name="projects_search" formatted="false">"搜索项目"</string>

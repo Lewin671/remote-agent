@@ -3,18 +3,16 @@ import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import { useCoreHost, useDevicesView, useSettingsView } from "../core/host";
+import { renderText } from "../core/text";
 import {
   BROWSER_AUTHORITY_NOTICE,
   createStandaloneSecurityClient,
   renderExitAdviceMessage,
   requestAuthorityPersistence,
 } from "../core/security-client";
-import type {
-  SecurityHandoffCandidate,
-  SecurityPendingOpSummary,
-} from "../gen/remoteagent/core/v1/security_pb";
+import type { SecurityPendingOpSummary } from "../gen/remoteagent/core/v1/security_pb";
+import type { HandoffCandidateView } from "../gen/remoteagent/core/v1/settings_view_pb";
 import type { Text } from "../gen/remoteagent/core/v1/text_pb";
-import { renderText } from "../core/text";
 import { errorText, type Remote } from "../remote";
 import { unregisterPushOnExit } from "../push";
 import { Alert, Banner, NavBar, useRemote, useNow, usePageVisible } from "../ui";
@@ -89,10 +87,11 @@ export function SecurityPage({
   const managerName = settingsVm.authorityName || l10n.t("security.client");
   const recoveryPending = settingsVm.recoveryPending;
   const recoveryReadyMs = settingsVm.recoveryReadyMs;
-  const candidateName = (c: Pick<SecurityHandoffCandidate, "deviceId" | "displayName"> | string) => {
-    if (typeof c !== "string") return c.displayName || l10n.t("security.client");
+  const offers = settingsVm.security?.handoffCandidates ?? [];
+  const candidateName = (c: HandoffCandidateView | string) => {
+    if (typeof c !== "string") return renderText(c.displayNameText) || c.displayName || l10n.t("security.client");
     const offer = offers.find((o) => o.deviceId === c);
-    return offer?.displayName || devicesVm.clients.find((cl) => cl.deviceId === c)?.displayName || l10n.t("security.client");
+    return (offer && (renderText(offer.displayNameText) || offer.displayName)) || devicesVm.clients.find((cl) => cl.deviceId === c)?.displayName || l10n.t("security.client");
   };
   const visible = usePageVisible();
   const [page, setPage] = useState<"overview" | "recovery" | "handoff" | "pending">("overview");
@@ -106,7 +105,6 @@ export function SecurityPage({
   const [lease, setLease] = useState<bigint | null>();
   const [pending, setPending] = useState<SecurityPendingOpSummary>();
   const [rotation, setRotation] = useState(false);
-  const [offers, setOffers] = useState<SecurityHandoffCandidate[]>([]);
   const [target, setTarget] = useState("");
   const [message, setMessage] = useState("");
   const [profileCode, setProfileCode] = useState("");
@@ -124,7 +122,7 @@ export function SecurityPage({
     setRotation(st.needsRecoveryCodeRotation);
     setProfileReady(st.hasAccountPublicProfile);
     setOfferedState(st.hasHandoffOffer);
-    if (st.isAuthority || isAuthority) setOffers(await remote.handoffCandidates());
+    if (st.isAuthority || isAuthority) await remote.loadDevices(false);
   };
   useEffect(() => {
     if (!visible) return;

@@ -511,6 +511,7 @@ type ConnectionStatusView struct {
 	DetailText        *Text                  `protobuf:"bytes,3,opt,name=detail_text,json=detailText,proto3" json:"detail_text,omitempty"`
 	LivePushConnected bool                   `protobuf:"varint,4,opt,name=live_push_connected,json=livePushConnected,proto3" json:"live_push_connected,omitempty"`
 	DisconnectedAtMs  int64                  `protobuf:"varint,6,opt,name=disconnected_at_ms,json=disconnectedAtMs,proto3" json:"disconnected_at_ms,omitempty"`
+	SidebarBadgeText  *Text                  `protobuf:"bytes,7,opt,name=sidebar_badge_text,json=sidebarBadgeText,proto3" json:"sidebar_badge_text,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -578,6 +579,13 @@ func (x *ConnectionStatusView) GetDisconnectedAtMs() int64 {
 		return x.DisconnectedAtMs
 	}
 	return 0
+}
+
+func (x *ConnectionStatusView) GetSidebarBadgeText() *Text {
+	if x != nil {
+		return x.SidebarBadgeText
+	}
+	return nil
 }
 
 type HomeHeadlineView struct {
@@ -2232,7 +2240,7 @@ var File_remoteagent_core_v1_home_view_proto protoreflect.FileDescriptor
 
 const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\n" +
-	"#remoteagent/core/v1/home_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xae\x02\n" +
+	"#remoteagent/core/v1/home_view.proto\x12\x13remoteagent.core.v1\x1a\x1eremoteagent/core/v1/text.proto\x1a\x1aremoteagent/v1/event.proto\"\xf7\x02\n" +
 	"\x14ConnectionStatusView\x124\n" +
 	"\x05state\x18\x01 \x01(\x0e2\x1e.remoteagent.core.v1.ConnStateR\x05state\x128\n" +
 	"\n" +
@@ -2240,7 +2248,8 @@ const file_remoteagent_core_v1_home_view_proto_rawDesc = "" +
 	"\vdetail_text\x18\x03 \x01(\v2\x19.remoteagent.core.v1.TextR\n" +
 	"detailText\x12.\n" +
 	"\x13live_push_connected\x18\x04 \x01(\bR\x11livePushConnected\x12,\n" +
-	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMsJ\x04\b\x05\x10\x06R\x06reason\"\x95\x03\n" +
+	"\x12disconnected_at_ms\x18\x06 \x01(\x03R\x10disconnectedAtMs\x12G\n" +
+	"\x12sidebar_badge_text\x18\a \x01(\v2\x19.remoteagent.core.v1.TextR\x10sidebarBadgeTextJ\x04\b\x05\x10\x06R\x06reason\"\x95\x03\n" +
 	"\x10HomeHeadlineView\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.remoteagent.core.v1.HeadlineKindR\x04kind\x12/\n" +
 	"\x05title\x18\x02 \x01(\v2\x19.remoteagent.core.v1.TextR\x05title\x12'\n" +
@@ -2556,69 +2565,70 @@ var file_remoteagent_core_v1_home_view_proto_depIdxs = []int32{
 	0,  // 0: remoteagent.core.v1.ConnectionStatusView.state:type_name -> remoteagent.core.v1.ConnState
 	23, // 1: remoteagent.core.v1.ConnectionStatusView.badge_text:type_name -> remoteagent.core.v1.Text
 	23, // 2: remoteagent.core.v1.ConnectionStatusView.detail_text:type_name -> remoteagent.core.v1.Text
-	3,  // 3: remoteagent.core.v1.HomeHeadlineView.kind:type_name -> remoteagent.core.v1.HeadlineKind
-	23, // 4: remoteagent.core.v1.HomeHeadlineView.title:type_name -> remoteagent.core.v1.Text
-	23, // 5: remoteagent.core.v1.HomeHeadlineView.sub:type_name -> remoteagent.core.v1.Text
-	4,  // 6: remoteagent.core.v1.HomeEmptyView.kind:type_name -> remoteagent.core.v1.HomeEmptyKind
-	23, // 7: remoteagent.core.v1.HomeEmptyView.message:type_name -> remoteagent.core.v1.Text
-	23, // 8: remoteagent.core.v1.AttentionCardView.title:type_name -> remoteagent.core.v1.Text
-	23, // 9: remoteagent.core.v1.AttentionCardView.kind_text:type_name -> remoteagent.core.v1.Text
-	23, // 10: remoteagent.core.v1.AttentionCardView.where:type_name -> remoteagent.core.v1.Text
-	23, // 11: remoteagent.core.v1.AttentionCardView.time:type_name -> remoteagent.core.v1.Text
-	7,  // 12: remoteagent.core.v1.AttentionCardView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
-	23, // 13: remoteagent.core.v1.AttentionCardView.always_label:type_name -> remoteagent.core.v1.Text
-	23, // 14: remoteagent.core.v1.AttentionRowView.title:type_name -> remoteagent.core.v1.Text
-	23, // 15: remoteagent.core.v1.AttentionRowView.kind_text:type_name -> remoteagent.core.v1.Text
-	23, // 16: remoteagent.core.v1.AttentionRowView.summary:type_name -> remoteagent.core.v1.Text
-	23, // 17: remoteagent.core.v1.AttentionRowView.detail:type_name -> remoteagent.core.v1.Text
-	23, // 18: remoteagent.core.v1.SessionRowView.title:type_name -> remoteagent.core.v1.Text
-	23, // 19: remoteagent.core.v1.SessionRowView.time:type_name -> remoteagent.core.v1.Text
-	2,  // 20: remoteagent.core.v1.SessionRowView.status:type_name -> remoteagent.core.v1.SessionDisplayStatus
-	1,  // 21: remoteagent.core.v1.SessionRowView.tone:type_name -> remoteagent.core.v1.SessionTone
-	23, // 22: remoteagent.core.v1.SessionRowView.status_text:type_name -> remoteagent.core.v1.Text
-	23, // 23: remoteagent.core.v1.SessionRowView.preview:type_name -> remoteagent.core.v1.Text
-	23, // 24: remoteagent.core.v1.SessionRowView.second_line:type_name -> remoteagent.core.v1.Text
-	24, // 25: remoteagent.core.v1.SessionRowView.agent:type_name -> remoteagent.v1.Agent
-	23, // 26: remoteagent.core.v1.SessionRowView.meta_line:type_name -> remoteagent.core.v1.Text
-	23, // 27: remoteagent.core.v1.EndedRowView.title:type_name -> remoteagent.core.v1.Text
-	23, // 28: remoteagent.core.v1.EndedRowView.right:type_name -> remoteagent.core.v1.Text
-	5,  // 29: remoteagent.core.v1.EndedGroupView.group_kind:type_name -> remoteagent.core.v1.EndedGroupKind
-	23, // 30: remoteagent.core.v1.EndedGroupView.label:type_name -> remoteagent.core.v1.Text
-	14, // 31: remoteagent.core.v1.EndedGroupView.items:type_name -> remoteagent.core.v1.EndedRowView
-	6,  // 32: remoteagent.core.v1.TailRowView.kind:type_name -> remoteagent.core.v1.TailKind
-	23, // 33: remoteagent.core.v1.TailRowView.text:type_name -> remoteagent.core.v1.Text
-	23, // 34: remoteagent.core.v1.ScopeRowView.name:type_name -> remoteagent.core.v1.Text
-	23, // 35: remoteagent.core.v1.ScopeRowView.subtitle:type_name -> remoteagent.core.v1.Text
-	23, // 36: remoteagent.core.v1.ProjectRowView.name:type_name -> remoteagent.core.v1.Text
-	23, // 37: remoteagent.core.v1.ProjectRowView.subtitle:type_name -> remoteagent.core.v1.Text
-	23, // 38: remoteagent.core.v1.ProjectRowView.save_error:type_name -> remoteagent.core.v1.Text
-	18, // 39: remoteagent.core.v1.ProjectListingView.pinned:type_name -> remoteagent.core.v1.ProjectRowView
-	18, // 40: remoteagent.core.v1.ProjectListingView.others:type_name -> remoteagent.core.v1.ProjectRowView
-	23, // 41: remoteagent.core.v1.ProjectListingView.empty_match:type_name -> remoteagent.core.v1.Text
-	23, // 42: remoteagent.core.v1.HomeViewModel.scope_title:type_name -> remoteagent.core.v1.Text
-	8,  // 43: remoteagent.core.v1.HomeViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
-	9,  // 44: remoteagent.core.v1.HomeViewModel.headline:type_name -> remoteagent.core.v1.HomeHeadlineView
-	10, // 45: remoteagent.core.v1.HomeViewModel.empty:type_name -> remoteagent.core.v1.HomeEmptyView
-	23, // 46: remoteagent.core.v1.HomeViewModel.filter_summary:type_name -> remoteagent.core.v1.Text
-	11, // 47: remoteagent.core.v1.HomeViewModel.top_attention_card:type_name -> remoteagent.core.v1.AttentionCardView
-	12, // 48: remoteagent.core.v1.HomeViewModel.attention:type_name -> remoteagent.core.v1.AttentionRowView
-	13, // 49: remoteagent.core.v1.HomeViewModel.running:type_name -> remoteagent.core.v1.SessionRowView
-	15, // 50: remoteagent.core.v1.HomeViewModel.ended_groups:type_name -> remoteagent.core.v1.EndedGroupView
-	16, // 51: remoteagent.core.v1.HomeViewModel.ended_tail:type_name -> remoteagent.core.v1.TailRowView
-	17, // 52: remoteagent.core.v1.HomeViewModel.scope_menu:type_name -> remoteagent.core.v1.ScopeRowView
-	19, // 53: remoteagent.core.v1.HomeViewModel.sidebar_projects:type_name -> remoteagent.core.v1.ProjectListingView
-	22, // 54: remoteagent.core.v1.HomeViewModel.top_attention_question:type_name -> remoteagent.core.v1.HomeQuestionCardView
-	23, // 55: remoteagent.core.v1.HomeQuestionCardView.badge_text:type_name -> remoteagent.core.v1.Text
-	23, // 56: remoteagent.core.v1.HomeQuestionCardView.time_text:type_name -> remoteagent.core.v1.Text
-	23, // 57: remoteagent.core.v1.HomeQuestionCardView.title:type_name -> remoteagent.core.v1.Text
-	23, // 58: remoteagent.core.v1.HomeQuestionCardView.where:type_name -> remoteagent.core.v1.Text
-	21, // 59: remoteagent.core.v1.HomeQuestionCardView.options:type_name -> remoteagent.core.v1.HomeQuestionOptionView
-	23, // 60: remoteagent.core.v1.HomeQuestionCardView.offline_note:type_name -> remoteagent.core.v1.Text
-	61, // [61:61] is the sub-list for method output_type
-	61, // [61:61] is the sub-list for method input_type
-	61, // [61:61] is the sub-list for extension type_name
-	61, // [61:61] is the sub-list for extension extendee
-	0,  // [0:61] is the sub-list for field type_name
+	23, // 3: remoteagent.core.v1.ConnectionStatusView.sidebar_badge_text:type_name -> remoteagent.core.v1.Text
+	3,  // 4: remoteagent.core.v1.HomeHeadlineView.kind:type_name -> remoteagent.core.v1.HeadlineKind
+	23, // 5: remoteagent.core.v1.HomeHeadlineView.title:type_name -> remoteagent.core.v1.Text
+	23, // 6: remoteagent.core.v1.HomeHeadlineView.sub:type_name -> remoteagent.core.v1.Text
+	4,  // 7: remoteagent.core.v1.HomeEmptyView.kind:type_name -> remoteagent.core.v1.HomeEmptyKind
+	23, // 8: remoteagent.core.v1.HomeEmptyView.message:type_name -> remoteagent.core.v1.Text
+	23, // 9: remoteagent.core.v1.AttentionCardView.title:type_name -> remoteagent.core.v1.Text
+	23, // 10: remoteagent.core.v1.AttentionCardView.kind_text:type_name -> remoteagent.core.v1.Text
+	23, // 11: remoteagent.core.v1.AttentionCardView.where:type_name -> remoteagent.core.v1.Text
+	23, // 12: remoteagent.core.v1.AttentionCardView.time:type_name -> remoteagent.core.v1.Text
+	7,  // 13: remoteagent.core.v1.AttentionCardView.always_kind:type_name -> remoteagent.core.v1.AlwaysAllowKind
+	23, // 14: remoteagent.core.v1.AttentionCardView.always_label:type_name -> remoteagent.core.v1.Text
+	23, // 15: remoteagent.core.v1.AttentionRowView.title:type_name -> remoteagent.core.v1.Text
+	23, // 16: remoteagent.core.v1.AttentionRowView.kind_text:type_name -> remoteagent.core.v1.Text
+	23, // 17: remoteagent.core.v1.AttentionRowView.summary:type_name -> remoteagent.core.v1.Text
+	23, // 18: remoteagent.core.v1.AttentionRowView.detail:type_name -> remoteagent.core.v1.Text
+	23, // 19: remoteagent.core.v1.SessionRowView.title:type_name -> remoteagent.core.v1.Text
+	23, // 20: remoteagent.core.v1.SessionRowView.time:type_name -> remoteagent.core.v1.Text
+	2,  // 21: remoteagent.core.v1.SessionRowView.status:type_name -> remoteagent.core.v1.SessionDisplayStatus
+	1,  // 22: remoteagent.core.v1.SessionRowView.tone:type_name -> remoteagent.core.v1.SessionTone
+	23, // 23: remoteagent.core.v1.SessionRowView.status_text:type_name -> remoteagent.core.v1.Text
+	23, // 24: remoteagent.core.v1.SessionRowView.preview:type_name -> remoteagent.core.v1.Text
+	23, // 25: remoteagent.core.v1.SessionRowView.second_line:type_name -> remoteagent.core.v1.Text
+	24, // 26: remoteagent.core.v1.SessionRowView.agent:type_name -> remoteagent.v1.Agent
+	23, // 27: remoteagent.core.v1.SessionRowView.meta_line:type_name -> remoteagent.core.v1.Text
+	23, // 28: remoteagent.core.v1.EndedRowView.title:type_name -> remoteagent.core.v1.Text
+	23, // 29: remoteagent.core.v1.EndedRowView.right:type_name -> remoteagent.core.v1.Text
+	5,  // 30: remoteagent.core.v1.EndedGroupView.group_kind:type_name -> remoteagent.core.v1.EndedGroupKind
+	23, // 31: remoteagent.core.v1.EndedGroupView.label:type_name -> remoteagent.core.v1.Text
+	14, // 32: remoteagent.core.v1.EndedGroupView.items:type_name -> remoteagent.core.v1.EndedRowView
+	6,  // 33: remoteagent.core.v1.TailRowView.kind:type_name -> remoteagent.core.v1.TailKind
+	23, // 34: remoteagent.core.v1.TailRowView.text:type_name -> remoteagent.core.v1.Text
+	23, // 35: remoteagent.core.v1.ScopeRowView.name:type_name -> remoteagent.core.v1.Text
+	23, // 36: remoteagent.core.v1.ScopeRowView.subtitle:type_name -> remoteagent.core.v1.Text
+	23, // 37: remoteagent.core.v1.ProjectRowView.name:type_name -> remoteagent.core.v1.Text
+	23, // 38: remoteagent.core.v1.ProjectRowView.subtitle:type_name -> remoteagent.core.v1.Text
+	23, // 39: remoteagent.core.v1.ProjectRowView.save_error:type_name -> remoteagent.core.v1.Text
+	18, // 40: remoteagent.core.v1.ProjectListingView.pinned:type_name -> remoteagent.core.v1.ProjectRowView
+	18, // 41: remoteagent.core.v1.ProjectListingView.others:type_name -> remoteagent.core.v1.ProjectRowView
+	23, // 42: remoteagent.core.v1.ProjectListingView.empty_match:type_name -> remoteagent.core.v1.Text
+	23, // 43: remoteagent.core.v1.HomeViewModel.scope_title:type_name -> remoteagent.core.v1.Text
+	8,  // 44: remoteagent.core.v1.HomeViewModel.connection:type_name -> remoteagent.core.v1.ConnectionStatusView
+	9,  // 45: remoteagent.core.v1.HomeViewModel.headline:type_name -> remoteagent.core.v1.HomeHeadlineView
+	10, // 46: remoteagent.core.v1.HomeViewModel.empty:type_name -> remoteagent.core.v1.HomeEmptyView
+	23, // 47: remoteagent.core.v1.HomeViewModel.filter_summary:type_name -> remoteagent.core.v1.Text
+	11, // 48: remoteagent.core.v1.HomeViewModel.top_attention_card:type_name -> remoteagent.core.v1.AttentionCardView
+	12, // 49: remoteagent.core.v1.HomeViewModel.attention:type_name -> remoteagent.core.v1.AttentionRowView
+	13, // 50: remoteagent.core.v1.HomeViewModel.running:type_name -> remoteagent.core.v1.SessionRowView
+	15, // 51: remoteagent.core.v1.HomeViewModel.ended_groups:type_name -> remoteagent.core.v1.EndedGroupView
+	16, // 52: remoteagent.core.v1.HomeViewModel.ended_tail:type_name -> remoteagent.core.v1.TailRowView
+	17, // 53: remoteagent.core.v1.HomeViewModel.scope_menu:type_name -> remoteagent.core.v1.ScopeRowView
+	19, // 54: remoteagent.core.v1.HomeViewModel.sidebar_projects:type_name -> remoteagent.core.v1.ProjectListingView
+	22, // 55: remoteagent.core.v1.HomeViewModel.top_attention_question:type_name -> remoteagent.core.v1.HomeQuestionCardView
+	23, // 56: remoteagent.core.v1.HomeQuestionCardView.badge_text:type_name -> remoteagent.core.v1.Text
+	23, // 57: remoteagent.core.v1.HomeQuestionCardView.time_text:type_name -> remoteagent.core.v1.Text
+	23, // 58: remoteagent.core.v1.HomeQuestionCardView.title:type_name -> remoteagent.core.v1.Text
+	23, // 59: remoteagent.core.v1.HomeQuestionCardView.where:type_name -> remoteagent.core.v1.Text
+	21, // 60: remoteagent.core.v1.HomeQuestionCardView.options:type_name -> remoteagent.core.v1.HomeQuestionOptionView
+	23, // 61: remoteagent.core.v1.HomeQuestionCardView.offline_note:type_name -> remoteagent.core.v1.Text
+	62, // [62:62] is the sub-list for method output_type
+	62, // [62:62] is the sub-list for method input_type
+	62, // [62:62] is the sub-list for extension type_name
+	62, // [62:62] is the sub-list for extension extendee
+	0,  // [0:62] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_core_v1_home_view_proto_init() }

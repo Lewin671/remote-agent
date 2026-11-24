@@ -12,6 +12,7 @@ import {
   useCoreHost,
   useNewSessionView,
   useProjectView,
+  useSyncState,
   type DraftCandidateEntry,
   type Go,
 } from "../core/host";
@@ -22,7 +23,7 @@ import { Agent } from "../gen/remoteagent/v1/event_pb";
 import { ArrowUp, Check, ChevronDown, ChevronRight, X } from "../icons";
 import { useKeyboardDismiss } from "../keyboard";
 import type { Remote } from "../remote";
-import { anchorOf, Avatar, Banner, sendKeys, Sheet, StateMark, usePointerFine, useRemote } from "../ui";
+import { anchorOf, Avatar, Banner, sendKeys, Sheet, StateMark, usePointerFine } from "../ui";
 import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { useAutoGrow } from "./Composer";
 import { ComposerPicker, keepComposerFocus } from "./ComposerPicker";
@@ -55,7 +56,6 @@ const NOTICE_ACTION_LABEL: Partial<Record<NoticeActionKind, () => string>> = {
 /** Pure ViewModel renderer for the new-session composer; used by NewBox and golden UI tests. */
 export function NewBoxView(p: {
   vm: NewSessionViewModel;
-  remote?: Remote;
   draft?: AttachmentDraftView;
   attachments?: AttachmentExecutor;
   autoFocus?: boolean;
@@ -396,8 +396,8 @@ export function NewBoxView(p: {
 
 /** Connected new-session box backed by CoreHost. */
 export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", fixed, onPickProject, onClose, notice, settings = false, onDraft }: { remote: Remote; projectKey: string; go: Go; autoFocus?: boolean; variant?: "sheet" | "start"; fixed?: boolean; onPickProject?: () => void; onClose?: () => void; notice?: ReactNode; settings?: boolean; onDraft?: () => void }) {
-  useRemote(remote);
   const host = useCoreHost(remote, go);
+  const sync = useSyncState(host);
   const vm = useNewSessionView(host, projectKey);
   const activeKey = vm.projectKey || projectKey;
   const scope = useMemo(() => newSessionDraftScope(activeKey), [activeKey]);
@@ -416,14 +416,13 @@ export function NewBox({ remote, projectKey, go, autoFocus, variant = "sheet", f
   }, [host, scope, activeKey, machineId]);
 
   useEffect(() => {
-    if (!vm.settled && activeKey && remote.moreSessions) void remote.loadMoreSessions();
-  }, [vm.settled, activeKey, remote, remote.moreSessions]);
+    if (!vm.settled && activeKey && sync.hasMoreSessions) void remote.loadMoreSessions();
+  }, [vm.settled, activeKey, remote, sync.hasMoreSessions]);
 
   return (
     <NewBoxView
       key={activeKey}
       vm={vm}
-      remote={remote}
       draft={draft}
       attachments={host.attachments}
       autoFocus={autoFocus}

@@ -3,7 +3,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
-import { patchSyncState } from "../test/remote-fixture";
+import { getCoreHost } from "../core/host";
+import { TimerKind } from "../gen/remoteagent/core/v1/app_pb";
 import type { Remote } from "../remote";
 import { TerminalView } from "./Terminal";
 
@@ -41,7 +42,6 @@ function stubCoreEntropy(byte7: number) {
 }
 function setMainOnline(remote: DemoRemote, online: boolean) {
   remote.setDemoMainOnline(online);
-  patchSyncState(remote, { conn: online ? "online" : "offline" });
 }
 async function mount() {
   vi.useFakeTimers();
@@ -123,10 +123,10 @@ it("does not drop a queued reopen when offline arrives in the same turn as termi
   await act(async () => { state.hide(true); document.dispatchEvent(new Event("visibilitychange")); });
   await act(async () => {
     state.end("closed");
-    patchSyncState(state.remote, { conn: "offline" });
+    setMainOnline(state.remote, false);
   });
   expect(state.open).toHaveBeenCalledTimes(2);
-  await act(async () => { patchSyncState(state.remote, { conn: "online" }); });
+  await act(async () => { setMainOnline(state.remote, true); });
   await act(async () => { await state.frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   expect(state.send).not.toHaveBeenCalled();
   await act(async () => { state.hide(false); document.dispatchEvent(new Event("visibilitychange")); });
@@ -268,7 +268,6 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   const remote = track(DemoRemote.create(new URLSearchParams("conn=connecting")));
   await act(async () => { remote.start(); });
-  patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: true });
   const open = vi.spyOn(remote, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   const s1 = remote.sessions.get("s-run")!;
@@ -281,7 +280,7 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   expect(host.querySelector(".tchip")?.textContent).not.toContain("Disconnected");
 
   // Grace expires while still offline -> transitions to closed card.
-  await act(async () => { patchSyncState(remote, { conn: "connecting", listed: false, reachabilityUnknown: false }); });
+  await act(async () => { getCoreHost(remote).fireActiveTimer(TimerKind.LINK_GRACE, "cold-start"); });
   expect(open).toHaveBeenCalledTimes(0);
   expect(host.querySelector(".tstate")).not.toBeNull();
 
@@ -289,7 +288,6 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   act(() => root!.unmount());
   const remote2 = track(DemoRemote.create(new URLSearchParams("conn=connecting")));
   await act(async () => { remote2.start(); });
-  patchSyncState(remote2, { conn: "connecting", listed: false, reachabilityUnknown: true });
   const open2 = vi.spyOn(remote2, "openTerminal").mockResolvedValue({ close: vi.fn(), send: vi.fn() } as never);
   root = createRoot(host);
   await act(async () => root!.render(<TerminalView remote={remote2} session={remote2.sessions.get("s-run")!} running />));
@@ -297,7 +295,6 @@ it("keeps terminal in connecting state during cold-start reachability unknown, o
   expect(host.querySelector(".tstate")).toBeNull();
   await act(async () => {
     remote2.setDemoMainOnline(true);
-    patchSyncState(remote2, { conn: "online", listed: true, reachabilityUnknown: false });
   });
   expect(open2).toHaveBeenCalledTimes(1);
 });

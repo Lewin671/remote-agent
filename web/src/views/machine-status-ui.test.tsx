@@ -12,10 +12,9 @@ import { DemoRemote } from "../dev/demo";
 import { CommandResultSchema, ProjectSummarySchema } from "../gen/remoteagent/v1/remote_pb";
 import type { MachineStatus } from "../gen/remoteagent/v1/local_pb";
 import { localeStore, t as message } from "../i18n";
-import { CommandError, type CommandKind } from "../remote";
+import { CommandError, type CommandKind } from "../dev/demo";
 import { DiskReminders } from "./DiskReminders";
 import { MachinePage } from "./Settings";
-import { MachineRings } from "./MachineRings";
 import { MachineStatusPage } from "./MachineStatus";
 import { Roll } from "./machine-status-hooks";
 import { ProjectPage } from "./Project";
@@ -97,50 +96,6 @@ function spyStatus(
   };
   return calls;
 }
-
-describe("the rings at the top of a computer's page", () => {
-  it("draws CPU, memory and free disk space, and opens the status", async () => {
-    const r = demo();
-    const go = vi.fn();
-    mount(<MachineRings remote={r} id="mac" go={go} />);
-    await vi.waitFor(() => expect(host.querySelectorAll(".ms-ring b")[2].textContent).toBe("42 GB"));
-    expect([...host.querySelectorAll(".ms-ring small")].map((e) => e.textContent)).toEqual(["CPU", "内存", "磁盘可用"]);
-    expect(host.querySelectorAll(".ms-ring .warn, .ms-ring.warn, .ms-ring.crit")).toHaveLength(0);
-    // Each ring reads on its own.
-    expect([...host.querySelectorAll(".ms-ring .ms-sr")].map((e) => e.textContent)).toEqual([expect.stringMatching(/^CPU，\d+%$/), expect.stringMatching(/^内存，\d+%$/), "磁盘可用，42 GB"]);
-    await click(host.querySelector("button"));
-    expect(go).toHaveBeenCalledWith("machine-status/mac");
-  });
-
-  it("turns only the tight ring red, and the one that needs a look orange", async () => {
-    const r = demo("ms=tight");
-    mount(<MachineRings remote={r} id="mac" go={none} />);
-    await vi.waitFor(() => expect(host.querySelectorAll(".ms-ring b")[2].textContent).toBe("1.2 GB"));
-    const rings = [...host.querySelectorAll(".ms-ring")];
-    expect(rings.map((e) => (e.classList.contains("crit") ? "crit" : e.classList.contains("warn") ? "warn" : ""))).toEqual(["", "warn", "crit"]);
-  });
-
-  it("is only tracks and dashes, faded and not openable, for a computer that is offline", () => {
-    const r = demo();
-    const go = vi.fn();
-    mount(<MachineRings remote={r} id="mini" go={go} />);
-    const card = host.querySelector<HTMLButtonElement>("button.ms-rings")!;
-    expect(card.disabled).toBe(true);
-    expect(card.classList.contains("off")).toBe(true);
-    expect([...host.querySelectorAll(".ms-ring b")].map((e) => e.textContent)).toEqual(["—", "—", "—"]);
-    expect(host.querySelectorAll("circle.p")).toHaveLength(0);
-    card.click();
-    expect(go).not.toHaveBeenCalled();
-  });
-
-  it("is not there for a daemon that cannot report, and asks for nothing", () => {
-    const r = demo();
-    const ask = spyStatus(r);
-    mount(<MachineRings remote={r} id="vps" go={none} />);
-    expect(host.querySelector(".ms-rings")).toBeNull();
-    expect(ask).toHaveLength(0);
-  });
-});
 
 describe("电脑状态", () => {
   it("shows the CPU chart, the two small cards and the sessions that use most", async () => {

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.showForTest
+
 import android.app.Application
 import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
@@ -30,7 +32,6 @@ import io.github.lewin671.remoteagent.core.proto.MachineListCardView
 import io.github.lewin671.remoteagent.core.proto.PlainDiagCheckView
 import io.github.lewin671.remoteagent.core.proto.SettingsViewModel
 import io.github.lewin671.remoteagent.core.proto.Text as CoreText
-import io.github.lewin671.remoteagent.core.transport.PeerState
 import io.github.lewin671.remoteagent.core.transport.RtcFactory
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.DeviceKind
@@ -95,11 +96,6 @@ class DirectTransportUiTest {
                             machineId,
                             online = true,
                             lastSeenMs = 0L,
-                            linkState = PeerState(
-                                reachable = true,
-                                ready = true,
-                                authorized = true,
-                            ),
                             meta = MachineMeta.newBuilder().setHostname("desk.example").setOs("darwin").build(),
                         ),
                     ),
@@ -351,18 +347,6 @@ class DirectTransportUiTest {
         fun lit(s: String) = CoreText.newBuilder().setLiteral(s).build()
         val vm = ScreenGoldenLoader.machineSettingsView("machine_settings_edit", "relayFailedDiag")
         var retried = false
-        val state = RemoteState(
-            conn = ConnState.ONLINE,
-            link = Link.ONLINE,
-            machines = mapOf(
-                "m1" to MachineView(
-                    "m1",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                ),
-            ),
-        )
         val diagVm = DirectDiagnosticsViewModel.newBuilder()
             .setMachineId("m1")
             .setSupported(true)
@@ -417,18 +401,6 @@ class DirectTransportUiTest {
     @Test
     fun unifiedDirectSheetShowsConnectedPathCheckWhenActive() {
         fun lit(s: String) = CoreText.newBuilder().setLiteral(s).build()
-        val state = RemoteState(
-            conn = ConnState.ONLINE,
-            link = Link.ONLINE,
-            machines = mapOf(
-                "m1" to MachineView(
-                    "m1",
-                    online = true,
-                    lastSeenMs = 0L,
-                    linkState = PeerState(reachable = true, ready = true),
-                ),
-            ),
-        )
         val diagView = ConnectionGroupView.newBuilder()
             .setToggleVisible(true)
             .setToggleEnabled(true)

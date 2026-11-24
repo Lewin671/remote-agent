@@ -230,6 +230,7 @@ export interface MessageArgs {
   "dock.waiting_confirmation": { [name: string]: never };
   "errors.cannot_connect_to_terminal": { [name: string]: never };
   "errors.client_out_of_date": { [name: string]: never };
+  "errors.command_failed": { [name: string]: never };
   "errors.connection_dropped_midway": { [name: string]: never };
   "errors.connection_timed_out": { [name: string]: never };
   "errors.connection_timed_out_reconnecting": { [name: string]: never };
@@ -241,6 +242,7 @@ export interface MessageArgs {
   "errors.history_has_a_gap_retry": { [name: string]: never };
   "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
   "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
+  "errors.invalid_command": { [name: string]: never };
   "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
   "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
   "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
@@ -282,7 +284,6 @@ export interface MessageArgs {
   "errors.this_device_s_clock_is_behind_the_account_state_remote": { [name: string]: never };
   "errors.this_device_s_security_state_could_not_be_verified": { [name: string]: never };
   "errors.this_history_uses_an_old_encryption_format_and_can": { [name: string]: never };
-  "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
   "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
   "errors.upload_made_no_progress": { [name: string]: never };
   "errors.waiting_for_the_owning_computer_to_update_the_current_remote": { [name: string]: never };
@@ -603,7 +604,6 @@ export interface MessageArgs {
   "projects.filter_show_all": { [name: string]: never };
   "projects.live_count": { count: number };
   "projects.load_failed": { [name: string]: never };
-  "projects.loading": { [name: string]: never };
   "projects.manage": { [name: string]: never };
   "projects.manage_named": { name: string };
   "projects.new": { [name: string]: never };
@@ -624,7 +624,6 @@ export interface MessageArgs {
   "projects.remove_note": { [name: string]: never };
   "projects.remove_title": { name: string };
   "projects.removed": { [name: string]: never };
-  "projects.save_failed": { reason: string };
   "projects.save_failed_reason": { reason: string };
   "projects.saving_settings": { [name: string]: never };
   "projects.search": { [name: string]: never };
@@ -2039,6 +2038,7 @@ export const messages = {
     "dock.waiting_confirmation": "Waiting for confirmation",
     "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
     "errors.client_out_of_date": "This client version is out of date. Update and retry.",
+    "errors.command_failed": "Command failed",
     "errors.connection_dropped_midway": "Connection dropped midway",
     "errors.connection_timed_out": "Connection timed out",
     "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
@@ -2050,6 +2050,7 @@ export const messages = {
     "errors.history_has_a_gap_retry": "History has a gap. Retry.",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
+    "errors.invalid_command": "Invalid command arguments",
     "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
     "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
@@ -2091,7 +2092,6 @@ export const messages = {
     "errors.this_device_s_clock_is_behind_the_account_state_remote": "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.",
     "errors.this_device_s_security_state_could_not_be_verified": "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.",
     "errors.this_history_uses_an_old_encryption_format_and_can": "This history uses an old encryption format and can no longer be viewed",
-    "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
     "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
     "errors.upload_made_no_progress": "Upload made no progress",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "Waiting for the owning computer to update the current state: this device lacks the content key from that time",
@@ -2580,7 +2580,6 @@ export const messages = {
       "plural": "count"
     },
     "projects.load_failed": "Could not load projects",
-    "projects.loading": "Loading projects…",
     "projects.manage": "Manage projects",
     "projects.manage_named": "Manage {name}",
     "projects.new": "New project…",
@@ -2613,7 +2612,6 @@ export const messages = {
     "projects.remove_note": "Removing a project only hides it from the list. Sessions and the folder on your computer stay in place.",
     "projects.remove_title": "Remove {name}?",
     "projects.removed": "This project was removed from the list",
-    "projects.save_failed": "Could not save. The list is unchanged: {reason}",
     "projects.save_failed_reason": "Could not save: {reason}",
     "projects.saving_settings": "Saving project settings…",
     "projects.search": "Search projects",
@@ -4383,6 +4381,7 @@ export const messages = {
     "dock.waiting_confirmation": "等待确认",
     "errors.cannot_connect_to_terminal": "连不上终端",
     "errors.client_out_of_date": "这个客户端版本较旧，请更新后再试",
+    "errors.command_failed": "指令执行失败",
     "errors.connection_dropped_midway": "连接中途断了",
     "errors.connection_timed_out": "连接超时",
     "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
@@ -4394,6 +4393,7 @@ export const messages = {
     "errors.history_has_a_gap_retry": "历史记录不连续，请重试读取",
     "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
     "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
+    "errors.invalid_command": "指令参数无效",
     "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
     "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
     "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
@@ -4435,7 +4435,6 @@ export const messages = {
     "errors.this_device_s_clock_is_behind_the_account_state_remote": "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
     "errors.this_device_s_security_state_could_not_be_verified": "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",
     "errors.this_history_uses_an_old_encryption_format_and_can": "这条历史是旧版加密格式，已不再支持查看",
-    "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
     "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
     "errors.upload_made_no_progress": "上传没有进展",
     "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥",
@@ -4896,7 +4895,6 @@ export const messages = {
       "plural": "count"
     },
     "projects.load_failed": "没能读取项目列表",
-    "projects.loading": "正在读取项目列表…",
     "projects.manage": "项目管理",
     "projects.manage_named": "管理 {name}",
     "projects.new": "新项目…",
@@ -4927,7 +4925,6 @@ export const messages = {
     "projects.remove_note": "移除只是不再列出这个项目，会话和电脑上的目录都不动。",
     "projects.remove_title": "移除 {name}？",
     "projects.removed": "这个项目已从列表移除",
-    "projects.save_failed": "没能保存，列表保持原样：{reason}",
     "projects.save_failed_reason": "没能保存：{reason}",
     "projects.saving_settings": "正在保存项目设置…",
     "projects.search": "搜索项目",

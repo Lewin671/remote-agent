@@ -8,36 +8,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import io.github.lewin671.remoteagent.core.CommandException
-import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.proto.Command
-import io.github.lewin671.remoteagent.proto.CommandResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** One command with its progress: running, and the error of the last try. */
+/** One action with its progress: running, and the error of the last try. */
 class Action(private val scope: CoroutineScope) {
     var running by mutableStateOf(false)
         private set
     var error by mutableStateOf("")
-    var unknown by mutableStateOf(false)
-        private set
-    var diskFull by mutableStateOf(false)
-        private set
 
-    fun run(block: suspend () -> CommandResult?, onDone: (CommandResult?) -> Unit = {}) {
+    fun run(block: suspend () -> Unit, onDone: () -> Unit = {}) {
         if (running) return
         running = true
         error = ""
-        unknown = false
-        diskFull = false
         scope.launch {
             try {
-                onDone(block())
+                block()
+                onDone()
             } catch (e: Exception) {
                 error = displayError(e)
-                unknown = (e as? CommandException)?.unknown == true
-                diskFull = (e as? CommandException)?.code == "disk_full"
             } finally {
                 running = false
             }
@@ -50,8 +39,6 @@ fun rememberAction(vararg keys: Any?, authority: Boolean = false): Action {
     val scope = if (authority) rememberAuthorityScope() else rememberCoroutineScope()
     return remember(*keys) { Action(scope) }
 }
-
-fun Remote.cmd(b: Command.Builder.() -> Unit): Command = Command.newBuilder().apply(b).build()
 
 /**
  * Lag-free Compose text state synchronized with Core's [AttachmentDraftView.text] and
