@@ -587,6 +587,20 @@ final class ImageCenter {
         }
     }
 
+    /// Loads one image `NSItemProvider` via `loadFileRepresentation` + `readPicked` so oversized clipboard
+    /// images are refused by size before reading bytes into memory.
+    nonisolated static func loadBoundedImageData(from provider: NSItemProvider) async throws -> Data {
+        try await withCheckedThrowingContinuation { done in
+            _ = provider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, error in
+                guard let url else {
+                    done.resume(throwing: error ?? AttachmentFileIOError(.decode))
+                    return
+                }
+                done.resume(with: Result { try readPicked(url) })
+            }
+        }
+    }
+
     /// Pastes images from the system clipboard.
     func paste(scope: PBDraftScope) {
         let providers = UIPasteboard.general.itemProviders.filter {
@@ -612,15 +626,7 @@ final class ImageCenter {
             var firstError: Error?
             for provider in providers {
                 do {
-                    let data: Data = try await withCheckedThrowingContinuation { done in
-                        _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { d, error in
-                            if let d {
-                                done.resume(returning: d)
-                            } else {
-                                done.resume(throwing: error ?? AttachmentFileIOError(.decode))
-                            }
-                        }
-                    }
+                    let data = try await Self.loadBoundedImageData(from: provider)
                     let ref = try await Task.detached(priority: .userInitiated) {
                         try store.storeBlob(data, prefix: "src")
                     }.value

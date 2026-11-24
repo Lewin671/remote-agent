@@ -538,6 +538,38 @@ private final class FakeUploadDaemon: @unchecked Sendable {
         #expect(h.center.failedLocalRefCountForTesting == 1)
     }
 
+    @Test func pastedOversizedImageRefusedBeforeLoadingIntoMemory() async throws {
+        let tmpDir = FileManager.default.temporaryDirectory.appending(path: "att-paste-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmpDir) }
+
+        let hugeURL = tmpDir.appending(path: "huge.tiff")
+        FileManager.default.createFile(atPath: hugeURL.path, contents: nil)
+        let fh = try FileHandle(forWritingTo: hugeURL)
+        try fh.truncate(atOffset: UInt64(pickedReadLimit(original: false, originalMaxBytes: 0)) + 1)
+        try fh.close()
+
+        let hugeProvider = NSItemProvider()
+        hugeProvider.registerFileRepresentation(forTypeIdentifier: "public.image", fileOptions: [], visibility: .all) { handler in
+            handler(hugeURL, false, nil)
+            return nil
+        }
+        await #expect(throws: ImageTooLarge.self) {
+            _ = try await ImageCenter.loadBoundedImageData(from: hugeProvider)
+        }
+
+        let smallURL = tmpDir.appending(path: "small.png")
+        let png = samplePNG(.systemIndigo)
+        try png.write(to: smallURL)
+        let smallProvider = NSItemProvider()
+        smallProvider.registerFileRepresentation(forTypeIdentifier: "public.image", fileOptions: [], visibility: .all) { handler in
+            handler(smallURL, false, nil)
+            return nil
+        }
+        let loaded = try await ImageCenter.loadBoundedImageData(from: smallProvider)
+        #expect(loaded == png)
+    }
+
     @Test func oversizedLibraryVideoSkipsCopyAndIsRejectedByCore() async throws {
         let store = PendingStore.ephemeral()
         let h = try await makeHarness(store: store, persist: false)
