@@ -340,9 +340,12 @@ func (c *Core) processSyncStep(res sync.StepResult) ([]*corev1.Effect, sync.Dirt
 				d.StartErrorText = nil
 				d.DiskFull = false
 				d.ActiveStartRequestID = ""
-				d.Prompt = ""
-				d.AttachmentCount = 0
-				d.AttachmentsMoved = false
+				hasCoreStart := c.m.attachments != nil && c.m.attachments.configured && c.m.attachments.newSessionStarts[meta.projectKey] != nil
+				if !hasCoreStart {
+					d.Prompt = ""
+					d.AttachmentCount = 0
+					d.AttachmentsMoved = false
+				}
 				d.ResetOnNextOpen = true
 
 				if c.m.attachments == nil || !c.m.attachments.configured {

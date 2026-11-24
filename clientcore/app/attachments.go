@@ -242,6 +242,7 @@ type attNewSessionStart struct {
 	requestID  string
 	machineID  string
 	prompt     string
+	promptRev  uint64
 	itemIDs    []string
 	transfers  []attTransferRef
 }

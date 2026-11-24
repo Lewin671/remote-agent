@@ -2888,3 +2888,145 @@ func TestAttachments_StartupScanHydratesLoadingDraft_IgnoresLateReadResult(t *te
 		t.Fatalf("late DraftStorageReadResult must not merge text twice, got %q", got)
 	}
 }
+
+func TestAttachments_NewSessionTextOnlySubmit_ClearsSubmittedRevisionAndPreservesNewEdits(t *testing.T) {
+	h := newAttHarness(t, true, true)
+	scope := h.newSessionScope()
+
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionOpen{NewSessionOpen: &corev1.NewSessionOpenAction{ProjectKey: h.project}},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_NewSessionSelectMachine{NewSessionSelectMachine: &corev1.NewSessionSelectMachineAction{MachineId: h.machineA}},
+	})
+	openEff := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftOpen{DraftOpen: &corev1.DraftOpenAction{Scope: scope, MachineId: h.machineA}},
+	})
+	for _, ef := range openEff.GetEffects() {
+		if rd := ef.GetDraftStorageRead(); rd != nil {
+			h.dispatch(&corev1.Event{
+				Event: &corev1.Event_DraftStorageReadResult{
+					DraftStorageReadResult: &corev1.DraftStorageReadResultEvent{OpId: rd.OpId, Found: false},
+				},
+			})
+		}
+	}
+
+	viewNS := func() *corev1.NewSessionViewModel {
+		vm, err := h.core.View(&corev1.Screen{
+			Screen: &corev1.Screen_NewSession{NewSession: &corev1.NewSessionScreenRequest{ProjectKey: h.project}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return vm.GetNewSession()
+	}
+
+	submitAndFindCreate := func() attDispatchedCmd {
+		subEff := h.dispatch(&corev1.Event{
+			Event: &corev1.Event_NewSessionSubmit{
+				NewSessionSubmit: &corev1.NewSessionSubmitAction{ProjectKey: h.project},
+			},
+		})
+		for _, sc := range findDispatchedCmds(subEff) {
+			if sc.cmd.GetCreateSession() != nil {
+				return sc
+			}
+		}
+		t.Fatalf("expected CreateSession dispatched")
+		return attDispatchedCmd{}
+	}
+
+	// Case 1: Text-only submit without subsequent edits -> settles OK -> clears draft text, prompt, and deletes disk draft.
+	setEff1 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "first task"}},
+	})
+	for _, dw := range findDraftWriteEffects(setEff1) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{
+				DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true},
+			},
+		})
+	}
+	create1 := submitAndFindCreate()
+	if create1.cmd.GetCreateSession().GetPrompt() != "first task" {
+		t.Fatalf("expected prompt \"first task\", got %q", create1.cmd.GetCreateSession().GetPrompt())
+	}
+	settle1 := h.settleCmdOK(create1.dc, &v1.CommandResult{
+		Kind: &v1.CommandResult_CreateSession{
+			CreateSession: &v1.CreateSessionResponse{
+				Session: &v1.Session{Id: "s-text-1", Cwd: h.project, Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+			},
+		},
+	})
+	if got := h.draftView(scope).GetText(); got != "" {
+		t.Fatalf("expected text-only draft cleared after CreateSession Executed, got %q", got)
+	}
+	if got := viewNS().GetPrompt(); got != "" {
+		t.Fatalf("expected NewSessionViewModel.Prompt cleared after CreateSession Executed, got %q", got)
+	}
+	if dels := findDraftDeleteEffects(settle1); len(dels) != 1 || dels[0].Bucket != corev1.DraftStorageBucket_DRAFT_STORAGE_BUCKET_DRAFT {
+		t.Fatalf("expected empty draft deleted from storage on settlement, got %+v", dels)
+	}
+
+	// Case 2: Text-only submit where user types new text BEFORE CreateSession settles -> preserves new text!
+	setEff2 := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "second task"}},
+	})
+	for _, dw := range findDraftWriteEffects(setEff2) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{
+				DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true},
+			},
+		})
+	}
+	create2 := submitAndFindCreate()
+	setEff2New := h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "typed while starting"}},
+	})
+	for _, dw := range findDraftWriteEffects(setEff2New) {
+		h.dispatch(&corev1.Event{
+			Event: &corev1.Event_DraftStorageWriteResult{
+				DraftStorageWriteResult: &corev1.DraftStorageWriteResultEvent{OpId: dw.OpId, Ok: true},
+			},
+		})
+	}
+	settle2 := h.settleCmdOK(create2.dc, &v1.CommandResult{
+		Kind: &v1.CommandResult_CreateSession{
+			CreateSession: &v1.CreateSessionResponse{
+				Session: &v1.Session{Id: "s-text-2", Cwd: h.project, Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+			},
+		},
+	})
+	if got := h.draftView(scope).GetText(); got != "typed while starting" {
+		t.Fatalf("expected newly typed text preserved in draft, got %q", got)
+	}
+	if got := viewNS().GetPrompt(); got != "typed while starting" {
+		t.Fatalf("expected newly typed text preserved in NewSessionViewModel.Prompt, got %q", got)
+	}
+	if dels := findDraftDeleteEffects(settle2); len(dels) != 0 {
+		t.Fatalf("must not delete draft storage when new text was typed during submit, got %+v", dels)
+	}
+
+	// Case 3: Re-typing the same text (bumping textRev) during submit also preserves it!
+	create3 := submitAndFindCreate()
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: ""}},
+	})
+	h.dispatch(&corev1.Event{
+		Event: &corev1.Event_DraftSetText{DraftSetText: &corev1.DraftSetTextAction{Scope: scope, Text: "typed while starting"}},
+	})
+	h.settleCmdOK(create3.dc, &v1.CommandResult{
+		Kind: &v1.CommandResult_CreateSession{
+			CreateSession: &v1.CreateSessionResponse{
+				Session: &v1.Session{Id: "s-text-3", Cwd: h.project, Agent: v1.Agent_AGENT_CODEX, Status: v1.SessionStatus_SESSION_STATUS_RUNNING},
+			},
+		},
+	})
+	if got := h.draftView(scope).GetText(); got != "typed while starting" {
+		t.Fatalf("expected newer revision of same text preserved after settle, got %q", got)
+	}
+	if got := viewNS().GetPrompt(); got != "typed while starting" {
+		t.Fatalf("expected NewSessionViewModel.Prompt preserved for newer revision, got %q", got)
+	}
+}

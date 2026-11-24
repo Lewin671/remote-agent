@@ -1408,16 +1408,52 @@ func (c *Core) pruneSettledOutboxRecords(ctx *sync.StepContext, effects *[]*core
 	_ = ctx
 }
 
-// prepareNewSessionAttachments checks and captures Core-managed attachments for NewSessionSubmit.
-// Returns (imageIDs, fileIDs, blocked). When Core's new-session draft has no items, returns (nil, nil, false)
-// so legacy NewSessionSubmitAction.ImageIds/FileIds continue working seamlessly.
+// prepareNewSessionAttachments checks and captures Core-managed draft state for NewSessionSubmit.
+// Returns (imageIDs, fileIDs, blocked). When Core attachments are not configured and the new-session
+// draft has no items, returns (nil, nil, false) so legacy NewSessionSubmitAction.ImageIds/FileIds
+// continue working seamlessly. When configured, text-only submits are also recorded in
+// newSessionStarts so settlement clears only the submitted text revision and preserves edits made
+// while CreateSession is in flight.
 func (c *Core) prepareNewSessionAttachments(ctx *sync.StepContext, projectKey, machineID, reqID string, effects *[]*corev1.Effect) ([]string, []string, bool) {
 	if c.m.attachments == nil || projectKey == "" {
 		return nil, nil, false
 	}
 	d := c.m.attachments.drafts["new:"+projectKey]
-	if d == nil || len(d.items) == 0 {
-		return nil, nil, false
+	if !c.m.attachments.configured {
+		if d == nil || len(d.items) == 0 {
+			return nil, nil, false
+		}
+	} else {
+		if d == nil {
+			prompt := ""
+			if nd := c.m.state.NewSessions[projectKey]; nd != nil {
+				prompt = nd.Prompt
+			}
+			c.m.attachments.newSessionStarts[projectKey] = &attNewSessionStart{
+				projectKey: projectKey,
+				requestID:  reqID,
+				machineID:  machineID,
+				prompt:     prompt,
+				promptRev:  0,
+			}
+			return nil, nil, false
+		}
+		if d.loadState == draftLoadLoading {
+			return nil, nil, true
+		}
+		if rImg, rFile := d.reservedCounts(); rImg > 0 || rFile > 0 {
+			return nil, nil, true
+		}
+		if len(d.items) == 0 {
+			c.m.attachments.newSessionStarts[projectKey] = &attNewSessionStart{
+				projectKey: projectKey,
+				requestID:  reqID,
+				machineID:  machineID,
+				prompt:     d.text,
+				promptRev:  d.textRev,
+			}
+			return nil, nil, false
+		}
 	}
 	if d.loadState == draftLoadLoading {
 		return nil, nil, true
@@ -1473,6 +1509,7 @@ func (c *Core) prepareNewSessionAttachments(ctx *sync.StepContext, projectKey, m
 		requestID:  reqID,
 		machineID:  machineID,
 		prompt:     d.text,
+		promptRev:  d.textRev,
 		itemIDs:    itemIDs,
 		transfers:  transfers,
 	}
@@ -1486,6 +1523,9 @@ func (c *Core) onNewSessionCreateSettled(projectKey string, sc sync.SettledComma
 	mgr := c.m.attachments
 	st := mgr.newSessionStarts[projectKey]
 	if st == nil {
+		return
+	}
+	if st.requestID != "" && sc.RequestID != "" && st.requestID != sc.RequestID {
 		return
 	}
 	if sc.Category == outcome.Unknown && !sc.Expired {
@@ -1504,6 +1544,13 @@ func (c *Core) onNewSessionCreateSettled(projectKey string, sc sync.SettledComma
 
 	d := mgr.drafts["new:"+projectKey]
 	if d == nil {
+		if nd := c.m.state.NewSessions[projectKey]; nd != nil {
+			if nd.Prompt == st.prompt {
+				nd.Prompt = ""
+			}
+			nd.AttachmentCount = 0
+			nd.AttachmentsMoved = false
+		}
 		return
 	}
 	stepPrev, ctx := c.m.sync.BeginStep()
@@ -1513,12 +1560,14 @@ func (c *Core) onNewSessionCreateSettled(projectKey string, sc sync.SettledComma
 		takenSet[id] = true
 	}
 	var releaseRefs []string
+	draftChanged := false
 	kept := d.items[:0]
 	for _, it := range d.items {
 		if it == nil {
 			continue
 		}
 		if takenSet[it.id] {
+			draftChanged = true
 			c.invalidateItem(ctx, attOwnerDraft, d.key, it, false, &localEffects)
 			releaseRefs = append(releaseRefs, it.localRefs()...)
 			continue
@@ -1531,15 +1580,16 @@ func (c *Core) onNewSessionCreateSettled(projectKey string, sc sync.SettledComma
 		d.viewerOpen = false
 		d.viewerIndex = 0
 	}
-	if strings.TrimSpace(d.text) == strings.TrimSpace(st.prompt) {
+	if d.textRev == st.promptRev && d.text != "" {
 		d.text = ""
 		d.textRev++
+		draftChanged = true
 	}
 	c.syncNewSessionPromptFromDraft(d)
 	c.syncNewSessionAttachmentCount(d)
 	c.scheduleDraftExpiryTimer(ctx, d)
 	var targetSeq uint64
-	if d.loadState == draftLoadLoaded {
+	if draftChanged && d.loadState == draftLoadLoaded {
 		targetSeq = c.enqueueDraftWrite(d, &localEffects)
 	}
 	c.releaseDraftLocalRefsAfterWrite(d, targetSeq, releaseRefs, &localEffects)
