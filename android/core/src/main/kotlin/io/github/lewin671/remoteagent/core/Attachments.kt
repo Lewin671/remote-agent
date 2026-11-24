@@ -953,7 +953,7 @@ class AttachmentIoExecutor(
         }
     }
 
-    internal fun classifyIoError(t: Throwable): AttachmentIOErrorKind {
+    fun classifyIoError(t: Throwable): AttachmentIOErrorKind {
         var cur: Throwable? = t
         while (cur != null) {
             if (cur is AttachmentStorageFullException || platformIo.isStorageFullError(cur)) {

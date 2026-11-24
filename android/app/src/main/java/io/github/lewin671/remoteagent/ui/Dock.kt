@@ -97,8 +97,10 @@ object QuestionMultiPicks {
     }
 }
 
-fun hasDraft(sid: String): Boolean =
-    ImageDrafts.forSession(sid).text.value.isNotBlank() || ImageDrafts.forSession(sid).images.isNotEmpty()
+private fun hasDraft(remote: io.github.lewin671.remoteagent.core.Remote, sid: String): Boolean {
+    val draft = remote.currentSessionView(sid)?.composer?.takeIf { it.hasDraft() }?.draft ?: return false
+    return draft.text.isNotBlank() || draft.itemsCount > 0 || draft.hasPendingPicks
+}
 
 val LocalDockMax = androidx.compose.runtime.compositionLocalOf { 240.dp }
 
@@ -274,8 +276,9 @@ private fun PendingCoreDock(
     actions: @Composable ColumnScope.() -> Unit,
 ) {
     val copy = uiText()
+    val remote = LocalRemote.current
     val itemId = dock.kind.name + ":" + dock.itemId
-    val open = DockFolds.isOpen(sid, itemId) { hasDraft(sid) }
+    val open = DockFolds.isOpen(sid, itemId) { hasDraft(remote, sid) }
     DisposableEffect(open) {
         onOpenChange(open)
         onDispose { onOpenChange(false) }

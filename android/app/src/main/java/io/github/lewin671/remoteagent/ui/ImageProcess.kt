@@ -7,58 +7,102 @@ import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
-import io.github.lewin671.remoteagent.core.COMPRESSED_LONG_SIDE
+import io.github.lewin671.remoteagent.core.LOCAL_BLOB_REF_PREFIX
 import io.github.lewin671.remoteagent.core.MAX_DECODE_PIXELS
-import io.github.lewin671.remoteagent.core.UiMessages
 import io.github.lewin671.remoteagent.core.decodeSample
 import io.github.lewin671.remoteagent.core.detectFormat
 import io.github.lewin671.remoteagent.core.fitLongSide
 import io.github.lewin671.remoteagent.core.orientationOf
-import io.github.lewin671.remoteagent.core.proto.ImageProblemKind
+import io.github.lewin671.remoteagent.core.proto.AttachmentIOErrorKind
 import io.github.lewin671.remoteagent.core.stripOriginal
 import io.github.lewin671.remoteagent.proto.ImageFormat
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
+import java.io.IOException
 
-/** An image ready to upload: no metadata, the right way up. */
-class Processed(val bytes: ByteArray, val format: ImageFormat, val width: Int, val height: Int, val note: String = "")
+/** An image prepared on the phone: no metadata, upright, encoded per Core's effect parameters. */
+class PreparedImageBytes(
+    val bytes: ByteArray,
+    val format: ImageFormat,
+    val width: Int,
+    val height: Int,
+)
 
-class ImageTooLarge(message: io.github.lewin671.remoteagent.core.UiMessage, kind: ImageProblemKind) :
-    Exception("image_limit"), io.github.lewin671.remoteagent.core.MessageFailure {
-    override val display = io.github.lewin671.remoteagent.core.MessageText.Message(message)
-    override val imageKind = kind
-}
+/** Structured preparation failure mapped directly to Core's [AttachmentIOErrorKind]. */
+class PrepareImageException(
+    val kind: AttachmentIOErrorKind,
+    val isReadingSource: Boolean = false,
+    val errorCode: String = "",
+    val detail: String = "",
+    cause: Throwable? = null,
+) : Exception(detail.ifEmpty { kind.name }, cause)
 
-private fun imageFormatError(message: io.github.lewin671.remoteagent.core.UiMessage): Nothing =
-    throw io.github.lewin671.remoteagent.core.MessageArgumentException(
-        io.github.lewin671.remoteagent.core.MessageText.Message(message),
-        imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE,
-    )
-
-/** A compressed image aims at this size, so it goes in one command. */
-private const val COMPRESSED_TARGET = 900 * 1024
-
-/** Reads what the picker gave, up to [limit] bytes. */
-fun readUri(context: Context, uri: Uri, limit: Long, originalLimit: Long): ByteArray {
-    val out = ByteArrayOutputStream()
-    context.contentResolver.openInputStream(uri)?.use { input ->
-        val buf = ByteArray(64 * 1024)
-        var total = 0L
-        while (true) {
-            val n = input.read(buf)
-            if (n < 0) break
-            total += n
-            if (total > limit) {
-                throw ImageTooLarge(
-                    UiMessages.imageAndroidImageExceedsValue1Mb((limit / 1024 / 1024).toString()),
-                    if (limit == originalLimit) ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE else ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS,
-                )
-            }
-            out.write(buf, 0, n)
+/** Reads the raw source bytes up to [readLimitBytes], reporting structured I/O errors. */
+private fun readSourceBytes(
+    context: Context,
+    sourceRef: String,
+    readLimitBytes: Long,
+    original: Boolean,
+    readLocalBlob: (String) -> ByteArray?,
+): ByteArray {
+    if (sourceRef.isEmpty()) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = "empty_source_ref")
+    }
+    if (sourceRef.startsWith(LOCAL_BLOB_REF_PREFIX)) {
+        val blob = readLocalBlob(sourceRef)
+            ?: throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = "missing_blob")
+        if (blob.size > readLimitBytes) {
+            throw PrepareImageException(
+                if (original) AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE
+                else AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIMENSIONS,
+                detail = "source_exceeds_read_limit",
+            )
         }
-    } ?: throw io.github.lewin671.remoteagent.core.MessageException(
-        io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotReadThisImage()),
-        imageKind = ImageProblemKind.IMAGE_PROBLEM_KIND_DECODE,
-    )
+        return blob
+    }
+    val uri = Uri.parse(sourceRef)
+    val stream = try {
+        if (uri.scheme == "file" && uri.path != null) {
+            FileInputStream(File(uri.path!!))
+        } else {
+            context.contentResolver.openInputStream(uri)
+        }
+    } catch (e: FileNotFoundException) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = e.message.orEmpty(), cause = e)
+    } catch (e: SecurityException) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = e.message.orEmpty(), cause = e)
+    } catch (e: IOException) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, isReadingSource = true, detail = e.message.orEmpty(), cause = e)
+    } ?: throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = "null_input_stream")
+
+    val out = ByteArrayOutputStream()
+    try {
+        stream.use { input ->
+            val buf = ByteArray(64 * 1024)
+            var total = 0L
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                total += n
+                if (total > readLimitBytes) {
+                    throw PrepareImageException(
+                        if (original) AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE
+                        else AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIMENSIONS,
+                        detail = "source_exceeds_read_limit",
+                    )
+                }
+                out.write(buf, 0, n)
+            }
+        }
+    } catch (e: PrepareImageException) {
+        throw e
+    } catch (e: SecurityException) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_SOURCE_MISSING, isReadingSource = true, detail = e.message.orEmpty(), cause = e)
+    } catch (e: IOException) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, isReadingSource = true, detail = e.message.orEmpty(), cause = e)
+    }
     return out.toByteArray()
 }
 
@@ -81,86 +125,152 @@ private fun orientationMatrix(o: Int): Matrix = Matrix().apply {
  */
 private fun pixelBudget(): Long = minOf(MAX_DECODE_PIXELS, Runtime.getRuntime().maxMemory() / 4 / 4)
 
-/** A decoded picture and the sample size it was decoded at (1: full size). */
-private class Decoded(val bitmap: Bitmap, val sample: Int)
-
-private fun decodeUpright(data: ByteArray, maxLong: Int): Decoded {
+private fun decodeUpright(data: ByteArray, maxLong: Int): Bitmap {
     val budget = pixelBudget()
     val fmt = detectFormat(data)
     if (fmt == null) {
-        if (Build.VERSION.SDK_INT < 28) imageFormatError(UiMessages.imageAndroidThisPhoneCannotReadThisImageFormat())
-        var sample = 1
-        val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))) { d, info, _ ->
-            d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-            sample = decodeSample(info.size.width, info.size.height, maxLong, budget)
-            val (w, h) = if (maxLong > 0) fitLongSide(info.size.width, info.size.height, maxLong) else info.size.width to info.size.height
-            val (bw, bh) = if (w.toLong() * h > budget) (info.size.width / sample) to (info.size.height / sample) else w to h
-            if (bw != info.size.width || bh != info.size.height) d.setTargetSize(bw, bh)
+        if (Build.VERSION.SDK_INT < 28) {
+            throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = "unsupported_image_format")
         }
-        return Decoded(bmp, sample)
+        return try {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))) { d, info, _ ->
+                d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                if (info.size.width <= 0 || info.size.height <= 0) {
+                    throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIMENSIONS, detail = "zero_dimensions")
+                }
+                val sample = decodeSample(info.size.width, info.size.height, maxLong, budget)
+                val (w, h) = if (maxLong > 0) fitLongSide(info.size.width, info.size.height, maxLong) else info.size.width to info.size.height
+                val (bw, bh) = if (w.toLong() * h > budget) (info.size.width / sample) to (info.size.height / sample) else w to h
+                if (bw != info.size.width || bh != info.size.height) d.setTargetSize(bw, bh)
+            }
+        } catch (e: PrepareImageException) {
+            throw e
+        } catch (e: Throwable) {
+            throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = e.message.orEmpty(), cause = e)
+        }
     }
     val o = orientationOf(data)
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
-    if (bounds.outWidth <= 0) imageFormatError(UiMessages.imageAndroidCannotDecodeThisImage())
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = "cannot_decode_bounds")
+    }
     val sample = decodeSample(bounds.outWidth, bounds.outHeight, maxLong, budget)
     var bmp = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
-        ?: imageFormatError(UiMessages.imageAndroidCannotDecodeThisImage())
+        ?: throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = "cannot_decode_bitmap")
     if (maxLong > 0) {
         val (w, h) = fitLongSide(bmp.width, bmp.height, maxLong)
         if (w != bmp.width) bmp = Bitmap.createScaledBitmap(bmp, w, h, true).also { if (it !== bmp) bmp.recycle() }
     }
-    if (o != 1) bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, orientationMatrix(o), true).also { if (it !== bmp) bmp.recycle() }
-    return Decoded(bmp, sample)
+    if (o != 1) {
+        bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, orientationMatrix(o), true).also { if (it !== bmp) bmp.recycle() }
+    }
+    return bmp
 }
 
 /** One image is prepared at a time: several full-size decodes at once could run out of memory. */
-private val preparing = Any()
+private val preparingLock = Any()
 
-private fun encode(b: Bitmap, png: Boolean, quality: Int): ByteArray =
+private fun encodeBitmap(b: Bitmap, png: Boolean, quality: Int): ByteArray =
     ByteArrayOutputStream().also { b.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
 
-fun processImage(context: Context, uri: Uri, original: Boolean, originalMaxBytes: Long): Processed = synchronized(preparing) {
+/**
+ * Prepares an image strictly according to Core's `AttachmentPrepareImageEffect` parameters
+ * ([maxOriginalBytes], [maxDimensionPx], [maxCompressedBytes]). Never hardcodes budgets.
+ */
+fun prepareImageFromSource(
+    context: Context,
+    sourceRef: String,
+    original: Boolean,
+    maxOriginalBytes: Long,
+    maxDimensionPx: Int,
+    maxCompressedBytes: Long,
+    readLocalBlob: (String) -> ByteArray? = { null },
+): PreparedImageBytes = synchronized(preparingLock) {
     try {
-        prepare(context, uri, original, originalMaxBytes)
+        val readLimit = if (original) maxOriginalBytes * 3L else maxOf(80L * 1024 * 1024, maxOriginalBytes * 3L)
+        val data = readSourceBytes(context, sourceRef, readLimit, original, readLocalBlob)
+        if (original) {
+            val stripped = try {
+                stripOriginal(data)
+            } catch (e: Throwable) {
+                throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = e.message.orEmpty(), cause = e)
+            }
+            if (stripped != null) {
+                if (stripped.size > maxOriginalBytes) {
+                    throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE, detail = "original_exceeds_limit")
+                }
+                val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(stripped, 0, stripped.size, b)
+                val fmt = detectFormat(stripped)
+                    ?: throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DECODE, detail = "unknown_stripped_format")
+                return@synchronized PreparedImageBytes(stripped, fmt, b.outWidth, b.outHeight)
+            }
+            val turned = detectFormat(data) != null
+            val bmp = decodeUpright(data, maxLong = 0)
+            val png = bmp.hasAlpha()
+            val out = encodeBitmap(bmp, png, if (turned) 100 else 95)
+            val (w, h) = bmp.width to bmp.height
+            bmp.recycle()
+            if (out.size > maxOriginalBytes) {
+                throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_ORIGINAL_TOO_LARGE, detail = "original_exceeds_limit")
+            }
+            return@synchronized PreparedImageBytes(
+                out,
+                if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG,
+                w,
+                h,
+            )
+        }
+
+        var bmp = decodeUpright(data, maxLong = maxDimensionPx)
+        val png = bmp.hasAlpha()
+        var q = 85
+        var out = encodeBitmap(bmp, png, q)
+        while (out.size > maxCompressedBytes && (q > 60 || maxOf(bmp.width, bmp.height) > 800)) {
+            if (!png && q > 60) {
+                q -= 10
+            } else {
+                bmp = Bitmap.createScaledBitmap(
+                    bmp,
+                    (bmp.width * 0.8).toInt().coerceAtLeast(1),
+                    (bmp.height * 0.8).toInt().coerceAtLeast(1),
+                    true,
+                ).also { if (it !== bmp) bmp.recycle() }
+            }
+            out = encodeBitmap(bmp, png, q)
+        }
+        val (w, h) = bmp.width to bmp.height
+        bmp.recycle()
+        PreparedImageBytes(
+            out,
+            if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG,
+            w,
+            h,
+        )
+    } catch (e: PrepareImageException) {
+        throw e
     } catch (e: OutOfMemoryError) {
-        throw ImageTooLarge(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable(), ImageProblemKind.IMAGE_PROBLEM_KIND_DIMENSIONS)
+        throw PrepareImageException(AttachmentIOErrorKind.ATTACHMENT_IO_ERROR_KIND_DIMENSIONS, detail = "out_of_memory", cause = e)
     }
 }
 
-private fun prepare(context: Context, uri: Uri, original: Boolean, maxOriginal: Long): Processed {
-    val data = readUri(context, uri, if (original) maxOriginal * 3 else 80L * 1024 * 1024, maxOriginal)
-    if (original) {
-        stripOriginal(data)?.let { clean ->
-            if (clean.size > maxOriginal) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE)
-            val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeByteArray(clean, 0, clean.size, b)
-            return Processed(clean, detectFormat(clean)!!, b.outWidth, b.outHeight)
-        }
-        val turned = detectFormat(data) != null
-        val d = decodeUpright(data, 0)
-        val bmp = d.bitmap
-        val png = bmp.hasAlpha()
-        val out = encode(bmp, png, if (turned) 100 else 95)
-        val (w, h) = bmp.width to bmp.height
+/** Encodes a compact JPEG preview thumbnail (<= 256px long side) from already-prepared image bytes. */
+fun encodeThumbnailBytes(preparedBytes: ByteArray): ByteArray? = runCatching {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(preparedBytes, 0, preparedBytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 256) sample *= 2
+    val bmp = BitmapFactory.decodeByteArray(
+        preparedBytes,
+        0,
+        preparedBytes.size,
+        BitmapFactory.Options().apply { inSampleSize = sample },
+    ) ?: return null
+    try {
+        ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+    } finally {
         bmp.recycle()
-        if (out.size > maxOriginal) throw ImageTooLarge(UiMessages.imageAndroidOriginalExceeds20Mb(), ImageProblemKind.IMAGE_PROBLEM_KIND_ORIGINAL_TOO_LARGE)
-        val shrunk = if (d.sample > 1) sessionText(UiMessages.imageAndroidPixelCountExceedsThisPhoneSLimitScaledDownTo((d.sample).toString())) else ""
-        return Processed(
-            out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h,
-            (if (turned) sessionText(UiMessages.imageAndroidRotateToTheCaptureOrientationAndReEncodeAtMaximum()) else sessionText(UiMessages.imageAndroidConvertedToValue1KeepingOriginalDimensions((if (png) "PNG" else "JPEG").toString()))) + shrunk,
-        )
     }
-    var bmp = decodeUpright(data, COMPRESSED_LONG_SIDE).bitmap
-    val png = bmp.hasAlpha()
-    var q = 85
-    var out = encode(bmp, png, q)
-    while (out.size > COMPRESSED_TARGET && (q > 60 || maxOf(bmp.width, bmp.height) > 800)) {
-        if (!png && q > 60) q -= 10
-        else bmp = Bitmap.createScaledBitmap(bmp, (bmp.width * 0.8).toInt().coerceAtLeast(1), (bmp.height * 0.8).toInt().coerceAtLeast(1), true).also { if (it !== bmp) bmp.recycle() }
-        out = encode(bmp, png, q)
-    }
-    val (w, h) = bmp.width to bmp.height
-    bmp.recycle()
-    return Processed(out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h)
-}
+}.getOrNull()

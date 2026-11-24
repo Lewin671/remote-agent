@@ -101,7 +101,6 @@ class ChatContext(
     val agentName: String = "",
     val onImage: (seq: Long, index: Int) -> Unit = { _, _ -> },
     val onSession: (String) -> Unit = {},
-    val localOutboxById: Map<String, Outgoing> = emptyMap(),
 )
 
 val LocalChat = compositionLocalOf<ChatContext?> { null }

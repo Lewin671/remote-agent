@@ -62,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -85,8 +86,9 @@ import io.github.lewin671.remoteagent.core.CORE_SESSION_WINDOW_LIMIT
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.draftScopeStorageKey
 import io.github.lewin671.remoteagent.core.listWhen
-import io.github.lewin671.remoteagent.core.newRequestId
+import io.github.lewin671.remoteagent.core.proto.AttachmentDraftView
 import io.github.lewin671.remoteagent.core.proto.ComputerReachability
 import io.github.lewin671.remoteagent.core.proto.SessionCommandStatus
 import io.github.lewin671.remoteagent.core.proto.SessionDisplayStatus
@@ -94,6 +96,7 @@ import io.github.lewin671.remoteagent.core.proto.SessionSharedFileItem
 import io.github.lewin671.remoteagent.core.proto.SessionTimelineItem
 import io.github.lewin671.remoteagent.core.proto.SessionViewModel
 import io.github.lewin671.remoteagent.core.proto.SessionWindowRequest
+import io.github.lewin671.remoteagent.core.sessionDraftScope
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.Command
@@ -101,7 +104,6 @@ import io.github.lewin671.remoteagent.proto.ForkSessionRequest
 import io.github.lewin671.remoteagent.proto.InterruptRequest
 import io.github.lewin671.remoteagent.proto.ResumeSessionRequest
 import io.github.lewin671.remoteagent.proto.SendMode
-import io.github.lewin671.remoteagent.proto.SendRequest
 import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
 import kotlinx.coroutines.delay
@@ -167,33 +169,7 @@ fun SessionScreen(sid: String) {
     val header = vm.header
 
     LaunchedEffect(remote, sid, header.machineId) {
-        remote.restoreComposerEvents.collect { eff ->
-            if (eff.sessionId != sid) return@collect
-            val draft = ImageDrafts.forSession(sid)
-            if (eff.text.isNotEmpty()) {
-                val cur = draft.text.value
-                draft.text.value = if (cur.isBlank()) eff.text else cur.trimEnd() + "\n" + eff.text
-            }
-            if (Outbox.takeBack(sid, eff.requestId, draft, remote, header.machineId)) {
-                draft.images.forEach { draft.bindAbort(it, remote) }
-                if (header.machineId.isNotEmpty()) draft.sendAllTo(remote, header.machineId, sessionId = sid)
-            }
-        }
-    }
-
-    LaunchedEffect(remote, sid) {
-        remote.resendAttachmentsEvents.collect { eff ->
-            if (eff.sessionId != sid) return@collect
-            Outbox.resendWithAttachments(this, remote, sid, eff)
-        }
-    }
-
-    LaunchedEffect(vm.composer.retainedAttachmentRequestIdsList, vm.composer.pendingTray.orderedItemsList) {
-        val active = buildSet {
-            addAll(vm.composer.retainedAttachmentRequestIdsList)
-            vm.composer.pendingTray.orderedItemsList.forEach { add(it.requestId) }
-        }
-        Outbox.pruneSettled(sid, active)
+        remote.openDraft(sessionDraftScope(sid), header.machineId)
     }
 
     if (!header.found) {
@@ -822,10 +798,8 @@ internal fun ChatPane(
                                     receiptBefore = i > 0 && items[i - 1].kindCase == SessionTimelineItem.KindCase.NOTIFY_RECEIPT,
                                     receiptAfter = i + 1 < items.size && items[i + 1].kindCase == SessionTimelineItem.KindCase.NOTIFY_RECEIPT,
                                     settling = kind == Entrance.SETTLE,
-                                    onRestoreInput = { _, text ->
-                                        val draft = ImageDrafts.forSession(sid)
-                                        val cur = draft.text.value
-                                        draft.text.value = if (cur.isBlank()) text else cur.trimEnd() + "\n" + text
+                                    onRestoreInput = { reqId, _ ->
+                                        remote.putBackDraftInput(sid, reqId)
                                     },
                                     onTerminalPopup = onTerminal,
                                 )
@@ -1005,65 +979,33 @@ internal fun Composer(
     val view = LocalView.current
     val header = vm.header
     val composer = vm.composer
-    val caps = header.capabilities
     val machineId = header.machineId
     val online = header.computerOnline && !header.computerUnlinked
-    val attachCaps = header.attachmentCaps()
+    val scope = remember(sid) { sessionDraftScope(sid) }
+    val scopeKey = remember(scope) { draftScopeStorageKey(scope) }
+    val draft = if (composer.hasDraft()) composer.draft else AttachmentDraftView.getDefaultInstance()
 
-    val images = ImageDrafts.forSession(sid)
-    var text by images.text
-    val keeping = Outbox.keeping(sid)
-    val maxImg = attachCaps.maxImages
-    val pickState = rememberAttachmentPickState(remote, machineId, sid, images.pictures.size, images.documents.size, attachCaps)
-    RefreshDraftUploads(images, remote, machineId, attachCaps, sessionId = sid)
-    val pick = rememberImagePicker(images, remote, machineId, attachCaps, sessionId = sid)
-    val draftBlocked = rememberDraftAttachmentsBlocked(images, remote, machineId, sid, attachCaps)
+    val (text, onText) = rememberDraftTextState(scopeKey, draft.text, draft.textRevision) { next ->
+        remote.setDraftText(scope, next)
+    }
+    val composerFocus = remember(sid) { FocusRequester() }
+    LaunchedEffect(remote, sid) {
+        remote.restoreComposerEvents.collect { eff ->
+            if (eff.sessionId != sid) return@collect
+            runCatching { composerFocus.requestFocus() }
+        }
+    }
+    val pick = rememberImagePicker(draft, scope, remote)
+    val docPicker = rememberDocumentPicker(draft, scope, remote, supportsFiles = header.capabilities.supportsFiles)
 
     fun send(requestedMode: SendMode? = null) {
-        val mode = requestedMode ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED } ?: SendMode.SEND_MODE_STEER
-        val msg = text.trim()
-        if (images.restoring || images.readingFiles || (msg.isEmpty() && images.images.isEmpty())) return
-        val currentBlocked = evaluateDraftAttachmentsBlocked(remote, machineId, sid, images.documents, images.pictures, copy = copy)
-        if (currentBlocked != null) {
-            images.notice = currentBlocked
-            return
-        }
-        images.sendAllTo(remote, machineId, attachCaps, sid)
-        if (!images.ready(machineId) && images.images.isNotEmpty()) return
-        val picked = images.images.toList()
+        val mode = requestedMode
+            ?: composer.defaultSendMode.takeIf { it != SendMode.SEND_MODE_UNSPECIFIED }
+            ?: SendMode.SEND_MODE_STEER
+        if (!draft.canSend) return
         Motion.tap(view)
-        if (picked.isEmpty()) {
-            text = ""
-            onSent()
-            remote.submitSessionCommand(
-                sid,
-                Command.newBuilder().setSend(
-                    SendRequest.newBuilder().setSessionId(sid).setRequestId(newRequestId()).setText(msg).setMode(mode),
-                ).build(),
-                machineId = machineId,
-            )
-            return
-        }
-        Outbox.sendWithImages(
-            RaApp.instance.scope,
-            remote,
-            sid,
-            msg,
-            images.ids(machineId),
-            picked,
-            images.original,
-            mode,
-            fileIds = images.fileIds(machineId),
-        ) { kept ->
-            kept.onSuccess {
-                if (text.trim() == msg) text = ""
-                images.detach(picked)
-                onSent()
-            }.onFailure {
-                images.notice = copy(UiMessages.composerAndroidNotSent(reason = displayError(it)))
-                images.sendAllTo(remote, machineId, attachCaps, sid)
-            }
-        }
+        remote.sendDraftSession(sid, mode)
+        onSent()
     }
 
     val interruptSlot = vm.actions.interrupt
@@ -1074,22 +1016,20 @@ internal fun Composer(
     val density = LocalDensity.current
     val imeOpen by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
     val compactWidth = LocalConfiguration.current.screenWidthDp < 600
+    val hasDraftContent = text.isNotBlank() || draft.itemsCount > 0
 
     ComposeBox(
         text = text,
-        onText = { text = it },
+        onText = onText,
         placeholder = placeholder,
-        canSend = composer.enabled &&
-            !images.restoring && !images.readingFiles && draftBlocked == null &&
-            !keeping && online &&
-            (text.isNotBlank() || images.images.isNotEmpty()) &&
-            (images.images.isEmpty() || images.ready(machineId)),
+        canSend = composer.enabled && draft.canSend,
         onSend = { send() },
         onPlus = pick,
-        onPlusBlocked = if (!images.restoring) ({ showAttachmentBlockedNotice(images, remote, machineId, sid, copy = copy) }) else null,
-        onFile = rememberDocumentPicker(images, remote, machineId, attachCaps, sessionId = sid),
-        fileMetadataNotice = attachCaps.fileMetadataNotice?.let { uiText(it) }.orEmpty(),
-        plusEnabled = !images.restoring && pickState.canPickAny,
+        onPlusBlocked = if (!draft.restoring) ({ showAttachmentBlockedNotice(draft, scope, copy = copy) }) else null,
+        onFile = docPicker,
+        fileMetadataNotice = if (draft.hasFileMetadataNotice()) uiText(draft.fileMetadataNotice) else "",
+        plusEnabled = !draft.restoring && (draft.canPickGallery || draft.canPickFiles),
+        focusRequester = composerFocus,
         onQueue = if (composer.supportsQueueMode && composer.hasActiveTurn) ({ send(SendMode.SEND_MODE_QUEUE) }) else null,
         onInterrupt = if (composer.interruptVisible) ({
             remote.submitSessionCommand(
@@ -1099,7 +1039,7 @@ internal fun Composer(
             )
         }) else null,
         canInterrupt = online && vm.actions.canInterrupt && !interruptBusy,
-        hasDraft = text.isNotBlank() || images.images.isNotEmpty(),
+        hasDraft = hasDraftContent,
         demoted = demoted,
         onFocus = onFocus,
         hasPendingTray = hasPendingTray,
@@ -1111,18 +1051,14 @@ internal fun Composer(
                 onCancelItem = { remote.cancelTrayItem(sid, it) },
                 onIgnoreItem = { remote.ignoreTrayItem(sid, it) },
                 onPromoteItem = { remote.promoteTrayItem(sid, it) },
-                onRestoreItem = { reqId ->
-                    if (Outbox.canTakeBack(sid, reqId, images, remote, machineId)) {
-                        remote.restoreTrayItem(sid, reqId)
-                    }
-                },
+                onRestoreItem = { reqId -> remote.restoreTrayItem(sid, reqId) },
                 onRetryItem = { remote.retryTrayItem(sid, it) },
                 onResumeItem = { remote.resumeTrayItem(sid, it) },
                 onCancelAllPaused = { remote.cancelAllPaused(sid) },
                 onUndo = { remote.undoCancel(sid) },
             )
         }) else null,
-        top = { ImageStrip(images, remote, machineId, maxImg, attachCaps, sessionId = sid) },
+        top = { AttachmentDraftStrip(draft = draft, scope = scope, remote = remote) },
     )
     if (interruptSlot.hasErrorText()) {
         Notice(copy(UiMessages.sessionAndroidInterruptFailed(reason = uiText(interruptSlot.errorText))), Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)

@@ -182,7 +182,7 @@ internal fun PendingTray(
                 val src = if (it.hasSourceLabel()) uiText(it.sourceLabel) else ""
                 val rColor = trayToneColor(it.tone, p)
                 val body = trayRowBodyText(it)
-                val hasExpandOpts = isOpen && it.activity == SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_IDLE && (it.canPromote || it.canRestore)
+                val hasExpandOpts = isOpen && it.activity != SessionTrayRowActivity.SESSION_TRAY_ROW_ACTIVITY_CANCELING && (it.canPromote || it.canRestore)
                 val bodyStyle = T.s15.copy(fontSize = 14.5.sp, lineHeight = 19.6.sp)
 
                 Row(
@@ -321,8 +321,24 @@ internal fun PendingTray(
                                     style = T.s12.copy(fontSize = 12.5.sp),
                                     color = p.ink2,
                                     maxLines = 1,
-                                    modifier = Modifier.padding(start = 4.dp, end = 10.dp),
+                                    modifier = Modifier.padding(start = 4.dp, end = if (it.canCancel) 4.dp else 10.dp),
                                 )
+                                if (it.canCancel) {
+                                    val cancelLabel = copy(UiMessages.commonCancel())
+                                    Box(
+                                        Modifier
+                                            .width(36.dp)
+                                            .height(if (isOpen) 26.dp else 38.dp)
+                                            .clip(RoundedCornerShape(18.dp))
+                                            .clickable(role = Role.Button, onClickLabel = cancelLabel) {
+                                                onCancelItem(id)
+                                            }
+                                            .semantics { contentDescription = cancelLabel },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Ic(Lucide.X, 15.dp, p.ink2)
+                                    }
+                                }
                             }
                             else -> {
                                 if (it.canIgnore) {
