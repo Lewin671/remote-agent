@@ -247,7 +247,7 @@ func TestSecurityReasonTextAndBuildNotifyDisplay(t *testing.T) {
 	if wfRes.ErrorText.GetKey() != text.KeySecurityInvalidPairingKey {
 		t.Fatalf("unexpected decorated workflow error: text=%+v", wfRes.ErrorText)
 	}
-	if wfRes.ExitAdvice.MessageText.GetKey() != text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement {
+	if wfRes.ExitAdvice.MessageText.GetKey() != text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement {
 		t.Fatalf("unexpected decorated exit advice: %+v", wfRes.ExitAdvice)
 	}
 	if wfRes.Status.ErrorText.GetKey() != text.KeySecurityAccountPublicKeyMissingPairAgainOrUseA ||

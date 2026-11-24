@@ -204,7 +204,7 @@ func SecurityExitAdviceText(r security.ExitAdviceReason) *corev1.Text {
 	case security.ExitAdviceUnresolvedOp:
 		return text.Msg(text.KeySecurityTheSecurityOperationSOutcomeIsUnverifiedContinueThe)
 	case security.ExitAdviceOnlyManagingClient:
-		return text.Msg(text.KeySecurityThisBrowserIsTheOnlyManagingClientTransferManagement)
+		return text.Msg(text.KeySecurityThisDeviceIsTheOnlyManagingClientTransferManagement)
 	default:
 		return text.Msg(text.KeySecurityExitingDeletesLocalKeysYouWillNeedToPair)
 	}

@@ -5305,10 +5305,6 @@ public enum L10n {
         let key = "security_the_unpublished_pairing_draft_was_canceled_or_its_candidate"
         return format(key, locale: locale, args: [])
     }
-    public static func securityThisBrowserIsTheOnlyManagingClientTransferManagement(locale: String = MessageLocale.current) -> String {
-        let key = "security_this_browser_is_the_only_managing_client_transfer_management"
-        return format(key, locale: locale, args: [])
-    }
     public static func securityThisBrowserWillBeTheOnlyManagingClientClearing(locale: String = MessageLocale.current) -> String {
         let key = "security_this_browser_will_be_the_only_managing_client_clearing"
         return format(key, locale: locale, args: [])
@@ -5327,6 +5323,10 @@ public enum L10n {
     }
     public static func securityThisDeviceHasAnUnfinishedJoinRequestDeletingIt(locale: String = MessageLocale.current) -> String {
         let key = "security_this_device_has_an_unfinished_join_request_deleting_it"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityThisDeviceIsTheOnlyManagingClientTransferManagement(locale: String = MessageLocale.current) -> String {
+        let key = "security_this_device_is_the_only_managing_client_transfer_management"
         return format(key, locale: locale, args: [])
     }
     public static func securityThisDeviceManagesTheAccount(locale: String = MessageLocale.current) -> String {
@@ -13693,10 +13693,6 @@ public enum L10nMessage {
         let key = "security_the_unpublished_pairing_draft_was_canceled_or_its_candidate"
         return LocalizedMessage(key: key, arguments: [])
     }
-    public static func securityThisBrowserIsTheOnlyManagingClientTransferManagement() -> LocalizedMessage {
-        let key = "security_this_browser_is_the_only_managing_client_transfer_management"
-        return LocalizedMessage(key: key, arguments: [])
-    }
     public static func securityThisBrowserWillBeTheOnlyManagingClientClearing() -> LocalizedMessage {
         let key = "security_this_browser_will_be_the_only_managing_client_clearing"
         return LocalizedMessage(key: key, arguments: [])
@@ -13715,6 +13711,10 @@ public enum L10nMessage {
     }
     public static func securityThisDeviceHasAnUnfinishedJoinRequestDeletingIt() -> LocalizedMessage {
         let key = "security_this_device_has_an_unfinished_join_request_deleting_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeviceIsTheOnlyManagingClientTransferManagement() -> LocalizedMessage {
+        let key = "security_this_device_is_the_only_managing_client_transfer_management"
         return LocalizedMessage(key: key, arguments: [])
     }
     public static func securityThisDeviceManagesTheAccount() -> LocalizedMessage {
@@ -18225,12 +18225,12 @@ public enum L10nText {
         case "security.the_server_does_not_recognize_this_device": return L10n.format("security_the_server_does_not_recognize_this_device", locale: locale, args: [])
         case "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": return L10n.format("security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon", locale: locale, args: [])
         case "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": return L10n.format("security_the_unpublished_pairing_draft_was_canceled_or_its_candidate", locale: locale, args: [])
-        case "security.this_browser_is_the_only_managing_client_transfer_management": return L10n.format("security_this_browser_is_the_only_managing_client_transfer_management", locale: locale, args: [])
         case "security.this_browser_will_be_the_only_managing_client_clearing": return L10n.format("security_this_browser_will_be_the_only_managing_client_clearing", locale: locale, args: [])
         case "security.this_deletes_the_account_keys_and_cache_on_this": return L10n.format("security_this_deletes_the_account_keys_and_cache_on_this", locale: locale, args: [])
         case "security.this_device": return L10n.format("security_this_device", locale: locale, args: [])
         case "security.this_device_becomes_the_managing_client": return L10n.format("security_this_device_becomes_the_managing_client", locale: locale, args: [])
         case "security.this_device_has_an_unfinished_join_request_deleting_it": return L10n.format("security_this_device_has_an_unfinished_join_request_deleting_it", locale: locale, args: [])
+        case "security.this_device_is_the_only_managing_client_transfer_management": return L10n.format("security_this_device_is_the_only_managing_client_transfer_management", locale: locale, args: [])
         case "security.this_device_manages_the_account": return L10n.format("security_this_device_manages_the_account", locale: locale, args: [])
         case "security.this_device_s_clock_is_behind_the_managing_client": return L10n.format("security_this_device_s_clock_is_behind_the_managing_client", locale: locale, args: [])
         case "security.this_page_and_the_server_or_pairing_device_use": return L10n.format("security_this_page_and_the_server_or_pairing_device_use", locale: locale, args: [])

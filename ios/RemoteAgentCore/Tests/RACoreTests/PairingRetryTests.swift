@@ -94,9 +94,12 @@ extension ServerTests {
 
             let adv = PBSecurityExitAdvice.with {
                 $0.authority = true
-                $0.messageText = PBCoreText.with { $0.key = "security.this_browser_is_the_only_managing_client_transfer_management" }
+                $0.messageText = PBCoreText.with { $0.key = "security.this_device_is_the_only_managing_client_transfer_management" }
             }
-            #expect(renderExitAdviceMessage(adv) == L10n.securityThisBrowserIsTheOnlyManagingClientTransferManagement())
+            let rendered = renderExitAdviceMessage(adv)
+            #expect(rendered == L10n.securityThisDeviceIsTheOnlyManagingClientTransferManagement())
+            #expect(!rendered.contains("浏览器"))
+            #expect(!rendered.lowercased().contains("browser"))
         }
     }
 }

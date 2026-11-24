@@ -4180,9 +4180,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate" -> {
             resources.getString(R.string.security_the_unpublished_pairing_draft_was_canceled_or_its_candidate)
         }
-        "security.this_browser_is_the_only_managing_client_transfer_management" -> {
-            resources.getString(R.string.security_this_browser_is_the_only_managing_client_transfer_management)
-        }
         "security.this_browser_will_be_the_only_managing_client_clearing" -> {
             resources.getString(R.string.security_this_browser_will_be_the_only_managing_client_clearing)
         }
@@ -4197,6 +4194,9 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         }
         "security.this_device_has_an_unfinished_join_request_deleting_it" -> {
             resources.getString(R.string.security_this_device_has_an_unfinished_join_request_deleting_it)
+        }
+        "security.this_device_is_the_only_managing_client_transfer_management" -> {
+            resources.getString(R.string.security_this_device_is_the_only_managing_client_transfer_management)
         }
         "security.this_device_manages_the_account" -> {
             resources.getString(R.string.security_this_device_manages_the_account)

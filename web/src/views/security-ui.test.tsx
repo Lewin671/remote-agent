@@ -247,7 +247,7 @@ it("gives authority-specific exit advice before erasing keys", async () => {
       checkExitAdvice: vi.fn(async () => create(SecurityExitAdviceSchema, {
         authority: true,
         unresolved: false,
-        messageText: create(TextSchema, { key: "security.this_browser_is_the_only_managing_client_transfer_management" }),
+        messageText: create(TextSchema, { key: "security.this_device_is_the_only_managing_client_transfer_management" }),
       })),
     } as unknown as securityClient.SecurityClient,
     dispose: vi.fn(),
